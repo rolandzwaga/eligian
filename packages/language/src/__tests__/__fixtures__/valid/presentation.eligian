@@ -1,0 +1,48 @@
+// Interactive presentation with actions
+timeline raf
+
+// Reusable animations
+action showCard(card, delay = 0) {
+  on card {
+    wait(delay)
+    addClass("visible")
+    animate(300)
+  }
+}
+
+action pulse(element) {
+  on element {
+    addClass("pulse")
+    animate(600)
+  }
+}
+
+// Presentation flow
+event titleSlide at 0..3 {
+  show #main-title
+  show #subtitle
+}
+
+event agenda at 3..8 {
+  hide #main-title
+  hide #subtitle
+  showCard(#card1, 0)
+  showCard(#card2, 200)
+  showCard(#card3, 400)
+}
+
+event content at 8..30 {
+  hide #card1
+  hide #card2
+  hide #card3
+  show #content-area
+}
+
+event highlight at 15..15.5 {
+  pulse(#important-point)
+}
+
+event conclusion at 30..35 {
+  hide #content-area
+  show #thank-you
+}

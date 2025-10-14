@@ -1,0 +1,48 @@
+{
+  "name": "eligian-compiler",
+  "version": "0.0.1",
+  "description": "Effect-based compiler for the Eligian DSL",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "./out/index.js",
+  "module": "./out/index.js",
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "default": "./out/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "out/index"
+      ]
+    }
+  },
+  "files": [
+    "out",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.10.0",
+    "npm": ">=10.2.3"
+  },
+  "scripts": {
+    "clean": "shx rm -fr *.tsbuildinfo out",
+    "build": "echo 'No build step'",
+    "build:clean": "npm run clean && npm run build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "^3.12.0",
+    "eligius": "^1.1.4"
+  },
+  "devDependencies": {
+    "vitest": "3.2.4"
+  },
+  "volta": {
+    "node": "20.19.2",
+    "npm": "10.8.2"
+  }
+}

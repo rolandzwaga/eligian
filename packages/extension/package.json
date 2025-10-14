@@ -1,0 +1,51 @@
+{
+    "name": "vscode-eligian",
+    "description": "The extension specific package",
+    "version": "0.0.1",
+    "displayName": "Eligian",
+    "type": "module",
+    "engines": {
+        "vscode": "^1.105.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "eligian",
+            "aliases": ["Eligian", "eligian"],
+            "extensions": [".eligian"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "eligian",
+            "scopeName": "source.eligian",
+            "path": "syntaxes/eligian.tmLanguage.json"
+        }]
+    },
+    "activationEvents": [
+        "onLanguage:eligian"
+    ],
+    "main": "./out/extension/main.cjs",
+    "scripts": {
+        "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
+        "vscode:prepublish": "npm run build",
+        "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json",
+        "build": "npm run build:prepare && tsc -b tsconfig.json && node esbuild.mjs",
+        "build:clean": "npm run clean && npm run build",
+        "watch": "npm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\""
+    },
+    "dependencies": {
+        "eligian-language": "0.0.1",
+        "vscode-languageclient": "9.0.1",
+        "vscode-languageserver": "9.0.1"
+    },
+    "devDependencies": {
+        "@types/vscode": "1.105.0",
+        "concurrently": "9.2.1",
+        "esbuild": "0.25.10"
+    },
+    "vsce": {
+      "dependencies": false
+    }
+}

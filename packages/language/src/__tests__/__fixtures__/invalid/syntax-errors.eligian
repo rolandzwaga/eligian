@@ -1,0 +1,20 @@
+// File with syntax errors for testing error recovery
+
+// Missing timeline
+event intro at 0..5 {
+  show #title
+}
+
+// Invalid time range (missing ..)
+event bad_range at 5-10 {
+  show #content
+}
+
+// Missing braces
+event no_braces at 10..15
+  show #test
+
+// Invalid selector
+event bad_selector at 15..20 {
+  show @invalid
+}

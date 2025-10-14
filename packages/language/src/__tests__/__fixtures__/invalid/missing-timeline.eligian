@@ -1,0 +1,9 @@
+// No timeline defined - should be a validation error
+
+event intro at 0..5 {
+  show #title
+}
+
+event outro at 10..15 {
+  hide #title
+}

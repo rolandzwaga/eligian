@@ -1,0 +1,12 @@
+// Simple timeline with basic events
+timeline video from "presentation.mp4"
+
+event intro at 0..5 {
+  show #title
+  show #subtitle
+}
+
+event outro at 120..125 {
+  hide #title
+  hide #subtitle
+}
