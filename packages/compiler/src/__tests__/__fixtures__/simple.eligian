@@ -1,0 +1,6 @@
+// Simple DSL program for transformer testing
+timeline raf
+
+event test at 0..10 {
+  show #element
+}

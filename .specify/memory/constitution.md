@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: [INITIAL] → 1.0.0
-- This is the initial ratification of the constitution
-- Modified principles: N/A (initial creation)
-- Added sections: All (initial creation)
-- Removed sections: N/A
-- Templates requiring updates:
-  ✅ .specify/templates/plan-template.md - Verified (Constitution Check section present)
-  ✅ .specify/templates/spec-template.md - Verified (Requirements alignment present)
-  ✅ .specify/templates/tasks-template.md - Verified (Task categorization present)
-- Follow-up TODOs: None
+- Version change: 1.0.0 → 1.1.0
+- Amendment: Added Principle VII (UUID-Based Identifiers)
+- Modified principles: None
+- Added sections: Principle VII - UUID-Based Identifiers (NON-NEGOTIABLE)
+- Removed sections: None
+- Templates requiring updates: None (new principle is implementation-specific)
+- Follow-up TODOs:
+  - Update ast-transformer.ts to use crypto.randomUUID() instead of Date.now()
+  - Update emitter.ts to use UUIDs for all generated IDs
+  - Add UUID usage documentation in code comments
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -124,6 +124,25 @@ maintaining external purity.
 - Side effects MUST be explicitly captured in Effect types
 - Performance-critical sections MAY use mutable data structures internally (document why)
 
+### VII. UUID-Based Identifiers (NON-NEGOTIABLE)
+
+All identifiers generated for Eligius configuration elements (timelines, actions, events,
+operations) MUST use UUID v4 (random UUIDs). Never use timestamps, sequential numbers,
+or other non-UUID schemes for ID generation.
+
+**Rationale**: Eligius configurations may be merged, cached, or run concurrently. UUIDs
+provide guaranteed global uniqueness without coordination, preventing ID conflicts during
+merging, avoiding race conditions in concurrent scenarios, and enabling safe configuration
+composition. Timestamps create collision risks and lack randomness.
+
+**Requirements**:
+- All `id` fields in generated Eligius configuration MUST be UUIDs (v4)
+- Use `crypto.randomUUID()` (Node.js 19+) or equivalent UUID library for generation
+- NEVER use `Date.now()`, sequential counters, or name-based schemes for IDs
+- UUID generation MUST be documented in code comments where IDs are created
+- Test fixtures MAY use hardcoded UUIDs for deterministic testing
+- User-provided IDs (from DSL) MAY use custom naming but SHOULD validate uniqueness
+
 ## Development Workflow
 
 ### Pull Request Process
@@ -196,4 +215,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-14
+**Version**: 1.1.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-14

@@ -5,7 +5,7 @@
  * programs and rejects invalid ones.
  */
 
-import { describe, test, expect, beforeAll } from "vitest"
+import { describe, test, expect } from "vitest"
 import { createEligianServices } from "../eligian-module.js"
 import { EmptyFileSystem } from "langium"
 import { parseDocument } from "langium/test"

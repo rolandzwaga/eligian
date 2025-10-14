@@ -5,6 +5,8 @@
  * after parsing and before JSON emission. The IR is optimized for
  * transformation, validation, and optimization.
  *
+ * This IR now aligns with Eligius's IEngineConfiguration structure.
+ *
  * @module eligius-ir
  */
 
@@ -12,37 +14,169 @@ import type { SourceLocation, JsonValue } from "./common.js"
 
 /**
  * Root IR structure representing a complete Eligius DSL program
+ *
+ * Aligned with Eligius IEngineConfiguration interface
  */
 export type EligiusIR = {
-  readonly timeline: TimelineIR
-  readonly events: ReadonlyArray<EventIR>
-  readonly actions?: ReadonlyArray<ActionDefinitionIR>
-  readonly providers?: ReadonlyArray<ProviderIR>
+  // Required Eligius configuration fields
+  readonly id: string
+  readonly engine: EngineInfoIR
+  readonly containerSelector: string
+  readonly language: string  // TLanguageCode in Eligius
+  readonly layoutTemplate: string
+  readonly availableLanguages: ReadonlyArray<LabelIR>
+  readonly labels: ReadonlyArray<LanguageLabelIR>
+
+  // Action layers (Eligius has multiple action contexts)
+  readonly initActions: ReadonlyArray<EndableActionIR>      // Run once on initialization
+  readonly actions: ReadonlyArray<EndableActionIR>          // Global actions (run throughout)
+  readonly eventActions: ReadonlyArray<EventActionIR>       // Event-triggered actions (what DSL calls "events")
+
+  // Timeline configuration (plural - Eligius supports multiple timelines)
+  readonly timelines: ReadonlyArray<TimelineConfigIR>
+  readonly timelineFlow?: TimelineFlowIR
+
+  // Provider settings
+  readonly timelineProviderSettings?: TimelineProviderSettingsIR
+
+  // Compiler metadata (not part of Eligius, but useful for debugging)
   readonly metadata?: MetadataIR
   readonly sourceLocation: SourceLocation
 }
 
 /**
- * Timeline configuration - defines the time source for the presentation
+ * Engine information
  */
-export type TimelineIR = {
-  readonly provider: TimelineProvider
-  readonly source?: string  // e.g., "video.mp4", "audio.mp3"
-  readonly options?: Readonly<Record<string, JsonValue>>
+export type EngineInfoIR = {
+  readonly systemName: string
+}
+
+/**
+ * Label for language selection
+ */
+export type LabelIR = {
+  readonly code: string
+  readonly label: string
+}
+
+/**
+ * Language-specific label (for i18n)
+ */
+export type LanguageLabelIR = {
+  readonly key: string
+  readonly language: string
+  readonly value: string
+}
+
+/**
+ * Timeline flow configuration (how timelines interact)
+ */
+export type TimelineFlowIR = Readonly<Record<string, JsonValue>>
+
+/**
+ * Timeline provider settings
+ */
+export type TimelineProviderSettingsIR = Readonly<Record<string, TimelineProviderSettingIR>>
+
+export type TimelineProviderSettingIR = {
+  readonly id: string
+  readonly vendor: string
+  readonly systemName: string
+  readonly selector?: string
+  readonly poster?: string
+}
+
+/**
+ * Timeline configuration - Eligius ITimelineConfiguration structure
+ */
+export type TimelineConfigIR = {
+  readonly id: string
+  readonly uri: string  // Source file (video, audio, etc.)
+  readonly type: TimelineType
+  readonly duration: number
+  readonly loop: boolean
+  readonly selector: string
+  readonly timelineActions: ReadonlyArray<TimelineActionIR>
   readonly sourceLocation: SourceLocation
 }
 
 /**
- * Timeline provider types
+ * Timeline types
  */
-export type TimelineProvider =
+export type TimelineType =
   | "video"
   | "audio"
   | "raf"  // RequestAnimationFrame
   | "custom"
 
 /**
- * Event - triggered at specific times on the timeline
+ * DEPRECATED: Old timeline IR (kept for backward compatibility during migration)
+ */
+export type TimelineIR = {
+  readonly provider: TimelineType
+  readonly source?: string  // e.g., "video.mp4", "audio.mp3"
+  readonly options?: Readonly<Record<string, JsonValue>>
+  readonly sourceLocation: SourceLocation
+}
+
+/**
+ * @deprecated Use TimelineType instead
+ */
+export type TimelineProvider = TimelineType
+
+/**
+ * Duration specification (Eligius IDuration)
+ */
+export type DurationIR = {
+  readonly start: number | TimeExpression
+  readonly end: number | TimeExpression
+}
+
+/**
+ * Base action configuration (Eligius IActionConfiguration)
+ */
+export type BaseActionIR = {
+  readonly id: string
+  readonly name: string
+  readonly startOperations: ReadonlyArray<OperationConfigIR>
+  readonly sourceLocation: SourceLocation
+}
+
+/**
+ * Endable action - has both start and end operations (Eligius IEndableActionConfiguration)
+ */
+export type EndableActionIR = BaseActionIR & {
+  readonly endOperations: ReadonlyArray<OperationConfigIR>
+}
+
+/**
+ * Timeline action - tied to timeline duration (Eligius ITimelineActionConfiguration)
+ */
+export type TimelineActionIR = EndableActionIR & {
+  readonly duration: DurationIR
+}
+
+/**
+ * Event action - triggered by events (Eligius IEventActionConfiguration)
+ */
+export type EventActionIR = BaseActionIR & {
+  readonly eventName: string
+  readonly eventTopic?: string
+}
+
+/**
+ * Operation configuration (Eligius IOperationConfiguration)
+ */
+export type OperationConfigIR = {
+  readonly id: string
+  readonly systemName: string
+  readonly operationData?: Readonly<Record<string, JsonValue>>
+  readonly sourceLocation: SourceLocation
+}
+
+/**
+ * DEPRECATED: Old Event IR (kept for backward compatibility during migration)
+ * This represents the DSL's simplified "event" concept, which maps to Eligius's TimelineAction
  */
 export type EventIR = {
   readonly id: string

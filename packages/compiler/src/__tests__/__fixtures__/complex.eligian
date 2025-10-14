@@ -1,0 +1,16 @@
+// Complex DSL program with multiple events and actions
+timeline video from "test.mp4"
+
+event intro at 0..5 {
+  show #title with fadeIn(500)
+  show #subtitle with slideIn(300, "left")
+}
+
+event main at 5..120 {
+  show #content
+  trigger startAnimation on #diagram
+}
+
+event outro at 120..130 {
+  hide #content with fadeOut(400)
+}

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll } from 'vitest';
-import { EmptyFileSystem, type LangiumDocument } from 'langium';
+import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';

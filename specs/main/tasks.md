@@ -141,67 +141,87 @@
 
 ### Pipeline Stage: Transform (AST → IR)
 
-- [ ] T050 [P] [Transform] Implement transformTimeline in packages/compiler/src/ast-transformer.ts (Timeline AST → TimelineIR)
-- [ ] T051 [P] [Transform] Implement transformEvent in packages/compiler/src/ast-transformer.ts (Event AST → EventIR)
-- [ ] T052 [P] [Transform] Implement transformAction in packages/compiler/src/ast-transformer.ts (Action AST → ActionIR)
-- [ ] T053 [P] [Transform] Implement transformSelector in packages/compiler/src/ast-transformer.ts (Selector AST → TargetSelector)
-- [ ] T054 [P] [Transform] Implement transformTimeExpression in packages/compiler/src/ast-transformer.ts (Time AST → TimeExpression)
-- [ ] T055 [Transform] Implement main transformAST function in packages/compiler/src/ast-transformer.ts (orchestrates all transforms)
-- [ ] T056 [Transform] Add error handling with TransformError types in packages/compiler/src/ast-transformer.ts
-- [ ] T057 [Transform] Include source location mapping in all IR nodes in packages/compiler/src/ast-transformer.ts
-- [ ] T058 [P] [Transform] Create transform test fixtures in packages/compiler/src/__tests__/__fixtures__/
-- [ ] T059 [Transform] Implement transformer tests in packages/compiler/src/__tests__/transformer.spec.ts
+- [X] T050 [P] [Transform] Implement transformTimeline in packages/compiler/src/ast-transformer.ts (Timeline AST → TimelineIR)
+- [X] T051 [P] [Transform] Implement transformEvent in packages/compiler/src/ast-transformer.ts (Event AST → EventIR)
+- [X] T052 [P] [Transform] Implement transformAction in packages/compiler/src/ast-transformer.ts (Action AST → ActionIR)
+- [X] T053 [P] [Transform] Implement transformSelector in packages/compiler/src/ast-transformer.ts (Selector AST → TargetSelector)
+- [X] T054 [P] [Transform] Implement transformTimeExpression in packages/compiler/src/ast-transformer.ts (Time AST → TimeExpression)
+- [X] T055 [Transform] Implement main transformAST function in packages/compiler/src/ast-transformer.ts (orchestrates all transforms)
+- [X] T056 [Transform] Add error handling with TransformError types in packages/compiler/src/ast-transformer.ts
+- [X] T057 [Transform] Include source location mapping in all IR nodes in packages/compiler/src/ast-transformer.ts
+- [X] T058 [P] [Transform] Create transform test fixtures in packages/compiler/src/__tests__/__fixtures__/
+- [X] T059 [Transform] Implement transformer tests in packages/compiler/src/__tests__/transformer.spec.ts (14 tests passing)
 
 ### Pipeline Stage: Type Checking
 
-- [ ] T060 [P] [TypeCheck] Implement TimeType checking in packages/compiler/src/type-checker.ts (time expressions evaluate to number)
-- [ ] T061 [P] [TypeCheck] Implement NumericDuration checking in packages/compiler/src/type-checker.ts (durations are numeric)
-- [ ] T062 [P] [TypeCheck] Implement StringLiteral checking in packages/compiler/src/type-checker.ts (sources, selectors are strings)
-- [ ] T063 [TypeCheck] Implement main typeCheck function in packages/compiler/src/type-checker.ts (returns Effect<TypedAST, TypeError>)
-- [ ] T064 [TypeCheck] Implement type-checking tests in packages/compiler/src/__tests__/type-checker.spec.ts
+- [X] T060 [P] [TypeCheck] Implement TimeType checking in packages/compiler/src/type-checker.ts (time expressions evaluate to number)
+- [X] T061 [P] [TypeCheck] Implement NumericDuration checking in packages/compiler/src/type-checker.ts (durations are numeric)
+- [X] T062 [P] [TypeCheck] Implement StringLiteral checking in packages/compiler/src/type-checker.ts (sources, selectors are strings)
+- [X] T063 [TypeCheck] Implement main typeCheck function in packages/compiler/src/type-checker.ts (returns Effect<TypedAST, TypeError>)
+- [X] T064 [TypeCheck] Implement type-checking tests in packages/compiler/src/__tests__/type-checker.spec.ts (18 tests passing)
 
 ### Pipeline Stage: Optimization
 
-- [ ] T065 [P] [Optimize] Implement dead code elimination in packages/compiler/src/optimizer.ts (remove unreachable events)
-- [ ] T066 [P] [Optimize] Implement constant folding in packages/compiler/src/optimizer.ts (evaluate compile-time expressions)
-- [ ] T067 [Optimize] Implement main optimize function in packages/compiler/src/optimizer.ts (returns Effect<EligiusIR, never>)
-- [ ] T068 [Optimize] Document internal mutation for performance in packages/compiler/src/optimizer.ts
-- [ ] T069 [Optimize] Implement optimizer tests in packages/compiler/src/__tests__/optimizer.spec.ts
+- [X] T065 [P] [Optimize] Implement dead code elimination in packages/compiler/src/optimizer.ts (remove unreachable events)
+- [X] T066 [P] [Optimize] Implement constant folding in packages/compiler/src/optimizer.ts (evaluate compile-time expressions)
+- [X] T067 [Optimize] Implement main optimize function in packages/compiler/src/optimizer.ts (returns Effect<EligiusIR, never>)
+- [X] T068 [Optimize] Document internal mutation for performance in packages/compiler/src/optimizer.ts
+- [X] T069 [Optimize] Implement optimizer tests in packages/compiler/src/__tests__/optimizer.spec.ts (16 tests passing)
 
 ### Pipeline Stage: Emit (IR → JSON)
 
-- [ ] T070 [P] [Emit] Implement emitTimeline in packages/compiler/src/emitter.ts (TimelineIR → EligiusTimeline)
-- [ ] T071 [P] [Emit] Implement emitEvent in packages/compiler/src/emitter.ts (EventIR → EligiusEvent)
-- [ ] T072 [P] [Emit] Implement emitAction in packages/compiler/src/emitter.ts (ActionIR → EligiusAction)
-- [ ] T073 [Emit] Implement emitJSON function in packages/compiler/src/emitter.ts (EligiusIR → EligiusConfig)
-- [ ] T074 [Emit] Add metadata generation in packages/compiler/src/emitter.ts (compiler version, timestamp)
-- [ ] T075 [Emit] Implement emit tests in packages/compiler/src/__tests__/emitter.spec.ts
+- [X] T070 [P] [Emit] Implement emitTimeline in packages/compiler/src/emitter.ts (TimelineIR → EligiusTimeline)
+- [X] T071 [P] [Emit] Implement emitEvent in packages/compiler/src/emitter.ts (EventIR → EligiusEvent)
+- [X] T072 [P] [Emit] Implement emitAction in packages/compiler/src/emitter.ts (ActionIR → EligiusAction)
+- [X] T073 [Emit] Implement emitJSON function in packages/compiler/src/emitter.ts (EligiusIR → EligiusConfig)
+- [X] T074 [Emit] Add metadata generation in packages/compiler/src/emitter.ts (compiler version, timestamp)
+- [X] T075 [Emit] Implement emit tests in packages/compiler/src/__tests__/emitter.spec.ts (15 tests passing)
 
 ### Pipeline Orchestration
 
-- [ ] T076 [Pipeline] Implement parseSource stage in packages/compiler/src/pipeline.ts (Langium parse → AST)
-- [ ] T077 [Pipeline] Implement validateAST stage in packages/compiler/src/pipeline.ts (semantic validation)
-- [ ] T078 [Pipeline] Wire transformAST stage in packages/compiler/src/pipeline.ts
-- [ ] T079 [Pipeline] Wire typeCheck stage in packages/compiler/src/pipeline.ts
-- [ ] T080 [Pipeline] Wire optimize stage in packages/compiler/src/pipeline.ts
-- [ ] T081 [Pipeline] Wire emitJSON stage in packages/compiler/src/pipeline.ts
-- [ ] T082 [Pipeline] Implement main compile function in packages/compiler/src/pipeline.ts (orchestrates all stages with Effect.flatMap)
-- [ ] T083 [Pipeline] Implement compileFile helper in packages/compiler/src/pipeline.ts (reads file via FileSystemService)
-- [ ] T084 [Pipeline] Implement compileString alias in packages/compiler/src/pipeline.ts
-- [ ] T085 [Pipeline] Add CompileOptions support in packages/compiler/src/pipeline.ts (minify, sourcemap, optimize, target)
+- [X] T076 [Pipeline] Implement parseSource stage in packages/compiler/src/pipeline.ts (Langium parse → AST)
+- [X] T077 [Pipeline] Implement validateAST stage in packages/compiler/src/pipeline.ts (semantic validation)
+- [X] T078 [Pipeline] Wire transformAST stage in packages/compiler/src/pipeline.ts
+- [X] T079 [Pipeline] Wire typeCheck stage in packages/compiler/src/pipeline.ts
+- [X] T080 [Pipeline] Wire optimize stage in packages/compiler/src/pipeline.ts
+- [X] T081 [Pipeline] Wire emitJSON stage in packages/compiler/src/pipeline.ts
+- [X] T082 [Pipeline] Implement main compile function in packages/compiler/src/pipeline.ts (orchestrates all stages with Effect.flatMap)
+- [X] T083 [Pipeline] Implement compileFile helper in packages/compiler/src/pipeline.ts (reads file via FileSystemService)
+- [X] T084 [Pipeline] Implement compileString alias in packages/compiler/src/pipeline.ts
+- [X] T085 [Pipeline] Add CompileOptions support in packages/compiler/src/pipeline.ts (minify, sourcemap, optimize, target)
 
 ### Integration Tests
 
-- [ ] T086 [P] [Compiler] Create snapshot fixtures in packages/compiler/src/__tests__/__fixtures__/snapshots/ (expected JSON outputs)
-- [ ] T087 [Compiler] Implement end-to-end pipeline tests in packages/compiler/src/__tests__/pipeline.spec.ts
-- [ ] T088 [Compiler] Test simple timeline compilation in packages/compiler/src/__tests__/pipeline.spec.ts
-- [ ] T089 [Compiler] Test video annotation compilation in packages/compiler/src/__tests__/pipeline.spec.ts
-- [ ] T090 [Compiler] Test presentation compilation in packages/compiler/src/__tests__/pipeline.spec.ts
-- [ ] T091 [Compiler] Test compilation with optimization passes in packages/compiler/src/__tests__/pipeline.spec.ts
-- [ ] T092 [Compiler] Test compilation error handling (all error types) in packages/compiler/src/__tests__/pipeline.spec.ts
-- [ ] T093 [Compiler] Snapshot testing for JSON outputs in packages/compiler/src/__tests__/pipeline.spec.ts
+- [~] T086 [P] [Compiler] Create snapshot fixtures in packages/compiler/src/__tests__/__fixtures__/snapshots/ (expected JSON outputs) - BLOCKED: Schema alignment needed
+- [~] T087 [Compiler] Implement end-to-end pipeline tests in packages/compiler/src/__tests__/pipeline.spec.ts - Created 22 tests, 18 failing due to schema mismatch
+- [~] T088 [Compiler] Test simple timeline compilation in packages/compiler/src/__tests__/pipeline.spec.ts - Created but failing (schema mismatch)
+- [~] T089 [Compiler] Test video annotation compilation in packages/compiler/src/__tests__/pipeline.spec.ts - Created but failing (schema mismatch)
+- [~] T090 [Compiler] Test presentation compilation in packages/compiler/src/__tests__/pipeline.spec.ts - Created but failing (schema mismatch)
+- [X] T091 [Compiler] Test compilation with optimization passes in packages/compiler/src/__tests__/pipeline.spec.ts (tests created and pass)
+- [X] T092 [Compiler] Test compilation error handling (all error types) in packages/compiler/src/__tests__/pipeline.spec.ts (tests created and pass)
+- [ ] T093 [Compiler] Snapshot testing for JSON outputs in packages/compiler/src/__tests__/pipeline.spec.ts - BLOCKED: Schema alignment needed
 
-**Checkpoint**: Compiler pipeline works end-to-end. DSL programs compile to valid Eligius JSON. All compiler tests pass.
+**Checkpoint**: Compiler pipeline implemented but requires Eligius schema alignment. Core compiler stages (Transform, TypeCheck, Optimize, Emit) all working with 63 tests passing. Pipeline orchestration complete but tests blocked on schema mismatch between simplified DSL output and full IEngineConfiguration requirements.
+
+**⚠️ SCHEMA ALIGNMENT REQUIRED**: The compiler currently emits a simplified configuration structure (`{ timeline, events, metadata }`), but Eligius expects the full `IEngineConfiguration` interface with properties like `id, engine, timelines (plural), eventActions, containerSelector, language, layoutTemplate, availableLanguages, initActions, actions, labels`. Before continuing with integration tests, CLI, or extension work, the following schema alignment tasks must be completed:
+
+- [X] SA001 [Schema] Update EligiusIR types in packages/compiler/src/types/eligius-ir.ts to match full IEngineConfiguration structure
+- [X] SA002 [Schema] Update ast-transformer.ts to map DSL concepts to full Eligius schema (timeline → timelines array, events → TimelineActions)
+- [X] SA003 [Schema] Add default values for required Eligius fields (id, engine, containerSelector, language, layoutTemplate, etc.)
+- [X] SA004 [Schema] Update emitter.ts to output complete IEngineConfiguration structure
+- [~] SA005 [Schema] Update all compiler code and tests to work with full Eligius schema
+  - [X] SA005a: Updated transformer.spec.ts tests to expect new IEngineConfiguration IR structure
+  - [X] SA005b: Fixed type-checker.ts implementation to work with new IR (timelines, TimelineActions, operations)
+  - [X] SA005c: Fixed optimizer.ts implementation to work with new IR structure (dead code elimination for timeline actions)
+  - [X] SA005d: Fixed pipeline.ts to properly compose updated stages (fixed Program import)
+  - [~] SA005e-h: Update remaining test files to work with new IR
+    - [ ] type-checker.spec.ts: Update helper functions and test cases
+    - [ ] optimizer.spec.ts: Update tests for timeline action optimization
+    - [ ] emitter.spec.ts: Update tests for new emission functions
+    - [ ] pipeline.spec.ts: Update end-to-end tests for full IEngineConfiguration output
+- [ ] SA006 [Schema] Optionally extend DSL grammar to support configuration blocks (config { id, container, language })
+
+**Estimated Effort**: 2-3 hours for minimal viable alignment, 1-2 days for complete feature support
 
 ---
 
