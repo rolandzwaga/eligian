@@ -1,0 +1,11 @@
+// Test fixture: Multiple timeline declarations (T036)
+// Should trigger validation error: "Only one timeline declaration is allowed per program"
+
+timeline video from "video1.mp4"
+
+// Duplicate timeline - should be flagged
+timeline audio from "audio1.mp3"
+
+event test at 0..5 {
+  show #element
+}

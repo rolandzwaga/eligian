@@ -1,0 +1,13 @@
+// Test fixture: Duplicate event IDs (T037)
+// Should trigger validation error: "Duplicate event ID"
+
+timeline video from "test.mp4"
+
+event intro at 0..5 {
+  show #title
+}
+
+// Duplicate ID - should be flagged
+event intro at 10..15 {
+  show #subtitle
+}

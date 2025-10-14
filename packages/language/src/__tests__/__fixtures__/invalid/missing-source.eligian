@@ -1,0 +1,9 @@
+// Test fixture: Missing source for video/audio provider (T043)
+// Should trigger validation error: "Timeline provider requires a source file"
+
+// Video provider without source
+timeline video
+
+event test at 0..5 {
+  show #element
+}

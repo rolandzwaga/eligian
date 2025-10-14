@@ -1,0 +1,9 @@
+// Test fixture: Invalid timeline provider (T042)
+// Should trigger validation error: "Invalid timeline provider"
+
+// Invalid provider name - must be: video, audio, raf, or custom
+timeline websocket from "ws://localhost:8080"
+
+event test at 0..5 {
+  show #element
+}

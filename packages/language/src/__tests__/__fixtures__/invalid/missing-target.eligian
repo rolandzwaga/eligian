@@ -1,0 +1,15 @@
+// Test fixture: Missing target for actions (T041)
+// Should trigger validation error: "action requires a target"
+
+timeline raf
+
+event test at 0..10 {
+  // Missing target selector - should be: show #element
+  show
+
+  // Missing target for hide
+  hide
+
+  // Missing target for animate
+  animate
+}

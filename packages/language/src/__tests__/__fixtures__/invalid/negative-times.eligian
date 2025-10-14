@@ -1,0 +1,19 @@
+// Test fixture: Negative times (T039)
+// Should trigger validation error: "Event time cannot be negative"
+
+timeline raf
+
+// Negative start time
+event negativeStart at -5..10 {
+  show #element1
+}
+
+// Negative end time
+event negativeEnd at 0..-5 {
+  show #element2
+}
+
+// Both negative
+event bothNegative at -10..-5 {
+  show #element3
+}

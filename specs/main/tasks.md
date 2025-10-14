@@ -114,20 +114,20 @@
 
 **Independent Test**: Validate DSL programs and report semantic errors (duplicate IDs, invalid time ranges, etc.)
 
-- [ ] T036 [Validation] Implement TimelineRequired validation in packages/language/src/eligian-validator.ts
-- [ ] T037 [P] [Validation] Implement UniqueEventIds validation in packages/language/src/eligian-validator.ts
-- [ ] T038 [P] [Validation] Implement ValidTimeRange validation in packages/language/src/eligian-validator.ts (start < end)
-- [ ] T039 [P] [Validation] Implement NonNegativeTimes validation in packages/language/src/eligian-validator.ts (start >= 0, end >= 0)
-- [ ] T040 [P] [Validation] Implement ValidActionType validation in packages/language/src/eligian-validator.ts
-- [ ] T041 [P] [Validation] Implement TargetRequired validation in packages/language/src/eligian-validator.ts (show/hide/animate need targets)
-- [ ] T042 [Validation] Implement ValidProvider validation in packages/language/src/eligian-validator.ts (video, audio, raf, custom)
-- [ ] T043 [Validation] Implement SourceRequired validation in packages/language/src/eligian-validator.ts (video/audio need source)
-- [ ] T044 [Validation] Register all validators in packages/language/src/eligian-validator.ts using registerValidationChecks
-- [ ] T045 [P] [Validation] Create validation test fixtures in packages/language/src/__tests__/__fixtures__/invalid/
-- [ ] T046 [Validation] Implement validation tests in packages/language/src/__tests__/validation.spec.ts
-- [ ] T047 [Validation] Test timeline validation rules in packages/language/src/__tests__/validation.spec.ts
-- [ ] T048 [Validation] Test event validation rules in packages/language/src/__tests__/validation.spec.ts
-- [ ] T049 [Validation] Test action validation rules in packages/language/src/__tests__/validation.spec.ts
+- [X] T036 [Validation] Implement TimelineRequired validation in packages/language/src/eligian-validator.ts
+- [X] T037 [P] [Validation] Implement UniqueEventIds validation in packages/language/src/eligian-validator.ts
+- [X] T038 [P] [Validation] Implement ValidTimeRange validation in packages/language/src/eligian-validator.ts (start < end)
+- [X] T039 [P] [Validation] Implement NonNegativeTimes validation in packages/language/src/eligian-validator.ts (start >= 0, end >= 0)
+- [X] T040 [P] [Validation] Implement ValidActionType validation in packages/language/src/eligian-validator.ts
+- [X] T041 [P] [Validation] Implement TargetRequired validation in packages/language/src/eligian-validator.ts (show/hide/animate need targets)
+- [X] T042 [Validation] Implement ValidProvider validation in packages/language/src/eligian-validator.ts (video, audio, raf, custom)
+- [X] T043 [Validation] Implement SourceRequired validation in packages/language/src/eligian-validator.ts (video/audio need source)
+- [X] T044 [Validation] Register all validators in packages/language/src/eligian-validator.ts using registerValidationChecks
+- [X] T045 [P] [Validation] Create validation test fixtures in packages/language/src/__tests__/__fixtures__/invalid/
+- [X] T046 [Validation] Implement validation tests in packages/language/src/__tests__/validation.spec.ts
+- [X] T047 [Validation] Test timeline validation rules in packages/language/src/__tests__/validation.spec.ts
+- [X] T048 [Validation] Test event validation rules in packages/language/src/__tests__/validation.spec.ts
+- [X] T049 [Validation] Test action validation rules in packages/language/src/__tests__/validation.spec.ts
 
 **Checkpoint**: Validation catches all semantic errors defined in data-model.md. All validation tests pass.
 

@@ -1,0 +1,14 @@
+// Test fixture: Invalid time range (T038)
+// Should trigger validation error: "Event start time must be less than end time"
+
+timeline raf
+
+// Invalid: start >= end
+event badEvent at 10..5 {
+  show #element
+}
+
+// Another invalid case: start == end
+event anotherBad at 5..5 {
+  show #another
+}
