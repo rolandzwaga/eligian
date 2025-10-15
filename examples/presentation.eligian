@@ -1,0 +1,83 @@
+// Interactive Presentation Example
+// This example shows how to create a slide-based presentation with animations
+
+timeline raf {
+  // Slide 1: Introduction
+  0..4: {
+    selectElement(".slide-1")
+    addClass("active")
+
+    selectElement(".slide-1 .title")
+    animateElement({opacity: 0}, {opacity: 1}, 1000)
+
+    selectElement(".slide-1 .content")
+    animateElement({opacity: 0, translateY: "20px"}, {opacity: 1, translateY: "0px"}, 800, 300)
+  }
+
+  // Transition to Slide 2
+  4..5: {
+    selectElement(".slide-1")
+    removeClass("active")
+    addClass("exiting")
+
+    selectElement(".slide-2")
+    addClass("active")
+  }
+
+  // Slide 2: Features
+  5..9: {
+    selectElement(".slide-2 .feature-1")
+    fadeIn(600)
+
+    selectElement(".slide-2 .feature-2")
+    fadeIn(600, 200)
+
+    selectElement(".slide-2 .feature-3")
+    fadeIn(600, 400)
+  }
+
+  // Transition to Slide 3
+  9..10: {
+    selectElement(".slide-2")
+    removeClass("active")
+    addClass("exiting")
+
+    selectElement(".slide-3")
+    addClass("active")
+  }
+
+  // Slide 3: Demo
+  10..14: {
+    selectElement(".slide-3 .demo-container")
+    fadeIn(800)
+
+    selectElement(".slide-3 .demo-step-1")
+    addClass("highlight")
+  }
+
+  14..16: {
+    selectElement(".slide-3 .demo-step-1")
+    removeClass("highlight")
+
+    selectElement(".slide-3 .demo-step-2")
+    addClass("highlight")
+  }
+
+  // Final slide: Call to action
+  16..17: {
+    selectElement(".slide-3")
+    removeClass("active")
+
+    selectElement(".slide-4")
+    addClass("active")
+  }
+
+  17..20: {
+    selectElement(".slide-4 .cta-title")
+    animateElement({scale: 0.8, opacity: 0}, {scale: 1, opacity: 1}, 800)
+
+    selectElement(".slide-4 .cta-button")
+    animateElement({translateY: "30px", opacity: 0}, {translateY: "0px", opacity: 1}, 600, 400)
+    addClass("pulse")
+  }
+}

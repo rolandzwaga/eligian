@@ -1,10 +1,10 @@
 {
-  "id": "2db05b5c-0741-495e-9eec-87d1990196e6",
+  "id": "355faf27-1f17-48dc-8812-45b70fd98197",
   "engine": {
     "systemName": "Eligius"
   },
   "containerSelector": "body",
-  "language": "en",
+  "language": "en-US",
   "layoutTemplate": "default",
   "availableLanguages": [
     {
@@ -18,14 +18,14 @@
   "eventActions": [],
   "timelines": [
     {
-      "id": "a3126575-6912-4bad-bc7f-b46f30538771",
+      "id": "1049fbdb-4095-49c4-8ec7-7a1ec261ca41",
       "type": "raf",
       "duration": 5,
       "loop": false,
       "selector": "",
       "timelineActions": [
         {
-          "id": "eb669ea8-5feb-4745-95be-b5851d05233f",
+          "id": "c0c5aee1-a273-434e-9a1e-97c1602444aa",
           "name": "timeline-action-0-5",
           "duration": {
             "start": 0,
@@ -33,14 +33,14 @@
           },
           "startOperations": [
             {
-              "id": "382137d9-278b-42d0-adca-13db8f0aea32",
+              "id": "372b5004-ca1b-48ee-b94e-6123b70a0643",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#title"
               }
             },
             {
-              "id": "14125ba3-cfcb-4437-8105-5f1463f1bede",
+              "id": "66b00444-4e89-442d-9cb0-1760059021e8",
               "systemName": "addClass",
               "operationData": {
                 "className": "visible"
@@ -55,6 +55,6 @@
   "metadata": {
     "generatedBy": "Eligian DSL Compiler v0.0.1",
     "version": "1.0.0",
-    "timestamp": "2025-10-15T20:02:15.903Z"
+    "timestamp": "2025-10-15T21:36:34.325Z"
   }
 }

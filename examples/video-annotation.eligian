@@ -1,0 +1,44 @@
+// Video Annotation Example
+// This example shows how to annotate a video with synchronized content
+
+timeline video from "presentation.mp4" {
+  // Intro: Show title and subtitle
+  0..3: {
+    selectElement("#title")
+    fadeIn(500)
+
+    selectElement("#subtitle")
+    fadeIn(500, 200)  // delay 200ms
+  }
+
+  // Main content appears
+  3..8: {
+    selectElement("#content")
+    fadeIn(800)
+
+    selectElement(".highlight")
+    addClass("active")
+  }
+
+  // Show call-to-action
+  8..12: {
+    selectElement("#cta-button")
+    fadeIn(600)
+    addClass("pulse")
+  }
+
+  // Fade out everything
+  12..15: {
+    selectElement("#title")
+    fadeOut(500)
+
+    selectElement("#subtitle")
+    fadeOut(500)
+
+    selectElement("#content")
+    fadeOut(500)
+
+    selectElement("#cta-button")
+    fadeOut(500)
+  }
+}
