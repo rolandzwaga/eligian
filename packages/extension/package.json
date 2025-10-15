@@ -29,14 +29,14 @@
     "main": "./out/extension/main.cjs",
     "scripts": {
         "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
-        "vscode:prepublish": "npm run build",
+        "vscode:prepublish": "pnpm run build",
         "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json",
-        "build": "npm run build:prepare && tsc -b tsconfig.json && node esbuild.mjs",
-        "build:clean": "npm run clean && npm run build",
-        "watch": "npm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\""
+        "build": "pnpm run build:prepare && tsc -b tsconfig.json && node esbuild.mjs",
+        "build:clean": "pnpm run clean && pnpm run build",
+        "watch": "pnpm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\""
     },
     "dependencies": {
-        "@eligian/language": "file:../language",
+        "@eligian/language": "workspace:*",
         "vscode-languageclient": "9.0.1",
         "vscode-languageserver": "9.0.1"
     },

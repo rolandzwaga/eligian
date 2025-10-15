@@ -11,7 +11,7 @@
 
 import { metadata } from 'eligius';
 import { convertMetadata } from './metadata-converter.js';
-import type { OperationRegistry } from './types.ts';
+import type { OperationRegistry } from './types.js';
 import { writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -195,7 +195,7 @@ function generateRegistryCode(registry: OperationRegistry): string {
  * Total operations: ${Object.keys(registry).length}
  */
 
-import type { OperationRegistry } from './types.ts';
+import type { OperationRegistry } from './types.js';
 
 export const OPERATION_REGISTRY: OperationRegistry = ${registryJson};
 `;

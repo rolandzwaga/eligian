@@ -31,7 +31,7 @@
   "scripts": {
     "clean": "shx rm -fr *.tsbuildinfo out",
     "build": "echo 'No build step'",
-    "build:clean": "npm run clean && npm run build",
+    "build:clean": "pnpm run clean && pnpm run build",
     "test": "vitest run",
     "generate:registry": "tsx src/operations/generate-registry.ts"
   },
@@ -43,9 +43,5 @@
   "devDependencies": {
     "tsx": "4.19.2",
     "vitest": "3.2.4"
-  },
-  "volta": {
-    "node": "20.19.2",
-    "npm": "10.8.2"
   }
 }

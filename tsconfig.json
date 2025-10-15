@@ -14,15 +14,16 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
-    "composite": true
+    "declarationMap": true,
+    "composite": true,
+    "incremental": true,
+    "skipDefaultLibCheck": true
   },
-  "include": [
-    "**/src/**/*",
-    "**/test/**/*"
-  ],
   "exclude": [
     "**/lib/**/*",
     "**/out/**/*",
-    "**/node_modules/**/*"
+    "**/node_modules/**/*",
+    "**/__tests__/**/*",
+    "**/__fixtures__/**/*"
   ]
 }

@@ -16,7 +16,7 @@ import type {
   OutputInfo,
   ParameterType,
   ConstantValue,
-} from './types.ts';
+} from './types.js';
 
 /**
  * Convert Eligius TParameterTypes to our ParameterType.

@@ -5,21 +5,18 @@
     "type": "module",
     "private": true,
     "scripts": {
-        "clean": "npm run clean --workspaces",
+        "clean": "pnpm -r clean",
         "watch": "tsc -b tsconfig.build.json --watch",
-        "build": "tsc -b tsconfig.build.json && npm run build --workspaces",
-        "build:clean": "npm run clean && npm run build",
-        "langium:generate": "npm run --workspace packages/language langium:generate",
-        "langium:watch": "npm run --workspace packages/language langium:watch",
-        "test": "npm run --workspace packages/language test"
+        "build": "tsc -b tsconfig.build.json && pnpm -r build",
+        "build:clean": "pnpm clean && pnpm build",
+        "langium:generate": "pnpm --filter @eligian/language langium:generate",
+        "langium:watch": "pnpm --filter @eligian/language langium:watch",
+        "test": "pnpm --filter @eligian/language test"
     },
     "devDependencies": {
         "@types/node": "24.7.2",
         "shx": "0.4.0",
         "typescript": "5.9.3",
         "vite-tsconfig-paths": "^5.1.4"
-    },
-    "workspaces": [
-        "packages/*"
-    ]
+    }
 }

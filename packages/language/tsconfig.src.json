@@ -1,13 +1,10 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "out",
-    "paths": {
-      "@eligian/compiler": [
-        "../compiler/src/index.ts"
-      ]
-    }
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./out",
+    "tsBuildInfoFile": "./out/.tsbuildinfo"
   },
   "references": [
     {
@@ -15,6 +12,6 @@
     }
   ],
   "include": [
-    "src/**/*.ts",
+    "src/**/*.ts"
   ]
 }

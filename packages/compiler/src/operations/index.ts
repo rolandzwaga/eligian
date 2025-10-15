@@ -5,8 +5,8 @@
  * It exports the generated registry and provides lookup/query functions.
  */
 
-import { OPERATION_REGISTRY } from './registry.generated.ts';
-import type { OperationRegistry, OperationSignature } from './types.ts';
+import { OPERATION_REGISTRY } from './registry.generated.js';
+import type { OperationRegistry, OperationSignature } from './types.js';
 
 /**
  * The complete operation registry containing all 46 Eligius operations.
@@ -25,13 +25,13 @@ export type {
   OutputInfo,
   ParameterType,
   ConstantValue,
-} from './types.ts';
+} from './types.js';
 
 export {
   isParameterType,
   isConstantValueArray,
   getDefaultConstantValue,
-} from './types.ts';
+} from './types.js';
 
 /**
  * Get the signature for a specific operation by name.

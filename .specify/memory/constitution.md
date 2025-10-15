@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 1.1.0 → 1.2.0
-- Amendment: Added Principle VIII (Debug Cleanup and Workspace Hygiene)
+- Version change: 1.2.0 → 1.3.0
+- Amendment: Added Principle IX (ESM Import Extensions)
 - Modified principles: None
-- Added sections: Principle VIII - Debug Cleanup and Workspace Hygiene (NON-NEGOTIABLE)
+- Added sections: Principle IX - ESM Import Extensions (NON-NEGOTIABLE)
 - Removed sections: None
-- Templates requiring updates: None (new principle is process/hygiene-specific)
+- Templates requiring updates: None (new principle is TypeScript/ESM-specific)
 - Follow-up TODOs:
-  - Review all packages for any remaining debug files
-  - Add debug file patterns to .gitignore if not already present
-  - Document cleanup checklist in development workflow
+  - Verify all existing imports use .js extensions
+  - Add linting rule to enforce .js extensions in imports
+  - Document ESM import conventions in development workflow
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -165,6 +165,27 @@ for maintainability and professionalism.
 - After any debugging session: review workspace, delete temporary files, restore clean state
 - If a debug script proves useful, convert it to a proper test in `__tests__/` directory
 - Document any temporary files created during investigation in pull request descriptions
+
+### IX. ESM Import Extensions (NON-NEGOTIABLE)
+
+All relative imports in TypeScript source files MUST use `.js` extensions (the runtime/output
+extension), not `.ts` extensions. This is required for `NodeNext`/`Node16` module resolution
+and ensures compatibility with Node.js ESM, Vitest, and other ESM-compliant tools.
+
+**Rationale**: TypeScript with `module: "NodeNext"` implements Node.js ESM semantics, which
+requires explicit file extensions in imports. TypeScript does NOT rewrite `.ts` to `.js`
+during compilation, so using `.ts` extensions causes runtime module resolution failures.
+The TypeScript team's official guidance is to use the output extension (`.js`) even in
+`.ts` source files.
+
+**Requirements**:
+- All relative imports MUST use `.js` extensions: `import { foo } from './bar.js'`
+- NEVER use `.ts` extensions in imports: `import { foo } from './bar.ts'` ❌
+- TypeScript will still correctly resolve types regardless of extension
+- This applies to all relative imports (`./`, `../`) in `.ts` files
+- Package imports (without `./` or `../`) do NOT need extensions
+- Type-only imports also require `.js`: `import type { Foo } from './types.js'`
+- Third-party package imports remain unchanged: `import { effect } from 'effect'` ✅
 
 ## Development Workflow
 

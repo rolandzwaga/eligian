@@ -1,17 +1,14 @@
 {
     "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "noEmit": true,
+        "composite": true,
         "rootDir": ".",
-        "paths": {
-            "@eligian/compiler": [
-                "../language/src/index.ts"
-            ]
-        }
+        "outDir": "./out",
+        "tsBuildInfoFile": "./out/.tsbuildinfo"
     },
     "references": [
         {
-            "path": "../language"
+            "path": "../language/tsconfig.src.json"
         }
     ],
     "include": [

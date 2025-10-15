@@ -115,6 +115,9 @@ export class EligianValidator {
         const start = timeRange.start;
         const end = timeRange.end;
 
+        // Defensive: ensure start and end exist before checking $type
+        if (!start || !end) return;
+
         if (start.$type === 'TimeLiteral' && end.$type === 'TimeLiteral') {
             if (start.value > end.value) {
                 accept('error', `Timeline event start time (${start.value}) must be less than or equal to end time (${end.value})`, {
@@ -135,7 +138,7 @@ export class EligianValidator {
         if (!timeRange) return;
 
         // Check start time
-        if (timeRange.start.$type === 'TimeLiteral') {
+        if (timeRange.start && timeRange.start.$type === 'TimeLiteral') {
             if (timeRange.start.value < 0) {
                 accept('error', `Timeline event start time cannot be negative (got ${timeRange.start.value})`, {
                     node: timeRange,
@@ -145,7 +148,7 @@ export class EligianValidator {
         }
 
         // Check end time
-        if (timeRange.end.$type === 'TimeLiteral') {
+        if (timeRange.end && timeRange.end.$type === 'TimeLiteral') {
             if (timeRange.end.value < 0) {
                 accept('error', `Timeline event end time cannot be negative (got ${timeRange.end.value})`, {
                     node: timeRange,

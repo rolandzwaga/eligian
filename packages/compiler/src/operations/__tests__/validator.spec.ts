@@ -11,8 +11,8 @@ import {
   validateOperation,
   type UnknownOperationError,
   type ParameterCountError,
-} from '../validator.ts';
-import { OPERATION_REGISTRY } from '../index.ts';
+} from '../validator.js';
+import { OPERATION_REGISTRY } from '../index.js';
 
 describe('Operation Validator', () => {
   describe('T213: Operation Existence Validation', () => {

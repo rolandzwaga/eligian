@@ -11,6 +11,10 @@ syntaxes/
 *.vsix
 /.claude/settings.local.json
 
+# pnpm
+.pnpm-store/
+.pnpm-debug.log
+
 # Debug and temporary files (Constitution VIII)
 *.js
 *.js.map

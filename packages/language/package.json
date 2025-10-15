@@ -29,21 +29,17 @@
     "scripts": {
         "clean": "shx rm -fr *.tsbuildinfo out",
         "build": "tsc -p tsconfig.src.json",
-        "build:clean": "npm run clean && npm run build",
+        "build:clean": "pnpm run clean && pnpm run build",
         "langium:generate": "langium generate",
         "langium:watch": "langium generate --watch",
         "test": "vitest run"
     },
     "dependencies": {
-        "@eligian/compiler": "file:../compiler",
+        "@eligian/compiler": "workspace:*",
         "langium": "4.1.0"
     },
     "devDependencies": {
         "langium-cli": "4.1.0",
         "vitest": "3.2.4"
-    },
-    "volta": {
-        "node": "20.19.2",
-        "npm": "10.8.2"
     }
 }

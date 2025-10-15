@@ -17,7 +17,7 @@ import {
   suggestSimilarOperations,
   hasOperation,
   type OperationSignature,
-} from './index.ts';
+} from './index.js';
 
 // ============================================================================
 // Error Types

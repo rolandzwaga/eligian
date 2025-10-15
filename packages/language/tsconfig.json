@@ -1,14 +1,9 @@
-// this file is required for VSCode to work properly
+// VSCode and IDE configuration - includes both src and test files
 {
   "extends": "./tsconfig.src.json",
   "compilerOptions": {
-    "noEmit": false,
+    "noEmit": true
   },
-  "references": [
-    {
-      "path": "../compiler"
-    }
-  ],
   "include": [
     "src/**/*",
     "test/**/*"

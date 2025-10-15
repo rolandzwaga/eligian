@@ -8,7 +8,7 @@
  * Total operations: 46
  */
 
-import type { OperationRegistry } from './types.ts';
+import type { OperationRegistry } from './types.js';
 
 export const OPERATION_REGISTRY: OperationRegistry = {
   "addClass": {
