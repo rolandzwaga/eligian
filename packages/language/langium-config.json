@@ -4,10 +4,7 @@
     {
       "id": "eligian",
       "grammar": "src/eligian.langium",
-      "fileExtensions": ["eligian"],
-      "textMate": {
-        "out": "syntaxes/eligian.tmLanguage.json"
-      }
+      "fileExtensions": ["eligian"]
     }
   ],
   "out": "src/generated"
