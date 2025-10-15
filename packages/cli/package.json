@@ -1,5 +1,5 @@
 {
-    "name": "eligian-cli",
+    "name": "@eligian/cli",
     "description": "The cli specific package",
     "version": "0.0.1",
     "type": "module",
@@ -21,7 +21,7 @@
         "build:clean": "npm run clean && npm run build"
     },
     "dependencies": {
-        "eligian-language": "0.0.1",
+        "@eligian/language": "file:../language",
         "chalk": "5.6.2",
         "commander": "11.1.0"
     },

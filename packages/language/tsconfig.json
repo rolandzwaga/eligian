@@ -3,8 +3,12 @@
   "extends": "./tsconfig.src.json",
   "compilerOptions": {
     "noEmit": false,
-    "rootDir": "."
   },
+  "references": [
+    {
+      "path": "../compiler"
+    }
+  ],
   "include": [
     "src/**/*",
     "test/**/*"

@@ -9,8 +9,8 @@
  * Output: packages/compiler/src/operations/registry.generated.ts
  */
 
-import * as metadata from '../../../../../eligius/src/operation/metadata/index.ts';
-import { convertMetadata } from './metadata-converter.ts';
+import { metadata } from 'eligius';
+import { convertMetadata } from './metadata-converter.js';
 import type { OperationRegistry } from './types.ts';
 import { writeFileSync } from 'fs';
 import { join, dirname } from 'path';

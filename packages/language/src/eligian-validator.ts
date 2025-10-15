@@ -3,9 +3,16 @@ import type {
     Program,
     Timeline,
     TimelineEvent,
+    OperationCall,
     EligianAstType
 } from './generated/ast.js';
 import type { EligianServices } from './eligian-module.js';
+import {
+    hasOperation,
+    suggestSimilarOperations,
+    OPERATION_REGISTRY,
+    type OperationParameter
+} from '@eligian/compiler';
 
 /**
  * Register custom validation checks.
@@ -22,6 +29,10 @@ export function registerValidationChecks(services: EligianServices) {
         TimelineEvent: [
             validator.checkValidTimeRange,
             validator.checkNonNegativeTimes
+        ],
+        OperationCall: [
+            validator.checkOperationExists,
+            validator.checkParameterCount
         ]
     };
     registry.register(checks, validator);
@@ -141,6 +152,73 @@ export class EligianValidator {
                     property: 'end'
                 });
             }
+        }
+    }
+
+    /**
+     * Validate that an operation exists in the Eligius registry.
+     * Provides typo suggestions for similar operation names.
+     *
+     * This gives instant IDE feedback with red squiggles and helpful suggestions.
+     */
+    checkOperationExists(operation: OperationCall, accept: ValidationAcceptor): void {
+        const opName = operation.operationName;
+
+        if (!hasOperation(opName)) {
+            // Operation doesn't exist - suggest similar operations
+            const suggestions = suggestSimilarOperations(opName, 3);
+
+            const message = suggestions.length > 0
+                ? `Unknown operation '${opName}'. Did you mean: ${suggestions.join(', ')}?`
+                : `Unknown operation '${opName}'. Check available operations in the registry.`;
+
+            accept('error', message, {
+                node: operation,
+                property: 'operationName',
+                code: 'unknown-operation'
+            });
+        }
+    }
+
+    /**
+     * Validate that the correct number of parameters are provided.
+     * Checks against required and optional parameters from the registry.
+     */
+    checkParameterCount(operation: OperationCall, accept: ValidationAcceptor): void {
+        const opName = operation.operationName;
+
+        // Only validate if operation exists (avoid duplicate errors)
+        if (!hasOperation(opName)) {
+            return;
+        }
+
+        const signature = OPERATION_REGISTRY[opName];
+        const argumentCount = operation.args.length;
+        const required = signature.parameters.filter((p: OperationParameter) => p.required).length;
+        const total = signature.parameters.length;
+
+        if (argumentCount < required || argumentCount > total) {
+            // Sort parameters: required first, then optional
+            const sortedParams = [
+                ...signature.parameters.filter((p: OperationParameter) => p.required),
+                ...signature.parameters.filter((p: OperationParameter) => !p.required),
+            ];
+
+            const paramNames = sortedParams.map((p: OperationParameter) =>
+                p.required ? p.name : `[${p.name}]`
+            ).join(', ');
+
+            const expectedCount = required === total
+                ? `${required}`
+                : `${required}-${total}`;
+
+            const message = `Operation '${opName}' expects ${expectedCount} parameter(s), but got ${argumentCount}. Expected: ${opName}(${paramNames})`;
+
+            accept('error', message, {
+                node: operation,
+                property: 'args',
+                code: 'parameter-count-mismatch'
+            });
         }
     }
 }

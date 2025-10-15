@@ -85,6 +85,31 @@ export {
   formatSourceLocation
 } from "./types/common.js"
 
+// Operation registry exports
+export {
+  OPERATION_REGISTRY,
+  hasOperation,
+  getAllOperations,
+  getAllOperationNames,
+  getOperationsByCategory,
+  getOperationSignature,
+  findOperationsWithDependency,
+  findOperationsWithOutput,
+  searchOperations,
+  suggestSimilarOperations,
+  validateRegistry,
+  isParameterType,
+  isConstantValueArray,
+  getDefaultConstantValue,
+  type OperationRegistry,
+  type OperationSignature,
+  type OperationParameter,
+  type DependencyInfo,
+  type OutputInfo,
+  type ParameterType,
+  type ConstantValue,
+} from "./operations/index.js"
+
 /**
  * Compiler version
  */

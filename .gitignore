@@ -12,7 +12,9 @@ syntaxes/
 /.claude/settings.local.json
 
 # Debug and temporary files (Constitution VIII)
-debug-*.js
+*.js
+*.js.map
+packages/**/*.d.ts
 debug-*.mjs
 debug-*.ts
 test-*.js

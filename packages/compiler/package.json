@@ -1,5 +1,5 @@
 {
-  "name": "eligian-compiler",
+  "name": "@eligian/compiler",
   "version": "0.0.1",
   "description": "Effect-based compiler for the Eligian DSL",
   "license": "ISC",
@@ -37,7 +37,8 @@
   },
   "dependencies": {
     "effect": "3.12.0",
-    "eligius": "1.1.5"
+    "eligius": "1.1.5",
+    "fast-check": "^3.23.2"
   },
   "devDependencies": {
     "tsx": "4.19.2",

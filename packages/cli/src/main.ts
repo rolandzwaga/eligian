@@ -1,5 +1,5 @@
-import type { Configuration } from 'eligian-language';
-import { createEligianServices, EligianLanguageMetaData } from 'eligian-language';
+import type { Configuration } from '@eligian/language';
+import { createEligianServices, EligianLanguageMetaData } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { extractAstNode } from './util.js';
@@ -20,7 +20,7 @@ export const generateAction = async (source: string, destination: string): Promi
     console.log(chalk.green(`Code generated succesfully: ${generatedFilePath}`));
 };
 
-export default function(): void {
+export default function (): void {
     const program = new Command();
 
     program.version(JSON.parse(packageContent).version);

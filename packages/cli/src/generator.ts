@@ -1,4 +1,4 @@
-import type { Configuration } from 'eligian-language';
+import type { Configuration } from '@eligian/language';
 import { expandToNode, toString } from 'langium/generate';
 import * as fs from 'node:fs';
 import { extractDestinationAndName } from './util.js';

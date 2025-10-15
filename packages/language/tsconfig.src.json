@@ -1,10 +1,20 @@
 {
-    "extends": "../../tsconfig.json",
-    "compilerOptions": {
-      "rootDir": "src",
-      "outDir": "out"
-    },
-    "include": [
-      "src/**/*.ts",
-    ]
-  }
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "out",
+    "paths": {
+      "@eligian/compiler": [
+        "../compiler/src/index.ts"
+      ]
+    }
+  },
+  "references": [
+    {
+      "path": "../compiler"
+    }
+  ],
+  "include": [
+    "src/**/*.ts",
+  ]
+}

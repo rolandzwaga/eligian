@@ -1,5 +1,5 @@
 {
-    "name": "vscode-eligian",
+    "name": "@eligian/vscode-extension",
     "description": "The extension specific package",
     "version": "0.0.1",
     "displayName": "Eligian",
@@ -36,7 +36,7 @@
         "watch": "npm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\""
     },
     "dependencies": {
-        "eligian-language": "0.0.1",
+        "@eligian/language": "file:../language",
         "vscode-languageclient": "9.0.1",
         "vscode-languageserver": "9.0.1"
     },

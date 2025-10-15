@@ -2,11 +2,16 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "noEmit": true,
-        "rootDir": "."
+        "rootDir": ".",
+        "paths": {
+            "@eligian/compiler": [
+                "../language/src/index.ts"
+            ]
+        }
     },
     "references": [
         {
-            "path": "../language/tsconfig.src.json"
+            "path": "../language"
         }
     ],
     "include": [

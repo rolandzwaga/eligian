@@ -1,5 +1,5 @@
 {
-    "name": "eligian-workspace",
+    "name": "eligian",
     "description": "Base workspace package",
     "version": "0.0.1",
     "type": "module",
@@ -16,16 +16,10 @@
     "devDependencies": {
         "@types/node": "24.7.2",
         "shx": "0.4.0",
-        "typescript": "5.9.3"
-    },
-    "volta": {
-        "node": "20.19.2",
-        "npm": "10.8.2"
+        "typescript": "5.9.3",
+        "vite-tsconfig-paths": "^5.1.4"
     },
     "workspaces": [
-        "packages/language",
-        "packages/compiler",
-        "packages/cli",
-        "packages/extension"
+        "packages/*"
     ]
 }

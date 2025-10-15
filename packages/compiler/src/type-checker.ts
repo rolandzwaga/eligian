@@ -11,7 +11,7 @@
  */
 
 import { Effect } from 'effect';
-import type { EligiusIR, TimelineConfigIR, TimelineActionIR, EndableActionIR, EventActionIR, OperationConfigIR, DurationIR } from './types/eligius-ir.js';
+import type { EligiusIR, TimelineConfigIR, TimelineActionIR, EndableActionIR, EventActionIR, OperationConfigIR, DurationIR, ActionIR } from './types/eligius-ir.js';
 import type { TypeError } from './types/errors.js';
 
 /**
