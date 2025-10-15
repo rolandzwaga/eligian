@@ -6,6 +6,7 @@ node_modules/
 dist/
 out/
 **/src/generated
+packages/extension/syntaxes/
 *.tsbuildinfo
 *.vsix
 /.claude/settings.local.json
