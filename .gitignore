@@ -10,3 +10,14 @@ syntaxes/
 *.tsbuildinfo
 *.vsix
 /.claude/settings.local.json
+
+# Debug and temporary files (Constitution VIII)
+debug-*.js
+debug-*.mjs
+debug-*.ts
+test-*.js
+test-*.mjs
+check-*.js
+check-*.mjs
+*.log
+.DS_Store

@@ -209,19 +209,190 @@
 - [X] SA002 [Schema] Update ast-transformer.ts to map DSL concepts to full Eligius schema (timeline → timelines array, events → TimelineActions)
 - [X] SA003 [Schema] Add default values for required Eligius fields (id, engine, containerSelector, language, layoutTemplate, etc.)
 - [X] SA004 [Schema] Update emitter.ts to output complete IEngineConfiguration structure
-- [~] SA005 [Schema] Update all compiler code and tests to work with full Eligius schema
+- [X] SA005 [Schema] Update all compiler code and tests to work with full Eligius schema
   - [X] SA005a: Updated transformer.spec.ts tests to expect new IEngineConfiguration IR structure
   - [X] SA005b: Fixed type-checker.ts implementation to work with new IR (timelines, TimelineActions, operations)
   - [X] SA005c: Fixed optimizer.ts implementation to work with new IR structure (dead code elimination for timeline actions)
   - [X] SA005d: Fixed pipeline.ts to properly compose updated stages (fixed Program import)
-  - [~] SA005e-h: Update remaining test files to work with new IR
-    - [ ] type-checker.spec.ts: Update helper functions and test cases
-    - [ ] optimizer.spec.ts: Update tests for timeline action optimization
-    - [ ] emitter.spec.ts: Update tests for new emission functions
-    - [ ] pipeline.spec.ts: Update end-to-end tests for full IEngineConfiguration output
+  - [X] SA005e: Updated type-checker.spec.ts tests - rewrote all test cases for new IR structure
+  - [X] SA005f: Updated optimizer.spec.ts tests - rewrote for timeline action optimization
+  - [X] SA005g: Updated emitter.spec.ts tests - rewrote for new emission functions
+  - [X] SA005h: Updated pipeline.spec.ts tests - updated end-to-end tests for IEngineConfiguration output
+  - [X] SA005i: Fixed ast-transformer.ts bugs - uri should be undefined for raf timelines, time expressions should evaluate to numbers
 - [ ] SA006 [Schema] Optionally extend DSL grammar to support configuration blocks (config { id, container, language })
 
+**Schema Alignment Checkpoint (2025-10-14 22:30)**: Schema alignment tasks SA001-SA005 are COMPLETE. All compiler transformation stages successfully output complete IEngineConfiguration structure:
+- ✅ 49 tests passing (transformer, type-checker, optimizer, emitter all 100% passing)
+- ⚠️ 18 pipeline tests failing due to **Langium parser issues** (lexer cannot parse valid DSL syntax)
+- **Root Cause**: Langium lexer is failing with "unexpected character" errors when parsing numbers in time ranges (e.g., `0..5`)
+- **Next Action Required**: Investigate and fix Langium grammar/lexer configuration in `packages/language/src/eligian.langium` (Phase 3 task revisit)
+
+**Phase 3 Grammar Investigation Results (2025-10-14 23:00)**:
+- [X] **P3-001**: Investigated Langium lexer failing to recognize NUMBER terminal
+  - **Root Cause**: Langium includes default INT terminal that was overriding custom NUMBER terminal
+  - **Solution**: Removed INT references, defined NUMBER first in terminal list (terminals matched in order)
+- [X] **P3-002**: Fixed TypeScript build configuration preventing JS output
+  - **Issue**: `packages/language/tsconfig.json` had `"noEmit": true`
+  - **Solution**: Changed to `"noEmit": false"` and updated build script to `tsc -p tsconfig.src.json`
+- ✅ **P3-003**: Verified Langium parser correctly parses all DSL syntax
+  - All `debug-parse.mjs` manual tests pass with zero lexer/parser errors
+  - Parser successfully handles single-line, multi-line, and various whitespace formats
+- ⚠️ **P3-004**: Pipeline tests crash with heap out of memory error
+  - Error occurs during test initialization before any tests run
+  - "FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory"
+  - Crash happens when creating Langium services via parseHelper in test environment
+  - **Next Action**: Investigate parseHelper usage, potentially refactor to reuse service instances
+
 **Estimated Effort**: 2-3 hours for minimal viable alignment, 1-2 days for complete feature support
+
+**Phase 5 Completion Checkpoint (2025-10-15)**:
+- ✅ **Grammar completely redesigned** with function-style operations, property chains, cleaner syntax
+- ✅ **All compiler stages rewritten** to support new grammar (transformer, type-checker, optimizer, emitter)
+- ✅ **All 115 tests passing** (44 language + 71 compiler) at 100%
+- ✅ **Full IEngineConfiguration output** with proper schema alignment
+- ✅ **Constitution compliance** maintained throughout refactor (tests pass before moving on)
+
+**Next Steps**: Complete grammar with operation registry and validation (Phase 5.5), or proceed to Error Reporting (Phase 6) / CLI (Phase 7)
+
+---
+
+## Phase 5.5: Complete Grammar Implementation (Operation Registry & Validation)
+
+**Goal**: Extend compiler to validate all 47 Eligius operations with proper parameter mapping
+
+**Status**: 📋 PLANNED (see GRAMMAR_COMPLETION_PLAN.md for detailed design)
+
+**Independent Test**: Compiler validates operation signatures and provides helpful errors for incorrect usage
+
+**Priority**: Recommended before CLI/Extension work to provide better developer experience
+
+### Task Group A1: Operation Registry Infrastructure
+
+**Implementation Note**: Using Eligius JSON schemas from `../eligius/jsonschema/operations/*.json` (46 schemas available). This eliminates manual documentation of all 47 operations. Only need small supplemental file for dependency/output metadata.
+
+- [ ] T200 [Foundation] Create operation registry type system in packages/compiler/src/operations/types.ts
+  - Define OperationParameter interface (name, type, required, description, pattern)
+  - Define OperationSignature interface (systemName, description, parameters, dependencies, outputs)
+  - Define OperationRegistry type (map of operation name → signature)
+  - Define DependencyInfo interface (name, type) for tracking operation dependencies
+  - Define OutputInfo interface (name, type) for tracking operation outputs
+
+- [ ] T201 [Foundation] Create JSON schema parser in packages/compiler/src/operations/schema-parser.ts
+  - Read JSON schema files from ../eligius/jsonschema/operations/*.json
+  - Parse systemName, description, operationData.required, operationData.properties
+  - Extract parameter names, types, patterns from schema
+  - Return parsed OperationSignature objects
+
+- [ ] T202 [Foundation] Create dependency/output metadata file in packages/compiler/src/operations/metadata.ts
+  - Manually document dependencies for each operation (e.g., addClass depends on selectedElement: JQuery)
+  - Document outputs for each operation (e.g., selectElement outputs selectedElement: JQuery)
+  - Export as OPERATION_METADATA constant (~200 lines covering all 46 operations)
+
+- [ ] T203 [Registry] Create operation registry generator in packages/compiler/src/operations/generate-registry.ts
+  - Read all JSON schemas from ../eligius/jsonschema/operations/
+  - Parse each schema using schema-parser
+  - Merge with dependency/output metadata
+  - Generate TypeScript file packages/compiler/src/operations/registry.generated.ts
+  - Run as build step (npm script: npm run generate:registry)
+
+- [ ] T204 [Registry] Create master registry exports in packages/compiler/src/operations/index.ts
+  - Export generated OPERATION_REGISTRY constant
+  - Export lookup functions (getOperationSignature, hasOperation, getAllOperations, getOperationsByCategory)
+  - Export validation helper: validateRegistry() (checks no duplicates, all schemas valid)
+
+### Task Group A2: Operation Validation
+
+- [ ] T213 [Validation] Implement operation existence check in packages/compiler/src/operations/validator.ts
+  - Check if operation name exists in registry
+  - Return UnknownOperationError with suggestions for similar names (typo detection)
+
+- [ ] T214 [Validation] Implement parameter count validation in packages/compiler/src/operations/validator.ts
+  - Check if argument count matches required parameters
+  - Return ParameterCountError with expected vs actual count
+
+- [ ] T215 [Validation] Implement parameter type validation in packages/compiler/src/operations/validator.ts
+  - Check if argument types match expected types (string, number, boolean, object, array, property chain)
+  - Handle property chain references (can't validate type at compile time, but check syntax)
+  - Return ParameterTypeError with expected vs actual type
+
+- [ ] T216 [Validation] Implement dependency validation in packages/compiler/src/operations/validator.ts
+  - Track available outputs from previous operations in action
+  - Check if required dependencies are available (e.g., selectedElement for addClass)
+  - Return MissingDependencyError with operation that should provide the dependency
+
+- [ ] T217 [Validation] Implement control flow pairing validation in packages/compiler/src/operations/validator.ts
+  - Check when/endWhen pairing (every when has matching endWhen)
+  - Check forEach/endForEach pairing
+  - Check otherwise appears only between when and endWhen
+  - Return ControlFlowError with unclosed/unmatched blocks
+
+- [ ] T218 [Validation] Wire operation validator into AST transformer in packages/compiler/src/ast-transformer.ts
+  - Validate each OperationCall against registry before transforming
+  - Collect validation errors and fail transform if any errors found
+  - Include source location in all validation errors
+
+- [ ] T219 [Validation] Wire operation validator into Langium validator in packages/language/src/eligian-validator.ts
+  - Add semantic check for operation calls
+  - Show validation errors in IDE (VS Code Problems panel)
+  - Provide quick fixes where possible (e.g., suggest correct parameter types)
+
+### Task Group A3: Parameter Mapping
+
+- [ ] T220 [Transform] Implement positional-to-named parameter mapping in packages/compiler/src/operations/mapper.ts
+  - Map positional arguments to named parameters using operation signature
+  - Handle optional parameters (fill with undefined if not provided)
+  - Return OperationConfigIR with named parameters
+
+- [ ] T221 [Transform] Implement property chain resolution in packages/compiler/src/operations/mapper.ts
+  - Convert $context.foo → "context.foo" string for Eligius runtime
+  - Convert $operationdata.bar → "operationdata.bar" string
+  - Convert $globaldata.baz → "globaldata.baz" string
+
+- [ ] T222 [Transform] Implement wrapper object generation in packages/compiler/src/operations/mapper.ts
+  - Wrap parameters in required wrapper objects per Eligius spec
+  - Example: animate(properties, duration) → { animationProperties: properties, animationDuration: duration }
+  - Use operation signature to determine correct wrapper structure
+
+- [ ] T223 [Transform] Update AST transformer to use parameter mapper in packages/compiler/src/ast-transformer.ts
+  - Replace current naive argument mapping with registry-based mapping
+  - Include operation signature lookup
+  - Generate proper OperationConfigIR with operationData object
+
+### Task Group A4: Testing
+
+- [ ] T224 [P] [Test] Create operation registry tests in packages/compiler/src/operations/__tests__/registry.spec.ts
+  - Test all 47 operations are registered
+  - Test no duplicate operation names
+  - Test parameter definitions are valid (required parameters, types)
+
+- [ ] T225 [P] [Test] Create operation validator tests in packages/compiler/src/operations/__tests__/validator.spec.ts
+  - Test unknown operation detection
+  - Test parameter count validation
+  - Test parameter type validation
+  - Test dependency validation
+  - Test control flow pairing validation
+
+- [ ] T226 [P] [Test] Create parameter mapper tests in packages/compiler/src/operations/__tests__/mapper.spec.ts
+  - Test positional-to-named mapping for all operations
+  - Test property chain resolution
+  - Test wrapper object generation
+
+- [ ] T227 [Test] Update transformer tests in packages/compiler/src/__tests__/transformer.spec.ts
+  - Test operation validation errors
+  - Test parameter mapping for common operations
+  - Test dependency tracking across operation chain
+
+- [ ] T228 [Test] Update validation tests in packages/language/src/__tests__/validation.spec.ts
+  - Test operation-level validation in Langium
+  - Test error messages and source locations
+
+**Checkpoint 5.5A**: Operation registry complete with validation and parameter mapping. All 46 operations have defined signatures (from JSON schemas) and are validated at compile time. Estimated ~30 new tests added.
+
+**Estimated Effort**: 1-2 days for complete implementation (reduced from 2-3 days due to JSON schema reuse)
+
+**Parallel Opportunities**: T224-T226 (tests) can run in parallel. Registry generation is now sequential but much faster (5 tasks instead of 13).
+
+**See**: GRAMMAR_COMPLETION_PLAN.md for detailed design rationale, optional phases (config blocks, enhanced type checking), and implementation order
 
 ---
 
@@ -448,6 +619,30 @@ Setup → Foundational → Grammar → Validation → Compiler → Error Reporti
 ---
 
 **Generated**: 2025-10-14
-**Total Tasks**: 168
-**Estimated MVP Tasks**: 126 (T001-T126)
-**Parallel Opportunities**: 47 tasks marked [P]
+**Updated**: 2025-10-15 (Added Phase 5.5: Complete Grammar Implementation using JSON schemas)
+**Total Tasks**: 189 (168 original + 21 Phase 5.5 tasks, reduced from 29 due to JSON schema reuse)
+**Estimated MVP Tasks**: 126 (T001-T126, Phase 5.5 optional but recommended)
+**Parallel Opportunities**: 50 tasks marked [P] (47 original + 3 Phase 5.5)
+
+---
+
+## UPDATED: Phase 5.5 Task Group A1 (2025-10-15)
+
+**Decision**: Use Eligius metadata functions instead of JSON schemas
+
+### Why Metadata > JSON Schemas
+- ✅ **Rich ParameterTypes**: 23 types (className, selector, actionName, etc.)
+- ✅ **Explicit dependencies/outputs**: Built into metadata
+- ✅ **Constant value constraints**: Enum-like values supported
+- ✅ **48 metadata files**: All operations covered
+
+### Updated Tasks (4 tasks instead of 5)
+
+**T200**: Type system with 23 ParameterTypes  
+**T201**: Metadata converter (Eligius → our format)  
+**T202**: Registry generator (import 47 functions, convert, generate)  
+**T203**: Export registry with lookup functions
+
+**Effort reduced**: 0.5-1 day (from 1-2 days)
+
+See METADATA_APPROACH_SUMMARY.md for details.

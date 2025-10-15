@@ -1,12 +1,32 @@
-// Simple timeline with basic events
-timeline video from "presentation.mp4"
+// Simple timeline with basic events using new syntax
+endable action showTitle [
+  selectElement("#title")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
 
-event intro at 0..5 {
-  show #title
-  show #subtitle
-}
+endable action showSubtitle [
+  selectElement("#subtitle")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
 
-event outro at 120..125 {
-  hide #title
-  hide #subtitle
+timeline "main" using video from "presentation.mp4" {
+  at 0s..5s {
+    showTitle()
+  }
+
+  at 2s..7s {
+    showSubtitle()
+  }
+
+  at 120s..125s [
+    selectElement("#title")
+    removeClass("visible")
+  ] [
+    selectElement("#title")
+    addClass("hidden")
+  ]
 }

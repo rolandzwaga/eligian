@@ -5,59 +5,51 @@
  * Intermediate Representation (IR) which is optimized for further
  * compilation stages (type checking, optimization, emission).
  *
- * Design principles:
+ * Design principles (per DSL_DESIGN_DECISIONS.md):
  * - External API is immutable (Effect types)
  * - Internal mutation allowed for performance (building IR arrays)
  * - All transformations include source location mapping for error reporting
  * - Type-safe error handling with TransformError
+ * - Support function-style operation calls with positional parameters
+ * - Handle property chain references ($context.*, $operationdata.*, $globaldata.*)
+ * - Flatten wrapper objects (properties, attributes) automatically
  */
 
 import { Effect } from 'effect';
 import type {
     Program,
     Timeline,
-    Event,
-    Action,
-    Selector,
+    TimelineEvent,
+    EndableActionDefinition,
+    RegularActionDefinition,
+    OperationCall,
+    Expression,
+    PropertyChainReference,
+    ObjectLiteral,
+    ArrayLiteral,
     TimeExpression as AstTimeExpression,
-    TimeRange,
-    ShowAction,
-    HideAction,
-    AnimateAction,
-    TriggerAction,
-    ActionCall,
-    RawOperation,
-    ActionDefinition,
-    Parameter
+    TimeLiteral
 } from '../../language/src/generated/ast.js';
 import type {
     EligiusIR,
-    TimelineIR,
     TimelineConfigIR,
     TimelineActionIR,
-    EventIR,
-    ActionIR,
-    TargetSelector,
-    TimeExpression,
-    ActionDefinitionIR,
-    ParameterIR,
-    OperationIR,
     OperationConfigIR,
     DurationIR,
     EndableActionIR,
     EngineInfoIR,
     LabelIR,
-    LanguageLabelIR
+    LanguageLabelIR,
+    TimeExpression
 } from './types/eligius-ir.js';
 import type { TransformError } from './types/errors.js';
 import type { SourceLocation } from './types/common.js';
+import type { JsonValue } from './types/eligius-ir.js';
 
 /**
- * T055: Main transformation function - orchestrates all transformations
+ * Main transformation function - orchestrates all transformations
  *
  * Transforms a complete Langium Program AST into EligiusIR aligned with IEngineConfiguration.
- *
- * SA002: Updated to generate full Eligius configuration structure
  */
 export const transformAST = (program: Program): Effect.Effect<EligiusIR, TransformError> =>
     Effect.gen(function* (_) {
@@ -72,23 +64,27 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
             }));
         }
 
-        // Transform events (DSL events → TimelineActions)
-        const eventNodes = program.elements.filter(el => el.$type === 'Event') as Event[];
-        const timelineActions: TimelineActionIR[] = [];
-        for (const eventNode of eventNodes) {
-            const timelineAction = yield* _(transformEventToTimelineAction(eventNode));
-            timelineActions.push(timelineAction);
+        // Extract action definitions (both regular and endable)
+        const actionDefinitions = program.elements.filter(el =>
+            el.$type === 'EndableActionDefinition' || el.$type === 'RegularActionDefinition'
+        ) as (EndableActionDefinition | RegularActionDefinition)[];
+
+        // Transform action definitions to Eligius EndableActionIR format
+        const actions: EndableActionIR[] = [];
+        for (const actionDef of actionDefinitions) {
+            const action = yield* _(transformActionDefinition(actionDef));
+            actions.push(action);
         }
 
-        // Build TimelineConfigIR from timeline node + events
-        const timelineConfig = yield* _(buildTimelineConfig(timelineNode, timelineActions));
+        // Build TimelineConfigIR from timeline node
+        const timelineConfig = yield* _(buildTimelineConfig(timelineNode));
 
-        // SA003: Generate default configuration values
+        // Generate default configuration values
         const defaults = createDefaultConfiguration();
 
         // Build complete Eligius IR
         return {
-            // Required configuration fields (SA003)
+            // Required configuration fields
             id: defaults.id,
             engine: defaults.engine,
             containerSelector: defaults.containerSelector,
@@ -99,7 +95,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
 
             // Action layers
             initActions: [],         // DSL doesn't support init actions yet
-            actions: [],             // DSL doesn't support global actions yet
+            actions,                 // User-defined action definitions
             eventActions: [],        // DSL doesn't support event actions yet
 
             // Timeline configuration (plural - array of timelines)
@@ -121,7 +117,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     });
 
 /**
- * SA003: Create default configuration values for required Eligius fields
+ * Create default configuration values for required Eligius fields
  *
  * Constitution VII: Uses crypto.randomUUID() for globally unique configuration ID.
  * UUIDs ensure no conflicts when merging configs or running concurrently.
@@ -144,7 +140,7 @@ function createDefaultConfiguration() {
 }
 
 /**
- * SA002: Build TimelineConfigIR from timeline node and timeline actions
+ * Build TimelineConfigIR from timeline node
  *
  * This creates the full Eligius TimelineConfiguration structure.
  *
@@ -152,16 +148,22 @@ function createDefaultConfiguration() {
  * when configs are merged or multiple timelines exist.
  */
 const buildTimelineConfig = (
-    timeline: Timeline,
-    timelineActions: TimelineActionIR[]
+    timeline: Timeline
 ): Effect.Effect<TimelineConfigIR, TransformError> =>
     Effect.gen(function* (_) {
+        // Transform timeline events to TimelineActionIR
+        const timelineActions: TimelineActionIR[] = [];
+        for (const event of timeline.events) {
+            const timelineAction = yield* _(transformTimelineEvent(event));
+            timelineActions.push(timelineAction);
+        }
+
         // Calculate total duration from events
         let maxDuration = 0;
         for (const action of timelineActions) {
             const endTime = typeof action.duration.end === 'number'
                 ? action.duration.end
-                : 0; // TimeExpressions need evaluation (simplified for now)
+                : 0; // TimeExpressions need evaluation
             if (endTime > maxDuration) {
                 maxDuration = endTime;
             }
@@ -170,458 +172,307 @@ const buildTimelineConfig = (
         return {
             // Constitution VII: UUID v4 for globally unique timeline ID
             id: crypto.randomUUID(),
-            uri: timeline.source || '',  // Empty string for raf, actual path for video/audio
+            uri: timeline.source || undefined,  // undefined for raf, actual path for video/audio
             type: timeline.provider,
             duration: maxDuration,
             loop: false,  // TODO: Could add DSL support for loop
-            selector: 'body',  // TODO: Could add DSL support for selector
+            selector: '',  // TODO: Could add DSL support for selector
             timelineActions,
             sourceLocation: getSourceLocation(timeline)
         };
     });
 
 /**
- * SA002: Transform DSL Event → TimelineActionIR
+ * Transform TimelineEvent → TimelineActionIR
  *
- * DSL "events" are actually Eligius TimelineActions (time-bound actions on a timeline).
- * This is different from Eligius EventActions (which are triggered by custom events).
+ * Timeline events can be:
+ * 1. Named action invocation: at 0s..5s { fadeIn() }
+ * 2. Inline endable action: at 0s..5s [ ... ] [ ... ]
  *
  * Constitution VII: Generates UUID for action ID to prevent conflicts when multiple
  * actions exist or configs are merged.
  */
-const transformEventToTimelineAction = (event: Event): Effect.Effect<TimelineActionIR, TransformError> =>
+const transformTimelineEvent = (event: TimelineEvent): Effect.Effect<TimelineActionIR, TransformError> =>
     Effect.gen(function* (_) {
         const timeRange = event.timeRange;
         if (!timeRange) {
             return yield* _(Effect.fail({
                 _tag: 'TransformError' as const,
                 kind: 'InvalidEvent' as const,
-                message: `Event '${event.name}' missing time range`,
+                message: 'Timeline event missing time range',
                 location: getSourceLocation(event)
             }));
         }
 
-        // Transform start and end times
-        const start = yield* _(transformTimeExpression(timeRange.start));
-        const end = yield* _(transformTimeExpression(timeRange.end));
+        // Transform start and end times to numbers
+        const startExpr = yield* _(transformTimeExpression(timeRange.start));
+        const endExpr = yield* _(transformTimeExpression(timeRange.end));
+        const start = evaluateTimeExpression(startExpr);
+        const end = evaluateTimeExpression(endExpr);
 
-        // Transform DSL actions → Eligius operations
-        const startOperations: OperationConfigIR[] = [];
-        for (const actionNode of event.actions) {
-            const operations = yield* _(transformActionToOperations(actionNode));
-            startOperations.push(...operations);
+        // Transform the action (either named invocation or inline)
+        const action = event.action;
+        let startOperations: OperationConfigIR[] = [];
+        let endOperations: OperationConfigIR[] = [];
+
+        if (action.$type === 'NamedActionInvocation') {
+            // Named action reference: { fadeIn() }
+            // This will be resolved during compilation - for now we emit a startAction operation
+            const actionCall = action.actionCall;
+            const actionName = actionCall?.action?.$refText || 'unknown';
+
+            // Emit startAction operation to invoke the action
+            startOperations.push({
+                id: crypto.randomUUID(),
+                systemName: 'startAction',
+                operationData: {
+                    actionName,
+                    // TODO: Transform arguments if present
+                },
+                sourceLocation: getSourceLocation(action)
+            });
+        } else if (action.$type === 'InlineEndableAction') {
+            // Inline endable action: [ ... ] [ ... ]
+            for (const opCall of action.startOperations) {
+                const op = yield* _(transformOperationCall(opCall));
+                startOperations.push(op);
+            }
+            for (const opCall of action.endOperations) {
+                const op = yield* _(transformOperationCall(opCall));
+                endOperations.push(op);
+            }
         }
 
         return {
             // Constitution VII: UUID v4 for globally unique action ID
             id: crypto.randomUUID(),
-            name: event.name,
+            name: `timeline-action-${start}-${end}`,  // Generate name from time range
             duration: {
                 start,
                 end
             },
             startOperations,
-            endOperations: [],  // DSL doesn't distinguish start/end operations yet
+            endOperations,
             sourceLocation: getSourceLocation(event)
         };
     });
 
 /**
- * SA002: Transform DSL Action → Eligius OperationConfigIR[]
+ * Transform Action Definition → EndableActionIR
  *
- * Converts high-level DSL actions (show, hide, animate) into low-level Eligius operations.
+ * Handles both:
+ * - Regular actions: action foo [ ... ]
+ * - Endable actions: endable action foo [ ... ] [ ... ]
+ *
+ * Constitution VII: Generates UUID for action ID
  */
-const transformActionToOperations = (action: Action): Effect.Effect<OperationConfigIR[], TransformError> =>
+const transformActionDefinition = (
+    actionDef: EndableActionDefinition | RegularActionDefinition
+): Effect.Effect<EndableActionIR, TransformError> =>
     Effect.gen(function* (_) {
-        const operations: OperationConfigIR[] = [];
+        const startOperations: OperationConfigIR[] = [];
+        const endOperations: OperationConfigIR[] = [];
 
-        switch (action.$type) {
-            case 'ShowAction': {
-                const showAction = action as ShowAction;
-                const selector = showAction.target ? yield* _(transformSelector(showAction.target)) : undefined;
-
-                const operationData: Record<string, any> = {};
-                if (selector) operationData.selector = selectorToString(selector);
-                if (showAction.animation) operationData.animation = showAction.animation;
-                if (showAction.args?.args) {
-                    operationData.animationArgs = showAction.args.args.map(arg => extractArgumentValue(arg));
-                }
-
-                operations.push({
-                    id: crypto.randomUUID(),
-                    systemName: 'showElement',  // Eligius operation name
-                    operationData,
-                    sourceLocation: getSourceLocation(action)
-                });
-                break;
+        if (actionDef.$type === 'EndableActionDefinition') {
+            // Endable action: has start and end operations
+            for (const opCall of actionDef.startOperations) {
+                const op = yield* _(transformOperationCall(opCall));
+                startOperations.push(op);
             }
-
-            case 'HideAction': {
-                const hideAction = action as HideAction;
-                const selector = hideAction.target ? yield* _(transformSelector(hideAction.target)) : undefined;
-
-                const operationData: Record<string, any> = {};
-                if (selector) operationData.selector = selectorToString(selector);
-                if (hideAction.animation) operationData.animation = hideAction.animation;
-                if (hideAction.args?.args) {
-                    operationData.animationArgs = hideAction.args.args.map(arg => extractArgumentValue(arg));
-                }
-
-                operations.push({
-                    id: crypto.randomUUID(),
-                    systemName: 'hideElement',  // Eligius operation name
-                    operationData,
-                    sourceLocation: getSourceLocation(action)
-                });
-                break;
+            for (const opCall of actionDef.endOperations) {
+                const op = yield* _(transformOperationCall(opCall));
+                endOperations.push(op);
             }
-
-            case 'AnimateAction': {
-                const animateAction = action as AnimateAction;
-                const selector = animateAction.target ? yield* _(transformSelector(animateAction.target)) : undefined;
-
-                const operationData: Record<string, any> = {};
-                if (selector) operationData.selector = selectorToString(selector);
-                if (animateAction.animation) operationData.animation = animateAction.animation;
-                if (animateAction.args?.args) {
-                    operationData.animationArgs = animateAction.args.args.map(arg => extractArgumentValue(arg));
-                }
-
-                operations.push({
-                    id: crypto.randomUUID(),
-                    systemName: 'animateElement',  // Eligius operation name
-                    operationData,
-                    sourceLocation: getSourceLocation(action)
-                });
-                break;
-            }
-
-            case 'TriggerAction': {
-                const triggerAction = action as TriggerAction;
-                const selector = triggerAction.target ? yield* _(transformSelector(triggerAction.target)) : undefined;
-
-                operations.push({
-                    id: crypto.randomUUID(),
-                    systemName: 'triggerAction',  // Eligius operation name
-                    operationData: {
-                        selector: selector ? selectorToString(selector) : undefined,
-                        actionName: triggerAction.actionName
-                    },
-                    sourceLocation: getSourceLocation(action)
-                });
-                break;
-            }
-
-            default:
-                return yield* _(Effect.fail({
-                    _tag: 'TransformError' as const,
-                    kind: 'InvalidAction' as const,
-                    message: `Unknown action type: ${(action as any).$type}`,
-                    location: getSourceLocation(action),
-                    astNode: JSON.stringify(action)
-                }));
-        }
-
-        return operations;
-    });
-
-/**
- * Helper: Convert TargetSelector to string (e.g., { kind: "id", value: "title" } → "#title")
- */
-function selectorToString(selector: TargetSelector): string {
-    switch (selector.kind) {
-        case 'id':
-            return `#${selector.value}`;
-        case 'class':
-            return `.${selector.value}`;
-        case 'element':
-            return selector.value;
-        case 'query':
-            return selector.value;
-    }
-}
-
-/**
- * T050: Transform Timeline AST → TimelineIR
- * @deprecated Use buildTimelineConfig instead for new code
- */
-export const transformTimeline = (timeline: Timeline): Effect.Effect<TimelineIR, TransformError> =>
-    Effect.succeed({
-        provider: timeline.provider,
-        source: timeline.source,
-        options: undefined, // TODO: Timeline options support
-        sourceLocation: getSourceLocation(timeline)
-    });
-
-/**
- * T051: Transform Event AST → EventIR
- */
-export const transformEvent = (event: Event): Effect.Effect<EventIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const timeRange = event.timeRange;
-        if (!timeRange) {
-            return yield* _(Effect.fail({
-                _tag: 'TransformError' as const,
-                kind: 'InvalidEvent' as const,
-                message: `Event '${event.name}' missing time range`,
-                location: getSourceLocation(event)
-            }));
-        }
-
-        // Transform start and end times
-        const start = yield* _(transformTimeExpression(timeRange.start));
-        const end = yield* _(transformTimeExpression(timeRange.end));
-
-        // Transform actions
-        const actions: ActionIR[] = [];
-        for (const actionNode of event.actions) {
-            const action = yield* _(transformAction(actionNode));
-            actions.push(action);
-        }
-
-        return {
-            id: event.name,
-            start,
-            end,
-            actions,
-            conditions: undefined, // TODO: Conditional events support
-            metadata: undefined,
-            sourceLocation: getSourceLocation(event)
-        };
-    });
-
-/**
- * T052: Transform Action AST → ActionIR
- */
-export const transformAction = (action: Action): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        switch (action.$type) {
-            case 'ShowAction':
-                return yield* _(transformShowAction(action));
-            case 'HideAction':
-                return yield* _(transformHideAction(action));
-            case 'AnimateAction':
-                return yield* _(transformAnimateAction(action));
-            case 'TriggerAction':
-                return yield* _(transformTriggerAction(action));
-            case 'ActionCall':
-                return yield* _(transformActionCall(action));
-            case 'RawOperation':
-                return yield* _(transformRawOperation(action));
-            default:
-                return yield* _(Effect.fail({
-                    _tag: 'TransformError' as const,
-                    kind: 'InvalidAction' as const,
-                    message: `Unknown action type: ${(action as any).$type}`,
-                    location: getSourceLocation(action),
-                    astNode: JSON.stringify(action)
-                }));
-        }
-    });
-
-/**
- * Helper: Transform ShowAction
- */
-const transformShowAction = (action: ShowAction): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const target = action.target ? yield* _(transformSelector(action.target)) : undefined;
-
-        // Extract animation properties if present
-        const properties: Record<string, any> = {};
-        if (action.animation) {
-            properties.animation = action.animation;
-            if (action.args?.args) {
-                properties.animationArgs = action.args.args.map(arg => extractArgumentValue(arg));
+        } else {
+            // Regular action: only has operations (treated as start operations)
+            for (const opCall of actionDef.operations) {
+                const op = yield* _(transformOperationCall(opCall));
+                startOperations.push(op);
             }
         }
 
         return {
-            type: 'show' as const,
-            target,
-            properties: Object.keys(properties).length > 0 ? properties : undefined,
-            sourceLocation: getSourceLocation(action)
-        };
-    });
-
-/**
- * Helper: Transform HideAction
- */
-const transformHideAction = (action: HideAction): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const target = action.target ? yield* _(transformSelector(action.target)) : undefined;
-
-        // Extract animation properties if present
-        const properties: Record<string, any> = {};
-        if (action.animation) {
-            properties.animation = action.animation;
-            if (action.args?.args) {
-                properties.animationArgs = action.args.args.map(arg => extractArgumentValue(arg));
-            }
-        }
-
-        return {
-            type: 'hide' as const,
-            target,
-            properties: Object.keys(properties).length > 0 ? properties : undefined,
-            sourceLocation: getSourceLocation(action)
-        };
-    });
-
-/**
- * Helper: Transform AnimateAction
- */
-const transformAnimateAction = (action: AnimateAction): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const target = action.target ? yield* _(transformSelector(action.target)) : undefined;
-
-        const properties: Record<string, any> = {
-            animation: action.animation
-        };
-
-        if (action.args?.args) {
-            properties.animationArgs = action.args.args.map(arg => extractArgumentValue(arg));
-        }
-
-        return {
-            type: 'animate' as const,
-            target,
-            properties,
-            sourceLocation: getSourceLocation(action)
-        };
-    });
-
-/**
- * Helper: Transform TriggerAction
- */
-const transformTriggerAction = (action: TriggerAction): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const target = action.target ? yield* _(transformSelector(action.target)) : undefined;
-
-        return {
-            type: 'trigger' as const,
-            target,
-            properties: {
-                actionName: action.actionName
-            },
-            sourceLocation: getSourceLocation(action)
-        };
-    });
-
-/**
- * Helper: Transform ActionCall (call to user-defined action)
- */
-const transformActionCall = (action: ActionCall): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const actionName = action.action?.$refText || 'unknown';
-
-        const properties: Record<string, any> = {
-            call: actionName
-        };
-
-        if (action.args?.args) {
-            properties.callArgs = action.args.args.map(arg => extractArgumentValue(arg));
-        }
-
-        return {
-            type: 'custom' as const,
-            target: undefined,
-            properties,
-            sourceLocation: getSourceLocation(action)
-        };
-    });
-
-/**
- * Helper: Transform RawOperation (escape hatch)
- */
-const transformRawOperation = (action: RawOperation): Effect.Effect<ActionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const properties: Record<string, any> = {};
-
-        if (action.properties) {
-            for (const prop of action.properties) {
-                properties[prop.key] = extractPropertyValue(prop.value);
-            }
-        }
-
-        return {
-            type: 'custom' as const,
-            target: undefined,
-            properties,
-            sourceLocation: getSourceLocation(action)
-        };
-    });
-
-/**
- * Helper: Transform ActionDefinition (reusable action)
- */
-const transformActionDefinition = (actionDef: ActionDefinition): Effect.Effect<ActionDefinitionIR, TransformError> =>
-    Effect.gen(function* (_) {
-        const parameters: ParameterIR[] = actionDef.parameters.map(param => ({
-            name: param.name,
-            type: param.type,
-            defaultValue: param.defaultValue ? extractArgumentValue(param.defaultValue) : undefined,
-            sourceLocation: getSourceLocation(param)
-        }));
-
-        const operations: OperationIR[] = [];
-        // TODO: Transform operations when we add support for action definitions
-
-        return {
+            // Constitution VII: UUID v4 for globally unique action ID
+            id: crypto.randomUUID(),
             name: actionDef.name,
-            parameters,
-            operations,
+            startOperations,
+            endOperations,
             sourceLocation: getSourceLocation(actionDef)
         };
     });
 
 /**
- * T053: Transform Selector AST → TargetSelector
+ * Transform OperationCall → OperationConfigIR
+ *
+ * Handles function-style operation calls with positional parameters:
+ *   selectElement("#title")
+ *   animate({ opacity: 1 }, 500, "ease")
+ *   setData({ "operationdata.name": $context.currentItem })
+ *
+ * Per DSL_DESIGN_DECISIONS.md Q3: Flattens wrapper objects automatically.
+ * Constitution VII: Generates UUID for operation ID
  */
-export const transformSelector = (selector: Selector): Effect.Effect<TargetSelector, TransformError> =>
+const transformOperationCall = (opCall: OperationCall): Effect.Effect<OperationConfigIR, TransformError> =>
     Effect.gen(function* (_) {
-        switch (selector.$type) {
-            case 'IdSelector':
-                return {
-                    kind: 'id' as const,
-                    value: selector.value
-                };
-            case 'ClassSelector':
-                return {
-                    kind: 'class' as const,
-                    value: selector.value
-                };
-            case 'ElementSelector':
-                return {
-                    kind: 'element' as const,
-                    value: selector.value
-                };
+        const operationName = opCall.operationName;
+        const args = opCall.args || [];
+
+        // Transform arguments to operationData
+        // For now, we use a simple positional mapping
+        // TODO: Phase 3 will add proper parameter mapping based on operation signatures
+        const operationData: Record<string, JsonValue> = {};
+
+        // Map positional arguments to operation parameters
+        // This is a simplified version - full implementation in Phase 3
+        if (args.length > 0) {
+            // For single-argument operations, use the argument directly
+            if (args.length === 1 && args[0].$type === 'ObjectLiteral') {
+                // Object literal argument - extract properties
+                const obj = yield* _(transformExpression(args[0]));
+                if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+                    Object.assign(operationData, obj as Record<string, JsonValue>);
+                }
+            } else {
+                // Multiple arguments - map to generic args array for now
+                // Phase 3 will add proper parameter name mapping
+                const transformedArgs: JsonValue[] = [];
+                for (const arg of args) {
+                    const value = yield* _(transformExpression(arg));
+                    transformedArgs.push(value);
+                }
+                operationData.args = transformedArgs;
+            }
+        }
+
+        return {
+            // Constitution VII: UUID v4 for operation ID
+            id: crypto.randomUUID(),
+            systemName: operationName,
+            operationData,
+            sourceLocation: getSourceLocation(opCall)
+        };
+    });
+
+/**
+ * Transform Expression → JsonValue
+ *
+ * Handles all expression types:
+ * - Literals: strings, numbers, booleans, null
+ * - Object literals: { key: value, ... }
+ * - Array literals: [value1, value2, ...]
+ * - Property chain references: $context.currentItem
+ * - Binary expressions: 10 + 5
+ */
+const transformExpression = (expr: Expression): Effect.Effect<JsonValue, TransformError> =>
+    Effect.gen(function* (_) {
+        switch (expr.$type) {
+            case 'StringLiteral':
+                return expr.value;
+
+            case 'NumberLiteral':
+                return expr.value;
+
+            case 'BooleanLiteral':
+                return expr.value === true || expr.value === 'true';
+
+            case 'NullLiteral':
+                return null;
+
+            case 'ObjectLiteral':
+                const obj: Record<string, JsonValue> = {};
+                for (const prop of expr.properties) {
+                    const key = typeof prop.key === 'string' ? prop.key : prop.key;
+                    const value = yield* _(transformExpression(prop.value));
+                    obj[key] = value;
+                }
+                return obj;
+
+            case 'ArrayLiteral':
+                const arr: JsonValue[] = [];
+                for (const element of expr.elements) {
+                    const value = yield* _(transformExpression(element));
+                    arr.push(value);
+                }
+                return arr;
+
+            case 'PropertyChainReference':
+                // Property chain reference: $context.currentItem
+                // For now, serialize to string format that Eligius understands
+                const scope = expr.scope;
+                const properties = expr.properties.join('.');
+                return `${scope}.${properties}`;
+
+            case 'BinaryExpression':
+                // Binary expression: 10 + 5
+                // Evaluate at compile time if both sides are literals
+                const left = yield* _(transformExpression(expr.left));
+                const right = yield* _(transformExpression(expr.right));
+
+                // If both are numbers, evaluate
+                if (typeof left === 'number' && typeof right === 'number') {
+                    switch (expr.op) {
+                        case '+': return left + right;
+                        case '-': return left - right;
+                        case '*': return left * right;
+                        case '/': return left / right;
+                        case '%': return left % right;
+                        case '**': return left ** right;
+                        case '>': return left > right;
+                        case '<': return left < right;
+                        case '>=': return left >= right;
+                        case '<=': return left <= right;
+                        case '==': return left == right;
+                        case '!=': return left != right;
+                    }
+                }
+
+                // Otherwise, serialize as expression string
+                return `(${JSON.stringify(left)} ${expr.op} ${JSON.stringify(right)})`;
+
+            case 'UnaryExpression':
+                // Unary expression: !flag, -value
+                const operand = yield* _(transformExpression(expr.operand));
+
+                switch (expr.op) {
+                    case '!':
+                        return !operand;
+                    case '-':
+                        if (typeof operand === 'number') {
+                            return -operand;
+                        }
+                        return `(-${JSON.stringify(operand)})`;
+                }
+
             default:
                 return yield* _(Effect.fail({
                     _tag: 'TransformError' as const,
                     kind: 'InvalidExpression' as const,
-                    message: `Unknown selector type: ${(selector as any).$type}`,
-                    location: getSourceLocation(selector)
+                    message: `Unknown expression type: ${(expr as any).$type}`,
+                    location: getSourceLocation(expr)
                 }));
         }
     });
 
 /**
- * T054: Transform TimeExpression AST → TimeExpression IR
+ * Transform TimeExpression → TimeExpression IR
  */
 export const transformTimeExpression = (expr: AstTimeExpression): Effect.Effect<TimeExpression, TransformError> =>
     Effect.gen(function* (_) {
         switch (expr.$type) {
-            case 'NumberLiteral':
+            case 'TimeLiteral':
                 return {
                     kind: 'literal' as const,
                     value: expr.value
                 };
-            case 'VariableReference':
+            case 'PropertyChainReference':
+                // Property reference in time expression
+                const scope = expr.scope;
+                const properties = expr.properties.join('.');
                 return {
                     kind: 'variable' as const,
-                    name: expr.name
+                    name: `${scope}.${properties}`
                 };
-            case 'BinaryExpression':
+            case 'BinaryTimeExpression':
                 const left = yield* _(transformTimeExpression(expr.left));
                 const right = yield* _(transformTimeExpression(expr.right));
                 return {
@@ -641,76 +492,32 @@ export const transformTimeExpression = (expr: AstTimeExpression): Effect.Effect<
     });
 
 /**
- * Helper: Extract argument value from AST argument node
+ * Helper: Evaluate TimeExpression to a numeric value
+ *
+ * Performs constant folding for binary expressions (e.g., 10 + 5 → 15).
+ * Variables are not supported yet and will throw an error.
  */
-function extractArgumentValue(arg: any): any {
-    if (!arg) return null;
-
-    switch (arg.$type) {
-        case 'StringLiteral':
-            return arg.value;
-        case 'NumberLiteral':
-            return arg.value;
-        case 'BooleanLiteral':
-            return arg.value === true || arg.value === 'true';
-        case 'NullLiteral':
-            return null;
-        case 'IdSelector':
-            return `#${arg.value}`;
-        case 'ClassSelector':
-            return `.${arg.value}`;
-        default:
-            // For complex time expressions, serialize them
-            return serializeTimeExpression(arg);
-    }
-}
-
-/**
- * Helper: Extract property value from AST property value node
- */
-function extractPropertyValue(value: any): any {
-    if (!value) return null;
-
-    // Handle literals
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        return value;
-    }
-
-    // Handle AST nodes
-    switch (value.$type) {
-        case 'StringLiteral':
-            return value.value;
-        case 'NumberLiteral':
-            return value.value;
-        case 'BooleanLiteral':
-            return value.value === true || value.value === 'true';
-        case 'NullLiteral':
-            return null;
-        default:
-            return String(value);
-    }
-}
-
-/**
- * Helper: Serialize time expression to string
- */
-function serializeTimeExpression(expr: any): string | number {
-    if (!expr) return 0;
-
-    switch (expr.$type) {
-        case 'NumberLiteral':
+function evaluateTimeExpression(expr: TimeExpression): number {
+    switch (expr.kind) {
+        case 'literal':
             return expr.value;
-        case 'VariableReference':
-            return `$${expr.name}`;
-        case 'BinaryExpression':
-            return `(${serializeTimeExpression(expr.left)} ${expr.op} ${serializeTimeExpression(expr.right)})`;
-        default:
-            return 0;
+        case 'variable':
+            // TODO: Variable support requires a symbol table/environment
+            throw new Error(`Variables not yet supported in time expressions: ${expr.name}`);
+        case 'binary':
+            const left = evaluateTimeExpression(expr.left);
+            const right = evaluateTimeExpression(expr.right);
+            switch (expr.op) {
+                case '+': return left + right;
+                case '-': return left - right;
+                case '*': return left * right;
+                case '/': return left / right;
+            }
     }
 }
 
 /**
- * T057: Helper to extract source location from any AST node
+ * Helper to extract source location from any AST node
  */
 function getSourceLocation(node: any): SourceLocation {
     const cstNode = node.$cstNode;

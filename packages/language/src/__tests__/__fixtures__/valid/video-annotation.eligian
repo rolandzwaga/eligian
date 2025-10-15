@@ -1,24 +1,46 @@
-// Video annotation example
-timeline video from "lecture.mp4"
+// Video annotation example using new syntax
 
-// Chapter markers
-event chapter1 at 0..30 {
-  show #chapter1-title
-  trigger showNotes
-}
+// Chapter marker actions
+endable action showChapter1 [
+  selectElement("#chapter1-title")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
 
-event chapter2 at 30..90 {
-  hide #chapter1-title
-  show #chapter2-title
-}
+endable action showChapter2 [
+  selectElement("#chapter2-title")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
 
-event chapter3 at 90..150 {
-  hide #chapter2-title
-  show #chapter3-title
-  animate #diagram with slideIn(500, "bottom")
-}
+endable action showChapter3 [
+  selectElement("#chapter3-title")
+  addClass("visible")
+  selectElement("#diagram")
+  addClass("slide-in")
+] [
+  removeClass("visible")
+]
 
-event conclusion at 150..180 {
-  hide #chapter3-title
-  show #conclusion
+timeline "lecture" using video from "lecture.mp4" {
+  at 0s..30s {
+    showChapter1()
+  }
+
+  at 30s..90s {
+    showChapter2()
+  }
+
+  at 90s..150s {
+    showChapter3()
+  }
+
+  at 150s..180s [
+    selectElement("#conclusion")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 }

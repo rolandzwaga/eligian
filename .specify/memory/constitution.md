@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 → 1.1.0
-- Amendment: Added Principle VII (UUID-Based Identifiers)
+- Version change: 1.1.0 → 1.2.0
+- Amendment: Added Principle VIII (Debug Cleanup and Workspace Hygiene)
 - Modified principles: None
-- Added sections: Principle VII - UUID-Based Identifiers (NON-NEGOTIABLE)
+- Added sections: Principle VIII - Debug Cleanup and Workspace Hygiene (NON-NEGOTIABLE)
 - Removed sections: None
-- Templates requiring updates: None (new principle is implementation-specific)
+- Templates requiring updates: None (new principle is process/hygiene-specific)
 - Follow-up TODOs:
-  - Update ast-transformer.ts to use crypto.randomUUID() instead of Date.now()
-  - Update emitter.ts to use UUIDs for all generated IDs
-  - Add UUID usage documentation in code comments
+  - Review all packages for any remaining debug files
+  - Add debug file patterns to .gitignore if not already present
+  - Document cleanup checklist in development workflow
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -50,8 +50,10 @@ Comprehensive testing ensures reliability and catches regressions early.
 - Every MCP tool MUST have integration tests using real GF-RGL source files
 - Tests MUST be written before or alongside implementation (TDD encouraged)
 - All tests MUST pass before code review
+- **All tests MUST pass before moving on after refactoring** - If a refactor breaks tests, fix them immediately before proceeding to new work
 - Test coverage SHOULD be tracked and maintained above 80%
 - Integration tests MUST use realistic GF source examples from actual RGL modules
+- When tests fail due to intentional changes (grammar updates, API changes), update test expectations immediately
 
 ### III. No Gold-Plating
 
@@ -143,6 +145,27 @@ composition. Timestamps create collision risks and lack randomness.
 - Test fixtures MAY use hardcoded UUIDs for deterministic testing
 - User-provided IDs (from DSL) MAY use custom naming but SHOULD validate uniqueness
 
+### VIII. Debug Cleanup and Workspace Hygiene (NON-NEGOTIABLE)
+
+All temporary debug files, test scripts, and investigation artifacts MUST be removed from
+the workspace after debugging sessions complete. The codebase MUST remain clean, organized,
+and free from debugging clutter. Temporary files are acceptable during active investigation
+but MUST be cleaned up before committing changes.
+
+**Rationale**: Debug scripts, temporary test files, and investigation artifacts accumulate
+quickly during problem-solving. If left unchecked, they create confusion, increase
+maintenance burden, and make the project structure unclear. A clean workspace is essential
+for maintainability and professionalism.
+
+**Requirements**:
+- All debug scripts (`debug-*.js`, `debug-*.mjs`, `test-*.js`, etc.) MUST be deleted after debugging completes
+- Temporary investigation files MUST NOT be committed to version control
+- Test files belong in `__tests__/` or `test/` directories, never in root or `src/` directories
+- Build artifacts (`.tsbuildinfo`, `out/`, `dist/`) should be in `.gitignore`, not tracked
+- After any debugging session: review workspace, delete temporary files, restore clean state
+- If a debug script proves useful, convert it to a proper test in `__tests__/` directory
+- Document any temporary files created during investigation in pull request descriptions
+
 ## Development Workflow
 
 ### Pull Request Process
@@ -215,4 +238,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.1.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-14
+**Version**: 1.3.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-15

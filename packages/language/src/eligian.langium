@@ -1,178 +1,236 @@
 grammar Eligian
 
 /**
- * Eligius DSL Grammar
+ * Eligian DSL Grammar
  *
  * This grammar defines the syntax for the Eligius Story Telling Engine DSL.
- * It supports:
- * - Timeline declarations
- * - Reusable action definitions (function-like)
- * - Timeline events with actions
- * - Action calls
- * - High-level action abstractions
+ *
+ * Design Principles:
+ * - Function-style operation calls with positional parameters
+ * - Dollar sign ($) for property chain references
+ * - Square brackets for operation lists
+ * - No hardcoded operations (grammar is operation-agnostic)
+ * - Flatten wrapper objects (compiler handles nesting)
+ * - Timeline accepts only endable actions
+ *
+ * See: DSL_DESIGN_DECISIONS.md for detailed design rationale
  */
 
-// Entry point: A program consists of action definitions, timelines, and events
+// ============================================================================
+// Program Structure
+// ============================================================================
+
 entry Program:
     (elements += ProgramElement)*;
 
 ProgramElement:
-    ActionDefinition | Timeline | Event;
+    ActionDefinition | Timeline;
+
+// ============================================================================
+// Action Definitions
+// ============================================================================
 
 /**
- * Action Definition - Reusable action template (like a function)
+ * Action Definition - Reusable action with operation list
  *
- * Syntax: action fadeIn(element, duration = 500ms) { ... }
+ * Regular action:
+ *   action fadeIn [
+ *     selectElement(".target")
+ *     animate({ opacity: 1 }, 500)
+ *   ]
+ *
+ * Endable action (with start and end operations):
+ *   endable action showThenHide [
+ *     selectElement(".box")
+ *     addClass("visible")
+ *   ] [
+ *     removeClass("visible")
+ *   ]
  */
 ActionDefinition:
-    'action' name=ID '(' (parameters += Parameter (',' parameters += Parameter)*)? ')'
-    '{' (operations += Operation)* '}';
+    EndableActionDefinition | RegularActionDefinition;
 
-Parameter:
-    name=ID (':' type=ParameterType)? ('=' defaultValue=Literal)?;
+RegularActionDefinition:
+    'action' name=ID
+    '[' (operations += OperationCall)* ']';
 
-ParameterType returns string:
-    'selector' | 'number' | 'string' | 'boolean';
+EndableActionDefinition:
+    'endable' 'action' name=ID
+    '[' (startOperations += OperationCall)* ']'
+    '[' (endOperations += OperationCall)* ']';
 
 /**
- * Timeline - Defines the time source for the presentation
+ * Operation Call - Function-style call with positional parameters
  *
- * Syntax: timeline video from "video.mp4"
- *         timeline audio from "audio.mp3"
- *         timeline raf
+ * Examples:
+ *   selectElement(".target")
+ *   animate({ opacity: 1 }, 500, "ease")
+ *   setStyle({ color: "red", opacity: 0 })
+ *   when($operationdata.count > 5)
+ */
+OperationCall:
+    operationName=ID '(' (args += Expression (',' args += Expression)*)? ')';
+
+// ============================================================================
+// Timeline Definitions
+// ============================================================================
+
+/**
+ * Timeline - Defines the time source and timeline events
+ *
+ * Syntax:
+ *   timeline "main" using video from "video.mp4" {
+ *     at 0s..5s { showThenHide() }
+ *     at 2s..4s [ ... ] [ ... ]
+ *   }
  */
 Timeline:
-    'timeline' provider=TimelineProvider ('from' source=STRING)?;
+    'timeline' name=STRING 'using' provider=TimelineProvider ('from' source=STRING)?
+    '{' (events += TimelineEvent)* '}';
 
 TimelineProvider returns string:
     'video' | 'audio' | 'raf' | 'custom';
 
 /**
- * Event - Triggered at specific times on the timeline
+ * Timeline Event - Endable action triggered at specific time range
  *
- * Syntax: event intro at 0..5 { show #title }
+ * Named action invocation:
+ *   at 0s..5s { fadeIn() }
+ *
+ * Inline endable action:
+ *   at 0s..5s [
+ *     selectElement(".box")
+ *     addClass("visible")
+ *   ] [
+ *     removeClass("visible")
+ *   ]
  */
-Event:
-    'event' name=ID 'at' timeRange=TimeRange
-    '{' (actions += Action)* '}';
+TimelineEvent:
+    'at' timeRange=TimeRange (action=TimelineAction);
+
+TimelineAction:
+    InlineEndableAction | NamedActionInvocation;
+
+/**
+ * Named action invocation - calls a defined endable action
+ */
+NamedActionInvocation:
+    '{' actionCall=ActionCallExpression '}';
+
+ActionCallExpression:
+    action=[EndableActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
+
+/**
+ * Inline endable action - anonymous endable action defined at use site
+ */
+InlineEndableAction:
+    '[' (startOperations += OperationCall)* ']'
+    '[' (endOperations += OperationCall)* ']';
+
+// ============================================================================
+// Time Expressions
+// ============================================================================
 
 TimeRange:
     start=TimeExpression '..' end=TimeExpression;
 
 TimeExpression:
-    Addition;
+    AdditiveTime;
 
-Addition infers TimeExpression:
-    Multiplication ({infer BinaryExpression.left=current} op=('+' | '-') right=Multiplication)*;
+AdditiveTime infers TimeExpression:
+    MultiplicativeTime ({infer BinaryTimeExpression.left=current} op=('+' | '-') right=MultiplicativeTime)*;
 
-Multiplication infers TimeExpression:
-    Primary ({infer BinaryExpression.left=current} op=('*' | '/') right=Primary)*;
+MultiplicativeTime infers TimeExpression:
+    PrimaryTime ({infer BinaryTimeExpression.left=current} op=('*' | '/') right=PrimaryTime)*;
 
-Primary infers TimeExpression:
+PrimaryTime infers TimeExpression:
     '(' TimeExpression ')' |
-    NumberLiteral |
-    VariableReference;
+    TimeLiteral |
+    PropertyChainReference;
 
-NumberLiteral:
+TimeLiteral:
     value=NUMBER unit=TimeUnit?;
 
 TimeUnit returns string:
     'ms' | 's' | 'm' | 'h';
 
-VariableReference:
-    name=ID;
+// ============================================================================
+// Expressions (for operation arguments)
+// ============================================================================
 
 /**
- * Actions - What happens when an event triggers
+ * Expression - Values that can be passed as operation arguments
  *
  * Supports:
- * 1. Built-in actions: show, hide, animate, trigger
- * 2. Action calls: fadeIn(#title, 500ms)
- * 3. Raw operations (escape hatch)
+ * - Literals: strings, numbers, booleans, null
+ * - Object literals: { key: value, ... }
+ * - Array literals: [value1, value2, ...]
+ * - Property chain references: $context.currentItem, $operationdata.foo, $globaldata.bar
+ * - Binary expressions: $operationdata.count > 5
  */
-Action:
-    BuiltInAction | ActionCall | RawOperation;
+Expression:
+    LogicalOr;
+
+LogicalOr infers Expression:
+    LogicalAnd ({infer BinaryExpression.left=current} op='||' right=LogicalAnd)*;
+
+LogicalAnd infers Expression:
+    Equality ({infer BinaryExpression.left=current} op='&&' right=Equality)*;
+
+Equality infers Expression:
+    Comparison ({infer BinaryExpression.left=current} op=('==' | '!=') right=Comparison)*;
+
+Comparison infers Expression:
+    Additive ({infer BinaryExpression.left=current} op=('>=' | '<=' | '>' | '<') right=Additive)*;
+
+Additive infers Expression:
+    Multiplicative ({infer BinaryExpression.left=current} op=('+' | '-') right=Multiplicative)*;
+
+Multiplicative infers Expression:
+    Unary ({infer BinaryExpression.left=current} op=('*' | '/' | '%' | '**') right=Unary)*;
+
+Unary infers Expression:
+    {infer UnaryExpression} op=('!' | '-') operand=Unary |
+    Primary;
+
+Primary infers Expression:
+    '(' Expression ')' |
+    Literal |
+    PropertyChainReference |
+    ObjectLiteral |
+    ArrayLiteral;
+
+// ============================================================================
+// Property Chain References (with $ prefix)
+// ============================================================================
 
 /**
- * Built-in high-level actions
- */
-BuiltInAction:
-    ShowAction | HideAction | AnimateAction | TriggerAction;
-
-ShowAction:
-    'show' target=Selector ('with' animation=ID '(' args=ArgumentList? ')')?;
-
-HideAction:
-    'hide' target=Selector ('with' animation=ID '(' args=ArgumentList? ')')?;
-
-AnimateAction:
-    'animate' target=Selector 'with' animation=ID '(' args=ArgumentList? ')';
-
-TriggerAction:
-    'trigger' actionName=ID ('on' target=Selector)?;
-
-/**
- * Action Call - Call a user-defined action
+ * Property Chain Reference - Runtime data access with $ prefix
  *
- * Syntax: fadeIn(#title, 500ms)
+ * Examples:
+ *   $context.currentItem
+ *   $context.currentItem.name
+ *   $operationdata.selectedElement
+ *   $globaldata.userSettings.theme
  */
-ActionCall:
-    action=[ActionDefinition:ID] '(' args=ArgumentList? ')';
+PropertyChainReference:
+    '$' scope=PropertyScope ('.' properties += ID)+;
 
-ArgumentList:
-    args += Argument (',' args += Argument)*;
+PropertyScope returns string:
+    'context' | 'operationdata' | 'globaldata';
 
-Argument:
-    IdSelector | ClassSelector | StringLiteral | BooleanLiteral | NullLiteral | TimeExpression;
+// ============================================================================
+// Literals
+// ============================================================================
 
-/**
- * Selectors - CSS-like element selectors
- */
-Selector:
-    IdSelector | ClassSelector | ElementSelector;
-
-IdSelector:
-    '#' value=ID;
-
-ClassSelector:
-    '.' value=ID;
-
-ElementSelector:
-    value=ID;
-
-/**
- * Raw Operation - Escape hatch for direct Eligius operations
- *
- * Syntax: operation { systemName: "selectElement", operationData: {...} }
- */
-RawOperation:
-    'operation' '{' properties += Property (',' properties += Property)* '}';
-
-Property:
-    key=ID ':' value=Literal;
-
-/**
- * Operations - Building blocks for action definitions
- *
- * These are used inside action definitions to compose behavior.
- */
-Operation:
-    OnBlock | OperationCall;
-
-OnBlock:
-    'on' target=Selector '{' (operations += OperationCall)* '}';
-
-OperationCall:
-    name=ID '(' args=ArgumentList? ')';
-
-/**
- * Literals - Constant values
- */
 Literal:
     StringLiteral | NumberLiteral | BooleanLiteral | NullLiteral;
 
 StringLiteral:
     value=STRING;
+
+NumberLiteral:
+    value=NUMBER;
 
 BooleanLiteral:
     value?='true' | 'false';
@@ -181,8 +239,39 @@ NullLiteral:
     {infer NullLiteral} 'null';
 
 /**
- * Terminals - Lexical tokens
+ * Object Literal - Key-value pairs
+ *
+ * Examples:
+ *   { opacity: 1, color: "red" }
+ *   { "operationdata.name": $context.currentItem }
  */
+ObjectLiteral:
+    '{' (properties += ObjectProperty (',' properties += ObjectProperty)*)? '}';
+
+ObjectProperty:
+    key=(ID | STRING) ':' value=Expression;
+
+/**
+ * Array Literal - List of expressions
+ *
+ * Examples:
+ *   [1, 2, 3]
+ *   ["foo", "bar"]
+ *   [$context.item1, $context.item2]
+ */
+ArrayLiteral:
+    '[' (elements += Expression (',' elements += Expression)*)? ']';
+
+// ============================================================================
+// Terminals - Lexical tokens
+// ============================================================================
+
+/**
+ * IMPORTANT: Terminals are matched in order of definition.
+ * More specific patterns must come before less specific ones.
+ */
+
+// NUMBER must come before other numeric patterns to match decimals
 terminal NUMBER returns number:
     /[0-9]+(\.[0-9]+)?/;
 

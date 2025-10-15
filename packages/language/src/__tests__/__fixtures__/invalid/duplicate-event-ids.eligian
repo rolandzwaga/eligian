@@ -1,13 +1,18 @@
-// Test fixture: Duplicate event IDs (T037)
-// Should trigger validation error: "Duplicate event ID"
+// Note: New grammar doesn't have named events, so this test is no longer applicable
+// Timeline events don't have IDs - they are anonymous time ranges
 
-timeline video from "test.mp4"
+timeline "test" using video from "test.mp4" {
+  at 0s..5s [
+    selectElement("#title")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 
-event intro at 0..5 {
-  show #title
-}
-
-// Duplicate ID - should be flagged
-event intro at 10..15 {
-  show #subtitle
+  at 10s..15s [
+    selectElement("#subtitle")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 }

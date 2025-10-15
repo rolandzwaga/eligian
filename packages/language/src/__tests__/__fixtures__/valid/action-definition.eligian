@@ -1,28 +1,33 @@
-// DSL with reusable action definitions
-timeline raf
+// DSL with reusable action definitions using new syntax
 
-// Define reusable actions
-action fadeIn(element, duration = 500) {
-  on element {
-    addClass("fade-in")
-    animate(duration)
+// Define reusable endable actions
+endable action fadeIn [
+  selectElement(".target")
+  setStyle({ opacity: 0 })
+  animate({ opacity: 1 }, 500)
+] [
+  setStyle({ opacity: 0 })
+]
+
+endable action fadeOut [
+  selectElement(".target")
+  setStyle({ opacity: 1 })
+] [
+  animate({ opacity: 0 }, 500)
+]
+
+// Regular action (not timeline-bound)
+action highlightElement [
+  selectElement(".highlight")
+  addClass("active")
+]
+
+timeline "main" using raf {
+  at 0s..5s {
+    fadeIn()
   }
-}
 
-action fadeOut(element, duration = 500) {
-  on element {
-    addClass("fade-out")
-    animate(duration)
+  at 10s..15s {
+    fadeOut()
   }
-}
-
-// Use actions in events
-event intro at 0..5 {
-  fadeIn(#title, 800)
-  fadeIn(#subtitle, 600)
-}
-
-event outro at 10..15 {
-  fadeOut(#title, 400)
-  fadeOut(#subtitle, 400)
 }

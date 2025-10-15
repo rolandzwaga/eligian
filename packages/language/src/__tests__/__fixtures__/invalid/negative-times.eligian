@@ -1,19 +1,28 @@
 // Test fixture: Negative times (T039)
-// Should trigger validation error: "Event time cannot be negative"
+// Should trigger validation error: "Timeline event time cannot be negative"
 
-timeline raf
+timeline "test" using raf {
+  // Negative start time
+  at -5s..10s [
+    selectElement("#element1")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 
-// Negative start time
-event negativeStart at -5..10 {
-  show #element1
-}
+  // Negative end time
+  at 0s..-5s [
+    selectElement("#element2")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 
-// Negative end time
-event negativeEnd at 0..-5 {
-  show #element2
-}
-
-// Both negative
-event bothNegative at -10..-5 {
-  show #element3
+  // Both negative
+  at -10s..-5s [
+    selectElement("#element3")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 }

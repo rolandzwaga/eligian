@@ -20,7 +20,8 @@
 
 import { Effect } from 'effect';
 import { createEligianServices, type Program } from 'eligian-language';
-import { EmptyFileSystem } from 'langium';
+import { EmptyFileSystem, URI } from 'langium';
+import type { LangiumDocument } from 'langium';
 import { transformAST } from './ast-transformer.js';
 import { typeCheck } from './type-checker.js';
 import { optimize } from './optimizer.js';
@@ -28,6 +29,22 @@ import { emitJSON } from './emitter.js';
 import type { EligiusIR } from './types/eligius-ir.js';
 import type { ParseError, TransformError, TypeError, EmitError } from './types/errors.js';
 import type { IEngineConfiguration } from 'eligius';
+
+/**
+ * Singleton Langium service instance
+ *
+ * Creating Langium services is expensive. We reuse a single instance across
+ * all parse calls for better performance and to prevent memory exhaustion
+ * when running many tests.
+ */
+let sharedServices: ReturnType<typeof createEligianServices> | undefined;
+
+function getOrCreateServices() {
+    if (!sharedServices) {
+        sharedServices = createEligianServices(EmptyFileSystem);
+    }
+    return sharedServices;
+}
 
 /**
  * Compilation options
@@ -62,24 +79,46 @@ export interface CompileOptions {
 export type CompileError = ParseError | TransformError | TypeError | EmitError;
 
 /**
+ * Document counter for generating unique URIs
+ *
+ * Each parse call needs a unique URI to avoid conflicts in Langium's
+ * document manager. We use a counter to ensure uniqueness.
+ */
+let documentCounter = 0;
+
+/**
  * T076: Parse DSL source → Langium AST
  *
  * Uses Langium parser to convert source string to AST.
  * Returns ParseError if syntax is invalid.
+ *
+ * Note: Reuses a shared Langium service instance for better performance
+ * and to prevent memory exhaustion during testing. Each parse gets a unique
+ * URI to avoid document conflicts. Documents are removed from the workspace
+ * after parsing to prevent memory leaks.
  */
-export const parseSource = (source: string, uri: string = 'file:///memory/source.eligian'): Effect.Effect<Program, ParseError> =>
+export const parseSource = (source: string, uri?: string): Effect.Effect<Program, ParseError> =>
     Effect.gen(function* (_) {
+        // Generate unique URI if not provided
+        const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
+        const documentUri = URI.parse(uriString);
+
         // Wrap Langium parsing in Effect.tryPromise
         const result = yield* _(Effect.tryPromise({
             try: async () => {
-                // Create Langium services and use parseHelper
-                const services = createEligianServices(EmptyFileSystem);
+                // Reuse shared Langium services (singleton pattern)
+                const services = getOrCreateServices();
 
-                // Use parseHelper like the transformer tests do
-                const { parseHelper } = await import('langium/test');
-                const parse = parseHelper<Program>(services.Eligian);
+                // Parse directly without parseHelper to avoid test utility overhead
+                const document = services.shared.workspace.LangiumDocumentFactory.fromString<Program>(
+                    source,
+                    documentUri
+                );
 
-                return await parse(source, { documentUri: uri });
+                // Build document (runs lexer, parser, linker)
+                await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+
+                return document;
             },
             catch: (error) => ({
                 _tag: 'ParseError' as const,

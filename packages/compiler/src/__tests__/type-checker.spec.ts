@@ -68,7 +68,7 @@ describe('Type Checker', () => {
     }
 
     describe('Timeline type checking', () => {
-        test('should accept valid timeline with raf provider', async () => {
+        test('should accept valid timeline with raf type', async () => {
             const ir = createMinimalIR();
 
             const result = await Effect.runPromise(typeCheck(ir));
@@ -76,311 +76,178 @@ describe('Type Checker', () => {
             expect(result).toEqual(ir);
         });
 
-        test('should accept timeline with string source', async () => {
+        test('should accept timeline with string uri', async () => {
             const ir = createMinimalIR();
-            ir.timeline.provider = 'video';
-            ir.timeline.source = 'video.mp4';
+            ir.timelines[0].type = 'video';
+            ir.timelines[0].uri = 'video.mp4';
 
             const result = await Effect.runPromise(typeCheck(ir));
 
-            expect(result.timeline.source).toBe('video.mp4');
+            expect(result.timelines[0].uri).toBe('video.mp4');
         });
 
-        test('should reject timeline with non-string source (T062)', async () => {
+        test('should reject timeline with non-string uri (T062)', async () => {
             const ir = createMinimalIR();
-            ir.timeline.source = 123 as any; // Invalid: number instead of string
+            ir.timelines[0].uri = 123 as any; // Invalid: number instead of string
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('source must be a string');
+            await expect(result).rejects.toThrow('uri must be a string');
         });
 
-        test('should reject invalid provider', async () => {
+        test('should reject invalid timeline type', async () => {
             const ir = createMinimalIR();
-            ir.timeline.provider = 'invalid' as any;
+            ir.timelines[0].type = 'invalid' as any;
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('Invalid timeline provider');
+            await expect(result).rejects.toThrow('Invalid timeline type');
         });
     });
 
-    describe('Time expression type checking (T060)', () => {
-        test('should accept numeric literals', async () => {
+    describe('Duration type checking (T060)', () => {
+        test('should accept numeric durations', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
+            ir.timelines[0].timelineActions = [createTimelineAction('test', 0, 10)];
 
             const result = await Effect.runPromise(typeCheck(ir));
 
-            expect(result.events).toHaveLength(1);
+            expect(result.timelines[0].timelineActions).toHaveLength(1);
         });
 
-        test('should accept variable references', async () => {
+        test('should reject non-numeric duration start', async () => {
             const ir = createMinimalIR();
-            ir.events = [{
-                id: 'test',
-                start: { kind: 'variable', name: 'startTime' },
-                end: { kind: 'literal', value: 10 },
-                actions: [],
-                conditions: undefined,
-                metadata: undefined,
-                sourceLocation: { line: 2, column: 1, length: 20 }
-            }];
-
-            const result = await Effect.runPromise(typeCheck(ir));
-
-            expect(result.events).toHaveLength(1);
-        });
-
-        test('should accept binary expressions', async () => {
-            const ir = createMinimalIR();
-            ir.events = [{
-                id: 'test',
-                start: {
-                    kind: 'binary',
-                    op: '+',
-                    left: { kind: 'literal', value: 5 },
-                    right: { kind: 'literal', value: 3 }
-                },
-                end: { kind: 'literal', value: 20 },
-                actions: [],
-                conditions: undefined,
-                metadata: undefined,
-                sourceLocation: { line: 2, column: 1, length: 20 }
-            }];
-
-            const result = await Effect.runPromise(typeCheck(ir));
-
-            expect(result.events).toHaveLength(1);
-        });
-
-        test('should reject non-numeric literal in time expression', async () => {
-            const ir = createMinimalIR();
-            ir.events = [{
-                id: 'test',
-                start: { kind: 'literal', value: 'invalid' as any }, // Should be number
-                end: { kind: 'literal', value: 10 },
-                actions: [],
-                conditions: undefined,
-                metadata: undefined,
-                sourceLocation: { line: 2, column: 1, length: 20 }
-            }];
+            const action = createTimelineAction('test', 0, 10);
+            action.duration.start = 'invalid' as any; // Should be number
+            ir.timelines[0].timelineActions = [action];
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('must be a number');
+            await expect(result).rejects.toThrow('Duration start must be a number');
         });
 
-        test('should reject invalid binary operator', async () => {
+        test('should reject non-numeric duration end', async () => {
             const ir = createMinimalIR();
-            ir.events = [{
-                id: 'test',
-                start: {
-                    kind: 'binary',
-                    op: '%' as any, // Invalid operator
-                    left: { kind: 'literal', value: 5 },
-                    right: { kind: 'literal', value: 3 }
-                },
-                end: { kind: 'literal', value: 20 },
-                actions: [],
-                conditions: undefined,
-                metadata: undefined,
-                sourceLocation: { line: 2, column: 1, length: 20 }
-            }];
+            const action = createTimelineAction('test', 0, 10);
+            action.duration.end = 'invalid' as any; // Should be number
+            ir.timelines[0].timelineActions = [action];
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('Invalid binary operator');
+            await expect(result).rejects.toThrow('Duration end must be a number');
+        });
+
+        test('should reject duration where end < start', async () => {
+            const ir = createMinimalIR();
+            ir.timelines[0].timelineActions = [createTimelineAction('test', 10, 5)]; // end < start
+
+            const result = Effect.runPromise(typeCheck(ir));
+
+            await expect(result).rejects.toThrow('end must be >= start');
         });
     });
 
-    describe('Action type checking', () => {
-        test('should accept valid target selector (T062)', async () => {
+    describe('Operation type checking', () => {
+        test('should accept valid operations', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'show',
-                target: {
-                    kind: 'id',
-                    value: 'myElement'
-                },
-                properties: undefined,
-                sourceLocation: { line: 3, column: 1, length: 15 }
-            }];
+            const action = createTimelineAction('test', 0, 10);
+            action.startOperations = [createOperation('showElement', { selector: '#myElement' })];
+            ir.timelines[0].timelineActions = [action];
 
             const result = await Effect.runPromise(typeCheck(ir));
 
-            expect(result.events[0].actions).toHaveLength(1);
+            expect(result.timelines[0].timelineActions[0].startOperations).toHaveLength(1);
         });
 
-        test('should reject invalid selector kind', async () => {
+        test('should reject operation with non-string systemName', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'show',
-                target: {
-                    kind: 'invalid' as any,
-                    value: 'test'
-                },
-                properties: undefined,
-                sourceLocation: { line: 3, column: 1, length: 15 }
-            }];
+            const action = createTimelineAction('test', 0, 10);
+            const op = createOperation('showElement');
+            op.systemName = 123 as any; // Should be string
+            action.startOperations = [op];
+            ir.timelines[0].timelineActions = [action];
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('Invalid target selector kind');
+            await expect(result).rejects.toThrow('systemName must be a non-empty string');
         });
 
-        test('should reject non-string selector value', async () => {
+        test('should reject operation with non-object operationData', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'show',
-                target: {
-                    kind: 'id',
-                    value: 123 as any // Should be string
-                },
-                properties: undefined,
-                sourceLocation: { line: 3, column: 1, length: 15 }
-            }];
+            const action = createTimelineAction('test', 0, 10);
+            const op = createOperation('showElement');
+            op.operationData = 'invalid' as any; // Should be object
+            action.startOperations = [op];
+            ir.timelines[0].timelineActions = [action];
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('selector value must be a string');
+            await expect(result).rejects.toThrow('operationData must be an object');
         });
     });
 
-    describe('Numeric duration checking (T061)', () => {
-        test('should accept valid numeric duration', async () => {
+    describe('Configuration type checking', () => {
+        test('should validate required configuration fields', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'animate',
-                target: {
-                    kind: 'id',
-                    value: 'element'
-                },
-                properties: {
-                    animation: 'fadeIn',
-                    duration: 500
-                },
-                sourceLocation: { line: 3, column: 1, length: 20 }
-            }];
 
             const result = await Effect.runPromise(typeCheck(ir));
 
-            expect(result.events[0].actions[0].properties?.duration).toBe(500);
+            expect(result.id).toBeDefined();
+            expect(result.engine.systemName).toBe('Eligius');
+            expect(result.containerSelector).toBe('body');
+            expect(result.language).toBe('en');
         });
 
-        test('should reject negative duration', async () => {
+        test('should reject empty configuration id', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'animate',
-                target: {
-                    kind: 'id',
-                    value: 'element'
-                },
-                properties: {
-                    animation: 'fadeIn',
-                    duration: -100 // Negative duration
-                },
-                sourceLocation: { line: 3, column: 1, length: 20 }
-            }];
+            ir.id = ''; // Empty string
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('must be non-negative');
+            await expect(result).rejects.toThrow('id must be a non-empty string');
         });
 
-        test('should reject non-numeric duration', async () => {
+        test('should reject non-string containerSelector', async () => {
             const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'animate',
-                target: {
-                    kind: 'id',
-                    value: 'element'
-                },
-                properties: {
-                    animation: 'fadeIn',
-                    duration: 'fast' as any // Should be number
-                },
-                sourceLocation: { line: 3, column: 1, length: 20 }
-            }];
+            ir.containerSelector = 123 as any; // Should be string
 
             const result = Effect.runPromise(typeCheck(ir));
 
-            await expect(result).rejects.toThrow('duration must be a number');
-        });
-
-        test('should validate animation args durations', async () => {
-            const ir = createMinimalIR();
-            ir.events = [createEvent('test', 0, 10)];
-            ir.events[0].actions = [{
-                type: 'show',
-                target: {
-                    kind: 'id',
-                    value: 'element'
-                },
-                properties: {
-                    animation: 'fadeIn',
-                    animationArgs: [-500, 'left'] // Negative duration
-                },
-                sourceLocation: { line: 3, column: 1, length: 20 }
-            }];
-
-            const result = Effect.runPromise(typeCheck(ir));
-
-            await expect(result).rejects.toThrow('must be non-negative');
+            await expect(result).rejects.toThrow('containerSelector must be a string');
         });
     });
 
     describe('Comprehensive type checking (T063)', () => {
         test('should validate complete IR successfully', async () => {
             const ir = createMinimalIR();
-            ir.timeline.provider = 'video';
-            ir.timeline.source = 'test.mp4';
-            ir.events = [
-                createEvent('intro', 0, 5),
-                createEvent('main', 5, 120)
-            ];
-            ir.events[0].actions = [{
-                type: 'show',
-                target: { kind: 'id', value: 'title' },
-                properties: { animation: 'fadeIn', duration: 500 },
-                sourceLocation: { line: 4, column: 1, length: 20 }
-            }];
-            ir.events[1].actions = [{
-                type: 'hide',
-                target: { kind: 'class', value: 'content' },
-                properties: undefined,
-                sourceLocation: { line: 6, column: 1, length: 15 }
-            }];
+            ir.timelines[0].type = 'video';
+            ir.timelines[0].uri = 'test.mp4';
+
+            const intro = createTimelineAction('intro', 0, 5);
+            intro.startOperations = [createOperation('showElement', { selector: '#title' })];
+
+            const main = createTimelineAction('main', 5, 120);
+            main.startOperations = [createOperation('hideElement', { selector: '.content' })];
+
+            ir.timelines[0].timelineActions = [intro, main];
 
             const result = await Effect.runPromise(typeCheck(ir));
 
-            expect(result.timeline.provider).toBe('video');
-            expect(result.events).toHaveLength(2);
-            expect(result.events[0].actions).toHaveLength(1);
+            expect(result.timelines[0].type).toBe('video');
+            expect(result.timelines[0].timelineActions).toHaveLength(2);
+            expect(result.timelines[0].timelineActions[0].startOperations).toHaveLength(1);
         });
 
-        test('should accumulate type errors from multiple events', async () => {
+        test('should fail on invalid duration in timeline action', async () => {
             const ir = createMinimalIR();
-            ir.events = [{
-                id: 'bad',
-                start: { kind: 'literal', value: 'not-a-number' as any },
-                end: { kind: 'literal', value: 10 },
-                actions: [],
-                conditions: undefined,
-                metadata: undefined,
-                sourceLocation: { line: 2, column: 1, length: 20 }
-            }];
+            const action = createTimelineAction('bad', 0, 10);
+            action.duration.start = 'not-a-number' as any;
+            ir.timelines[0].timelineActions = [action];
 
             const result = Effect.runPromise(typeCheck(ir));
 
             // Should fail on the first type error encountered
-            await expect(result).rejects.toThrow();
+            await expect(result).rejects.toThrow('Duration start must be a number');
         });
     });
 });

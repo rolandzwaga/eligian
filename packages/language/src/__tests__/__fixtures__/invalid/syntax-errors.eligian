@@ -1,20 +1,31 @@
 // File with syntax errors for testing error recovery
 
 // Missing timeline
-event intro at 0..5 {
-  show #title
-}
+endable action intro [
+  selectElement("#title")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
 
 // Invalid time range (missing ..)
-event bad_range at 5-10 {
-  show #content
+timeline "test" using raf {
+  at 5-10 [
+    selectElement("#content")
+  ] [
+  ]
 }
 
-// Missing braces
-event no_braces at 10..15
-  show #test
+// Missing closing bracket
+timeline "test2" using raf {
+  at 10s..15s [
+    selectElement("#test")
+  // Missing closing brackets
 
-// Invalid selector
-event bad_selector at 15..20 {
-  show @invalid
+// Invalid syntax
+timeline "test3" using raf {
+  at 15s..20s [
+    selectElement(@invalid)
+  ] [
+  ]
 }

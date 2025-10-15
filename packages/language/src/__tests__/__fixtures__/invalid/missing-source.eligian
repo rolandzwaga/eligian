@@ -2,8 +2,11 @@
 // Should trigger validation error: "Timeline provider requires a source file"
 
 // Video provider without source
-timeline video
-
-event test at 0..5 {
-  show #element
+timeline "test" using video {
+  at 0s..5s [
+    selectElement("#element")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 }

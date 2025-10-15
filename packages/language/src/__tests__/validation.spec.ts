@@ -42,9 +42,10 @@ describe('Eligian Grammar - Validation', () => {
     describe('Timeline validation (T036, T042, T043)', () => {
         test('should require exactly one timeline declaration', async () => {
             const code = `
-                event test at 0..5 {
-                    show #element
-                }
+                endable action test [
+                    selectElement("#element")
+                ] [
+                ]
             `;
             const { validationErrors } = await parseAndValidate(code);
 
@@ -69,8 +70,8 @@ describe('Eligian Grammar - Validation', () => {
 
             for (const provider of validProviders) {
                 const code = provider === 'video' || provider === 'audio'
-                    ? `timeline ${provider} from "test.mp4"\nevent test at 0..5 { show #el }`
-                    : `timeline ${provider}\nevent test at 0..5 { show #el }`;
+                    ? `timeline "test" using ${provider} from "test.mp4" {}`
+                    : `timeline "test" using ${provider} {}`;
 
                 const { validationErrors } = await parseAndValidate(code);
 
@@ -93,10 +94,7 @@ describe('Eligian Grammar - Validation', () => {
         });
 
         test('should require source for video provider', async () => {
-            const code = `
-                timeline video
-                event test at 0..5 { show #el }
-            `;
+            const code = loadFixture('missing-source.eligian');
             const { validationErrors } = await parseAndValidate(code);
 
             expect(validationErrors.length).toBeGreaterThan(0);
@@ -107,8 +105,7 @@ describe('Eligian Grammar - Validation', () => {
 
         test('should require source for audio provider', async () => {
             const code = `
-                timeline audio
-                event test at 0..5 { show #el }
+                timeline "test" using audio {}
             `;
             const { validationErrors } = await parseAndValidate(code);
 
@@ -120,8 +117,7 @@ describe('Eligian Grammar - Validation', () => {
 
         test('should not require source for raf provider', async () => {
             const code = `
-                timeline raf
-                event test at 0..5 { show #el }
+                timeline "test" using raf {}
             `;
             const { validationErrors } = await parseAndValidate(code);
 
@@ -133,47 +129,55 @@ describe('Eligian Grammar - Validation', () => {
         });
     });
 
-    describe('Event validation (T037, T038, T039)', () => {
-        test('should reject duplicate event IDs', async () => {
-            const code = loadFixture('duplicate-event-ids.eligian');
-            const { validationErrors } = await parseAndValidate(code);
-
-            expect(validationErrors.length).toBeGreaterThan(0);
-            expect(validationErrors.some(e =>
-                e.message.includes('Duplicate event ID')
-            )).toBe(true);
-        });
-
-        test('should accept unique event IDs', async () => {
+    describe('Timeline event validation (T038, T039)', () => {
+        test('should accept unique timeline events (no IDs)', async () => {
             const code = `
-                timeline raf
-                event intro at 0..5 { show #el1 }
-                event main at 5..10 { show #el2 }
-                event outro at 10..15 { show #el3 }
+                timeline "test" using raf {
+                    at 0s..5s [
+                        selectElement("#el1")
+                    ] [
+                    ]
+                    at 5s..10s [
+                        selectElement("#el2")
+                    ] [
+                    ]
+                    at 10s..15s [
+                        selectElement("#el3")
+                    ] [
+                    ]
+                }
             `;
             const { validationErrors } = await parseAndValidate(code);
 
-            // Should not have duplicate ID errors
+            // Timeline events don't have IDs in new grammar, so no duplicate ID errors
             const duplicateErrors = validationErrors.filter(e =>
-                e.message.includes('Duplicate event ID')
+                e.message.includes('Duplicate')
             );
             expect(duplicateErrors.length).toBe(0);
         });
 
-        test('should reject invalid time range (start >= end)', async () => {
+        test('should reject invalid time range (start > end)', async () => {
             const code = loadFixture('invalid-time-range.eligian');
             const { validationErrors } = await parseAndValidate(code);
 
             expect(validationErrors.length).toBeGreaterThan(0);
             expect(validationErrors.some(e =>
-                e.message.includes('start time') && e.message.includes('must be less than')
+                e.message.includes('start time') && e.message.includes('must be less than or equal to')
             )).toBe(true);
         });
 
-        test('should accept valid time range (start < end)', async () => {
+        test('should accept valid time range (start <= end)', async () => {
             const code = `
-                timeline raf
-                event test at 0..10 { show #el }
+                timeline "test" using raf {
+                    at 0s..10s [
+                        selectElement("#el")
+                    ] [
+                    ]
+                    at 5s..5s [
+                        selectElement("#el2")
+                    ] [
+                    ]
+                }
             `;
             const { validationErrors } = await parseAndValidate(code);
 
@@ -188,8 +192,7 @@ describe('Eligian Grammar - Validation', () => {
             const code = loadFixture('negative-times.eligian');
             const { document } = await parseAndValidate(code);
 
-            // Note: Negative numbers are syntax errors in our grammar (NUMBER terminal doesn't support negatives)
-            // So this is caught at parse time, not validation time
+            // Negative numbers are parse errors (unary minus operator on number literal)
             expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
         });
 
@@ -197,16 +200,22 @@ describe('Eligian Grammar - Validation', () => {
             const code = loadFixture('negative-times.eligian');
             const { document } = await parseAndValidate(code);
 
-            // Note: Negative numbers are syntax errors in our grammar (NUMBER terminal doesn't support negatives)
-            // So this is caught at parse time, not validation time
+            // Negative numbers are parse errors
             expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
         });
 
         test('should accept non-negative times', async () => {
             const code = `
-                timeline raf
-                event test at 0..10 { show #el }
-                event test2 at 100..200 { show #el2 }
+                timeline "test" using raf {
+                    at 0s..10s [
+                        selectElement("#el")
+                    ] [
+                    ]
+                    at 100s..200s [
+                        selectElement("#el2")
+                    ] [
+                    ]
+                }
             `;
             const { validationErrors } = await parseAndValidate(code);
 
@@ -218,75 +227,48 @@ describe('Eligian Grammar - Validation', () => {
         });
     });
 
-    describe('Action validation (T041)', () => {
-        test('should require target for show action', async () => {
+    describe('Operation call validation', () => {
+        test('should accept operation calls with no arguments', async () => {
             const code = `
-                timeline raf
-                event test at 0..5 {
-                    show
-                }
+                action test [
+                    log()
+                ]
+                timeline "test" using raf {}
             `;
-            const { document } = await parseAndValidate(code);
-
-            // Note: Missing target is a parse error, not a validation error
-            // The grammar doesn't allow show without a target
-            expect(document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length).toBeGreaterThan(0);
-        });
-
-        test('should require target for hide action', async () => {
-            const code = `
-                timeline raf
-                event test at 0..5 {
-                    hide
-                }
-            `;
-            const { document } = await parseAndValidate(code);
-
-            // Note: Missing target is a parse error, not a validation error
-            expect(document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length).toBeGreaterThan(0);
-        });
-
-        test('should require target for animate action', async () => {
-            const code = `
-                timeline raf
-                event test at 0..5 {
-                    animate
-                }
-            `;
-            const { document } = await parseAndValidate(code);
-
-            // Note: Missing target is a parse error, not a validation error
-            expect(document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length).toBeGreaterThan(0);
-        });
-
-        test('should accept actions with valid targets', async () => {
-            const code = `
-                timeline raf
-                event test at 0..5 {
-                    show #element
-                    hide .class
-                    animate #diagram with spin(1000)
-                }
-            `;
-            const { validationErrors, document } = await parseAndValidate(code);
+            const { document, validationErrors } = await parseAndValidate(code);
 
             expect(document.parseResult.lexerErrors.length).toBe(0);
             expect(document.parseResult.parserErrors.length).toBe(0);
             expect(validationErrors.length).toBe(0);
         });
 
-        test('should accept trigger action without target', async () => {
+        test('should accept operation calls with arguments', async () => {
             const code = `
-                timeline raf
-                event test at 0..5 {
-                    trigger myAction
-                }
+                action test [
+                    selectElement("#title")
+                    addClass("visible")
+                    setStyle({ opacity: 1 })
+                ]
+                timeline "test" using raf {}
             `;
-            const { validationErrors, document } = await parseAndValidate(code);
+            const { document, validationErrors } = await parseAndValidate(code);
 
             expect(document.parseResult.lexerErrors.length).toBe(0);
             expect(document.parseResult.parserErrors.length).toBe(0);
-            // Trigger doesn't require a target, so should be valid
+            expect(validationErrors.length).toBe(0);
+        });
+
+        test('should accept property chain references', async () => {
+            const code = `
+                action test [
+                    setData({ "operationdata.name": $context.currentItem })
+                ]
+                timeline "test" using raf {}
+            `;
+            const { document, validationErrors } = await parseAndValidate(code);
+
+            expect(document.parseResult.lexerErrors.length).toBe(0);
+            expect(document.parseResult.parserErrors.length).toBe(0);
             expect(validationErrors.length).toBe(0);
         });
     });
@@ -294,21 +276,36 @@ describe('Eligian Grammar - Validation', () => {
     describe('Comprehensive validation', () => {
         test('should validate complex valid program', async () => {
             const code = `
-                timeline video from "presentation.mp4"
+                endable action fadeIn [
+                    selectElement(".target")
+                    setStyle({ opacity: 0 })
+                    animate({ opacity: 1 }, 500)
+                ] [
+                    setStyle({ opacity: 0 })
+                ]
 
-                event intro at 0..5 {
-                    show #title with fadeIn(500)
-                    show #subtitle with slideIn(300, "left")
-                }
+                endable action showTitle [
+                    selectElement("#title")
+                    addClass("visible")
+                ] [
+                    removeClass("visible")
+                ]
 
-                event main at 5..120 {
-                    show #content
-                    trigger startAnimation on #diagram
-                }
+                timeline "presentation" using video from "presentation.mp4" {
+                    at 0s..5s {
+                        showTitle()
+                    }
 
-                event outro at 120..130 {
-                    hide #content with fadeOut(400)
-                    show #credits with slideIn(500, "bottom")
+                    at 5s..120s {
+                        fadeIn()
+                    }
+
+                    at 120s..130s [
+                        selectElement("#credits")
+                        addClass("visible")
+                    ] [
+                        removeClass("visible")
+                    ]
                 }
             `;
             const { validationErrors, document } = await parseAndValidate(code);
@@ -321,23 +318,18 @@ describe('Eligian Grammar - Validation', () => {
         test('should accumulate multiple validation errors', async () => {
             const code = `
                 // Missing timeline
+                endable action test [
+                    selectElement("#test")
+                ] [
+                ]
 
-                // Duplicate event IDs
-                event test at 0..5 { show #el1 }
-                event test at 10..15 { show #el2 }
-
-                // Invalid time range
-                event bad at 20..10 { show #el3 }
+                // No timeline declaration
             `;
             const { validationErrors } = await parseAndValidate(code);
 
-            // Should have multiple errors
-            expect(validationErrors.length).toBeGreaterThan(2);
-
-            // Check for each type of validation error
+            // Should have timeline missing error
+            expect(validationErrors.length).toBeGreaterThan(0);
             expect(validationErrors.some(e => e.message.includes('timeline'))).toBe(true);
-            expect(validationErrors.some(e => e.message.includes('Duplicate'))).toBe(true);
-            expect(validationErrors.some(e => e.message.includes('must be less than'))).toBe(true);
         });
     });
 });

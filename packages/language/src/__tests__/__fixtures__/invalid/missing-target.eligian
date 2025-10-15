@@ -1,15 +1,12 @@
-// Test fixture: Missing target for actions (T041)
-// Should trigger validation error: "action requires a target"
+// Note: New grammar doesn't have built-in show/hide/animate actions
+// All actions are generic operation calls - validation happens at compile time
 
-timeline raf
-
-event test at 0..10 {
-  // Missing target selector - should be: show #element
-  show
-
-  // Missing target for hide
-  hide
-
-  // Missing target for animate
-  animate
+timeline "test" using raf {
+  at 0s..10s [
+    // Missing required parameters - these would be caught by type checking
+    selectElement()
+    addClass()
+  ] [
+    removeClass()
+  ]
 }

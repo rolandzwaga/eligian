@@ -32,13 +32,15 @@
     "clean": "shx rm -fr *.tsbuildinfo out",
     "build": "echo 'No build step'",
     "build:clean": "npm run clean && npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:registry": "tsx src/operations/generate-registry.ts"
   },
   "dependencies": {
-    "effect": "^3.12.0",
-    "eligius": "^1.1.4"
+    "effect": "3.12.0",
+    "eligius": "1.1.5"
   },
   "devDependencies": {
+    "tsx": "4.19.2",
     "vitest": "3.2.4"
   },
   "volta": {

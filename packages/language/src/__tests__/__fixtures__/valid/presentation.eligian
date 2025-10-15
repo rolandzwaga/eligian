@@ -1,48 +1,69 @@
-// Interactive presentation with actions
-timeline raf
+// Interactive presentation with actions using new syntax
 
-// Reusable animations
-action showCard(card, delay = 0) {
-  on card {
-    wait(delay)
+// Reusable endable animations
+endable action showCard [
+  selectElement(".card")
+  addClass("visible")
+  animate({ opacity: 1 }, 300)
+] [
+  animate({ opacity: 0 }, 300)
+  removeClass("visible")
+]
+
+endable action showTitle [
+  selectElement("#main-title")
+  addClass("visible")
+  selectElement("#subtitle")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
+
+endable action showAgenda [
+  selectElement("#card1")
+  addClass("visible")
+  wait(200)
+  selectElement("#card2")
+  addClass("visible")
+  wait(200)
+  selectElement("#card3")
+  addClass("visible")
+] [
+  selectElement("#card1")
+  removeClass("visible")
+  selectElement("#card2")
+  removeClass("visible")
+  selectElement("#card3")
+  removeClass("visible")
+]
+
+timeline "presentation" using raf {
+  at 0s..3s {
+    showTitle()
+  }
+
+  at 3s..8s {
+    showAgenda()
+  }
+
+  at 8s..30s [
+    selectElement("#content-area")
     addClass("visible")
-    animate(300)
-  }
-}
+  ] [
+    removeClass("visible")
+  ]
 
-action pulse(element) {
-  on element {
+  at 15s..15.5s [
+    selectElement("#important-point")
     addClass("pulse")
-    animate(600)
-  }
-}
+  ] [
+    removeClass("pulse")
+  ]
 
-// Presentation flow
-event titleSlide at 0..3 {
-  show #main-title
-  show #subtitle
-}
-
-event agenda at 3..8 {
-  hide #main-title
-  hide #subtitle
-  showCard(#card1, 0)
-  showCard(#card2, 200)
-  showCard(#card3, 400)
-}
-
-event content at 8..30 {
-  hide #card1
-  hide #card2
-  hide #card3
-  show #content-area
-}
-
-event highlight at 15..15.5 {
-  pulse(#important-point)
-}
-
-event conclusion at 30..35 {
-  hide #content-area
-  show #thank-you
+  at 30s..35s [
+    selectElement("#thank-you")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 }
