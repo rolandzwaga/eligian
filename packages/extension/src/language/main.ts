@@ -1,7 +1,7 @@
+import { createEligianServices } from '@eligian/language';
 import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
-import { createEligianServices } from '@eligian/language';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);

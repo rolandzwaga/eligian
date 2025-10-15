@@ -5,6 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 This project develops a Langium-based domain-specific language (DSL) and compiler for the Eligius library. It provides a high-level, declarative syntax that streamlines writing and validating Eligius programs while maintaining full interoperability with the core library. The project also produces a VS Code extension that delivers integrated language support — including syntax highlighting, validation, autocompletion, and on-the-fly compilation — to make working with Eligius simpler, faster, and less error-prone. The compiler translates DSL code into an optimized Eligius-compatible configuration, enabling better developer productivity, readability, and maintainability across projects that rely on Eligius.
 
+### Language Name and File Extension
+
+**IMPORTANT**: The DSL language is called **"Eligian"** (derived from "Eligius") and uses the file extension **`.eligian`**.
+
+- ✅ Correct: `my-timeline.eligian`, `presentation.eligian`, `*.eligian`
+- ❌ Wrong: `.eli`, `.elg`, `.egl`, or any other abbreviation
+
+This convention is established throughout the codebase:
+- Grammar file: `eligian.langium`
+- Test fixtures: `simple-timeline.eligian`, `video-annotation.eligian`
+- VS Code extension: Registers `.eligian` file association
+- CLI compiler: Processes `.eligian` source files
+
 ### Eligius library
 [Eligius](https://github.com/rolandzwaga/eligius) is Javascript engine that allows arbitrary functionality to be triggered according to a given timeline provider. A timeline provider can be a video, an audio file, a request animation frame loop, etc. The engine can be the basis for video annotations, presentation software or interactive infographics, for example. Eligius is NOT a game or animation engine, instead, it is a Story Telling Engine.
 
@@ -25,8 +38,139 @@ This is the exact reason why we want to create the DSL: we need a language that 
 ## Development Commands
 - `npm run build`: Compile TypeScript to JavaScript
 - `npm run dev`: Run development extension
-- `npm run check`: Type-check without compilation
+- `npm run test`: Run all tests (language package)
 - `npm run clean`: Remove build artifacts
+
+### Code Quality with Biome (REQUIRED)
+
+**IMPORTANT**: All code changes MUST be formatted and linted with Biome after each task completion (Constitution Principle XI).
+
+#### Biome Commands
+- `npm run check`: Format and lint with auto-fix (run after each task)
+- `npm run lint`: Lint only (check for issues without fixing)
+- `npm run format`: Format code only (no linting)
+- `npm run ci`: Check without modifying files (for CI/CD)
+
+#### Workflow: After Each Task
+```bash
+# 1. Complete your code changes
+# 2. Run Biome check with auto-fix
+npm run check
+
+# 3. If issues remain (errors shown):
+npm run lint  # Review what issues remain
+
+# 4. Fix remaining issues:
+#    - If legitimate issues: fix the code
+#    - If false positives: update biome.json with justification
+
+# 5. Verify clean:
+npm run check  # Should show "0 errors, 0 warnings"
+
+# 6. Run tests to ensure no breakage:
+npm run test  # All tests must pass
+```
+
+#### Biome Configuration (`biome.json`)
+
+The project uses Biome v2.2.6+ with the following configuration:
+
+**Enabled Rules**:
+- `recommended: true` - All recommended rules enabled
+- `noUnusedVariables: "warn"` - Warns about unused variables
+- `noUnusedImports: "warn"` - Warns about unused imports
+- `useConst: "warn"` - Suggests using const instead of let
+- `useYield: "off"` - Disabled (Effect.gen patterns don't always yield)
+- `noShadowRestrictedNames: "off"` - Disabled (our TypeError type name is intentional)
+- `noExplicitAny: "off"` - Disabled (Langium generates some any types)
+- `noNonNullAssertion: "off"` - Disabled (we use ! when we know better than TypeScript)
+- `noParameterAssign: "off"` - Disabled (some patterns require parameter mutation)
+- `noAccumulatingSpread: "off"` - Disabled (functional patterns use spread in loops)
+
+**Formatting**:
+- 2-space indentation
+- 100 character line width
+- Single quotes for strings
+- Semicolons always
+- ES5 trailing commas
+- Arrow parentheses only when needed
+
+**Excluded Files** (via `overrides`):
+- `**/out/**` - Build output
+- `**/dist/**` - Distribution builds
+- `**/generated/**` - Langium generated code
+- `**/*.generated.ts` - Generated registry files
+- `**/*.d.ts` - TypeScript declaration files
+
+#### When to Update `biome.json`
+
+Only update Biome configuration when:
+1. **False positives**: A rule flags valid code patterns we intentionally use
+2. **New patterns**: Adopting new coding patterns that conflict with rules
+3. **Generated code**: New generated files need exclusion
+
+**Document all changes** with comments explaining the rationale.
+
+#### Task Completion Checklist
+
+Before considering any task complete:
+- [ ] Code changes implemented
+- [ ] `npm run check` passes (0 errors, 0 warnings)
+- [ ] `npm run test` passes (all tests green)
+- [ ] Documentation updated (if applicable)
+- [ ] Biome configuration updated (if rules needed adjustment)
+
+### Fixing TypeScript Errors: Critical Guidelines
+
+**NEVER use sed with line numbers from TypeScript compiler errors.** TypeScript error line numbers indicate WHERE THE ERROR APPEARS, not where the fix should be applied. Using sed with these line numbers will corrupt files.
+
+#### The Sed Corruption Incident (Post-Mortem)
+
+**What happened:** Sed commands corrupted error-reporter.ts by blindly targeting line numbers from TypeScript errors, resulting in:
+- Replaced JSDoc comments with code
+- Replaced function parameters with object properties
+- Created syntax errors requiring full file restoration
+
+**Root causes:**
+1. **Blind line number targeting**: Used TypeScript error line numbers directly in sed commands without verifying the actual file content
+2. **No context verification**: Didn't read file content before applying changes
+3. **Wrong tool for the job**: Sed is not suitable for complex TypeScript refactoring
+4. **No validation**: Didn't verify results after changes
+
+**Why this is dangerous:**
+- TypeScript reports symptom locations, not fix locations
+- Sed line numbers are fragile - any change invalidates all subsequent numbers
+- Multiple sed commands in sequence compound errors exponentially
+
+**CORRECT approach for fixing TypeScript errors:**
+
+1. **Read the file first** - ALWAYS use Read tool to see actual code at error location
+2. **Use Edit tool for TypeScript** - It requires reading first and uses string matching (not line numbers)
+3. **Only use sed for mechanical changes** - Import organization, simple find/replace across whole file
+4. **Never use sed with line numbers from errors** - Those indicate symptoms, not fixes
+5. **Verify after each change** - Check that the fix actually resolves the error
+
+**Examples:**
+
+```bash
+# ❌ NEVER DO THIS - Using error line numbers directly
+sed -i '91s/.*/const hint = generateHint();/' file.ts  # Will corrupt random lines!
+
+# ✅ DO THIS INSTEAD - Read first, then use Edit tool
+# 1. Read the file to understand context
+# 2. Use Edit tool with actual string matching
+# 3. Verify the change worked
+```
+
+**When sed is acceptable:**
+- Simple global replacements: `sed -i 's/oldImport/newImport/g'`
+- Removing all occurrences: `sed -i '/pattern/d'`
+- Adding to end of file: `echo "new line" >> file`
+
+**When sed is FORBIDDEN:**
+- Any use of line numbers from compiler errors
+- Complex multi-line structural changes
+- Changes requiring understanding of code context
 
 ## Architecture and Technical Requirements
 

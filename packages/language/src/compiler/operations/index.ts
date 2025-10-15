@@ -6,7 +6,7 @@
  */
 
 import { OPERATION_REGISTRY } from './registry.generated.js';
-import type { OperationRegistry, OperationSignature } from './types.js';
+import type { OperationSignature } from './types.js';
 
 /**
  * The complete operation registry containing all 46 Eligius operations.
@@ -18,19 +18,19 @@ export { OPERATION_REGISTRY };
  * Export all types for consumers
  */
 export type {
+  ConstantValue,
+  DependencyInfo,
+  OperationParameter,
   OperationRegistry,
   OperationSignature,
-  OperationParameter,
-  DependencyInfo,
   OutputInfo,
   ParameterType,
-  ConstantValue,
 } from './types.js';
 
 export {
-  isParameterType,
-  isConstantValueArray,
   getDefaultConstantValue,
+  isConstantValueArray,
+  isParameterType,
 } from './types.js';
 
 /**
@@ -125,8 +125,8 @@ export function getOperationsByCategory(): Record<string, OperationSignature[]> 
  * // [addClass, removeClass, setStyle, animate, ...]
  */
 export function findOperationsWithDependency(dependencyName: string): OperationSignature[] {
-  return Object.values(OPERATION_REGISTRY).filter((op) =>
-    op.dependencies.some((dep) => dep.name === dependencyName)
+  return Object.values(OPERATION_REGISTRY).filter(op =>
+    op.dependencies.some(dep => dep.name === dependencyName)
   );
 }
 
@@ -141,8 +141,8 @@ export function findOperationsWithDependency(dependencyName: string): OperationS
  * // [selectElement]
  */
 export function findOperationsWithOutput(outputName: string): OperationSignature[] {
-  return Object.values(OPERATION_REGISTRY).filter((op) =>
-    op.outputs.some((out) => out.name === outputName)
+  return Object.values(OPERATION_REGISTRY).filter(op =>
+    op.outputs.some(out => out.name === outputName)
   );
 }
 
@@ -161,7 +161,7 @@ export function searchOperations(query: string): OperationSignature[] {
   const lowerQuery = query.toLowerCase();
 
   return Object.values(OPERATION_REGISTRY)
-    .filter((op) => op.systemName.toLowerCase().includes(lowerQuery))
+    .filter(op => op.systemName.toLowerCase().includes(lowerQuery))
     .sort((a, b) => {
       // Sort by how early the query appears in the name
       const aIndex = a.systemName.toLowerCase().indexOf(lowerQuery);
@@ -189,7 +189,7 @@ export function suggestSimilarOperations(
   const allNames = Object.keys(OPERATION_REGISTRY);
 
   // Calculate Levenshtein distance for each operation name
-  const distances = allNames.map((name) => ({
+  const distances = allNames.map(name => ({
     name,
     distance: levenshteinDistance(unknownName.toLowerCase(), name.toLowerCase()),
   }));
@@ -198,7 +198,7 @@ export function suggestSimilarOperations(
   return distances
     .sort((a, b) => a.distance - b.distance)
     .slice(0, maxSuggestions)
-    .map((item) => item.name);
+    .map(item => item.name);
 }
 
 /**
@@ -238,12 +238,16 @@ export function validateRegistry(): void {
       if (Array.isArray(param.type)) {
         // Constant values
         if (param.type.length === 0) {
-          throw new Error(`Operation "${name}" parameter "${param.name}" has empty constant values array`);
+          throw new Error(
+            `Operation "${name}" parameter "${param.name}" has empty constant values array`
+          );
         }
       } else {
         // ParameterType
         if (!param.type.startsWith('ParameterType:')) {
-          throw new Error(`Operation "${name}" parameter "${param.name}" has invalid type "${param.type}"`);
+          throw new Error(
+            `Operation "${name}" parameter "${param.name}" has invalid type "${param.type}"`
+          );
         }
       }
     }
@@ -275,8 +279,8 @@ function levenshteinDistance(a: string, b: string): number {
       } else {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1 // deletion
         );
       }
     }

@@ -270,32 +270,26 @@
 
 **Implementation Note**: Using Eligius JSON schemas from `../eligius/jsonschema/operations/*.json` (46 schemas available). This eliminates manual documentation of all 47 operations. Only need small supplemental file for dependency/output metadata.
 
-- [ ] T200 [Foundation] Create operation registry type system in packages/compiler/src/operations/types.ts
+- [X] T200 [Foundation] Create operation registry type system in packages/compiler/src/operations/types.ts
   - Define OperationParameter interface (name, type, required, description, pattern)
   - Define OperationSignature interface (systemName, description, parameters, dependencies, outputs)
   - Define OperationRegistry type (map of operation name → signature)
   - Define DependencyInfo interface (name, type) for tracking operation dependencies
   - Define OutputInfo interface (name, type) for tracking operation outputs
 
-- [ ] T201 [Foundation] Create JSON schema parser in packages/compiler/src/operations/schema-parser.ts
-  - Read JSON schema files from ../eligius/jsonschema/operations/*.json
-  - Parse systemName, description, operationData.required, operationData.properties
-  - Extract parameter names, types, patterns from schema
+- [X] T201 [Foundation] Create metadata converter in packages/compiler/src/operations/metadata-converter.ts
+  - Convert Eligius metadata functions to OperationSignature format
+  - Extract parameter names, types, defaults from metadata
+  - Include dependencies and outputs from metadata
   - Return parsed OperationSignature objects
 
-- [ ] T202 [Foundation] Create dependency/output metadata file in packages/compiler/src/operations/metadata.ts
-  - Manually document dependencies for each operation (e.g., addClass depends on selectedElement: JQuery)
-  - Document outputs for each operation (e.g., selectElement outputs selectedElement: JQuery)
-  - Export as OPERATION_METADATA constant (~200 lines covering all 46 operations)
-
-- [ ] T203 [Registry] Create operation registry generator in packages/compiler/src/operations/generate-registry.ts
-  - Read all JSON schemas from ../eligius/jsonschema/operations/
-  - Parse each schema using schema-parser
-  - Merge with dependency/output metadata
+- [X] T202 [Registry] Create operation registry generator in packages/compiler/src/operations/generate-registry.ts
+  - Import all metadata functions from Eligius
+  - Convert each using metadata converter
   - Generate TypeScript file packages/compiler/src/operations/registry.generated.ts
   - Run as build step (npm script: npm run generate:registry)
 
-- [ ] T204 [Registry] Create master registry exports in packages/compiler/src/operations/index.ts
+- [X] T203 [Registry] Create master registry exports in packages/compiler/src/operations/index.ts
   - Export generated OPERATION_REGISTRY constant
   - Export lookup functions (getOperationSignature, hasOperation, getAllOperations, getOperationsByCategory)
   - Export validation helper: validateRegistry() (checks no duplicates, all schemas valid)
@@ -315,18 +309,18 @@
   - Handle property chain references (can't validate type at compile time, but check syntax)
   - Return ParameterTypeError with expected vs actual type
 
-- [ ] T216 [Validation] Implement dependency validation in packages/compiler/src/operations/validator.ts
+- [X] T216 [Validation] Implement dependency validation in packages/compiler/src/operations/validator.ts
   - Track available outputs from previous operations in action
   - Check if required dependencies are available (e.g., selectedElement for addClass)
   - Return MissingDependencyError with operation that should provide the dependency
 
-- [ ] T217 [Validation] Implement control flow pairing validation in packages/compiler/src/operations/validator.ts
+- [X] T217 [Validation] Implement control flow pairing validation in packages/compiler/src/operations/validator.ts
   - Check when/endWhen pairing (every when has matching endWhen)
   - Check forEach/endForEach pairing
   - Check otherwise appears only between when and endWhen
   - Return ControlFlowError with unclosed/unmatched blocks
 
-- [ ] T218 [Validation] Wire operation validator into AST transformer in packages/compiler/src/ast-transformer.ts
+- [X] T218 [Validation] Wire operation validator into AST transformer in packages/compiler/src/ast-transformer.ts
   - Validate each OperationCall against registry before transforming
   - Collect validation errors and fail transform if any errors found
   - Include source location in all validation errors
@@ -338,32 +332,33 @@
 
 ### Task Group A3: Parameter Mapping
 
-- [ ] T220 [Transform] Implement positional-to-named parameter mapping in packages/compiler/src/operations/mapper.ts
+- [X] T220 [Transform] Implement positional-to-named parameter mapping in packages/compiler/src/operations/mapper.ts
   - Map positional arguments to named parameters using operation signature
   - Handle optional parameters (fill with undefined if not provided)
   - Return OperationConfigIR with named parameters
 
-- [ ] T221 [Transform] Implement property chain resolution in packages/compiler/src/operations/mapper.ts
+- [X] T221 [Transform] Implement property chain resolution in packages/compiler/src/operations/mapper.ts
   - Convert $context.foo → "context.foo" string for Eligius runtime
   - Convert $operationdata.bar → "operationdata.bar" string
   - Convert $globaldata.baz → "globaldata.baz" string
 
-- [ ] T222 [Transform] Implement wrapper object generation in packages/compiler/src/operations/mapper.ts
+- [X] T222 [Transform] Implement wrapper object generation in packages/compiler/src/operations/mapper.ts
   - Wrap parameters in required wrapper objects per Eligius spec
   - Example: animate(properties, duration) → { animationProperties: properties, animationDuration: duration }
-  - Use operation signature to determine correct wrapper structure
+  - Use operation signature to determine correct wrapper structure (placeholder for now)
 
-- [ ] T223 [Transform] Update AST transformer to use parameter mapper in packages/compiler/src/ast-transformer.ts
+- [X] T223 [Transform] Update AST transformer to use parameter mapper in packages/compiler/src/ast-transformer.ts
   - Replace current naive argument mapping with registry-based mapping
   - Include operation signature lookup
-  - Generate proper OperationConfigIR with operationData object
+  - Generate proper OperationConfigIR with operationData object (all 181 tests passing)
 
 ### Task Group A4: Testing
 
-- [ ] T224 [P] [Test] Create operation registry tests in packages/compiler/src/operations/__tests__/registry.spec.ts
-  - Test all 47 operations are registered
+- [X] T224 [P] [Test] Create operation registry tests in packages/compiler/src/operations/__tests__/registry.spec.ts
+  - Test all non-deprecated operations are registered (45 operations, resizeAction excluded)
   - Test no duplicate operation names
   - Test parameter definitions are valid (required parameters, types)
+  - 22 tests passing
 
 - [ ] T225 [P] [Test] Create operation validator tests in packages/compiler/src/operations/__tests__/validator.spec.ts
   - Test unknown operation detection
@@ -372,10 +367,10 @@
   - Test dependency validation
   - Test control flow pairing validation
 
-- [ ] T226 [P] [Test] Create parameter mapper tests in packages/compiler/src/operations/__tests__/mapper.spec.ts
+- [X] T226 [P] [Test] Create parameter mapper tests in packages/compiler/src/operations/__tests__/mapper.spec.ts
   - Test positional-to-named mapping for all operations
   - Test property chain resolution
-  - Test wrapper object generation
+  - Test wrapper object generation (16 tests passing)
 
 - [ ] T227 [Test] Update transformer tests in packages/compiler/src/__tests__/transformer.spec.ts
   - Test operation validation errors
@@ -396,23 +391,23 @@
 
 ---
 
-## Phase 6: Error Reporting (User-Friendly Errors)
+## Phase 6: Error Reporting (User-Friendly Errors) ✅ COMPLETE
 
 **Goal**: Format compilation errors for display in CLI and VS Code
 
 **Independent Test**: Generate helpful error messages with source locations and hints
 
-- [ ] T094 [P] [Errors] Implement formatParseError in packages/compiler/src/error-reporter.ts
-- [ ] T095 [P] [Errors] Implement formatValidationError in packages/compiler/src/error-reporter.ts
-- [ ] T096 [P] [Errors] Implement formatTypeError in packages/compiler/src/error-reporter.ts
-- [ ] T097 [P] [Errors] Implement formatTransformError in packages/compiler/src/error-reporter.ts
-- [ ] T098 [Errors] Implement formatError function in packages/compiler/src/error-reporter.ts (pattern match on error._tag)
-- [ ] T099 [Errors] Implement formatErrors function in packages/compiler/src/error-reporter.ts (array version)
-- [ ] T100 [Errors] Add code snippet extraction in packages/compiler/src/error-reporter.ts (show source context)
-- [ ] T101 [Errors] Add hint generation in packages/compiler/src/error-reporter.ts (actionable suggestions)
-- [ ] T102 [Errors] Implement error reporter tests in packages/compiler/src/__tests__/error-reporter.spec.ts
+- [X] T094 [P] [Errors] Implement formatParseError in packages/language/src/compiler/error-reporter.ts
+- [X] T095 [P] [Errors] Implement formatValidationError in packages/language/src/compiler/error-reporter.ts
+- [X] T096 [P] [Errors] Implement formatTypeError in packages/language/src/compiler/error-reporter.ts
+- [X] T097 [P] [Errors] Implement formatTransformError in packages/language/src/compiler/error-reporter.ts
+- [X] T098 [Errors] Implement formatError function in packages/language/src/compiler/error-reporter.ts (pattern match on error._tag)
+- [X] T099 [Errors] Implement formatErrors function in packages/language/src/compiler/error-reporter.ts (array version)
+- [X] T100 [Errors] Add code snippet extraction in packages/language/src/compiler/error-reporter.ts (show source context with > indicator and ^ column marker)
+- [X] T101 [Errors] Add hint generation in packages/language/src/compiler/error-reporter.ts (actionable suggestions for timeline, time range, bracket, duplicate, dependency, type errors)
+- [X] T102 [Errors] Implement error reporter tests in packages/language/src/compiler/__tests__/error-reporter.spec.ts (32 tests passing)
 
-**Checkpoint**: Error messages are clear, include source locations, and provide helpful hints.
+**Checkpoint**: Error messages are clear, include source locations, and provide helpful hints. All 235 tests passing (203 previous + 32 error reporter).
 
 ---
 

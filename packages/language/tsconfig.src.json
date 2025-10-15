@@ -6,12 +6,5 @@
     "outDir": "./out",
     "tsBuildInfoFile": "./out/.tsbuildinfo"
   },
-  "references": [
-    {
-      "path": "../compiler"
-    }
-  ],
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

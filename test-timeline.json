@@ -1,0 +1,60 @@
+{
+  "id": "2db05b5c-0741-495e-9eec-87d1990196e6",
+  "engine": {
+    "systemName": "Eligius"
+  },
+  "containerSelector": "body",
+  "language": "en",
+  "layoutTemplate": "default",
+  "availableLanguages": [
+    {
+      "code": "en",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "a3126575-6912-4bad-bc7f-b46f30538771",
+      "type": "raf",
+      "duration": 5,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "eb669ea8-5feb-4745-95be-b5851d05233f",
+          "name": "timeline-action-0-5",
+          "duration": {
+            "start": 0,
+            "end": 5
+          },
+          "startOperations": [
+            {
+              "id": "382137d9-278b-42d0-adca-13db8f0aea32",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "id": "14125ba3-cfcb-4437-8105-5f1463f1bede",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "generatedBy": "Eligian DSL Compiler v0.0.1",
+    "version": "1.0.0",
+    "timestamp": "2025-10-15T20:02:15.903Z"
+  }
+}

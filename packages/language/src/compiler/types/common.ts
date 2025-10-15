@@ -11,11 +11,11 @@
  * helpful error messages with line/column information.
  */
 export type SourceLocation = {
-  readonly file?: string
-  readonly line: number
-  readonly column: number
-  readonly length?: number
-}
+  readonly file?: string;
+  readonly line: number;
+  readonly column: number;
+  readonly length?: number;
+};
 
 /**
  * JSON-compatible value type
@@ -29,10 +29,10 @@ export type JsonValue =
   | boolean
   | null
   | { readonly [key: string]: JsonValue }
-  | ReadonlyArray<JsonValue>
+  | ReadonlyArray<JsonValue>;
 
-export type JsonObject = { readonly [key: string]: JsonValue }
-export type JsonArray = ReadonlyArray<JsonValue>
+export type JsonObject = { readonly [key: string]: JsonValue };
+export type JsonArray = ReadonlyArray<JsonValue>;
 
 /**
  * Create a source location from line and column
@@ -46,13 +46,13 @@ export const createSourceLocation = (
   file,
   line,
   column,
-  length
-})
+  length,
+});
 
 /**
  * Format source location as a string for error messages
  */
 export const formatSourceLocation = (loc: SourceLocation): string => {
-  const file = loc.file ? `${loc.file}:` : ""
-  return `${file}${loc.line}:${loc.column}`
-}
+  const file = loc.file ? `${loc.file}:` : '';
+  return `${file}${loc.line}:${loc.column}`;
+};

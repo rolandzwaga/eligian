@@ -8,13 +8,13 @@
  * @module effects/FileSystem
  */
 
-import { Context, Effect } from "effect"
+import { Context, type Effect } from 'effect';
 
 /**
  * Error type for file I/O operations
  */
 export class IOError {
-  readonly _tag = "IOError"
+  readonly _tag = 'IOError';
   constructor(
     readonly message: string,
     readonly path?: string,
@@ -27,30 +27,27 @@ export class IOError {
  *
  * Provides typed file operations that return Effects.
  */
-export class FileSystemService extends Context.Tag("FileSystem")<
+export class FileSystemService extends Context.Tag('FileSystem')<
   FileSystemService,
   {
     /**
      * Read file contents as UTF-8 string
      */
-    readonly readFile: (path: string) => Effect.Effect<string, IOError>
+    readonly readFile: (path: string) => Effect.Effect<string, IOError>;
 
     /**
      * Write string contents to file (UTF-8)
      */
-    readonly writeFile: (
-      path: string,
-      content: string
-    ) => Effect.Effect<void, IOError>
+    readonly writeFile: (path: string, content: string) => Effect.Effect<void, IOError>;
 
     /**
      * Check if file exists
      */
-    readonly fileExists: (path: string) => Effect.Effect<boolean, IOError>
+    readonly fileExists: (path: string) => Effect.Effect<boolean, IOError>;
 
     /**
      * Read directory contents
      */
-    readonly readDir: (path: string) => Effect.Effect<string[], IOError>
+    readonly readDir: (path: string) => Effect.Effect<string[], IOError>;
   }
 >() {}

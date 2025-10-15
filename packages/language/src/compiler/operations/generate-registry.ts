@@ -9,12 +9,12 @@
  * Output: packages/compiler/src/operations/registry.generated.ts
  */
 
+import { writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { metadata } from 'eligius';
 import { convertMetadata } from './metadata-converter.js';
 import type { OperationRegistry } from './types.js';
-import { writeFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -26,70 +26,70 @@ const __dirname = dirname(__filename);
  */
 const OPERATION_CATEGORIES: Record<string, string> = {
   // DOM Selection & Manipulation
-  'selectElement': 'DOM',
-  'createElement': 'DOM',
-  'removeElement': 'DOM',
-  'clearElement': 'DOM',
-  'reparentElement': 'DOM',
-  'toggleElement': 'DOM',
+  selectElement: 'DOM',
+  createElement: 'DOM',
+  removeElement: 'DOM',
+  clearElement: 'DOM',
+  reparentElement: 'DOM',
+  toggleElement: 'DOM',
 
   // CSS Classes
-  'addClass': 'CSS',
-  'removeClass': 'CSS',
-  'toggleClass': 'CSS',
+  addClass: 'CSS',
+  removeClass: 'CSS',
+  toggleClass: 'CSS',
 
   // Element Content & Attributes
-  'setElementContent': 'Content',
-  'setElementAttributes': 'Attributes',
-  'getAttributesFromElement': 'Attributes',
+  setElementContent: 'Content',
+  setElementAttributes: 'Attributes',
+  getAttributesFromElement: 'Attributes',
 
   // Styling
-  'setStyle': 'Styling',
-  'animate': 'Animation',
-  'animateWithClass': 'Animation',
+  setStyle: 'Styling',
+  animate: 'Animation',
+  animateWithClass: 'Animation',
 
   // Actions
-  'startAction': 'Actions',
-  'endAction': 'Actions',
-  'requestAction': 'Actions',
-  'resizeAction': 'Actions',
+  startAction: 'Actions',
+  endAction: 'Actions',
+  requestAction: 'Actions',
+  resizeAction: 'Actions',
 
   // Controllers
-  'addControllerToElement': 'Controllers',
-  'removeControllerFromElement': 'Controllers',
-  'getControllerFromElement': 'Controllers',
-  'getControllerInstance': 'Controllers',
-  'extendController': 'Controllers',
+  addControllerToElement: 'Controllers',
+  removeControllerFromElement: 'Controllers',
+  getControllerFromElement: 'Controllers',
+  getControllerInstance: 'Controllers',
+  extendController: 'Controllers',
 
   // Data Management
-  'setData': 'Data',
-  'setGlobalData': 'Data',
-  'setOperationData': 'Data',
-  'clearOperationData': 'Data',
-  'removePropertiesFromOperationData': 'Data',
-  'addGlobalsToOperation': 'Data',
-  'getElementDimensions': 'Data',
-  'getQueryParams': 'Data',
-  'getImport': 'Data',
-  'loadJson': 'Data',
+  setData: 'Data',
+  setGlobalData: 'Data',
+  setOperationData: 'Data',
+  clearOperationData: 'Data',
+  removePropertiesFromOperationData: 'Data',
+  addGlobalsToOperation: 'Data',
+  getElementDimensions: 'Data',
+  getQueryParams: 'Data',
+  getImport: 'Data',
+  loadJson: 'Data',
 
   // Control Flow
-  'when': 'Control Flow',
-  'otherwise': 'Control Flow',
-  'endWhen': 'Control Flow',
-  'forEach': 'Control Flow',
-  'endForEach': 'Control Flow',
+  when: 'Control Flow',
+  otherwise: 'Control Flow',
+  endWhen: 'Control Flow',
+  forEach: 'Control Flow',
+  endForEach: 'Control Flow',
 
   // Events
-  'broadcastEvent': 'Events',
+  broadcastEvent: 'Events',
 
   // Utilities
-  'calc': 'Utilities',
-  'math': 'Utilities',
-  'log': 'Utilities',
-  'wait': 'Utilities',
-  'customFunction': 'Utilities',
-  'invokeObjectMethod': 'Utilities',
+  calc: 'Utilities',
+  math: 'Utilities',
+  log: 'Utilities',
+  wait: 'Utilities',
+  customFunction: 'Utilities',
+  invokeObjectMethod: 'Utilities',
 };
 
 /**
@@ -146,6 +146,14 @@ const OPERATION_SYSTEM_NAMES: Record<string, string> = {
 };
 
 /**
+ * Deprecated operations that should be skipped.
+ * These operations are deprecated in Eligius and will be removed.
+ */
+const DEPRECATED_OPERATIONS = new Set([
+  'resizeAction', // Deprecated - will be removed from Eligius
+]);
+
+/**
  * Generate the operation registry by converting all Eligius metadata.
  */
 function generateRegistry(): OperationRegistry {
@@ -160,6 +168,12 @@ function generateRegistry(): OperationRegistry {
     const systemName = OPERATION_SYSTEM_NAMES[functionName];
     if (!systemName) {
       console.warn(`No system name mapping for metadata function: ${functionName}`);
+      continue;
+    }
+
+    // Skip deprecated operations
+    if (DEPRECATED_OPERATIONS.has(systemName)) {
+      console.log(`⚠️  Skipping deprecated operation: ${systemName}`);
       continue;
     }
 

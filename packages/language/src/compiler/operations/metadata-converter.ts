@@ -5,17 +5,15 @@
  * This provides a clean mapping from Eligius-native metadata to our registry types.
  */
 
-import type {
-  metadata
-} from 'eligius';
+import type { metadata } from 'eligius';
 
 import type {
-  OperationSignature,
-  OperationParameter,
+  ConstantValue,
   DependencyInfo,
+  OperationParameter,
+  OperationSignature,
   OutputInfo,
   ParameterType,
-  ConstantValue,
 } from './types.js';
 
 /**
@@ -30,10 +28,8 @@ function convertParameterType(eligiusType: metadata.TParameterTypes): ParameterT
 /**
  * Convert Eligius TConstantParametersTypes[] to our ConstantValue[].
  */
-function convertConstantValues(
-  constants: metadata.TConstantParametersTypes[]
-): ConstantValue[] {
-  return constants.map((c) => ({
+function convertConstantValues(constants: metadata.TConstantParametersTypes[]): ConstantValue[] {
+  return constants.map(c => ({
     value: c.value,
     isDefault: c.default,
     description: c.description,
@@ -52,18 +48,14 @@ function isComplexProperty(
 /**
  * Check if property metadata is an array type.
  */
-function isArrayProperty(
-  prop: metadata.TPropertyMetadata
-): prop is metadata.TArrayProperyMetadata {
+function isArrayProperty(prop: metadata.TPropertyMetadata): prop is metadata.TArrayProperyMetadata {
   return typeof prop === 'object' && 'type' in prop && 'itemType' in prop;
 }
 
 /**
  * Check if property metadata is a simple ParameterType string.
  */
-function isSimpleParameterType(
-  prop: metadata.TPropertyMetadata
-): prop is metadata.TParameterTypes {
+function isSimpleParameterType(prop: metadata.TPropertyMetadata): prop is metadata.TParameterTypes {
   return typeof prop === 'string';
 }
 
@@ -134,12 +126,10 @@ function convertParameter(
  * We infer type as 'ParameterType:object' for most dependencies (like selectedElement).
  * This could be enhanced with a manual mapping for known dependency types.
  */
-function convertDependencies<T>(
-  dependentProperties: (keyof T)[] | undefined
-): DependencyInfo[] {
+function convertDependencies(dependentProperties: string[] | undefined): DependencyInfo[] {
   if (!dependentProperties) return [];
 
-  return dependentProperties.map((name) => ({
+  return dependentProperties.map(name => ({
     name: String(name),
     // Most dependencies are objects (selectedElement: jQuery, template: object, etc.)
     // This could be enhanced with explicit type mapping if needed
@@ -150,8 +140,8 @@ function convertDependencies<T>(
 /**
  * Convert Eligius outputProperties to our OutputInfo[].
  */
-function convertOutputs<T>(
-  outputProperties: metadata.TPropertiesMetadata<T> | undefined
+function convertOutputs(
+  outputProperties: metadata.TPropertiesMetadata<any> | undefined
 ): OutputInfo[] {
   if (!outputProperties) return [];
 
@@ -197,17 +187,12 @@ function convertOutputs<T>(
  * @param category - Optional category for grouping operations
  * @returns OperationSignature for use in the registry
  */
-export function convertMetadata<T>(
+export function convertMetadata(
   systemName: string,
-  operationMetadata: metadata.IOperationMetadata<T>,
+  operationMetadata: metadata.IOperationMetadata<any>,
   category?: string
 ): OperationSignature {
-  const {
-    description,
-    dependentProperties,
-    properties,
-    outputProperties,
-  } = operationMetadata;
+  const { description, dependentProperties, properties, outputProperties } = operationMetadata;
 
   // Convert parameters from properties object
   const parameters: OperationParameter[] = [];
@@ -223,12 +208,14 @@ export function convertMetadata<T>(
   // Sort parameters: required first, then optional
   // This defines the positional order for function-style calls in the DSL
   const sortedParameters = [
-    ...parameters.filter((p) => p.required),  // Required parameters first
-    ...parameters.filter((p) => !p.required), // Optional parameters last
+    ...parameters.filter(p => p.required), // Required parameters first
+    ...parameters.filter(p => !p.required), // Optional parameters last
   ];
 
-  // Convert dependencies
-  const dependencies = convertDependencies(dependentProperties);
+  // Convert dependencies (map keys to strings)
+  const dependencies = convertDependencies(
+    dependentProperties ? dependentProperties.map(key => String(key)) : undefined
+  );
 
   // Convert outputs
   const outputs = convertOutputs(outputProperties);

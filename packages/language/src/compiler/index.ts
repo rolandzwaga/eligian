@@ -7,126 +7,154 @@
  * @packageDocumentation
  */
 
-// Type exports
-export type {
-  // Eligius types (from eligius package)
-  IEngineConfiguration,
-  IResolvedEngineConfiguration,
-  ITimelineConfiguration,
-  ITimelineActionConfiguration,
-  IActionConfiguration,
-  IEndableActionConfiguration,
-  IEventActionConfiguration,
-  IOperationConfiguration,
-  IDuration,
-  TimelineTypes,
-
-  // Our IR types
-  EligiusIR,
-  TimelineIR,
-  EventIR,
-  ActionDefinitionIR,
-  ActionIR,
-  BuiltInActionIR,
-  ActionCallIR,
-  RawOperationIR,
-  OperationIR,
-  TargetSelector,
-  TimeExpression,
-  ParameterIR,
-
-  // Error types
-  CompileError,
-  ParseError,
-  ValidationError,
-  TypeError,
-  TransformError,
-  OptimizationError,
-  EmitError,
-  FormattedError,
-
-  // Common types
-  SourceLocation,
-  JsonValue,
-  JsonObject
-} from "./types/index.js"
-
 // Effect services and layers
 export {
-  FileSystemService,
-  LoggerService,
+  type CompileOptions,
   CompilerService,
-  IOError,
+  defaultCompileOptions,
   FileSystemLive,
+  FileSystemService,
   FileSystemTest,
+  IOError,
   LoggerLive,
-  LoggerTest,
+  LoggerService,
   LoggerSilent,
+  LoggerTest,
+  type LogLevel,
   MainLayer,
   TestLayer,
-  type CompileOptions,
-  type LogLevel,
-  defaultCompileOptions
-} from "./effects/index.js"
-
-// Error constructors
+} from './effects/index.js';
+// Error formatting exports
 export {
-  createParseError,
-  createValidationError,
-  createTypeError,
-  createTransformError,
-  createOptimizationError,
-  createEmitError
-} from "./types/errors.js"
-
-// Utility functions
-export {
-  createSourceLocation,
-  formatSourceLocation
-} from "./types/common.js"
-
+  formatError,
+  formatErrors,
+  formatParseError,
+  formatTransformError,
+  formatTypeError,
+  formatValidationError,
+} from './error-reporter.js';
 // Operation registry exports
 export {
-  OPERATION_REGISTRY,
-  hasOperation,
-  getAllOperations,
-  getAllOperationNames,
-  getOperationsByCategory,
-  getOperationSignature,
+  type ConstantValue,
+  type DependencyInfo,
   findOperationsWithDependency,
   findOperationsWithOutput,
+  getAllOperationNames,
+  getAllOperations,
+  getDefaultConstantValue,
+  getOperationSignature,
+  getOperationsByCategory,
+  hasOperation,
+  isConstantValueArray,
+  isParameterType,
+  OPERATION_REGISTRY,
+  type OperationParameter,
+  type OperationRegistry,
+  type OperationSignature,
+  type OutputInfo,
+  type ParameterType,
   searchOperations,
   suggestSimilarOperations,
   validateRegistry,
-  isParameterType,
-  isConstantValueArray,
-  getDefaultConstantValue,
-  type OperationRegistry,
-  type OperationSignature,
-  type OperationParameter,
-  type DependencyInfo,
-  type OutputInfo,
-  type ParameterType,
-  type ConstantValue,
-} from "./operations/index.js"
-
+} from './operations/index.js';
+// Operation parameter mapping exports
+export {
+  type MappingError,
+  type MappingResult,
+  mapParameters,
+  mapPositionalToNamed,
+  resolvePropertyChain,
+  wrapParameters,
+} from './operations/mapper.js';
 // Operation validation exports (renamed to avoid conflict with ValidationError from types)
 export {
+  type ControlFlowError,
+  type MissingDependencyError,
+  type OperationValidationError,
+  type ParameterCountError,
+  type ParameterTypeError,
+  trackOutputs,
+  type UnknownOperationError,
+  type ValidationError as OperationValidationErrorBase,
+  type ValidationResult,
+  validateControlFlowPairing,
+  validateDependencies,
+  validateOperation,
   validateOperationExists,
   validateParameterCount,
   validateParameterTypes,
-  validateOperation,
-  type ValidationError as OperationValidationErrorBase,
-  type UnknownOperationError,
-  type ParameterCountError,
-  type ParameterTypeError,
-  type MissingDependencyError,
-  type ControlFlowError,
-  type OperationValidationError,
-  type ValidationResult,
-} from "./operations/validator.js"
+} from './operations/validator.js';
+// Compilation pipeline exports
+export {
+  type CompileError,
+  compile,
+  compileFile,
+  compileString,
+  compileToIR,
+  compileToJSON,
+  compileWithDefaults,
+  emitJSON,
+  getCompilerVersion,
+  optimize,
+  parseSource,
+  transformAST,
+  typeCheck,
+  validateAST,
+} from './pipeline.js';
+// Utility functions
+export {
+  createSourceLocation,
+  formatSourceLocation,
+} from './types/common.js';
+// Error constructors
+export {
+  createEmitError,
+  createOptimizationError,
+  createParseError,
+  createTransformError,
+  createTypeError,
+  createValidationError,
+} from './types/errors.js';
+// Type exports
+export type {
+  ActionCallIR,
+  ActionDefinitionIR,
+  ActionIR,
+  BuiltInActionIR,
+  // Our IR types
+  EligiusIR,
+  EmitError,
+  EventIR,
+  FormattedError,
+  IActionConfiguration,
+  IDuration,
+  IEndableActionConfiguration,
+  // Eligius types (from eligius package)
+  IEngineConfiguration,
+  IEventActionConfiguration,
+  IOperationConfiguration,
+  IResolvedEngineConfiguration,
+  ITimelineActionConfiguration,
+  ITimelineConfiguration,
+  JsonObject,
+  JsonValue,
+  OperationIR,
+  OptimizationError,
+  ParameterIR,
+  ParseError,
+  RawOperationIR,
+  // Common types
+  SourceLocation,
+  TargetSelector,
+  TimeExpression,
+  TimelineIR,
+  TimelineTypes,
+  TransformError,
+  TypeError,
+  ValidationError,
+} from './types/index.js';
 
 /**
  * Compiler version
  */
-export const VERSION = "0.0.1"
+export const VERSION = '0.0.1';

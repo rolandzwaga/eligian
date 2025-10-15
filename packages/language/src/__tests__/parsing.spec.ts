@@ -5,70 +5,75 @@
  * programs and rejects invalid ones.
  */
 
-import { describe, test, expect } from "vitest"
-import { createEligianServices } from "../eligian-module.js"
-import { EmptyFileSystem } from "langium"
-import { parseDocument } from "langium/test"
-import type { Program, Timeline, EndableActionDefinition, RegularActionDefinition } from "../generated/ast.js"
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { EmptyFileSystem } from 'langium';
+import { parseDocument } from 'langium/test';
+import { describe, expect, test } from 'vitest';
+import { createEligianServices } from '../eligian-module.js';
+import type {
+  EndableActionDefinition,
+  Program,
+  RegularActionDefinition,
+  Timeline,
+} from '../generated/ast.js';
 
-const services = createEligianServices(EmptyFileSystem).Eligian
+const services = createEligianServices(EmptyFileSystem).Eligian;
 
 function loadFixture(filename: string): string {
-  const path = join(__dirname, "__fixtures__", filename)
-  return readFileSync(path, "utf-8")
+  const path = join(__dirname, '__fixtures__', filename);
+  return readFileSync(path, 'utf-8');
 }
 
 async function parseEligian(text: string): Promise<Program> {
-  const document = await parseDocument(services, text)
-  return document.parseResult.value as Program
+  const document = await parseDocument(services, text);
+  return document.parseResult.value as Program;
 }
 
-describe("Eligian Grammar - Parsing", () => {
-  describe("Timeline parsing", () => {
-    test("should parse video timeline with source", async () => {
-      const program = await parseEligian('timeline "main" using video from "video.mp4" {}')
+describe('Eligian Grammar - Parsing', () => {
+  describe('Timeline parsing', () => {
+    test('should parse video timeline with source', async () => {
+      const program = await parseEligian('timeline "main" using video from "video.mp4" {}');
 
-      expect(program.elements).toHaveLength(1)
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.$type).toBe("Timeline")
-      expect(timeline.name).toBe("main")
-      expect(timeline.provider).toBe("video")
-      expect(timeline.source).toBe("video.mp4")
-    })
+      expect(program.elements).toHaveLength(1);
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.$type).toBe('Timeline');
+      expect(timeline.name).toBe('main');
+      expect(timeline.provider).toBe('video');
+      expect(timeline.source).toBe('video.mp4');
+    });
 
-    test("should parse audio timeline with source", async () => {
-      const program = await parseEligian('timeline "audio" using audio from "audio.mp3" {}')
+    test('should parse audio timeline with source', async () => {
+      const program = await parseEligian('timeline "audio" using audio from "audio.mp3" {}');
 
-      expect(program.elements).toHaveLength(1)
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.$type).toBe("Timeline")
-      expect(timeline.provider).toBe("audio")
-      expect(timeline.source).toBe("audio.mp3")
-    })
+      expect(program.elements).toHaveLength(1);
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.$type).toBe('Timeline');
+      expect(timeline.provider).toBe('audio');
+      expect(timeline.source).toBe('audio.mp3');
+    });
 
-    test("should parse raf timeline without source", async () => {
-      const program = await parseEligian('timeline "animation" using raf {}')
+    test('should parse raf timeline without source', async () => {
+      const program = await parseEligian('timeline "animation" using raf {}');
 
-      expect(program.elements).toHaveLength(1)
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.$type).toBe("Timeline")
-      expect(timeline.provider).toBe("raf")
-    })
+      expect(program.elements).toHaveLength(1);
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.$type).toBe('Timeline');
+      expect(timeline.provider).toBe('raf');
+    });
 
-    test("should parse custom timeline", async () => {
-      const program = await parseEligian('timeline "custom" using custom {}')
+    test('should parse custom timeline', async () => {
+      const program = await parseEligian('timeline "custom" using custom {}');
 
-      expect(program.elements).toHaveLength(1)
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.$type).toBe("Timeline")
-      expect(timeline.provider).toBe("custom")
-    })
-  })
+      expect(program.elements).toHaveLength(1);
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.$type).toBe('Timeline');
+      expect(timeline.provider).toBe('custom');
+    });
+  });
 
-  describe("Timeline event parsing", () => {
-    test("should parse simple timeline event with inline endable action", async () => {
+  describe('Timeline event parsing', () => {
+    test('should parse simple timeline event with inline endable action', async () => {
       const program = await parseEligian(`
         timeline "main" using raf {
           at 0s..5s [
@@ -78,16 +83,16 @@ describe("Eligian Grammar - Parsing", () => {
             removeClass("visible")
           ]
         }
-      `)
+      `);
 
-      expect(program.elements).toHaveLength(1)
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.events).toHaveLength(1)
-      expect(timeline.events[0].timeRange).toBeDefined()
-      expect(timeline.events[0].action.$type).toBe("InlineEndableAction")
-    })
+      expect(program.elements).toHaveLength(1);
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      expect(timeline.events[0].timeRange).toBeDefined();
+      expect(timeline.events[0].action.$type).toBe('InlineEndableAction');
+    });
 
-    test("should parse timeline event with named action invocation", async () => {
+    test('should parse timeline event with named action invocation', async () => {
       const program = await parseEligian(`
         endable action fadeIn [
           selectElement(".target")
@@ -101,15 +106,15 @@ describe("Eligian Grammar - Parsing", () => {
             fadeIn()
           }
         }
-      `)
+      `);
 
-      expect(program.elements).toHaveLength(2)
-      const timeline = program.elements[1] as Timeline
-      expect(timeline.events).toHaveLength(1)
-      expect(timeline.events[0].action.$type).toBe("NamedActionInvocation")
-    })
+      expect(program.elements).toHaveLength(2);
+      const timeline = program.elements[1] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      expect(timeline.events[0].action.$type).toBe('NamedActionInvocation');
+    });
 
-    test("should parse timeline event with time expressions", async () => {
+    test('should parse timeline event with time expressions', async () => {
       const program = await parseEligian(`
         timeline "main" using raf {
           at 5s + 2s..10s * 2s [
@@ -117,14 +122,14 @@ describe("Eligian Grammar - Parsing", () => {
           ] [
           ]
         }
-      `)
+      `);
 
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.events).toHaveLength(1)
-      expect(timeline.events[0].timeRange).toBeDefined()
-    })
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      expect(timeline.events[0].timeRange).toBeDefined();
+    });
 
-    test("should parse multiple timeline events", async () => {
+    test('should parse multiple timeline events', async () => {
       const program = await parseEligian(`
         timeline "main" using raf {
           at 0s..5s [
@@ -142,95 +147,95 @@ describe("Eligian Grammar - Parsing", () => {
           ] [
           ]
         }
-      `)
+      `);
 
-      const timeline = program.elements[0] as Timeline
-      expect(timeline.events).toHaveLength(3)
-    })
-  })
+      const timeline = program.elements[0] as Timeline;
+      expect(timeline.events).toHaveLength(3);
+    });
+  });
 
-  describe("Operation call parsing", () => {
-    test("should parse operation call with no arguments", async () => {
+  describe('Operation call parsing', () => {
+    test('should parse operation call with no arguments', async () => {
       const program = await parseEligian(`
         action test [
           wait()
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations).toHaveLength(1)
-      expect(action.operations[0].operationName).toBe("wait")
-      expect(action.operations[0].args).toHaveLength(0)
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations).toHaveLength(1);
+      expect(action.operations[0].operationName).toBe('wait');
+      expect(action.operations[0].args).toHaveLength(0);
+    });
 
-    test("should parse operation call with single argument", async () => {
+    test('should parse operation call with single argument', async () => {
       const program = await parseEligian(`
         action test [
           selectElement("#title")
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].operationName).toBe("selectElement")
-      expect(action.operations[0].args).toHaveLength(1)
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].operationName).toBe('selectElement');
+      expect(action.operations[0].args).toHaveLength(1);
+    });
 
-    test("should parse operation call with multiple arguments", async () => {
+    test('should parse operation call with multiple arguments', async () => {
       const program = await parseEligian(`
         action test [
           animate({ opacity: 1 }, 500, "ease")
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].operationName).toBe("animate")
-      expect(action.operations[0].args).toHaveLength(3)
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].operationName).toBe('animate');
+      expect(action.operations[0].args).toHaveLength(3);
+    });
 
-    test("should parse operation call with object literal", async () => {
+    test('should parse operation call with object literal', async () => {
       const program = await parseEligian(`
         action test [
           setStyle({ opacity: 0, color: "red" })
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].operationName).toBe("setStyle")
-      expect(action.operations[0].args).toHaveLength(1)
-      expect(action.operations[0].args[0].$type).toBe("ObjectLiteral")
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].operationName).toBe('setStyle');
+      expect(action.operations[0].args).toHaveLength(1);
+      expect(action.operations[0].args[0].$type).toBe('ObjectLiteral');
+    });
 
-    test("should parse operation call with property chain reference", async () => {
+    test('should parse operation call with property chain reference', async () => {
       const program = await parseEligian(`
         action test [
           setData({ "operationdata.name": $context.currentItem })
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].operationName).toBe("setData")
-      const objLiteral = action.operations[0].args[0] as any
-      expect(objLiteral.properties[0].value.$type).toBe("PropertyChainReference")
-    })
-  })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].operationName).toBe('setData');
+      const objLiteral = action.operations[0].args[0] as any;
+      expect(objLiteral.properties[0].value.$type).toBe('PropertyChainReference');
+    });
+  });
 
-  describe("Action definition parsing", () => {
-    test("should parse regular action definition", async () => {
+  describe('Action definition parsing', () => {
+    test('should parse regular action definition', async () => {
       const program = await parseEligian(`
         action fadeIn [
           selectElement(".target")
           addClass("fade-in")
         ]
-      `)
+      `);
 
-      expect(program.elements).toHaveLength(1)
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.$type).toBe("RegularActionDefinition")
-      expect(action.name).toBe("fadeIn")
-      expect(action.operations).toHaveLength(2)
-    })
+      expect(program.elements).toHaveLength(1);
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.$type).toBe('RegularActionDefinition');
+      expect(action.name).toBe('fadeIn');
+      expect(action.operations).toHaveLength(2);
+    });
 
-    test("should parse endable action definition", async () => {
+    test('should parse endable action definition', async () => {
       const program = await parseEligian(`
         endable action showHide [
           selectElement(".target")
@@ -238,16 +243,16 @@ describe("Eligian Grammar - Parsing", () => {
         ] [
           removeClass("visible")
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as EndableActionDefinition
-      expect(action.$type).toBe("EndableActionDefinition")
-      expect(action.name).toBe("showHide")
-      expect(action.startOperations).toHaveLength(2)
-      expect(action.endOperations).toHaveLength(1)
-    })
+      const action = program.elements[0] as EndableActionDefinition;
+      expect(action.$type).toBe('EndableActionDefinition');
+      expect(action.name).toBe('showHide');
+      expect(action.startOperations).toHaveLength(2);
+      expect(action.endOperations).toHaveLength(1);
+    });
 
-    test("should parse multiple action definitions", async () => {
+    test('should parse multiple action definitions', async () => {
       const program = await parseEligian(`
         action regularAction [
           selectElement("#test")
@@ -258,120 +263,122 @@ describe("Eligian Grammar - Parsing", () => {
         ] [
           addClass("end")
         ]
-      `)
+      `);
 
-      expect(program.elements).toHaveLength(2)
-      expect(program.elements[0].$type).toBe("RegularActionDefinition")
-      expect(program.elements[1].$type).toBe("EndableActionDefinition")
-    })
-  })
+      expect(program.elements).toHaveLength(2);
+      expect(program.elements[0].$type).toBe('RegularActionDefinition');
+      expect(program.elements[1].$type).toBe('EndableActionDefinition');
+    });
+  });
 
-  describe("Expression parsing", () => {
-    test("should parse string literals", async () => {
+  describe('Expression parsing', () => {
+    test('should parse string literals', async () => {
       const program = await parseEligian(`
         action test [
           selectElement("#title")
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].args[0].$type).toBe("StringLiteral")
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].args[0].$type).toBe('StringLiteral');
+    });
 
-    test("should parse number literals", async () => {
+    test('should parse number literals', async () => {
       const program = await parseEligian(`
         action test [
           wait(500)
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].args[0].$type).toBe("NumberLiteral")
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].args[0].$type).toBe('NumberLiteral');
+    });
 
-    test("should parse boolean literals", async () => {
+    test('should parse boolean literals', async () => {
       const program = await parseEligian(`
         action test [
           setData({ "operationdata.flag": true })
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      const objLiteral = action.operations[0].args[0] as any
-      expect(objLiteral.properties[0].value.$type).toBe("BooleanLiteral")
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      const objLiteral = action.operations[0].args[0] as any;
+      expect(objLiteral.properties[0].value.$type).toBe('BooleanLiteral');
+    });
 
-    test("should parse array literals", async () => {
+    test('should parse array literals', async () => {
       const program = await parseEligian(`
         action test [
           setData({ "operationdata.items": [1, 2, 3] })
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      const objLiteral = action.operations[0].args[0] as any
-      expect(objLiteral.properties[0].value.$type).toBe("ArrayLiteral")
-    })
+      const action = program.elements[0] as RegularActionDefinition;
+      const objLiteral = action.operations[0].args[0] as any;
+      expect(objLiteral.properties[0].value.$type).toBe('ArrayLiteral');
+    });
 
-    test("should parse binary expressions", async () => {
+    test('should parse binary expressions', async () => {
       const program = await parseEligian(`
         action test [
           calc(10, "+", 5)
         ]
-      `)
+      `);
 
-      const action = program.elements[0] as RegularActionDefinition
-      expect(action.operations[0].args).toHaveLength(3)
-    })
-  })
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.operations[0].args).toHaveLength(3);
+    });
+  });
 
-  describe("Fixture files", () => {
-    test("should parse simple-timeline.eligian", async () => {
-      const source = loadFixture("valid/simple-timeline.eligian")
-      const program = await parseEligian(source)
+  describe('Fixture files', () => {
+    test('should parse simple-timeline.eligian', async () => {
+      const source = loadFixture('valid/simple-timeline.eligian');
+      const program = await parseEligian(source);
 
-      expect(program.elements.length).toBeGreaterThan(0)
-      const timeline = program.elements.find((e: any) => e.$type === "Timeline")
-      expect(timeline).toBeDefined()
-    })
+      expect(program.elements.length).toBeGreaterThan(0);
+      const timeline = program.elements.find((e: any) => e.$type === 'Timeline');
+      expect(timeline).toBeDefined();
+    });
 
-    test("should parse action-definition.eligian", async () => {
-      const source = loadFixture("valid/action-definition.eligian")
-      const program = await parseEligian(source)
+    test('should parse action-definition.eligian', async () => {
+      const source = loadFixture('valid/action-definition.eligian');
+      const program = await parseEligian(source);
 
-      const actions = program.elements.filter((e: any) =>
-        e.$type === "RegularActionDefinition" || e.$type === "EndableActionDefinition"
-      )
-      expect(actions.length).toBeGreaterThan(0)
-    })
+      const actions = program.elements.filter(
+        (e: any) => e.$type === 'RegularActionDefinition' || e.$type === 'EndableActionDefinition'
+      );
+      expect(actions.length).toBeGreaterThan(0);
+    });
 
-    test("should parse video-annotation.eligian", async () => {
-      const source = loadFixture("valid/video-annotation.eligian")
-      const program = await parseEligian(source)
+    test('should parse video-annotation.eligian', async () => {
+      const source = loadFixture('valid/video-annotation.eligian');
+      const program = await parseEligian(source);
 
-      const timeline = program.elements.find((e: any) => e.$type === "Timeline") as Timeline
-      expect(timeline).toBeDefined()
-      expect(timeline.provider).toBe("video")
-    })
+      const timeline = program.elements.find((e: any) => e.$type === 'Timeline') as Timeline;
+      expect(timeline).toBeDefined();
+      expect(timeline.provider).toBe('video');
+    });
 
-    test("should parse presentation.eligian", async () => {
-      const source = loadFixture("valid/presentation.eligian")
-      const program = await parseEligian(source)
+    test('should parse presentation.eligian', async () => {
+      const source = loadFixture('valid/presentation.eligian');
+      const program = await parseEligian(source);
 
-      const actions = program.elements.filter((e: any) =>
-        e.$type === "RegularActionDefinition" || e.$type === "EndableActionDefinition"
-      )
-      expect(actions.length).toBeGreaterThan(0)
-    })
-  })
+      const actions = program.elements.filter(
+        (e: any) => e.$type === 'RegularActionDefinition' || e.$type === 'EndableActionDefinition'
+      );
+      expect(actions.length).toBeGreaterThan(0);
+    });
+  });
 
-  describe("Error recovery", () => {
-    test("should handle syntax errors gracefully", async () => {
-      const source = loadFixture("invalid/syntax-errors.eligian")
-      const document = await parseDocument(services, source)
+  describe('Error recovery', () => {
+    test('should handle syntax errors gracefully', async () => {
+      const source = loadFixture('invalid/syntax-errors.eligian');
+      const document = await parseDocument(services, source);
 
       // Should have parse errors
-      expect(document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length).toBeGreaterThan(0)
-    })
-  })
-})
+      expect(
+        document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length
+      ).toBeGreaterThan(0);
+    });
+  });
+});

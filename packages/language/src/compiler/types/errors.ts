@@ -7,7 +7,7 @@
  * @module errors
  */
 
-import type { SourceLocation } from "./common.js"
+import type { SourceLocation } from './common.js';
 
 /**
  * Union of all possible compilation errors
@@ -18,111 +18,112 @@ export type CompileError =
   | TypeError
   | TransformError
   | OptimizationError
-  | EmitError
+  | EmitError;
 
 /**
  * Parse error - syntax errors from Langium parser
  */
 export type ParseError = {
-  readonly _tag: "ParseError"
-  readonly message: string
-  readonly location: SourceLocation
-  readonly expected?: string
-  readonly actual?: string
-}
+  readonly _tag: 'ParseError';
+  readonly message: string;
+  readonly location: SourceLocation;
+  readonly expected?: string;
+  readonly actual?: string;
+};
 
 /**
  * Validation error - semantic validation failures
  */
 export type ValidationError = {
-  readonly _tag: "ValidationError"
-  readonly kind: ValidationErrorKind
-  readonly message: string
-  readonly location: SourceLocation
-  readonly hint?: string
-}
+  readonly _tag: 'ValidationError';
+  readonly kind: ValidationErrorKind;
+  readonly message: string;
+  readonly location: SourceLocation;
+  readonly hint?: string;
+};
 
 export type ValidationErrorKind =
-  | "UndefinedReference"
-  | "DuplicateDefinition"
-  | "InvalidScope"
-  | "MissingRequiredField"
-  | "TimelineRequired"
-  | "UniqueEventIds"
-  | "ValidTimeRange"
-  | "NonNegativeTimes"
-  | "ValidActionType"
-  | "TargetRequired"
-  | "ValidSelector"
-  | "ActionNotDefined"
-  | "ParameterArityMismatch"
+  | 'UndefinedReference'
+  | 'DuplicateDefinition'
+  | 'InvalidScope'
+  | 'MissingRequiredField'
+  | 'TimelineRequired'
+  | 'UniqueEventIds'
+  | 'ValidTimeRange'
+  | 'NonNegativeTimes'
+  | 'ValidActionType'
+  | 'TargetRequired'
+  | 'ValidSelector'
+  | 'ActionNotDefined'
+  | 'ParameterArityMismatch';
 
 /**
  * Type error - type checking failures
  */
 export type TypeError = {
-  readonly _tag: "TypeError"
-  readonly message: string
-  readonly location: SourceLocation
-  readonly expected: string
-  readonly actual: string
-  readonly hint?: string
-}
+  readonly _tag: 'TypeError';
+  readonly message: string;
+  readonly location: SourceLocation;
+  readonly expected: string;
+  readonly actual: string;
+  readonly hint?: string;
+};
 
 /**
  * Transform error - AST → IR transformation failures
  */
 export type TransformError = {
-  readonly _tag: "TransformError"
-  readonly kind: TransformErrorKind
-  readonly message: string
-  readonly location: SourceLocation
-  readonly astNode?: string
-}
+  readonly _tag: 'TransformError';
+  readonly kind: TransformErrorKind;
+  readonly message: string;
+  readonly location: SourceLocation;
+  readonly astNode?: string;
+};
 
 export type TransformErrorKind =
-  | "UnknownNode"
-  | "InvalidTimeline"
-  | "InvalidEvent"
-  | "InvalidAction"
-  | "InvalidExpression"
+  | 'UnknownNode'
+  | 'InvalidTimeline'
+  | 'InvalidEvent'
+  | 'InvalidAction'
+  | 'InvalidExpression'
+  | 'ValidationError';
 
 /**
  * Optimization error - should rarely fail
  */
 export type OptimizationError = {
-  readonly _tag: "OptimizationError"
-  readonly message: string
-  readonly pass: string
-  readonly hint?: string
-}
+  readonly _tag: 'OptimizationError';
+  readonly message: string;
+  readonly pass: string;
+  readonly hint?: string;
+};
 
 /**
  * Emit error - IR → Eligius JSON emission failures
  */
 export type EmitError = {
-  readonly _tag: "EmitError"
-  readonly message: string
-  readonly ir?: string
-  readonly hint?: string
-}
+  readonly _tag: 'EmitError';
+  readonly message: string;
+  readonly ir?: string;
+  readonly hint?: string;
+};
 
 /**
  * Formatted error for display (CLI, VS Code diagnostics)
  */
 export type FormattedError = {
-  readonly severity: "error" | "warning" | "info"
-  readonly message: string
-  readonly location: SourceLocation
-  readonly hint?: string
-  readonly codeSnippet?: string
-  readonly relatedInfo?: ReadonlyArray<RelatedInfo>
-}
+  readonly severity: 'error' | 'warning' | 'info';
+  readonly message: string;
+  readonly location: SourceLocation;
+  readonly hint?: string;
+  readonly codeSnippet?: string;
+  readonly relatedInfo?: ReadonlyArray<RelatedInfo>;
+};
 
 export type RelatedInfo = {
-  readonly message: string
-  readonly location: SourceLocation
-}
+  readonly message: string;
+  readonly location: SourceLocation;
+};
 
 // Error Constructors
 
@@ -132,12 +133,12 @@ export const createParseError = (
   expected?: string,
   actual?: string
 ): ParseError => ({
-  _tag: "ParseError",
+  _tag: 'ParseError',
   message,
   location,
   expected,
-  actual
-})
+  actual,
+});
 
 export const createValidationError = (
   kind: ValidationErrorKind,
@@ -145,12 +146,12 @@ export const createValidationError = (
   location: SourceLocation,
   hint?: string
 ): ValidationError => ({
-  _tag: "ValidationError",
+  _tag: 'ValidationError',
   kind,
   message,
   location,
-  hint
-})
+  hint,
+});
 
 export const createTypeError = (
   message: string,
@@ -159,13 +160,13 @@ export const createTypeError = (
   actual: string,
   hint?: string
 ): TypeError => ({
-  _tag: "TypeError",
+  _tag: 'TypeError',
   message,
   location,
   expected,
   actual,
-  hint
-})
+  hint,
+});
 
 export const createTransformError = (
   kind: TransformErrorKind,
@@ -173,31 +174,27 @@ export const createTransformError = (
   location: SourceLocation,
   astNode?: string
 ): TransformError => ({
-  _tag: "TransformError",
+  _tag: 'TransformError',
   kind,
   message,
   location,
-  astNode
-})
+  astNode,
+});
 
 export const createOptimizationError = (
   message: string,
   pass: string,
   hint?: string
 ): OptimizationError => ({
-  _tag: "OptimizationError",
+  _tag: 'OptimizationError',
   message,
   pass,
-  hint
-})
+  hint,
+});
 
-export const createEmitError = (
-  message: string,
-  ir?: string,
-  hint?: string
-): EmitError => ({
-  _tag: "EmitError",
+export const createEmitError = (message: string, ir?: string, hint?: string): EmitError => ({
+  _tag: 'EmitError',
   message,
   ir,
-  hint
-})
+  hint,
+});

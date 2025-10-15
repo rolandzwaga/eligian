@@ -14,7 +14,7 @@
  */
 
 import { Effect } from 'effect';
-import type { EligiusIR, TimelineConfigIR, TimelineActionIR, DurationIR } from './types/eligius-ir.js';
+import type { EligiusIR, TimelineActionIR, TimelineConfigIR } from './types/eligius-ir.js';
 
 /**
  * SA005c: Main optimization function (Updated for new IR structure)
@@ -23,18 +23,18 @@ import type { EligiusIR, TimelineConfigIR, TimelineActionIR, DurationIR } from '
  * Note: Optimizations cannot fail, so error type is `never`.
  */
 export const optimize = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
-    Effect.gen(function* (_) {
-        // Run optimization passes in sequence
-        let optimizedIR = ir;
+  Effect.gen(function* (_) {
+    // Run optimization passes in sequence
+    let optimizedIR = ir;
 
-        // SA005c: Dead code elimination for timeline actions
-        optimizedIR = yield* _(eliminateDeadCode(optimizedIR));
+    // SA005c: Dead code elimination for timeline actions
+    optimizedIR = yield* _(eliminateDeadCode(optimizedIR));
 
-        // SA005c: Constant folding (durations are already numbers, so this is a no-op for now)
-        // Future: Could optimize operation data, merge adjacent actions, etc.
+    // SA005c: Constant folding (durations are already numbers, so this is a no-op for now)
+    // Future: Could optimize operation data, merge adjacent actions, etc.
 
-        return optimizedIR;
-    });
+    return optimizedIR;
+  });
 
 /**
  * SA005c: Dead code elimination (Updated for new IR structure)
@@ -48,53 +48,53 @@ export const optimize = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
  * immutable operations for large action lists.
  */
 const eliminateDeadCode = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
-    Effect.sync(() => {
-        // Internal mutation: Build new timelines array with optimized actions
-        const optimizedTimelines: TimelineConfigIR[] = [];
+  Effect.sync(() => {
+    // Internal mutation: Build new timelines array with optimized actions
+    const optimizedTimelines: TimelineConfigIR[] = [];
 
-        for (const timeline of ir.timelines) {
-            // Filter out dead timeline actions
-            const reachableActions: TimelineActionIR[] = [];
+    for (const timeline of ir.timelines) {
+      // Filter out dead timeline actions
+      const reachableActions: TimelineActionIR[] = [];
 
-            for (const action of timeline.timelineActions) {
-                const duration = action.duration;
+      for (const action of timeline.timelineActions) {
+        const duration = action.duration;
 
-                // Check if duration is valid (start and end are numbers in new IR)
-                if (typeof duration.start !== 'number' || typeof duration.end !== 'number') {
-                    // Keep action if we can't determine (shouldn't happen after type-checking)
-                    reachableActions.push(action);
-                    continue;
-                }
-
-                // Remove actions with zero or negative duration
-                if (duration.end <= duration.start) {
-                    // Dead code: action will never trigger
-                    continue;
-                }
-
-                // Remove actions that start at negative time
-                if (duration.start < 0) {
-                    // Dead code: negative time is invalid
-                    continue;
-                }
-
-                // Action is reachable
-                reachableActions.push(action);
-            }
-
-            // Add optimized timeline
-            optimizedTimelines.push({
-                ...timeline,
-                timelineActions: reachableActions
-            });
+        // Check if duration is valid (start and end are numbers in new IR)
+        if (typeof duration.start !== 'number' || typeof duration.end !== 'number') {
+          // Keep action if we can't determine (shouldn't happen after type-checking)
+          reachableActions.push(action);
+          continue;
         }
 
-        // Return new IR with optimized timelines (external immutability)
-        return {
-            ...ir,
-            timelines: optimizedTimelines
-        };
-    });
+        // Remove actions with zero or negative duration
+        if (duration.end <= duration.start) {
+          // Dead code: action will never trigger
+          continue;
+        }
+
+        // Remove actions that start at negative time
+        if (duration.start < 0) {
+          // Dead code: negative time is invalid
+          continue;
+        }
+
+        // Action is reachable
+        reachableActions.push(action);
+      }
+
+      // Add optimized timeline
+      optimizedTimelines.push({
+        ...timeline,
+        timelineActions: reachableActions,
+      });
+    }
+
+    // Return new IR with optimized timelines (external immutability)
+    return {
+      ...ir,
+      timelines: optimizedTimelines,
+    };
+  });
 
 /**
  * SA005c: Note on constant folding

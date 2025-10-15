@@ -166,7 +166,9 @@ export function isParameterType(type: ParameterType | ConstantValue[]): type is 
 /**
  * Type guard to check if a parameter type is an array of constant values
  */
-export function isConstantValueArray(type: ParameterType | ConstantValue[]): type is ConstantValue[] {
+export function isConstantValueArray(
+  type: ParameterType | ConstantValue[]
+): type is ConstantValue[] {
   return Array.isArray(type);
 }
 

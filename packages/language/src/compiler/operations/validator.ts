@@ -13,10 +13,10 @@
  */
 
 import {
-  OPERATION_REGISTRY,
-  suggestSimilarOperations,
   hasOperation,
+  OPERATION_REGISTRY,
   type OperationSignature,
+  suggestSimilarOperations,
 } from './index.js';
 
 // ============================================================================
@@ -104,9 +104,7 @@ export type OperationValidationError =
  * const error = validateOperationExists('adClass'); // typo
  * // error.suggestions = ['addClass', 'toggleClass', 'removeClass']
  */
-export function validateOperationExists(
-  operationName: string
-): UnknownOperationError | undefined {
+export function validateOperationExists(operationName: string): UnknownOperationError | undefined {
   if (hasOperation(operationName)) {
     return undefined; // Operation exists, no error
   }
@@ -119,9 +117,10 @@ export function validateOperationExists(
     operationName,
     message: `Unknown operation: "${operationName}"`,
     suggestions,
-    hint: suggestions.length > 0
-      ? `Did you mean: ${suggestions.join(', ')}?`
-      : `Available operations: ${getAllOperationNames().slice(0, 5).join(', ')}, ...`,
+    hint:
+      suggestions.length > 0
+        ? `Did you mean: ${suggestions.join(', ')}?`
+        : `Available operations: ${getAllOperationNames().slice(0, 5).join(', ')}, ...`,
   };
 
   return error;
@@ -154,7 +153,7 @@ export function validateParameterCount(
   signature: OperationSignature,
   argumentCount: number
 ): ParameterCountError | undefined {
-  const required = signature.parameters.filter((p) => p.required).length;
+  const required = signature.parameters.filter(p => p.required).length;
   const total = signature.parameters.length;
 
   // Check if argument count is within valid range
@@ -190,8 +189,8 @@ function formatParameterCount(required: number, total: number): string {
  */
 function formatParameterHint(
   signature: OperationSignature,
-  required: number,
-  total: number
+  _required: number,
+  _total: number
 ): string {
   // Sort parameters: required first, then optional
   const sortedParams = [
@@ -199,9 +198,7 @@ function formatParameterHint(
     ...signature.parameters.filter(p => !p.required),
   ];
 
-  const paramNames = sortedParams.map((p) =>
-    p.required ? p.name : `[${p.name}]`
-  ).join(', ');
+  const paramNames = sortedParams.map(p => (p.required ? p.name : `[${p.name}]`)).join(', ');
 
   return `Expected: ${signature.systemName}(${paramNames})`;
 }
@@ -279,21 +276,25 @@ function isTypeCompatible(argType: string, paramType: string | any[]): boolean {
 
   // String types
   if (argType === 'string') {
-    return paramTypeStr.includes('string') ||
-           paramTypeStr.includes('String') ||
-           paramTypeStr.includes('className') ||
-           paramTypeStr.includes('selector') ||
-           paramTypeStr.includes('htmlElementName') ||
-           paramTypeStr.includes('actionName') ||
-           paramTypeStr.includes('eventName');
+    return (
+      paramTypeStr.includes('string') ||
+      paramTypeStr.includes('String') ||
+      paramTypeStr.includes('className') ||
+      paramTypeStr.includes('selector') ||
+      paramTypeStr.includes('htmlElementName') ||
+      paramTypeStr.includes('actionName') ||
+      paramTypeStr.includes('eventName')
+    );
   }
 
   // Number types
   if (argType === 'number') {
-    return paramTypeStr.includes('number') ||
-           paramTypeStr.includes('Number') ||
-           paramTypeStr.includes('numeric') ||
-           paramTypeStr.includes('duration');
+    return (
+      paramTypeStr.includes('number') ||
+      paramTypeStr.includes('Number') ||
+      paramTypeStr.includes('numeric') ||
+      paramTypeStr.includes('duration')
+    );
   }
 
   // Boolean types
@@ -363,9 +364,222 @@ export function validateParameterTypes(
         parameterName: param.name,
         expectedType: expectedType.toString(),
         actualType: argType,
-        hint: `Provide a ${expectedType} value for parameter '${param.name}'`
+        hint: `Provide a ${expectedType} value for parameter '${param.name}'`,
       });
     }
+  }
+
+  return errors;
+}
+
+// ============================================================================
+// T216: Dependency Validation
+// ============================================================================
+
+/**
+ * Validate that required dependencies are available for an operation.
+ * Tracks outputs from previous operations in the action/event.
+ *
+ * @param signature - The operation signature requiring dependencies
+ * @param availableOutputs - Set of output names available from previous operations
+ * @returns Array of MissingDependencyError for missing dependencies, empty if valid
+ *
+ * @example
+ * const signature = OPERATION_REGISTRY['addClass'];
+ * const available = new Set<string>(); // No outputs yet
+ * const errors = validateDependencies(signature, available);
+ * // errors[0].message = "Operation 'addClass' requires 'selectedElement' but it is not available"
+ *
+ * @example
+ * const available = new Set(['selectedElement']); // After selectElement()
+ * const errors = validateDependencies(signature, available);
+ * // errors = [] (no error, dependency satisfied)
+ */
+export function validateDependencies(
+  signature: OperationSignature,
+  availableOutputs: Set<string>
+): MissingDependencyError[] {
+  const errors: MissingDependencyError[] = [];
+
+  // Check each required dependency
+  for (const dependency of signature.dependencies) {
+    if (!availableOutputs.has(dependency.name)) {
+      // Find which operations can provide this dependency
+      const providers = findOperationsProvidingOutput(dependency.name);
+      const providerHint =
+        providers.length > 0
+          ? `Call ${providers.slice(0, 3).join(' or ')} first to provide '${dependency.name}'`
+          : `No operation in the registry provides '${dependency.name}'`;
+
+      errors.push({
+        code: 'MISSING_DEPENDENCY',
+        operationName: signature.systemName,
+        message: `Operation '${signature.systemName}' requires '${dependency.name}' but it is not available`,
+        dependencyName: dependency.name,
+        requiredType: dependency.type,
+        hint: providerHint,
+      });
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Find operations that provide a specific output.
+ * Used for generating helpful error hints.
+ */
+function findOperationsProvidingOutput(outputName: string): string[] {
+  const providers: string[] = [];
+
+  for (const [name, signature] of Object.entries(OPERATION_REGISTRY)) {
+    if (signature.outputs.some(output => output.name === outputName)) {
+      providers.push(name);
+    }
+  }
+
+  return providers;
+}
+
+/**
+ * Track available outputs as operations are executed in sequence.
+ * Call this after validating each operation to update the available outputs.
+ *
+ * @param signature - The operation that was just validated
+ * @param availableOutputs - The set of currently available outputs (mutated in place)
+ *
+ * @example
+ * const available = new Set<string>();
+ * const selectElementSig = OPERATION_REGISTRY['selectElement'];
+ *
+ * // After selectElement(), selectedElement becomes available
+ * trackOutputs(selectElementSig, available);
+ * // available now contains 'selectedElement'
+ */
+export function trackOutputs(signature: OperationSignature, availableOutputs: Set<string>): void {
+  for (const output of signature.outputs) {
+    availableOutputs.add(output.name);
+  }
+}
+
+// ============================================================================
+// T217: Control Flow Pairing Validation
+// ============================================================================
+
+/**
+ * Validate control flow pairing for a sequence of operations.
+ * Checks that when/endWhen and forEach/endForEach are properly paired.
+ * Validates that otherwise appears only between when and endWhen.
+ *
+ * @param operations - Array of operation names in sequence
+ * @returns Array of ControlFlowError for any pairing issues, empty if valid
+ *
+ * @example
+ * const operations = ['when', 'addClass', 'endWhen'];
+ * const errors = validateControlFlowPairing(operations);
+ * // errors = [] (valid pairing)
+ *
+ * @example
+ * const operations = ['when', 'addClass']; // Missing endWhen
+ * const errors = validateControlFlowPairing(operations);
+ * // errors[0].issue = 'unclosed'
+ *
+ * @example
+ * const operations = ['addClass', 'endWhen']; // Unmatched endWhen
+ * const errors = validateControlFlowPairing(operations);
+ * // errors[0].issue = 'unmatched'
+ *
+ * @example
+ * const operations = ['addClass', 'otherwise']; // otherwise outside when block
+ * const errors = validateControlFlowPairing(operations);
+ * // errors[0].issue = 'invalid_otherwise'
+ */
+export function validateControlFlowPairing(operations: string[]): ControlFlowError[] {
+  const errors: ControlFlowError[] = [];
+  const whenStack: number[] = []; // Track indices of unclosed 'when'
+  const forEachStack: number[] = []; // Track indices of unclosed 'forEach'
+
+  for (let i = 0; i < operations.length; i++) {
+    const op = operations[i];
+
+    switch (op) {
+      case 'when':
+        whenStack.push(i);
+        break;
+
+      case 'endWhen':
+        if (whenStack.length === 0) {
+          // Unmatched endWhen
+          errors.push({
+            code: 'CONTROL_FLOW',
+            operationName: 'endWhen',
+            message: `Unmatched 'endWhen' at position ${i}: no corresponding 'when' found`,
+            blockType: 'when',
+            issue: 'unmatched',
+            hint: `Add a 'when' operation before this 'endWhen'`,
+          });
+        } else {
+          whenStack.pop(); // Matched - remove from stack
+        }
+        break;
+
+      case 'otherwise':
+        // otherwise is only valid inside a when block
+        if (whenStack.length === 0) {
+          errors.push({
+            code: 'CONTROL_FLOW',
+            operationName: 'otherwise',
+            message: `'otherwise' at position ${i} appears outside a 'when' block`,
+            blockType: 'when',
+            issue: 'invalid_otherwise',
+            hint: `'otherwise' can only appear between 'when' and 'endWhen'`,
+          });
+        }
+        break;
+
+      case 'forEach':
+        forEachStack.push(i);
+        break;
+
+      case 'endForEach':
+        if (forEachStack.length === 0) {
+          // Unmatched endForEach
+          errors.push({
+            code: 'CONTROL_FLOW',
+            operationName: 'endForEach',
+            message: `Unmatched 'endForEach' at position ${i}: no corresponding 'forEach' found`,
+            blockType: 'forEach',
+            issue: 'unmatched',
+            hint: `Add a 'forEach' operation before this 'endForEach'`,
+          });
+        } else {
+          forEachStack.pop(); // Matched - remove from stack
+        }
+        break;
+    }
+  }
+
+  // Check for unclosed blocks at end of sequence
+  for (const whenIndex of whenStack) {
+    errors.push({
+      code: 'CONTROL_FLOW',
+      operationName: 'when',
+      message: `Unclosed 'when' block starting at position ${whenIndex}: missing 'endWhen'`,
+      blockType: 'when',
+      issue: 'unclosed',
+      hint: `Add 'endWhen' to close this 'when' block`,
+    });
+  }
+
+  for (const forEachIndex of forEachStack) {
+    errors.push({
+      code: 'CONTROL_FLOW',
+      operationName: 'forEach',
+      message: `Unclosed 'forEach' block starting at position ${forEachIndex}: missing 'endForEach'`,
+      blockType: 'forEach',
+      issue: 'unclosed',
+      hint: `Add 'endForEach' to close this 'forEach' block`,
+    });
   }
 
   return errors;
@@ -399,10 +613,7 @@ export type ValidationResult =
  *   console.error(result.errors);
  * }
  */
-export function validateOperation(
-  operationName: string,
-  argumentCount?: number
-): ValidationResult {
+export function validateOperation(operationName: string, argumentCount?: number): ValidationResult {
   const errors: OperationValidationError[] = [];
 
   // T213: Check operation exists

@@ -1,17 +1,15 @@
 {
-    "extends": "../../tsconfig.json",
-    "compilerOptions": {
-        "composite": true,
-        "rootDir": ".",
-        "outDir": "./out",
-        "tsBuildInfoFile": "./out/.tsbuildinfo"
-    },
-    "references": [
-        {
-            "path": "../language/tsconfig.src.json"
-        }
-    ],
-    "include": [
-        "src/**/*.ts"
-    ]
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "./out",
+    "tsBuildInfoFile": "./out/.tsbuildinfo"
+  },
+  "references": [
+    {
+      "path": "../language/tsconfig.src.json"
+    }
+  ],
+  "include": ["src/**/*.ts"]
 }

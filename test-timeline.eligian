@@ -1,0 +1,6 @@
+timeline "main" using raf {
+  at 0s..5s [
+    selectElement("#title")
+    addClass("visible")
+  ] []
+}

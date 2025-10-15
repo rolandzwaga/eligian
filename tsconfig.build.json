@@ -2,9 +2,6 @@
     "files": [],
     "references": [
         {
-            "path": "./packages/compiler"
-        },
-        {
             "path": "./packages/language/tsconfig.src.json"
         },
         {

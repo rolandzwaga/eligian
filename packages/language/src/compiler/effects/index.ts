@@ -6,22 +6,22 @@
  * @module effects
  */
 
-// Service definitions
-export { FileSystemService, IOError } from "./FileSystem.js"
-export { LoggerService, type LogLevel } from "./Logger.js"
 export {
-  CompilerService,
   type CompileOptions,
-  defaultCompileOptions
-} from "./Compiler.js"
+  CompilerService,
+  defaultCompileOptions,
+} from './Compiler.js';
+// Service definitions
+export { FileSystemService, IOError } from './FileSystem.js';
+export { LoggerService, type LogLevel } from './Logger.js';
 
 // Layer implementations
 export {
   FileSystemLive,
   FileSystemTest,
   LoggerLive,
-  LoggerTest,
   LoggerSilent,
+  LoggerTest,
   MainLayer,
-  TestLayer
-} from "./layers.js"
+  TestLayer,
+} from './layers.js';

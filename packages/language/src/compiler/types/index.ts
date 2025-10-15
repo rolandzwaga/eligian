@@ -12,34 +12,28 @@
 
 // Re-export Eligius types (target output format)
 export type {
-  IEngineConfiguration,
-  IResolvedEngineConfiguration,
-  ITimelineConfiguration,
-  ITimelineActionConfiguration,
   IActionConfiguration,
-  IEndableActionConfiguration,
-  IEventActionConfiguration,
-  IOperationConfiguration,
-  IResolvedOperation,
-  IEngineInfo,
-  TTimelineProviderSettings,
-  ITimelineProviderSettings,
-} from "eligius"
-
-export type {
   IDuration,
-  IStrictDuration,
-  TimelineTypes,
-  ILanguageLabel,
+  IEndableActionConfiguration,
+  IEngineConfiguration,
+  IEngineInfo,
+  IEventActionConfiguration,
   ILabel,
+  ILanguageLabel,
+  IOperationConfiguration,
+  IResolvedEngineConfiguration,
+  IResolvedOperation,
+  IStrictDuration,
+  ITimelineActionConfiguration,
+  ITimelineConfiguration,
+  ITimelineProviderSettings,
+  TimelineTypes,
   TLanguageCode,
-} from "eligius"
-
-// Our internal IR types
-export * from "./eligius-ir.js"
-
-// Error types
-export * from "./errors.js"
-
+  TTimelineProviderSettings,
+} from 'eligius';
 // Common utility types
-export * from "./common.js"
+export * from './common.js';
+// Our internal IR types
+export * from './eligius-ir.js';
+// Error types
+export * from './errors.js';

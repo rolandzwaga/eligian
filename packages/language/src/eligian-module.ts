@@ -1,33 +1,41 @@
-import { type Module, inject } from 'langium';
-import { createDefaultModule, createDefaultSharedModule, type DefaultSharedModuleContext, type LangiumServices, type LangiumSharedServices, type PartialLangiumServices } from 'langium/lsp';
-import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
+import { inject, type Module } from 'langium';
+import {
+  createDefaultModule,
+  createDefaultSharedModule,
+  type DefaultSharedModuleContext,
+  type LangiumServices,
+  type LangiumSharedServices,
+  type PartialLangiumServices,
+} from 'langium/lsp';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
+import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
  */
 export type EligianAddedServices = {
-    validation: {
-        EligianValidator: EligianValidator
-    }
-}
+  validation: {
+    EligianValidator: EligianValidator;
+  };
+};
 
 /**
  * Union of Langium default services and your custom services - use this as constructor parameter
  * of custom service classes.
  */
-export type EligianServices = LangiumServices & EligianAddedServices
+export type EligianServices = LangiumServices & EligianAddedServices;
 
 /**
  * Dependency injection module that overrides Langium default services and contributes the
  * declared custom services. The Langium defaults can be partially specified to override only
  * selected services, while the custom services must be fully specified.
  */
-export const EligianModule: Module<EligianServices, PartialLangiumServices & EligianAddedServices> = {
+export const EligianModule: Module<EligianServices, PartialLangiumServices & EligianAddedServices> =
+  {
     validation: {
-        EligianValidator: () => new EligianValidator()
-    }
-};
+      EligianValidator: () => new EligianValidator(),
+    },
+  };
 
 /**
  * Create the full set of services required by Langium.
@@ -45,24 +53,17 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
  * @returns An object wrapping the shared services and the language-specific services
  */
 export function createEligianServices(context: DefaultSharedModuleContext): {
-    shared: LangiumSharedServices,
-    Eligian: EligianServices
+  shared: LangiumSharedServices;
+  Eligian: EligianServices;
 } {
-    const shared = inject(
-        createDefaultSharedModule(context),
-        EligianGeneratedSharedModule
-    );
-    const Eligian = inject(
-        createDefaultModule({ shared }),
-        EligianGeneratedModule,
-        EligianModule
-    );
-    shared.ServiceRegistry.register(Eligian);
-    registerValidationChecks(Eligian);
-    if (!context.connection) {
-        // We don't run inside a language server
-        // Therefore, initialize the configuration provider instantly
-        shared.workspace.ConfigurationProvider.initialized({});
-    }
-    return { shared, Eligian };
+  const shared = inject(createDefaultSharedModule(context), EligianGeneratedSharedModule);
+  const Eligian = inject(createDefaultModule({ shared }), EligianGeneratedModule, EligianModule);
+  shared.ServiceRegistry.register(Eligian);
+  registerValidationChecks(Eligian);
+  if (!context.connection) {
+    // We don't run inside a language server
+    // Therefore, initialize the configuration provider instantly
+    shared.workspace.ConfigurationProvider.initialized({});
+  }
+  return { shared, Eligian };
 }

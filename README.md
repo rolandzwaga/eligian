@@ -6,6 +6,8 @@
 
 **Eligian** is a domain-specific language (DSL) and compiler for the [Eligius Story Telling Engine](https://github.com/rolandzwaga/eligius). It dramatically reduces the verbosity of Eligius JSON configurations by 70-80% while providing type safety, IDE support, and a more intuitive syntax for creating timeline-based interactive presentations.
 
+> **📝 File Extension**: Eligian programs use the **`.eligian`** file extension (e.g., `my-timeline.eligian`). Do not use `.eli`, `.elg`, or any other abbreviation.
+
 ## 🎯 What is Eligius?
 
 [Eligius](https://github.com/rolandzwaga/eligius) is a JavaScript engine that triggers arbitrary functionality according to a timeline provider (video, audio, requestAnimationFrame, etc.). It's designed for:

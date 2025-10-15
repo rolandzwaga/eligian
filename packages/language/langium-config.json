@@ -1,16 +1,14 @@
 {
-    "projectName": "Eligian",
-    "languages": [
-        {
-            "id": "eligian",
-            "grammar": "src/eligian.langium",
-            "fileExtensions": [
-                "eligian"
-            ],
-            "textMate": {
-                "out": "syntaxes/eligian.tmLanguage.json"
-            }
-        }
-    ],
-    "out": "src/generated"
+  "projectName": "Eligian",
+  "languages": [
+    {
+      "id": "eligian",
+      "grammar": "src/eligian.langium",
+      "fileExtensions": ["eligian"],
+      "textMate": {
+        "out": "syntaxes/eligian.tmLanguage.json"
+      }
+    }
+  ],
+  "out": "src/generated"
 }

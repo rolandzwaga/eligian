@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 1.3.0 → 1.4.0
-- Amendment: Added Principle X (Validation Pattern: Compiler-First with Langium Integration)
+- Version change: 1.4.0 → 1.5.0
+- Amendment: Added Principle XI (Code Quality: Biome Integration)
 - Modified principles: None
-- Added sections: Principle X - Validation Pattern (NON-NEGOTIABLE)
+- Added sections: Principle XI - Code Quality with Biome (NON-NEGOTIABLE)
 - Removed sections: None
-- Templates requiring updates: None (validation pattern is architecture-specific)
+- Templates requiring updates: None (Biome is a development tool)
 - Follow-up TODOs:
-  - Continue implementing T215-T217 following this pattern
-  - Document validation pattern in CLAUDE.md if not already present
-  - Add code review checklist item for validation pattern compliance
+  - Ensure Biome is run after each task completion
+  - Document Biome workflow in CLAUDE.md
+  - Add code review checklist item for Biome compliance
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -228,6 +228,41 @@ checkOperationExists(op: OperationCall, accept: ValidationAcceptor): void {
 }
 ```
 
+### XI. Code Quality: Biome Integration (NON-NEGOTIABLE)
+
+All code changes MUST be formatted and linted with Biome after each task completion. Any
+issues surfaced by Biome (formatting, linting errors, unused imports, code smells) MUST be
+fixed as part of that task before the task is considered complete. Biome ensures consistent
+code style, catches common mistakes, and maintains code quality across the project.
+
+**Rationale**: Consistent code formatting and linting prevent style bikeshedding, catch
+common bugs early (unused variables, missing returns, etc.), and ensure the codebase
+remains clean and maintainable. Running Biome after each task ensures issues are caught
+immediately when context is fresh, rather than accumulating and creating large cleanup PRs.
+
+**Requirements**:
+- MUST run `npm run check` after completing each task (formats and lints with auto-fix)
+- All Biome errors MUST be fixed before the task is considered complete
+- Biome warnings SHOULD be addressed or explicitly suppressed with justification
+- Configuration changes to `biome.json` MUST be documented with rationale
+- Generated files (`.generated.ts`, `out/`, `dist/`) MUST be excluded from Biome checks
+- Task completion checklist MUST include "Biome checks pass" as final step
+- If Biome surfaces legitimate issues, fix them; if false positives, update configuration
+- When adding new rules, ensure they don't break existing valid patterns
+
+**Workflow**:
+```bash
+# After completing a task:
+npm run check  # Format and lint with auto-fix
+
+# If issues remain:
+npm run lint   # Review issues
+# Fix issues or update biome.json if false positives
+
+# Verify clean:
+npm run check  # Should show "0 errors, 0 warnings"
+```
+
 ## Development Workflow
 
 ### Pull Request Process
@@ -300,4 +335,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.4.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-15
+**Version**: 1.5.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-15
