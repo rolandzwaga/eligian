@@ -1,10 +1,10 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { Effect } from 'effect';
 import { transformAST } from '../ast-transformer.js';
-import type { Program } from '../../../language/src/generated/ast.js';
+import type { Program } from '../../generated/ast.js';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { createEligianServices } from '../../../language/src/eligian-module.js';
+import { createEligianServices } from '../../eligian-module.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

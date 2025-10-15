@@ -207,6 +207,171 @@ function formatParameterHint(
 }
 
 // ============================================================================
+// T215: Parameter Type Validation
+// ============================================================================
+
+/**
+ * Infer the type of an argument expression based on its AST node type.
+ *
+ * Note: This is compile-time type inference. PropertyChainReferences and
+ * expressions resolve at runtime, so we can't fully validate them.
+ *
+ * @param arg - The argument expression AST node
+ * @returns The inferred type string
+ */
+function inferArgumentType(arg: any): string {
+  if (!arg || !arg.$type) return 'unknown';
+
+  switch (arg.$type) {
+    case 'StringLiteral':
+      return 'string';
+    case 'NumberLiteral':
+      return 'number';
+    case 'BooleanLiteral':
+      return 'boolean';
+    case 'NullLiteral':
+      return 'null';
+    case 'ObjectLiteral':
+      return 'object';
+    case 'ArrayLiteral':
+      return 'array';
+    case 'PropertyChainReference':
+      return 'property-chain'; // Runtime value, can't validate type
+    case 'BinaryExpression':
+    case 'UnaryExpression':
+      return 'expression'; // Runtime evaluation
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Check if an argument type is compatible with expected parameter type.
+ *
+ * Compatibility rules:
+ * - 'property-chain' and 'expression' are compatible with any type (runtime values)
+ * - 'string' matches ParameterType:string or ParameterType:* string types
+ * - 'number' matches ParameterType:number or ParameterType:* numeric types
+ * - 'boolean' matches ParameterType:boolean
+ * - 'object' matches ParameterType:object
+ * - 'array' matches ParameterType:array
+ * - Constant values must match exactly
+ *
+ * @param argType - The inferred argument type
+ * @param paramType - The expected parameter type from signature
+ * @returns True if compatible, false otherwise
+ */
+function isTypeCompatible(argType: string, paramType: string | any[]): boolean {
+  // Runtime values (property chains, expressions) can't be validated at compile time
+  if (argType === 'property-chain' || argType === 'expression') {
+    return true;
+  }
+
+  // Constant values (array of allowed values)
+  if (Array.isArray(paramType)) {
+    // For constant values, we can only validate literals
+    // Property chains and expressions will be validated at runtime
+    return true; // Can't validate constant values at compile time without literal value
+  }
+
+  // ParameterType validation
+  const paramTypeStr = paramType as string;
+
+  // String types
+  if (argType === 'string') {
+    return paramTypeStr.includes('string') ||
+           paramTypeStr.includes('String') ||
+           paramTypeStr.includes('className') ||
+           paramTypeStr.includes('selector') ||
+           paramTypeStr.includes('htmlElementName') ||
+           paramTypeStr.includes('actionName') ||
+           paramTypeStr.includes('eventName');
+  }
+
+  // Number types
+  if (argType === 'number') {
+    return paramTypeStr.includes('number') ||
+           paramTypeStr.includes('Number') ||
+           paramTypeStr.includes('numeric') ||
+           paramTypeStr.includes('duration');
+  }
+
+  // Boolean types
+  if (argType === 'boolean') {
+    return paramTypeStr.includes('boolean') || paramTypeStr.includes('Boolean');
+  }
+
+  // Object types
+  if (argType === 'object') {
+    return paramTypeStr.includes('object') || paramTypeStr.includes('Object');
+  }
+
+  // Array types
+  if (argType === 'array') {
+    return paramTypeStr.includes('array') || paramTypeStr.includes('Array');
+  }
+
+  // Null can match optional parameters
+  if (argType === 'null') {
+    return true; // Null can be passed to optional parameters
+  }
+
+  return false;
+}
+
+/**
+ * Validate parameter types for an operation call.
+ * Checks if argument types match expected parameter types.
+ *
+ * Note: This performs compile-time validation only. Property chains and
+ * expressions that resolve at runtime cannot be fully validated.
+ *
+ * @param signature - The operation signature from registry
+ * @param args - The argument expression AST nodes
+ * @returns Array of ParameterTypeError for any type mismatches, empty if valid
+ *
+ * @example
+ * const signature = OPERATION_REGISTRY['addClass'];
+ * const args = [{ $type: 'NumberLiteral', value: 123 }]; // Wrong type!
+ * const errors = validateParameterTypes(signature, args);
+ * // errors[0].message = "Parameter 'className' expects type 'ParameterType:className' but got 'number'"
+ */
+export function validateParameterTypes(
+  signature: OperationSignature,
+  args: any[]
+): ParameterTypeError[] {
+  const errors: ParameterTypeError[] = [];
+
+  // Validate each argument against its corresponding parameter
+  for (let i = 0; i < args.length && i < signature.parameters.length; i++) {
+    const arg = args[i];
+    const param = signature.parameters[i];
+
+    const argType = inferArgumentType(arg);
+    const isCompatible = isTypeCompatible(argType, param.type);
+
+    if (!isCompatible) {
+      const expectedType = Array.isArray(param.type)
+        ? `one of: ${param.type.join(', ')}`
+        : param.type;
+
+      errors.push({
+        code: 'PARAMETER_TYPE',
+        operationName: signature.systemName,
+        message: `Parameter '${param.name}' expects type '${expectedType}' but got '${argType}'`,
+        parameterIndex: i,
+        parameterName: param.name,
+        expectedType: expectedType.toString(),
+        actualType: argType,
+        hint: `Provide a ${expectedType} value for parameter '${param.name}'`
+      });
+    }
+  }
+
+  return errors;
+}
+
+// ============================================================================
 // Validation Result
 // ============================================================================
 

@@ -220,6 +220,13 @@ export function convertMetadata<T>(
     }
   }
 
+  // Sort parameters: required first, then optional
+  // This defines the positional order for function-style calls in the DSL
+  const sortedParameters = [
+    ...parameters.filter((p) => p.required),  // Required parameters first
+    ...parameters.filter((p) => !p.required), // Optional parameters last
+  ];
+
   // Convert dependencies
   const dependencies = convertDependencies(dependentProperties);
 
@@ -229,7 +236,7 @@ export function convertMetadata<T>(
   return {
     systemName,
     description: description.trim(),
-    parameters,
+    parameters: sortedParameters,
     dependencies,
     outputs,
     category,

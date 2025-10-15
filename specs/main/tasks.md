@@ -302,15 +302,15 @@
 
 ### Task Group A2: Operation Validation
 
-- [ ] T213 [Validation] Implement operation existence check in packages/compiler/src/operations/validator.ts
+- [X] T213 [Validation] Implement operation existence check in packages/compiler/src/operations/validator.ts
   - Check if operation name exists in registry
   - Return UnknownOperationError with suggestions for similar names (typo detection)
 
-- [ ] T214 [Validation] Implement parameter count validation in packages/compiler/src/operations/validator.ts
+- [X] T214 [Validation] Implement parameter count validation in packages/compiler/src/operations/validator.ts
   - Check if argument count matches required parameters
   - Return ParameterCountError with expected vs actual count
 
-- [ ] T215 [Validation] Implement parameter type validation in packages/compiler/src/operations/validator.ts
+- [X] T215 [Validation] Implement parameter type validation in packages/compiler/src/operations/validator.ts
   - Check if argument types match expected types (string, number, boolean, object, array, property chain)
   - Handle property chain references (can't validate type at compile time, but check syntax)
   - Return ParameterTypeError with expected vs actual type
@@ -331,7 +331,7 @@
   - Collect validation errors and fail transform if any errors found
   - Include source location in all validation errors
 
-- [ ] T219 [Validation] Wire operation validator into Langium validator in packages/language/src/eligian-validator.ts
+- [X] T219 [Validation] Wire operation validator into Langium validator in packages/language/src/eligian-validator.ts
   - Add semantic check for operation calls
   - Show validation errors in IDE (VS Code Problems panel)
   - Provide quick fixes where possible (e.g., suggest correct parameter types)

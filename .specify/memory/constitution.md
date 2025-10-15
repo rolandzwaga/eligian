@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 1.2.0 → 1.3.0
-- Amendment: Added Principle IX (ESM Import Extensions)
+- Version change: 1.3.0 → 1.4.0
+- Amendment: Added Principle X (Validation Pattern: Compiler-First with Langium Integration)
 - Modified principles: None
-- Added sections: Principle IX - ESM Import Extensions (NON-NEGOTIABLE)
+- Added sections: Principle X - Validation Pattern (NON-NEGOTIABLE)
 - Removed sections: None
-- Templates requiring updates: None (new principle is TypeScript/ESM-specific)
+- Templates requiring updates: None (validation pattern is architecture-specific)
 - Follow-up TODOs:
-  - Verify all existing imports use .js extensions
-  - Add linting rule to enforce .js extensions in imports
-  - Document ESM import conventions in development workflow
+  - Continue implementing T215-T217 following this pattern
+  - Document validation pattern in CLAUDE.md if not already present
+  - Add code review checklist item for validation pattern compliance
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -187,6 +187,47 @@ The TypeScript team's official guidance is to use the output extension (`.js`) e
 - Type-only imports also require `.js`: `import type { Foo } from './types.js'`
 - Third-party package imports remain unchanged: `import { effect } from 'effect'` ✅
 
+### X. Validation Pattern: Compiler-First with Langium Integration (NON-NEGOTIABLE)
+
+All validation logic for DSL constructs MUST be implemented first in the compiler package
+with pure functions returning typed errors, then exposed to the Langium validator as a
+thin adapter for IDE integration. The compiler validation is the source of truth.
+
+**Rationale**: Separating validation logic from IDE integration ensures the compiler can
+validate independently (for CLI/programmatic use), enables comprehensive unit testing of
+validation logic in isolation, maintains single source of truth for validation rules,
+and keeps the Langium validator as a lightweight adapter focused solely on IDE concerns.
+This pattern prevents code duplication and ensures consistency across CLI, programmatic,
+and IDE validation.
+
+**Requirements**:
+- Validation logic MUST be implemented in `packages/compiler/src/operations/validator.ts`
+- Validation functions MUST return structured error objects (e.g., `UnknownOperationError`)
+- Error objects MUST include `code`, `message`, `hint`, and relevant context
+- Validation functions MUST be pure (no side effects, deterministic)
+- Validation functions MUST be exported from `packages/compiler/src/index.ts`
+- Langium validator MUST call compiler validation functions, not reimplement logic
+- Langium validator methods MUST be thin adapters that convert errors to `ValidationAcceptor` format
+- All validation logic MUST have unit tests in `packages/compiler/src/operations/__tests__/validator.spec.ts`
+- Langium integration MAY have integration tests in `packages/language/src/__tests__/validation.spec.ts`
+
+**Pattern Example**:
+```typescript
+// Compiler (source of truth):
+export function validateOperationExists(name: string): UnknownOperationError | undefined {
+  if (hasOperation(name)) return undefined;
+  return { code: 'UNKNOWN_OPERATION', message: `Unknown operation: "${name}"`, ... };
+}
+
+// Langium (thin adapter):
+checkOperationExists(op: OperationCall, accept: ValidationAcceptor): void {
+  const error = validateOperationExists(op.operationName);
+  if (error) {
+    accept('error', `${error.message}. ${error.hint}`, { node: op, code: error.code });
+  }
+}
+```
+
 ## Development Workflow
 
 ### Pull Request Process
@@ -259,4 +300,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.3.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-15
+**Version**: 1.4.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-15

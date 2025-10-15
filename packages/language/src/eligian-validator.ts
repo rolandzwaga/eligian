@@ -9,10 +9,11 @@ import type {
 import type { EligianServices } from './eligian-module.js';
 import {
     hasOperation,
-    suggestSimilarOperations,
     OPERATION_REGISTRY,
-    type OperationParameter
-} from '@eligian/compiler';
+    validateOperationExists,
+    validateParameterCount,
+    validateParameterTypes
+} from './compiler/index.js';
 
 /**
  * Register custom validation checks.
@@ -32,7 +33,8 @@ export function registerValidationChecks(services: EligianServices) {
         ],
         OperationCall: [
             validator.checkOperationExists,
-            validator.checkParameterCount
+            validator.checkParameterCount,
+            validator.checkParameterTypes
         ]
     };
     registry.register(checks, validator);
@@ -167,18 +169,18 @@ export class EligianValidator {
     checkOperationExists(operation: OperationCall, accept: ValidationAcceptor): void {
         const opName = operation.operationName;
 
-        if (!hasOperation(opName)) {
-            // Operation doesn't exist - suggest similar operations
-            const suggestions = suggestSimilarOperations(opName, 3);
+        // Use compiler validation logic
+        const error = validateOperationExists(opName);
 
-            const message = suggestions.length > 0
-                ? `Unknown operation '${opName}'. Did you mean: ${suggestions.join(', ')}?`
-                : `Unknown operation '${opName}'. Check available operations in the registry.`;
+        if (error) {
+            const message = error.hint
+                ? `${error.message}. ${error.hint}`
+                : error.message;
 
             accept('error', message, {
                 node: operation,
                 property: 'operationName',
-                code: 'unknown-operation'
+                code: error.code.toLowerCase()
             });
         }
     }
@@ -197,30 +199,52 @@ export class EligianValidator {
 
         const signature = OPERATION_REGISTRY[opName];
         const argumentCount = operation.args.length;
-        const required = signature.parameters.filter((p: OperationParameter) => p.required).length;
-        const total = signature.parameters.length;
 
-        if (argumentCount < required || argumentCount > total) {
-            // Sort parameters: required first, then optional
-            const sortedParams = [
-                ...signature.parameters.filter((p: OperationParameter) => p.required),
-                ...signature.parameters.filter((p: OperationParameter) => !p.required),
-            ];
+        // Use compiler validation logic
+        const error = validateParameterCount(signature, argumentCount);
 
-            const paramNames = sortedParams.map((p: OperationParameter) =>
-                p.required ? p.name : `[${p.name}]`
-            ).join(', ');
-
-            const expectedCount = required === total
-                ? `${required}`
-                : `${required}-${total}`;
-
-            const message = `Operation '${opName}' expects ${expectedCount} parameter(s), but got ${argumentCount}. Expected: ${opName}(${paramNames})`;
+        if (error) {
+            const message = error.hint
+                ? `${error.message}. ${error.hint}`
+                : error.message;
 
             accept('error', message, {
                 node: operation,
                 property: 'args',
-                code: 'parameter-count-mismatch'
+                code: error.code.toLowerCase()
+            });
+        }
+    }
+
+    /**
+     * Validate parameter types match expected types from operation signature.
+     * Performs compile-time type checking where possible.
+     *
+     * Property chains and expressions are validated at runtime, not compile-time.
+     */
+    checkParameterTypes(operation: OperationCall, accept: ValidationAcceptor): void {
+        const opName = operation.operationName;
+
+        // Only validate if operation exists (avoid duplicate errors)
+        if (!hasOperation(opName)) {
+            return;
+        }
+
+        const signature = OPERATION_REGISTRY[opName];
+
+        // Use compiler validation logic
+        const errors = validateParameterTypes(signature, operation.args);
+
+        // Report each type error
+        for (const error of errors) {
+            const message = error.hint
+                ? `${error.message}. ${error.hint}`
+                : error.message;
+
+            accept('error', message, {
+                node: operation,
+                property: 'args',
+                code: error.code.toLowerCase()
             });
         }
     }

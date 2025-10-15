@@ -110,6 +110,22 @@ export {
   type ConstantValue,
 } from "./operations/index.js"
 
+// Operation validation exports (renamed to avoid conflict with ValidationError from types)
+export {
+  validateOperationExists,
+  validateParameterCount,
+  validateParameterTypes,
+  validateOperation,
+  type ValidationError as OperationValidationErrorBase,
+  type UnknownOperationError,
+  type ParameterCountError,
+  type ParameterTypeError,
+  type MissingDependencyError,
+  type ControlFlowError,
+  type OperationValidationError,
+  type ValidationResult,
+} from "./operations/validator.js"
+
 /**
  * Compiler version
  */

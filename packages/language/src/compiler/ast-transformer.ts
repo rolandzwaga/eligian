@@ -29,7 +29,7 @@ import type {
     ArrayLiteral,
     TimeExpression as AstTimeExpression,
     TimeLiteral
-} from '../../language/src/generated/ast.js';
+} from '../generated/ast.js';
 import type {
     EligiusIR,
     TimelineConfigIR,

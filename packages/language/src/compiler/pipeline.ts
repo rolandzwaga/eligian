@@ -19,7 +19,7 @@
  */
 
 import { Effect } from 'effect';
-import { createEligianServices, type Program } from '@eligian/language';
+import { createEligianServices, type Program } from '../eligian-module.js';
 import { EmptyFileSystem, URI } from 'langium';
 import type { LangiumDocument } from 'langium';
 import { transformAST } from './ast-transformer.js';
