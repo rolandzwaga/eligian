@@ -7,6 +7,7 @@ import {
   type LangiumSharedServices,
   type PartialLangiumServices,
 } from 'langium/lsp';
+import { EligianHoverProvider } from './eligian-hover-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
 
@@ -16,6 +17,9 @@ import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generate
 export type EligianAddedServices = {
   validation: {
     EligianValidator: EligianValidator;
+  };
+  lsp: {
+    HoverProvider: EligianHoverProvider;
   };
 };
 
@@ -34,6 +38,9 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
   {
     validation: {
       EligianValidator: () => new EligianValidator(),
+    },
+    lsp: {
+      HoverProvider: services => new EligianHoverProvider(services),
     },
   };
 

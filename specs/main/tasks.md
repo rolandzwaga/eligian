@@ -45,8 +45,8 @@
 **Deliverable**: Working CLI with all flags, 12 CLI tests
 
 ### Phase 8: VS Code Extension ✅
-**Status**: MOSTLY COMPLETE | **Tasks**: T127-T158
-**Deliverable**: Syntax highlighting, validation, compile command, manual testing guide
+**Status**: COMPLETE | **Tasks**: T127-T158 + T243-T245
+**Deliverable**: Syntax highlighting, validation, compile command, hover tooltips, manual testing guide
 
 ### Phase 9: Polish ✅
 **Status**: COMPLETE | **Tasks**: T159-T168
@@ -87,6 +87,27 @@
 ### Phase 16.5: Reference Syntax Redesign ✅
 **Status**: COMPLETE | **Tasks**: T229-T239
 **Deliverable**: Bare identifiers (params), @@varName (system), @varName (user vars)
+
+### Phase 8.5: Hover Provider (LSP Enhancement) ✅
+**Status**: COMPLETE | **Tasks**: T243-T245
+**Deliverable**: Rich hover tooltips for operations showing descriptions, parameters, dependencies, and outputs
+
+**Implementation**:
+- T243: Created EligianHoverProvider extending AstNodeHoverProvider
+- T244: Override getHoverContent to intercept hovers at CST level using CstUtils.findLeafNodeAtOffset
+- T245: Integrate with operation registry to show rich markdown documentation
+
+**Key Features**:
+- Hover over any operation name to see full documentation
+- Shows operation description from metadata
+- Lists all parameters with types and required/optional indicators
+- Shows dependencies (what operations must come before)
+- Shows outputs (what this operation provides)
+- Falls back to default Langium behavior for other nodes (variables, comments)
+
+**Files Added**:
+- `packages/language/src/eligian-hover-provider.ts`
+- `docs/hover-provider.md`
 
 **Current Test Count**: 254 tests passing
 
@@ -179,8 +200,14 @@
 **CLI Status**: Fully functional
 **Extension Status**: Working with manual testing guide
 
-**Latest Achievements** (Phase 16.5):
-- Reference syntax redesigned for better ergonomics
+**Latest Achievements** (Phase 8.5 - Hover Provider):
+- Rich hover tooltips for all operations in VS Code
+- Shows operation descriptions, parameters, dependencies, and outputs
+- Automatically generated from operation registry metadata
+- Improved IDE ergonomics - no need to look up documentation separately
+- Falls back to default Langium behavior for other node types
+
+**Previous Achievement** (Phase 16.5 - Reference Syntax):
 - Bare identifiers for parameters: `items` instead of `$operationdata.items`
 - System properties: `@@item` compiles to `$context.currentItem`
 - User variables: `@duration` compiles to `$context.variables.duration`
@@ -202,5 +229,5 @@
 ---
 
 **Generated**: 2025-10-14
-**Last Updated**: 2025-10-16 (Compressed for token efficiency)
+**Last Updated**: 2025-10-16 (Added Phase 8.5: Hover Provider)
 **Archive Created**: 2025-10-16
