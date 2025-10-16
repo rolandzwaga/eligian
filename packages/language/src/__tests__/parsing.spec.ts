@@ -370,6 +370,207 @@ describe('Eligian Grammar - Parsing', () => {
     });
   });
 
+  describe('Control flow parsing', () => {
+    describe('If/else statement parsing', () => {
+      test('should parse if statement without else', async () => {
+        const program = await parseEligian(`
+          action test [
+            if ($operationdata.count > 5) {
+              addClass("highlight")
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        expect(action.operations).toHaveLength(1);
+        expect(action.operations[0].$type).toBe('IfStatement');
+        const ifStmt = action.operations[0] as any;
+        expect(ifStmt.condition.$type).toBe('BinaryExpression');
+        expect(ifStmt.thenOps).toHaveLength(1);
+        expect(ifStmt.elseOps).toHaveLength(0);
+      });
+
+      test('should parse if/else statement', async () => {
+        const program = await parseEligian(`
+          action test [
+            if ($operationdata.enabled) {
+              selectElement(".box")
+              addClass("active")
+            } else {
+              removeClass("active")
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const ifStmt = action.operations[0] as any;
+        expect(ifStmt.$type).toBe('IfStatement');
+        expect(ifStmt.thenOps).toHaveLength(2);
+        expect(ifStmt.elseOps).toHaveLength(1);
+      });
+
+      test('should parse nested if statements', async () => {
+        const program = await parseEligian(`
+          action test [
+            if ($operationdata.level > 0) {
+              if ($operationdata.level > 5) {
+                addClass("high")
+              } else {
+                addClass("medium")
+              }
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const outerIf = action.operations[0] as any;
+        expect(outerIf.$type).toBe('IfStatement');
+        expect(outerIf.thenOps).toHaveLength(1);
+
+        const innerIf = outerIf.thenOps[0];
+        expect(innerIf.$type).toBe('IfStatement');
+        expect(innerIf.thenOps).toHaveLength(1);
+        expect(innerIf.elseOps).toHaveLength(1);
+      });
+
+      test('should parse if with complex conditions', async () => {
+        const program = await parseEligian(`
+          action test [
+            if ($operationdata.count > 5 && $operationdata.enabled) {
+              addClass("active")
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const ifStmt = action.operations[0] as any;
+        expect(ifStmt.$type).toBe('IfStatement');
+        expect(ifStmt.condition.$type).toBe('BinaryExpression');
+        expect(ifStmt.condition.op).toBe('&&');
+      });
+    });
+
+    describe('For loop parsing', () => {
+      test('should parse basic for loop', async () => {
+        const program = await parseEligian(`
+          action test [
+            for (item in $operationdata.items) {
+              selectElement(".template")
+              addClass("item")
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        expect(action.operations).toHaveLength(1);
+        expect(action.operations[0].$type).toBe('ForStatement');
+        const forStmt = action.operations[0] as any;
+        expect(forStmt.itemName).toBe('item');
+        expect(forStmt.collection.$type).toBe('PropertyChainReference');
+        expect(forStmt.body).toHaveLength(2);
+      });
+
+      test('should parse for loop with array literal', async () => {
+        const program = await parseEligian(`
+          action test [
+            for (slide in ["slide1", "slide2", "slide3"]) {
+              addClass("animated")
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const forStmt = action.operations[0] as any;
+        expect(forStmt.$type).toBe('ForStatement');
+        expect(forStmt.collection.$type).toBe('ArrayLiteral');
+        expect(forStmt.body).toHaveLength(1);
+      });
+
+      test('should parse nested for loops', async () => {
+        const program = await parseEligian(`
+          action test [
+            for (row in $operationdata.rows) {
+              for (col in $operationdata.cols) {
+                addClass("cell")
+              }
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const outerFor = action.operations[0] as any;
+        expect(outerFor.$type).toBe('ForStatement');
+        expect(outerFor.body).toHaveLength(1);
+
+        const innerFor = outerFor.body[0];
+        expect(innerFor.$type).toBe('ForStatement');
+        expect(innerFor.body).toHaveLength(1);
+      });
+
+      test('should parse for loop with if statement inside', async () => {
+        const program = await parseEligian(`
+          action test [
+            for (item in $operationdata.items) {
+              if ($context.isVisible) {
+                addClass("show")
+              }
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const forStmt = action.operations[0] as any;
+        expect(forStmt.$type).toBe('ForStatement');
+        expect(forStmt.body).toHaveLength(1);
+        expect(forStmt.body[0].$type).toBe('IfStatement');
+      });
+    });
+
+    describe('Mixed control flow', () => {
+      test('should parse if inside for loop', async () => {
+        const program = await parseEligian(`
+          action test [
+            for (item in $operationdata.items) {
+              selectElement(".item")
+              if ($context.highlight) {
+                addClass("highlight")
+              } else {
+                removeClass("highlight")
+              }
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const forStmt = action.operations[0] as any;
+        expect(forStmt.body).toHaveLength(2);
+        expect(forStmt.body[0].$type).toBe('OperationCall');
+        expect(forStmt.body[1].$type).toBe('IfStatement');
+      });
+
+      test('should parse for loop inside if statement', async () => {
+        const program = await parseEligian(`
+          action test [
+            if ($operationdata.showAll) {
+              for (item in $operationdata.items) {
+                addClass("visible")
+              }
+            } else {
+              selectElement(".placeholder")
+            }
+          ]
+        `);
+
+        const action = program.elements[0] as RegularActionDefinition;
+        const ifStmt = action.operations[0] as any;
+        expect(ifStmt.thenOps).toHaveLength(1);
+        expect(ifStmt.thenOps[0].$type).toBe('ForStatement');
+        expect(ifStmt.elseOps).toHaveLength(1);
+        expect(ifStmt.elseOps[0].$type).toBe('OperationCall');
+      });
+    });
+  });
+
   describe('Error recovery', () => {
     test('should handle syntax errors gracefully', async () => {
       const source = loadFixture('invalid/syntax-errors.eligian');

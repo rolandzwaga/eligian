@@ -24,7 +24,7 @@ entry Program:
     (elements += ProgramElement)*;
 
 ProgramElement:
-    ActionDefinition | Timeline;
+    ActionDefinition | Timeline | VariableDeclaration;
 
 // ============================================================================
 // Action Definitions
@@ -65,9 +65,10 @@ EndableActionDefinition:
  * This includes:
  * - Regular operation calls (selectElement, animate, etc.)
  * - Control flow statements (if/else, for loops)
+ * - Variable declarations (const varName = value)
  */
 OperationStatement:
-    IfStatement | ForStatement | OperationCall;
+    IfStatement | ForStatement | VariableDeclaration | OperationCall;
 
 /**
  * If/Else Statement - Syntactic sugar for when/otherwise/endWhen
@@ -103,6 +104,20 @@ IfStatement:
  */
 ForStatement:
     'for' '(' itemName=ID 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
+
+/**
+ * Variable Declaration - Declare a constant variable
+ *
+ * Examples:
+ *   const duration = 500
+ *   const theme = "dark"
+ *   const settings = { speed: 1, loop: true }
+ *
+ * Program-level: Sets global data (accessed via $globaldata.varName)
+ * Action-level: Sets context variable (accessed via @varName)
+ */
+VariableDeclaration:
+    'const' name=ID '=' value=Expression;
 
 /**
  * Operation Call - Function-style call with positional parameters
@@ -242,6 +257,7 @@ Primary infers Expression:
     '(' Expression ')' |
     Literal |
     PropertyChainReference |
+    VariableReference |
     ObjectLiteral |
     ArrayLiteral;
 
@@ -263,6 +279,19 @@ PropertyChainReference:
 
 PropertyScope returns string:
     'context' | 'operationdata' | 'globaldata';
+
+/**
+ * Variable Reference - Access action-scoped variables with @ prefix
+ *
+ * Examples:
+ *   @duration
+ *   @theme
+ *   @index
+ *
+ * Compiles to "@varName" string, which Eligius resolves to context.varName at runtime.
+ */
+VariableReference:
+    '@' name=ID;
 
 // ============================================================================
 // Literals

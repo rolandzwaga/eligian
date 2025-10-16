@@ -20,11 +20,15 @@ import type {
   TimeExpression as AstTimeExpression,
   EndableActionDefinition,
   Expression,
+  ForStatement,
+  IfStatement,
   OperationCall,
+  OperationStatement,
   Program,
   RegularActionDefinition,
   Timeline,
   TimelineEvent,
+  VariableDeclaration,
 } from '../generated/ast.js';
 import { getOperationSignature } from './operations/index.js';
 import { mapParameters } from './operations/mapper.js';
@@ -66,6 +70,36 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       );
     }
 
+    // Extract program-level variable declarations (T182: Global variables)
+    const variableDeclarations = program.elements.filter(
+      el => el.$type === 'VariableDeclaration'
+    ) as VariableDeclaration[];
+
+    // Transform program-level variables to initActions (setData operations)
+    const initActions: OperationConfigIR[] = [];
+    if (variableDeclarations.length > 0) {
+      const properties: Record<string, JsonValue> = {};
+      for (const varDecl of variableDeclarations) {
+        const value = yield* _(transformExpression(varDecl.value));
+        properties[`globaldata.${varDecl.name}`] = value;
+      }
+
+      // Create single setData operation for all global variables
+      initActions.push({
+        id: crypto.randomUUID(),
+        systemName: 'setData',
+        operationData: { properties },
+        sourceLocation: variableDeclarations[0]
+          ? getSourceLocation(variableDeclarations[0])
+          : {
+              file: undefined,
+              line: 1,
+              column: 1,
+              length: 0,
+            },
+      });
+    }
+
     // Extract action definitions (both regular and endable)
     const actionDefinitions = program.elements.filter(
       el => el.$type === 'EndableActionDefinition' || el.$type === 'RegularActionDefinition'
@@ -96,7 +130,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       labels: defaults.labels,
 
       // Action layers
-      initActions: [], // DSL doesn't support init actions yet
+      initActions, // T182: Program-level variable declarations (const)
       actions, // User-defined action definitions
       eventActions: [], // DSL doesn't support event actions yet
 
@@ -260,13 +294,13 @@ const transformTimelineEvent = (
       });
     } else if (action.$type === 'InlineEndableAction') {
       // Inline endable action: [ ... ] [ ... ]
-      for (const opCall of action.startOperations) {
-        const op = yield* _(transformOperationCall(opCall));
-        startOperations.push(op);
+      for (const opStmt of action.startOperations) {
+        const ops = yield* _(transformOperationStatement(opStmt));
+        startOperations.push(...ops);
       }
-      for (const opCall of action.endOperations) {
-        const op = yield* _(transformOperationCall(opCall));
-        endOperations.push(op);
+      for (const opStmt of action.endOperations) {
+        const ops = yield* _(transformOperationStatement(opStmt));
+        endOperations.push(...ops);
       }
     }
 
@@ -364,19 +398,19 @@ const transformActionDefinition = (
 
     if (actionDef.$type === 'EndableActionDefinition') {
       // Endable action: has start and end operations
-      for (const opCall of actionDef.startOperations) {
-        const op = yield* _(transformOperationCall(opCall));
-        startOperations.push(op);
+      for (const opStmt of actionDef.startOperations) {
+        const ops = yield* _(transformOperationStatement(opStmt));
+        startOperations.push(...ops);
       }
-      for (const opCall of actionDef.endOperations) {
-        const op = yield* _(transformOperationCall(opCall));
-        endOperations.push(op);
+      for (const opStmt of actionDef.endOperations) {
+        const ops = yield* _(transformOperationStatement(opStmt));
+        endOperations.push(...ops);
       }
     } else {
       // Regular action: only has operations (treated as start operations)
-      for (const opCall of actionDef.operations) {
-        const op = yield* _(transformOperationCall(opCall));
-        startOperations.push(op);
+      for (const opStmt of actionDef.operations) {
+        const ops = yield* _(transformOperationStatement(opStmt));
+        startOperations.push(...ops);
       }
     }
 
@@ -474,6 +508,208 @@ const transformOperationCall = (
   });
 
 /**
+ * Transform OperationStatement → OperationConfigIR[]
+ *
+ * Handles all operation statement types:
+ * - OperationCall: Direct operation invocation
+ * - IfStatement: Syntactic sugar for when/otherwise/endWhen
+ * - ForStatement: Syntactic sugar for forEach/endForEach
+ *
+ * Returns an array because control flow statements expand into multiple operations.
+ *
+ * Constitution VII: Generates UUIDs for all generated operations
+ * T177, T180: Implements control flow transformations
+ */
+const transformOperationStatement = (
+  stmt: OperationStatement
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.gen(function* (_) {
+    switch (stmt.$type) {
+      case 'OperationCall': {
+        // Single operation call → single operation
+        const op = yield* _(transformOperationCall(stmt));
+        return [op];
+      }
+
+      case 'IfStatement':
+        // If/else → when/otherwise/endWhen sequence
+        return yield* _(transformIfStatement(stmt));
+
+      case 'ForStatement':
+        // For loop → forEach/endForEach sequence
+        return yield* _(transformForStatement(stmt));
+
+      case 'VariableDeclaration':
+        // Action-scoped variable → setVariable operation
+        return yield* _(transformVariableDeclaration(stmt));
+
+      default:
+        return yield* _(
+          Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: `Unknown operation statement type: ${(stmt as any).$type}`,
+            location: getSourceLocation(stmt),
+          })
+        );
+    }
+  });
+
+/**
+ * Transform IfStatement → when/otherwise/endWhen operations (T177)
+ *
+ * Transforms:
+ *   if (condition) {
+ *     thenOps
+ *   } else {
+ *     elseOps
+ *   }
+ *
+ * Into:
+ *   when(condition)
+ *   [thenOps...]
+ *   otherwise()
+ *   [elseOps...]
+ *   endWhen()
+ *
+ * For if-without-else, the otherwise() operation is omitted.
+ */
+const transformIfStatement = (
+  stmt: IfStatement
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.gen(function* (_) {
+    const operations: OperationConfigIR[] = [];
+
+    // Transform condition expression
+    const condition = yield* _(transformExpression(stmt.condition));
+
+    // 1. when(condition)
+    operations.push({
+      id: crypto.randomUUID(),
+      systemName: 'when',
+      operationData: {
+        condition,
+      },
+      sourceLocation: getSourceLocation(stmt),
+    });
+
+    // 2. Transform then operations (recursively handle nested control flow)
+    for (const thenOp of stmt.thenOps) {
+      const ops = yield* _(transformOperationStatement(thenOp));
+      operations.push(...ops);
+    }
+
+    // 3. otherwise() and else operations (if present)
+    if (stmt.elseOps.length > 0) {
+      operations.push({
+        id: crypto.randomUUID(),
+        systemName: 'otherwise',
+        operationData: {},
+        sourceLocation: getSourceLocation(stmt),
+      });
+
+      for (const elseOp of stmt.elseOps) {
+        const ops = yield* _(transformOperationStatement(elseOp));
+        operations.push(...ops);
+      }
+    }
+
+    // 4. endWhen()
+    operations.push({
+      id: crypto.randomUUID(),
+      systemName: 'endWhen',
+      operationData: {},
+      sourceLocation: getSourceLocation(stmt),
+    });
+
+    return operations;
+  });
+
+/**
+ * Transform ForStatement → forEach/endForEach operations (T180)
+ *
+ * Transforms:
+ *   for (item in collection) {
+ *     body
+ *   }
+ *
+ * Into:
+ *   forEach(collection, "item")
+ *   [body operations...]
+ *   endForEach()
+ *
+ * The item variable name is passed to forEach so Eligius can set it in the operation data context.
+ */
+const transformForStatement = (
+  stmt: ForStatement
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.gen(function* (_) {
+    const operations: OperationConfigIR[] = [];
+
+    // Transform collection expression
+    const collection = yield* _(transformExpression(stmt.collection));
+
+    // 1. forEach(collection, itemName)
+    operations.push({
+      id: crypto.randomUUID(),
+      systemName: 'forEach',
+      operationData: {
+        collection,
+        itemName: stmt.itemName,
+      },
+      sourceLocation: getSourceLocation(stmt),
+    });
+
+    // 2. Transform loop body (recursively handle nested control flow)
+    for (const bodyOp of stmt.body) {
+      const ops = yield* _(transformOperationStatement(bodyOp));
+      operations.push(...ops);
+    }
+
+    // 3. endForEach()
+    operations.push({
+      id: crypto.randomUUID(),
+      systemName: 'endForEach',
+      operationData: {},
+      sourceLocation: getSourceLocation(stmt),
+    });
+
+    return operations;
+  });
+
+/**
+ * Transform VariableDeclaration → setVariable operation (T184)
+ *
+ * Transforms:
+ *   const duration = 500
+ *
+ * Into:
+ *   setVariable("duration", 500)
+ *
+ * This creates an action-scoped variable that can be referenced with @varName.
+ */
+const transformVariableDeclaration = (
+  stmt: VariableDeclaration
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.gen(function* (_) {
+    // Transform the value expression
+    const value = yield* _(transformExpression(stmt.value));
+
+    // Create setVariable operation
+    const operation: OperationConfigIR = {
+      id: crypto.randomUUID(),
+      systemName: 'setVariable',
+      operationData: {
+        name: stmt.name,
+        value,
+      },
+      sourceLocation: getSourceLocation(stmt),
+    };
+
+    return [operation];
+  });
+
+/**
  * Transform Expression → JsonValue
  *
  * Handles all expression types:
@@ -481,6 +717,7 @@ const transformOperationCall = (
  * - Object literals: { key: value, ... }
  * - Array literals: [value1, value2, ...]
  * - Property chain references: $context.currentItem
+ * - Variable references: @varName
  * - Binary expressions: 10 + 5
  */
 const transformExpression = (expr: Expression): Effect.Effect<JsonValue, TransformError> =>
@@ -523,6 +760,12 @@ const transformExpression = (expr: Expression): Effect.Effect<JsonValue, Transfo
         const scope = expr.scope;
         const properties = expr.properties.join('.');
         return `${scope}.${properties}`;
+      }
+
+      case 'VariableReference': {
+        // Variable reference: @varName
+        // Pass as-is to Eligius, which will resolve it to context.varName at runtime
+        return `@${expr.name}`;
       }
 
       case 'BinaryExpression': {
