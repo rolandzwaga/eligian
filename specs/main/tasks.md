@@ -510,7 +510,7 @@
 - [X] T155 [Extension] Configure esbuild to bundle extension and language server separately (esbuild.mjs configured)
 - [X] T156 [Extension] Mark vscode module as external (configured in esbuild.mjs)
 - [X] T157 [Extension] Enable sourcemaps for debugging (configured in esbuild.mjs)
-- [X] T158 [Extension] Test extension in Extension Development Host (manual testing guide created in packages/extension/TESTING.md)
+- [X] T158 [Extension] Test extension in Extension Development Host (manual testing guide created in packages/extension/TESTING.md) - ✅ All 15 manual tests completed and verified: syntax highlighting, file association, language server activation, real-time validation, operation validation, timeline validation, compile commands (Command Palette + context menu), compilation output, compilation errors, basic autocompletion, examples compile without errors, extension lifecycle
 
 **Checkpoint**: ✅ Extension complete with manual testing guide. All core features implemented: file association, syntax highlighting, language server, validation, compile command. Testing guide provides comprehensive checklist for manual verification in Extension Development Host.
 

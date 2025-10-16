@@ -8,10 +8,10 @@
  * - Output to file and stdout
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'node:child_process';
-import { readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const CLI_PATH = join(__dirname, '../../bin/cli.js');
 const FIXTURES_PATH = join(__dirname, '__fixtures__');
@@ -36,10 +36,9 @@ describe('CLI - Basic Compilation', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
-    const result = execSync(
-      `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`,
-      { encoding: 'utf-8' }
-    );
+    const result = execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`, {
+      encoding: 'utf-8',
+    });
 
     expect(result).toContain('✓');
     expect(existsSync(outputFile)).toBe(true);
@@ -54,10 +53,7 @@ describe('CLI - Basic Compilation', () => {
   it('should use --check flag to validate without output', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
 
-    const result = execSync(
-      `node "${CLI_PATH}" "${inputFile}" --check`,
-      { encoding: 'utf-8' }
-    );
+    const result = execSync(`node "${CLI_PATH}" "${inputFile}" --check`, { encoding: 'utf-8' });
 
     expect(result).toContain('is valid');
     expect(existsSync(join(OUTPUT_DIR, 'output.json'))).toBe(false);
@@ -66,10 +62,7 @@ describe('CLI - Basic Compilation', () => {
   it('should output to stdout when output is "-"', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
 
-    const result = execSync(
-      `node "${CLI_PATH}" "${inputFile}" -o -`,
-      { encoding: 'utf-8' }
-    );
+    const result = execSync(`node "${CLI_PATH}" "${inputFile}" -o -`, { encoding: 'utf-8' });
 
     // Result should be valid JSON
     expect(() => JSON.parse(result)).not.toThrow();
@@ -84,10 +77,10 @@ describe('CLI - Error Handling', () => {
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
     try {
-      execSync(
-        `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`,
-        { encoding: 'utf-8', stdio: 'pipe' }
-      );
+      execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`, {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      });
       expect.fail('Should have thrown an error');
     } catch (error: any) {
       expect(error.status).toBe(1);
@@ -102,10 +95,10 @@ describe('CLI - Error Handling', () => {
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
     try {
-      execSync(
-        `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`,
-        { encoding: 'utf-8', stdio: 'pipe' }
-      );
+      execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`, {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      });
       expect.fail('Should have thrown an error');
     } catch (error: any) {
       expect(error.status).toBe(1);
@@ -120,10 +113,10 @@ describe('CLI - Error Handling', () => {
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
     try {
-      execSync(
-        `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`,
-        { encoding: 'utf-8', stdio: 'pipe' }
-      );
+      execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}"`, {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      });
       expect.fail('Should have thrown an error');
     } catch (error: any) {
       expect(error.status).toBe(3);
@@ -148,10 +141,9 @@ describe('CLI - Flags and Options', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
-    const result = execSync(
-      `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --verbose`,
-      { encoding: 'utf-8' }
-    );
+    const result = execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --verbose`, {
+      encoding: 'utf-8',
+    });
 
     expect(result).toContain('Compiling');
     expect(result).toContain('Compiled');
@@ -161,10 +153,9 @@ describe('CLI - Flags and Options', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
-    const result = execSync(
-      `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --quiet`,
-      { encoding: 'utf-8' }
-    );
+    const result = execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --quiet`, {
+      encoding: 'utf-8',
+    });
 
     expect(result.trim()).toBe('');
   });
@@ -173,10 +164,9 @@ describe('CLI - Flags and Options', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
-    execSync(
-      `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --minify`,
-      { encoding: 'utf-8' }
-    );
+    execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --minify`, {
+      encoding: 'utf-8',
+    });
 
     const output = readFileSync(outputFile, 'utf-8');
     // Minified output should have no unnecessary whitespace
@@ -187,10 +177,9 @@ describe('CLI - Flags and Options', () => {
     const inputFile = join(FIXTURES_PATH, 'valid-simple.eligian');
     const outputFile = join(OUTPUT_DIR, 'output.json');
 
-    const result = execSync(
-      `node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --no-optimize`,
-      { encoding: 'utf-8' }
-    );
+    execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --no-optimize`, {
+      encoding: 'utf-8',
+    });
 
     expect(existsSync(outputFile)).toBe(true);
     const output = JSON.parse(readFileSync(outputFile, 'utf-8'));
