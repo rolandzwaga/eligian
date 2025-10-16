@@ -166,22 +166,22 @@ Langium provides basic autocompletion out of the box:
 
 Before releasing the extension, manually verify:
 
-- [ ] Syntax highlighting works for all language constructs
-- [ ] File extension `.eligian` is recognized
-- [ ] Language server activates on opening `.eligian` file
-- [ ] Real-time validation shows errors in Problems panel
-- [ ] Unknown operations show helpful error messages
-- [ ] Missing timeline declaration is flagged
-- [ ] Invalid time ranges are caught
-- [ ] Compile command appears in Command Palette
-- [ ] Compile command appears in editor context menu
-- [ ] Successful compilation shows JSON in Output panel
-- [ ] Compilation errors show details in Output panel
-- [ ] Basic autocompletion works (Ctrl+Space)
-- [ ] Examples compile without errors
-- [ ] Extension doesn't crash on invalid DSL
-- [ ] Extension activates only for `.eligian` files
-- [ ] Extension deactivates cleanly when closing all `.eligian` files
+- [X] Syntax highlighting works for all language constructs
+- [X] File extension `.eligian` is recognized
+- [X] Language server activates on opening `.eligian` file
+- [X] Real-time validation shows errors in Problems panel
+- [X] Unknown operations show helpful error messages
+- [X] Missing timeline declaration is flagged
+- [X] Invalid time ranges are caught
+- [X] Compile command appears in Command Palette
+- [X] Compile command appears in editor context menu
+- [X] Successful compilation shows JSON in Output panel
+- [X] Compilation errors show details in Output panel
+- [X] Basic autocompletion works (Ctrl+Space)
+- [X] Examples compile without errors
+- [X] Extension doesn't crash on invalid DSL
+- [X] Extension activates only for `.eligian` files
+- [X] Extension deactivates cleanly when closing all `.eligian` files
 
 ## Automated Testing (Future)
 
