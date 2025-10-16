@@ -216,19 +216,46 @@ const transformTimelineEvent = (
     const endOperations: OperationConfigIR[] = [];
 
     if (action.$type === 'NamedActionInvocation') {
-      // Named action reference: { fadeIn() }
-      // This will be resolved during compilation - for now we emit a startAction operation
+      // Named action reference: { showSlide1() }
+      // Per Eligius operation registry, action invocation requires two steps:
+      // 1. requestAction: Takes systemName, outputs actionInstance to operation data
+      // 2. startAction: Depends on actionInstance from previous operation
       const actionCall = action.actionCall;
       const actionName = actionCall?.action?.$refText || 'unknown';
 
-      // Emit startAction operation to invoke the action
+      // Step 1: Request the action instance
+      startOperations.push({
+        id: crypto.randomUUID(),
+        systemName: 'requestAction',
+        operationData: {
+          systemName: actionName,
+          // TODO: Transform arguments if present
+        },
+        sourceLocation: getSourceLocation(action),
+      });
+
+      // Step 2: Start the action (uses actionInstance from requestAction)
       startOperations.push({
         id: crypto.randomUUID(),
         systemName: 'startAction',
+        operationData: {},
+        sourceLocation: getSourceLocation(action),
+      });
+
+      // End operations: Request action instance again and call endAction
+      endOperations.push({
+        id: crypto.randomUUID(),
+        systemName: 'requestAction',
         operationData: {
-          actionName,
-          // TODO: Transform arguments if present
+          systemName: actionName,
         },
+        sourceLocation: getSourceLocation(action),
+      });
+
+      endOperations.push({
+        id: crypto.randomUUID(),
+        systemName: 'endAction',
+        operationData: {},
         sourceLocation: getSourceLocation(action),
       });
     } else if (action.$type === 'InlineEndableAction') {

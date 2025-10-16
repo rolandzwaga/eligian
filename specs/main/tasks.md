@@ -535,6 +535,25 @@
 
 ---
 
+## Phase 10: Bug Fixes & Improvements
+
+**Purpose**: Address bugs discovered during testing and usage
+
+- [X] T170 [BugFix] Fix NamedActionInvocation to use requestAction + startAction/endAction pattern in packages/language/src/compiler/ast-transformer.ts
+  - **Issue**: Named action invocations (e.g., `showSlide1()`) were incorrectly generating single `startAction` operation with `actionName` parameter
+  - **Root Cause**: Did not follow Eligius operation registry - `startAction` requires `actionInstance` dependency (not `actionName` parameter)
+  - **Fix**: Generate two operations for start: `requestAction` (outputs actionInstance) → `startAction` (uses actionInstance)
+  - **Fix**: Generate two operations for end: `requestAction` → `endAction`
+  - **Impact**: All action invocations in timeline events now compile to correct Eligius JSON
+- [X] T171 [BugFix] Update transformer tests for new action invocation pattern in packages/language/src/compiler/__tests__/transformer.spec.ts
+  - Updated test expectations: 2 startOperations (requestAction + startAction), 2 endOperations (requestAction + endAction)
+- [X] T172 [BugFix] Verify pipeline tests pass with new action invocation output
+  - All 235 tests passing after fix
+
+**Phase 10 Status (2025-10-16)**: Bug fix complete. Named action invocations now correctly use requestAction + startAction/endAction pattern per Eligius operation registry. All tests passing.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

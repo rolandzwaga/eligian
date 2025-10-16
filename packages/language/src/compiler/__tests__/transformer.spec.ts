@@ -125,9 +125,18 @@ describe('AST Transformer', () => {
       const action = result.timelines[0].timelineActions[0];
       expect(action.duration.start).toBe(10);
       expect(action.duration.end).toBe(20);
-      // Named action invocations emit startAction operation
-      expect(action.startOperations).toHaveLength(1);
-      expect(action.startOperations[0].systemName).toBe('startAction');
+      // Named action invocations emit requestAction + startAction operations
+      expect(action.startOperations).toHaveLength(2);
+      expect(action.startOperations[0].systemName).toBe('requestAction');
+      expect(action.startOperations[0].operationData?.systemName).toBe('fadeIn');
+      expect(action.startOperations[1].systemName).toBe('startAction');
+      expect(action.startOperations[1].operationData).toEqual({});
+      // End operations: requestAction + endAction
+      expect(action.endOperations).toHaveLength(2);
+      expect(action.endOperations[0].systemName).toBe('requestAction');
+      expect(action.endOperations[0].operationData?.systemName).toBe('fadeIn');
+      expect(action.endOperations[1].systemName).toBe('endAction');
+      expect(action.endOperations[1].operationData).toEqual({});
     });
   });
 
