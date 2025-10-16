@@ -300,6 +300,185 @@ describe('AST Transformer', () => {
       expect(action.duration.start).toBe(42);
       expect(action.duration.end).toBe(100);
     });
+
+    test('should transform relative time expressions (T189)', async () => {
+      const code = `
+                timeline "test" using raf {
+                    at 0s..3s [
+                        selectElement("#intro")
+                    ] []
+
+                    at +0s..+5s [
+                        selectElement("#main")
+                    ] []
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(2);
+
+      // First event: 0s..3s (absolute times)
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(3);
+
+      // Second event: +0s..+5s (relative to previous end: 3 + 0 = 3, 3 + 5 = 8)
+      expect(actions[1].duration.start).toBe(3);
+      expect(actions[1].duration.end).toBe(8);
+    });
+
+    test('should support mixed absolute and relative times (T189)', async () => {
+      const code = `
+                timeline "test" using raf {
+                    at 0s..5s [
+                        selectElement("#first")
+                    ] []
+
+                    at +2s..+7s [
+                        selectElement("#second")
+                    ] []
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+
+      // First: 0s..5s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(5);
+
+      // Second: +2s..+7s relative to 5 → 7..12
+      expect(actions[1].duration.start).toBe(7);
+      expect(actions[1].duration.end).toBe(12);
+    });
+  });
+
+  describe('Sequence syntax (T190)', () => {
+    test('should transform sequence block to sequential timeline events', async () => {
+      const code = `
+                endable action intro() [
+                    selectElement("#intro")
+                ] []
+
+                endable action main() [
+                    selectElement("#main")
+                ] []
+
+                endable action outro() [
+                    selectElement("#outro")
+                ] []
+
+                timeline "test" using raf {
+                    sequence {
+                        intro() for 5s
+                        main() for 10s
+                        outro() for 3s
+                    }
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(3);
+
+      // First: intro() for 5s → 0-5s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(5);
+      expect(actions[0].startOperations[0].operationData?.systemName).toBe('intro');
+
+      // Second: main() for 10s → 5-15s
+      expect(actions[1].duration.start).toBe(5);
+      expect(actions[1].duration.end).toBe(15);
+      expect(actions[1].startOperations[0].operationData?.systemName).toBe('main');
+
+      // Third: outro() for 3s → 15-18s
+      expect(actions[2].duration.start).toBe(15);
+      expect(actions[2].duration.end).toBe(18);
+      expect(actions[2].startOperations[0].operationData?.systemName).toBe('outro');
+    });
+
+    test('should support sequence with parameterized actions', async () => {
+      const code = `
+                endable action fadeIn(selector, duration) [
+                    selectElement($operationdata.selector)
+                ] []
+
+                timeline "test" using raf {
+                    sequence {
+                        fadeIn(".title", 1000) for 2s
+                        fadeIn(".content", 500) for 3s
+                    }
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(2);
+
+      // First: fadeIn(".title", 1000) for 2s → 0-2s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(2);
+      expect(actions[0].startOperations[1].operationData?.actionOperationData).toEqual({
+        selector: '.title',
+        duration: 1000,
+      });
+
+      // Second: fadeIn(".content", 500) for 3s → 2-5s
+      expect(actions[1].duration.start).toBe(2);
+      expect(actions[1].duration.end).toBe(5);
+      expect(actions[1].startOperations[1].operationData?.actionOperationData).toEqual({
+        selector: '.content',
+        duration: 500,
+      });
+    });
+
+    test('should support mixing sequence blocks with regular timed events', async () => {
+      const code = `
+                endable action step1() [
+                    selectElement("#step1")
+                ] []
+
+                endable action step2() [
+                    selectElement("#step2")
+                ] []
+
+                timeline "test" using raf {
+                    sequence {
+                        step1() for 3s
+                        step2() for 2s
+                    }
+
+                    at 10s..15s [
+                        selectElement("#manual")
+                    ] []
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(3);
+
+      // Sequence items: 0-3s, 3-5s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(3);
+
+      expect(actions[1].duration.start).toBe(3);
+      expect(actions[1].duration.end).toBe(5);
+
+      // Regular timed event: 10-15s
+      expect(actions[2].duration.start).toBe(10);
+      expect(actions[2].duration.end).toBe(15);
+    });
   });
 
   describe('transformAST (T055) - Full program transformation', () => {

@@ -170,7 +170,7 @@ TimelineProvider returns string:
     'video' | 'audio' | 'raf' | 'custom';
 
 /**
- * Timeline Event - Endable action triggered at specific time range
+ * Timeline Event - Endable action triggered at specific time range OR sequence block
  *
  * Named action invocation:
  *   at 0s..5s { fadeIn() }
@@ -182,12 +182,41 @@ TimelineProvider returns string:
  *   ] [
  *     removeClass("visible")
  *   ]
+ *
+ * Sequence block (T190):
+ *   sequence {
+ *     intro() for 5s
+ *     main() for 10s
+ *     outro() for 5s
+ *   }
  */
 TimelineEvent:
+    SequenceBlock | TimedEvent;
+
+TimedEvent:
     'at' timeRange=TimeRange (action=TimelineAction);
 
 TimelineAction:
     InlineEndableAction | NamedActionInvocation;
+
+/**
+ * Sequence Block - Sequential events with automatic time calculation (T190)
+ *
+ * Example:
+ *   sequence {
+ *     intro() for 5s
+ *     main() for 10s
+ *   }
+ *
+ * Transforms to:
+ *   at 0s..5s { intro() }
+ *   at 5s..15s { main() }
+ */
+SequenceBlock:
+    'sequence' '{' (items += SequenceItem)* '}';
+
+SequenceItem:
+    actionCall=ActionCallExpression 'for' duration=TimeExpression;
 
 /**
  * Named action invocation - calls a defined endable action
@@ -223,8 +252,20 @@ MultiplicativeTime infers TimeExpression:
 
 PrimaryTime infers TimeExpression:
     '(' TimeExpression ')' |
+    RelativeTimeLiteral |
     TimeLiteral |
     PropertyChainReference;
+
+/**
+ * Relative Time Literal - Time offset from previous event (T189)
+ *
+ * Examples:
+ *   +2s    = 2 seconds after previous event ends
+ *   +500ms = 500 milliseconds after previous event ends
+ *   +0s    = immediately after previous event ends
+ */
+RelativeTimeLiteral:
+    '+' value=NUMBER unit=TimeUnit?;
 
 TimeLiteral:
     value=NUMBER unit=TimeUnit?;

@@ -26,8 +26,9 @@ import type {
   OperationStatement,
   Program,
   RegularActionDefinition,
+  SequenceBlock,
+  TimedEvent,
   Timeline,
-  TimelineEvent,
   VariableDeclaration,
 } from '../generated/ast.js';
 import { getOperationSignature } from './operations/index.js';
@@ -183,17 +184,36 @@ function createDefaultConfiguration() {
  */
 const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR, TransformError> =>
   Effect.gen(function* (_) {
-    // Transform timeline events to TimelineActionIR
+    // T189/T190: Transform timeline events to TimelineActionIR with relative time support
+    // Track previous event end time for relative time expressions and sequence blocks
     const timelineActions: TimelineActionIR[] = [];
+    let previousEventEndTime = 0;
+
     for (const event of timeline.events) {
-      const timelineAction = yield* _(transformTimelineEvent(event));
-      timelineActions.push(timelineAction);
+      // T190: Check if this is a sequence block or a timed event
+      if (event.$type === 'SequenceBlock') {
+        // Transform sequence block into multiple timeline actions
+        const sequenceActions = yield* _(transformSequenceBlock(event, previousEventEndTime));
+        timelineActions.push(...sequenceActions);
+
+        // Update previousEventEndTime to the end of the last sequence item
+        if (sequenceActions.length > 0) {
+          previousEventEndTime = sequenceActions[sequenceActions.length - 1].duration.end;
+        }
+      } else {
+        // TimedEvent: regular "at start..end { ... }" event
+        const timelineAction = yield* _(transformTimedEvent(event, previousEventEndTime));
+        timelineActions.push(timelineAction);
+
+        // Update previous event end time for next event
+        previousEventEndTime = timelineAction.duration.end;
+      }
     }
 
-    // Calculate total duration from events
+    // T188: Calculate total duration from events (duration inference)
     let maxDuration = 0;
     for (const action of timelineActions) {
-      const endTime = typeof action.duration.end === 'number' ? action.duration.end : 0; // TimeExpressions need evaluation
+      const endTime = typeof action.duration.end === 'number' ? action.duration.end : 0;
       if (endTime > maxDuration) {
         maxDuration = endTime;
       }
@@ -213,17 +233,132 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
   });
 
 /**
- * Transform TimelineEvent → TimelineActionIR
+ * Transform SequenceBlock → TimelineActionIR[] (T190)
  *
- * Timeline events can be:
+ * Transforms:
+ *   sequence {
+ *     intro() for 5s
+ *     main() for 10s
+ *     outro() for 3s
+ *   }
+ *
+ * Into timeline actions with calculated times:
+ *   at 0s..5s { intro() }
+ *   at 5s..15s { main() }
+ *   at 15s..18s { outro() }
+ *
+ * previousEventEndTime is the starting point for the first sequence item.
+ */
+const transformSequenceBlock = (
+  sequence: SequenceBlock,
+  previousEventEndTime: number
+): Effect.Effect<TimelineActionIR[], TransformError> =>
+  Effect.gen(function* (_) {
+    const actions: TimelineActionIR[] = [];
+    let currentTime = previousEventEndTime;
+
+    for (const item of sequence.items) {
+      // Transform duration expression to number
+      const durationExpr = yield* _(transformTimeExpression(item.duration, currentTime));
+      const duration = evaluateTimeExpression(durationExpr);
+
+      // Calculate time range: start at currentTime, end at currentTime + duration
+      const start = currentTime;
+      const end = currentTime + duration;
+
+      // Get action name and arguments
+      const actionCall = item.actionCall;
+      const actionName = actionCall?.action?.$refText || 'unknown';
+      const actionRef = actionCall?.action?.ref;
+
+      // Transform action arguments to actionOperationData
+      let actionOperationData: Record<string, JsonValue> | undefined;
+      if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
+        const parameters = actionRef.parameters || [];
+        const args = actionCall.args;
+
+        if (args.length !== parameters.length) {
+          return yield* _(
+            Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'ValidationError' as const,
+              message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
+              location: getSourceLocation(item),
+            })
+          );
+        }
+
+        actionOperationData = {};
+        for (let i = 0; i < parameters.length; i++) {
+          const paramName = parameters[i].name;
+          const argValue = yield* _(transformExpression(args[i]));
+          actionOperationData[paramName] = argValue;
+        }
+      }
+
+      // Build start and end operations for this sequence item
+      const startOperations: OperationConfigIR[] = [
+        {
+          id: crypto.randomUUID(),
+          systemName: 'requestAction',
+          operationData: { systemName: actionName },
+          sourceLocation: getSourceLocation(item),
+        },
+        {
+          id: crypto.randomUUID(),
+          systemName: 'startAction',
+          operationData: actionOperationData ? { actionOperationData } : {},
+          sourceLocation: getSourceLocation(item),
+        },
+      ];
+
+      const endOperations: OperationConfigIR[] = [
+        {
+          id: crypto.randomUUID(),
+          systemName: 'requestAction',
+          operationData: { systemName: actionName },
+          sourceLocation: getSourceLocation(item),
+        },
+        {
+          id: crypto.randomUUID(),
+          systemName: 'endAction',
+          operationData: actionOperationData ? { actionOperationData } : {},
+          sourceLocation: getSourceLocation(item),
+        },
+      ];
+
+      // Create timeline action for this sequence item
+      actions.push({
+        id: crypto.randomUUID(),
+        name: `sequence-${actionName}-${start}-${end}`,
+        duration: { start, end },
+        startOperations,
+        endOperations,
+        sourceLocation: getSourceLocation(item),
+      });
+
+      // Update currentTime for next item
+      currentTime = end;
+    }
+
+    return actions;
+  });
+
+/**
+ * Transform TimedEvent → TimelineActionIR
+ *
+ * Timed events are regular timeline events with explicit time ranges:
  * 1. Named action invocation: at 0s..5s { fadeIn() }
  * 2. Inline endable action: at 0s..5s [ ... ] [ ... ]
+ *
+ * T189: Supports relative time expressions (+2s means offset from previousEventEndTime)
  *
  * Constitution VII: Generates UUID for action ID to prevent conflicts when multiple
  * actions exist or configs are merged.
  */
-const transformTimelineEvent = (
-  event: TimelineEvent
+const transformTimedEvent = (
+  event: TimedEvent,
+  previousEventEndTime: number
 ): Effect.Effect<TimelineActionIR, TransformError> =>
   Effect.gen(function* (_) {
     const timeRange = event.timeRange;
@@ -239,8 +374,9 @@ const transformTimelineEvent = (
     }
 
     // Transform start and end times to numbers
-    const startExpr = yield* _(transformTimeExpression(timeRange.start));
-    const endExpr = yield* _(transformTimeExpression(timeRange.end));
+    // T189: Pass previousEventEndTime for relative time resolution
+    const startExpr = yield* _(transformTimeExpression(timeRange.start, previousEventEndTime));
+    const endExpr = yield* _(transformTimeExpression(timeRange.end, previousEventEndTime));
     const start = evaluateTimeExpression(startExpr);
     const end = evaluateTimeExpression(endExpr);
 
@@ -875,9 +1011,12 @@ const transformExpression = (expr: Expression): Effect.Effect<JsonValue, Transfo
 
 /**
  * Transform TimeExpression → TimeExpression IR
+ *
+ * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
  */
 export const transformTimeExpression = (
-  expr: AstTimeExpression
+  expr: AstTimeExpression,
+  previousEventEndTime: number = 0
 ): Effect.Effect<TimeExpression, TransformError> =>
   Effect.gen(function* (_) {
     switch (expr.$type) {
@@ -886,6 +1025,15 @@ export const transformTimeExpression = (
           kind: 'literal' as const,
           value: expr.value,
         };
+      case 'RelativeTimeLiteral': {
+        // T189: Relative time expression: +2s means previousEventEndTime + 2
+        // Convert to absolute time by adding to previous event's end
+        const offset = expr.value;
+        return {
+          kind: 'literal' as const,
+          value: previousEventEndTime + offset,
+        };
+      }
       case 'PropertyChainReference': {
         // Property reference in time expression
         const scope = expr.scope;
@@ -896,8 +1044,8 @@ export const transformTimeExpression = (
         };
       }
       case 'BinaryTimeExpression': {
-        const left = yield* _(transformTimeExpression(expr.left));
-        const right = yield* _(transformTimeExpression(expr.right));
+        const left = yield* _(transformTimeExpression(expr.left, previousEventEndTime));
+        const right = yield* _(transformTimeExpression(expr.right, previousEventEndTime));
         return {
           kind: 'binary' as const,
           op: expr.op as '+' | '-' | '*' | '/',
