@@ -575,7 +575,51 @@
   - **Example caught**: `removeClass()` without prior `selectElement()` → Clear error with hint to call selectElement first
   - **Impact**: Compile-time errors instead of runtime failures in Eligius
 
-**Phase 11 Status (2025-10-16)**: Dependency validation complete. Compiler now validates operation dependencies at compile time using operation registry metadata. Would have caught the T170 bug immediately. All 235 tests passing.
+**Phase 11 Status (2025-10-16)**: Dependency validation complete. Compiler now validates operation dependencies at compile time using operation registry metadata. Would have caught the T170 bug immediately. All 236 tests passing.
+
+---
+
+## Phase 11.5: Multi-Type Parameter Support ✅ COMPLETE
+
+**Purpose**: Update operation registry and validator to handle multi-type parameters from new Eligius version
+
+**Goal**: Support pipe-delimited type syntax in Eligius operation metadata (e.g., `ParameterType:array|string`)
+
+**Background**: New Eligius version (1.1.7) introduces multi-type parameters where a single parameter can accept multiple types. For example, the `forEach` operation's `collection` parameter now accepts either an array literal OR a string (property name that resolves to an array at runtime).
+
+- [X] T191 [Registry] Update type parsing in packages/language/src/compiler/operations/metadata-converter.ts
+  - Modified `convertParameterType()` to detect and split pipe-delimited types (`array|string` → `['array', 'string']`)
+  - Add prefix handling for types without `ParameterType:` prefix
+  - Return array of ParameterTypes for consistency (single types wrapped in array)
+
+- [X] T192 [Types] Update OperationParameter type in packages/language/src/compiler/operations/types.ts
+  - Changed `type` field from `ParameterType | ConstantValue[]` to `ParameterType[] | ConstantValue[]`
+  - Updated JSDoc to document three type modes: single type, multi-type, constant values
+  - Updated type guards: `isParameterType()` → `isParameterTypeArray()`
+
+- [X] T193 [Validation] Update parameter type validation in packages/language/src/compiler/operations/validator.ts
+  - Modified `isTypeCompatible()` to check if argument matches ANY of the allowed types (OR logic)
+  - Added `isTypeSingleCompatible()` helper to reduce code duplication
+  - Updated error messages to show all allowed types: "Expected array or string, got number"
+
+- [X] T194 [Generation] Regenerate operation registry with new Eligius version
+  - Ran `pnpm run generate:registry` in packages/language
+  - Verified forEach now has `collection: ['ParameterType:array', 'ParameterType:string']`
+  - Generated 45 operation signatures (46 operations - 1 deprecated resizeAction)
+
+- [X] T195 [Testing] Add tests for multi-type parameter support
+  - Updated registry.spec.ts: Fixed existing tests to expect arrays instead of strings
+  - Added new test: "should support multi-type parameters" validates forEach collection parameter
+  - All 23 registry tests passing
+
+- [X] T196 [Integration] Verify end-to-end compilation with updated registry
+  - Ran full test suite: All 236 tests passing (235 previous + 1 new multi-type test)
+  - Verified existing DSL code still compiles correctly
+  - Property chain references (e.g., `$operationdata.items`) correctly validated as compatible with string type
+
+**Phase 11.5 Status (2025-10-16)**: ✅ COMPLETE - Multi-type parameter support fully implemented and tested. Operation registry now correctly handles pipe-delimited types from Eligius metadata. All 236 tests passing.
+
+**Estimated Effort**: 1-2 hours (actual: ~1 hour)
 
 ---
 
@@ -848,8 +892,8 @@ Setup → Foundational → Grammar → Validation → Compiler → Error Reporti
 ---
 
 **Generated**: 2025-10-14
-**Updated**: 2025-10-15 (Added Phase 5.5: Complete Grammar Implementation using JSON schemas)
-**Total Tasks**: 189 (168 original + 21 Phase 5.5 tasks, reduced from 29 due to JSON schema reuse)
+**Updated**: 2025-10-16 (Added Phase 11.5: Multi-Type Parameter Support)
+**Total Tasks**: 195 (168 original + 21 Phase 5.5 tasks + 6 Phase 11.5 tasks)
 **Estimated MVP Tasks**: 126 (T001-T126, Phase 5.5 optional but recommended)
 **Parallel Opportunities**: 50 tasks marked [P] (47 original + 3 Phase 5.5)
 

@@ -52,12 +52,57 @@ ActionDefinition:
 
 RegularActionDefinition:
     'action' name=ID
-    '[' (operations += OperationCall)* ']';
+    '[' (operations += OperationStatement)* ']';
 
 EndableActionDefinition:
     'endable' 'action' name=ID
-    '[' (startOperations += OperationCall)* ']'
-    '[' (endOperations += OperationCall)* ']';
+    '[' (startOperations += OperationStatement)* ']'
+    '[' (endOperations += OperationStatement)* ']';
+
+/**
+ * Operation Statement - Base type for all operation-like constructs
+ *
+ * This includes:
+ * - Regular operation calls (selectElement, animate, etc.)
+ * - Control flow statements (if/else, for loops)
+ */
+OperationStatement:
+    IfStatement | ForStatement | OperationCall;
+
+/**
+ * If/Else Statement - Syntactic sugar for when/otherwise/endWhen
+ *
+ * Examples:
+ *   if ($operationdata.count > 5) {
+ *     addClass("highlight")
+ *   }
+ *
+ *   if ($operationdata.enabled) {
+ *     selectElement(".box")
+ *     addClass("active")
+ *   } else {
+ *     removeClass("active")
+ *   }
+ */
+IfStatement:
+    'if' '(' condition=Expression ')' '{' (thenOps += OperationStatement)* '}'
+    ('else' '{' (elseOps += OperationStatement)* '}')?;
+
+/**
+ * For Loop - Syntactic sugar for forEach/endForEach
+ *
+ * Examples:
+ *   for (item in $operationdata.items) {
+ *     selectElement(".template")
+ *     setElementContent(item)
+ *   }
+ *
+ *   for (slide in slides) {
+ *     addClass("animated")
+ *   }
+ */
+ForStatement:
+    'for' '(' itemName=ID 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
 
 /**
  * Operation Call - Function-style call with positional parameters
@@ -124,8 +169,8 @@ ActionCallExpression:
  * Inline endable action - anonymous endable action defined at use site
  */
 InlineEndableAction:
-    '[' (startOperations += OperationCall)* ']'
-    '[' (endOperations += OperationCall)* ']';
+    '[' (startOperations += OperationStatement)* ']'
+    '[' (endOperations += OperationStatement)* ']';
 
 // ============================================================================
 // Time Expressions

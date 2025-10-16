@@ -71,15 +71,24 @@ export interface ConstantValue {
 /**
  * Metadata for a single operation parameter.
  *
- * Supports two type modes:
- * 1. Single ParameterType: parameter accepts values of that semantic type
- * 2. ConstantValue[]: parameter must be one of the specified constant values (enum)
+ * Supports three type modes:
+ * 1. Single ParameterType: parameter accepts values of that semantic type (wrapped in array)
+ * 2. Multiple ParameterTypes: parameter accepts any of the specified types (e.g., array|string)
+ * 3. ConstantValue[]: parameter must be one of the specified constant values (enum)
+ *
+ * Note: ParameterType[] always uses an array for consistency, even for single types.
+ * This simplifies validation logic - just check if argument matches any type in the array.
+ *
+ * @example
+ * // Single type: { name: 'className', type: ['ParameterType:className'], required: true }
+ * // Multi-type: { name: 'collection', type: ['ParameterType:array', 'ParameterType:string'], required: true }
+ * // Constant values: { name: 'insertionType', type: [{ value: 'overwrite' }, { value: 'append' }], required: false }
  */
 export interface OperationParameter {
   /** Parameter name (e.g., 'className', 'selector') */
   name: string;
-  /** Parameter type - either a semantic type or array of allowed constant values */
-  type: ParameterType | ConstantValue[];
+  /** Parameter type - array of semantic types OR array of allowed constant values */
+  type: ParameterType[] | ConstantValue[];
   /** Whether this parameter is required */
   required: boolean;
   /** Default value if parameter is optional and not provided */
@@ -110,12 +119,14 @@ export interface DependencyInfo {
  * dependencies for subsequent operations.
  *
  * Example: selectElement outputs 'selectedElement' for use by addClass, etc.
+ *
+ * Note: Like parameters, outputs can have multiple possible types (array for consistency).
  */
 export interface OutputInfo {
   /** Output name (e.g., 'selectedElement') */
   name: string;
-  /** Type of the output value */
-  type: ParameterType;
+  /** Type of the output value - array for consistency with parameters */
+  type: ParameterType[] | ParameterType;
 }
 
 /**
@@ -157,19 +168,21 @@ export interface OperationSignature {
 export type OperationRegistry = Record<string, OperationSignature>;
 
 /**
- * Type guard to check if a parameter type is a ParameterType (vs ConstantValue[])
+ * Type guard to check if a parameter type is ParameterType[] (vs ConstantValue[])
  */
-export function isParameterType(type: ParameterType | ConstantValue[]): type is ParameterType {
-  return typeof type === 'string';
+export function isParameterTypeArray(
+  type: ParameterType[] | ConstantValue[]
+): type is ParameterType[] {
+  return Array.isArray(type) && (type.length === 0 || typeof type[0] === 'string');
 }
 
 /**
  * Type guard to check if a parameter type is an array of constant values
  */
 export function isConstantValueArray(
-  type: ParameterType | ConstantValue[]
+  type: ParameterType[] | ConstantValue[]
 ): type is ConstantValue[] {
-  return Array.isArray(type);
+  return Array.isArray(type) && type.length > 0 && typeof type[0] === 'object';
 }
 
 /**

@@ -253,27 +253,51 @@ function inferArgumentType(arg: any): string {
  * - 'object' matches ParameterType:object
  * - 'array' matches ParameterType:array
  * - Constant values must match exactly
+ * - **NEW**: For multi-type parameters (e.g., ['array', 'string']), checks if argument matches ANY of the types
  *
  * @param argType - The inferred argument type
- * @param paramType - The expected parameter type from signature
+ * @param paramType - The expected parameter type from signature (ParameterType[] or ConstantValue[])
  * @returns True if compatible, false otherwise
  */
-function isTypeCompatible(argType: string, paramType: string | any[]): boolean {
+function isTypeCompatible(argType: string, paramType: string[] | any[]): boolean {
   // Runtime values (property chains, expressions) can't be validated at compile time
   if (argType === 'property-chain' || argType === 'expression') {
     return true;
   }
 
-  // Constant values (array of allowed values)
+  // Check if paramType is an array
   if (Array.isArray(paramType)) {
-    // For constant values, we can only validate literals
-    // Property chains and expressions will be validated at runtime
-    return true; // Can't validate constant values at compile time without literal value
+    // Empty array shouldn't happen, but handle it
+    if (paramType.length === 0) {
+      return false;
+    }
+
+    // Check if it's ConstantValue[] (array of objects)
+    if (typeof paramType[0] === 'object' && 'value' in paramType[0]) {
+      // For constant values, we can only validate literals at compile time
+      // Property chains and expressions will be validated at runtime
+      return true; // Can't validate constant values at compile time without literal value
+    }
+
+    // It's ParameterType[] - check if argument matches ANY of the types
+    for (const singleType of paramType) {
+      if (isTypeSingleCompatible(argType, singleType as string)) {
+        return true; // Matches at least one type
+      }
+    }
+
+    return false; // Doesn't match any of the allowed types
   }
 
-  // ParameterType validation
-  const paramTypeStr = paramType as string;
+  // Fallback: treat as single type string (shouldn't happen with new type system)
+  return isTypeSingleCompatible(argType, paramType as string);
+}
 
+/**
+ * Check if an argument type is compatible with a single ParameterType string.
+ * Helper function for isTypeCompatible to reduce duplication.
+ */
+function isTypeSingleCompatible(argType: string, paramTypeStr: string): boolean {
   // String types
   if (argType === 'string') {
     return (
@@ -352,9 +376,28 @@ export function validateParameterTypes(
     const isCompatible = isTypeCompatible(argType, param.type);
 
     if (!isCompatible) {
-      const expectedType = Array.isArray(param.type)
-        ? `one of: ${param.type.join(', ')}`
-        : param.type;
+      // Format expected type for error message
+      let expectedType: string;
+      if (Array.isArray(param.type)) {
+        // Check if it's ConstantValue[] or ParameterType[]
+        if (
+          param.type.length > 0 &&
+          typeof param.type[0] === 'object' &&
+          'value' in param.type[0]
+        ) {
+          // ConstantValue[]
+          expectedType = `one of: ${param.type.map((c: any) => c.value).join(', ')}`;
+        } else {
+          // ParameterType[] - could be multi-type (e.g., ['array', 'string'])
+          expectedType =
+            param.type.length === 1
+              ? (param.type[0] as string)
+              : `${(param.type as string[]).join(' or ')}`;
+        }
+      } else {
+        // Shouldn't happen with new type system, but handle it
+        expectedType = param.type as string;
+      }
 
       errors.push({
         code: 'PARAMETER_TYPE',

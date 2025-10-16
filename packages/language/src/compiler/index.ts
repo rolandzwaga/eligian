@@ -46,7 +46,7 @@ export {
   getOperationsByCategory,
   hasOperation,
   isConstantValueArray,
-  isParameterType,
+  isParameterTypeArray,
   OPERATION_REGISTRY,
   type OperationParameter,
   type OperationRegistry,

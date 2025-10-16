@@ -265,19 +265,28 @@ describe('T224: Operation Registry Tests', () => {
   describe('Parameter types', () => {
     it('should use rich parameter types from Eligius', () => {
       const addClass = getOperationSignature('addClass');
-      expect(addClass?.parameters[0].type).toBe('ParameterType:className');
+      expect(addClass?.parameters[0].type).toEqual(['ParameterType:className']);
 
       const selectElement = getOperationSignature('selectElement');
-      expect(selectElement?.parameters[0].type).toBe('ParameterType:selector');
+      expect(selectElement?.parameters[0].type).toEqual(['ParameterType:selector']);
 
       const wait = getOperationSignature('wait');
-      expect(wait?.parameters[0].type).toBe('ParameterType:number');
+      expect(wait?.parameters[0].type).toEqual(['ParameterType:number']);
     });
 
     it('should have object type for complex parameters', () => {
       const animate = getOperationSignature('animate');
       const propParam = animate?.parameters.find(p => p.name === 'animationProperties');
-      expect(propParam?.type).toBe('ParameterType:object');
+      expect(propParam?.type).toEqual(['ParameterType:object']);
+    });
+
+    it('should support multi-type parameters', () => {
+      const forEach = getOperationSignature('forEach');
+      expect(forEach).toBeDefined();
+      const collectionParam = forEach?.parameters.find(p => p.name === 'collection');
+      expect(collectionParam?.type).toEqual(['ParameterType:array', 'ParameterType:string']);
+      expect(Array.isArray(collectionParam?.type)).toBe(true);
+      expect(collectionParam?.type).toHaveLength(2);
     });
   });
 });

@@ -30,7 +30,7 @@ export type {
 export {
   getDefaultConstantValue,
   isConstantValueArray,
-  isParameterType,
+  isParameterTypeArray,
 } from './types.js';
 
 /**
@@ -235,19 +235,26 @@ export function validateRegistry(): void {
         throw new Error(`Operation "${name}" has parameter with empty name`);
       }
 
-      if (Array.isArray(param.type)) {
-        // Constant values
-        if (param.type.length === 0) {
-          throw new Error(
-            `Operation "${name}" parameter "${param.name}" has empty constant values array`
-          );
-        }
+      // param.type is always an array now (ParameterType[] | ConstantValue[])
+      if (!Array.isArray(param.type)) {
+        throw new Error(`Operation "${name}" parameter "${param.name}" type must be an array`);
+      }
+
+      if (param.type.length === 0) {
+        throw new Error(`Operation "${name}" parameter "${param.name}" has empty type array`);
+      }
+
+      // Check if it's ConstantValue[] or ParameterType[]
+      if (typeof param.type[0] === 'object' && 'value' in param.type[0]) {
+        // ConstantValue[] - no additional validation needed
       } else {
-        // ParameterType
-        if (!param.type.startsWith('ParameterType:')) {
-          throw new Error(
-            `Operation "${name}" parameter "${param.name}" has invalid type "${param.type}"`
-          );
+        // ParameterType[] - validate each type string
+        for (const typeStr of param.type) {
+          if (typeof typeStr !== 'string' || !typeStr.startsWith('ParameterType:')) {
+            throw new Error(
+              `Operation "${name}" parameter "${param.name}" has invalid type "${typeStr}"`
+            );
+          }
         }
       }
     }

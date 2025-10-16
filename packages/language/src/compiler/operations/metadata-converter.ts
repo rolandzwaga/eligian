@@ -17,12 +17,31 @@ import type {
 } from './types.js';
 
 /**
- * Convert Eligius TParameterTypes to our ParameterType.
- * These should be identical, but we re-map for type safety.
+ * Convert Eligius TParameterTypes to our ParameterType(s).
+ * Handles both single types and pipe-delimited multi-types.
+ *
+ * @param eligiusType - The Eligius parameter type string (e.g., 'ParameterType:string' or 'ParameterType:array|string')
+ * @returns Array of ParameterTypes (always an array for consistency)
+ *
+ * @example
+ * convertParameterType('ParameterType:string') // => ['ParameterType:string']
+ * convertParameterType('ParameterType:array|string') // => ['ParameterType:array', 'ParameterType:string']
  */
-function convertParameterType(eligiusType: metadata.TParameterTypes): ParameterType {
-  // Direct mapping - Eligius types match our types exactly
-  return eligiusType as ParameterType;
+function convertParameterType(eligiusType: metadata.TParameterTypes): ParameterType[] {
+  // Check if type contains pipe delimiter (multi-type)
+  if (eligiusType.includes('|')) {
+    // Split on pipe and convert each type
+    return eligiusType.split('|').map(type => {
+      const trimmed = type.trim();
+      // If it doesn't start with "ParameterType:", add the prefix
+      return (
+        trimmed.startsWith('ParameterType:') ? trimmed : `ParameterType:${trimmed}`
+      ) as ParameterType;
+    });
+  }
+
+  // Single type - wrap in array for consistency
+  return [eligiusType as ParameterType];
 }
 
 /**
@@ -79,7 +98,7 @@ function convertParameter(
   if (isArrayProperty(propertyMetadata)) {
     return {
       name,
-      type: 'ParameterType:array',
+      type: ['ParameterType:array'],
       required: propertyMetadata.required ?? false,
       description: propertyMetadata.description,
     };
@@ -103,7 +122,7 @@ function convertParameter(
     // Otherwise it's a single ParameterType
     return {
       name,
-      type: convertParameterType(type),
+      type: convertParameterType(type as metadata.TParameterTypes),
       required: required ?? false,
       defaultValue,
       description,
@@ -114,7 +133,7 @@ function convertParameter(
   console.warn(`Unknown property metadata format for "${name}":`, propertyMetadata);
   return {
     name,
-    type: 'ParameterType:string',
+    type: ['ParameterType:string'],
     required: false,
   };
 }
@@ -165,13 +184,13 @@ function convertOutputs(
       if (!Array.isArray(type)) {
         outputs.push({
           name,
-          type: convertParameterType(type),
+          type: convertParameterType(type as metadata.TParameterTypes),
         });
       }
     } else if (isArrayProperty(metadata)) {
       outputs.push({
         name,
-        type: 'ParameterType:array',
+        type: ['ParameterType:array'],
       });
     }
   }
