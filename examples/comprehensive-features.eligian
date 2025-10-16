@@ -11,17 +11,29 @@ const animationDuration = 1000
 const slideCount = 3
 
 // ============================================================================
+// REFERENCE SYNTAX (Phase 16.5, T229-T233)
+// ============================================================================
+
+// Three types of references in Eligian:
+// 1. paramName (bare identifier) → action parameter (compiles to $operationdata.paramName)
+// 2. @@varName (double-@) → system context property (compiles to $context.varName)
+//    - Loop variables: @@item, @@element
+//    - System properties: @@loopIndex, @@loopLength, @@currentIndex
+// 3. @varName (single-@) → user-declared variable (compiles to $context.variables.varName)
+
+// ============================================================================
 // PARAMETERIZED ACTIONS (Phase 14)
 // ============================================================================
 
 // Action with parameters - makes actions reusable with different inputs
 endable action fadeIn(selector, duration) [
-  selectElement($operationdata.selector)
+  // "selector" and "duration" are bare identifiers (parameters)
+  selectElement(selector)
   setStyle({opacity: 0})
-  animate({opacity: 1}, $operationdata.duration)
+  animate({opacity: 1}, duration)
 ] [
-  selectElement($operationdata.selector)
-  animate({opacity: 0}, $operationdata.duration)
+  selectElement(selector)
+  animate({opacity: 0}, duration)
 ]
 
 // Action with parameters and local variables
@@ -30,9 +42,9 @@ action highlightElement(selector, color) [
   const highlightDuration = 300
   const defaultColor = "yellow"
 
-  selectElement($operationdata.selector)
+  selectElement(selector)
   setStyle({
-    backgroundColor: $operationdata.color,
+    backgroundColor: color,
     transition: "background-color 0.3s"
   })
   wait(@highlightDuration)
@@ -44,10 +56,10 @@ action highlightElement(selector, color) [
 
 // Action demonstrating if/else statements
 action conditionalHighlight(selector, shouldHighlight) [
-  selectElement($operationdata.selector)
+  selectElement(selector)
 
   // IF/ELSE - compiles to when/otherwise/endWhen
-  if ($operationdata.shouldHighlight) {
+  if (shouldHighlight) {
     addClass("highlight")
     setStyle({border: "2px solid yellow"})
   } else {
@@ -59,8 +71,8 @@ action conditionalHighlight(selector, shouldHighlight) [
 // Action demonstrating for loops
 action animateItems(items) [
   // FOR LOOP - compiles to forEach/endForEach
-  for (item in $operationdata.items) {
-    selectElement(@item)
+  for (item in items) {
+    selectElement(@@item)
     addClass("animated")
     wait(200)
   }
@@ -70,12 +82,12 @@ action animateItems(items) [
 action complexAnimation(elements, duration) [
   const delayStep = 100
 
-  for (element in $operationdata.elements) {
-    selectElement(@element)
+  for (element in elements) {
+    selectElement(@@element)
 
     // Nested if/else inside loop
     if ($context.isVisible) {
-      animate({opacity: 1}, $operationdata.duration)
+      animate({opacity: 1}, duration)
     } else {
       setStyle({opacity: 0})
     }
@@ -100,7 +112,7 @@ action expressionExamples() [
   }
 
   // BINARY EXPRESSIONS - Logical operators
-  if ($globaldata.theme == "dark" && $operationdata.enabled) {
+  if ($globaldata.theme == "dark" && enabled) {
     addClass("dark-mode-enabled")
   }
 
@@ -149,7 +161,7 @@ timeline "comprehensive-demo" using raf {
 
     // FOR LOOP in timeline event
     for (section in ["intro", "main", "outro"]) {
-      selectElement(@section)
+      selectElement(@@section)
       addClass("active")
       wait(500)
     }
@@ -241,11 +253,11 @@ timeline "stagger-demo" using raf {
 
   // STAGGER BLOCK with inline operations - more control over each item's animation
   stagger 100ms [".box-1", ".box-2", ".box-3", ".box-4"] for 1s [
-    selectElement(@item)
+    selectElement(@@item)
     addClass("pulse")
     animate({scale: 1.1}, 500)
   ] [
-    selectElement(@item)
+    selectElement(@@item)
     removeClass("pulse")
     animate({scale: 1}, 500)
   ]

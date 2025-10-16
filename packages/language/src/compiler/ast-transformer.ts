@@ -51,6 +51,34 @@ import type {
 import type { TransformError } from './types/errors.js';
 
 /**
+ * Scope Context - Track transformation context for reference resolution
+ *
+ * Used to determine how to resolve references:
+ * - Bare identifiers → action parameters (when inActionBody=true)
+ * - @@identifier → system context properties (with loop variable aliasing)
+ * - @identifier → user variables (context.variables.*)
+ */
+interface ScopeContext {
+  /** Are we currently inside an action body? */
+  inActionBody: boolean;
+  /** Available action parameters (for bare identifier resolution) */
+  actionParameters: string[];
+  /** Current loop variable name (for aliasing @@varName → @@currentItem) */
+  loopVariableName?: string;
+}
+
+/**
+ * Create an empty scope context
+ */
+function createEmptyScope(): ScopeContext {
+  return {
+    inActionBody: false,
+    actionParameters: [],
+    loopVariableName: undefined,
+  };
+}
+
+/**
  * Main transformation function - orchestrates all transformations
  *
  * Transforms a complete Langium Program AST into EligiusIR aligned with IEngineConfiguration.
@@ -736,20 +764,27 @@ const transformActionDefinition = (
     const startOperations: OperationConfigIR[] = [];
     const endOperations: OperationConfigIR[] = [];
 
+    // T230: Create action scope with parameters
+    const actionScope: ScopeContext = {
+      inActionBody: true,
+      actionParameters: (actionDef.parameters || []).map(p => p.name),
+      loopVariableName: undefined,
+    };
+
     if (actionDef.$type === 'EndableActionDefinition') {
       // Endable action: has start and end operations
       for (const opStmt of actionDef.startOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt));
+        const ops = yield* _(transformOperationStatement(opStmt, actionScope));
         startOperations.push(...ops);
       }
       for (const opStmt of actionDef.endOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt));
+        const ops = yield* _(transformOperationStatement(opStmt, actionScope));
         endOperations.push(...ops);
       }
     } else {
       // Regular action: only has operations (treated as start operations)
       for (const opStmt of actionDef.operations) {
-        const ops = yield* _(transformOperationStatement(opStmt));
+        const ops = yield* _(transformOperationStatement(opStmt, actionScope));
         startOperations.push(...ops);
       }
     }
@@ -786,7 +821,8 @@ const transformActionDefinition = (
  * Constitution VII: Generates UUID for operation ID
  */
 const transformOperationCall = (
-  opCall: OperationCall
+  opCall: OperationCall,
+  _scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR, TransformError> =>
   Effect.gen(function* (_) {
     const operationName = opCall.operationName;
@@ -859,29 +895,31 @@ const transformOperationCall = (
  *
  * Constitution VII: Generates UUIDs for all generated operations
  * T177, T180: Implements control flow transformations
+ * T230: Accepts scope context for reference resolution
  */
 const transformOperationStatement = (
-  stmt: OperationStatement
+  stmt: OperationStatement,
+  scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     switch (stmt.$type) {
       case 'OperationCall': {
         // Single operation call → single operation
-        const op = yield* _(transformOperationCall(stmt));
+        const op = yield* _(transformOperationCall(stmt, scope));
         return [op];
       }
 
       case 'IfStatement':
         // If/else → when/otherwise/endWhen sequence
-        return yield* _(transformIfStatement(stmt));
+        return yield* _(transformIfStatement(stmt, scope));
 
       case 'ForStatement':
         // For loop → forEach/endForEach sequence
-        return yield* _(transformForStatement(stmt));
+        return yield* _(transformForStatement(stmt, scope));
 
       case 'VariableDeclaration':
         // Action-scoped variable → setVariable operation
-        return yield* _(transformVariableDeclaration(stmt));
+        return yield* _(transformVariableDeclaration(stmt, scope));
 
       default:
         return yield* _(
@@ -915,13 +953,14 @@ const transformOperationStatement = (
  * For if-without-else, the otherwise() operation is omitted.
  */
 const transformIfStatement = (
-  stmt: IfStatement
+  stmt: IfStatement,
+  scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     const operations: OperationConfigIR[] = [];
 
     // Transform condition expression
-    const condition = yield* _(transformExpression(stmt.condition));
+    const condition = yield* _(transformExpression(stmt.condition, scope));
 
     // 1. when(condition)
     operations.push({
@@ -935,7 +974,7 @@ const transformIfStatement = (
 
     // 2. Transform then operations (recursively handle nested control flow)
     for (const thenOp of stmt.thenOps) {
-      const ops = yield* _(transformOperationStatement(thenOp));
+      const ops = yield* _(transformOperationStatement(thenOp, scope));
       operations.push(...ops);
     }
 
@@ -949,7 +988,7 @@ const transformIfStatement = (
       });
 
       for (const elseOp of stmt.elseOps) {
-        const ops = yield* _(transformOperationStatement(elseOp));
+        const ops = yield* _(transformOperationStatement(elseOp, scope));
         operations.push(...ops);
       }
     }
@@ -981,13 +1020,14 @@ const transformIfStatement = (
  * The item variable name is passed to forEach so Eligius can set it in the operation data context.
  */
 const transformForStatement = (
-  stmt: ForStatement
+  stmt: ForStatement,
+  scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     const operations: OperationConfigIR[] = [];
 
     // Transform collection expression
-    const collection = yield* _(transformExpression(stmt.collection));
+    const collection = yield* _(transformExpression(stmt.collection, scope));
 
     // 1. forEach(collection, itemName)
     operations.push({
@@ -1001,8 +1041,15 @@ const transformForStatement = (
     });
 
     // 2. Transform loop body (recursively handle nested control flow)
+    // T232: Create loop scope with variable aliasing
+    // Inside the loop, @@itemName resolves to @@currentItem
+    const loopScope: ScopeContext = {
+      ...scope,
+      loopVariableName: stmt.itemName, // e.g., "item" in for (item in items)
+    };
+
     for (const bodyOp of stmt.body) {
-      const ops = yield* _(transformOperationStatement(bodyOp));
+      const ops = yield* _(transformOperationStatement(bodyOp, loopScope));
       operations.push(...ops);
     }
 
@@ -1029,11 +1076,12 @@ const transformForStatement = (
  * This creates an action-scoped variable that can be referenced with @varName.
  */
 const transformVariableDeclaration = (
-  stmt: VariableDeclaration
+  stmt: VariableDeclaration,
+  scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     // Transform the value expression
-    const value = yield* _(transformExpression(stmt.value));
+    const value = yield* _(transformExpression(stmt.value, scope));
 
     // Create setVariable operation
     const operation: OperationConfigIR = {
@@ -1057,10 +1105,15 @@ const transformVariableDeclaration = (
  * - Object literals: { key: value, ... }
  * - Array literals: [value1, value2, ...]
  * - Property chain references: $context.currentItem
- * - Variable references: @varName
+ * - System property references: @@currentItem (T229-T232)
+ * - Variable references: @varName (T233)
+ * - Parameter references: paramName (T231)
  * - Binary expressions: 10 + 5
  */
-const transformExpression = (expr: Expression): Effect.Effect<JsonValue, TransformError> =>
+const transformExpression = (
+  expr: Expression,
+  scope: ScopeContext = createEmptyScope()
+): Effect.Effect<JsonValue, TransformError> =>
   Effect.gen(function* (_) {
     switch (expr.$type) {
       case 'StringLiteral':
@@ -1079,7 +1132,7 @@ const transformExpression = (expr: Expression): Effect.Effect<JsonValue, Transfo
         const obj: Record<string, JsonValue> = {};
         for (const prop of expr.properties) {
           const key = typeof prop.key === 'string' ? prop.key : prop.key;
-          const value = yield* _(transformExpression(prop.value));
+          const value = yield* _(transformExpression(prop.value, scope));
           obj[key] = value;
         }
         return obj;
@@ -1088,7 +1141,7 @@ const transformExpression = (expr: Expression): Effect.Effect<JsonValue, Transfo
       case 'ArrayLiteral': {
         const arr: JsonValue[] = [];
         for (const element of expr.elements) {
-          const value = yield* _(transformExpression(element));
+          const value = yield* _(transformExpression(element, scope));
           arr.push(value);
         }
         return arr;
@@ -1103,16 +1156,60 @@ const transformExpression = (expr: Expression): Effect.Effect<JsonValue, Transfo
       }
 
       case 'VariableReference': {
-        // Variable reference: @varName
-        // Pass as-is to Eligius, which will resolve it to context.varName at runtime
-        return `@${expr.name}`;
+        // Variable reference: @varName (T233)
+        // Compiles to $context.variables.varName
+        return `$context.variables.${expr.name}`;
+      }
+
+      case 'SystemPropertyReference': {
+        // System property reference: @@varName (T232)
+        // Compiles to $context.varName
+        // Special case: @@loopVar → @@currentItem (aliased)
+        let propertyName = expr.name;
+
+        // If this matches the current loop variable name, alias to currentItem
+        if (scope.loopVariableName && expr.name === scope.loopVariableName) {
+          propertyName = 'currentItem';
+        }
+
+        return `$context.${propertyName}`;
+      }
+
+      case 'ParameterReference': {
+        // Parameter reference: bare identifier (T231)
+        // Compiles to $operationdata.paramName
+        // Only valid inside action bodies
+        if (!scope.inActionBody) {
+          return yield* _(
+            Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message: `Parameter reference '${expr.name}' is only valid inside action bodies`,
+              location: getSourceLocation(expr),
+            })
+          );
+        }
+
+        // Validate that this is actually a parameter
+        if (!scope.actionParameters.includes(expr.name)) {
+          return yield* _(
+            Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message: `Unknown parameter '${expr.name}'. Available parameters: ${scope.actionParameters.join(', ') || 'none'}`,
+              location: getSourceLocation(expr),
+            })
+          );
+        }
+
+        return `$operationdata.${expr.name}`;
       }
 
       case 'BinaryExpression': {
         // Binary expression: 10 + 5
         // Evaluate at compile time if both sides are literals
-        const left = yield* _(transformExpression(expr.left));
-        const right = yield* _(transformExpression(expr.right));
+        const left = yield* _(transformExpression(expr.left, scope));
+        const right = yield* _(transformExpression(expr.right, scope));
 
         // If both are numbers, evaluate
         if (typeof left === 'number' && typeof right === 'number') {
@@ -1150,7 +1247,7 @@ const transformExpression = (expr: Expression): Effect.Effect<JsonValue, Transfo
 
       case 'UnaryExpression': {
         // Unary expression: !flag, -value
-        const operand = yield* _(transformExpression(expr.operand));
+        const operand = yield* _(transformExpression(expr.operand, scope));
 
         switch (expr.op) {
           case '!':

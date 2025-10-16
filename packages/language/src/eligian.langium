@@ -342,7 +342,9 @@ Primary infers Expression:
     '(' Expression ')' |
     Literal |
     PropertyChainReference |
+    SystemPropertyReference |
     VariableReference |
+    ParameterReference |
     ObjectLiteral |
     ArrayLiteral;
 
@@ -366,6 +368,20 @@ PropertyScope returns string:
     'context' | 'operationdata' | 'globaldata';
 
 /**
+ * System Property Reference - Access system context properties with @@ prefix
+ *
+ * Examples:
+ *   @@currentItem  → $context.currentItem
+ *   @@loopIndex    → $context.loopIndex
+ *   @@loopLength   → $context.loopLength
+ *   @@item         → $context.currentItem (aliased in for loops)
+ *
+ * Compiles to $context.propertyName string for Eligius runtime.
+ */
+SystemPropertyReference:
+    '@@' name=ID;
+
+/**
  * Variable Reference - Access action-scoped variables with @ prefix
  *
  * Examples:
@@ -373,10 +389,23 @@ PropertyScope returns string:
  *   @theme
  *   @index
  *
- * Compiles to "@varName" string, which Eligius resolves to context.varName at runtime.
+ * Compiles to $context.variables.varName string for Eligius runtime.
  */
 VariableReference:
     '@' name=ID;
+
+/**
+ * Parameter Reference - Access action parameters with bare identifier
+ *
+ * Examples:
+ *   selector
+ *   duration
+ *   items
+ *
+ * Only valid inside action bodies. Compiles to $operationdata.paramName.
+ */
+ParameterReference:
+    name=ID;
 
 // ============================================================================
 // Literals
