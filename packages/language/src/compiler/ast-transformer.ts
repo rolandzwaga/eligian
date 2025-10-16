@@ -198,7 +198,11 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
 
         // Update previousEventEndTime to the end of the last sequence item
         if (sequenceActions.length > 0) {
-          previousEventEndTime = sequenceActions[sequenceActions.length - 1].duration.end;
+          const lastAction = sequenceActions[sequenceActions.length - 1];
+          previousEventEndTime =
+            typeof lastAction.duration.end === 'number'
+              ? lastAction.duration.end
+              : evaluateTimeExpression(lastAction.duration.end);
         }
       } else {
         // TimedEvent: regular "at start..end { ... }" event
@@ -206,7 +210,10 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
         timelineActions.push(timelineAction);
 
         // Update previous event end time for next event
-        previousEventEndTime = timelineAction.duration.end;
+        previousEventEndTime =
+          typeof timelineAction.duration.end === 'number'
+            ? timelineAction.duration.end
+            : evaluateTimeExpression(timelineAction.duration.end);
       }
     }
 

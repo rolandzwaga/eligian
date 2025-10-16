@@ -129,8 +129,12 @@ export class EligianValidator {
    * Validate that timeline event start time is less than end time.
    *
    * Events must have a valid duration (start < end).
+   * Note: Only applies to TimedEvent, not SequenceBlock.
    */
   checkValidTimeRange(event: TimelineEvent, accept: ValidationAcceptor): void {
+    // SequenceBlock doesn't have timeRange, only TimedEvent does
+    if (event.$type === 'SequenceBlock') return;
+
     const timeRange = event.timeRange;
     if (!timeRange) return;
 
@@ -159,8 +163,12 @@ export class EligianValidator {
    * Validate that timeline event times are non-negative.
    *
    * Negative times don't make sense in a timeline context.
+   * Note: Only applies to TimedEvent, not SequenceBlock.
    */
   checkNonNegativeTimes(event: TimelineEvent, accept: ValidationAcceptor): void {
+    // SequenceBlock doesn't have timeRange, only TimedEvent does
+    if (event.$type === 'SequenceBlock') return;
+
     const timeRange = event.timeRange;
     if (!timeRange) return;
 
@@ -323,7 +331,10 @@ export class EligianValidator {
    * Checks that when/endWhen and forEach/endForEach are properly paired.
    */
   checkControlFlowPairing(action: RegularActionDefinition, accept: ValidationAcceptor): void {
-    const operationNames = action.operations.map(op => op.operationName);
+    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
+    const operationNames = action.operations
+      .filter(op => op.$type === 'OperationCall')
+      .map(op => (op as any).operationName);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -344,7 +355,10 @@ export class EligianValidator {
     action: EndableActionDefinition,
     accept: ValidationAcceptor
   ): void {
-    const operationNames = action.startOperations.map(op => op.operationName);
+    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
+    const operationNames = action.startOperations
+      .filter(op => op.$type === 'OperationCall')
+      .map(op => (op as any).operationName);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -365,7 +379,10 @@ export class EligianValidator {
     action: EndableActionDefinition,
     accept: ValidationAcceptor
   ): void {
-    const operationNames = action.endOperations.map(op => op.operationName);
+    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
+    const operationNames = action.endOperations
+      .filter(op => op.$type === 'OperationCall')
+      .map(op => (op as any).operationName);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -386,7 +403,10 @@ export class EligianValidator {
     action: InlineEndableAction,
     accept: ValidationAcceptor
   ): void {
-    const operationNames = action.startOperations.map(op => op.operationName);
+    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
+    const operationNames = action.startOperations
+      .filter(op => op.$type === 'OperationCall')
+      .map(op => (op as any).operationName);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -407,7 +427,10 @@ export class EligianValidator {
     action: InlineEndableAction,
     accept: ValidationAcceptor
   ): void {
-    const operationNames = action.endOperations.map(op => op.operationName);
+    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
+    const operationNames = action.endOperations
+      .filter(op => op.$type === 'OperationCall')
+      .map(op => (op as any).operationName);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {

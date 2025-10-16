@@ -41,11 +41,8 @@ export const emitJSON = (ir: EligiusIR): Effect.Effect<IEngineConfiguration, Emi
     }
 
     // Emit action layers
-    const initActions: any[] = [];
-    for (const action of ir.initActions) {
-      const emittedAction = yield* _(emitEndableAction(action));
-      initActions.push(emittedAction);
-    }
+    // initActions are operations (OperationConfigIR), not full actions
+    const initActions: any[] = ir.initActions.map(emitOperation);
 
     const actions: any[] = [];
     for (const action of ir.actions) {

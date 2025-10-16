@@ -31,7 +31,7 @@ export type EligiusIR = {
   readonly labels: ReadonlyArray<LanguageLabelIR>;
 
   // Action layers (Eligius has multiple action contexts)
-  readonly initActions: ReadonlyArray<EndableActionIR>; // Run once on initialization
+  readonly initActions: ReadonlyArray<OperationConfigIR>; // Run once on initialization (operations, not full actions)
   readonly actions: ReadonlyArray<EndableActionIR>; // Global actions (run throughout)
   readonly eventActions: ReadonlyArray<EventActionIR>; // Event-triggered actions (what DSL calls "events")
 

@@ -40,8 +40,9 @@ export const typeCheck = (ir: EligiusIR): Effect.Effect<EligiusIR, TypeError> =>
     }
 
     // Validate action layers
-    for (const action of ir.initActions) {
-      yield* _(checkEndableActionTypes(action));
+    // initActions are operations (OperationConfigIR), not full actions
+    for (const operation of ir.initActions) {
+      yield* _(checkOperationTypes(operation));
     }
 
     for (const action of ir.actions) {
