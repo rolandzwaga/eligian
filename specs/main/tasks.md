@@ -579,6 +579,190 @@
 
 ---
 
+## Phase 12: Control Flow Enhancements
+
+**Purpose**: Add if/else and for loop control flow as syntactic sugar for Eligius when/otherwise/endWhen and forEach/endForEach operations
+
+### If/Else Statement (Syntactic Sugar for when/otherwise/endWhen)
+
+- [ ] T176 [Grammar] Add if/else grammar to Langium in packages/language/src/eligian.langium
+  - Add `IfStatement` rule: `'if' '(' condition=Expression ')' '{' thenOps+=OperationStatement* '}' ('else' '{' elseOps+=OperationStatement* '}')?`
+  - Update `OperationStatement` to include `IfStatement | ForStatement`
+  - Add grammar tests for valid/invalid if/else syntax
+
+- [ ] T177 [Transform] Transform if/else to when/otherwise/endWhen operations in packages/language/src/compiler/ast-transformer.ts
+  - Add `transformIfStatement()` function
+  - Generate `when(condition)` → thenOps → `otherwise()` → elseOps → `endWhen()` sequence
+  - Handle if-without-else case (no `otherwise` operation)
+  - Validate operation dependencies through if/else branches
+
+- [ ] T178 [Test] Add if/else tests
+  - Test basic if/else transformation
+  - Test if-without-else transformation
+  - Test nested if/else statements
+  - Test if/else with dependency tracking (selectedElement availability in branches)
+  - Integration test: compile complete DSL with if/else to valid Eligius JSON
+
+### For Loop Statement (Syntactic Sugar for forEach/endForEach)
+
+- [ ] T179 [Grammar] Add for loop grammar to Langium in packages/language/src/eligian.langium
+  - Add `ForStatement` rule: `'for' (item=ID | item=ID ',' index=ID) 'in' collection=Expression '{' body+=OperationStatement* '}'`
+  - Support array/collection iteration: `for item in $globaldata.items { ... }`
+  - Support optional index: `for item, index in $globaldata.items { ... }`
+  - Support range syntax: `for i in 1..10 { ... }` or `for i in 0s..5s { ... }`
+  - Add grammar tests for all loop variations
+
+- [ ] T180 [Transform] Transform for loops to forEach/endForEach operations in packages/language/src/compiler/ast-transformer.ts
+  - Add `transformForStatement()` function
+  - Generate `forEach(collection, itemName, indexName?)` → body operations → `endForEach()` sequence
+  - Handle range expressions: convert `1..10` to array [1,2,3...10] at compile time or pass as range to forEach
+  - Handle time range expressions: convert `0s..5s` to numeric range in seconds
+  - Track loop variable availability in dependency validation (item/index available in loop body)
+
+- [ ] T181 [Test] Add for loop tests
+  - Test basic for-in loop transformation
+  - Test for-with-index loop transformation
+  - Test range-based loops (numeric and time ranges)
+  - Test nested loops
+  - Test loop with dependency tracking (variables available in loop body)
+  - Integration test: compile DSL with loops to valid Eligius JSON
+
+**Phase 12 Status**: Not started. Estimated effort: 2-3 days
+
+---
+
+## Phase 13: Variables and Constants
+
+**Purpose**: Add variable/constant declarations for value reuse and reducing repetition
+
+- [ ] T182 [Grammar] Add variable/constant declarations to grammar in packages/language/src/eligian.langium
+  - Add `VariableDeclaration` rule: `('const' | 'let') name=ID '=' value=Expression`
+  - Add to program-level declarations (alongside actions and timelines)
+  - Support primitive types: string, number, boolean, object literals
+  - Add grammar tests for variable declarations
+
+- [ ] T183 [Validation] Implement variable resolution and scoping in packages/language/src/eligian-validator.ts
+  - Add symbol table/scope tracker to validator
+  - Resolve variable references in expressions
+  - Validate variable usage (declared before use, no redeclaration)
+  - Support compile-time constant folding for const variables
+
+- [ ] T184 [Transform] Transform variables to inline values or runtime references in packages/language/src/compiler/ast-transformer.ts
+  - For `const`: Inline values at compile time where possible
+  - For `let`: Generate runtime variable storage (when Eligius supports it)
+  - Replace variable references with their values/references in operations
+  - Add variable transformation tests
+
+**Phase 13 Status**: Not started. Estimated effort: 2 days
+
+---
+
+## Phase 14: Action Parameters
+
+**Purpose**: Add parameter support to action definitions for reusable, configurable actions
+
+- [ ] T185 [Grammar] Add parameter support to action definitions in packages/language/src/eligian.langium
+  - Update grammar: `endable action name '(' params+=Parameter (',' params+=Parameter)* ')' ...`
+  - Add `Parameter` rule: `name=ID (':' type=Type)?` (optional type annotations)
+  - Support default values: `name=ID '=' defaultValue=Expression`
+  - Add grammar tests for parameterized actions
+
+- [ ] T186 [Validation] Implement action parameter passing in packages/language/src/eligian-validator.ts
+  - Update action invocation grammar: `actionName '(' args+=Expression (',' args+=Expression)* ')'`
+  - Validate argument count matches parameter count
+  - Validate argument types match parameter types (if specified)
+  - Add parameter validation tests
+
+- [ ] T187 [Transform] Transform parameterized actions in packages/language/src/compiler/ast-transformer.ts
+  - Map action parameters to operation data context
+  - Replace parameter references in action body with actual argument values
+  - Handle default parameter values
+  - Add transformation tests for parameterized actions
+
+**Phase 14 Status**: Not started. Estimated effort: 2-3 days
+
+---
+
+## Phase 15: Timeline Enhancements
+
+**Purpose**: Add timeline convenience features (duration inference, relative times, sequence syntax)
+
+- [ ] T188 [Compiler] Infer timeline duration from events in packages/language/src/compiler/ast-transformer.ts
+  - Calculate max end time from all timeline events
+  - Auto-set timeline duration if not specified
+  - Validate explicit duration >= max event time (if both specified)
+  - Add tests for duration inference
+
+- [ ] T189 [Grammar] Add relative time expressions in packages/language/src/eligian.langium
+  - Support `+duration` syntax for time offsets from previous event
+  - Example: `at +2s..+5s` means "2 seconds after previous event ends"
+  - Calculate absolute times during transformation
+  - Add tests for relative time expressions
+
+- [ ] T190 [Grammar] Add sequence syntax for event chaining in packages/language/src/eligian.langium
+  - Add `sequence { ... }` block for auto-calculated time ranges
+  - Example: `sequence { intro() for 5s; main() for 10s }` → events at 0-5s, 5-15s
+  - Transform to regular timeline events with computed times
+  - Add sequence transformation tests
+
+**Phase 15 Status**: Not started. Estimated effort: 1-2 days
+
+---
+
+## Phase 16: Syntactic Sugar for Common Patterns
+
+**Purpose**: Add convenience syntax for common animation patterns
+
+- [ ] T191 [Grammar] Add parallel event syntax in packages/language/src/eligian.langium
+  - Add `parallel { ... }` for simultaneous events at same time range
+  - Example: `at 0s..5s parallel { fadeIn("#a"); slideIn("#b"); }`
+  - Generate multiple timeline events with same duration
+  - Add parallel transformation tests
+
+- [ ] T192 [Grammar] Add stagger syntax for animations in packages/language/src/eligian.langium
+  - Add `stagger delay items { ... } with action` syntax
+  - Example: `at 0s..10s stagger 200ms [".item-1", ".item-2"] with fadeIn`
+  - Generate timeline events with incremental start times
+  - Add stagger transformation tests
+
+**Phase 16 Status**: Not started. Estimated effort: 1 day
+
+---
+
+## Phase 17: Module System (Future)
+
+**Purpose**: Enable code reuse across multiple .eligian files
+
+- [ ] T193 [Grammar] Add import/export syntax (DEFERRED)
+  - Import actions/variables from other .eligian files
+  - Export actions/variables for reuse
+  - Resolve module paths and load external files
+  - Module resolution and dependency graph
+
+- [ ] T194 [Compiler] Implement module compilation (DEFERRED)
+  - Compile imported modules
+  - Merge symbol tables across modules
+  - Handle circular dependencies
+  - Module bundling
+
+**Phase 17 Status**: DEFERRED - Future enhancement
+
+---
+
+## "For Later" List (Not Scheduled)
+
+**Loop Control Flow**:
+- **Break/Continue**: Add `break` and `continue` statements for loops (requires Eligius support)
+- **Loop variable scoping**: Use context operations to set loop variables (requires Eligius `setContext` operation)
+
+**Advanced Features**:
+- **Pattern matching**: More advanced conditional logic
+- **Macros/Templates**: Compile-time code generation
+- **Type system**: Full type annotations and checking
+- **Async operations**: Handle promises/async in timeline events
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
