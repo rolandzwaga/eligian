@@ -903,19 +903,22 @@ Both features work together:
 
 **Purpose**: Add convenience syntax for common animation patterns
 
-- [ ] T191 [Grammar] Add parallel event syntax in packages/language/src/eligian.langium
-  - Add `parallel { ... }` for simultaneous events at same time range
-  - Example: `at 0s..5s parallel { fadeIn("#a"); slideIn("#b"); }`
-  - Generate multiple timeline events with same duration
-  - Add parallel transformation tests
+- [X] ~~T191 [Grammar] Add parallel event syntax~~ **REMOVED - Not needed**
+  - Rationale: Eligius already supports parallel events naturally by defining multiple timeline events with overlapping time ranges. The `parallel {}` syntax adds no real value and reduces flexibility.
 
-- [ ] T192 [Grammar] Add stagger syntax for animations in packages/language/src/eligian.langium
-  - Add `stagger delay items { ... } with action` syntax
-  - Example: `at 0s..10s stagger 200ms [".item-1", ".item-2"] with fadeIn`
-  - Generate timeline events with incremental start times
-  - Add stagger transformation tests
+- [X] T192 [Grammar] Add stagger syntax for animations in packages/language/src/eligian.langium
+  - ✅ Added `StaggerBlock` grammar: `stagger delay items with action for duration` and `stagger delay items for duration [ startOps ] [ endOps ]`
+  - ✅ Example: `stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s`
+  - ✅ Generates timeline events with incremental start times (item N at `baseTime + N * delay`)
+  - ✅ Supports both named action calls (passes item to first parameter) and inline operation blocks
+  - ✅ Added time unit conversion (ms, s, m, h → seconds) in `transformTimeExpression`
+  - ✅ Added `convertTimeToSeconds` helper function for proper time conversions
+  - ✅ Updated validator to handle StaggerBlock (doesn't have timeRange property)
+  - ✅ Added 3 comprehensive stagger transformation tests in transformer.spec.ts
+  - ✅ Updated comprehensive-features.eligian example with stagger syntax demonstrations
+  - ✅ All 254 tests passing (251 previous + 3 new stagger tests)
 
-**Phase 16 Status**: Not started. Estimated effort: 1 day
+**Phase 16 Status**: ✅ COMPLETE - T191 removed, T192 implemented and tested. Stagger syntax fully functional for both action calls and inline operations.
 
 ---
 

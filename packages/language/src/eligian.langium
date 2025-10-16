@@ -170,7 +170,7 @@ TimelineProvider returns string:
     'video' | 'audio' | 'raf' | 'custom';
 
 /**
- * Timeline Event - Endable action triggered at specific time range OR sequence block
+ * Timeline Event - Endable action triggered at specific time range OR sequence block OR stagger block
  *
  * Named action invocation:
  *   at 0s..5s { fadeIn() }
@@ -189,9 +189,12 @@ TimelineProvider returns string:
  *     main() for 10s
  *     outro() for 5s
  *   }
+ *
+ * Stagger block (T192):
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
  */
 TimelineEvent:
-    SequenceBlock | TimedEvent;
+    StaggerBlock | SequenceBlock | TimedEvent;
 
 TimedEvent:
     'at' timeRange=TimeRange (action=TimelineAction);
@@ -217,6 +220,29 @@ SequenceBlock:
 
 SequenceItem:
     actionCall=ActionCallExpression 'for' duration=TimeExpression;
+
+/**
+ * Stagger Block - Staggered events with incremental start times (T192)
+ *
+ * Example:
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *
+ * Transforms to:
+ *   at 0s..2s { fadeIn(".item-1") }        // starts at 0s
+ *   at 0.2s..2.2s { fadeIn(".item-2") }    // starts at 0.2s (0 + 200ms)
+ *   at 0.4s..2.4s { fadeIn(".item-3") }    // starts at 0.4s (0 + 400ms)
+ *
+ * Supports both action calls and inline operation blocks:
+ *   stagger 100ms items with fadeIn for 1s
+ *   stagger 100ms items for 1s [
+ *     addClass("active")
+ *   ] [
+ *     removeClass("active")
+ *   ]
+ */
+StaggerBlock:
+    'stagger' delay=TimeExpression items=Expression 'with' actionCall=ActionCallExpression 'for' duration=TimeExpression |
+    'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' '[' (endOps += OperationStatement)* ']';
 
 /**
  * Named action invocation - calls a defined endable action

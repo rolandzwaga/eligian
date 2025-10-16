@@ -27,6 +27,7 @@ import type {
   Program,
   RegularActionDefinition,
   SequenceBlock,
+  StaggerBlock,
   TimedEvent,
   Timeline,
   VariableDeclaration,
@@ -190,7 +191,7 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
     let previousEventEndTime = 0;
 
     for (const event of timeline.events) {
-      // T190: Check if this is a sequence block or a timed event
+      // T190/T192: Check event type (sequence, stagger, or timed)
       if (event.$type === 'SequenceBlock') {
         // Transform sequence block into multiple timeline actions
         const sequenceActions = yield* _(transformSequenceBlock(event, previousEventEndTime));
@@ -199,6 +200,19 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
         // Update previousEventEndTime to the end of the last sequence item
         if (sequenceActions.length > 0) {
           const lastAction = sequenceActions[sequenceActions.length - 1];
+          previousEventEndTime =
+            typeof lastAction.duration.end === 'number'
+              ? lastAction.duration.end
+              : evaluateTimeExpression(lastAction.duration.end);
+        }
+      } else if (event.$type === 'StaggerBlock') {
+        // T192: Transform stagger block into multiple timeline actions with incremental delays
+        const staggerActions = yield* _(transformStaggerBlock(event, previousEventEndTime));
+        timelineActions.push(...staggerActions);
+
+        // Update previousEventEndTime to the end of the last stagger item
+        if (staggerActions.length > 0) {
+          const lastAction = staggerActions[staggerActions.length - 1];
           previousEventEndTime =
             typeof lastAction.duration.end === 'number'
               ? lastAction.duration.end
@@ -346,6 +360,160 @@ const transformSequenceBlock = (
 
       // Update currentTime for next item
       currentTime = end;
+    }
+
+    return actions;
+  });
+
+/**
+ * Transform StaggerBlock → TimelineActionIR[] (T192)
+ *
+ * Transforms:
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *
+ * Into timeline actions with staggered start times:
+ *   at 0s..2s { fadeIn(".item-1") }        // starts at 0s
+ *   at 0.2s..2.2s { fadeIn(".item-2") }    // starts at 0.2s (0 + 200ms)
+ *   at 0.4s..2.4s { fadeIn(".item-3") }    // starts at 0.4s (0 + 400ms)
+ *
+ * previousEventEndTime is the starting point (baseTime) for the first stagger item.
+ */
+const transformStaggerBlock = (
+  stagger: StaggerBlock,
+  previousEventEndTime: number
+): Effect.Effect<TimelineActionIR[], TransformError> =>
+  Effect.gen(function* (_) {
+    const actions: TimelineActionIR[] = [];
+
+    // Transform delay expression to milliseconds
+    const delayExpr = yield* _(transformTimeExpression(stagger.delay, previousEventEndTime));
+    const delay = evaluateTimeExpression(delayExpr);
+
+    // Transform duration expression to milliseconds
+    const durationExpr = yield* _(transformTimeExpression(stagger.duration, previousEventEndTime));
+    const duration = evaluateTimeExpression(durationExpr);
+
+    // Transform items array
+    const itemsValue = yield* _(transformExpression(stagger.items));
+
+    // Items must be an array
+    if (!Array.isArray(itemsValue)) {
+      return yield* _(
+        Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message: `Stagger items must be an array, got ${typeof itemsValue}`,
+          location: getSourceLocation(stagger),
+        })
+      );
+    }
+
+    // Check which form: action call or inline operations
+    const hasActionCall = !!stagger.actionCall;
+
+    if (hasActionCall) {
+      // Form 1: stagger delay items with actionCall for duration
+      const actionCall = stagger.actionCall!;
+      const actionName = actionCall.action?.$refText || 'unknown';
+      const actionRef = actionCall.action?.ref;
+
+      // Generate one timeline action per item
+      for (let i = 0; i < itemsValue.length; i++) {
+        const item = itemsValue[i];
+        const startTime = previousEventEndTime + i * delay;
+        const endTime = startTime + duration;
+
+        // Build actionOperationData with the item as first argument
+        let actionOperationData: Record<string, JsonValue> | undefined;
+        if (actionRef) {
+          const parameters = actionRef.parameters || [];
+
+          // First parameter gets the item value
+          // Additional parameters come from actionCall args
+          if (parameters.length > 0) {
+            actionOperationData = {};
+            actionOperationData[parameters[0].name] = item;
+
+            // Map remaining parameters from actionCall args
+            const args = actionCall.args || [];
+            for (let j = 0; j < args.length && j + 1 < parameters.length; j++) {
+              const paramName = parameters[j + 1].name;
+              const argValue = yield* _(transformExpression(args[j]));
+              actionOperationData[paramName] = argValue;
+            }
+          }
+        }
+
+        // Build start and end operations
+        const startOperations: OperationConfigIR[] = [
+          {
+            id: crypto.randomUUID(),
+            systemName: 'requestAction',
+            operationData: { systemName: actionName },
+            sourceLocation: getSourceLocation(stagger),
+          },
+          {
+            id: crypto.randomUUID(),
+            systemName: 'startAction',
+            operationData: actionOperationData ? { actionOperationData } : {},
+            sourceLocation: getSourceLocation(stagger),
+          },
+        ];
+
+        const endOperations: OperationConfigIR[] = [
+          {
+            id: crypto.randomUUID(),
+            systemName: 'requestAction',
+            operationData: { systemName: actionName },
+            sourceLocation: getSourceLocation(stagger),
+          },
+          {
+            id: crypto.randomUUID(),
+            systemName: 'endAction',
+            operationData: actionOperationData ? { actionOperationData } : {},
+            sourceLocation: getSourceLocation(stagger),
+          },
+        ];
+
+        actions.push({
+          id: crypto.randomUUID(),
+          name: `stagger-${actionName}-${i}-${startTime}-${endTime}`,
+          duration: { start: startTime, end: endTime },
+          startOperations,
+          endOperations,
+          sourceLocation: getSourceLocation(stagger),
+        });
+      }
+    } else {
+      // Form 2: stagger delay items for duration [ startOps ] [ endOps ]
+      // Generate one timeline action per item with inline operations
+      for (let i = 0; i < itemsValue.length; i++) {
+        const startTime = previousEventEndTime + i * delay;
+        const endTime = startTime + duration;
+
+        // Transform inline operations
+        const startOperations: OperationConfigIR[] = [];
+        const endOperations: OperationConfigIR[] = [];
+
+        for (const opStmt of stagger.startOps || []) {
+          const ops = yield* _(transformOperationStatement(opStmt));
+          startOperations.push(...ops);
+        }
+
+        for (const opStmt of stagger.endOps || []) {
+          const ops = yield* _(transformOperationStatement(opStmt));
+          endOperations.push(...ops);
+        }
+
+        actions.push({
+          id: crypto.randomUUID(),
+          name: `stagger-inline-${i}-${startTime}-${endTime}`,
+          duration: { start: startTime, end: endTime },
+          startOperations,
+          endOperations,
+          sourceLocation: getSourceLocation(stagger),
+        });
+      }
     }
 
     return actions;
@@ -1027,18 +1195,21 @@ export const transformTimeExpression = (
 ): Effect.Effect<TimeExpression, TransformError> =>
   Effect.gen(function* (_) {
     switch (expr.$type) {
-      case 'TimeLiteral':
+      case 'TimeLiteral': {
+        // Convert time value to seconds based on unit
+        const valueInSeconds = convertTimeToSeconds(expr.value, expr.unit);
         return {
           kind: 'literal' as const,
-          value: expr.value,
+          value: valueInSeconds,
         };
+      }
       case 'RelativeTimeLiteral': {
         // T189: Relative time expression: +2s means previousEventEndTime + 2
         // Convert to absolute time by adding to previous event's end
-        const offset = expr.value;
+        const offsetInSeconds = convertTimeToSeconds(expr.value, expr.unit);
         return {
           kind: 'literal' as const,
-          value: previousEventEndTime + offset,
+          value: previousEventEndTime + offsetInSeconds,
         };
       }
       case 'PropertyChainReference': {
@@ -1071,6 +1242,28 @@ export const transformTimeExpression = (
         );
     }
   });
+
+/**
+ * Helper: Convert time value to seconds based on unit
+ *
+ * Supports: ms (milliseconds), s (seconds), m (minutes), h (hours)
+ * Default unit is seconds if not specified.
+ */
+function convertTimeToSeconds(value: number, unit?: string): number {
+  if (!unit || unit === 's') {
+    return value;
+  }
+  switch (unit) {
+    case 'ms':
+      return value / 1000;
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 3600;
+    default:
+      return value; // Default to seconds
+  }
+}
 
 /**
  * Helper: Evaluate TimeExpression to a numeric value

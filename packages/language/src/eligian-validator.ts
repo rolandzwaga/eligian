@@ -132,8 +132,8 @@ export class EligianValidator {
    * Note: Only applies to TimedEvent, not SequenceBlock.
    */
   checkValidTimeRange(event: TimelineEvent, accept: ValidationAcceptor): void {
-    // SequenceBlock doesn't have timeRange, only TimedEvent does
-    if (event.$type === 'SequenceBlock') return;
+    // SequenceBlock and StaggerBlock don't have timeRange, only TimedEvent does
+    if (event.$type === 'SequenceBlock' || event.$type === 'StaggerBlock') return;
 
     const timeRange = event.timeRange;
     if (!timeRange) return;
@@ -166,8 +166,8 @@ export class EligianValidator {
    * Note: Only applies to TimedEvent, not SequenceBlock.
    */
   checkNonNegativeTimes(event: TimelineEvent, accept: ValidationAcceptor): void {
-    // SequenceBlock doesn't have timeRange, only TimedEvent does
-    if (event.$type === 'SequenceBlock') return;
+    // SequenceBlock and StaggerBlock don't have timeRange, only TimedEvent does
+    if (event.$type === 'SequenceBlock' || event.$type === 'StaggerBlock') return;
 
     const timeRange = event.timeRange;
     if (!timeRange) return;

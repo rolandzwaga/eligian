@@ -481,6 +481,115 @@ describe('AST Transformer', () => {
     });
   });
 
+  describe('Stagger syntax (T192)', () => {
+    test('should transform stagger block with action call to multiple timeline events', async () => {
+      const code = `
+                endable action fadeIn(selector) [
+                    selectElement($operationdata.selector)
+                    addClass("visible")
+                ] []
+
+                timeline "test" using raf {
+                    stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(3);
+
+      // First item: starts at 0s (0 + 0*200ms), ends at 2s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(2);
+      // Check that selector is passed via actionOperationData
+      expect(actions[0].startOperations[1].operationData?.actionOperationData).toEqual({
+        selector: '.item-1',
+      });
+
+      // Second item: starts at 0.2s (0 + 1*200ms), ends at 2.2s
+      expect(actions[1].duration.start).toBe(0.2);
+      expect(actions[1].duration.end).toBe(2.2);
+      expect(actions[1].startOperations[1].operationData?.actionOperationData).toEqual({
+        selector: '.item-2',
+      });
+
+      // Third item: starts at 0.4s (0 + 2*200ms), ends at 2.4s
+      expect(actions[2].duration.start).toBe(0.4);
+      expect(actions[2].duration.end).toBe(2.4);
+      expect(actions[2].startOperations[1].operationData?.actionOperationData).toEqual({
+        selector: '.item-3',
+      });
+    });
+
+    test('should transform stagger block with inline operations', async () => {
+      const code = `
+                timeline "test" using raf {
+                    stagger 100ms [".box-1", ".box-2"] for 1s [
+                        selectElement(@item)
+                        addClass("active")
+                    ] [
+                        selectElement(@item)
+                        removeClass("active")
+                    ]
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(2);
+
+      // First item: 0s-1s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(1);
+      // Should have operations with @item reference compiled to context.item
+      expect(actions[0].startOperations).toHaveLength(2);
+      expect(actions[0].endOperations).toHaveLength(2);
+
+      // Second item: 0.1s-1.1s (100ms delay)
+      expect(actions[1].duration.start).toBe(0.1);
+      expect(actions[1].duration.end).toBe(1.1);
+    });
+
+    test('should support stagger after other timeline events', async () => {
+      const code = `
+                endable action show(selector) [
+                    selectElement($operationdata.selector)
+                ] []
+
+                timeline "test" using raf {
+                    at 0s..5s [
+                        selectElement("#intro")
+                    ] []
+
+                    stagger 300ms [".card-1", ".card-2"] with show() for 1s
+                }
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const actions = result.timelines[0].timelineActions;
+      expect(actions).toHaveLength(3);
+
+      // First regular event: 0-5s
+      expect(actions[0].duration.start).toBe(0);
+      expect(actions[0].duration.end).toBe(5);
+
+      // Stagger starts after previous event ends (at 5s)
+      // First stagger item: 5s-6s
+      expect(actions[1].duration.start).toBe(5);
+      expect(actions[1].duration.end).toBe(6);
+
+      // Second stagger item: 5.3s-6.3s (5 + 300ms delay)
+      expect(actions[2].duration.start).toBe(5.3);
+      expect(actions[2].duration.end).toBe(6.3);
+    });
+  });
+
   describe('transformAST (T055) - Full program transformation', () => {
     test('should transform simple program to complete IEngineConfiguration IR', async () => {
       const code = `
