@@ -275,6 +275,7 @@ export class EligianValidator {
       accept('error', message, {
         node: operation,
         property: 'args',
+        index: error.parameterIndex,
         code: error.code.toLowerCase(),
       });
     }

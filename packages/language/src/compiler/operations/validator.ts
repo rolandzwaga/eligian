@@ -233,6 +233,9 @@ function inferArgumentType(arg: any): string {
     case 'ArrayLiteral':
       return 'array';
     case 'PropertyChainReference':
+    case 'ParameterReference':
+    case 'SystemPropertyReference':
+    case 'VariableReference':
       return 'property-chain'; // Runtime value, can't validate type
     case 'BinaryExpression':
     case 'UnaryExpression':

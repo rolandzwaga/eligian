@@ -1,0 +1,39 @@
+// ============================================================================
+// STAGGER SYNTAX (Phase 16, T192)
+// ============================================================================
+
+// Stagger blocks provide automatic timing for animations that should
+// start with incremental delays (common for list animations)
+
+timeline "stagger-demo" using raf {
+  // STAGGER BLOCK with action call - automatically passes each item to the action
+  // Each item starts 200ms after the previous one
+  stagger 200ms [".card-1", ".card-2", ".card-3"] with fadeIn() for 2s
+  // Expands to:
+  //   at 0s..2s { fadeIn(".card-1") }
+  //   at 0.2s..2.2s { fadeIn(".card-2") }
+  //   at 0.4s..2.4s { fadeIn(".card-3") }
+
+  // STAGGER BLOCK with inline operations - more control over each item's animation
+  stagger 100ms [".box-1", ".box-2", ".box-3", ".box-4"] for 1s [
+    selectElement(@@item)
+    addClass("pulse")
+    animate({scale: 1.1}, 500)
+  ] [
+    selectElement(@@item)
+    removeClass("pulse")
+    animate({scale: 1}, 500)
+  ]
+  // Each box pulses in sequence with 100ms delay between each
+
+  // Combine stagger with sequence for complex animations
+  sequence {
+    fadeIn(".header", 500) for 2s
+
+    // After header (2s), stagger the navigation items
+    // Note: stagger uses previousEventEndTime, so this starts at 2s
+  }
+
+  stagger 150ms [".nav-1", ".nav-2", ".nav-3"] with fadeIn() for 1s
+  // Starts at 2s: 2s..3s, 2.15s..3.15s, 2.3s..3.3s
+}
