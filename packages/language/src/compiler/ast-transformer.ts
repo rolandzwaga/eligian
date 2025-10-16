@@ -28,7 +28,7 @@ import type {
 } from '../generated/ast.js';
 import { getOperationSignature } from './operations/index.js';
 import { mapParameters } from './operations/mapper.js';
-import { validateOperation } from './operations/validator.js';
+import { trackOutputs, validateDependencies, validateOperation } from './operations/validator.js';
 import type { SourceLocation } from './types/common.js';
 import type {
   EligiusIR,
@@ -270,6 +270,22 @@ const transformTimelineEvent = (
       }
     }
 
+    // T173: Validate dependencies in timeline event operations
+    yield* _(
+      validateOperationSequence(
+        startOperations,
+        `timeline event at ${start}s..${end}s start operations`
+      )
+    );
+    if (endOperations.length > 0) {
+      yield* _(
+        validateOperationSequence(
+          endOperations,
+          `timeline event at ${start}s..${end}s end operations`
+        )
+      );
+    }
+
     return {
       // Constitution VII: UUID v4 for globally unique action ID
       id: crypto.randomUUID(),
@@ -285,6 +301,51 @@ const transformTimelineEvent = (
   });
 
 /**
+ * Validate operation dependencies in a sequence (T173: Dependency Tracking)
+ *
+ * Checks that each operation's required dependencies are available from previous operations.
+ * Tracks outputs as operations are processed to maintain dependency chain.
+ */
+const validateOperationSequence = (
+  operations: OperationConfigIR[],
+  contextName: string
+): Effect.Effect<void, TransformError> =>
+  Effect.gen(function* (_) {
+    const availableOutputs = new Set<string>();
+
+    for (const op of operations) {
+      const signature = getOperationSignature(op.systemName);
+      if (!signature) {
+        continue; // Already validated in transformOperationCall
+      }
+
+      // Validate dependencies
+      const depErrors = validateDependencies(signature, availableOutputs);
+      if (depErrors.length > 0) {
+        const firstError = depErrors[0];
+        return yield* _(
+          Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'ValidationError' as const,
+            message: `In ${contextName}: ${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
+            location: op.sourceLocation || {
+              file: undefined,
+              line: 1,
+              column: 1,
+              length: 0,
+            },
+          })
+        );
+      }
+
+      // Track outputs for next operation
+      trackOutputs(signature, availableOutputs);
+    }
+
+    return undefined;
+  });
+
+/**
  * Transform Action Definition → EndableActionIR
  *
  * Handles both:
@@ -292,6 +353,7 @@ const transformTimelineEvent = (
  * - Endable actions: endable action foo [ ... ] [ ... ]
  *
  * Constitution VII: Generates UUID for action ID
+ * T173: Validates operation dependencies
  */
 const transformActionDefinition = (
   actionDef: EndableActionDefinition | RegularActionDefinition
@@ -316,6 +378,16 @@ const transformActionDefinition = (
         const op = yield* _(transformOperationCall(opCall));
         startOperations.push(op);
       }
+    }
+
+    // T173: Validate dependencies in operation sequences
+    yield* _(
+      validateOperationSequence(startOperations, `action '${actionDef.name}' start operations`)
+    );
+    if (endOperations.length > 0) {
+      yield* _(
+        validateOperationSequence(endOperations, `action '${actionDef.name}' end operations`)
+      );
     }
 
     return {

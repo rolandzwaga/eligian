@@ -124,6 +124,7 @@ describe('Pipeline', () => {
                     selectElement("#title")
                     addClass("visible")
                 ] [
+                    selectElement("#title")
                     removeClass("visible")
                 ]
 
@@ -131,6 +132,7 @@ describe('Pipeline', () => {
                     selectElement(".content")
                     addClass("visible")
                 ] [
+                    selectElement(".content")
                     removeClass("visible")
                 ]
             }`;
@@ -349,6 +351,7 @@ describe('Pipeline', () => {
                     selectElement("#subtitle")
                     addClass("visible")
                 ] [
+                    selectElement("#subtitle")
                     removeClass("visible")
                 ]
 
@@ -358,6 +361,7 @@ describe('Pipeline', () => {
                     selectElement("#title")
                     removeClass("visible")
                 ] [
+                    selectElement("#content")
                     removeClass("visible")
                 ]
 
@@ -367,6 +371,7 @@ describe('Pipeline', () => {
                     selectElement("#credits")
                     addClass("visible")
                 ] [
+                    selectElement("#credits")
                     removeClass("visible")
                 ]
             }`;
@@ -393,6 +398,7 @@ describe('Pipeline', () => {
                     selectElement(".chart")
                     addClass("visible")
                 ] [
+                    selectElement(".chart")
                     removeClass("visible")
                 ]
 
@@ -400,6 +406,7 @@ describe('Pipeline', () => {
                     selectElement(".details")
                     addClass("visible")
                 ] [
+                    selectElement(".details")
                     removeClass("visible")
                 ]
             }`;

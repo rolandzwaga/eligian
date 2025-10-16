@@ -86,6 +86,7 @@ describe('AST Transformer', () => {
                         selectElement("#title")
                         addClass("visible")
                     ] [
+                        selectElement("#title")
                         removeClass("visible")
                     ]
                 }
@@ -99,7 +100,7 @@ describe('AST Transformer', () => {
       expect(action.duration.start).toBe(0);
       expect(action.duration.end).toBe(5);
       expect(action.startOperations).toHaveLength(2);
-      expect(action.endOperations).toHaveLength(1);
+      expect(action.endOperations).toHaveLength(2);
       expect(action.sourceLocation).toBeDefined();
     });
 
@@ -109,6 +110,7 @@ describe('AST Transformer', () => {
                     selectElement(".target")
                     addClass("visible")
                 ] [
+                    selectElement(".target")
                     removeClass("visible")
                 ]
 
@@ -147,6 +149,7 @@ describe('AST Transformer', () => {
                     selectElement("#box")
                     addClass("visible")
                 ] [
+                    selectElement("#box")
                     removeClass("visible")
                 ]
 
@@ -159,7 +162,7 @@ describe('AST Transformer', () => {
       expect(result.actions).toHaveLength(1);
       expect(result.actions[0].name).toBe('showHide');
       expect(result.actions[0].startOperations).toHaveLength(2);
-      expect(result.actions[0].endOperations).toHaveLength(1);
+      expect(result.actions[0].endOperations).toHaveLength(2);
     });
 
     test('should transform regular action definition', async () => {
@@ -203,6 +206,7 @@ describe('AST Transformer', () => {
     test('should transform operation with object literal', async () => {
       const code = `
                 action test [
+                    selectElement("#el")
                     setStyle({ opacity: 0, color: "red" })
                 ]
                 timeline "test" using raf {}
@@ -211,7 +215,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[0];
+      const operation = result.actions[0].startOperations[1];
       expect(operation.systemName).toBe('setStyle');
       // T223: Object literal mapped to 'properties' parameter
       expect(operation.operationData?.properties).toBeDefined();
@@ -222,6 +226,7 @@ describe('AST Transformer', () => {
     test('should transform operation with multiple arguments', async () => {
       const code = `
                 action test [
+                    selectElement("#el")
                     animate({ opacity: 1 }, 500, "ease")
                 ]
                 timeline "test" using raf {}
@@ -230,7 +235,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[0];
+      const operation = result.actions[0].startOperations[1];
       expect(operation.systemName).toBe('animate');
       // T223: Multiple arguments mapped to named parameters
       expect(operation.operationData?.animationProperties).toBeDefined();
@@ -342,6 +347,7 @@ describe('AST Transformer', () => {
                     selectElement("#title")
                     addClass("visible")
                 ] [
+                    selectElement("#title")
                     removeClass("visible")
                 ]
 
@@ -354,6 +360,7 @@ describe('AST Transformer', () => {
                         selectElement("#content")
                         addClass("visible")
                     ] [
+                        selectElement("#content")
                         removeClass("visible")
                     ]
 

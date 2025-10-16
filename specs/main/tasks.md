@@ -554,6 +554,31 @@
 
 ---
 
+## Phase 11: Dependency Validation
+
+**Purpose**: Validate operation dependencies at compile time using existing operation registry metadata
+
+- [X] T173 [Enhancement] Implement operation dependency tracking in packages/language/src/compiler/ast-transformer.ts
+  - **Implementation**: Added `validateOperationSequence()` function that validates dependencies through operation sequences
+  - **How it works**: Tracks available outputs as operations execute, validates each operation's dependencies before execution
+  - **Uses existing infrastructure**: Leverages `validateDependencies()` and `trackOutputs()` from operations/validator.ts
+  - **Validates**: Action definitions (start/end operations) and timeline events (start/end operations)
+  - **Error messages**: Clear context like "In action 'fadeIn' end operations: Operation 'removeClass' requires 'selectedElement'..."
+- [X] T174 [Enhancement] Fix test DSL code to satisfy dependency requirements
+  - **Issue found**: Many tests had `removeClass()` in end operations without calling `selectElement()` first
+  - **Root cause**: End operations have separate operation data context from start operations
+  - **Fix**: Updated all test DSL to call `selectElement()` before dependent operations in both start AND end operation sequences
+  - **Files fixed**: transformer.spec.ts (6 tests), pipeline.spec.ts (3 tests)
+  - **Result**: All 235 tests passing with dependency validation active
+- [X] T175 [Enhancement] Verify dependency validation catches real bugs
+  - **Verified**: Dependency validation successfully prevented compilation of invalid operation sequences
+  - **Example caught**: `removeClass()` without prior `selectElement()` → Clear error with hint to call selectElement first
+  - **Impact**: Compile-time errors instead of runtime failures in Eligius
+
+**Phase 11 Status (2025-10-16)**: Dependency validation complete. Compiler now validates operation dependencies at compile time using operation registry metadata. Would have caught the T170 bug immediately. All 235 tests passing.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
