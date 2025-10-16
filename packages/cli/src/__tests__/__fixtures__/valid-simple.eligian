@@ -1,0 +1,13 @@
+// Simple valid Eligian program for testing
+endable action showElement [
+  selectElement("#test")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
+
+timeline "test" using raf {
+  at 0s..5s {
+    showElement()
+  }
+}

@@ -1,0 +1,13 @@
+// Invalid operation name
+endable action test [
+  selectElement("#foo")
+  fakeOperation()  // This operation doesn't exist
+] [
+  removeClass("foo")
+]
+
+timeline "test" using raf {
+  at 0s..5s {
+    test()
+  }
+}

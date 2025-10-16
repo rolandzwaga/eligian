@@ -38,6 +38,10 @@ importers:
       effect:
         specifier: 3.12.0
         version: 3.12.0
+    devDependencies:
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/node@24.7.2)(tsx@4.19.2)
 
   packages/extension:
     dependencies:

@@ -1,0 +1,8 @@
+// Invalid syntax - missing timeline
+endable action test [
+  selectElement("#foo")
+] [
+  removeClass("foo")
+]
+
+// Missing timeline declaration - should cause error
