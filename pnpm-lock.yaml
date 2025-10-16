@@ -36,7 +36,7 @@ importers:
         specifier: 11.1.0
         version: 11.1.0
       effect:
-        specifier: ^3.11.9
+        specifier: 3.12.0
         version: 3.12.0
 
   packages/extension:
@@ -45,7 +45,7 @@ importers:
         specifier: workspace:*
         version: link:../language
       effect:
-        specifier: ^3.11.9
+        specifier: 3.12.0
         version: 3.12.0
       vscode-languageclient:
         specifier: 9.0.1

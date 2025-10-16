@@ -1,44 +1,97 @@
 // Video Annotation Example
 // This example shows how to annotate a video with synchronized content
+// Elements appear and disappear at specific times during video playback
 
-timeline video from "presentation.mp4" {
-  // Intro: Show title and subtitle
-  0..3: {
+// Main video timeline
+timeline "video-annotation" using video from "presentation.mp4" {
+  // Intro: Show title and subtitle (0-3 seconds)
+  at 0s..3s [
     selectElement("#title")
-    fadeIn(500)
+    addClass("visible")
+    setStyle({opacity: 0})
+    animate({opacity: 1}, 500)
+  ] [
+    selectElement("#title")
+    animate({opacity: 0}, 500)
+    removeClass("visible")
+  ]
 
+  at 0s..3s [
     selectElement("#subtitle")
-    fadeIn(500, 200)  // delay 200ms
-  }
+    wait(200)
+    addClass("visible")
+    setStyle({opacity: 0})
+    animate({opacity: 1}, 500)
+  ] [
+    selectElement("#subtitle")
+    animate({opacity: 0}, 500)
+    removeClass("visible")
+  ]
 
-  // Main content appears
-  3..8: {
+  // Main content appears (3-8 seconds)
+  at 3s..8s [
     selectElement("#content")
-    fadeIn(800)
+    addClass("visible")
+    setStyle({opacity: 0})
+    animate({opacity: 1}, 800)
+  ] [
+    selectElement("#content")
+    animate({opacity: 0}, 800)
+    removeClass("visible")
+  ]
 
+  at 3s..8s [
     selectElement(".highlight")
     addClass("active")
-  }
+  ] [
+    selectElement(".highlight")
+    removeClass("active")
+  ]
 
-  // Show call-to-action
-  8..12: {
+  // Show call-to-action (8-12 seconds)
+  at 8s..12s [
     selectElement("#cta-button")
-    fadeIn(600)
+    addClass("visible")
+    setStyle({opacity: 0})
+    animate({opacity: 1}, 600)
     addClass("pulse")
-  }
-
-  // Fade out everything
-  12..15: {
-    selectElement("#title")
-    fadeOut(500)
-
-    selectElement("#subtitle")
-    fadeOut(500)
-
-    selectElement("#content")
-    fadeOut(500)
-
+  ] [
     selectElement("#cta-button")
-    fadeOut(500)
-  }
+    removeClass("pulse")
+    animate({opacity: 0}, 600)
+    removeClass("visible")
+  ]
+
+  // Fade out everything (12-15 seconds)
+  at 12s..15s [
+    selectElement("#title")
+    animate({opacity: 0}, 500)
+  ] [
+    selectElement("#title")
+    removeClass("visible")
+  ]
+
+  at 12s..15s [
+    selectElement("#subtitle")
+    animate({opacity: 0}, 500)
+  ] [
+    selectElement("#subtitle")
+    removeClass("visible")
+  ]
+
+  at 12s..15s [
+    selectElement("#content")
+    animate({opacity: 0}, 500)
+  ] [
+    selectElement("#content")
+    removeClass("visible")
+  ]
+
+  at 12s..15s [
+    selectElement("#cta-button")
+    animate({opacity: 0}, 500)
+  ] [
+    selectElement("#cta-button")
+    removeClass("visible")
+  ]
 }

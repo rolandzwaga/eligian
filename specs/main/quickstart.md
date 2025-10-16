@@ -1,16 +1,16 @@
-# Quickstart Guide: Eligius DSL
+# Quickstart Guide: Eligian DSL
 
-**Date**: 2025-10-14
-**Audience**: Developers new to Eligius DSL
+**Date**: 2025-10-16 (Updated)
+**Audience**: Developers new to Eligian DSL
 
 ## Overview
 
-This guide walks through setting up the Eligius DSL toolchain, writing your first DSL program, and compiling it to Eligius JSON configuration.
+This guide walks through setting up the Eligian DSL toolchain, writing your first DSL program, and compiling it to Eligius JSON configuration.
 
 ## Prerequisites
 
 - **Node.js**: v20 or later (LTS recommended)
-- **npm**: v10 or later
+- **pnpm**: v8 or later (package manager)
 - **VS Code**: v1.80 or later (for extension)
 - **Eligius Library**: v1.x (for running compiled configs)
 
@@ -19,11 +19,11 @@ This guide walks through setting up the Eligius DSL toolchain, writing your firs
 ### 1. Install Compiler CLI
 
 ```bash
-npm install -g @eligius/dsl-compiler
+npm install -g @eligian/cli
 
 # Verify installation
-eligius-dsl --version
-# Output: Eligius DSL Compiler v1.0.0
+eligian --version
+# Output: Eligian CLI v1.0.0
 ```
 
 ### 2. Install VS Code Extension
@@ -32,14 +32,14 @@ eligius-dsl --version
 ```
 1. Open VS Code
 2. Go to Extensions (Ctrl+Shift+X)
-3. Search for "Eligius DSL"
+3. Search for "Eligian"
 4. Click Install
 ```
 
 **Option B: From VSIX**:
 ```bash
 # Download .vsix file
-code --install-extension eligius-dsl-1.0.0.vsix
+code --install-extension eligian-1.0.0.vsix
 ```
 
 ### 3. Project Setup
@@ -63,30 +63,71 @@ mkdir src dist
 
 ### Step 1: Create DSL File
 
-Create `src/presentation.eli`:
+Create `src/presentation.eligian`:
 
-```
+```eligian
 // Eligius DSL Example - Video Presentation
 
+// Define reusable endable actions
+endable action showTitle [
+  selectElement("#title")
+  addClass("visible")
+  setStyle({opacity: 0})
+  animate({opacity: 1}, 500)
+] [
+  animate({opacity: 0}, 500)
+  removeClass("visible")
+]
+
+endable action showSubtitle [
+  selectElement("#subtitle")
+  addClass("visible")
+  setStyle({opacity: 0, transform: "translateX(-20px)"})
+  animate({opacity: 1, transform: "translateX(0px)"}, 300)
+] [
+  animate({opacity: 0}, 300)
+  removeClass("visible")
+]
+
+endable action showContent [
+  selectElement("#content-area")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
+
 // Define timeline with video provider
-timeline video from "presentation.mp4"
+timeline "main" using video from "presentation.mp4" {
+  // Intro (0-5 seconds)
+  at 0s..5s {
+    showTitle()
+  }
 
-// Intro event (0-5 seconds)
-event intro at 0..5 {
-  show #title with fadeIn(500ms)
-  show #subtitle with slideIn(300ms, "left")
-}
+  at 0s..5s {
+    showSubtitle()
+  }
 
-// Main content (5-120 seconds)
-event main-content at 5..120 {
-  show #content-area
-  trigger startAnimation on #diagram
-}
+  // Main content (5-120 seconds)
+  at 5s..120s {
+    showContent()
+  }
 
-// Outro (120-130 seconds)
-event outro at 120..130 {
-  hide #content-area with fadeOut(400ms)
-  show #credits with slideIn(500ms, "bottom")
+  at 5s..120s [
+    selectElement("#diagram")
+    addClass("ready")
+  ] [
+    removeClass("ready")
+  ]
+
+  // Outro (120-130 seconds)
+  at 120s..130s [
+    selectElement("#credits")
+    addClass("visible")
+    setStyle({transform: "translateY(30px)", opacity: 0})
+    animate({transform: "translateY(0px)", opacity: 1}, 500)
+  ] [
+    removeClass("visible")
+  ]
 }
 ```
 
@@ -94,7 +135,7 @@ event outro at 120..130 {
 
 **Using CLI**:
 ```bash
-eligius-dsl compile src/presentation.eli -o dist/config.json
+eligian compile src/presentation.eligian -o dist/config.json
 
 # Output:
 # ✓ Compiled successfully (45ms)
@@ -103,98 +144,12 @@ eligius-dsl compile src/presentation.eli -o dist/config.json
 
 **Using VS Code**:
 ```
-1. Open src/presentation.eli in VS Code
-2. Press Ctrl+Shift+B (or Cmd+Shift+B on Mac)
-3. Select "Eligius DSL: Compile Current File"
-4. Check Output panel for results
+1. Open src/presentation.eligian in VS Code
+2. Right-click and select "Compile Eligian File"
+3. Check Output panel for results
 ```
 
-### Step 3: Review Compiled JSON
-
-Open `dist/config.json`:
-
-```json
-{
-  "timeline": {
-    "provider": "video",
-    "source": "presentation.mp4"
-  },
-  "events": [
-    {
-      "id": "intro",
-      "start": 0,
-      "end": 5,
-      "actions": [
-        {
-          "type": "show",
-          "target": "#title",
-          "properties": {
-            "animation": "fadeIn",
-            "duration": 500
-          }
-        },
-        {
-          "type": "show",
-          "target": "#subtitle",
-          "properties": {
-            "animation": "slideIn",
-            "duration": 300,
-            "direction": "left"
-          }
-        }
-      ]
-    },
-    {
-      "id": "main-content",
-      "start": 5,
-      "end": 120,
-      "actions": [
-        {
-          "type": "show",
-          "target": "#content-area"
-        },
-        {
-          "type": "trigger",
-          "target": "#diagram",
-          "properties": {
-            "action": "startAnimation"
-          }
-        }
-      ]
-    },
-    {
-      "id": "outro",
-      "start": 120,
-      "end": 130,
-      "actions": [
-        {
-          "type": "hide",
-          "target": "#content-area",
-          "properties": {
-            "animation": "fadeOut",
-            "duration": 400
-          }
-        },
-        {
-          "type": "show",
-          "target": "#credits",
-          "properties": {
-            "animation": "slideIn",
-            "duration": 500,
-            "direction": "bottom"
-          }
-        }
-      ]
-    }
-  ],
-  "metadata": {
-    "generatedBy": "Eligius DSL Compiler v1.0.0",
-    "timestamp": "2025-10-14T12:00:00.000Z"
-  }
-}
-```
-
-### Step 4: Run with Eligius
+### Step 3: Run with Eligius
 
 Create `index.html`:
 
@@ -204,7 +159,7 @@ Create `index.html`:
 <head>
   <title>Eligius Presentation</title>
   <style>
-    #title, #subtitle, #content-area, #credits { display: none; }
+    #title, #subtitle, #content-area, #credits { display: none; opacity: 0; }
     video { width: 100%; }
   </style>
 </head>
@@ -213,7 +168,8 @@ Create `index.html`:
   <div id="title">Welcome to Eligius</div>
   <div id="subtitle">Story Telling Engine</div>
   <div id="content-area">Main Content Here</div>
-  <div id="credits">Created with Eligius DSL</div>
+  <div id="diagram">Diagram Area</div>
+  <div id="credits">Created with Eligian DSL</div>
 
   <script type="module">
     import { Eligius } from './node_modules/eligius/dist/index.js'
@@ -232,8 +188,10 @@ Open `index.html` in browser and play the video. Elements will appear/disappear 
 
 ### Timeline Declaration
 
-```
-timeline <provider> from <source>
+```eligian
+timeline <NAME_STRING> using <provider> from <source> {
+  // timeline events
+}
 ```
 
 **Providers**:
@@ -243,74 +201,114 @@ timeline <provider> from <source>
 - `custom`: Custom provider (requires config)
 
 **Examples**:
-```
-timeline video from "video.mp4"
-timeline audio from "podcast.mp3"
-timeline raf  // No source needed for RAF
+```eligian
+timeline "main" using video from "video.mp4" { ... }
+timeline "audio-sync" using audio from "podcast.mp3" { ... }
+timeline "presentation" using raf { ... }  // No source needed for RAF
 ```
 
-### Event Declaration
+### Endable Action Definitions
 
+Endable actions have **start operations** (what happens when the action begins) and **end operations** (what happens when it ends):
+
+```eligian
+endable action <actionName> [
+  // start operations
+] [
+  // end operations
+]
 ```
-event <id> at <start>..<end> {
-  <actions>
+
+**Example**:
+```eligian
+endable action fadeInElement [
+  selectElement(".target")
+  addClass("visible")
+  setStyle({opacity: 0})
+  animate({opacity: 1}, 500)
+] [
+  animate({opacity: 0}, 500)
+  removeClass("visible")
+]
+```
+
+### Timeline Events
+
+Timeline events use time ranges and can invoke endable actions:
+
+```eligian
+at <start>..<end> {
+  actionName()
 }
+
+// OR inline endable action
+at <start>..<end> [
+  // start operations
+] [
+  // end operations
+]
 ```
 
 **Examples**:
-```
-event intro at 0..5 { ... }
-event outro at 120..130 { ... }
-event continuous at 0..9999 { ... }
+```eligian
+// Named action invocation
+at 0s..5s {
+  fadeInElement()
+}
+
+// Inline endable action
+at 10s..15s [
+  selectElement("#box")
+  addClass("visible")
+] [
+  removeClass("visible")
+]
 ```
 
-### Actions
+### Time Expressions
 
-**show** - Make element visible:
-```
-show #id
-show #id with fadeIn(500ms)
-show .class with slideIn(300ms, "left")
-```
+Time values require units:
 
-**hide** - Hide element:
-```
-hide #id
-hide #id with fadeOut(400ms)
-hide .class with slideOut(200ms, "right")
+```eligian
+at 0s..5s      // 0 to 5 seconds
+at 100ms..500ms // 100 to 500 milliseconds
+at 0s..3m      // 0 to 3 minutes
+at 1s..1.5s    // 1 to 1.5 seconds (decimal allowed)
 ```
 
-**animate** - Trigger animation:
-```
-animate #diagram
-animate #logo with spin(1000ms)
+**Units**: `ms` (milliseconds), `s` (seconds), `m` (minutes), `h` (hours)
+
+### Operation Calls
+
+All operations use function-style syntax with parentheses:
+
+```eligian
+selectElement(".selector")
+addClass("className")
+animate({opacity: 1}, 500)
+wait(200)  // delay in milliseconds
 ```
 
-**trigger** - Trigger custom action:
-```
-trigger startAnimation on #element
-trigger playSound on #audio-player
+### Property Chain References
+
+Access runtime data with `$` prefix:
+
+```eligian
+$context.currentItem
+$operationdata.selectedElement
+$globaldata.userSettings
 ```
 
-### Time Ranges
-
-```
-at 0..5         // 0 to 5 seconds
-at 10..20       // 10 to 20 seconds
-at 0..9999      // Very long range
-```
-
-### Selectors
-
-```
-#id             // Element with ID
-.class          // Elements with class
-element         // Elements by tag name
+**Example**:
+```eligian
+when($operationdata.count > 5)
+  setStyle({color: $globaldata.theme.primaryColor})
+endWhen()
 ```
 
 ### Comments
 
-```
+```eligian
 // Single-line comment
 
 /* Multi-line
@@ -321,51 +319,81 @@ element         // Elements by tag name
 
 ### 1. Video Annotation
 
-```
-timeline video from "tutorial.mp4"
+```eligian
+endable action showAnnotation [
+  selectElement(".annotation")
+  addClass("visible")
+  setStyle({opacity: 0})
+  animate({opacity: 1}, 300)
+] [
+  animate({opacity: 0}, 300)
+  removeClass("visible")
+]
 
-event step1 at 0..10 {
-  show #annotation1 with fadeIn(300ms)
-}
+timeline "tutorial" using video from "tutorial.mp4" {
+  at 0s..10s {
+    showAnnotation()
+  }
 
-event step2 at 10..25 {
-  hide #annotation1 with fadeOut(200ms)
-  show #annotation2 with fadeIn(300ms)
+  at 10s..25s [
+    selectElement("#annotation2")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 }
 ```
 
 ### 2. Presentation Slides
 
-```
-timeline raf
+```eligian
+endable action showSlide [
+  selectElement(".slide")
+  addClass("active")
+] [
+  removeClass("active")
+]
 
-event slide1 at 0..5000 {
-  show #slide1
-}
+timeline "presentation" using raf {
+  at 0s..5s {
+    showSlide()
+  }
 
-event slide2 at 5000..10000 {
-  hide #slide1 with fadeOut(500ms)
-  show #slide2 with fadeIn(500ms)
+  at 5s..10s [
+    selectElement("#slide2")
+    addClass("active")
+    setStyle({opacity: 0})
+    animate({opacity: 1}, 500)
+  ] [
+    removeClass("active")
+  ]
 }
 ```
 
 ### 3. Interactive Infographic
 
-```
-timeline audio from "narration.mp3"
+```eligian
+endable action highlightDataPoint [
+  selectElement(".data-point")
+  addClass("highlighted")
+  setStyle({transform: "scale(1)"})
+  animate({transform: "scale(1.2)"}, 300)
+] [
+  animate({transform: "scale(1)"}, 300)
+  removeClass("highlighted")
+]
 
-event intro at 0..3 {
-  show #chart-title with fadeIn(400ms)
-}
+timeline "infographic" using audio from "narration.mp3" {
+  at 0s..3s [
+    selectElement("#chart-title")
+    addClass("visible")
+  ] [
+    removeClass("visible")
+  ]
 
-event data-point-1 at 3..8 {
-  show #point1 with slideIn(300ms, "bottom")
-  animate #point1-highlight
-}
-
-event data-point-2 at 8..13 {
-  show #point2 with slideIn(300ms, "bottom")
-  animate #point2-highlight
+  at 3s..8s {
+    highlightDataPoint()
+  }
 }
 ```
 
@@ -375,180 +403,191 @@ event data-point-2 at 8..13 {
 
 Benefits:
 - **Syntax highlighting**: Keywords, selectors, literals
-- **Autocompletion**: Actions, properties, selectors
+- **Autocompletion**: Operations, properties (via Language Server)
 - **Real-time validation**: Errors as you type
-- **Quick fixes**: Automatic error corrections
+- **Diagnostics**: Problems panel shows all issues
 
 ### 2. Compile and Test
 
 ```bash
 # Compile once
-eligius-dsl compile src/presentation.eli -o dist/config.json
+eligian compile src/presentation.eligian -o dist/config.json
 
-# Watch mode (recompile on save)
-eligius-dsl compile src/presentation.eli -o dist/config.json --watch
+# Check syntax only (no output)
+eligian compile src/presentation.eligian --check
+
+# Verbose output for debugging
+eligian compile src/presentation.eligian -o dist/config.json --verbose
 ```
 
 ### 3. Debug
 
-Check Output panel for:
-- Compilation errors
-- Type errors
-- Validation warnings
+Check Output panel (or terminal) for:
+- Parse errors (syntax issues)
+- Validation errors (semantic issues)
+- Operation validation errors (unknown operations, wrong parameters)
 
-Use VS Code's Problems panel (Ctrl+Shift+M) to see all issues.
+VS Code's Problems panel (Ctrl+Shift+M) shows all issues with locations.
 
 ### 4. Optimize
 
 ```bash
 # Enable minification
-eligius-dsl compile src/presentation.eli -o dist/config.json --minify
+eligian compile src/presentation.eligian -o dist/config.json --minify
 
 # Skip optimization (for debugging)
-eligius-dsl compile src/presentation.eli -o dist/config.json --no-optimize
-```
-
-## Project Configuration
-
-Create `eligius.config.json`:
-
-```json
-{
-  "compilerOptions": {
-    "minify": false,
-    "sourcemap": true,
-    "optimize": true,
-    "target": "eligius-1.0"
-  },
-  "include": ["src/**/*.eli"],
-  "exclude": ["**/*.test.eli"],
-  "output": "dist/"
-}
-```
-
-Now run without specifying options:
-```bash
-eligius-dsl compile src/presentation.eli
-# Uses settings from eligius.config.json
+eligian compile src/presentation.eligian -o dist/config.json --no-optimize
 ```
 
 ## Tips and Best Practices
 
-### 1. Event Organization
+### 1. Define Reusable Endable Actions
 
-Group related events:
+```eligian
+// ✅ Good: Reusable endable action
+endable action fadeInElement [
+  selectElement(".target")
+  addClass("visible")
+  setStyle({opacity: 0})
+  animate({opacity: 1}, 500)
+] [
+  animate({opacity: 0}, 500)
+  removeClass("visible")
+]
+
+timeline "main" using raf {
+  at 0s..5s {
+    fadeInElement()  // Reuse it
+  }
+}
 ```
-// Good: Clear sections
-event intro-title at 0..5 { ... }
-event intro-subtitle at 0..5 { ... }
 
-event main-section1 at 5..15 { ... }
-event main-section2 at 15..30 { ... }
+### 2. Use Explicit Time Units
+
+```eligian
+// ✅ Correct
+at 0s..5s { ... }
+at 100ms..500ms { ... }
+
+// ❌ Wrong: Missing units
+at 0..5 { ... }
 ```
 
-### 2. Consistent Timing
+### 3. Name Your Timelines
 
-Use consistent durations:
-```
-// Good: All fades are 500ms
-show #title with fadeIn(500ms)
-hide #title with fadeOut(500ms)
-show #content with fadeIn(500ms)
+```eligian
+// ✅ Good: Descriptive name
+timeline "main-presentation" using video from "video.mp4" { ... }
+
+// ❌ Wrong: Missing name
+timeline using video from "video.mp4" { ... }  // Parse error!
 ```
 
-### 3. Comments for Complex Logic
+### 4. Comment Complex Logic
 
-```
+```eligian
 // Show title at start of video
-event intro at 0..5 {
+endable action showTitle [
+  selectElement("#main-title")
   // Fade in over 500ms
-  show #title with fadeIn(500ms)
-
-  // Subtitle appears after title
-  show #subtitle with slideIn(300ms, "left")
-}
-```
-
-### 4. Test Incrementally
-
-Start simple, add complexity:
-```
-// v1: Just show/hide
-event intro at 0..5 {
-  show #title
-}
-
-// v2: Add animations
-event intro at 0..5 {
-  show #title with fadeIn(500ms)
-}
-
-// v3: Add more actions
-event intro at 0..5 {
-  show #title with fadeIn(500ms)
-  show #subtitle with slideIn(300ms, "left")
-}
+  setStyle({opacity: 0})
+  animate({opacity: 1}, 500)
+] [
+  // Fade out when ending
+  animate({opacity: 0}, 500)
+]
 ```
 
 ## Troubleshooting
 
 ### Compilation Errors
 
-**Error**: "Expected number, got string"
-```
-// ❌ Wrong
-event intro at "5"..10 { ... }
+**Error**: `Expecting token of type STRING but found raf`
+```eligian
+// ❌ Wrong: Missing timeline name
+timeline raf { ... }
 
-// ✓ Correct
-event intro at 5..10 { ... }
+// ✅ Correct: Timeline needs name string
+timeline "presentation" using raf { ... }
 ```
 
-**Error**: "Duplicate event ID"
-```
-// ❌ Wrong
-event intro at 0..5 { ... }
-event intro at 10..15 { ... }  // Same ID!
+**Error**: `Expecting 'using' keyword`
+```eligian
+// ❌ Wrong: Missing 'using' keyword
+timeline "main" video from "video.mp4" { ... }
 
-// ✓ Correct
-event intro at 0..5 { ... }
-event main at 10..15 { ... }  // Different ID
+// ✅ Correct
+timeline "main" using video from "video.mp4" { ... }
+```
+
+**Error**: `Time expression must have units`
+```eligian
+// ❌ Wrong: Missing units
+at 0..5 { ... }
+
+// ✅ Correct
+at 0s..5s { ... }
+```
+
+**Error**: `Unknown operation: fadeIn`
+```eligian
+// ❌ Wrong: fadeIn is not a built-in operation
+timeline "main" using raf {
+  at 0s..5s {
+    fadeIn()  // Error!
+  }
+}
+
+// ✅ Correct: Define it first as an endable action
+endable action fadeIn [
+  setStyle({opacity: 0})
+  animate({opacity: 1}, 500)
+] [
+  animate({opacity: 0}, 500)
+]
+
+timeline "main" using raf {
+  at 0s..5s {
+    fadeIn()  // Now it works
+  }
+}
 ```
 
 ### VS Code Issues
 
 **Extension not activating**:
-1. Check file extension is `.eli`
+1. Check file extension is `.eligian` (not `.eli`)
 2. Reload window (Ctrl+Shift+P → "Reload Window")
 3. Check extension is enabled
 
-**No autocompletion**:
-1. Check `eligius-dsl.completion.enabled` setting
-2. Trigger manually with `Ctrl+Space`
-3. Check language server is running (Output → "Eligius DSL")
+**No syntax highlighting**:
+1. Verify `.eligian` file association
+2. Check language mode (bottom right) shows "Eligian"
+3. Restart VS Code
 
-### Performance Issues
-
-**Slow compilation**:
-- Use `--no-optimize` for development
-- Split large files into smaller ones
-- Check file size (<5000 lines recommended)
+**No diagnostics/errors showing**:
+1. Check language server is running (Output → "Eligian Language Server")
+2. Wait a few seconds after opening file
+3. Check for parse errors in Output panel
 
 ## Next Steps
 
-1. **Explore Examples**: See `examples/` directory for more complex use cases
-2. **Read Docs**: Full DSL reference at `docs/syntax-reference.md`
-3. **API Usage**: Programmatic compilation guide at `docs/api-usage.md`
+1. **Explore Examples**: See `examples/` directory for complete use cases
+   - [examples/presentation.eligian](../../../examples/presentation.eligian) - Interactive slides
+   - [examples/video-annotation.eligian](../../../examples/video-annotation.eligian) - Video annotations
+2. **Read Grammar Reference**: Full syntax at `DSL_SYNTAX_REFERENCE.md`
+3. **API Usage**: Programmatic compilation guide in compiler docs
 4. **Contributing**: See `CONTRIBUTING.md` for development setup
 
 ## Resources
 
 - **Eligius Library**: https://github.com/rolandzwaga/eligius
-- **DSL Repository**: https://github.com/rolandzwaga/eligius-dsl-spec
-- **Issues**: https://github.com/rolandzwaga/eligius-dsl-spec/issues
-- **Discussions**: https://github.com/rolandzwaga/eligius-dsl-spec/discussions
+- **Eligian Repository**: https://github.com/rolandzwaga/eligian
+- **Issues**: File bug reports and feature requests
+- **Discussions**: Ask questions and share examples
 
 ---
 
-**Quickstart Complete!** You're ready to build Eligius presentations with DSL.
+**Quickstart Complete!** You're ready to build Eligius presentations with Eligian DSL.
 
-**Next**: Try the advanced examples in `examples/` directory.
+**Next**: Try the advanced examples in `examples/` directory or read the full grammar reference.
