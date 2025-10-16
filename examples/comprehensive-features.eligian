@@ -1,0 +1,179 @@
+// Comprehensive Features Example
+// This example demonstrates ALL language features currently supported by Eligian DSL
+
+// ============================================================================
+// GLOBAL VARIABLES (Phase 13)
+// ============================================================================
+
+// Program-level constants (accessed via $globaldata.varName)
+const theme = "dark"
+const animationDuration = 1000
+const slideCount = 3
+
+// ============================================================================
+// PARAMETERIZED ACTIONS (Phase 14)
+// ============================================================================
+
+// Action with parameters - makes actions reusable with different inputs
+endable action fadeIn(selector, duration) [
+  selectElement($operationdata.selector)
+  setStyle({opacity: 0})
+  animate({opacity: 1}, $operationdata.duration)
+] [
+  selectElement($operationdata.selector)
+  animate({opacity: 0}, $operationdata.duration)
+]
+
+// Action with parameters and local variables
+action highlightElement(selector, color) [
+  // LOCAL VARIABLES (Phase 13) - accessed via @varName
+  const highlightDuration = 300
+  const defaultColor = "yellow"
+
+  selectElement($operationdata.selector)
+  setStyle({
+    backgroundColor: $operationdata.color,
+    transition: "background-color 0.3s"
+  })
+  wait(@highlightDuration)
+]
+
+// ============================================================================
+// CONTROL FLOW (Phase 12)
+// ============================================================================
+
+// Action demonstrating if/else statements
+action conditionalHighlight(selector, shouldHighlight) [
+  selectElement($operationdata.selector)
+
+  // IF/ELSE - compiles to when/otherwise/endWhen
+  if ($operationdata.shouldHighlight) {
+    addClass("highlight")
+    setStyle({border: "2px solid yellow"})
+  } else {
+    removeClass("highlight")
+    setStyle({border: "none"})
+  }
+]
+
+// Action demonstrating for loops
+action animateItems(items) [
+  // FOR LOOP - compiles to forEach/endForEach
+  for (item in $operationdata.items) {
+    selectElement(@item)
+    addClass("animated")
+    wait(200)
+  }
+]
+
+// Nested control flow example
+action complexAnimation(elements, duration) [
+  const delayStep = 100
+
+  for (element in $operationdata.elements) {
+    selectElement(@element)
+
+    // Nested if/else inside loop
+    if ($context.isVisible) {
+      animate({opacity: 1}, $operationdata.duration)
+    } else {
+      setStyle({opacity: 0})
+    }
+
+    wait(@delayStep)
+  }
+]
+
+// ============================================================================
+// EXPRESSIONS AND OPERATIONS
+// ============================================================================
+
+// Action demonstrating various expression types
+action expressionExamples() [
+  // BINARY EXPRESSIONS - Math
+  const calculatedDuration = 500
+  const doubleDuration = 1000
+
+  // BINARY EXPRESSIONS - Comparison
+  if (1000 > 500) {
+    log("Duration is sufficient")
+  }
+
+  // BINARY EXPRESSIONS - Logical operators
+  if ($globaldata.theme == "dark" && $operationdata.enabled) {
+    addClass("dark-mode-enabled")
+  }
+
+  // ARRAY LITERALS
+  const colorOptions = ["red", "blue", "green"]
+
+  // OBJECT LITERALS with nested properties
+  const animationConfig = {
+    duration: @calculatedDuration,
+    easing: "ease-in-out",
+    properties: {
+      opacity: 1,
+      transform: "scale(1)"
+    }
+  }
+
+  // PROPERTY CHAIN REFERENCES
+  selectElement(".demo")
+  setStyle({
+    color: $globaldata.theme,
+    animationDuration: @calculatedDuration
+  })
+]
+
+// ============================================================================
+// TIMELINE WITH ALL FEATURES
+// ============================================================================
+
+timeline "comprehensive-demo" using raf {
+  // PARAMETERIZED ACTION INVOCATION
+  at 0s..3s {
+    fadeIn(".title", 1000)
+  }
+
+  at 1s..4s {
+    highlightElement(".subtitle", "yellow")
+  }
+
+  // INLINE ENDABLE ACTION with control flow
+  at 3s..8s [
+    selectElement(".content")
+    addClass("visible")
+
+    // FOR LOOP in timeline event
+    for (section in ["intro", "main", "outro"]) {
+      selectElement(@section)
+      addClass("active")
+      wait(500)
+    }
+  ] [
+    selectElement(".content")
+    removeClass("visible")
+  ]
+
+  // INLINE ACTION with conditional logic
+  at 5s..10s [
+    selectElement(".panel")
+
+    if ($globaldata.theme == "dark") {
+      addClass("dark-panel")
+      setStyle({backgroundColor: "#333", color: "#fff"})
+    } else {
+      addClass("light-panel")
+      setStyle({backgroundColor: "#fff", color: "#333"})
+    }
+  ] [
+    selectElement(".panel")
+    removeClass("dark-panel")
+    removeClass("light-panel")
+  ]
+
+  // COMPLEX EXPRESSIONS in arguments
+  at 8s..12s {
+    fadeIn(".footer", 500)
+  }
+}

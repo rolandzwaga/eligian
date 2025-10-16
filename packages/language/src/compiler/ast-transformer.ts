@@ -250,12 +250,40 @@ const transformTimelineEvent = (
     const endOperations: OperationConfigIR[] = [];
 
     if (action.$type === 'NamedActionInvocation') {
-      // Named action reference: { showSlide1() }
+      // Named action reference: { showSlide1() } or { fadeIn(".title", 300) }
       // Per Eligius operation registry, action invocation requires two steps:
       // 1. requestAction: Takes systemName, outputs actionInstance to operation data
       // 2. startAction: Depends on actionInstance from previous operation
       const actionCall = action.actionCall;
       const actionName = actionCall?.action?.$refText || 'unknown';
+      const actionRef = actionCall?.action?.ref;
+
+      // T187: Transform action arguments to actionOperationData
+      let actionOperationData: Record<string, JsonValue> | undefined;
+      if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
+        // Map positional arguments to parameter names
+        const parameters = actionRef.parameters || [];
+        const args = actionCall.args;
+
+        if (args.length !== parameters.length) {
+          return yield* _(
+            Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'ValidationError' as const,
+              message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
+              location: getSourceLocation(action),
+            })
+          );
+        }
+
+        // Map each argument to its corresponding parameter name
+        actionOperationData = {};
+        for (let i = 0; i < parameters.length; i++) {
+          const paramName = parameters[i].name;
+          const argValue = yield* _(transformExpression(args[i]));
+          actionOperationData[paramName] = argValue;
+        }
+      }
 
       // Step 1: Request the action instance
       startOperations.push({
@@ -263,16 +291,16 @@ const transformTimelineEvent = (
         systemName: 'requestAction',
         operationData: {
           systemName: actionName,
-          // TODO: Transform arguments if present
         },
         sourceLocation: getSourceLocation(action),
       });
 
       // Step 2: Start the action (uses actionInstance from requestAction)
+      // T187: Pass actionOperationData if action has parameters
       startOperations.push({
         id: crypto.randomUUID(),
         systemName: 'startAction',
-        operationData: {},
+        operationData: actionOperationData ? { actionOperationData } : {},
         sourceLocation: getSourceLocation(action),
       });
 
@@ -286,10 +314,11 @@ const transformTimelineEvent = (
         sourceLocation: getSourceLocation(action),
       });
 
+      // T187: Pass same actionOperationData to endAction
       endOperations.push({
         id: crypto.randomUUID(),
         systemName: 'endAction',
-        operationData: {},
+        operationData: actionOperationData ? { actionOperationData } : {},
         sourceLocation: getSourceLocation(action),
       });
     } else if (action.$type === 'InlineEndableAction') {

@@ -263,6 +263,58 @@ npm run lint   # Review issues
 npm run check  # Should show "0 errors, 0 warnings"
 ```
 
+### XII. Operation Metadata Consultation (NON-NEGOTIABLE)
+
+Before implementing any transformation or generation of Eligius operations, the operation's
+metadata MUST be consulted from the operation registry (`registry.generated.ts`). Never make
+assumptions about operation parameters, dependencies, or structure. The metadata is the
+single source of truth for how operations work.
+
+**Rationale**: Eligius operations have specific parameter requirements, dependency structures,
+and behaviors documented in their metadata. Making assumptions about operations leads to
+incorrect code generation, runtime failures, and wasted debugging time. The operation registry
+contains authoritative documentation extracted directly from Eligius source code.
+
+**Requirements**:
+- MUST check operation metadata in `registry.generated.ts` before using any operation
+- MUST verify parameter names, types, and required/optional status from metadata
+- MUST verify dependency requirements (what outputs previous operations must provide)
+- MUST NOT assume operation structure based on naming or intuition
+- MUST consult `description` field in metadata for usage guidance and examples
+- When in doubt about an operation's behavior, check Eligius source code or documentation
+- Document operation usage with references to metadata when implementing transformations
+
+**Pattern Example**:
+```typescript
+// ❌ WRONG - Assumption without checking metadata
+operations.push({
+  systemName: 'startAction',
+  operationData: {
+    actionInstance: 'operationdata.actionInstance',  // WRONG: this is a dependency, not a parameter!
+    actionOperationData: { ... }
+  }
+});
+
+// ✅ CORRECT - After consulting metadata
+// Metadata shows: parameters: [{ name: 'actionOperationData', type: 'object', required: false }]
+// Metadata shows: dependencies: [{ name: 'actionInstance', type: 'object' }]
+operations.push({
+  systemName: 'startAction',
+  operationData: {
+    actionOperationData: { ... }  // Only pass parameters, dependencies come from previous ops
+  }
+});
+```
+
+**Consultation Workflow**:
+1. Identify operation name you need to use
+2. Search `registry.generated.ts` for that operation
+3. Read `description` field for usage guidance
+4. Check `parameters` array for what goes in `operationData`
+5. Check `dependencies` array for what must come from previous operations
+6. Check `outputs` array for what this operation provides to subsequent operations
+7. Implement transformation based on metadata, not assumptions
+
 ## Development Workflow
 
 ### Pull Request Process

@@ -39,6 +39,12 @@ ProgramElement:
  *     animate({ opacity: 1 }, 500)
  *   ]
  *
+ * Parameterized action:
+ *   action fadeIn(selector, duration) [
+ *     selectElement($operationdata.selector)
+ *     animate({ opacity: 1 }, $operationdata.duration)
+ *   ]
+ *
  * Endable action (with start and end operations):
  *   endable action showThenHide [
  *     selectElement(".box")
@@ -51,13 +57,25 @@ ActionDefinition:
     EndableActionDefinition | RegularActionDefinition;
 
 RegularActionDefinition:
-    'action' name=ID
+    'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (operations += OperationStatement)* ']';
 
 EndableActionDefinition:
-    'endable' 'action' name=ID
+    'endable' 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (startOperations += OperationStatement)* ']'
     '[' (endOperations += OperationStatement)* ']';
+
+/**
+ * Parameter - Action parameter declaration
+ *
+ * Examples:
+ *   selector
+ *   duration
+ *
+ * Parameters are accessed via $operationdata.paramName in the action body.
+ */
+Parameter:
+    name=ID;
 
 /**
  * Operation Statement - Base type for all operation-like constructs
