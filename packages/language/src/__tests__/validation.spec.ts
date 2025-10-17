@@ -55,14 +55,15 @@ describe('Eligian Grammar - Validation', () => {
       ).toBe(true);
     });
 
-    test('should reject multiple timeline declarations', async () => {
+    test('should accept multiple timeline declarations', async () => {
       const code = loadFixture('multiple-timelines.eligian');
       const { validationErrors } = await parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
-      expect(
-        validationErrors.some(e => e.message.includes('Only one timeline declaration is allowed'))
-      ).toBe(true);
+      // Multiple timelines are now allowed for complex scenarios (e.g., synchronized video+audio)
+      const multiTimelineErrors = validationErrors.filter(e =>
+        e.message.includes('Only one timeline declaration is allowed')
+      );
+      expect(multiTimelineErrors.length).toBe(0);
     });
 
     test('should accept valid timeline providers', async () => {

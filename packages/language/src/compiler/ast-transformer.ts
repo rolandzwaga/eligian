@@ -82,14 +82,13 @@ function createEmptyScope(): ScopeContext {
  * Main transformation function - orchestrates all transformations
  *
  * Transforms a complete Langium Program AST into EligiusIR aligned with IEngineConfiguration.
+ * Supports multiple timelines for complex scenarios (e.g., synchronized video+audio).
  */
 export const transformAST = (program: Program): Effect.Effect<EligiusIR, TransformError> =>
   Effect.gen(function* (_) {
-    // Find the timeline (validation ensures exactly one exists)
-    const timelineNode = program.elements.find(el => el.$type === 'Timeline') as
-      | Timeline
-      | undefined;
-    if (!timelineNode) {
+    // Find all timelines (validation ensures at least one exists)
+    const timelineNodes = program.elements.filter(el => el.$type === 'Timeline') as Timeline[];
+    if (timelineNodes.length === 0) {
       return yield* _(
         Effect.fail({
           _tag: 'TransformError' as const,
@@ -142,8 +141,12 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       actions.push(action);
     }
 
-    // Build TimelineConfigIR from timeline node
-    const timelineConfig = yield* _(buildTimelineConfig(timelineNode));
+    // Build TimelineConfigIR from all timeline nodes
+    const timelines: TimelineConfigIR[] = [];
+    for (const timelineNode of timelineNodes) {
+      const timelineConfig = yield* _(buildTimelineConfig(timelineNode));
+      timelines.push(timelineConfig);
+    }
 
     // Generate default configuration values
     const defaults = createDefaultConfiguration();
@@ -164,8 +167,8 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       actions, // User-defined action definitions
       eventActions: [], // DSL doesn't support event actions yet
 
-      // Timeline configuration (plural - array of timelines)
-      timelines: [timelineConfig],
+      // Timeline configuration (supports multiple timelines for complex scenarios)
+      timelines,
       timelineFlow: undefined, // DSL doesn't support timeline flow yet
 
       // Provider settings

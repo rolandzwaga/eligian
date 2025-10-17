@@ -1,5 +1,5 @@
-// Test fixture: Multiple timeline declarations (T036)
-// Should trigger validation error: "Only one timeline declaration is allowed per program"
+// Test fixture: Multiple timeline declarations
+// Valid: Multiple timelines are now supported for complex scenarios (e.g., synchronized video+audio)
 
 timeline "first" using video from "video1.mp4" {
   at 0s..5s [
@@ -10,7 +10,7 @@ timeline "first" using video from "video1.mp4" {
   ]
 }
 
-// Duplicate timeline - should be flagged
+// Second timeline - synchronized audio with the video
 timeline "second" using audio from "audio1.mp3" {
   at 0s..5s [
     selectElement("#element")

@@ -56,14 +56,15 @@ export function registerValidationChecks(services: EligianServices) {
  * Implementation of custom validations for Eligian DSL.
  *
  * Validation rules enforce Eligius-specific semantic constraints:
- * - Timeline requirements (exactly one timeline, valid provider, source requirements)
+ * - Timeline requirements (at least one timeline, valid provider, source requirements)
  * - Timeline event constraints (valid time ranges, non-negative times)
  */
 export class EligianValidator {
   /**
-   * Validate that every program has exactly one timeline declaration.
+   * Validate that every program has at least one timeline declaration.
    *
-   * Eligius requires a timeline provider to drive events.
+   * Eligius requires at least one timeline provider to drive events.
+   * Multiple timelines are supported for complex scenarios (e.g., synchronized video+audio).
    */
   checkTimelineRequired(program: Program, accept: ValidationAcceptor): void {
     const timelines = program.elements.filter(el => el.$type === 'Timeline');
@@ -77,14 +78,8 @@ export class EligianValidator {
           property: 'elements',
         }
       );
-    } else if (timelines.length > 1) {
-      // Multiple timelines - mark all but the first as errors
-      for (let i = 1; i < timelines.length; i++) {
-        accept('error', 'Only one timeline declaration is allowed per program', {
-          node: timelines[i],
-        });
-      }
     }
+    // Multiple timelines are now allowed (removed restriction)
   }
 
   /**
