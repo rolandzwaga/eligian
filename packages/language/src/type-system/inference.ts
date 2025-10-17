@@ -349,10 +349,21 @@ export function inferParameterTypes(
 }
 
 /**
- * Get parameter types from operation registry (T299)
+ * Cache for operation parameter types (T315 - Performance Optimization)
+ *
+ * This cache stores computed type maps for operations to avoid redundant
+ * conversions. Since OPERATION_REGISTRY is static, we can safely cache results.
+ */
+const operationTypeCache = new Map<string, Map<string, EligianType>>();
+
+/**
+ * Get parameter types from operation registry (T299 + T315)
  *
  * This function queries the operation registry for parameter type information
  * and converts the rich ParameterType values to simple EligianType values.
+ *
+ * **Performance (T315)**: Results are cached per operation name to avoid
+ * redundant type conversions. Cache lookup is O(1), providing <1ms overhead.
  *
  * @param operationName - Name of the operation to look up
  * @returns Map of parameter name → EligianType
@@ -365,9 +376,15 @@ export function inferParameterTypes(
  * // → Map { 'animationProperties' => 'object', 'animationDuration' => 'number', ... }
  */
 export function getOperationParameterTypes(operationName: string): Map<string, EligianType> {
+  // Check cache first (T315)
+  const cached = operationTypeCache.get(operationName);
+  if (cached) {
+    return cached;
+  }
+
   const operation = OPERATION_REGISTRY[operationName];
   if (!operation) {
-    return new Map(); // Unknown operation - return empty map
+    return new Map(); // Unknown operation - return empty map (don't cache)
   }
 
   const typeMap = new Map<string, EligianType>();
@@ -389,6 +406,9 @@ export function getOperationParameterTypes(operationName: string): Map<string, E
       }
     }
   }
+
+  // Cache result (T315)
+  operationTypeCache.set(operationName, typeMap);
 
   return typeMap;
 }

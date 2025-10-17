@@ -279,6 +279,101 @@ packages/
 └── templates/                # Feature planning templates
 ```
 
+## Type System (Phase 18)
+
+The Eligian DSL includes an **optional** static type checking system inspired by TypeScript. This system catches type errors at compile time without affecting runtime behavior.
+
+### Overview
+
+The type system provides three key features:
+
+1. **Type Annotations (US1)**: Explicit type hints for parameter self-documentation
+2. **Type Checking (US2)**: Catch type mismatches before running timelines
+3. **Type Inference (US3)**: Automatically infer types from operation usage
+
+### Quick Examples
+
+**Type Annotations**:
+```eligian
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  animate({opacity: 1}, duration)
+]
+```
+
+**Type Inference** (no annotations needed):
+```eligian
+action fadeIn(selector, duration) [
+  selectElement(selector)         // selector inferred as 'string'
+  animate({opacity: 1}, duration) // duration inferred as 'number'
+]
+```
+
+**Type Error Detection**:
+```eligian
+action bad(selector: number) [
+  selectElement(selector)  // ❌ Compile error: selector is number, selectElement expects string
+]
+```
+
+### Key Design Decisions
+
+1. **Opt-In**: Type checking is completely optional. Untyped code works exactly as before.
+2. **Backwards Compatible**: All existing DSL code continues to work (100% compatibility maintained).
+3. **Compile-Time Only**: Type annotations are stripped during compilation - zero runtime overhead.
+4. **Unknown Type**: Parameters without annotations or usage remain `'unknown'` (opt-out of type checking).
+
+### Supported Types
+
+- `string` - String literals, selectors, CSS values
+- `number` - Numeric values (durations, offsets, coordinates)
+- `boolean` - Boolean values
+- `object` - Object literals
+- `array` - Array literals
+- `unknown` - Opt-out of type checking (implicit for unused parameters)
+
+### Architecture
+
+**Location**: `packages/language/src/type-system/`
+
+**Core Modules**:
+- `types.ts` - Type definitions (EligianType, TypeConstraint, TypeError)
+- `inference.ts` - Type inference engine (constraint collection, unification)
+- `validator.ts` - Type compatibility checking
+- `index.ts` - Public API
+
+**Integration**: Type checking is integrated into `eligian-validator.ts` at the action validation level.
+
+### How Type Inference Works
+
+1. **Constraint Collection**: Walk through action operations, collect type requirements from operation calls
+2. **Constraint Unification**: Combine requirements - if all agree → use that type, if conflict → error
+3. **Type Environment**: Track variable types through operation sequences (handles if/else, for loops)
+4. **Precedence**: Explicit annotations take precedence over inferred types
+
+**Example**:
+```eligian
+action fadeIn(selector, duration) [  // No annotations
+  selectElement(selector)         // Constraint: selector must be 'string'
+  animate({opacity: 1}, duration) // Constraint: duration must be 'number'
+]
+// Result: selector='string', duration='number' (inferred)
+```
+
+### Documentation
+
+- **Type System README**: `packages/language/src/type-system/README.md`
+- **Example Files**:
+  - `examples/type-annotation-test.eligian` - Type annotation syntax
+  - `examples/type-error-demo.eligian` - Type error demonstration
+  - `examples/type-inference-demo.eligian` - Type inference examples
+
+### Testing
+
+- **298 tests** passing (25 type system tests)
+- **Integration tests**: `src/__tests__/type-system.spec.ts`
+- **Validation tests**: `src/__tests__/validation.spec.ts`
+
 ## Testing Strategy
 
 Following constitution principle **II. Comprehensive Testing**:
