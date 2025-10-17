@@ -389,10 +389,11 @@ SystemPropertyReference:
  *   @theme
  *   @index
  *
+ * Cross-references to VariableDeclaration (const declarations).
  * Compiles to $scope.variables.varName string for Eligius runtime.
  */
 VariableReference:
-    '@' name=ID;
+    '@' variable=[VariableDeclaration:ID];
 
 /**
  * Parameter Reference - Access action parameters with bare identifier
@@ -402,10 +403,11 @@ VariableReference:
  *   duration
  *   items
  *
+ * Cross-references to Parameter from parent action.
  * Only valid inside action bodies. Compiles to $operationdata.paramName.
  */
 ParameterReference:
-    name=ID;
+    parameter=[Parameter:ID];
 
 // ============================================================================
 // Literals

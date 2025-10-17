@@ -1181,7 +1181,18 @@ const transformExpression = (
       case 'VariableReference': {
         // Variable reference: @varName (T233)
         // Compiles to $scope.variables.varName
-        return `$scope.variables.${expr.name}`;
+        // Now uses cross-reference to VariableDeclaration
+        if (!expr.variable?.ref) {
+          return yield* _(
+            Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message: `Undefined variable reference (linking failed)`,
+              location: getSourceLocation(expr),
+            })
+          );
+        }
+        return `$scope.variables.${expr.variable.ref.name}`;
       }
 
       case 'SystemPropertyReference': {
@@ -1201,31 +1212,32 @@ const transformExpression = (
       case 'ParameterReference': {
         // Parameter reference: bare identifier (T231)
         // Compiles to $operationdata.paramName
-        // Only valid inside action bodies
+        // Now uses cross-reference to Parameter
+        if (!expr.parameter?.ref) {
+          return yield* _(
+            Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message: `Undefined parameter reference (linking failed)`,
+              location: getSourceLocation(expr),
+            })
+          );
+        }
+
+        // Validation: parameter references only valid inside actions
+        // (This is now enforced by ScopeProvider, but double-check here)
         if (!scope.inActionBody) {
           return yield* _(
             Effect.fail({
               _tag: 'TransformError' as const,
               kind: 'InvalidExpression' as const,
-              message: `Parameter reference '${expr.name}' is only valid inside action bodies`,
+              message: `Parameter reference '${expr.parameter.ref.name}' is only valid inside action bodies`,
               location: getSourceLocation(expr),
             })
           );
         }
 
-        // Validate that this is actually a parameter
-        if (!scope.actionParameters.includes(expr.name)) {
-          return yield* _(
-            Effect.fail({
-              _tag: 'TransformError' as const,
-              kind: 'InvalidExpression' as const,
-              message: `Unknown parameter '${expr.name}'. Available parameters: ${scope.actionParameters.join(', ') || 'none'}`,
-              location: getSourceLocation(expr),
-            })
-          );
-        }
-
-        return `$operationdata.${expr.name}`;
+        return `$operationdata.${expr.parameter.ref.name}`;
       }
 
       case 'BinaryExpression': {

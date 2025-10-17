@@ -114,6 +114,7 @@ action expressionExamples() [
 
   // BINARY EXPRESSIONS - Logical operators
   const enabled = true  // Local variable for demonstration
+  selectElement(".demo")
   if ($globaldata.theme == "dark" && @enabled) {
     addClass("dark-mode-enabled")
   }
@@ -131,8 +132,7 @@ action expressionExamples() [
     }
   }
 
-  // PROPERTY CHAIN REFERENCES
-  selectElement(".demo")
+  // PROPERTY CHAIN REFERENCES (using existing selected element)
   setStyle({
     color: $globaldata.theme,
     animationDuration: @calculatedDuration
