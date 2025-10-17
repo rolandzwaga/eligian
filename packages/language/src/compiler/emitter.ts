@@ -42,7 +42,8 @@ export const emitJSON = (ir: EligiusIR): Effect.Effect<IEngineConfiguration, Emi
 
     // Emit action layers
     // initActions are operations (OperationConfigIR), not full actions
-    const initActions: any[] = ir.initActions.map(emitOperation);
+    // T270: Add name property for schema compliance
+    const initActions: any[] = ir.initActions.map((op, index) => emitInitAction(op, index));
 
     const actions: any[] = [];
     for (const action of ir.actions) {
@@ -237,6 +238,35 @@ function emitOperation(operation: OperationConfigIR): any {
 }
 
 /**
+ * T270: Emit InitAction - OperationConfigIR → Eligius InitAction (with name property)
+ *
+ * InitActions require a name property for schema compliance.
+ * Generate descriptive names based on operation type.
+ */
+function emitInitAction(operation: OperationConfigIR, index: number): any {
+  // Generate descriptive name based on operation systemName
+  let name = `init-${operation.systemName}`;
+
+  // For setData operations (global variables), make name more specific
+  if (operation.systemName === 'setData') {
+    name = 'init-globaldata';
+  }
+
+  // Add index if there are multiple init actions
+  if (index > 0) {
+    name = `${name}-${index}`;
+  }
+
+  return {
+    // Constitution VII: Preserve UUID
+    id: operation.id,
+    name,
+    systemName: operation.systemName,
+    operationData: operation.operationData,
+  };
+}
+
+/**
  * SA004: Emit Duration - DurationIR → Eligius Duration
  */
 function emitDuration(duration: DurationIR): any {
@@ -251,7 +281,7 @@ function emitDuration(duration: DurationIR): any {
  */
 function emitLabel(label: LabelIR): any {
   return {
-    code: label.code,
+    languageCode: label.languageCode,
     label: label.label,
   };
 }

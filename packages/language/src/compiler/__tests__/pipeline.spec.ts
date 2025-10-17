@@ -93,9 +93,9 @@ describe('Pipeline', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBeDefined(); // UUID
-      expect(result.engine.systemName).toBe('Eligius');
+      expect(result.engine.systemName).toBe('EligiusEngine');
       expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('raf');
+      expect(result.timelines[0].type).toBe('animation');
       expect(result.timelines[0].timelineActions).toHaveLength(1);
       expect(result.timelines[0].timelineActions[0].duration).toEqual({ start: 0, end: 10 });
       expect(result.timelines[0].timelineActions[0].startOperations).toHaveLength(1);
@@ -114,7 +114,7 @@ describe('Pipeline', () => {
 
       const result = await Effect.runPromise(compile(source));
 
-      expect(result.timelines[0].type).toBe('video');
+      expect(result.timelines[0].type).toBe('mediaplayer');
       expect(result.timelines[0].uri).toBe('test.mp4');
     });
 
@@ -248,11 +248,11 @@ describe('Pipeline', () => {
 
       expect(typeof result).toBe('string');
       expect(result).toContain('\n'); // Pretty-printed
-      expect(result).toContain('"type": "raf"');
+      expect(result).toContain('"type": "animation"');
 
       // Validate it's valid JSON
       const parsed = JSON.parse(result);
-      expect(parsed.timelines[0].type).toBe('raf');
+      expect(parsed.timelines[0].type).toBe('animation');
     });
 
     test('should compile to minified JSON when requested', async () => {
@@ -270,7 +270,7 @@ describe('Pipeline', () => {
 
       // Validate it's valid JSON
       const parsed = JSON.parse(result);
-      expect(parsed.timelines[0].type).toBe('raf');
+      expect(parsed.timelines[0].type).toBe('animation');
     });
   });
 
@@ -338,7 +338,7 @@ describe('Pipeline', () => {
       const result = await Effect.runPromise(compileWithDefaults(source));
 
       expect(result).toBeDefined();
-      expect(result.timelines[0].type).toBe('raf');
+      expect(result.timelines[0].type).toBe('animation');
     });
   });
 
@@ -378,7 +378,7 @@ describe('Pipeline', () => {
 
       const result = await Effect.runPromise(compile(source));
 
-      expect(result.timelines[0].type).toBe('video');
+      expect(result.timelines[0].type).toBe('mediaplayer');
       expect(result.timelines[0].uri).toBe('presentation.mp4');
       expect(result.timelines[0].timelineActions).toHaveLength(3);
 
@@ -413,7 +413,7 @@ describe('Pipeline', () => {
 
       const result = await Effect.runPromise(compile(source));
 
-      expect(result.timelines[0].type).toBe('raf');
+      expect(result.timelines[0].type).toBe('animation');
       expect(result.timelines[0].timelineActions).toHaveLength(2);
     });
 

@@ -120,7 +120,8 @@ const checkTimelineConfigTypes = (timeline: TimelineConfigIR): Effect.Effect<voi
     }
 
     // Validate type is a known timeline type
-    const validTypes = ['video', 'audio', 'raf', 'custom'];
+    // T271: Updated to include 'animation' and 'mediaplayer' (Eligius schema types)
+    const validTypes = ['animation', 'mediaplayer', 'video', 'audio', 'raf', 'custom'];
     if (!validTypes.includes(timeline.type)) {
       return yield* _(
         Effect.fail({
@@ -129,7 +130,7 @@ const checkTimelineConfigTypes = (timeline: TimelineConfigIR): Effect.Effect<voi
           location: timeline.sourceLocation,
           expected: validTypes.join(' | '),
           actual: timeline.type,
-          hint: 'Use one of: video, audio, raf, custom',
+          hint: 'Use one of: animation, mediaplayer, video, audio, raf, custom',
         })
       );
     }

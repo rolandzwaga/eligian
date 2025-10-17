@@ -53,7 +53,7 @@ describe('AST Transformer', () => {
       const result = await Effect.runPromise(transformAST(program));
 
       expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('video');
+      expect(result.timelines[0].type).toBe('mediaplayer');
       expect(result.timelines[0].uri).toBe('test.mp4');
       expect(result.timelines[0].sourceLocation).toBeDefined();
       expect(result.timelines[0].sourceLocation.line).toBeGreaterThan(0);
@@ -73,8 +73,8 @@ describe('AST Transformer', () => {
       const result = await Effect.runPromise(transformAST(program));
 
       expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('raf');
-      expect(result.timelines[0].uri).toBeUndefined();
+      expect(result.timelines[0].type).toBe('animation');
+      expect(result.timelines[0].uri).toBe('test');
     });
   });
 
@@ -608,15 +608,15 @@ describe('AST Transformer', () => {
       expect(result.id).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       ); // UUID v4
-      expect(result.engine.systemName).toBe('Eligius');
+      expect(result.engine.systemName).toBe('EligiusEngine');
       expect(result.containerSelector).toBe('body');
       expect(result.language).toBe('en-US');
       expect(result.layoutTemplate).toBe('default');
-      expect(result.availableLanguages).toEqual([{ code: 'en', label: 'English' }]);
+      expect(result.availableLanguages).toEqual([{ languageCode: 'en', label: 'English' }]);
 
       // Check timelines
       expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('raf');
+      expect(result.timelines[0].type).toBe('animation');
       expect(result.timelines[0].timelineActions).toHaveLength(1);
 
       // Check action layers
@@ -662,7 +662,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines[0].type).toBe('video');
+      expect(result.timelines[0].type).toBe('mediaplayer');
       expect(result.timelines[0].uri).toBe('test.mp4');
       expect(result.timelines[0].timelineActions).toHaveLength(3);
       expect(result.actions).toHaveLength(1); // intro action definition
@@ -697,7 +697,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines[0].type).toBe('raf');
+      expect(result.timelines[0].type).toBe('animation');
       expect(result.timelines[0].timelineActions).toHaveLength(0);
     });
   });

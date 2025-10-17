@@ -47,6 +47,8 @@ import type {
   TimeExpression,
   TimelineActionIR,
   TimelineConfigIR,
+  TimelineProviderSettingIR,
+  TimelineProviderSettingsIR,
 } from './types/eligius-ir.js';
 import type { TransformError } from './types/errors.js';
 
@@ -151,6 +153,9 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     // Generate default configuration values
     const defaults = createDefaultConfiguration();
 
+    // T273: Generate timelineProviderSettings based on timeline types used
+    const providerSettings = generateTimelineProviderSettings(timelines);
+
     // Build complete Eligius IR
     return {
       // Required configuration fields
@@ -171,8 +176,8 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       timelines,
       timelineFlow: undefined, // DSL doesn't support timeline flow yet
 
-      // Provider settings
-      timelineProviderSettings: undefined, // TODO: Extract from timeline if needed
+      // Provider settings (T273: Generated from timeline types)
+      timelineProviderSettings: providerSettings,
 
       // Compiler metadata
       metadata: {
@@ -196,14 +201,84 @@ function createDefaultConfiguration() {
     // Constitution VII: UUID v4 for globally unique configuration ID
     id: crypto.randomUUID(),
     engine: {
-      systemName: 'Eligius',
+      systemName: 'EligiusEngine',
     } as EngineInfoIR,
     containerSelector: 'body',
     language: 'en-US' as const,
     layoutTemplate: 'default',
-    availableLanguages: [{ code: 'en', label: 'English' }] as LabelIR[],
+    availableLanguages: [{ languageCode: 'en', label: 'English' }] as LabelIR[],
     labels: [] as LanguageLabelIR[],
   };
+}
+
+/**
+ * T271: Map DSL provider name to Eligius timeline type
+ *
+ * DSL uses provider names (raf, video, audio) while Eligius uses type names.
+ * Mapping:
+ * - raf → animation (requestAnimationFrame-based timeline)
+ * - video → mediaplayer (HTML5 video timeline)
+ * - audio → mediaplayer (HTML5 audio timeline)
+ */
+function mapProviderToTimelineType(provider: string): 'animation' | 'mediaplayer' | 'raf' {
+  switch (provider) {
+    case 'raf':
+      return 'animation';
+    case 'video':
+    case 'audio':
+      return 'mediaplayer';
+    default:
+      return 'raf'; // Default to raf for unknown providers
+  }
+}
+
+/**
+ * T273: Generate timelineProviderSettings based on timeline types used
+ *
+ * Creates provider settings for each unique timeline type in the program.
+ * Structure per Eligius JSON schema:
+ * - animation: RequestAnimationFrameTimelineProvider
+ * - mediaplayer: MediaElementTimelineProvider (for video/audio)
+ *
+ * Each provider setting includes:
+ * - id: UUID for the provider
+ * - vendor: Provider vendor name (empty string for built-in providers)
+ * - systemName: Eligius class name
+ * - selector: CSS selector (only for mediaplayer)
+ */
+function generateTimelineProviderSettings(
+  timelines: TimelineConfigIR[]
+): TimelineProviderSettingsIR {
+  const settings: Record<string, TimelineProviderSettingIR> = {};
+
+  // Collect unique timeline types
+  const timelineTypes = new Set<string>();
+  for (const timeline of timelines) {
+    // Only include 'animation' and 'mediaplayer' (not legacy types)
+    if (timeline.type === 'animation' || timeline.type === 'mediaplayer') {
+      timelineTypes.add(timeline.type);
+    }
+  }
+
+  // Generate provider settings for each type
+  for (const type of timelineTypes) {
+    if (type === 'animation') {
+      settings.animation = {
+        id: crypto.randomUUID(),
+        vendor: '',
+        systemName: 'RequestAnimationFrameTimelineProvider',
+      };
+    } else if (type === 'mediaplayer') {
+      settings.mediaplayer = {
+        id: crypto.randomUUID(),
+        vendor: '',
+        systemName: 'MediaElementTimelineProvider',
+        selector: '', // TODO: Could extract from timeline selector field
+      };
+    }
+  }
+
+  return settings as TimelineProviderSettingsIR;
 }
 
 /**
@@ -271,11 +346,16 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
       }
     }
 
+    // T271: Map provider to Eligius timeline type
+    // T272: Generate uri (timeline name for animation, source path for mediaplayer)
+    const timelineType = mapProviderToTimelineType(timeline.provider);
+    const uri = timeline.provider === 'raf' ? timeline.name : timeline.source || timeline.name;
+
     return {
       // Constitution VII: UUID v4 for globally unique timeline ID
       id: crypto.randomUUID(),
-      uri: timeline.source || undefined, // undefined for raf, actual path for video/audio
-      type: timeline.provider,
+      uri,
+      type: timelineType,
       duration: maxDuration,
       loop: false, // TODO: Could add DSL support for loop
       selector: '', // TODO: Could add DSL support for selector

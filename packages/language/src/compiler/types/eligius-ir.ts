@@ -58,7 +58,7 @@ export type EngineInfoIR = {
  * Label for language selection
  */
 export type LabelIR = {
-  readonly code: string;
+  readonly languageCode: string;
   readonly label: string;
 };
 
@@ -104,12 +104,18 @@ export type TimelineConfigIR = {
 };
 
 /**
- * Timeline types
+ * Timeline types (T271: Updated for Eligius schema compliance)
+ *
+ * Eligius uses:
+ * - 'animation' for RAF-based timelines
+ * - 'mediaplayer' for video/audio timelines
  */
 export type TimelineType =
-  | 'video'
-  | 'audio'
-  | 'raf' // RequestAnimationFrame
+  | 'animation' // RequestAnimationFrame (mapped from 'raf' in DSL)
+  | 'mediaplayer' // Video or audio (mapped from 'video'/'audio' in DSL)
+  | 'raf' // Legacy - for backward compatibility
+  | 'video' // Legacy - for backward compatibility
+  | 'audio' // Legacy - for backward compatibility
   | 'custom';
 
 /**

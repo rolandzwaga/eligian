@@ -14,7 +14,7 @@ describe('Emitter', () => {
       containerSelector: 'body',
       language: 'en',
       layoutTemplate: 'default',
-      availableLanguages: [{ code: 'en', label: 'English' }],
+      availableLanguages: [{ languageCode: 'en', label: 'English' }],
       labels: [],
       initActions: [],
       actions: [],
@@ -54,7 +54,7 @@ describe('Emitter', () => {
       expect(result.containerSelector).toBe('body');
       expect(result.language).toBe('en');
       expect(result.layoutTemplate).toBe('default');
-      expect(result.availableLanguages).toEqual([{ code: 'en', label: 'English' }]);
+      expect(result.availableLanguages).toEqual([{ languageCode: 'en', label: 'English' }]);
       expect(result.timelines).toHaveLength(1);
     });
 
