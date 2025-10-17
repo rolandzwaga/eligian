@@ -182,7 +182,7 @@ describe('Pipeline', () => {
       expect(result.timelines[0].timelineActions).toHaveLength(2);
     });
 
-    test('should include metadata in output', async () => {
+    test('should not include metadata in IEngineConfiguration output', async () => {
       const source = `timeline "test" using raf {
                 at 0s..10s [
                     selectElement("#title")
@@ -192,8 +192,9 @@ describe('Pipeline', () => {
 
       const result = await Effect.runPromise(compile(source));
 
-      expect(result.metadata).toBeDefined();
-      expect(result.metadata?.generatedBy).toContain('Eligian DSL Compiler');
+      // T282: compile() returns IEngineConfiguration which doesn't have metadata
+      // Use compileToIR() if you need metadata
+      expect(result.metadata).toBeUndefined();
     });
 
     test('should fail on invalid DSL', async () => {
@@ -287,12 +288,12 @@ describe('Pipeline', () => {
 
       // Should be complete IEngineConfiguration IR
       expect(result).toBeDefined();
-      expect(result.timelines).toBeDefined();
-      expect(result.timelines[0].timelineActions).toBeDefined();
+      expect(result.config.timelines).toBeDefined();
+      expect(result.config.timelines[0].timelineActions).toBeDefined();
       expect(result.metadata).toBeDefined();
 
       // IR durations should be numbers
-      expect(result.timelines[0].timelineActions[0].duration.start).toBe(0);
+      expect(result.config.timelines[0].timelineActions[0].duration.start).toBe(0);
     });
 
     test('should apply optimizations to IR', async () => {
@@ -311,7 +312,7 @@ describe('Pipeline', () => {
       const result = await Effect.runPromise(compileToIR(source));
 
       // Dead action should be removed
-      expect(result.timelines[0].timelineActions).toHaveLength(1);
+      expect(result.config.timelines[0].timelineActions).toHaveLength(1);
     });
   });
 

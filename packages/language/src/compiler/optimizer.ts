@@ -14,7 +14,7 @@
  */
 
 import { Effect } from 'effect';
-import type { EligiusIR, TimelineActionIR, TimelineConfigIR } from './types/eligius-ir.js';
+import type { EligiusIR } from './types/eligius-ir.js';
 
 /**
  * SA005c: Main optimization function (Updated for new IR structure)
@@ -37,62 +37,63 @@ export const optimize = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
   });
 
 /**
- * SA005c: Dead code elimination (Updated for new IR structure)
+ * T284: Dead code elimination for new EligiusIR structure
  *
  * Removes timeline actions that will never be triggered:
  * - Actions with end <= start (zero or negative duration)
  * - Actions with unreachable time ranges (start < 0)
  *
- * T068: Internal mutation for performance
+ * Note: Now operates on ir.config.timelines (ITimelineConfiguration[])
+ * since the transformer builds IEngineConfiguration directly (T281).
+ *
+ * Constitution VI: Internal mutation for performance
  * We build new timeline arrays by filtering, which is more efficient than
  * immutable operations for large action lists.
  */
 const eliminateDeadCode = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
   Effect.sync(() => {
-    // Internal mutation: Build new timelines array with optimized actions
-    const optimizedTimelines: TimelineConfigIR[] = [];
-
-    for (const timeline of ir.timelines) {
+    // T284: Access timelines from ir.config.timelines
+    const optimizedTimelines = ir.config.timelines.map(timeline => {
       // Filter out dead timeline actions
-      const reachableActions: TimelineActionIR[] = [];
-
-      for (const action of timeline.timelineActions) {
+      const reachableActions = timeline.timelineActions.filter(action => {
         const duration = action.duration;
 
-        // Check if duration is valid (start and end are numbers in new IR)
+        // Check if duration is valid (should always be true after transformer)
         if (typeof duration.start !== 'number' || typeof duration.end !== 'number') {
-          // Keep action if we can't determine (shouldn't happen after type-checking)
-          reachableActions.push(action);
-          continue;
+          // Keep action if we can't determine (shouldn't happen)
+          return true;
         }
 
         // Remove actions with zero or negative duration
         if (duration.end <= duration.start) {
           // Dead code: action will never trigger
-          continue;
+          return false;
         }
 
         // Remove actions that start at negative time
         if (duration.start < 0) {
           // Dead code: negative time is invalid
-          continue;
+          return false;
         }
 
         // Action is reachable
-        reachableActions.push(action);
-      }
+        return true;
+      });
 
-      // Add optimized timeline
-      optimizedTimelines.push({
+      // Return optimized timeline with filtered actions
+      return {
         ...timeline,
         timelineActions: reachableActions,
-      });
-    }
+      };
+    });
 
-    // Return new IR with optimized timelines (external immutability)
+    // Return new IR with optimized config (external immutability)
     return {
       ...ir,
-      timelines: optimizedTimelines,
+      config: {
+        ...ir.config,
+        timelines: optimizedTimelines,
+      },
     };
   });
 

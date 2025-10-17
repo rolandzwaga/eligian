@@ -464,6 +464,225 @@
 
 ---
 
+### Phase 16.10: Type System Refactoring - Use Eligius Types Directly
+**Status**: IN PROGRESS | **Tasks**: T274-T289 (4/16 complete)
+**Deliverable**: Compiler uses Eligius types directly, eliminating duplicate IR types
+
+**Purpose**: Refactor the compiler to import and use Eligius types directly instead of maintaining parallel "IR" types that are just readonly versions of Eligius types. This eliminates maintenance burden, prevents type drift bugs, and ensures the compiler always emits exactly what Eligius expects.
+
+**Problems Identified**:
+1. **initActions Bug**: Currently emitting `IOperationConfiguration[]` but Eligius expects `IEndableActionConfiguration[]` (must have `id`, `name`, `startOperations`, `endOperations`)
+2. **ILabel Mismatch**: Missing required `id` property
+3. **ILanguageLabel Complete Mismatch**: Current `{key, language, value}` vs Eligius `{id, labels: ILabel[]}`
+4. **Duplicate Types**: Almost all IR types are just readonly versions of Eligius types
+5. **Type Drift Risk**: Must manually keep IR types in sync with Eligius updates
+
+**Eligius Type Reference** (from `node_modules/eligius/dist/index.d.ts`):
+```typescript
+interface IEngineConfiguration {
+  id: string;
+  engine: IEngineInfo;
+  timelineProviderSettings?: TTimelineProviderSettings;
+  containerSelector: string;
+  language: TLanguageCode;
+  layoutTemplate: string;
+  availableLanguages: ILabel[];
+  initActions: IEndableActionConfiguration[];        // ← Not IOperationConfiguration[]!
+  actions: IEndableActionConfiguration[];
+  eventActions?: IEventActionConfiguration[];
+  timelines: ITimelineConfiguration[];
+  timelineFlow?: ITimelineFlow;
+  labels: ILanguageLabel[];
+}
+
+interface ILabel {
+  id: string;              // ← Missing in our LabelIR!
+  languageCode: TLanguageCode;
+  label: string;
+}
+
+interface ILanguageLabel {
+  id: string;              // ← Missing in our LanguageLabelIR!
+  labels: ILabel[];        // ← Completely different structure!
+}
+
+interface IEndableActionConfiguration extends IActionConfiguration {
+  endOperations: IOperationConfiguration<TOperationData>[];
+}
+
+interface IActionConfiguration {
+  id: string;
+  name: string;
+  startOperations: IOperationConfiguration<TOperationData>[];
+}
+
+interface ITimelineActionConfiguration extends IEndableActionConfiguration {
+  duration: IDuration;
+}
+```
+
+**Refactoring Strategy**:
+
+**Core Principle**: Import Eligius types and use them directly. Only create custom types for DSL-specific concepts that don't exist in Eligius (like ActionDefinition for reusable action templates).
+
+#### Phase 1: Fix Immediate Bugs (Priority)
+
+- [X] T274 [CRITICAL] Fix initActions type bug ✅
+  - Changed `initActions` type from `OperationConfigIR[]` to `EndableActionIR[]` in eligius-ir.ts (line 35)
+  - Updated transformer to wrap setData operation in proper IEndableActionConfiguration structure (ast-transformer.ts lines 111-142)
+  - Now generates: `{id, name: 'init-globaldata', startOperations: [setDataOp], endOperations: []}`
+  - Updated emitter to use `emitEndableAction` instead of custom `emitInitAction` (emitter.ts lines 45-49)
+  - Removed unused `emitInitAction` function (emitter.ts lines 243-270)
+  - Updated type checker to validate initActions as EndableActionIR (type-checker.ts lines 44-46)
+  - All 255 tests passing
+  - Verified output JSON has correct IEndableActionConfiguration structure
+
+- [X] T275 [CRITICAL] Fix ILabel structure ✅
+  - Added missing `id: string` property (using UUID generation in transformer)
+  - Changed `languageCode` type to TLanguageCode format ('en-US' instead of 'en')
+  - Files: `packages/language/src/compiler/types/eligius-ir.ts` (line 75), `ast-transformer.ts` (line 222)
+  - All 255 tests passing
+
+- [X] T276 [CRITICAL] Fix ILanguageLabel structure ✅
+  - Changed from `{key, language, value}` to `{id, labels: ILabel[]}`
+  - Complete structural redesign of LanguageLabelIR type (eligius-ir.ts lines 73-76)
+  - Updated emitter to map labels array (emitter.ts lines 269-274)
+  - All 255 tests passing
+
+- [X] T277 [Verification] Run tests after bug fixes ✅
+  - Fixed test expectation: 'en' → 'en-US' for TLanguageCode format (transformer.spec.ts line 621)
+  - All 255 tests passing
+  - Biome check clean (0 errors, 0 warnings)
+
+#### Phase 2: Refactor Type System
+
+- [X] T278 [Types] Refactor eligius-ir.ts to import Eligius types ✅
+  - Imported ILabel, ILanguageLabel, IOperationConfiguration, TimelineTypes, TLanguageCode, TOperationData from 'eligius'
+  - Re-exported all imported types for use in compiler
+  - Changed LabelIR and LanguageLabelIR to type aliases (direct Eligius types)
+  - Kept compiler-specific extensions: OperationConfigIR, EndableActionIR, TimelineActionIR, EventActionIR (all extend Eligius types with sourceLocation)
+  - Updated TimelineType to extend TimelineTypes with legacy types ('raf', 'video', 'audio', 'custom')
+  - Fixed ast-transformer: languageCode now 'en-US', timeline type returns only 'animation' | 'mediaplayer'
+  - Fixed test expectations for TLanguageCode format
+  - Files: `packages/language/src/compiler/types/eligius-ir.ts`, `ast-transformer.ts`, `transformer.spec.ts`
+  - All 255 tests passing, Biome clean
+
+- [ ] T279 [Types] Create new EligiusIR wrapper type
+  ```typescript
+  export type EligiusIR = {
+    readonly config: IEngineConfiguration;  // Use Eligius type directly!
+    readonly metadata?: CompilerMetadata;
+    readonly sourceMap: SourceMap;          // Parallel structure for locations
+  };
+  ```
+
+- [ ] T280 [Types] Create SourceMap for location tracking
+  ```typescript
+  export type SourceMap = {
+    readonly rootLocation: SourceLocation;
+    readonly timelineLocations: Map<string, SourceLocation>;
+    readonly actionLocations: Map<string, SourceLocation>;
+    readonly operationLocations: Map<string, SourceLocation>;
+  };
+  ```
+
+- [ ] T281 [Transformer] Update ast-transformer.ts to build IEngineConfiguration
+  - Change return type to use IEngineConfiguration directly
+  - Build Eligius types directly instead of custom IR
+  - Create parallel SourceMap for location tracking
+  - File: `packages/language/src/compiler/ast-transformer.ts`
+
+- [ ] T282 [Emitter] Simplify emitter to accept IEngineConfiguration
+  - Accept IEngineConfiguration directly (no transformation needed)
+  - Just serialize to JSON with $schema and metadata
+  - Remove all transformation logic (it's now in transformer)
+  - File: `packages/language/src/compiler/emitter.ts`
+
+- [ ] T283 [Emitter] Update emitJSON function signature
+  ```typescript
+  export function emitJSON(ir: EligiusIR, options?: EmitOptions): string {
+    const config = {
+      $schema: ELIGIUS_SCHEMA_URL,
+      ...ir.config,  // Direct spread - no transformation!
+      metadata: ir.metadata
+    };
+    return JSON.stringify(config, null, options?.minify ? 0 : 2);
+  }
+  ```
+
+#### Phase 3: Update Type Checker
+
+- [ ] T284 [TypeChecker] Update type-checker.ts to use Eligius types
+  - Validate against IEngineConfiguration directly
+  - Use Eligius type constraints
+  - File: `packages/language/src/compiler/type-checker.ts`
+
+- [ ] T285 [TypeChecker] Remove custom IR type validations
+  - Replace IR type checks with Eligius type checks
+  - Ensure validation matches Eligius requirements
+
+#### Phase 4: Update Tests
+
+- [ ] T286 [Tests] Update transformer tests
+  - Use IEngineConfiguration in assertions
+  - Verify proper initActions structure (IEndableActionConfiguration[])
+  - Verify proper ILabel structure (with id)
+  - Verify proper ILanguageLabel structure
+  - File: `packages/language/src/compiler/__tests__/transformer.spec.ts`
+
+- [ ] T287 [Tests] Update emitter tests
+  - Simplify tests (emitter is now trivial)
+  - Verify $schema and metadata addition only
+  - File: `packages/language/src/compiler/__tests__/emitter.spec.ts`
+
+- [ ] T288 [Tests] Add regression tests for fixed bugs
+  - Test initActions has correct structure
+  - Test ILabel has id property
+  - Test ILanguageLabel has correct structure
+  - Add to existing test files
+
+- [ ] T289 [Tests] Run full test suite
+  - All 255+ tests must pass
+  - Fix any failures due to type changes
+  - Update snapshots if needed
+
+**Validation Checklist**:
+- [ ] All 255+ tests passing
+- [ ] Biome check passes (0 errors, 0 warnings)
+- [ ] Compile comprehensive-features.eligian successfully
+- [ ] Verify compiled JSON has correct initActions structure
+- [ ] Verify compiled JSON has correct labels structure
+- [ ] VS Code schema validation shows no errors
+
+**Files to Modify**:
+- `packages/language/src/compiler/types/eligius-ir.ts` (refactor to use Eligius types)
+- `packages/language/src/compiler/ast-transformer.ts` (build IEngineConfiguration directly)
+- `packages/language/src/compiler/emitter.ts` (simplify to just serialize)
+- `packages/language/src/compiler/type-checker.ts` (use Eligius types)
+- `packages/language/src/compiler/__tests__/*.spec.ts` (update expectations)
+
+**Expected Outcomes**:
+- ✅ Compiler emits exactly what Eligius expects (IEngineConfiguration)
+- ✅ No type drift - Eligius updates caught at compile time
+- ✅ Simpler code - emitter is trivial (just serialize)
+- ✅ Type safety - TypeScript enforces correctness
+- ✅ Fewer bugs - can't have mismatches like initActions issue
+- ✅ Easier maintenance - no parallel type definitions to sync
+
+**Benefits**:
+- **Correctness**: Impossible to emit wrong structure (TypeScript enforces it)
+- **Maintainability**: Changes to Eligius types automatically surface as errors
+- **Simplicity**: Emitter becomes trivial (no transformation layer)
+- **Safety**: Type mismatches caught at compile time, not runtime
+- **Future-proof**: Eligius updates don't require manual type sync
+
+**Documentation**:
+- Create `TYPE_REFACTORING_PLAN.md` with detailed analysis ✅
+- Update CLAUDE.md with new type architecture
+- Document SourceMap pattern for location tracking
+
+---
+
 ### Phase 17: Advanced Timeline Features (Not Started)
 
 **Purpose**: Enable advanced timeline patterns

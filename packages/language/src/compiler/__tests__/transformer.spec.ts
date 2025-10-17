@@ -52,11 +52,9 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('mediaplayer');
-      expect(result.timelines[0].uri).toBe('test.mp4');
-      expect(result.timelines[0].sourceLocation).toBeDefined();
-      expect(result.timelines[0].sourceLocation.line).toBeGreaterThan(0);
+      expect(result.config.timelines).toHaveLength(1);
+      expect(result.config.timelines[0].type).toBe('mediaplayer');
+      expect(result.config.timelines[0].uri).toBe('test.mp4');
     });
 
     test('should transform raf timeline without source', async () => {
@@ -72,9 +70,9 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('animation');
-      expect(result.timelines[0].uri).toBe('test');
+      expect(result.config.timelines).toHaveLength(1);
+      expect(result.config.timelines[0].type).toBe('animation');
+      expect(result.config.timelines[0].uri).toBe('test');
     });
   });
 
@@ -95,13 +93,12 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines[0].timelineActions).toHaveLength(1);
-      const action = result.timelines[0].timelineActions[0];
+      expect(result.config.timelines[0].timelineActions).toHaveLength(1);
+      const action = result.config.timelines[0].timelineActions[0];
       expect(action.duration.start).toBe(0);
       expect(action.duration.end).toBe(5);
       expect(action.startOperations).toHaveLength(2);
       expect(action.endOperations).toHaveLength(2);
-      expect(action.sourceLocation).toBeDefined();
     });
 
     test('should handle named action invocation', async () => {
@@ -124,7 +121,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const action = result.timelines[0].timelineActions[0];
+      const action = result.config.timelines[0].timelineActions[0];
       expect(action.duration.start).toBe(10);
       expect(action.duration.end).toBe(20);
       // Named action invocations emit requestAction + startAction operations
@@ -159,10 +156,10 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.actions).toHaveLength(1);
-      expect(result.actions[0].name).toBe('showHide');
-      expect(result.actions[0].startOperations).toHaveLength(2);
-      expect(result.actions[0].endOperations).toHaveLength(2);
+      expect(result.config.actions).toHaveLength(1);
+      expect(result.config.actions[0].name).toBe('showHide');
+      expect(result.config.actions[0].startOperations).toHaveLength(2);
+      expect(result.config.actions[0].endOperations).toHaveLength(2);
     });
 
     test('should transform regular action definition', async () => {
@@ -178,10 +175,10 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.actions).toHaveLength(1);
-      expect(result.actions[0].name).toBe('highlight');
-      expect(result.actions[0].startOperations).toHaveLength(2);
-      expect(result.actions[0].endOperations).toHaveLength(0);
+      expect(result.config.actions).toHaveLength(1);
+      expect(result.config.actions[0].name).toBe('highlight');
+      expect(result.config.actions[0].startOperations).toHaveLength(2);
+      expect(result.config.actions[0].endOperations).toHaveLength(0);
     });
   });
 
@@ -197,7 +194,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[0];
+      const operation = result.config.actions[0].startOperations[0];
       expect(operation.systemName).toBe('selectElement');
       // T223: Now uses named parameters from operation signature
       expect(operation.operationData?.selector).toBe('#myId');
@@ -215,7 +212,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[1];
+      const operation = result.config.actions[0].startOperations[1];
       expect(operation.systemName).toBe('setStyle');
       // T223: Object literal mapped to 'properties' parameter
       expect(operation.operationData?.properties).toBeDefined();
@@ -235,7 +232,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[1];
+      const operation = result.config.actions[0].startOperations[1];
       expect(operation.systemName).toBe('animate');
       // T223: Multiple arguments mapped to named parameters
       expect(operation.operationData?.animationProperties).toBeDefined();
@@ -256,7 +253,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[0];
+      const operation = result.config.actions[0].startOperations[0];
       // T223: setData takes 'properties' parameter which contains the object
       expect(operation.operationData?.properties).toBeDefined();
       expect((operation.operationData?.properties as any)?.['operationdata.name']).toBe(
@@ -275,7 +272,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const operation = result.actions[0].startOperations[0];
+      const operation = result.config.actions[0].startOperations[0];
       expect(operation.systemName).toBe('wait');
       // T223: Now uses named parameter 'milliseconds'
       expect(operation.operationData?.milliseconds).toBe(10);
@@ -296,7 +293,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const action = result.timelines[0].timelineActions[0];
+      const action = result.config.timelines[0].timelineActions[0];
       expect(action.duration.start).toBe(42);
       expect(action.duration.end).toBe(100);
     });
@@ -317,7 +314,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(2);
 
       // First event: 0s..3s (absolute times)
@@ -345,7 +342,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
 
       // First: 0s..5s
       expect(actions[0].duration.start).toBe(0);
@@ -384,7 +381,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(3);
 
       // First: intro() for 5s → 0-5s
@@ -420,7 +417,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(2);
 
       // First: fadeIn(".title", 1000) for 2s → 0-2s
@@ -465,7 +462,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(3);
 
       // Sequence items: 0-3s, 3-5s
@@ -497,7 +494,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(3);
 
       // First item: starts at 0s (0 + 0*200ms), ends at 2s
@@ -539,7 +536,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(2);
 
       // First item: 0s-1s
@@ -572,7 +569,7 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const actions = result.timelines[0].timelineActions;
+      const actions = result.config.timelines[0].timelineActions;
       expect(actions).toHaveLength(3);
 
       // First regular event: 0-5s
@@ -605,24 +602,29 @@ describe('AST Transformer', () => {
       const result = await Effect.runPromise(transformAST(program));
 
       // Check required IEngineConfiguration fields (Constitution VII: UUIDs)
-      expect(result.id).toMatch(
+      expect(result.config.id).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       ); // UUID v4
-      expect(result.engine.systemName).toBe('EligiusEngine');
-      expect(result.containerSelector).toBe('body');
-      expect(result.language).toBe('en-US');
-      expect(result.layoutTemplate).toBe('default');
-      expect(result.availableLanguages).toEqual([{ languageCode: 'en', label: 'English' }]);
+      expect(result.config.engine.systemName).toBe('EligiusEngine');
+      expect(result.config.containerSelector).toBe('body');
+      expect(result.config.language).toBe('en-US');
+      expect(result.config.layoutTemplate).toBe('default');
+      expect(result.config.availableLanguages).toHaveLength(1);
+      expect(result.config.availableLanguages[0].id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+      expect(result.config.availableLanguages[0].languageCode).toBe('en-US');
+      expect(result.config.availableLanguages[0].label).toBe('English');
 
       // Check timelines
-      expect(result.timelines).toHaveLength(1);
-      expect(result.timelines[0].type).toBe('animation');
-      expect(result.timelines[0].timelineActions).toHaveLength(1);
+      expect(result.config.timelines).toHaveLength(1);
+      expect(result.config.timelines[0].type).toBe('animation');
+      expect(result.config.timelines[0].timelineActions).toHaveLength(1);
 
       // Check action layers
-      expect(result.initActions).toEqual([]);
-      expect(result.actions).toEqual([]);
-      expect(result.eventActions).toEqual([]);
+      expect(result.config.initActions).toEqual([]);
+      expect(result.config.actions).toEqual([]);
+      expect(result.config.eventActions).toEqual([]);
 
       // Check metadata
       expect(result.metadata).toBeDefined();
@@ -662,10 +664,10 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines[0].type).toBe('mediaplayer');
-      expect(result.timelines[0].uri).toBe('test.mp4');
-      expect(result.timelines[0].timelineActions).toHaveLength(3);
-      expect(result.actions).toHaveLength(1); // intro action definition
+      expect(result.config.timelines[0].type).toBe('mediaplayer');
+      expect(result.config.timelines[0].uri).toBe('test.mp4');
+      expect(result.config.timelines[0].timelineActions).toHaveLength(3);
+      expect(result.config.actions).toHaveLength(1); // intro action definition
     });
 
     test('should include source locations (T057)', async () => {
@@ -681,14 +683,17 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      // Check that source locations are included
-      expect(result.sourceLocation).toBeDefined();
-      expect(result.sourceLocation.line).toBeGreaterThan(0);
-      expect(result.timelines[0].sourceLocation).toBeDefined();
-      expect(result.timelines[0].timelineActions[0].sourceLocation).toBeDefined();
-      expect(
-        result.timelines[0].timelineActions[0].startOperations[0].sourceLocation
-      ).toBeDefined();
+      // Check that source locations are included in SourceMap
+      expect(result.sourceMap.root).toBeDefined();
+      expect(result.sourceMap.root.line).toBeGreaterThan(0);
+
+      // Check that timeline IDs are tracked in SourceMap
+      const timelineId = result.config.timelines[0].id;
+      expect(result.sourceMap.timelines.has(timelineId)).toBe(true);
+
+      // Check that timeline action IDs are tracked in SourceMap
+      const actionId = result.config.timelines[0].timelineActions[0].id;
+      expect(result.sourceMap.timelineActions.has(actionId)).toBe(true);
     });
 
     test('should handle programs with no events gracefully', async () => {
@@ -697,8 +702,8 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.timelines[0].type).toBe('animation');
-      expect(result.timelines[0].timelineActions).toHaveLength(0);
+      expect(result.config.timelines[0].type).toBe('animation');
+      expect(result.config.timelines[0].timelineActions).toHaveLength(0);
     });
   });
 
@@ -792,8 +797,8 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      expect(result.actions).toHaveLength(1);
-      expect(result.actions[0].startOperations).toHaveLength(2);
+      expect(result.config.actions).toHaveLength(1);
+      expect(result.config.actions[0].startOperations).toHaveLength(2);
     });
 
     test('should validate all operations in a sequence', async () => {

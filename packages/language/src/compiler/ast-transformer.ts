@@ -39,16 +39,25 @@ import type { SourceLocation } from './types/common.js';
 import type {
   EligiusIR,
   EndableActionIR,
-  EngineInfoIR,
+  EventActionIR,
+  IEndableActionConfiguration,
+  IEngineConfiguration,
+  IEngineInfo,
+  IEventActionConfiguration,
+  IOperationConfiguration,
+  ITimelineActionConfiguration,
+  ITimelineConfiguration,
   JsonValue,
-  LabelIR,
   LanguageLabelIR,
   OperationConfigIR,
+  SourceMap,
   TimeExpression,
   TimelineActionIR,
   TimelineConfigIR,
   TimelineProviderSettingIR,
   TimelineProviderSettingsIR,
+  TOperationData,
+  TTimelineProviderSettings,
 } from './types/eligius-ir.js';
 import type { TransformError } from './types/errors.js';
 
@@ -106,8 +115,9 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       el => el.$type === 'VariableDeclaration'
     ) as VariableDeclaration[];
 
-    // Transform program-level variables to initActions (setData operations)
-    const initActions: OperationConfigIR[] = [];
+    // Transform program-level variables to initActions
+    // T274: initActions must be IEndableActionConfiguration[], not IOperationConfiguration[]
+    const initActions: EndableActionIR[] = [];
     if (variableDeclarations.length > 0) {
       const properties: Record<string, JsonValue> = {};
       for (const varDecl of variableDeclarations) {
@@ -115,8 +125,8 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
         properties[`globaldata.${varDecl.name}`] = value;
       }
 
-      // Create single setData operation for all global variables
-      initActions.push({
+      // Create single setData operation wrapped in an IEndableActionConfiguration
+      const setDataOperation: OperationConfigIR = {
         id: crypto.randomUUID(),
         systemName: 'setData',
         operationData: { properties },
@@ -128,6 +138,15 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
               column: 1,
               length: 0,
             },
+      };
+
+      // Wrap operation in proper IEndableActionConfiguration structure
+      initActions.push({
+        id: crypto.randomUUID(),
+        name: 'init-globaldata',
+        startOperations: [setDataOperation],
+        endOperations: [], // No end operations for init actions
+        sourceLocation: getSourceLocation(variableDeclarations[0]),
       });
     }
 
@@ -156,9 +175,26 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     // T273: Generate timelineProviderSettings based on timeline types used
     const providerSettings = generateTimelineProviderSettings(timelines);
 
-    // Build complete Eligius IR
-    return {
-      // Required configuration fields
+    // T279/T280/T281: Build IEngineConfiguration and SourceMap separately
+    // Convert IR types to Eligius types (strip sourceLocation)
+    const eligiusInitActions: IEndableActionConfiguration[] = initActions.map(stripSourceLocation);
+    const eligiusActions: IEndableActionConfiguration[] = actions.map(stripSourceLocation);
+    const eligiusEventActions: IEventActionConfiguration[] = []; // DSL doesn't support event actions yet
+    const eligiusTimelines: ITimelineConfiguration[] = timelines.map(
+      convertTimelineConfigToEligius
+    );
+
+    // Build SourceMap (T280): Track all entity IDs → source locations
+    const sourceMap: SourceMap = buildSourceMap(
+      getSourceLocation(program),
+      initActions,
+      actions,
+      [],
+      timelines
+    );
+
+    // Build complete IEngineConfiguration (T281)
+    const config: IEngineConfiguration = {
       id: defaults.id,
       engine: defaults.engine,
       containerSelector: defaults.containerSelector,
@@ -166,27 +202,24 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       layoutTemplate: defaults.layoutTemplate,
       availableLanguages: defaults.availableLanguages,
       labels: defaults.labels,
+      initActions: eligiusInitActions,
+      actions: eligiusActions,
+      eventActions: eligiusEventActions,
+      timelines: eligiusTimelines,
+      timelineFlow: undefined,
+      timelineProviderSettings: providerSettings as TTimelineProviderSettings,
+    };
 
-      // Action layers
-      initActions, // T182: Program-level variable declarations (const)
-      actions, // User-defined action definitions
-      eventActions: [], // DSL doesn't support event actions yet
-
-      // Timeline configuration (supports multiple timelines for complex scenarios)
-      timelines,
-      timelineFlow: undefined, // DSL doesn't support timeline flow yet
-
-      // Provider settings (T273: Generated from timeline types)
-      timelineProviderSettings: providerSettings,
-
-      // Compiler metadata
+    // Return new EligiusIR wrapper (T279)
+    return {
+      config,
+      sourceMap,
       metadata: {
         dslVersion: '1.0.0',
         compilerVersion: '0.0.1',
         compiledAt: new Date().toISOString(),
         sourceFile: undefined,
       },
-      sourceLocation: getSourceLocation(program),
     };
   });
 
@@ -202,17 +235,156 @@ function createDefaultConfiguration() {
     id: crypto.randomUUID(),
     engine: {
       systemName: 'EligiusEngine',
-    } as EngineInfoIR,
+    } as IEngineInfo,
     containerSelector: 'body',
     language: 'en-US' as const,
     layoutTemplate: 'default',
-    availableLanguages: [{ languageCode: 'en', label: 'English' }] as LabelIR[],
+    // T275: ILabel requires id property
+    // T278: TLanguageCode format is `${Lowercase}-${Uppercase}` (e.g., 'en-US')
+    availableLanguages: [
+      { id: crypto.randomUUID(), languageCode: 'en-US' as const, label: 'English' },
+    ],
     labels: [] as LanguageLabelIR[],
   };
 }
 
 /**
+ * T280: Build SourceMap - parallel structure tracking source locations
+ *
+ * Maps entity IDs to their source locations for error reporting.
+ * This allows us to strip sourceLocation from Eligius types while maintaining traceability.
+ */
+function buildSourceMap(
+  rootLocation: SourceLocation,
+  initActions: EndableActionIR[],
+  actions: EndableActionIR[],
+  eventActions: EventActionIR[],
+  timelines: TimelineConfigIR[]
+): SourceMap {
+  const actionMap = new Map<string, SourceLocation>();
+  const operationMap = new Map<string, SourceLocation>();
+  const timelineMap = new Map<string, SourceLocation>();
+  const timelineActionMap = new Map<string, SourceLocation>();
+
+  // Map init actions
+  for (const action of initActions) {
+    actionMap.set(action.id, action.sourceLocation);
+    for (const op of action.startOperations) {
+      operationMap.set(op.id, op.sourceLocation);
+    }
+    for (const op of action.endOperations) {
+      operationMap.set(op.id, op.sourceLocation);
+    }
+  }
+
+  // Map actions
+  for (const action of actions) {
+    actionMap.set(action.id, action.sourceLocation);
+    for (const op of action.startOperations) {
+      operationMap.set(op.id, op.sourceLocation);
+    }
+    for (const op of action.endOperations) {
+      operationMap.set(op.id, op.sourceLocation);
+    }
+  }
+
+  // Map event actions
+  for (const action of eventActions) {
+    actionMap.set(action.id, action.sourceLocation);
+    for (const op of action.startOperations) {
+      operationMap.set(op.id, op.sourceLocation);
+    }
+  }
+
+  // Map timelines and timeline actions
+  for (const timeline of timelines) {
+    timelineMap.set(timeline.id, timeline.sourceLocation);
+    for (const timelineAction of timeline.timelineActions) {
+      timelineActionMap.set(timelineAction.id, timelineAction.sourceLocation);
+      for (const op of timelineAction.startOperations) {
+        operationMap.set(op.id, op.sourceLocation);
+      }
+      for (const op of timelineAction.endOperations) {
+        operationMap.set(op.id, op.sourceLocation);
+      }
+    }
+  }
+
+  return {
+    root: rootLocation,
+    actions: actionMap,
+    operations: operationMap,
+    timelines: timelineMap,
+    timelineActions: timelineActionMap,
+  };
+}
+
+/**
+ * T281: Strip sourceLocation from EndableActionIR → IEndableActionConfiguration
+ */
+function stripSourceLocation(action: EndableActionIR): IEndableActionConfiguration {
+  return {
+    id: action.id,
+    name: action.name,
+    startOperations: action.startOperations.map(stripOperationSourceLocation),
+    endOperations: action.endOperations.map(stripOperationSourceLocation),
+  };
+}
+
+/**
+ * T281: Strip sourceLocation from OperationConfigIR → IOperationConfiguration
+ */
+function stripOperationSourceLocation(
+  op: OperationConfigIR
+): IOperationConfiguration<TOperationData> {
+  return {
+    id: op.id,
+    systemName: op.systemName,
+    operationData: op.operationData,
+  };
+}
+
+/**
+ * T281: Convert TimelineConfigIR → ITimelineConfiguration
+ */
+function convertTimelineConfigToEligius(timeline: TimelineConfigIR): ITimelineConfiguration {
+  return {
+    id: timeline.id,
+    uri: timeline.uri,
+    type: timeline.type,
+    duration: timeline.duration,
+    loop: timeline.loop,
+    selector: timeline.selector,
+    timelineActions: timeline.timelineActions.map(convertTimelineActionToEligius),
+  };
+}
+
+/**
+ * T281: Convert TimelineActionIR → ITimelineActionConfiguration
+ */
+function convertTimelineActionToEligius(action: TimelineActionIR): ITimelineActionConfiguration {
+  // Convert DurationIR to IDuration (evaluate TimeExpression to numbers)
+  const start =
+    typeof action.duration.start === 'number'
+      ? action.duration.start
+      : evaluateTimeExpression(action.duration.start);
+  const end =
+    typeof action.duration.end === 'number'
+      ? action.duration.end
+      : evaluateTimeExpression(action.duration.end);
+
+  return {
+    id: action.id,
+    name: action.name,
+    startOperations: action.startOperations.map(stripOperationSourceLocation),
+    endOperations: action.endOperations.map(stripOperationSourceLocation),
+    duration: { start, end },
+  };
+}
+
+/**
  * T271: Map DSL provider name to Eligius timeline type
+ * T278: Returns only Eligius TimelineTypes ('animation' | 'mediaplayer')
  *
  * DSL uses provider names (raf, video, audio) while Eligius uses type names.
  * Mapping:
@@ -220,7 +392,7 @@ function createDefaultConfiguration() {
  * - video → mediaplayer (HTML5 video timeline)
  * - audio → mediaplayer (HTML5 audio timeline)
  */
-function mapProviderToTimelineType(provider: string): 'animation' | 'mediaplayer' | 'raf' {
+function mapProviderToTimelineType(provider: string): 'animation' | 'mediaplayer' {
   switch (provider) {
     case 'raf':
       return 'animation';
@@ -228,7 +400,7 @@ function mapProviderToTimelineType(provider: string): 'animation' | 'mediaplayer
     case 'audio':
       return 'mediaplayer';
     default:
-      return 'raf'; // Default to raf for unknown providers
+      return 'animation'; // Default to animation for unknown providers
   }
 }
 

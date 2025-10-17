@@ -1,45 +1,57 @@
 import { Effect } from 'effect';
+import type { ITimelineActionConfiguration } from 'eligius';
 import { describe, expect, test } from 'vitest';
 import { emitJSON } from '../emitter.js';
-import type { EligiusIR, TimelineActionIR } from '../types/eligius-ir.js';
+import type { EligiusIR } from '../types/eligius-ir.js';
 
 describe('Emitter', () => {
   /**
-   * Helper: Create minimal valid IR
+   * Helper: Create minimal valid IR (T282: New structure with config + sourceMap)
    */
   function createMinimalIR(): EligiusIR {
+    const timelineId = '87654321-4321-4321-4321-210987654321';
+
     return {
-      id: '12345678-1234-4234-8234-123456789012',
-      engine: { systemName: 'Eligius' },
-      containerSelector: 'body',
-      language: 'en',
-      layoutTemplate: 'default',
-      availableLanguages: [{ languageCode: 'en', label: 'English' }],
-      labels: [],
-      initActions: [],
-      actions: [],
-      eventActions: [],
-      timelines: [
-        {
-          id: '87654321-4321-4321-4321-210987654321',
-          uri: undefined,
-          type: 'raf',
-          duration: 0,
-          loop: false,
-          selector: '',
-          timelineActions: [],
-          sourceLocation: { line: 1, column: 1, length: 10 },
-        },
-      ],
-      timelineFlow: undefined,
-      timelineProviderSettings: undefined,
+      config: {
+        id: '12345678-1234-4234-8234-123456789012',
+        engine: { systemName: 'EligiusEngine' },
+        containerSelector: 'body',
+        language: 'en-US',
+        layoutTemplate: 'default',
+        availableLanguages: [
+          { id: 'aaaa-bbbb-cccc-dddd', languageCode: 'en-US', label: 'English' },
+        ],
+        labels: [],
+        initActions: [],
+        actions: [],
+        eventActions: [],
+        timelines: [
+          {
+            id: timelineId,
+            uri: 'test',
+            type: 'animation',
+            duration: 0,
+            loop: false,
+            selector: '',
+            timelineActions: [],
+          },
+        ],
+        timelineFlow: undefined,
+        timelineProviderSettings: undefined,
+      },
+      sourceMap: {
+        root: { line: 1, column: 1, length: 50 },
+        actions: new Map(),
+        operations: new Map(),
+        timelines: new Map([[timelineId, { line: 1, column: 1, length: 10 }]]),
+        timelineActions: new Map(),
+      },
       metadata: {
         dslVersion: '1.0.0',
         compilerVersion: '0.0.1',
         compiledAt: '2025-01-01T00:00:00.000Z',
         sourceFile: undefined,
       },
-      sourceLocation: { line: 1, column: 1, length: 50 },
     };
   }
 
@@ -50,11 +62,13 @@ describe('Emitter', () => {
       const result = await Effect.runPromise(emitJSON(ir));
 
       expect(result.id).toBe('12345678-1234-4234-8234-123456789012');
-      expect(result.engine.systemName).toBe('Eligius');
+      expect(result.engine.systemName).toBe('EligiusEngine');
       expect(result.containerSelector).toBe('body');
-      expect(result.language).toBe('en');
+      expect(result.language).toBe('en-US');
       expect(result.layoutTemplate).toBe('default');
-      expect(result.availableLanguages).toEqual([{ languageCode: 'en', label: 'English' }]);
+      expect(result.availableLanguages).toHaveLength(1);
+      expect(result.availableLanguages[0].languageCode).toBe('en-US');
+      expect(result.availableLanguages[0].label).toBe('English');
       expect(result.timelines).toHaveLength(1);
     });
 
@@ -71,15 +85,15 @@ describe('Emitter', () => {
 
     test('should emit timeline configuration', async () => {
       const ir = createMinimalIR();
-      ir.timelines[0].uri = 'video.mp4';
-      ir.timelines[0].type = 'video';
-      ir.timelines[0].duration = 100;
-      ir.timelines[0].loop = true;
+      ir.config.timelines[0].uri = 'video.mp4';
+      ir.config.timelines[0].type = 'mediaplayer';
+      ir.config.timelines[0].duration = 100;
+      ir.config.timelines[0].loop = true;
 
       const result = await Effect.runPromise(emitJSON(ir));
 
       expect(result.timelines[0].uri).toBe('video.mp4');
-      expect(result.timelines[0].type).toBe('video');
+      expect(result.timelines[0].type).toBe('mediaplayer');
       expect(result.timelines[0].duration).toBe(100);
       expect(result.timelines[0].loop).toBe(true);
     });
@@ -87,7 +101,7 @@ describe('Emitter', () => {
     test('should emit timeline actions with operations', async () => {
       const ir = createMinimalIR();
 
-      const action: TimelineActionIR = {
+      const action: ITimelineActionConfiguration = {
         id: 'action-id',
         name: 'testAction',
         duration: { start: 0, end: 10 },
@@ -96,14 +110,12 @@ describe('Emitter', () => {
             id: 'op-id',
             systemName: 'showElement',
             operationData: { selector: '#test' },
-            sourceLocation: { line: 3, column: 1, length: 10 },
           },
         ],
         endOperations: [],
-        sourceLocation: { line: 2, column: 1, length: 20 },
       };
 
-      ir.timelines[0].timelineActions = [action];
+      ir.config.timelines[0].timelineActions = [action];
 
       const result = await Effect.runPromise(emitJSON(ir));
 
@@ -117,36 +129,34 @@ describe('Emitter', () => {
       );
     });
 
-    test('should emit metadata if present', async () => {
+    test('should not include metadata in emitted output', async () => {
       const ir = createMinimalIR();
 
       const result = await Effect.runPromise(emitJSON(ir));
 
-      expect(result.metadata).toBeDefined();
-      expect(result.metadata?.version).toBe('1.0.0');
-      expect(result.metadata?.generatedBy).toContain('Eligian DSL Compiler');
+      // T282: Metadata is stored in ir.metadata, not in the emitted config
+      // IEngineConfiguration doesn't have a metadata field
+      expect(result.metadata).toBeUndefined();
     });
 
     test('should emit action layers', async () => {
       const ir = createMinimalIR();
 
-      ir.initActions = [
+      ir.config.initActions = [
         {
           id: 'init-1',
           name: 'initAction',
           startOperations: [],
           endOperations: [],
-          sourceLocation: { line: 1, column: 1, length: 10 },
         },
       ];
 
-      ir.eventActions = [
+      ir.config.eventActions = [
         {
           id: 'event-1',
           name: 'eventAction',
           eventName: 'click',
           startOperations: [],
-          sourceLocation: { line: 2, column: 1, length: 15 },
         },
       ];
 
@@ -162,7 +172,7 @@ describe('Emitter', () => {
       const actionId = 'aaaabbbb-cccc-4ddd-8eee-ffffffffffff';
       const opId = 'ffff1111-2222-4333-8444-555555555555';
 
-      ir.timelines[0].timelineActions = [
+      ir.config.timelines[0].timelineActions = [
         {
           id: actionId,
           name: 'test',
@@ -172,11 +182,9 @@ describe('Emitter', () => {
               id: opId,
               systemName: 'test',
               operationData: {},
-              sourceLocation: { line: 1, column: 1, length: 5 },
             },
           ],
           endOperations: [],
-          sourceLocation: { line: 1, column: 1, length: 10 },
         },
       ];
 
@@ -189,15 +197,14 @@ describe('Emitter', () => {
     test('should handle multiple timelines', async () => {
       const ir = createMinimalIR();
 
-      ir.timelines.push({
+      ir.config.timelines.push({
         id: '11111111-2222-4333-8444-555555555555',
         uri: 'other.mp4',
-        type: 'video',
+        type: 'mediaplayer',
         duration: 50,
         loop: false,
         selector: '',
         timelineActions: [],
-        sourceLocation: { line: 5, column: 1, length: 20 },
       });
 
       const result = await Effect.runPromise(emitJSON(ir));
