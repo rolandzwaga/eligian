@@ -294,7 +294,7 @@ wait(200)  // delay in milliseconds
 Access runtime data with `$` prefix:
 
 ```eligian
-$context.currentItem
+$scope.currentItem
 $operationdata.selectedElement
 $globaldata.userSettings
 ```

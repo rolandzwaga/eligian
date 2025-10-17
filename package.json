@@ -18,8 +18,8 @@
         "ci": "biome ci ."
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.2.6",
-        "@types/node": "24.8.0",
+        "@biomejs/biome": "2.2.6",
+        "@types/node": "24.8.1",
         "shx": "0.4.0",
         "typescript": "5.9.3",
         "vite-tsconfig-paths": "^5.1.4"

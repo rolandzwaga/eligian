@@ -44,7 +44,8 @@ export type ParameterType =
   | 'ParameterType:ImagePath'
   | 'ParameterType:QuadrantPosition'
   | 'ParameterType:jQuery'
-  | 'ParameterType:expression';
+  | 'ParameterType:expression'
+  | 'ParameterType:mathfunction';
 
 /**
  * Represents a constant value constraint (enum-like).
@@ -95,6 +96,8 @@ export interface OperationParameter {
   defaultValue?: unknown;
   /** Human-readable description of parameter purpose */
   description?: string;
+  /** Whether this parameter is erased from operation scope after execution (Eligius 1.2.1+) */
+  erased?: boolean;
 }
 
 /**
@@ -127,6 +130,8 @@ export interface OutputInfo {
   name: string;
   /** Type of the output value - array for consistency with parameters */
   type: ParameterType[] | ParameterType;
+  /** Whether this output is erased from operation scope after execution (Eligius 1.2.1+) */
+  erased?: boolean;
 }
 
 /**

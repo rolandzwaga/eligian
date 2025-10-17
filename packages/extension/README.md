@@ -53,7 +53,7 @@ Full syntax highlighting for:
 - Keywords (`timeline`, `video`, `audio`, `raf`)
 - Time ranges (`0..5`)
 - Strings and numbers
-- Property chains (`$context.foo`)
+- Property chains (`$scope.foo`)
 - Operation calls (`selectElement`, `addClass`, etc.)
 - Comments (`// line comment`, `/* block comment */`)
 

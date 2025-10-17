@@ -187,19 +187,17 @@ describe('Operation Validator', () => {
         expect(tooManyError?.expected.max).toBe(3);
       });
 
-      it('should handle operations with all optional parameters', () => {
-        // endAction has 1 optional parameter
-        const signature = OPERATION_REGISTRY.endAction;
+      it('should handle operations with no parameters', () => {
+        // endForEach has no parameters
+        const signature = OPERATION_REGISTRY.endForEach;
 
-        // Valid with 0 parameters (all optional)
+        // Valid with 0 parameters
         expect(validateParameterCount(signature, 0)).toBeUndefined();
 
-        // Valid with 1 parameter (the optional one)
-        expect(validateParameterCount(signature, 1)).toBeUndefined();
-
         // Invalid: too many
-        const error = validateParameterCount(signature, 2);
+        const error = validateParameterCount(signature, 1);
         expect(error).toBeDefined();
+        expect(error?.expected.max).toBe(0);
       });
 
       it('should include helpful hint with parameter names', () => {

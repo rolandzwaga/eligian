@@ -86,8 +86,9 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       for (const param of signature.parameters) {
         const required = param.required ? '*(required)*' : '*(optional)*';
         const typeDisplay = this.formatParameterType(param.type);
+        const erased = param.erased ? ' ⚠️ *erased after use*' : '';
 
-        lines.push(`- \`${param.name}\`: ${typeDisplay} ${required}`);
+        lines.push(`- \`${param.name}\`: ${typeDisplay} ${required}${erased}`);
 
         if (param.description) {
           lines.push(`  - ${param.description}`);
@@ -110,7 +111,8 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       lines.push('**Provides:**');
       for (const output of signature.outputs) {
         const outputType = this.formatOutputType(output.type);
-        lines.push(`- \`${output.name}\` (${outputType})`);
+        const erased = output.erased ? ' ⚠️ *erased after use*' : '';
+        lines.push(`- \`${output.name}\` (${outputType})${erased}`);
       }
       lines.push('');
     }

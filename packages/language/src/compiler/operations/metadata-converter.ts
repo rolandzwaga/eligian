@@ -101,12 +101,13 @@ function convertParameter(
       type: ['ParameterType:array'],
       required: propertyMetadata.required ?? false,
       description: propertyMetadata.description,
+      erased: propertyMetadata.erased,
     };
   }
 
   // Case 3: Complex property with type field
   if (isComplexProperty(propertyMetadata)) {
-    const { type, required, defaultValue, description } = propertyMetadata;
+    const { type, required, defaultValue, description, erased } = propertyMetadata;
 
     // Check if type is constant values array
     if (Array.isArray(type)) {
@@ -116,6 +117,7 @@ function convertParameter(
         required: required ?? false,
         defaultValue,
         description,
+        erased,
       };
     }
 
@@ -126,6 +128,7 @@ function convertParameter(
       required: required ?? false,
       defaultValue,
       description,
+      erased,
     };
   }
 
@@ -180,17 +183,19 @@ function convertOutputs(
         type: convertParameterType(metadata),
       });
     } else if (isComplexProperty(metadata)) {
-      const { type } = metadata;
+      const { type, erased } = metadata;
       if (!Array.isArray(type)) {
         outputs.push({
           name,
           type: convertParameterType(type as metadata.TParameterTypes),
+          erased,
         });
       }
     } else if (isArrayProperty(metadata)) {
       outputs.push({
         name,
         type: ['ParameterType:array'],
+        erased: metadata.erased,
       });
     }
   }

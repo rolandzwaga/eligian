@@ -36,6 +36,8 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkParameterTypes,
       // TODO T216: Re-enable checkDependencies once we implement proper dependency tracking across sequences
       // validator.checkDependencies
+      // TODO T254-T255: Implement checkErasedProperties with full data flow analysis
+      // validator.checkErasedProperties
     ],
     RegularActionDefinition: validator.checkControlFlowPairing,
     EndableActionDefinition: [
@@ -443,5 +445,54 @@ export class EligianValidator {
         code: error.code.toLowerCase(),
       });
     }
+  }
+
+  /**
+   * Validate erased property usage (T254-T255: Eligius 1.2.1+).
+   *
+   * Tracks properties that have been erased by previous operations and validates
+   * that subsequent operations don't attempt to access them.
+   *
+   * IMPLEMENTATION PLAN (T255 - Data Flow Analysis):
+   *
+   * 1. Build scope model:
+   *    - Track available properties at each operation in sequence
+   *    - When operation executes with erased outputs, remove those properties from scope
+   *    - Properties added by operation outputs are available for subsequent operations
+   *
+   * 2. Handle control flow:
+   *    - If/else branches: merge scopes from both branches (property available if available in ALL branches)
+   *    - Loops: properties erased in loop body are erased for subsequent iterations
+   *    - Action boundaries: each action starts with fresh scope (only dependencies available)
+   *
+   * 3. Validate property references:
+   *    - Check PropertyChainReference nodes that reference $scope.*
+   *    - If property was erased by previous operation, emit error:
+   *      "Property 'X' is not available - it was erased by operation 'Y' at line N"
+   *
+   * 4. Error messages:
+   *    - Clear indication of which operation erased the property
+   *    - Suggestion to reorder operations or use different property
+   *
+   * TODO: This requires significant data flow analysis infrastructure.
+   * For now, this is a stub. Full implementation should:
+   * - Create OperationScopeTracker class to build scope model
+   * - Walk operation sequences and track erased properties
+   * - Validate all property chain references against scope
+   * - Integrate with existing dependency tracking (when T216 is implemented)
+   *
+   * @param operation - Operation call to validate
+   * @param accept - Validation acceptor for reporting errors
+   */
+  checkErasedProperties(_operation: OperationCall, _accept: ValidationAcceptor): void {
+    // TODO T254-T255: Implement full data flow analysis for erased properties
+    // This is a complex feature requiring:
+    // 1. OperationScopeTracker to build scope model across operation sequences
+    // 2. Property reference analysis to detect erased property access
+    // 3. Control flow handling (if/else, loops)
+    // 4. Clear error messages with operation that caused erasure
+    //
+    // For now, this is disabled. Enable by uncommenting in registerValidationChecks()
+    // once full implementation is complete.
   }
 }

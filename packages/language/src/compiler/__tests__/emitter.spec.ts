@@ -58,6 +58,17 @@ describe('Emitter', () => {
       expect(result.timelines).toHaveLength(1);
     });
 
+    test('should include $schema property for JSON Schema validation', async () => {
+      const ir = createMinimalIR();
+
+      const result = await Effect.runPromise(emitJSON(ir));
+
+      expect(result).toHaveProperty('$schema');
+      expect(result.$schema).toBe(
+        'https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json'
+      );
+    });
+
     test('should emit timeline configuration', async () => {
       const ir = createMinimalIR();
       ir.timelines[0].uri = 'video.mp4';

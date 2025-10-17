@@ -132,7 +132,7 @@ ForStatement:
  *   const settings = { speed: 1, loop: true }
  *
  * Program-level: Sets global data (accessed via $globaldata.varName)
- * Action-level: Sets context variable (accessed via @varName)
+ * Action-level: Sets scope variable (accessed via @varName)
  */
 VariableDeclaration:
     'const' name=ID '=' value=Expression;
@@ -310,7 +310,7 @@ TimeUnit returns string:
  * - Literals: strings, numbers, booleans, null
  * - Object literals: { key: value, ... }
  * - Array literals: [value1, value2, ...]
- * - Property chain references: $context.currentItem, $operationdata.foo, $globaldata.bar
+ * - Property chain references: $scope.currentItem, $operationdata.foo, $globaldata.bar
  * - Binary expressions: $operationdata.count > 5
  */
 Expression:
@@ -356,8 +356,8 @@ Primary infers Expression:
  * Property Chain Reference - Runtime data access with $ prefix
  *
  * Examples:
- *   $context.currentItem
- *   $context.currentItem.name
+ *   $scope.currentItem
+ *   $scope.currentItem.name
  *   $operationdata.selectedElement
  *   $globaldata.userSettings.theme
  */
@@ -365,18 +365,18 @@ PropertyChainReference:
     '$' scope=PropertyScope ('.' properties += ID)+;
 
 PropertyScope returns string:
-    'context' | 'operationdata' | 'globaldata';
+    'scope' | 'operationdata' | 'globaldata';
 
 /**
- * System Property Reference - Access system context properties with @@ prefix
+ * System Property Reference - Access system scope properties with @@ prefix
  *
  * Examples:
- *   @@currentItem  → $context.currentItem
- *   @@loopIndex    → $context.loopIndex
- *   @@loopLength   → $context.loopLength
- *   @@item         → $context.currentItem (aliased in for loops)
+ *   @@currentItem  → $scope.currentItem
+ *   @@loopIndex    → $scope.loopIndex
+ *   @@loopLength   → $scope.loopLength
+ *   @@item         → $scope.currentItem (aliased in for loops)
  *
- * Compiles to $context.propertyName string for Eligius runtime.
+ * Compiles to $scope.propertyName string for Eligius runtime.
  */
 SystemPropertyReference:
     '@@' name=ID;
@@ -389,7 +389,7 @@ SystemPropertyReference:
  *   @theme
  *   @index
  *
- * Compiles to $context.variables.varName string for Eligius runtime.
+ * Compiles to $scope.variables.varName string for Eligius runtime.
  */
 VariableReference:
     '@' name=ID;
@@ -431,7 +431,7 @@ NullLiteral:
  *
  * Examples:
  *   { opacity: 1, color: "red" }
- *   { "operationdata.name": $context.currentItem }
+ *   { "operationdata.name": $scope.currentItem }
  */
 ObjectLiteral:
     '{' (properties += ObjectProperty (',' properties += ObjectProperty)*)? '}';
@@ -445,7 +445,7 @@ ObjectProperty:
  * Examples:
  *   [1, 2, 3]
  *   ["foo", "bar"]
- *   [$context.item1, $context.item2]
+ *   [$scope.item1, $scope.item2]
  */
 ArrayLiteral:
     '[' (elements += Expression (',' elements += Expression)*)? ']';

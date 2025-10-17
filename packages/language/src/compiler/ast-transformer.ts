@@ -11,7 +11,7 @@
  * - All transformations include source location mapping for error reporting
  * - Type-safe error handling with TransformError
  * - Support function-style operation calls with positional parameters
- * - Handle property chain references ($context.*, $operationdata.*, $globaldata.*)
+ * - Handle property chain references ($scope.*, $operationdata.*, $globaldata.*)
  * - Flatten wrapper objects (properties, attributes) automatically
  */
 
@@ -815,7 +815,7 @@ const transformActionDefinition = (
  * Handles function-style operation calls with positional parameters:
  *   selectElement("#title")
  *   animate({ opacity: 1 }, 500, "ease")
- *   setData({ "operationdata.name": $context.currentItem })
+ *   setData({ "operationdata.name": $scope.currentItem })
  *
  * Per DSL_DESIGN_DECISIONS.md Q3: Flattens wrapper objects automatically.
  * Constitution VII: Generates UUID for operation ID
@@ -1104,7 +1104,7 @@ const transformVariableDeclaration = (
  * - Literals: strings, numbers, booleans, null
  * - Object literals: { key: value, ... }
  * - Array literals: [value1, value2, ...]
- * - Property chain references: $context.currentItem
+ * - Property chain references: $scope.currentItem
  * - System property references: @@currentItem (T229-T232)
  * - Variable references: @varName (T233)
  * - Parameter references: paramName (T231)
@@ -1148,7 +1148,7 @@ const transformExpression = (
       }
 
       case 'PropertyChainReference': {
-        // Property chain reference: $context.currentItem
+        // Property chain reference: $scope.currentItem
         // For now, serialize to string format that Eligius understands
         const scope = expr.scope;
         const properties = expr.properties.join('.');
@@ -1157,13 +1157,13 @@ const transformExpression = (
 
       case 'VariableReference': {
         // Variable reference: @varName (T233)
-        // Compiles to $context.variables.varName
-        return `$context.variables.${expr.name}`;
+        // Compiles to $scope.variables.varName
+        return `$scope.variables.${expr.name}`;
       }
 
       case 'SystemPropertyReference': {
         // System property reference: @@varName (T232)
-        // Compiles to $context.varName
+        // Compiles to $scope.varName
         // Special case: @@loopVar → @@currentItem (aliased)
         let propertyName = expr.name;
 
@@ -1172,7 +1172,7 @@ const transformExpression = (
           propertyName = 'currentItem';
         }
 
-        return `$context.${propertyName}`;
+        return `$scope.${propertyName}`;
       }
 
       case 'ParameterReference': {

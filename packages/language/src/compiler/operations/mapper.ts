@@ -98,7 +98,7 @@ export function mapPositionalToNamed(
  * - Boolean literals → boolean
  * - Object literals → Record<string, unknown>
  * - Array literals → unknown[]
- * - Property chains → "context.foo" string format for Eligius runtime
+ * - Property chains → "scope.foo" string format for Eligius runtime
  *
  * @param arg - Argument AST node
  * @returns Runtime value
@@ -139,17 +139,17 @@ function extractArgumentValue(arg: Expression): unknown {
  * Resolve property chain to Eligius runtime string format.
  *
  * Converts:
- * - $context.foo → "context.foo"
+ * - $scope.foo → "scope.foo"
  * - $operationdata.bar → "operationdata.bar"
  * - $globaldata.baz → "globaldata.baz"
  *
  * This string format is used by Eligius runtime for dynamic value resolution.
  *
  * @param chain - Property chain AST node
- * @returns Eligius runtime string (e.g., "context.foo")
+ * @returns Eligius runtime string (e.g., "scope.foo")
  *
  * @example
- * resolvePropertyChain($context.currentItem) // "context.currentItem"
+ * resolvePropertyChain($scope.currentItem) // "scope.currentItem"
  * resolvePropertyChain($operationdata.name) // "operationdata.name"
  */
 export function resolvePropertyChain(chain: PropertyChainReference): string {
@@ -157,7 +157,7 @@ export function resolvePropertyChain(chain: PropertyChainReference): string {
   // We want: "scope.property1.property2..."
 
   // Build chain by concatenating scope and properties
-  const scope = chain.scope; // e.g., 'context', 'operationdata', 'globaldata'
+  const scope = chain.scope; // e.g., 'scope', 'operationdata', 'globaldata'
   const properties = chain.properties; // e.g., ['currentItem'], ['name']
 
   // Join with dots
