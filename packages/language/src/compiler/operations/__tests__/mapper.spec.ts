@@ -1,10 +1,13 @@
 /**
  * Tests for operation parameter mapping
+ *
+ * BUG-001 FIX (T324): Updated tests to use JsonValue instead of Expression AST nodes.
+ * Arguments are now pre-transformed by the transformer before reaching the mapper.
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Expression, PropertyChainReference } from '../../../generated/ast.js';
-import { mapParameters, mapPositionalToNamed, resolvePropertyChain } from '../mapper.js';
+import type { JsonValue } from '../../types/eligius-ir.js';
+import { mapParameters, mapPositionalToNamed } from '../mapper.js';
 import type { OperationSignature } from '../types.js';
 
 describe('T226: Operation Parameter Mapping', () => {
@@ -13,13 +16,14 @@ describe('T226: Operation Parameter Mapping', () => {
       const signature: OperationSignature = {
         systemName: 'addClass',
         description: 'Add CSS class',
-        parameters: [{ name: 'className', type: 'ParameterType:className', required: true }],
+        parameters: [{ name: 'className', type: ['ParameterType:className'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'CSS',
       };
 
-      const args: Expression[] = [{ $type: 'StringLiteral', value: 'active' } as any];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = ['active'];
 
       const result = mapPositionalToNamed(signature, args);
 
@@ -33,18 +37,16 @@ describe('T226: Operation Parameter Mapping', () => {
         systemName: 'animate',
         description: 'Animate element',
         parameters: [
-          { name: 'properties', type: 'ParameterType:object', required: true },
-          { name: 'duration', type: 'ParameterType:number', required: true },
+          { name: 'properties', type: ['ParameterType:object'], required: true },
+          { name: 'duration', type: ['ParameterType:number'], required: true },
         ],
         dependencies: [],
         outputs: [],
         category: 'Animation',
       };
 
-      const args: Expression[] = [
-        { $type: 'ObjectLiteral', properties: [] } as any,
-        { $type: 'NumberLiteral', value: 500 } as any,
-      ];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [{ opacity: 1 }, 500];
 
       const result = mapPositionalToNamed(signature, args);
 
@@ -58,10 +60,10 @@ describe('T226: Operation Parameter Mapping', () => {
         systemName: 'selectElement',
         description: 'Select element',
         parameters: [
-          { name: 'selector', type: 'ParameterType:selector', required: true },
+          { name: 'selector', type: ['ParameterType:selector'], required: true },
           {
             name: 'useSelectedElementAsRoot',
-            type: 'ParameterType:boolean',
+            type: ['ParameterType:boolean'],
             required: false,
             defaultValue: false,
           },
@@ -71,7 +73,8 @@ describe('T226: Operation Parameter Mapping', () => {
         category: 'DOM',
       };
 
-      const args: Expression[] = [{ $type: 'StringLiteral', value: '#myElement' } as any];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = ['#myElement'];
 
       const result = mapPositionalToNamed(signature, args);
 
@@ -87,15 +90,16 @@ describe('T226: Operation Parameter Mapping', () => {
         systemName: 'test',
         description: 'Test operation',
         parameters: [
-          { name: 'required', type: 'ParameterType:string', required: true },
-          { name: 'optional', type: 'ParameterType:string', required: false },
+          { name: 'required', type: ['ParameterType:string'], required: true },
+          { name: 'optional', type: ['ParameterType:string'], required: false },
         ],
         dependencies: [],
         outputs: [],
         category: 'Test',
       };
 
-      const args: Expression[] = [{ $type: 'StringLiteral', value: 'test' } as any];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = ['test'];
 
       const result = mapPositionalToNamed(signature, args);
 
@@ -108,13 +112,14 @@ describe('T226: Operation Parameter Mapping', () => {
       const signature: OperationSignature = {
         systemName: 'addClass',
         description: 'Add CSS class',
-        parameters: [{ name: 'className', type: 'ParameterType:className', required: true }],
+        parameters: [{ name: 'className', type: ['ParameterType:className'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'CSS',
       };
 
-      const args: Expression[] = [];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [];
 
       const result = mapPositionalToNamed(signature, args);
 
@@ -126,68 +131,22 @@ describe('T226: Operation Parameter Mapping', () => {
     });
   });
 
-  describe('resolvePropertyChain', () => {
-    it('should resolve $context property chain', () => {
-      const chain: PropertyChainReference = {
-        $type: 'PropertyChainReference',
-        scope: 'context',
-        properties: ['currentItem', 'id'],
-      } as any;
-
-      const result = resolvePropertyChain(chain);
-
-      expect(result).toBe('context.currentItem.id');
-    });
-
-    it('should resolve $operationdata property chain', () => {
-      const chain: PropertyChainReference = {
-        $type: 'PropertyChainReference',
-        scope: 'operationdata',
-        properties: ['selectedElement'],
-      } as any;
-
-      const result = resolvePropertyChain(chain);
-
-      expect(result).toBe('operationdata.selectedElement');
-    });
-
-    it('should resolve $globaldata property chain', () => {
-      const chain: PropertyChainReference = {
-        $type: 'PropertyChainReference',
-        scope: 'globaldata',
-        properties: ['user', 'name'],
-      } as any;
-
-      const result = resolvePropertyChain(chain);
-
-      expect(result).toBe('globaldata.user.name');
-    });
-
-    it('should handle single property', () => {
-      const chain: PropertyChainReference = {
-        $type: 'PropertyChainReference',
-        scope: 'context',
-        properties: ['value'],
-      } as any;
-
-      const result = resolvePropertyChain(chain);
-
-      expect(result).toBe('context.value');
-    });
-  });
+  // BUG-001 FIX (T324): resolvePropertyChain tests removed
+  // Function no longer exists - reference resolution now happens in transformer
 
   describe('mapParameters (complete pipeline)', () => {
     it('should handle string literal argument', () => {
       const signature: OperationSignature = {
         systemName: 'addClass',
         description: 'Add CSS class',
-        parameters: [{ name: 'className', type: 'ParameterType:className', required: true }],
+        parameters: [{ name: 'className', type: ['ParameterType:className'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'CSS',
       };
 
-      const args: Expression[] = [{ $type: 'StringLiteral', value: 'active' } as any];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = ['active'];
 
       const result = mapParameters(signature, args);
 
@@ -199,13 +158,14 @@ describe('T226: Operation Parameter Mapping', () => {
       const signature: OperationSignature = {
         systemName: 'delay',
         description: 'Delay execution',
-        parameters: [{ name: 'duration', type: 'ParameterType:number', required: true }],
+        parameters: [{ name: 'duration', type: ['ParameterType:number'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'Timing',
       };
 
-      const args: Expression[] = [{ $type: 'NumberLiteral', value: 1000 } as any];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [1000];
 
       const result = mapParameters(signature, args);
 
@@ -217,13 +177,14 @@ describe('T226: Operation Parameter Mapping', () => {
       const signature: OperationSignature = {
         systemName: 'test',
         description: 'Test operation',
-        parameters: [{ name: 'enabled', type: 'ParameterType:boolean', required: true }],
+        parameters: [{ name: 'enabled', type: ['ParameterType:boolean'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'Test',
       };
 
-      const args: Expression[] = [{ $type: 'BooleanLiteral', value: true } as any];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [true];
 
       const result = mapParameters(signature, args);
 
@@ -231,46 +192,75 @@ describe('T226: Operation Parameter Mapping', () => {
       expect(result.operationData).toEqual({ enabled: true });
     });
 
-    it('should handle property chain argument', () => {
+    it('should handle reference string argument (from @@loopVar)', () => {
       const signature: OperationSignature = {
-        systemName: 'test',
-        description: 'Test operation',
-        parameters: [{ name: 'value', type: 'ParameterType:expression', required: true }],
+        systemName: 'selectElement',
+        description: 'Select element',
+        parameters: [{ name: 'selector', type: ['ParameterType:selector'], required: true }],
         dependencies: [],
         outputs: [],
-        category: 'Test',
+        category: 'DOM',
       };
 
-      const args: Expression[] = [
-        {
-          $type: 'PropertyChainReference',
-          scope: 'context',
-          properties: ['currentItem'],
-        } as any,
-      ];
+      // BUG-001 FIX (T324): Reference expressions are transformed to strings by transformer
+      const args: JsonValue[] = ['$scope.currentItem'];
 
       const result = mapParameters(signature, args);
 
       expect(result.success).toBe(true);
-      expect(result.operationData).toEqual({ value: 'context.currentItem' });
+      expect(result.operationData).toEqual({ selector: '$scope.currentItem' });
+    });
+
+    it('should handle reference string argument (from @varName)', () => {
+      const signature: OperationSignature = {
+        systemName: 'selectElement',
+        description: 'Select element',
+        parameters: [{ name: 'selector', type: ['ParameterType:selector'], required: true }],
+        dependencies: [],
+        outputs: [],
+        category: 'DOM',
+      };
+
+      // BUG-001 FIX (T324): Reference expressions are transformed to strings by transformer
+      const args: JsonValue[] = ['$scope.variables.mySelector'];
+
+      const result = mapParameters(signature, args);
+
+      expect(result.success).toBe(true);
+      expect(result.operationData).toEqual({ selector: '$scope.variables.mySelector' });
+    });
+
+    it('should handle reference string argument (from paramName)', () => {
+      const signature: OperationSignature = {
+        systemName: 'selectElement',
+        description: 'Select element',
+        parameters: [{ name: 'selector', type: ['ParameterType:selector'], required: true }],
+        dependencies: [],
+        outputs: [],
+        category: 'DOM',
+      };
+
+      // BUG-001 FIX (T324): Reference expressions are transformed to strings by transformer
+      const args: JsonValue[] = ['$operationdata.targetSelector'];
+
+      const result = mapParameters(signature, args);
+
+      expect(result.success).toBe(true);
+      expect(result.operationData).toEqual({ selector: '$operationdata.targetSelector' });
     });
 
     it('should handle object literal argument', () => {
       const signature: OperationSignature = {
         systemName: 'animate',
         description: 'Animate element',
-        parameters: [{ name: 'properties', type: 'ParameterType:object', required: true }],
+        parameters: [{ name: 'properties', type: ['ParameterType:object'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'Animation',
       };
 
-      const args: Expression[] = [
-        {
-          $type: 'ObjectLiteral',
-          properties: [{ key: 'opacity', value: { $type: 'NumberLiteral', value: 0 } }],
-        } as any,
-      ];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [{ opacity: 0 }];
 
       const result = mapParameters(signature, args);
 
@@ -283,21 +273,14 @@ describe('T226: Operation Parameter Mapping', () => {
       const signature: OperationSignature = {
         systemName: 'test',
         description: 'Test operation',
-        parameters: [{ name: 'items', type: 'ParameterType:array', required: true }],
+        parameters: [{ name: 'items', type: ['ParameterType:array'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'Test',
       };
 
-      const args: Expression[] = [
-        {
-          $type: 'ArrayLiteral',
-          elements: [
-            { $type: 'StringLiteral', value: 'a' },
-            { $type: 'StringLiteral', value: 'b' },
-          ],
-        } as any,
-      ];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [['a', 'b']];
 
       const result = mapParameters(signature, args);
 
@@ -309,13 +292,14 @@ describe('T226: Operation Parameter Mapping', () => {
       const signature: OperationSignature = {
         systemName: 'test',
         description: 'Test operation',
-        parameters: [{ name: 'required', type: 'ParameterType:string', required: true }],
+        parameters: [{ name: 'required', type: ['ParameterType:string'], required: true }],
         dependencies: [],
         outputs: [],
         category: 'Test',
       };
 
-      const args: Expression[] = [];
+      // BUG-001 FIX (T324): Arguments are now pre-transformed JsonValue
+      const args: JsonValue[] = [];
 
       const result = mapParameters(signature, args);
 

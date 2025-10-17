@@ -836,4 +836,80 @@ describe('AST Transformer', () => {
       }
     });
   });
+
+  describe('BUG-001: Reference expressions in operation arguments', () => {
+    // BUG-001 FIX (T325): Removed .failing() - tests should now pass
+    test('should handle @@loopVar in for-loop operations', async () => {
+      const code = `
+        action test() [
+          for (item in ["intro", "main", "outro"]) {
+            selectElement(@@item)
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Find the forEach operation
+      const action = result.config.actions[0];
+      const forEachOp = action.startOperations.find(op => op.systemName === 'forEach');
+      expect(forEachOp).toBeDefined();
+
+      // Find the selectElement operation inside the forEach body
+      const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
+      expect(selectOp).toBeDefined();
+
+      // ❌ BUG: This currently produces {} but should have selector
+      expect(selectOp?.operationData).toEqual({
+        selector: '$scope.currentItem', // @@item should be aliased to currentItem
+      });
+    });
+
+    test('should handle @varName in action operations', async () => {
+      const code = `
+        action test() [
+          const selector = "#box"
+          selectElement(@selector)
+        ]
+        timeline "test" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
+
+      // ❌ BUG: This currently produces {} but should have selector
+      expect(selectOp?.operationData).toEqual({
+        selector: '$scope.variables.selector', // @selector → $scope.variables.selector
+      });
+    });
+
+    test('should handle parameter references in action operations', async () => {
+      const code = `
+        action test(selector, duration) [
+          selectElement(selector)
+          animate({opacity: 1}, duration)
+        ]
+        timeline "test" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
+      const animateOp = action.startOperations.find(op => op.systemName === 'animate');
+
+      // ❌ BUG: These currently produce {} but should have proper references
+      expect(selectOp?.operationData).toEqual({
+        selector: '$operationdata.selector', // selector → $operationdata.selector
+      });
+
+      expect(animateOp?.operationData?.animationDuration).toBe('$operationdata.duration');
+    });
+  });
 });

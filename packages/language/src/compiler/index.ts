@@ -58,12 +58,12 @@ export {
   validateRegistry,
 } from './operations/index.js';
 // Operation parameter mapping exports
+// BUG-001 FIX (T323): resolvePropertyChain removed - no longer needed
 export {
   type MappingError,
   type MappingResult,
   mapParameters,
   mapPositionalToNamed,
-  resolvePropertyChain,
   wrapParameters,
 } from './operations/mapper.js';
 // Operation validation exports (renamed to avoid conflict with ValidationError from types)

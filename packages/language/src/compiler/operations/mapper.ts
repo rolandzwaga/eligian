@@ -2,13 +2,17 @@
  * Operation Parameter Mapping
  *
  * This module handles mapping DSL operation calls to Eligius operation configuration format.
- * It converts positional arguments to named parameters, resolves property chain references,
- * and wraps parameters in required wrapper objects per Eligius spec.
+ * It converts positional arguments to named parameters and wraps parameters in required
+ * wrapper objects per Eligius spec.
+ *
+ * BUG-001 FIX (T323): Arguments are now pre-transformed JsonValue instead of Expression AST.
+ * The transformer handles all reference resolution (@@varName, @varName, paramName) before
+ * passing values to the mapper, greatly simplifying this module.
  *
  * @module mapper
  */
 
-import type { Expression, PropertyChainReference } from '../../generated/ast.js';
+import type { JsonValue } from '../types/eligius-ir.js';
 import type { OperationSignature } from './types.js';
 
 /**
@@ -36,24 +40,26 @@ export interface MappingError {
 /**
  * Map positional arguments to named parameters using operation signature.
  *
+ * BUG-001 FIX (T323): Arguments are now pre-transformed JsonValue instead of Expression AST.
+ *
  * This function:
  * 1. Maps positional arguments to parameter names from signature
  * 2. Handles optional parameters (fills with default values or undefined)
  * 3. Returns object with named parameters for Eligius runtime
  *
  * @param signature - Operation signature from registry
- * @param args - Positional arguments from DSL
+ * @param args - Pre-transformed positional arguments (JsonValue[])
  * @returns Mapping result with named parameters or errors
  *
  * @example
- * const signature = { parameters: [{ name: 'className', required: true }, { name: 'useCapture', required: false, defaultValue: false }] };
- * const args = [{ $type: 'StringLiteral', value: 'active' }];
+ * const signature = { parameters: [{ name: 'className', required: true }] };
+ * const args = ["active"];  // Pre-transformed JsonValue
  * const result = mapPositionalToNamed(signature, args);
- * // result.operationData = { className: 'active', useCapture: false }
+ * // result.operationData = { className: 'active' }
  */
 export function mapPositionalToNamed(
   signature: OperationSignature,
-  args: Expression[]
+  args: JsonValue[]
 ): MappingResult {
   const errors: MappingError[] = [];
   const operationData: Record<string, unknown> = {};
@@ -64,13 +70,13 @@ export function mapPositionalToNamed(
     const arg = args[i];
 
     if (arg !== undefined) {
-      // Argument provided - extract value and map to parameter name
-      const value = extractArgumentValue(arg);
-      operationData[param.name] = value;
+      // Argument provided - already transformed to JsonValue, just use it
+      operationData[param.name] = arg;
     } else if (param.defaultValue !== undefined) {
       // No argument, but parameter has default value
       operationData[param.name] = param.defaultValue;
     } else if (!param.required) {
+      // Optional parameter with no default - omit from operationData
     } else {
       // Required parameter missing (should have been caught by validator)
       errors.push({
@@ -90,79 +96,14 @@ export function mapPositionalToNamed(
 }
 
 /**
- * Extract runtime value from DSL argument AST node.
+ * BUG-001 FIX (T323): extractArgumentValue() and resolvePropertyChain() removed.
  *
- * Handles:
- * - String literals → string
- * - Number literals → number
- * - Boolean literals → boolean
- * - Object literals → Record<string, unknown>
- * - Array literals → unknown[]
- * - Property chains → "scope.foo" string format for Eligius runtime
+ * These functions are no longer needed because arguments are now pre-transformed
+ * to JsonValue by the transformer before being passed to the mapper.
  *
- * @param arg - Argument AST node
- * @returns Runtime value
+ * All reference resolution (@@varName, @varName, paramName) now happens in
+ * ast-transformer.ts via transformExpression(), which properly handles scope context.
  */
-function extractArgumentValue(arg: Expression): unknown {
-  switch (arg.$type) {
-    case 'StringLiteral':
-      return arg.value;
-
-    case 'NumberLiteral':
-      return arg.value;
-
-    case 'BooleanLiteral':
-      return arg.value;
-
-    case 'ObjectLiteral': {
-      const obj: Record<string, unknown> = {};
-      for (const prop of arg.properties) {
-        obj[prop.key] = extractArgumentValue(prop.value);
-      }
-      return obj;
-    }
-
-    case 'ArrayLiteral':
-      return arg.elements.map(extractArgumentValue);
-
-    case 'PropertyChainReference':
-      // Convert property chain to Eligius runtime string format
-      return resolvePropertyChain(arg);
-
-    default:
-      // Unknown argument type - return undefined
-      return undefined;
-  }
-}
-
-/**
- * Resolve property chain to Eligius runtime string format.
- *
- * Converts:
- * - $scope.foo → "scope.foo"
- * - $operationdata.bar → "operationdata.bar"
- * - $globaldata.baz → "globaldata.baz"
- *
- * This string format is used by Eligius runtime for dynamic value resolution.
- *
- * @param chain - Property chain AST node
- * @returns Eligius runtime string (e.g., "scope.foo")
- *
- * @example
- * resolvePropertyChain($scope.currentItem) // "scope.currentItem"
- * resolvePropertyChain($operationdata.name) // "operationdata.name"
- */
-export function resolvePropertyChain(chain: PropertyChainReference): string {
-  // Property chain format: $scope.property1.property2...
-  // We want: "scope.property1.property2..."
-
-  // Build chain by concatenating scope and properties
-  const scope = chain.scope; // e.g., 'scope', 'operationdata', 'globaldata'
-  const properties = chain.properties; // e.g., ['currentItem'], ['name']
-
-  // Join with dots
-  return [scope, ...properties].join('.');
-}
 
 /**
  * Generate wrapper object for operation parameters according to Eligius spec.
@@ -196,19 +137,21 @@ export function wrapParameters(
 /**
  * Complete parameter mapping pipeline.
  *
+ * BUG-001 FIX (T323): Arguments are now pre-transformed JsonValue instead of Expression AST.
+ *
  * Combines positional-to-named mapping and wrapper generation.
  *
  * @param signature - Operation signature from registry
- * @param args - Positional arguments from DSL
+ * @param args - Pre-transformed positional arguments (JsonValue[])
  * @returns Mapping result with wrapped operation data
  *
  * @example
  * const signature = getOperationSignature('addClass');
- * const args = [{ $type: 'StringLiteral', value: 'active' }];
+ * const args = ["active"];  // Pre-transformed JsonValue
  * const result = mapParameters(signature, args);
  * // result.operationData = { className: 'active' }
  */
-export function mapParameters(signature: OperationSignature, args: Expression[]): MappingResult {
+export function mapParameters(signature: OperationSignature, args: JsonValue[]): MappingResult {
   // Step 1: Map positional to named
   const mappingResult = mapPositionalToNamed(signature, args);
 

@@ -1097,7 +1097,7 @@ const transformActionDefinition = (
  */
 const transformOperationCall = (
   opCall: OperationCall,
-  _scope: ScopeContext = createEmptyScope()
+  scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR, TransformError> =>
   Effect.gen(function* (_) {
     const operationName = opCall.operationName;
@@ -1132,8 +1132,17 @@ const transformOperationCall = (
       );
     }
 
+    // BUG-001 FIX (T322): Transform Expression arguments to JsonValue before mapping
+    // This ensures reference expressions (@@varName, @varName, paramName) are properly
+    // transformed to their string representations ($scope.*, $operationdata.*)
+    const transformedArgs: JsonValue[] = [];
+    for (const arg of args) {
+      const value = yield* _(transformExpression(arg, scope));
+      transformedArgs.push(value);
+    }
+
     // Map positional arguments to named parameters using operation signature
-    const mappingResult = mapParameters(signature, args);
+    const mappingResult = mapParameters(signature, transformedArgs);
     if (!mappingResult.success) {
       // Mapping failed - return first error
       const firstError = mappingResult.errors[0];
