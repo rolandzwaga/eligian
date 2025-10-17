@@ -34,3 +34,20 @@ export type {
 } from './generated/ast.js';
 export * from './generated/grammar.js';
 export * from './generated/module.js';
+export type {
+  EligianType,
+  TypeAnnotation,
+  TypeConstraint,
+} from './type-system/index.js';
+// Type system exports (explicit to avoid conflicts with compiler types)
+export {
+  collectParameterConstraints,
+  getOperationParameterTypes,
+  inferLiteralType,
+  inferParameterTypes,
+  TypeEnvironment,
+  unifyConstraints,
+  validateTypeCompatibility,
+} from './type-system/index.js';
+// Note: SourceLocation and TypeError from type-system conflict with compiler exports
+// Use compiler's versions for now (they're compatible)

@@ -1,0 +1,20 @@
+// This file demonstrates type error detection (Phase 18 T300)
+
+action highlightElement(selector:number, color) [
+  // LOCAL VARIABLES (Phase 13) - accessed via @varName
+  const highlightDuration = 300
+  const defaultColor = "yellow"
+
+  selectElement(selector)
+  setStyle({
+    backgroundColor: color,
+    transition: "background-color 0.3s"
+  })
+  wait(@highlightDuration)
+]
+
+timeline "test" using raf {
+  at 0s..1s {
+    highlightElement(42, "red")
+  }
+}

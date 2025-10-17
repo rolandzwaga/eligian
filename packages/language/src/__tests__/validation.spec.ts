@@ -4,7 +4,12 @@ import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { EligianValidator } from '../eligian-validator.js';
+import type {
+  EndableActionDefinition,
+  Program,
+  RegularActionDefinition,
+} from '../generated/ast.js';
 
 describe('Eligian Grammar - Validation', () => {
   let services: ReturnType<typeof createEligianServices>;
@@ -26,6 +31,7 @@ describe('Eligian Grammar - Validation', () => {
 
     return {
       document,
+      program: document.parseResult.value as Program,
       diagnostics: document.diagnostics ?? [],
       validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
     };
@@ -499,6 +505,107 @@ describe('Eligian Grammar - Validation', () => {
           e => e.message.includes('selectedElement') && e.message.includes('not available')
         )
       ).toBe(true);
+    });
+  });
+
+  describe('Type annotation collection (Phase 18 - T294)', () => {
+    test('should collect type annotations from regular action parameters', async () => {
+      const code = `
+        action fadeIn(selector: string, duration: number) [
+          selectElement(selector)
+        ]
+        timeline "test" using raf {}
+      `;
+      const document = await parseAndValidate(code);
+      const action = document.program.elements[0] as RegularActionDefinition;
+
+      const validator = new EligianValidator();
+      const typeMap = validator.collectTypeAnnotations(action);
+
+      expect(typeMap.size).toBe(2);
+      expect(typeMap.get('selector')).toBe('string');
+      expect(typeMap.get('duration')).toBe('number');
+    });
+
+    test('should collect type annotations from endable action parameters', async () => {
+      const code = `
+        endable action show(element: string, fade: boolean) [
+          selectElement(element)
+        ] []
+        timeline "test" using raf {}
+      `;
+      const document = await parseAndValidate(code);
+      const action = document.program.elements[0] as EndableActionDefinition;
+
+      const validator = new EligianValidator();
+      const typeMap = validator.collectTypeAnnotations(action);
+
+      expect(typeMap.size).toBe(2);
+      expect(typeMap.get('element')).toBe('string');
+      expect(typeMap.get('fade')).toBe('boolean');
+    });
+
+    test('should handle mixed typed and untyped parameters (with inference)', async () => {
+      const code = `
+        action fadeIn(selector: string, duration, easing: string) [
+          selectElement(selector)
+          animate({opacity: 1}, duration)
+        ]
+        timeline "test" using raf {}
+      `;
+      const document = await parseAndValidate(code);
+      const action = document.program.elements[0] as RegularActionDefinition;
+
+      const validator = new EligianValidator();
+      const typeMap = validator.collectTypeAnnotations(action);
+
+      // Typed parameters use annotations, untyped parameters get inferred
+      expect(typeMap.size).toBe(3);
+      expect(typeMap.get('selector')).toBe('string'); // explicit annotation
+      expect(typeMap.get('duration')).toBe('number'); // inferred from animate()
+      expect(typeMap.get('easing')).toBe('string'); // explicit annotation
+    });
+
+    test('should infer types for parameters without annotations (Phase 18 - T311)', async () => {
+      const code = `
+        action fadeIn(selector, duration) [
+          selectElement(selector)
+          animate({opacity: 1}, duration)
+        ]
+        timeline "test" using raf {}
+      `;
+      const document = await parseAndValidate(code);
+      const action = document.program.elements[0] as RegularActionDefinition;
+
+      const validator = new EligianValidator();
+      const typeMap = validator.collectTypeAnnotations(action);
+
+      // Should infer 'selector' as string (from selectElement)
+      // Should infer 'duration' as number (from animate)
+      expect(typeMap.size).toBe(2);
+      expect(typeMap.get('selector')).toBe('string');
+      expect(typeMap.get('duration')).toBe('number');
+    });
+
+    test('should collect all primitive type annotations', async () => {
+      const code = `
+        action test(str: string, num: number, bool: boolean, obj: object, arr: array) [
+          selectElement(str)
+        ]
+        timeline "test" using raf {}
+      `;
+      const document = await parseAndValidate(code);
+      const action = document.program.elements[0] as RegularActionDefinition;
+
+      const validator = new EligianValidator();
+      const typeMap = validator.collectTypeAnnotations(action);
+
+      expect(typeMap.size).toBe(5);
+      expect(typeMap.get('str')).toBe('string');
+      expect(typeMap.get('num')).toBe('number');
+      expect(typeMap.get('bool')).toBe('boolean');
+      expect(typeMap.get('obj')).toBe('object');
+      expect(typeMap.get('arr')).toBe('array');
     });
   });
 });

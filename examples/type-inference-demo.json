@@ -1,0 +1,306 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "4d6a7085-03bd-4ce3-a2fe-91c0914cda0e",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "body",
+  "language": "en-US",
+  "layoutTemplate": "default",
+  "availableLanguages": [
+    {
+      "id": "99278a92-2b0a-4d54-8ca4-df86f76f09e4",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "ff83aa73-7583-4ad0-8790-9c1ebec99bdd",
+      "name": "fadeIn",
+      "startOperations": [
+        {
+          "id": "8fe8bab0-9b82-4408-86f4-360d491b374f",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "2c17ece7-b778-4c3f-b666-8a7f597dfc12",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "f73144d1-e2c1-408d-8f2c-55b6e1a9a637",
+      "name": "showHide",
+      "startOperations": [
+        {
+          "id": "499b8841-30e9-4bbf-9f38-27e026e43255",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "12ccdae0-93c8-4db9-a8a2-11d4b80d8fa2",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "visible"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "abdc6970-96e9-400a-b622-f16e659fd02d",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "f86ae58a-8b7e-412f-ab8f-5cfdec276744",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "visible"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4409424e-3495-4888-bfee-add436fdb642",
+      "name": "mixedTypes",
+      "startOperations": [
+        {
+          "id": "3e9fafca-7c0c-4e65-8cf9-646cf36357c4",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "1ffca65c-30ce-4ff9-a86a-a65984ccff85",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "d0d1c221-d864-4007-93ef-b94c7a4f4322",
+      "name": "conditionalFade",
+      "startOperations": [
+        {
+          "id": "b09a2d48-812d-4da5-88af-472971868f29",
+          "systemName": "when",
+          "operationData": {
+            "condition": "(\"$operationdata.threshold\" > 5)"
+          }
+        },
+        {
+          "id": "b2b788ec-0ae9-4005-bb15-d1b96891c39d",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "0eafa03b-8f2f-4100-a1f5-e5838fd89ae1",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "id": "17492bd9-1985-4c6a-8115-ac0d865a22f6",
+          "systemName": "endWhen",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "2c4fb1c6-d34d-4d6e-8e5a-e971a5cd409f",
+      "name": "applyStyles",
+      "startOperations": [
+        {
+          "id": "0e5a9f7b-beb1-4ff7-aeaa-2c2247bcfe29",
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "operationdata.items",
+            "itemName": "item"
+          }
+        },
+        {
+          "id": "ef574342-2394-4fca-98a5-e99561c9b835",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".item"
+          }
+        },
+        {
+          "id": "ac714c2c-f4d9-45fd-bb38-342e330c5d47",
+          "systemName": "addClass",
+          "operationData": {}
+        },
+        {
+          "id": "5b46c702-4e4c-47a9-bdc6-25c2fa34ed7a",
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "493a87c0-702a-4555-b3bc-b27bdb55554c",
+      "name": "multiUse",
+      "startOperations": [
+        {
+          "id": "0a94cabc-db6e-4d1a-a48f-7e98e3eb1d0a",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "5495af9c-4884-43c2-9d67-7f8289ceb23a",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "5ee14d5c-035c-4937-9df7-c04a7922859d",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": 1
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "facafaed-93f2-4e3c-a6d8-ee9daaf793a4",
+      "uri": "type-inference-demo",
+      "type": "animation",
+      "duration": 6,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "5b6ed06c-013f-4420-81fc-79abc6329e3f",
+          "name": "timeline-action-0-2",
+          "startOperations": [
+            {
+              "id": "ddffde4a-0a89-4f8e-824f-3e444a30d74c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "6638860d-7c91-4b4e-be77-722527db9bed",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#box",
+                  "duration": 1000
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 2
+          }
+        },
+        {
+          "id": "bf1bf75f-232f-4600-b0c6-25b2d8e8ce0b",
+          "name": "timeline-action-2-4",
+          "startOperations": [
+            {
+              "id": "b9d5f86b-5c0d-43ea-bdae-82fa53d4595b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showHide"
+              }
+            },
+            {
+              "id": "5291e7f1-5934-4a40-9c0c-9c227680122f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "element": "#panel"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "9788fb61-eaa8-416c-b09a-a67a216cc576",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showHide"
+              }
+            },
+            {
+              "id": "1730c154-e146-444f-ad63-af5d2173e63e",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "element": "#panel"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 2,
+            "end": 4
+          }
+        },
+        {
+          "id": "ff9c5cd1-9299-47e4-85c5-9038c07dc2cb",
+          "name": "timeline-action-4-6",
+          "startOperations": [
+            {
+              "id": "64e3d0c6-ee55-4e68-a43b-1b6ce13a0263",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "mixedTypes"
+              }
+            },
+            {
+              "id": "8db51f32-c9e4-4530-825f-4ac1f30bbc98",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#card",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 4,
+            "end": 6
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "id": "55d0881c-cc96-4eb0-8857-7c7ebb3da9a3",
+      "vendor": "",
+      "systemName": "RequestAnimationFrameTimelineProvider"
+    }
+  }
+}

@@ -1,0 +1,861 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "dd669ed1-534e-4cf8-be48-216e71713b75",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "body",
+  "language": "en-US",
+  "layoutTemplate": "default",
+  "availableLanguages": [
+    {
+      "id": "6e8a8e58-cad5-447c-b3fe-b3fa0d81d0ca",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "5cd99043-2632-418e-b501-fa1d069077f5",
+      "name": "showSlide1",
+      "startOperations": [
+        {
+          "id": "8595ddfb-b56a-4690-8ea8-9d895af88735",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-1"
+          }
+        },
+        {
+          "id": "c9898ab5-0524-4377-8f2f-0e2afa4fedf8",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "1a49b6d3-2ff7-4d62-bdbf-fe7263a7c156",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-1 .title"
+          }
+        },
+        {
+          "id": "66151e2e-9b0a-49ce-831b-209f8b25182b",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": 0
+            }
+          }
+        },
+        {
+          "id": "7608c627-5049-431f-8d1f-8d99f79301a0",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            },
+            "animationDuration": 1000
+          }
+        },
+        {
+          "id": "2ec401fe-f78d-43f1-8f6d-299fc77c3a8e",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-1 .content"
+          }
+        },
+        {
+          "id": "17c502b4-a8c9-43b2-b24b-7f516a4ab886",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": 0,
+              "transform": "translateY(20px)"
+            }
+          }
+        },
+        {
+          "id": "ebd02cc3-7dd8-4a8d-b890-f87fa44d63ba",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1,
+              "transform": "translateY(0px)"
+            },
+            "animationDuration": 800
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "d81c33e5-8d95-4a92-9bad-89aed26f7ebd",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-1"
+          }
+        },
+        {
+          "id": "e467c0e7-8cfe-4791-a555-c872b81e221d",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "fb1ee4cd-1ffe-4a7c-91e4-71057bc19cf6",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "exiting"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ff56a775-afe3-414a-9ae6-3cbd273b9507",
+      "name": "showSlide2",
+      "startOperations": [
+        {
+          "id": "9acb5e0b-1d23-470a-8793-3b988de3d9ec",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-2"
+          }
+        },
+        {
+          "id": "bed6212f-5c90-48e4-af74-dfa4610e6c1f",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "f7134f08-0ee7-450c-a9b5-1e8965bf9daa",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-2 .feature-1"
+          }
+        },
+        {
+          "id": "9d85110f-0e22-4615-a8e3-b2c5567a2c23",
+          "systemName": "animateWithClass",
+          "operationData": {
+            "className": "fade-in",
+            "removeClass": false
+          }
+        },
+        {
+          "id": "c20ec573-4511-48a7-93d1-c9b9cdb2b931",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-2 .feature-2"
+          }
+        },
+        {
+          "id": "18f42862-4561-4396-8033-908b0a5f12e2",
+          "systemName": "wait",
+          "operationData": {
+            "milliseconds": 200
+          }
+        },
+        {
+          "id": "fc9040cc-a5a6-4c12-a573-d74bdea28577",
+          "systemName": "animateWithClass",
+          "operationData": {
+            "className": "fade-in",
+            "removeClass": false
+          }
+        },
+        {
+          "id": "2dddf5ae-f0dc-4815-bba6-dcbec6c1d460",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-2 .feature-3"
+          }
+        },
+        {
+          "id": "78c7f5f0-66ae-4553-b518-ee75f96c3648",
+          "systemName": "wait",
+          "operationData": {
+            "milliseconds": 400
+          }
+        },
+        {
+          "id": "5af6af5a-a347-4b13-90ca-6f30648f7939",
+          "systemName": "animateWithClass",
+          "operationData": {
+            "className": "fade-in",
+            "removeClass": false
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "6684ae97-5c71-402e-a023-f35745d5519f",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-2"
+          }
+        },
+        {
+          "id": "52231e38-d9d4-4e3e-aa73-5b67c3de6402",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "90cda45d-14c1-4192-bbe4-5818d6b9ffce",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "exiting"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7af370bc-0028-4056-af71-91127572bf74",
+      "name": "showSlide3",
+      "startOperations": [
+        {
+          "id": "76315acd-fd9e-40e7-a68f-d27d605e8b27",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3"
+          }
+        },
+        {
+          "id": "dc6d050f-dd03-4011-942a-f58906ae2ab7",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "40d2f647-111d-4f5f-828f-fb395761c511",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3 .demo-container"
+          }
+        },
+        {
+          "id": "2d35c264-8928-4134-8a9a-9a5eea525bc9",
+          "systemName": "animateWithClass",
+          "operationData": {
+            "className": "fade-in",
+            "removeClass": false
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "ab92b479-5050-454b-829a-42bc28e6f3f5",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3"
+          }
+        },
+        {
+          "id": "32f1c3ff-d894-4a73-aeea-c6301057eb3d",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "active"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e10c1c22-aee9-4ed2-957a-3b0886aee88a",
+      "name": "highlightStep1",
+      "startOperations": [
+        {
+          "id": "c44d2aaf-96b0-48d2-a83c-52c128d1872f",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3 .demo-step-1"
+          }
+        },
+        {
+          "id": "1fec79d5-63e4-424d-b348-cf450576b453",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "3ae868eb-14eb-4858-8347-15e1bc35532a",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3 .demo-step-1"
+          }
+        },
+        {
+          "id": "73d80a92-43fd-4ea9-b127-4fb202dc396f",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "80aa50d5-86ec-4a49-b3f0-bf18e225eab0",
+      "name": "highlightStep2",
+      "startOperations": [
+        {
+          "id": "9f771d90-c15e-475d-b9d2-ceef5df97a6b",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3 .demo-step-2"
+          }
+        },
+        {
+          "id": "4469e53e-70ff-4839-9a97-9e2559730497",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "419debcb-f380-4aa4-849f-db327effedfe",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-3 .demo-step-2"
+          }
+        },
+        {
+          "id": "2ce3ae54-0320-42ef-a950-a8853febdcf9",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "af46c6f5-f15b-4068-a20f-b2047a5c50d7",
+      "name": "showFinalSlide",
+      "startOperations": [
+        {
+          "id": "932a1598-6f53-471d-b480-3f76a141fed2",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-4"
+          }
+        },
+        {
+          "id": "b98a7ad5-a561-40d0-99c4-21958c780a79",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "6a06db6e-ce70-4a7f-8378-36eebb7ad38b",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-4 .cta-title"
+          }
+        },
+        {
+          "id": "226ace40-fe4a-43d0-ad94-78975623da7e",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "transform": "scale(0.8)",
+              "opacity": 0
+            }
+          }
+        },
+        {
+          "id": "6917493a-9eee-4d88-830e-16e877626967",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "transform": "scale(1)",
+              "opacity": 1
+            },
+            "animationDuration": 800
+          }
+        },
+        {
+          "id": "06df6bba-7501-44b2-a7bd-5b7917d5e53d",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-4 .cta-button"
+          }
+        },
+        {
+          "id": "0db54686-2ed9-4f9d-8e8d-9d87a7fe4793",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "transform": "translateY(30px)",
+              "opacity": 0
+            }
+          }
+        },
+        {
+          "id": "a8d721df-b479-4cd9-b33f-51d21df4e0dc",
+          "systemName": "wait",
+          "operationData": {
+            "milliseconds": 400
+          }
+        },
+        {
+          "id": "a68375bf-6608-42e5-9a5d-634cae5a4ed6",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "transform": "translateY(0px)",
+              "opacity": 1
+            },
+            "animationDuration": 600
+          }
+        },
+        {
+          "id": "cd0362b3-4a7b-4928-931f-7ff39d16fb15",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "pulse"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "da6e5564-9593-458e-93b7-3c042dd84c32",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".slide-4"
+          }
+        },
+        {
+          "id": "df9286a0-9d56-4eb1-a1b8-187813f0514e",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "active"
+          }
+        }
+      ]
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "1b42b0f4-f6ac-480f-af3d-0f99d5b632cd",
+      "uri": "presentation",
+      "type": "animation",
+      "duration": 20,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "1d33cd47-b2d8-4c3e-a630-81a6bfb2cbff",
+          "name": "timeline-action-0-4",
+          "startOperations": [
+            {
+              "id": "e3a87b05-6a3e-4620-9c22-fbb486546bad",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showSlide1"
+              }
+            },
+            {
+              "id": "34debe52-5acc-4537-9e19-546fd776a73f",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "c829fba8-a70c-4296-94fc-a9ef635dbc5a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showSlide1"
+              }
+            },
+            {
+              "id": "2308f6bc-50f9-4923-b9e6-2ee9626f682b",
+              "systemName": "endAction",
+              "operationData": {}
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 4
+          }
+        },
+        {
+          "id": "a42ab52a-efa7-4893-91ff-1a9d3971b497",
+          "name": "timeline-action-4-5",
+          "startOperations": [
+            {
+              "id": "ea86b3fb-a74e-47e1-8d54-53bb74e30b0b",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-1"
+              }
+            },
+            {
+              "id": "15dd838e-e01b-4ad4-8316-9a6fd282a555",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "active"
+              }
+            },
+            {
+              "id": "c108ea00-d712-4829-be5e-ca353cfaa84d",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "exiting"
+              }
+            },
+            {
+              "id": "38a908f3-79a9-470d-a733-7a50e9b6dd75",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-2"
+              }
+            },
+            {
+              "id": "be1137b1-450a-42bb-bd9a-bba5768793ff",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "55af2f0c-c741-471b-b0ba-56677b2bf825",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-1"
+              }
+            },
+            {
+              "id": "b92e43c6-65e1-4449-9f93-bf50221bfa42",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "exiting"
+              }
+            }
+          ],
+          "duration": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        {
+          "id": "8ac37306-b219-4068-b3db-5356721a1ea6",
+          "name": "timeline-action-5-9",
+          "startOperations": [
+            {
+              "id": "c73ca0ad-cc59-4ad9-b885-7cb128de6c26",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showSlide2"
+              }
+            },
+            {
+              "id": "46a0ecff-fe20-4fb4-9ef3-3a9925de6750",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "b45ff4d4-05f1-4882-8729-dfbcbee68bed",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showSlide2"
+              }
+            },
+            {
+              "id": "2a89a9ec-ec67-4c71-98a6-f77cacddb466",
+              "systemName": "endAction",
+              "operationData": {}
+            }
+          ],
+          "duration": {
+            "start": 5,
+            "end": 9
+          }
+        },
+        {
+          "id": "a93f528e-b86c-4a90-b628-2dda5e69338c",
+          "name": "timeline-action-9-10",
+          "startOperations": [
+            {
+              "id": "a0f8be78-1620-4eb2-87d8-e698574f6170",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-2"
+              }
+            },
+            {
+              "id": "6b1b9ab7-b810-4a45-813e-12c249c70895",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "active"
+              }
+            },
+            {
+              "id": "5ea2148b-f190-48fa-aad2-1ae2b7534d5b",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "exiting"
+              }
+            },
+            {
+              "id": "a1faedaa-8f4c-4adb-82c4-bebad00e3790",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-3"
+              }
+            },
+            {
+              "id": "6c3d8633-db9c-4baa-b055-36833f07ab15",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "d329a0ce-5f30-4366-bfce-91f527046a18",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-2"
+              }
+            },
+            {
+              "id": "1ea14f9f-e5dd-4f51-a4ac-fc574dc4c407",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "exiting"
+              }
+            }
+          ],
+          "duration": {
+            "start": 9,
+            "end": 10
+          }
+        },
+        {
+          "id": "8d4c3d81-7b47-4ef8-ba5d-ad59e4baddf5",
+          "name": "timeline-action-10-14",
+          "startOperations": [
+            {
+              "id": "2e1b6bca-c1f4-430a-a001-4fe79a1c994f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showSlide3"
+              }
+            },
+            {
+              "id": "8f8f6f34-5992-402b-afab-5dca30ed4673",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "f9215e11-676b-4e4b-8f2d-77f2a06d886e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showSlide3"
+              }
+            },
+            {
+              "id": "2a87cb89-d494-4ebd-b3ab-4b7636f3cf64",
+              "systemName": "endAction",
+              "operationData": {}
+            }
+          ],
+          "duration": {
+            "start": 10,
+            "end": 14
+          }
+        },
+        {
+          "id": "fdfa916a-a6af-4f09-9614-d35f2dfd8e49",
+          "name": "timeline-action-10-14",
+          "startOperations": [
+            {
+              "id": "e2b5f6de-501f-4fa0-ae2f-d94e9b401578",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightStep1"
+              }
+            },
+            {
+              "id": "59ec3879-2d87-4cc9-8e7b-e693beb8d4ab",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "3279b894-635e-4e34-87fd-f0a39a9f633a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightStep1"
+              }
+            },
+            {
+              "id": "f16bb631-9826-4ebf-9e94-20727fc1587d",
+              "systemName": "endAction",
+              "operationData": {}
+            }
+          ],
+          "duration": {
+            "start": 10,
+            "end": 14
+          }
+        },
+        {
+          "id": "404a5f63-25f4-4737-b81c-a47d39ecd30a",
+          "name": "timeline-action-14-16",
+          "startOperations": [
+            {
+              "id": "8b5c85bf-e9f7-4405-bd7a-79092aae16c9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightStep2"
+              }
+            },
+            {
+              "id": "4e869f06-b4b5-4d34-b37e-6c0ec8e22e36",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "a87ea289-b449-4104-b308-1140dbe91c4e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightStep2"
+              }
+            },
+            {
+              "id": "63ec6672-d4ca-420e-8b92-dac9a3dc6683",
+              "systemName": "endAction",
+              "operationData": {}
+            }
+          ],
+          "duration": {
+            "start": 14,
+            "end": 16
+          }
+        },
+        {
+          "id": "d06f9c87-b7ee-49f0-85d5-4e808246da64",
+          "name": "timeline-action-16-17",
+          "startOperations": [
+            {
+              "id": "64721709-03ed-4800-a7d0-55ba21093927",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-3"
+              }
+            },
+            {
+              "id": "be7c5532-0b8c-40c3-b883-b0f440d4aaf2",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "active"
+              }
+            },
+            {
+              "id": "9672cffb-9216-4fbc-a2d3-9e640569ece3",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-4"
+              }
+            },
+            {
+              "id": "9482087f-0d16-49b0-9c51-7562fe0c8c5f",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "b6d36b6d-200a-4c7f-8869-71f6b28399ce",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".slide-3"
+              }
+            },
+            {
+              "id": "9e1d7a3d-5bb8-450b-9e95-719646f2369f",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "hidden"
+              }
+            }
+          ],
+          "duration": {
+            "start": 16,
+            "end": 17
+          }
+        },
+        {
+          "id": "070bb0f1-f275-444d-961a-7444e3764662",
+          "name": "timeline-action-17-20",
+          "startOperations": [
+            {
+              "id": "c71c9872-63a6-4c2f-ad60-82313023e86a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showFinalSlide"
+              }
+            },
+            {
+              "id": "c554a585-9078-481f-a785-9825a7642c0b",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "ea069413-df04-4d7e-8f41-7048737116c5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showFinalSlide"
+              }
+            },
+            {
+              "id": "fc69441c-cda5-4962-808f-a9fa5f3ec1c7",
+              "systemName": "endAction",
+              "operationData": {}
+            }
+          ],
+          "duration": {
+            "start": 17,
+            "end": 20
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "id": "daa3f0b5-be8d-425a-943c-074142f64ba9",
+      "vendor": "",
+      "systemName": "RequestAnimationFrameTimelineProvider"
+    }
+  }
+}

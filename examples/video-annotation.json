@@ -1,0 +1,550 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "cec8273d-d1e1-4e94-b445-8c77b95adb4f",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "body",
+  "language": "en-US",
+  "layoutTemplate": "default",
+  "availableLanguages": [
+    {
+      "id": "45c23721-54ed-4d56-9076-a051bbc7722c",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "5f5df2ac-728a-494f-a040-dcb5732ddc89",
+      "uri": "presentation.mp4",
+      "type": "mediaplayer",
+      "duration": 15,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "092cd2a9-4ab8-4250-9906-85deaf0dfadb",
+          "name": "timeline-action-0-3",
+          "startOperations": [
+            {
+              "id": "8235e10e-b1f8-4161-9fc5-0d7e110cbf34",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "id": "ceaf0c7b-18b4-45a4-86db-4a45472cb9fb",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "id": "61e0689d-4cb0-4a47-8958-0a3e74d88ee3",
+              "systemName": "setStyle",
+              "operationData": {
+                "properties": {
+                  "opacity": 0
+                }
+              }
+            },
+            {
+              "id": "9b2f70d3-c722-465c-a54d-27347f7504da",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "082e247c-0680-4fd4-9f0e-e764efed8d7d",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "id": "1f1d03ad-6a95-47bc-bccb-f52896f71add",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 500
+              }
+            },
+            {
+              "id": "7d13eec2-6b2c-4350-b5ee-99657dcd343f",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3
+          }
+        },
+        {
+          "id": "4c5e04f4-4953-443f-97eb-b50ae39e0dcb",
+          "name": "timeline-action-0-3",
+          "startOperations": [
+            {
+              "id": "0e12ba7f-cabd-4e24-88c7-f722df9fa292",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#subtitle"
+              }
+            },
+            {
+              "id": "d994a32d-a132-4b77-bac0-94fa403d54d6",
+              "systemName": "wait",
+              "operationData": {
+                "milliseconds": 200
+              }
+            },
+            {
+              "id": "bbee6e52-fa65-4b4a-88b8-a98f40a22b37",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "id": "4c8eb636-0eb9-4a6c-b9b8-cd0da51ac138",
+              "systemName": "setStyle",
+              "operationData": {
+                "properties": {
+                  "opacity": 0
+                }
+              }
+            },
+            {
+              "id": "c8a5104e-cdb5-4418-bc85-8cd175ca3372",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "193cc620-1794-40fe-abc5-3413e06392c5",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#subtitle"
+              }
+            },
+            {
+              "id": "b2b6f736-ae97-4a86-a3cb-07ab5299e155",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 500
+              }
+            },
+            {
+              "id": "beb0b1fd-8ecb-4cc6-a573-bfd86372c266",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3
+          }
+        },
+        {
+          "id": "ad349de7-432c-426a-b0fd-7a15ff9359a0",
+          "name": "timeline-action-3-8",
+          "startOperations": [
+            {
+              "id": "83c3fc11-9668-4eed-aab5-0252e7ac1930",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#content"
+              }
+            },
+            {
+              "id": "c93aff72-f1cb-4f8b-9425-9dab00053d19",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "id": "4ddac754-568d-4f64-bcf5-b2fcd595046a",
+              "systemName": "setStyle",
+              "operationData": {
+                "properties": {
+                  "opacity": 0
+                }
+              }
+            },
+            {
+              "id": "0f3c5a92-2407-497e-a4a1-b2bddbf46148",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 1
+                },
+                "animationDuration": 800
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "ab15c6ec-a88a-4a51-b28c-1585497136eb",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#content"
+              }
+            },
+            {
+              "id": "616b0063-e081-4ceb-9307-4c61c18c278e",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 800
+              }
+            },
+            {
+              "id": "6fa14e0a-e9b2-4e3c-8508-32fb61b058f9",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 3,
+            "end": 8
+          }
+        },
+        {
+          "id": "57e53aa4-6259-47ab-984d-c0e2129f8992",
+          "name": "timeline-action-3-8",
+          "startOperations": [
+            {
+              "id": "7ce619d3-8ad8-4996-9227-35c8561a3a23",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".highlight"
+              }
+            },
+            {
+              "id": "98fb7edb-6b13-4366-b538-cfd63207c841",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "fec36e20-f944-4227-ba3f-a2c3f2de2818",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".highlight"
+              }
+            },
+            {
+              "id": "efb7933a-1cb4-4c17-9745-cd8c87144761",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ],
+          "duration": {
+            "start": 3,
+            "end": 8
+          }
+        },
+        {
+          "id": "0b43675f-3113-4417-9d22-09c7c3892898",
+          "name": "timeline-action-8-12",
+          "startOperations": [
+            {
+              "id": "6f88b529-a1d3-4d7c-80fa-38160ec8fabf",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#cta-button"
+              }
+            },
+            {
+              "id": "8d573a37-2f27-4712-b78a-e09dd3a05c8e",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "id": "3fc142dd-4694-462e-9052-685a25293fb3",
+              "systemName": "setStyle",
+              "operationData": {
+                "properties": {
+                  "opacity": 0
+                }
+              }
+            },
+            {
+              "id": "b1f27ac8-fc4c-4c00-9bc2-268298bc501d",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 1
+                },
+                "animationDuration": 600
+              }
+            },
+            {
+              "id": "5fc18092-1116-442a-8d6a-a081c7459dfd",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "883d0692-aaf8-4327-8219-1f38a2b4a189",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#cta-button"
+              }
+            },
+            {
+              "id": "af625875-5e9e-459b-8b7f-07dfa4afb70c",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "fbf0ad28-60ba-4543-8762-065ce866edf7",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 600
+              }
+            },
+            {
+              "id": "74b1b2e5-b278-44de-afca-479009d39b37",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 8,
+            "end": 12
+          }
+        },
+        {
+          "id": "4be2a3ca-6b04-4817-bef6-4f031cff9730",
+          "name": "timeline-action-12-15",
+          "startOperations": [
+            {
+              "id": "51cf60f2-cbe2-40f7-888a-bcf3fcb4aeb9",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "id": "61bb4f43-a12c-4c16-a493-e2032356a585",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "cb4e90ca-9afa-4147-908a-01529f4a6087",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "id": "296714c3-8269-4df3-88af-c41695450a66",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 12,
+            "end": 15
+          }
+        },
+        {
+          "id": "af3ebaf0-4e09-4f76-9a3b-c279325ccf0e",
+          "name": "timeline-action-12-15",
+          "startOperations": [
+            {
+              "id": "6ecd5873-f354-48aa-a093-f68f29898f61",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#subtitle"
+              }
+            },
+            {
+              "id": "30116df7-0a0e-4bb8-8cfe-dc5d59bb6eed",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "f0c0d825-0c26-475e-9e69-f179651ee565",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#subtitle"
+              }
+            },
+            {
+              "id": "d922b41a-c107-4e87-a46f-5d33ade7079d",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 12,
+            "end": 15
+          }
+        },
+        {
+          "id": "28587d32-687a-4cdc-bd6a-63a15c80fe49",
+          "name": "timeline-action-12-15",
+          "startOperations": [
+            {
+              "id": "c6cbdf80-d5ee-4bb8-b36c-34f99cfdc0f1",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#content"
+              }
+            },
+            {
+              "id": "d09268c0-daca-4068-ab8b-455538a8f9bd",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "af42ecaf-894b-4718-9de1-f728ef55b1e5",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#content"
+              }
+            },
+            {
+              "id": "e4a89d1c-ba97-47b3-885f-8d498a0bc95c",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 12,
+            "end": 15
+          }
+        },
+        {
+          "id": "dba96ca0-7d98-49ff-be77-4a37ab03ee8c",
+          "name": "timeline-action-12-15",
+          "startOperations": [
+            {
+              "id": "2ee7584c-affc-450e-afa2-b891dba15288",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#cta-button"
+              }
+            },
+            {
+              "id": "d75cd1ec-bdf2-4f04-aef2-812bb8a3158e",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "opacity": 0
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "543f7fba-0ab9-45d1-a48e-d8bf439e9f6c",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#cta-button"
+              }
+            },
+            {
+              "id": "ed4477c5-6ded-4ed0-9109-f518060f2dc0",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 12,
+            "end": 15
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "mediaplayer": {
+      "id": "89488f87-31bc-4c1f-af9c-9f815b9cc8da",
+      "vendor": "",
+      "systemName": "MediaElementTimelineProvider",
+      "selector": ""
+    }
+  }
+}

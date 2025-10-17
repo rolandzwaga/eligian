@@ -1,0 +1,88 @@
+// Type Annotation Test File - Phase 18 T295 Verification
+// This file tests that type annotations work correctly in VS Code
+
+// Test 1: String type annotation
+action fadeInElement(selector: string) [
+  selectElement(selector)
+  animate({opacity: 1}, 1000)
+]
+
+// Test 2: Number type annotation
+action delayAction(duration: number) [
+  wait(duration)
+]
+
+// Test 3: Boolean type annotation
+action toggleClass(flag: boolean) [
+  selectElement("#test")
+  addClass("active")
+]
+
+// Test 4: Object type annotation
+action styleElement(styles: object) [
+  selectElement("#test")
+  setStyle(styles)
+]
+
+// Test 5: Array type annotation
+action processItems(items: array) [
+  selectElement("#test")
+]
+
+// Test 6: Multiple typed parameters
+action animateWithDuration(selector: string, duration: number, enabled: boolean) [
+  selectElement(selector)
+  animate({opacity: 1}, duration)
+]
+
+// Test 7: Mixed typed and untyped parameters (backwards compatibility)
+action mixedParams(selector: string, duration, flag: boolean) [
+  selectElement(selector)
+  wait(duration)
+]
+
+// Test 8: Untyped parameters (backwards compatibility)
+action untypedParams(selector, duration) [
+  selectElement(selector)
+  wait(duration)
+]
+
+// Test 9: Endable action with type annotations
+endable action showWithType(selector: string, duration: number) [
+  selectElement(selector)
+  addClass("active")
+  animate({opacity: 1}, duration)
+] [
+  selectElement(selector)
+  removeClass("active")
+  animate({opacity: 0}, duration)
+]
+
+// Test 10: No parameters
+action simpleAction() [
+  selectElement("#test")
+  addClass("done")
+]
+
+// Timeline to verify compilation works
+timeline "test" using raf {
+  at 0s..2s {
+    fadeInElement("#elem1")
+  }
+
+  at 2s..3s {
+    delayAction(500)
+  }
+
+  at 3s..5s {
+    animateWithDuration("#elem2", 1000, true)
+  }
+
+  at 5s..7s {
+    showWithType("#elem3", 800)
+  }
+
+  at 7s..8s {
+    simpleAction()
+  }
+}

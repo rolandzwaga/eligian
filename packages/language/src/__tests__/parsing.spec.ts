@@ -219,6 +219,132 @@ describe('Eligian Grammar - Parsing', () => {
     });
   });
 
+  describe('Type annotation parsing (Phase 18)', () => {
+    test('should parse action with string type annotation', async () => {
+      const program = await parseEligian(`
+        action fadeIn(selector: string) [
+          selectElement(selector)
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters).toHaveLength(1);
+      expect(action.parameters[0].name).toBe('selector');
+      expect(action.parameters[0].type).toBe('string');
+    });
+
+    test('should parse action with number type annotation', async () => {
+      const program = await parseEligian(`
+        action wait(duration: number) [
+          wait(duration)
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters[0].name).toBe('duration');
+      expect(action.parameters[0].type).toBe('number');
+    });
+
+    test('should parse action with boolean type annotation', async () => {
+      const program = await parseEligian(`
+        action toggle(enabled: boolean) [
+          setData({"operationdata.flag": enabled})
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters[0].name).toBe('enabled');
+      expect(action.parameters[0].type).toBe('boolean');
+    });
+
+    test('should parse action with object type annotation', async () => {
+      const program = await parseEligian(`
+        action setConfig(config: object) [
+          setData({"operationdata.config": config})
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters[0].name).toBe('config');
+      expect(action.parameters[0].type).toBe('object');
+    });
+
+    test('should parse action with array type annotation', async () => {
+      const program = await parseEligian(`
+        action process(items: array) [
+          setData({"operationdata.items": items})
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters[0].name).toBe('items');
+      expect(action.parameters[0].type).toBe('array');
+    });
+
+    test('should parse action with multiple typed parameters', async () => {
+      const program = await parseEligian(`
+        action animate(selector: string, duration: number, easing: string) [
+          selectElement(selector)
+          animate(duration, easing)
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters).toHaveLength(3);
+      expect(action.parameters[0].name).toBe('selector');
+      expect(action.parameters[0].type).toBe('string');
+      expect(action.parameters[1].name).toBe('duration');
+      expect(action.parameters[1].type).toBe('number');
+      expect(action.parameters[2].name).toBe('easing');
+      expect(action.parameters[2].type).toBe('string');
+    });
+
+    test('should parse action with mixed typed and untyped parameters', async () => {
+      const program = await parseEligian(`
+        action fadeIn(selector: string, duration, easing: string) [
+          selectElement(selector)
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters).toHaveLength(3);
+      expect(action.parameters[0].type).toBe('string');
+      expect(action.parameters[1].type).toBeUndefined(); // No type annotation
+      expect(action.parameters[2].type).toBe('string');
+    });
+
+    test('should parse action with no type annotations (backwards compatibility)', async () => {
+      const program = await parseEligian(`
+        action fadeIn(selector, duration) [
+          selectElement(selector)
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      expect(action.parameters).toHaveLength(2);
+      expect(action.parameters[0].type).toBeUndefined();
+      expect(action.parameters[1].type).toBeUndefined();
+    });
+
+    test('should parse endable action with typed parameters', async () => {
+      const program = await parseEligian(`
+        endable action showElement(selector: string, duration: number) [
+          selectElement(selector)
+          addClass("visible")
+        ] [
+          removeClass("visible")
+        ]
+      `);
+
+      const action = program.elements[0] as EndableActionDefinition;
+      expect(action.parameters).toHaveLength(2);
+      expect(action.parameters[0].name).toBe('selector');
+      expect(action.parameters[0].type).toBe('string');
+      expect(action.parameters[1].name).toBe('duration');
+      expect(action.parameters[1].type).toBe('number');
+    });
+  });
+
   describe('Action definition parsing', () => {
     test('should parse regular action definition', async () => {
       const program = await parseEligian(`

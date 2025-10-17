@@ -1,0 +1,1600 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "d965d94d-8664-4812-b66e-877137c87e8d",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "body",
+  "language": "en-US",
+  "layoutTemplate": "default",
+  "availableLanguages": [
+    {
+      "id": "0c2945de-a1b3-48f4-8ad6-6576231e423f",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [
+    {
+      "id": "8bad6285-09dd-4655-a8a0-54fcb0250bb9",
+      "name": "init-globaldata",
+      "startOperations": [
+        {
+          "id": "e0b13303-0590-4357-87b8-8ec7450fd443",
+          "systemName": "setData",
+          "operationData": {
+            "properties": {
+              "globaldata.theme": "dark",
+              "globaldata.animationDuration": 1000,
+              "globaldata.slideCount": 3
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "actions": [
+    {
+      "id": "91f5ae7a-939c-44ab-9577-f626a082144c",
+      "name": "fadeIn",
+      "startOperations": [
+        {
+          "id": "737dc877-44e6-414d-aa9b-0115cf2c1bc9",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "a3ba7baa-e99a-4d4c-bf03-ceed2269713c",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": 0
+            }
+          }
+        },
+        {
+          "id": "57e87150-974b-42f2-a209-c8a6c170573a",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            }
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "id": "0fc56cda-5e3e-4dda-aa43-d50fba1bb8fe",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "5e4fe6c1-e058-42a0-aa44-ed0f56008c04",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "eb254d00-5a22-42eb-a3d9-958563f552e5",
+      "name": "highlightElement",
+      "startOperations": [
+        {
+          "id": "0ed1b16d-43b1-412a-9f60-ce842813828a",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "highlightDuration",
+            "value": 300
+          }
+        },
+        {
+          "id": "ce72d7fb-d72e-4f33-b8a4-97a7fc058b66",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "defaultColor",
+            "value": "yellow"
+          }
+        },
+        {
+          "id": "8e8a2841-1169-4320-b49b-9e1afa363fa7",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "a2f1a5fe-e5fa-458c-8c9d-11c787609f13",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "transition": "background-color 0.3s"
+            }
+          }
+        },
+        {
+          "id": "072990db-a02a-4888-ba53-efd06198ed34",
+          "systemName": "wait",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "f7b09233-3211-437b-818f-6d30230fa97a",
+      "name": "conditionalHighlight",
+      "startOperations": [
+        {
+          "id": "f92162e2-721a-48b0-9eb4-e64ca9d38969",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "641b97ae-00b2-4961-ba67-9b6d56cfbb03",
+          "systemName": "when",
+          "operationData": {
+            "condition": "$operationdata.shouldHighlight"
+          }
+        },
+        {
+          "id": "45e973e2-16d1-4860-95df-29988a0f3d07",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "id": "993fc198-d1a0-419b-9328-9069243f1cea",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "border": "2px solid yellow"
+            }
+          }
+        },
+        {
+          "id": "48b49021-9218-4b73-ac94-82b473873716",
+          "systemName": "otherwise",
+          "operationData": {}
+        },
+        {
+          "id": "8e6e7be8-7f36-4993-96f4-8d9622c96d24",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "id": "2afbe07f-6972-47da-b1fc-feefe02b472f",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "border": "none"
+            }
+          }
+        },
+        {
+          "id": "bbac2857-bb5a-4e59-bf4b-bb09cf9c521d",
+          "systemName": "endWhen",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "764fcf98-2b3e-42b5-b4c9-0a79383a9242",
+      "name": "animateItems",
+      "startOperations": [
+        {
+          "id": "263c1a05-5299-4540-b45e-e4cee363c43a",
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "$operationdata.items",
+            "itemName": "item"
+          }
+        },
+        {
+          "id": "340703cb-7db6-4c4b-a164-6ce06c182d2d",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "16af8345-8c0a-42ff-8fcc-50cddaf34ccf",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "animated"
+          }
+        },
+        {
+          "id": "fa34a6eb-2a9a-4ed9-bcb2-cd4481797a32",
+          "systemName": "wait",
+          "operationData": {
+            "milliseconds": 200
+          }
+        },
+        {
+          "id": "7f1b72f9-60fd-4318-9fc0-434f3d086d76",
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "2a7db3ab-1be7-482c-b934-08714c29fb68",
+      "name": "complexAnimation",
+      "startOperations": [
+        {
+          "id": "b43790cf-aacf-4c95-9d78-044981a7d20c",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "delayStep",
+            "value": 100
+          }
+        },
+        {
+          "id": "353ae957-918a-463a-8b0a-dc30cbf134d7",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "isVisible",
+            "value": true
+          }
+        },
+        {
+          "id": "5313b2d9-b145-4296-b6a9-178eb21765ca",
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "$operationdata.elements",
+            "itemName": "element"
+          }
+        },
+        {
+          "id": "25082a78-6312-4a5d-8b4f-a50a2ea0b062",
+          "systemName": "selectElement",
+          "operationData": {}
+        },
+        {
+          "id": "46cf0300-c042-40b9-a954-8308238c6659",
+          "systemName": "when",
+          "operationData": {
+            "condition": "$scope.variables.isVisible"
+          }
+        },
+        {
+          "id": "bb329eb2-f160-4ba9-9eab-8bea55172f1f",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            }
+          }
+        },
+        {
+          "id": "740ded12-11c5-4449-b17d-ce42344f1e14",
+          "systemName": "otherwise",
+          "operationData": {}
+        },
+        {
+          "id": "4f2d328a-6ffe-4d87-846b-967957076482",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": 0
+            }
+          }
+        },
+        {
+          "id": "57655b63-5b9e-4ce3-8484-23bd0ac5c6bc",
+          "systemName": "endWhen",
+          "operationData": {}
+        },
+        {
+          "id": "4de2a63b-6032-46f8-aa75-e250750af2e8",
+          "systemName": "wait",
+          "operationData": {}
+        },
+        {
+          "id": "86979b9f-ec37-43d7-8ea8-caa366a57522",
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "796e0627-f678-4a57-8bfa-0a7705183b0b",
+      "name": "expressionExamples",
+      "startOperations": [
+        {
+          "id": "df22173d-afd9-48bd-bd67-95a09d5908fd",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "calculatedDuration",
+            "value": 500
+          }
+        },
+        {
+          "id": "41cd3b40-a1d7-490f-8e0d-adeb0441bf80",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "doubleDuration",
+            "value": 1000
+          }
+        },
+        {
+          "id": "df0fe2bc-3e99-484f-bb62-7be47105f347",
+          "systemName": "when",
+          "operationData": {
+            "condition": true
+          }
+        },
+        {
+          "id": "a59d1077-fd5c-4604-b05b-02cd644c3919",
+          "systemName": "endWhen",
+          "operationData": {}
+        },
+        {
+          "id": "5807bff2-7156-462e-8382-fbd35e7a8df2",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "enabled",
+            "value": true
+          }
+        },
+        {
+          "id": "f8138e10-06dc-4886-a8e8-8fdd8e7a1da4",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".demo"
+          }
+        },
+        {
+          "id": "abe72f96-b7c5-4aa6-ba9f-dba7afeef7e2",
+          "systemName": "when",
+          "operationData": {
+            "condition": "(\"(\\\"globaldata.theme\\\" == \\\"dark\\\")\" && \"$scope.variables.enabled\")"
+          }
+        },
+        {
+          "id": "10826e91-e9e2-42be-9538-130b8adda04b",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "dark-mode-enabled"
+          }
+        },
+        {
+          "id": "6a4466fe-17f4-4017-aac1-3c424683b626",
+          "systemName": "endWhen",
+          "operationData": {}
+        },
+        {
+          "id": "a04d4957-bf70-4c67-8dfc-1c8a4541d067",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "colorOptions",
+            "value": [
+              "red",
+              "blue",
+              "green"
+            ]
+          }
+        },
+        {
+          "id": "d20502ad-de52-4406-ba4e-f15244d7b404",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "animationConfig",
+            "value": {
+              "duration": "$scope.variables.calculatedDuration",
+              "easing": "ease-in-out",
+              "properties": {
+                "opacity": 1,
+                "transform": "scale(1)"
+              }
+            }
+          }
+        },
+        {
+          "id": "43eb6e72-cbc3-49c3-bbff-e674863a33fd",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "color": "globaldata.theme"
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "b4990813-3220-470a-b006-d597787879f5",
+      "uri": "comprehensive-demo",
+      "type": "animation",
+      "duration": 19,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "67ae581d-a8fe-4c06-b12d-2d8a14241346",
+          "name": "timeline-action-0-3",
+          "startOperations": [
+            {
+              "id": "5b388249-638d-4bfe-a783-db02869e7d6e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "d71605b6-b670-416c-80c8-c9758c033f76",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".title",
+                  "duration": 1000
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "7fe20d3a-8e10-4230-b174-6ade9c28571f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "f9fde338-259c-44e9-a34d-15e5a61a9c6a",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".title",
+                  "duration": 1000
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3
+          }
+        },
+        {
+          "id": "75db11df-a4d0-42a0-ab40-bb4ec465ed34",
+          "name": "timeline-action-3-5",
+          "startOperations": [
+            {
+              "id": "b85f17e1-1986-45d8-905d-a48dd1d7d758",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightElement"
+              }
+            },
+            {
+              "id": "e5dda088-fa0a-4105-ae19-4ef1072d2421",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".subtitle",
+                  "color": "yellow"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 3,
+            "end": 5
+          }
+        },
+        {
+          "id": "6757bc43-c7dd-4bff-b4ec-06785bb9990b",
+          "name": "timeline-action-3-8",
+          "startOperations": [
+            {
+              "id": "a783b59d-6b53-45b5-8c43-73f5c4a487fe",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".content"
+              }
+            },
+            {
+              "id": "973c1cd0-4ae9-4256-996c-15676aa4c8cf",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "id": "45762f10-a90d-4070-855c-63dd9eab3774",
+              "systemName": "forEach",
+              "operationData": {
+                "collection": [
+                  "intro",
+                  "main",
+                  "outro"
+                ],
+                "itemName": "section"
+              }
+            },
+            {
+              "id": "8a541967-40e7-4566-b3a7-fdb1947e21ea",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "41156429-50cb-45d9-a446-9050595a6e2f",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "active"
+              }
+            },
+            {
+              "id": "3d7fd1ea-85d0-4365-be4b-879784ba4c62",
+              "systemName": "wait",
+              "operationData": {
+                "milliseconds": 500
+              }
+            },
+            {
+              "id": "6fae6ea9-6e46-405b-bbb4-7ef7172a3af6",
+              "systemName": "endForEach",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "897da419-3547-4804-99f2-4351b2f70d91",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".content"
+              }
+            },
+            {
+              "id": "863b2024-116d-4211-bfcc-c17c461b75ac",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "duration": {
+            "start": 3,
+            "end": 8
+          }
+        },
+        {
+          "id": "55def92d-22ea-47fa-9797-76eff5b96fca",
+          "name": "timeline-action-5-10",
+          "startOperations": [
+            {
+              "id": "1e8ace50-6f2e-42e2-839d-aa760ada67ea",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".panel"
+              }
+            },
+            {
+              "id": "b219eaa8-f373-46d0-bd6b-f2cad29531b7",
+              "systemName": "when",
+              "operationData": {
+                "condition": "(\"globaldata.theme\" == \"dark\")"
+              }
+            },
+            {
+              "id": "255e15dc-9f13-45bd-8be2-c7675a96c5a4",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "dark-panel"
+              }
+            },
+            {
+              "id": "abf4a5c3-0a23-4297-86e4-febd5e056e77",
+              "systemName": "setStyle",
+              "operationData": {
+                "properties": {
+                  "backgroundColor": "#333",
+                  "color": "#fff"
+                }
+              }
+            },
+            {
+              "id": "b0964eed-0d0c-40cd-bb01-c6eb0381c01d",
+              "systemName": "otherwise",
+              "operationData": {}
+            },
+            {
+              "id": "e672398b-3547-446e-8939-49eba79c8437",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "light-panel"
+              }
+            },
+            {
+              "id": "469b2deb-70a4-42e5-bfb7-578dbb152c3e",
+              "systemName": "setStyle",
+              "operationData": {
+                "properties": {
+                  "backgroundColor": "#fff",
+                  "color": "#333"
+                }
+              }
+            },
+            {
+              "id": "b2de8109-2075-430d-8cd6-0dfdbc546833",
+              "systemName": "endWhen",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "14422246-82ca-4323-b4a6-1af2aefd7384",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".panel"
+              }
+            },
+            {
+              "id": "fffbc367-6ed6-48dd-a9cc-618e3bc9d115",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "dark-panel"
+              }
+            },
+            {
+              "id": "8100d1d0-17c4-4f4e-a4c7-aed81d489ad8",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "light-panel"
+              }
+            }
+          ],
+          "duration": {
+            "start": 5,
+            "end": 10
+          }
+        },
+        {
+          "id": "5cc73c99-e105-4c8e-9886-322d3193c676",
+          "name": "timeline-action-8-12",
+          "startOperations": [
+            {
+              "id": "4c4899ce-6d9a-45fe-8587-ce0a2bbe3ed4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "5987de43-1234-4e98-952d-64891eac7e59",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".footer",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "ca7cabff-12f0-4a34-a111-5d5a3757bdf0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "c535e219-a668-47c6-8eb1-14eba30bccb4",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".footer",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 8,
+            "end": 12
+          }
+        },
+        {
+          "id": "788169e9-6d42-40da-ae50-2e2ff971339f",
+          "name": "timeline-action-13-15",
+          "startOperations": [
+            {
+              "id": "0d90eabd-461c-4c6b-b16c-673c8b46271a",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".note"
+              }
+            },
+            {
+              "id": "918b7d22-e7fd-4b88-8c9e-b865674591c2",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "a14d3119-5ed6-48bd-84ae-6647c78d57f7",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".note"
+              }
+            },
+            {
+              "id": "5fc7e4b0-97a7-48fd-87e1-847d388d5bd6",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            }
+          ],
+          "duration": {
+            "start": 13,
+            "end": 15
+          }
+        },
+        {
+          "id": "99626654-21ae-4d97-a5e8-2ea821da5bc3",
+          "name": "timeline-action-15-19",
+          "startOperations": [
+            {
+              "id": "e57f7eef-af6e-4877-952f-4257e331750a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "b8150e1f-1b9e-4cc4-ba67-2d9bc656f30c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".credits",
+                  "duration": 800
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "ee87c6da-68a5-4497-bb8a-1eabdfc319f4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "b3c838c6-405c-49be-be0b-a0ebfdcadd5e",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".credits",
+                  "duration": 800
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 15,
+            "end": 19
+          }
+        }
+      ]
+    },
+    {
+      "id": "c721f39f-72f8-4369-9548-b1b603f2d042",
+      "uri": "stagger-demo",
+      "type": "animation",
+      "duration": 7,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "9bc1064d-3438-4e6c-a47f-0574f638cf21",
+          "name": "stagger-fadeIn-0-0-2",
+          "startOperations": [
+            {
+              "id": "ff82b477-9e6a-4d24-82af-7c09b0ba859e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "1813ba0e-fd60-48c1-8594-4b52845d3bc8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".card-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "0ebe7e4d-07f8-4e17-922a-1eae80e007a3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "f3cae707-2621-412d-a12a-edde86974a39",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".card-1"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 2
+          }
+        },
+        {
+          "id": "28119264-ef9d-4b40-9e0a-17ed3340d0a6",
+          "name": "stagger-fadeIn-1-0.2-2.2",
+          "startOperations": [
+            {
+              "id": "8b010133-4e4a-465e-80aa-5eb2ab629d37",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "4cc721db-7fb1-4bf2-b8f2-63a97f7ef13a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".card-2"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "b1da9e8c-74ef-40dc-aea3-2fa77aae548d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "740e0916-7ad6-4c5e-a15f-6523e3d9fe55",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".card-2"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0.2,
+            "end": 2.2
+          }
+        },
+        {
+          "id": "8fc1e82e-979e-4b2c-8e9a-9c58b7cdfd9a",
+          "name": "stagger-fadeIn-2-0.4-2.4",
+          "startOperations": [
+            {
+              "id": "7dba8d1b-c1b4-47dc-bf61-debf38def9fc",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "298e927d-d47f-4f26-9b51-ef7611dfc0e5",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".card-3"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "9c9ae215-75f9-4205-835a-d8eb238d7a6f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "c0c2008a-3d2f-462b-8e0c-c76a551a77ad",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".card-3"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0.4,
+            "end": 2.4
+          }
+        },
+        {
+          "id": "8c26a27e-9329-42f1-86f6-6dd9ebca5303",
+          "name": "stagger-inline-0-2.4-3.4",
+          "startOperations": [
+            {
+              "id": "953908e4-c8f5-4893-9f30-9917c92f0b0e",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "2ad53218-dd51-482c-87c1-a1f337a7b227",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "f436ece8-cc78-46e1-a8f0-987d26c375a7",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1.1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "b6154d3d-8a69-4274-81f4-0b0fdd78f6d3",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "60d5375a-2b84-4a6e-a85c-45c55d8e67a7",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "3386114d-50df-4e4d-b466-0df8cd4d6865",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "duration": {
+            "start": 2.4,
+            "end": 3.4
+          }
+        },
+        {
+          "id": "1972765c-cdb9-48a8-ac4d-4cb99d7f4126",
+          "name": "stagger-inline-1-2.5-3.5",
+          "startOperations": [
+            {
+              "id": "af25612f-f73c-400c-af09-fe7768d0e871",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "7397708b-7ea1-4e18-9e9a-b98412f913d8",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "8d705fa7-0ca8-4723-87de-503cd3bb5c52",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1.1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "7dc38f6c-f7b5-4900-b736-f16d71bbb951",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "9ee77e7f-049e-41e9-bcec-18da384488ba",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "b8055fef-cd42-4b04-9675-b26212a6529c",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "duration": {
+            "start": 2.5,
+            "end": 3.5
+          }
+        },
+        {
+          "id": "d47cb099-edfa-4567-bbe2-75282ce1e35e",
+          "name": "stagger-inline-2-2.6-3.6",
+          "startOperations": [
+            {
+              "id": "e44c5108-2a9c-4c12-8d79-9479094bc813",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "12d400cc-d808-4237-84bb-7239bd4342fe",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "537a772b-5a61-4e4b-88b1-764753d69c51",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1.1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "b274db9e-7b59-490b-9b1b-9bbeb5dc83b5",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "08a8497f-150a-40f7-b716-203690ae0472",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "9a14141c-9c2c-45ab-afdf-a55f25902242",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "duration": {
+            "start": 2.6,
+            "end": 3.6
+          }
+        },
+        {
+          "id": "62fb2c16-1e28-4a24-9c2d-f31493e9a8d6",
+          "name": "stagger-inline-3-2.7-3.7",
+          "startOperations": [
+            {
+              "id": "b19d7657-f58e-401a-b42e-d3c74a5e6750",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "dc7a61a2-5d0c-4df4-9f09-290b064e9097",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "8ba93358-f401-4790-ac72-b2a8645a1be8",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1.1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "f11a42e0-db9b-46a4-8f52-13a46f76161d",
+              "systemName": "selectElement",
+              "operationData": {}
+            },
+            {
+              "id": "87820fc1-046d-434d-a6aa-4184e1d4771d",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "pulse"
+              }
+            },
+            {
+              "id": "aa53534c-7228-41ac-b20c-50e060c3d361",
+              "systemName": "animate",
+              "operationData": {
+                "animationProperties": {
+                  "scale": 1
+                },
+                "animationDuration": 500
+              }
+            }
+          ],
+          "duration": {
+            "start": 2.7,
+            "end": 3.7
+          }
+        },
+        {
+          "id": "3ddd10b0-8724-4cf1-aba8-b8f091a2580f",
+          "name": "sequence-fadeIn-3.7-5.7",
+          "startOperations": [
+            {
+              "id": "cf280f09-84fa-44c0-b766-750883eb70a5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "47d743bc-230c-4119-8f21-17e4abea93c7",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".header",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "9a8a9294-cd88-479e-b6b1-b85093138a1e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "797eb3bd-36af-4d93-8d92-f8687327435e",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".header",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 3.7,
+            "end": 5.7
+          }
+        },
+        {
+          "id": "ebc1a917-8a1e-4cd8-a078-3091e0b53c33",
+          "name": "stagger-fadeIn-0-5.7-6.7",
+          "startOperations": [
+            {
+              "id": "d9079352-35de-4bd6-8ddf-3f16b2ffdad1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "1d902467-b7d1-4855-bd46-c6b6cb03d4af",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".nav-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "3b526ddf-123a-4c93-900d-2caa25f3a915",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "36ae0148-8a7e-462c-b269-b61df83f25cb",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".nav-1"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 5.7,
+            "end": 6.7
+          }
+        },
+        {
+          "id": "919768a1-27a8-48a6-8557-91c40f9e3084",
+          "name": "stagger-fadeIn-1-5.8500000000000005-6.8500000000000005",
+          "startOperations": [
+            {
+              "id": "3f4b4570-dfeb-4f4a-a43c-eb059ca2bd0a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "538b908a-adfc-49b5-b1d4-cd537c0948dc",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".nav-2"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "31b966b9-3718-4e8b-b3c3-a6f8fd5773a1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "e159a76b-ae87-4bb7-a768-b36003f8d86c",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".nav-2"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 5.8500000000000005,
+            "end": 6.8500000000000005
+          }
+        },
+        {
+          "id": "0041d4da-18b9-4d54-9b2d-ead33f4b3bb2",
+          "name": "stagger-fadeIn-2-6-7",
+          "startOperations": [
+            {
+              "id": "df7439d1-539a-49f7-b514-02f85dc8fa28",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "ad54cf39-2a3c-469c-90c9-bc8d991154ba",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".nav-3"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "d93fd473-8c3e-4a10-a7da-209a813b2a62",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "d13b21a4-d2c9-4a29-b535-601dcd899c5a",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".nav-3"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 6,
+            "end": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "f0402c59-5f65-49b9-ab9c-f14b1c09d772",
+      "uri": "sequence-demo",
+      "type": "animation",
+      "duration": 19,
+      "loop": false,
+      "selector": "",
+      "timelineActions": [
+        {
+          "id": "8fee924f-80d1-4638-a804-40dbf6ccf1e6",
+          "name": "sequence-fadeIn-0-3",
+          "startOperations": [
+            {
+              "id": "8d996050-fee6-4356-91b4-6175cc8925b7",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "3f467f6e-138d-436c-903a-691cfcb4eca4",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".title",
+                  "duration": 1000
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "aa8d13e7-275a-422b-a93a-67237f2c979a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "1f60549f-e241-4588-a9f0-cc7a0c9cb110",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".title",
+                  "duration": 1000
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3
+          }
+        },
+        {
+          "id": "96aeec1a-d20f-4b78-8170-92e719bffe9f",
+          "name": "sequence-fadeIn-3-5",
+          "startOperations": [
+            {
+              "id": "192287f9-967b-4027-828e-21a9ec23763a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "7bec80d8-6805-463c-8de2-c0f267e21d3e",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".subtitle",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "e92c1bad-7dcd-4bdd-9541-1671f93ab6bc",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "44a487fc-6e70-4f45-ac5c-7301787760d9",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".subtitle",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 3,
+            "end": 5
+          }
+        },
+        {
+          "id": "beb2d9e7-fc74-4b0f-b3e5-6a687dd4f35a",
+          "name": "sequence-fadeIn-5-10",
+          "startOperations": [
+            {
+              "id": "d93ec764-3b7a-487a-9983-f3979bc237dd",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "8abd09c0-a379-4b59-b977-6b8e246ec518",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".content",
+                  "duration": 800
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "d5d13712-ffb4-43af-82d4-c0f8179f7d82",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "409225c7-4971-485c-972b-19989f308948",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".content",
+                  "duration": 800
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 5,
+            "end": 10
+          }
+        },
+        {
+          "id": "7b675b96-dff0-47c2-8125-479db21af33d",
+          "name": "timeline-action-12-15",
+          "startOperations": [
+            {
+              "id": "7625f6fd-d154-4ff7-9704-c70554682dc5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "3c40e399-63fb-41d2-8be8-9e3159f42072",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".footer",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "b545d548-c8ea-4ca5-9fe4-5cd18510e471",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "07f3db0e-df3f-4b5b-9f88-8593a363fbf4",
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".footer",
+                  "duration": 500
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 12,
+            "end": 15
+          }
+        },
+        {
+          "id": "cb4c8007-3252-4aca-87a3-9c0208f9bbbb",
+          "name": "sequence-highlightElement-15-17",
+          "startOperations": [
+            {
+              "id": "8351e865-507c-4ebd-abde-17c14ac445a6",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightElement"
+              }
+            },
+            {
+              "id": "7a0cb3e4-28a6-4366-a012-91b66e1098e8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".note",
+                  "color": "yellow"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 15,
+            "end": 17
+          }
+        },
+        {
+          "id": "ee471c8d-92c3-4690-b7ad-e612c1886261",
+          "name": "sequence-highlightElement-17-19",
+          "startOperations": [
+            {
+              "id": "bd787a90-e291-452c-93a8-b1ad8b8d28aa",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlightElement"
+              }
+            },
+            {
+              "id": "b81d22b5-813a-448a-9f4b-dd358e395c4f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": ".warning",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 17,
+            "end": 19
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "id": "8859ac3b-cc60-47cf-a96c-d6ab9d572efd",
+      "vendor": "",
+      "systemName": "RequestAnimationFrameTimelineProvider"
+    }
+  }
+}

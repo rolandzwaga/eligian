@@ -71,11 +71,27 @@ EndableActionDefinition:
  * Examples:
  *   selector
  *   duration
+ *   selector: string
+ *   duration: number
  *
  * Parameters are accessed via $operationdata.paramName in the action body.
+ * Type annotations are optional and used for compile-time type checking.
  */
 Parameter:
-    name=ID;
+    name=ID (':' type=TypeAnnotation)?;
+
+/**
+ * Type Annotation - Optional type hint for parameters
+ *
+ * Supported types:
+ *   string  - String literals and selectors
+ *   number  - Numeric values (durations, offsets, etc.)
+ *   boolean - Boolean values
+ *   object  - Object literals
+ *   array   - Array literals
+ */
+TypeAnnotation returns string:
+    'string' | 'number' | 'boolean' | 'object' | 'array';
 
 /**
  * Operation Statement - Base type for all operation-like constructs
