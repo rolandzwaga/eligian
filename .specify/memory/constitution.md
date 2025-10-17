@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 1.4.0 → 1.5.0
-- Amendment: Added Principle XI (Code Quality: Biome Integration)
-- Modified principles: None
-- Added sections: Principle XI - Code Quality with Biome (NON-NEGOTIABLE)
+- Version change: 1.5.0 → 1.6.0
+- Amendment: Added Principle XII (Eligius Architecture Understanding)
+- Modified principles: Renumbered XII→XIII (Operation Metadata Consultation)
+- Added sections: Principle XII - Eligius Architecture Understanding (NON-NEGOTIABLE)
 - Removed sections: None
-- Templates requiring updates: None (Biome is a development tool)
+- Templates requiring updates: None (architecture documentation for implementers)
 - Follow-up TODOs:
-  - Ensure Biome is run after each task completion
-  - Document Biome workflow in CLAUDE.md
-  - Add code review checklist item for Biome compliance
+  - Ensure erased property validation (T254-T256) follows this architecture
+  - Reference this principle when implementing operation data flow features
+  - Verify all existing operation transformations align with operationData vs $scope distinction
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -263,7 +263,55 @@ npm run lint   # Review issues
 npm run check  # Should show "0 errors, 0 warnings"
 ```
 
-### XII. Operation Metadata Consultation (NON-NEGOTIABLE)
+### XII. Eligius Architecture Understanding (NON-NEGOTIABLE)
+
+Understanding how Eligius operations work internally is CRITICAL for correct DSL compilation.
+The following architecture concepts are fundamental and MUST be understood before implementing
+any operation-related features:
+
+**operationData Object** (passed between operations in a chain):
+- Contains configuration properties provided by the user
+- Operations can add properties to it (outputs)
+- Operations can read properties from it (dependencies)
+- Properties marked with `erased: true` are **deleted** from `operationData` after use by that operation
+- Subsequent operations cannot access erased properties (validation must catch this)
+
+**IOperationScope** (the `this` pointer of operation functions, aliased as `$scope` in DSL):
+- System-level shared state, NOT user configuration
+- Contains: `loopIndex`, `loopLength`, `currentItem`, `variables`, etc.
+- Allows operations to share information outside of `operationData`
+- In Eligian DSL: `@@loopIndex` → `$scope.loopIndex` (system properties)
+- In Eligian DSL: `@myVar` → `$scope.variables.myVar` (user-declared local variables)
+- The `variables` property enables cross-cutting values when operations use different property names
+
+**Operation Dependencies** (from metadata):
+- Properties an operation EXPECTS to find on `operationData`
+- Could be outputs from previous operations (e.g., `selectedElement`)
+- Could be properties set directly in the operation invocation
+- NOT related to `$scope` - dependencies are purely about `operationData`
+
+**Operation Outputs** (from metadata):
+- Properties an operation ADDS to `operationData` for subsequent operations
+- Example: `selectElement` outputs `selectedElement` to `operationData`
+
+**Erased Properties** (from metadata - parameters with `erased: true`):
+- When an operation uses a parameter marked `erased: true`, it DELETES that property from `operationData`
+- This is Eligius's memory management - properties are consumed and removed
+- Erased property validation MUST track `operationData` state and prevent access to erased properties
+
+**Rationale**: Misunderstanding these concepts leads to incorrect compilation, runtime failures,
+and wasted debugging effort. The distinction between `operationData` (user config) and `$scope`
+(system state) is fundamental to how Eligius operations communicate. Erased property tracking
+prevents runtime errors by catching bugs at compile time.
+
+**Requirements**:
+- MUST understand the difference between `operationData` and `$scope` before implementing features
+- MUST track `operationData` properties separately from `$scope` properties
+- MUST validate erased property access by tracking what's on `operationData` at each step
+- MUST NOT confuse operation dependencies (what's on `operationData`) with scope properties
+- Document any operation data flow logic with references to this architecture section
+
+### XIII. Operation Metadata Consultation (NON-NEGOTIABLE)
 
 Before implementing any transformation or generation of Eligius operations, the operation's
 metadata MUST be consulted from the operation registry (`registry.generated.ts`). Never make
@@ -387,4 +435,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.5.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-15
+**Version**: 1.6.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-17

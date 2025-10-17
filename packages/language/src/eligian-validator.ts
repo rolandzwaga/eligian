@@ -14,11 +14,13 @@ import type {
   EndableActionDefinition,
   InlineEndableAction,
   OperationCall,
+  OperationStatement,
   Program,
   RegularActionDefinition,
   Timeline,
   TimelineEvent,
 } from './generated/ast.js';
+import { OperationDataTracker } from './operation-data-tracker.js';
 
 /**
  * Register custom validation checks.
@@ -36,17 +38,22 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkParameterTypes,
       // TODO T216: Re-enable checkDependencies once we implement proper dependency tracking across sequences
       // validator.checkDependencies
-      // TODO T254-T255: Implement checkErasedProperties with full data flow analysis
-      // validator.checkErasedProperties
     ],
-    RegularActionDefinition: validator.checkControlFlowPairing,
+    RegularActionDefinition: [
+      validator.checkControlFlowPairing,
+      validator.checkErasedPropertiesInAction, // T254-T255: Erased property validation
+    ],
     EndableActionDefinition: [
       validator.checkControlFlowPairingInStartOps,
       validator.checkControlFlowPairingInEndOps,
+      validator.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
+      validator.checkErasedPropertiesInEndOps, // T254-T255: Erased property validation
     ],
     InlineEndableAction: [
       validator.checkControlFlowPairingInInlineStart,
       validator.checkControlFlowPairingInInlineEnd,
+      validator.checkErasedPropertiesInInlineStart, // T254-T255: Erased property validation
+      validator.checkErasedPropertiesInInlineEnd, // T254-T255: Erased property validation
     ],
   };
   registry.register(checks, validator);
@@ -443,51 +450,124 @@ export class EligianValidator {
   }
 
   /**
-   * Validate erased property usage (T254-T255: Eligius 1.2.1+).
-   *
-   * Tracks properties that have been erased by previous operations and validates
-   * that subsequent operations don't attempt to access them.
-   *
-   * IMPLEMENTATION PLAN (T255 - Data Flow Analysis):
-   *
-   * 1. Build scope model:
-   *    - Track available properties at each operation in sequence
-   *    - When operation executes with erased outputs, remove those properties from scope
-   *    - Properties added by operation outputs are available for subsequent operations
-   *
-   * 2. Handle control flow:
-   *    - If/else branches: merge scopes from both branches (property available if available in ALL branches)
-   *    - Loops: properties erased in loop body are erased for subsequent iterations
-   *    - Action boundaries: each action starts with fresh scope (only dependencies available)
-   *
-   * 3. Validate property references:
-   *    - Check PropertyChainReference nodes that reference $scope.*
-   *    - If property was erased by previous operation, emit error:
-   *      "Property 'X' is not available - it was erased by operation 'Y' at line N"
-   *
-   * 4. Error messages:
-   *    - Clear indication of which operation erased the property
-   *    - Suggestion to reorder operations or use different property
-   *
-   * TODO: This requires significant data flow analysis infrastructure.
-   * For now, this is a stub. Full implementation should:
-   * - Create OperationScopeTracker class to build scope model
-   * - Walk operation sequences and track erased properties
-   * - Validate all property chain references against scope
-   * - Integrate with existing dependency tracking (when T216 is implemented)
-   *
-   * @param operation - Operation call to validate
-   * @param accept - Validation acceptor for reporting errors
+   * Validate erased properties in regular action operations.
+   * Checks that operations don't access properties erased by previous operations.
    */
-  checkErasedProperties(_operation: OperationCall, _accept: ValidationAcceptor): void {
-    // TODO T254-T255: Implement full data flow analysis for erased properties
-    // This is a complex feature requiring:
-    // 1. OperationScopeTracker to build scope model across operation sequences
-    // 2. Property reference analysis to detect erased property access
-    // 3. Control flow handling (if/else, loops)
-    // 4. Clear error messages with operation that caused erasure
-    //
-    // For now, this is disabled. Enable by uncommenting in registerValidationChecks()
-    // once full implementation is complete.
+  checkErasedPropertiesInAction(action: RegularActionDefinition, accept: ValidationAcceptor): void {
+    this.validateOperationSequence(action.operations, accept, action);
+  }
+
+  /**
+   * Validate erased properties in endable action start operations.
+   */
+  checkErasedPropertiesInStartOps(
+    action: EndableActionDefinition,
+    accept: ValidationAcceptor
+  ): void {
+    this.validateOperationSequence(action.startOperations, accept, action);
+  }
+
+  /**
+   * Validate erased properties in endable action end operations.
+   */
+  checkErasedPropertiesInEndOps(action: EndableActionDefinition, accept: ValidationAcceptor): void {
+    this.validateOperationSequence(action.endOperations, accept, action);
+  }
+
+  /**
+   * Validate erased properties in inline endable action start operations.
+   */
+  checkErasedPropertiesInInlineStart(
+    action: InlineEndableAction,
+    accept: ValidationAcceptor
+  ): void {
+    this.validateOperationSequence(action.startOperations, accept, action);
+  }
+
+  /**
+   * Validate erased properties in inline endable action end operations.
+   */
+  checkErasedPropertiesInInlineEnd(action: InlineEndableAction, accept: ValidationAcceptor): void {
+    this.validateOperationSequence(action.endOperations, accept, action);
+  }
+
+  /**
+   * Helper: Validate a sequence of operation statements for erased property access.
+   *
+   * Walks through operation sequence and tracks operationData state using OperationDataTracker.
+   * Reports errors when operations have missing dependencies (properties that were erased
+   * or never created).
+   *
+   * @param operations - Sequence of operation statements to validate
+   * @param accept - Validation acceptor for reporting errors
+   * @param context - Parent action node for error reporting
+   * @param tracker - Optional tracker to continue from (for nested scopes)
+   */
+  private validateOperationSequence(
+    operations: Array<OperationStatement>,
+    accept: ValidationAcceptor,
+    context: RegularActionDefinition | EndableActionDefinition | InlineEndableAction,
+    tracker?: OperationDataTracker
+  ): void {
+    // Create new tracker if not provided (top-level call)
+    const currentTracker = tracker ?? new OperationDataTracker();
+
+    // Walk through operations and track operationData state
+    for (const statement of operations) {
+      if (statement.$type === 'OperationCall') {
+        const opName = statement.operationName;
+
+        // Only validate if operation exists (avoid duplicate errors)
+        if (!hasOperation(opName)) {
+          continue;
+        }
+
+        // Check if this operation has missing dependencies
+        const missingDependencies = currentTracker.processOperation(opName);
+
+        // Report errors for missing dependencies
+        for (const depName of missingDependencies) {
+          const erasurePoint = currentTracker.findErasurePoint(depName);
+
+          if (erasurePoint) {
+            // Property was erased by a previous operation
+            accept(
+              'error',
+              `Property '${depName}' is not available - it was erased by operation '${erasurePoint.operation}'`,
+              {
+                node: statement,
+                property: 'operationName',
+                code: 'erased-property-access',
+              }
+            );
+          } else {
+            // Property was never created (dependency not satisfied)
+            accept(
+              'error',
+              `Property '${depName}' is not available - ensure it is created by a previous operation`,
+              {
+                node: statement,
+                property: 'operationName',
+                code: 'missing-dependency',
+              }
+            );
+          }
+        }
+      } else if (statement.$type === 'IfStatement') {
+        // Handle if/else branches (T255: Control flow support)
+        // Validate both branches with current tracker state
+        // Note: For a complete implementation, we would need to merge both branch states
+        // and only keep properties available in BOTH branches
+        this.validateOperationSequence(statement.thenOps, accept, context, currentTracker.clone());
+        this.validateOperationSequence(statement.elseOps, accept, context, currentTracker.clone());
+      } else if (statement.$type === 'ForStatement') {
+        // Handle loop body (T255: Control flow support)
+        // Validate loop body with current tracker state
+        // Note: Full loop analysis would require fixed-point iteration
+        // to determine which properties are stable across all iterations
+        this.validateOperationSequence(statement.body, accept, context, currentTracker.clone());
+      } else if (statement.$type === 'VariableDeclaration') {
+      }
+    }
   }
 }

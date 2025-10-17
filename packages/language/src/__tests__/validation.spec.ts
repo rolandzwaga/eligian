@@ -276,6 +276,7 @@ describe('Eligian Grammar - Validation', () => {
                     setStyle({ opacity: 0 })
                     animate({ opacity: 1 }, 500)
                 ] [
+                    selectElement(".target")
                     setStyle({ opacity: 0 })
                 ]
 
@@ -283,6 +284,7 @@ describe('Eligian Grammar - Validation', () => {
                     selectElement("#title")
                     addClass("visible")
                 ] [
+                    selectElement("#title")
                     removeClass("visible")
                 ]
 
@@ -299,6 +301,7 @@ describe('Eligian Grammar - Validation', () => {
                         selectElement("#credits")
                         addClass("visible")
                     ] [
+                        selectElement("#credits")
                         removeClass("visible")
                     ]
                 }
@@ -325,6 +328,177 @@ describe('Eligian Grammar - Validation', () => {
       // Should have timeline missing error
       expect(validationErrors.length).toBeGreaterThan(0);
       expect(validationErrors.some(e => e.message.includes('timeline'))).toBe(true);
+    });
+  });
+
+  describe('Erased property validation (T254-T255)', () => {
+    test('should accept valid property usage (property used before any operation)', async () => {
+      const code = `
+                action test [
+                    selectElement("#test")
+                    addClass("highlight")
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should not have erased property errors
+      const erasedErrors = validationErrors.filter(
+        e => e.message.includes('not available') || e.message.includes('erased')
+      );
+      expect(erasedErrors.length).toBe(0);
+    });
+
+    test('should accept property created by output then used as dependency', async () => {
+      const code = `
+                action test [
+                    selectElement("#test")
+                    addClass("active")
+                    removeClass("inactive")
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // selectElement outputs 'selectedElement' which is used by addClass and removeClass
+      // Should not have missing dependency errors
+      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      expect(depErrors.length).toBe(0);
+    });
+
+    test('should reject missing dependency (property never created)', async () => {
+      const code = `
+                action test [
+                    addClass("highlight")
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // addClass requires 'selectedElement' which was never created
+      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(
+        validationErrors.some(
+          e =>
+            e.message.includes('selectedElement') &&
+            e.message.includes('not available') &&
+            e.message.includes('ensure it is created')
+        )
+      ).toBe(true);
+    });
+
+    test('should handle multiple operations in sequence', async () => {
+      const code = `
+                action test [
+                    selectElement("#box")
+                    addClass("visible")
+                    setStyle({ opacity: 1 })
+                    removeClass("hidden")
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // All operations use selectedElement which is available after selectElement
+      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      expect(depErrors.length).toBe(0);
+    });
+
+    test('should validate nested operations in if statement', async () => {
+      const code = `
+                action test [
+                    selectElement("#box")
+                    if ($operationdata.count > 5) {
+                        addClass("many")
+                    } else {
+                        addClass("few")
+                    }
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // selectedElement should be available in both branches
+      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      expect(depErrors.length).toBe(0);
+    });
+
+    test('should validate nested operations in for loop', async () => {
+      const code = `
+                action test [
+                    for (item in $operationdata.items) {
+                        selectElement(item)
+                        addClass("active")
+                    }
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Each iteration creates selectedElement before addClass uses it
+      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      expect(depErrors.length).toBe(0);
+    });
+
+    test('should validate endable actions start operations', async () => {
+      const code = `
+                endable action test [
+                    selectElement("#box")
+                    addClass("visible")
+                ] [
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Start ops: selectedElement available for addClass
+      // End ops: empty, so no validation errors
+      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      expect(depErrors.length).toBe(0);
+    });
+
+    test('should validate endable actions end operations', async () => {
+      const code = `
+                endable action test [
+                    selectElement("#box")
+                ] [
+                    addClass("hidden")
+                ]
+                timeline "test" using raf {}
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // End ops should validate independently - addClass needs selectedElement
+      // but it's not available in end ops (separate sequence)
+      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(
+        validationErrors.some(
+          e => e.message.includes('selectedElement') && e.message.includes('not available')
+        )
+      ).toBe(true);
+    });
+
+    test('should validate inline endable actions', async () => {
+      const code = `
+                timeline "test" using raf {
+                    at 0s..5s [
+                        selectElement("#box")
+                        addClass("visible")
+                    ] [
+                        removeClass("visible")
+                    ]
+                }
+            `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Start ops: selectedElement available for addClass
+      // End ops: removeClass needs selectedElement but it's a separate sequence
+      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(
+        validationErrors.some(
+          e => e.message.includes('selectedElement') && e.message.includes('not available')
+        )
+      ).toBe(true);
     });
   });
 });
