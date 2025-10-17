@@ -245,13 +245,13 @@ StaggerBlock:
     'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' '[' (endOps += OperationStatement)* ']';
 
 /**
- * Named action invocation - calls a defined endable action
+ * Named action invocation - calls a defined action (endable or regular)
  */
 NamedActionInvocation:
     '{' actionCall=ActionCallExpression '}';
 
 ActionCallExpression:
-    action=[EndableActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
+    action=[ActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
 
 /**
  * Inline endable action - anonymous endable action defined at use site

@@ -255,7 +255,7 @@ describe('Eligian Grammar - Validation', () => {
     test('should accept property chain references', async () => {
       const code = `
                 action test [
-                    setData({ "operationdata.name": $context.currentItem })
+                    setData({ "operationdata.name": $scope.currentItem })
                 ]
                 timeline "test" using raf {}
             `;

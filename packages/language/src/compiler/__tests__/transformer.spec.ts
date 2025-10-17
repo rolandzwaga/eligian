@@ -248,7 +248,7 @@ describe('AST Transformer', () => {
     test('should transform property chain references', async () => {
       const code = `
                 action test [
-                    setData({ "operationdata.name": $context.currentItem })
+                    setData({ "operationdata.name": $scope.currentItem })
                 ]
                 timeline "test" using raf {}
             `;
@@ -260,7 +260,7 @@ describe('AST Transformer', () => {
       // T223: setData takes 'properties' parameter which contains the object
       expect(operation.operationData?.properties).toBeDefined();
       expect((operation.operationData?.properties as any)?.['operationdata.name']).toBe(
-        'context.currentItem'
+        'scope.currentItem'
       );
     });
 

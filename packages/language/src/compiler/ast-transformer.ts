@@ -320,6 +320,9 @@ const transformSequenceBlock = (
       const actionName = actionCall?.action?.$refText || 'unknown';
       const actionRef = actionCall?.action?.ref;
 
+      // Check if this is an endable action or regular action
+      const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
+
       // Transform action arguments to actionOperationData
       let actionOperationData: Record<string, JsonValue> | undefined;
       if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
@@ -361,20 +364,24 @@ const transformSequenceBlock = (
         },
       ];
 
-      const endOperations: OperationConfigIR[] = [
-        {
-          id: crypto.randomUUID(),
-          systemName: 'requestAction',
-          operationData: { systemName: actionName },
-          sourceLocation: getSourceLocation(item),
-        },
-        {
-          id: crypto.randomUUID(),
-          systemName: 'endAction',
-          operationData: actionOperationData ? { actionOperationData } : {},
-          sourceLocation: getSourceLocation(item),
-        },
-      ];
+      // End operations: Only generate for endable actions
+      const endOperations: OperationConfigIR[] = [];
+      if (isEndableAction) {
+        endOperations.push(
+          {
+            id: crypto.randomUUID(),
+            systemName: 'requestAction',
+            operationData: { systemName: actionName },
+            sourceLocation: getSourceLocation(item),
+          },
+          {
+            id: crypto.randomUUID(),
+            systemName: 'endAction',
+            operationData: actionOperationData ? { actionOperationData } : {},
+            sourceLocation: getSourceLocation(item),
+          }
+        );
+      }
 
       // Create timeline action for this sequence item
       actions.push({
@@ -445,6 +452,9 @@ const transformStaggerBlock = (
       const actionName = actionCall.action?.$refText || 'unknown';
       const actionRef = actionCall.action?.ref;
 
+      // Check if this is an endable action or regular action
+      const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
+
       // Generate one timeline action per item
       for (let i = 0; i < itemsValue.length; i++) {
         const item = itemsValue[i];
@@ -488,20 +498,24 @@ const transformStaggerBlock = (
           },
         ];
 
-        const endOperations: OperationConfigIR[] = [
-          {
-            id: crypto.randomUUID(),
-            systemName: 'requestAction',
-            operationData: { systemName: actionName },
-            sourceLocation: getSourceLocation(stagger),
-          },
-          {
-            id: crypto.randomUUID(),
-            systemName: 'endAction',
-            operationData: actionOperationData ? { actionOperationData } : {},
-            sourceLocation: getSourceLocation(stagger),
-          },
-        ];
+        // End operations: Only generate for endable actions
+        const endOperations: OperationConfigIR[] = [];
+        if (isEndableAction) {
+          endOperations.push(
+            {
+              id: crypto.randomUUID(),
+              systemName: 'requestAction',
+              operationData: { systemName: actionName },
+              sourceLocation: getSourceLocation(stagger),
+            },
+            {
+              id: crypto.randomUUID(),
+              systemName: 'endAction',
+              operationData: actionOperationData ? { actionOperationData } : {},
+              sourceLocation: getSourceLocation(stagger),
+            }
+          );
+        }
 
         actions.push({
           id: crypto.randomUUID(),
@@ -597,6 +611,9 @@ const transformTimedEvent = (
       const actionName = actionCall?.action?.$refText || 'unknown';
       const actionRef = actionCall?.action?.ref;
 
+      // Check if this is an endable action or regular action
+      const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
+
       // T187: Transform action arguments to actionOperationData
       let actionOperationData: Record<string, JsonValue> | undefined;
       if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
@@ -643,23 +660,26 @@ const transformTimedEvent = (
         sourceLocation: getSourceLocation(action),
       });
 
-      // End operations: Request action instance again and call endAction
-      endOperations.push({
-        id: crypto.randomUUID(),
-        systemName: 'requestAction',
-        operationData: {
-          systemName: actionName,
-        },
-        sourceLocation: getSourceLocation(action),
-      });
+      // End operations: Only generate for endable actions
+      // Regular actions don't have end operations, so leave endOperations empty
+      if (isEndableAction) {
+        endOperations.push({
+          id: crypto.randomUUID(),
+          systemName: 'requestAction',
+          operationData: {
+            systemName: actionName,
+          },
+          sourceLocation: getSourceLocation(action),
+        });
 
-      // T187: Pass same actionOperationData to endAction
-      endOperations.push({
-        id: crypto.randomUUID(),
-        systemName: 'endAction',
-        operationData: actionOperationData ? { actionOperationData } : {},
-        sourceLocation: getSourceLocation(action),
-      });
+        // T187: Pass same actionOperationData to endAction
+        endOperations.push({
+          id: crypto.randomUUID(),
+          systemName: 'endAction',
+          operationData: actionOperationData ? { actionOperationData } : {},
+          sourceLocation: getSourceLocation(action),
+        });
+      }
     } else if (action.$type === 'InlineEndableAction') {
       // Inline endable action: [ ... ] [ ... ]
       for (const opStmt of action.startOperations) {

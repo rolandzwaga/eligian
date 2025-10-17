@@ -208,7 +208,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse operation call with property chain reference', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.name": $context.currentItem })
+          setData({ "operationdata.name": $scope.currentItem })
         ]
       `);
 
@@ -511,7 +511,7 @@ describe('Eligian Grammar - Parsing', () => {
         const program = await parseEligian(`
           action test [
             for (item in $operationdata.items) {
-              if ($context.isVisible) {
+              if ($scope.isVisible) {
                 addClass("show")
               }
             }
@@ -532,7 +532,7 @@ describe('Eligian Grammar - Parsing', () => {
           action test [
             for (item in $operationdata.items) {
               selectElement(".item")
-              if ($context.highlight) {
+              if ($scope.highlight) {
                 addClass("highlight")
               } else {
                 removeClass("highlight")
