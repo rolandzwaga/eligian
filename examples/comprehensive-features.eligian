@@ -109,11 +109,12 @@ action expressionExamples() [
 
   // BINARY EXPRESSIONS - Comparison
   if (1000 > 500) {
-    log("Duration is sufficient")
+    //log("Duration is sufficient")
   }
 
   // BINARY EXPRESSIONS - Logical operators
-  if ($globaldata.theme == "dark" && enabled) {
+  const enabled = true  // Local variable for demonstration
+  if ($globaldata.theme == "dark" && @enabled) {
     addClass("dark-mode-enabled")
   }
 
