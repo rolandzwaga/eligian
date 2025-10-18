@@ -608,4 +608,114 @@ describe('Eligian Grammar - Validation', () => {
       expect(typeMap.get('arr')).toBe('array');
     });
   });
+
+  describe('Break and Continue Statement Validation', () => {
+    test('should error when break is outside a loop', async () => {
+      const code = `
+        action test [
+          break
+        ]
+        timeline "test" using raf {}
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(
+        validationErrors.some(e => e.message.includes("'break' can only be used inside a loop"))
+      ).toBe(true);
+    });
+
+    test('should error when continue is outside a loop', async () => {
+      const code = `
+        action test [
+          continue
+        ]
+        timeline "test" using raf {}
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(
+        validationErrors.some(e => e.message.includes("'continue' can only be used inside a loop"))
+      ).toBe(true);
+    });
+
+    test('should allow break inside a for loop', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            break
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      const breakErrors = validationErrors.filter(e =>
+        e.message.includes("'break' can only be used inside a loop")
+      );
+      expect(breakErrors.length).toBe(0);
+    });
+
+    test('should allow continue inside a for loop', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            continue
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      const continueErrors = validationErrors.filter(e =>
+        e.message.includes("'continue' can only be used inside a loop")
+      );
+      expect(continueErrors.length).toBe(0);
+    });
+
+    test('should allow break/continue inside nested if in loop', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            if ($operationdata.skip) {
+              continue
+            }
+            if ($operationdata.stop) {
+              break
+            }
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      const loopErrors = validationErrors.filter(
+        e =>
+          e.message.includes("'break' can only be used inside a loop") ||
+          e.message.includes("'continue' can only be used inside a loop")
+      );
+      expect(loopErrors.length).toBe(0);
+    });
+
+    test('should handle multiple break/continue in same loop', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            continue
+            break
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      const loopErrors = validationErrors.filter(
+        e =>
+          e.message.includes("'break' can only be used inside a loop") ||
+          e.message.includes("'continue' can only be used inside a loop")
+      );
+      expect(loopErrors.length).toBe(0);
+    });
+  });
 });

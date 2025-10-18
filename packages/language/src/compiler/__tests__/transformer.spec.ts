@@ -837,6 +837,83 @@ describe('AST Transformer', () => {
     });
   });
 
+  describe('Break and Continue Statement Transformation', () => {
+    test('should transform break to breakForEach operation', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            break
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const breakOp = action.startOperations.find(op => op.systemName === 'breakForEach');
+
+      expect(breakOp).toBeDefined();
+      expect(breakOp?.operationData).toEqual({});
+      expect(breakOp?.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    });
+
+    test('should transform continue to continueForEach operation', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            continue
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const continueOp = action.startOperations.find(op => op.systemName === 'continueForEach');
+
+      expect(continueOp).toBeDefined();
+      expect(continueOp?.operationData).toEqual({});
+      expect(continueOp?.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    });
+
+    test('should transform conditional break and continue inside loops', async () => {
+      const code = `
+        action test [
+          for (item in ["a", "b", "c"]) {
+            if ($operationdata.skip) {
+              continue
+            }
+            if ($operationdata.stop) {
+              break
+            }
+          }
+        ]
+        timeline "test" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const continueOp = action.startOperations.find(op => op.systemName === 'continueForEach');
+      const breakOp = action.startOperations.find(op => op.systemName === 'breakForEach');
+
+      expect(continueOp).toBeDefined();
+      expect(continueOp?.operationData).toEqual({});
+
+      expect(breakOp).toBeDefined();
+      expect(breakOp?.operationData).toEqual({});
+    });
+  });
+
   describe('BUG-001: Reference expressions in operation arguments', () => {
     // BUG-001 FIX (T325): Removed .failing() - tests should now pass
     test('should handle @@loopVar in for-loop operations', async () => {

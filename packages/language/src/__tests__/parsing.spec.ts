@@ -11,11 +11,13 @@ import { EmptyFileSystem } from 'langium';
 import { parseDocument } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
-import type {
-  EndableActionDefinition,
-  Program,
-  RegularActionDefinition,
-  Timeline,
+import {
+  type EndableActionDefinition,
+  isBreakStatement,
+  isContinueStatement,
+  type Program,
+  type RegularActionDefinition,
+  type Timeline,
 } from '../generated/ast.js';
 
 const services = createEligianServices(EmptyFileSystem).Eligian;
@@ -694,6 +696,59 @@ describe('Eligian Grammar - Parsing', () => {
         expect(ifStmt.elseOps).toHaveLength(1);
         expect(ifStmt.elseOps[0].$type).toBe('OperationCall');
       });
+    });
+  });
+
+  describe('Break and Continue Statements', () => {
+    test('should parse break statement', async () => {
+      const program = await parseEligian(`
+        action test [
+          for (item in items) {
+            break
+          }
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      const forStmt = action.operations[0] as any;
+      const breakStmt = forStmt.body[0];
+
+      expect(isBreakStatement(breakStmt)).toBe(true);
+    });
+
+    test('should parse continue statement', async () => {
+      const program = await parseEligian(`
+        action test [
+          for (item in items) {
+            continue
+          }
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      const forStmt = action.operations[0] as any;
+      const continueStmt = forStmt.body[0];
+
+      expect(isContinueStatement(continueStmt)).toBe(true);
+    });
+
+    test('should parse multiple break and continue in loop', async () => {
+      const program = await parseEligian(`
+        action test [
+          for (item in items) {
+            continue
+            break
+          }
+        ]
+      `);
+
+      const action = program.elements[0] as RegularActionDefinition;
+      const forStmt = action.operations[0] as any;
+
+      // Should have both break and continue
+      expect(forStmt.body.length).toBeGreaterThanOrEqual(2);
+      expect(isContinueStatement(forStmt.body[0])).toBe(true);
+      expect(isBreakStatement(forStmt.body[1])).toBe(true);
     });
   });
 

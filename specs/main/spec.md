@@ -1,250 +1,414 @@
-# Feature Specification: Type System Enhancements (Phase 18)
+# Feature Specification: Break and Continue Syntactic Sugar
 
 ## Overview
 
-Add optional static type checking to the Eligian DSL to catch type errors at compile time instead of runtime. This provides TypeScript-style type safety without requiring full type annotations everywhere.
+Add syntactic sugar for loop control operations (`break` and `continue`) to the Eligian DSL, providing familiar control flow keywords that compile to the underlying Eligius `breakForEach` and `continueForEach` operations.
 
 ## Motivation
 
-Currently, the Eligian compiler validates:
-- Operation signatures (correct number/names of parameters)
-- Operation dependencies (required properties available)
-- Erased property access (data flow analysis)
+Currently, developers must use explicit operation calls to control loop flow:
 
-However, it does NOT validate:
-- Type compatibility (passing a number where a string selector is expected)
-- Variable type consistency (using @duration where a selector is needed)
-- Parameter type mismatches in action calls
+```eligian
+for (item in slides) {
+  if (@@currentItem.skip) {
+    continueForEach()  // ← Verbose operation call
+  }
 
-This leads to errors that are only caught at runtime by Eligius, or worse, silent failures.
+  selectElement(@@currentItem.selector)
+
+  if (@@currentItem.isLast) {
+    breakForEach()  // ← Verbose operation call
+  }
+}
+```
+
+This is inconsistent with the DSL's philosophy of providing clean syntactic sugar for common patterns (like `for` loops and `if/else` statements). Most developers expect simple `break` and `continue` keywords from their programming experience.
 
 ## Goals
 
-1. **Optional Type Annotations**: Allow developers to add type hints to action parameters
-2. **Type Inference**: Automatically infer types from usage without annotations
-3. **Compile-Time Validation**: Catch type mismatches before running the timeline
+1. **Familiar Syntax**: Provide `break` and `continue` keywords that match common programming languages
+2. **Compile-Time Validation**: Ensure `break`/`continue` only appear inside loops (compile error otherwise)
+3. **Clean Semantics**: Map directly to Eligius `breakForEach` and `continueForEach` operations
+4. **Zero Breaking Changes**: Existing code continues to work (both syntactic sugar and explicit operation calls)
 
 ## Non-Goals
 
-- Full dependent type system
-- Generics or advanced type features
-- Property chain type checking (already handled by cross-references)
-- Breaking changes to existing valid code
+- Label support for nested loops (Eligius doesn't support this)
+- Alternative control flow patterns (like `return`, `exit`, etc.)
+- Loop optimization or unrolling
+- Support outside of `for` loops (e.g., in `while` loops - we don't have those)
 
 ## User Stories
 
-### Story 1: Type Annotations for Self-Documentation
+### Story 1: Clean Loop Control Syntax
 
-**As a** developer writing reusable actions
-**I want to** annotate parameter types
-**So that** users know what types to pass and get autocomplete help
-
-```eligian
-// Before (no type info)
-action fadeIn(selector, duration) [
-  selectElement(selector)
-  animate({opacity: 1}, duration)
-]
-
-// After (with type annotations)
-action fadeIn(selector: string, duration: number) [
-  selectElement(selector)
-  animate({opacity: 1}, duration)
-]
-```
-
-### Story 2: Catch Type Errors at Compile Time
-
-**As a** developer using the DSL
-**I want** compile-time errors for type mismatches
-**So that** I catch bugs before running the timeline
+**As a** developer writing loop logic
+**I want to** use simple `break` and `continue` keywords
+**So that** my code is readable and familiar
 
 ```eligian
-const duration = 500
-const selector = "#title"
+// Before (verbose operation calls)
+for (slide in slides) {
+  if ($operationdata.skip) {
+    continueForEach()
+  }
 
-action demo [
-  // ❌ Compile error: Cannot pass number to selectElement (expects string)
-  selectElement(@duration)
+  processSlide(@@currentItem)
 
-  // ❌ Compile error: Cannot pass string to animate duration (expects number)
-  animate({opacity: 1}, @selector)
-]
+  if ($operationdata.isDone) {
+    breakForEach()
+  }
+}
+
+// After (clean syntax)
+for (slide in slides) {
+  if ($operationdata.skip) {
+    continue  // ← Clean, familiar keyword
+  }
+
+  processSlide(@@currentItem)
+
+  if ($operationdata.isDone) {
+    break  // ← Clean, familiar keyword
+  }
+}
 ```
 
-### Story 3: Type Inference Without Annotations
+### Story 2: Compile-Time Validation
 
 **As a** developer
-**I want** type checking without writing types everywhere
-**So that** I get safety without verbosity
+**I want** compile errors when using `break`/`continue` incorrectly
+**So that** I catch bugs before runtime
 
 ```eligian
-// No type annotations needed
-action highlight(item) [
-  // Compiler infers: item must be string (selector)
-  // because addClass expects string selector
-  addClass(item, "highlight")
+action demo [
+  // ❌ Compile error: 'break' can only be used inside a loop
+  break
+
+  // ❌ Compile error: 'continue' can only be used inside a loop
+  continue
 ]
 
-// ❌ Compile error caught automatically
-const count = 10
-highlight(@count)  // Error: Cannot pass number where string expected
+// ✅ Valid - inside a loop
+for (item in items) {
+  if (@@currentItem.invalid) {
+    continue  // OK
+  }
+
+  if (@@currentItem.stop) {
+    break  // OK
+  }
+}
+```
+
+### Story 3: Mixed Syntax Support
+
+**As a** developer maintaining existing code
+**I want** both explicit operations and keywords to work
+**So that** I can gradually migrate to cleaner syntax
+
+```eligian
+for (item in items) {
+  // Old style still works
+  if (condition1) {
+    continueForEach()
+  }
+
+  // New style also works
+  if (condition2) {
+    continue
+  }
+
+  // Both can coexist
+  if (condition3) {
+    breakForEach()
+  }
+
+  if (condition4) {
+    break
+  }
+}
 ```
 
 ## Technical Requirements
 
-### R1: Type Annotation Syntax
+### R1: Grammar Extensions
 
-Support optional type annotations on action parameters:
+Add two new statement types to the grammar:
 
-```eligian
-action name(param1: type1, param2: type2) [
-  // body
-]
+```langium
+OperationStatement:
+    IfStatement
+    | ForStatement
+    | VariableDeclaration
+    | BreakStatement    // ← NEW
+    | ContinueStatement // ← NEW
+    | OperationCall;
+
+BreakStatement:
+    'break';
+
+ContinueStatement:
+    'continue';
 ```
 
-Supported types:
-- `string` - String values and selectors
-- `number` - Numeric values (durations, offsets, etc.)
-- `boolean` - Boolean values
-- `object` - Object literals
-- `array` - Array literals
+**Location**: `packages/language/src/eligian.langium`
 
-### R2: Type Inference
+### R2: AST Transformer
 
-Infer parameter types from usage:
+Transform syntactic sugar to operation calls:
 
-```eligian
-action demo(selector) [
-  // Use of selector in selectElement(selector: string)
-  // => Infer selector: string
-  selectElement(selector)
-]
+- `BreakStatement` → `OperationCall` with `operationName: "breakForEach"`, no arguments
+- `ContinueStatement` → `OperationCall` with `operationName: "continueForEach"`, no arguments
+
+**Location**: `packages/language/src/compiler/ast-transformer.ts`
+
+**Implementation Pattern**:
+```typescript
+function* transformBreakStatement(
+  stmt: BreakStatement,
+  scope?: ScopeContext
+): Effect.Effect<OperationConfigIR[], TransformError> {
+  // Transform to breakForEach() operation call
+  return [{
+    systemName: 'breakForEach',
+    operationData: {}
+  }];
+}
+
+function* transformContinueStatement(
+  stmt: ContinueStatement,
+  scope?: ScopeContext
+): Effect.Effect<OperationConfigIR[], TransformError> {
+  // Transform to continueForEach() operation call
+  return [{
+    systemName: 'continueForEach',
+    operationData: {}
+  }];
+}
 ```
 
-Inference rules:
-1. Parameter used in operation → infer from operation signature
-2. Variable assigned literal → infer from literal type
-3. Multiple usages → must be compatible with all uses
+### R3: Validation Rules
 
-### R3: Type Checking
+Add validation to ensure `break`/`continue` only appear inside loops:
 
-Validate type compatibility:
+**Location**: `packages/language/src/eligian-validator.ts`
 
-1. **Variable declarations**: Infer type from initializer
-2. **Parameter references**: Check against action parameter type
-3. **Operation arguments**: Validate against operation signature
-4. **Variable references**: Check against declared/inferred type
+**Rules**:
+1. `BreakStatement` outside a `ForStatement` → **ERROR**: "break can only be used inside a loop"
+2. `ContinueStatement` outside a `ForStatement` → **ERROR**: "continue can only be used inside a loop"
 
-### R4: Error Messages
+**Implementation Pattern**:
+```typescript
+checkBreakStatement(stmt: BreakStatement, accept: ValidationAcceptor): void {
+  // Walk up AST to find containing ForStatement
+  if (!isInsideForLoop(stmt)) {
+    accept('error',
+      "'break' can only be used inside a loop",
+      { node: stmt }
+    );
+  }
+}
 
-Provide clear, actionable error messages:
-
+checkContinueStatement(stmt: ContinueStatement, accept: ValidationAcceptor): void {
+  // Walk up AST to find containing ForStatement
+  if (!isInsideForLoop(stmt)) {
+    accept('error',
+      "'continue' can only be used inside a loop",
+      { node: stmt }
+    );
+  }
+}
 ```
-Error: Type mismatch in operation call
-  at demo.eligian:5:3
 
-  selectElement(@duration)
-  ^^^^^^^^^^^^^^^^^^^^^^^^
+### R4: Testing
 
-  Cannot pass 'number' to parameter 'selector' (expected 'string')
+**Unit Tests** (`packages/language/src/__tests__/parsing.spec.ts`):
+- Parse `break` statement successfully
+- Parse `continue` statement successfully
+- Parse nested `break`/`continue` in loops
 
-  Hint: @duration was declared as number on line 1
-```
+**Validation Tests** (`packages/language/src/__tests__/validation.spec.ts`):
+- Error when `break` outside loop
+- Error when `continue` outside loop
+- No error when `break`/`continue` inside loop
+- Nested loops work correctly
 
-### R5: Backwards Compatibility
+**Transformer Tests** (`packages/language/src/compiler/__tests__/transformer.spec.ts`):
+- `break` transforms to `breakForEach` operation
+- `continue` transforms to `continueForEach` operation
+- Operations are correctly positioned in operation sequence
 
-All existing valid Eligian code must continue to work without modifications.
+**Integration Tests** (`packages/language/src/compiler/__tests__/pipeline.spec.ts`):
+- Full compilation of DSL with `break`/`continue`
+- Generated JSON matches expected Eligius configuration
 
-Type annotations are optional - code without them should work exactly as before.
+### R5: Documentation
+
+Update documentation files:
+- Grammar comments in `eligian.langium`
+- Examples in `examples/` directory
+- CLAUDE.md with new syntax patterns
 
 ## Design Constraints
 
-1. **Langium Integration**: Use Langium's validation framework
-2. **Progressive Enhancement**: Type checking is additive, not breaking
-3. **Performance**: Type checking should not significantly slow compilation
-4. **VS Code Support**: Type errors should show as red squiggles in IDE
+1. **Langium Integration**: Use Langium's grammar and validation framework
+2. **Zero Breaking Changes**: All existing code continues to work
+3. **Constitution Compliance**: Follow all constitution principles (testing, documentation, Biome, etc.)
+4. **Eligius Compatibility**: Generated operations must match Eligius expectations
 
 ## Success Criteria
 
-1. ✅ Type annotations parse correctly in grammar
-2. ✅ Type inference works for common patterns
-3. ✅ Type errors show in VS Code Problems panel
-4. ✅ All existing tests pass (no breaking changes)
-5. ✅ New tests cover type checking scenarios
-6. ✅ Documentation explains type system usage
+1. ✅ `break` and `continue` parse correctly in grammar
+2. ✅ Transformer generates correct `breakForEach`/`continueForEach` operations
+3. ✅ Validation catches incorrect usage (outside loops) with clear errors
+4. ✅ All existing tests pass (no regressions)
+5. ✅ New tests cover all syntax and validation scenarios
+6. ✅ Biome checks pass (code quality maintained)
+7. ✅ Documentation updated with examples
 
-## Out of Scope
+## Implementation Phases
 
-- Runtime type checking (Eligius handles this)
-- Advanced types (unions, intersections, generics)
-- Type aliases or custom types
-- Structural typing (duck typing)
-- Gradual typing migration tools
+### Phase 1: Grammar and Parsing
+- Add `BreakStatement` and `ContinueStatement` to grammar
+- Update generated AST types
+- Add parsing tests
+
+### Phase 2: Transformer
+- Implement `transformBreakStatement`
+- Implement `transformContinueStatement`
+- Add transformer tests
+
+### Phase 3: Validation
+- Implement `checkBreakStatement` validator
+- Implement `checkContinueStatement` validator
+- Add validation tests
+
+### Phase 4: Integration and Documentation
+- Full pipeline integration tests
+- Add example files demonstrating usage
+- Update CLAUDE.md and grammar documentation
+- Run Biome checks and fix any issues
 
 ## Examples
 
-### Example 1: Typed Action with Inference
+### Example 1: Skip Invalid Items
 
 ```eligian
-// Explicit types on action
-action fadeElement(selector: string, duration: number, opacity: number) [
-  selectElement(selector)
-  animate({opacity: opacity}, duration)
-]
+for (item in items) {
+  if (@@currentItem.invalid) {
+    continue  // Skip this iteration
+  }
 
-// Variable type inferred from literal
-const speed = 300  // Inferred as number
-
-// ✅ Valid - types match
-fadeElement("#title", @speed, 1.0)
-
-// ❌ Error - type mismatch
-fadeElement(@speed, "#title", 1.0)
+  processItem(@@currentItem)
+}
 ```
 
-### Example 2: Type Inference from Operations
-
-```eligian
-// No type annotations
-action highlightItem(item) [
-  // addClass expects (selector: string, className: string)
-  // => Infer item: string
-  addClass(item, "active")
-]
-
-const element = ".card"  // Inferred as string
-highlightItem(@element)  // ✅ Valid
-
-const index = 5  // Inferred as number
-highlightItem(@index)  // ❌ Error: Cannot pass number to string parameter
+**Generated Eligius Operations**:
+```json
+{
+  "systemName": "forEach",
+  "operationData": { "collection": "operationdata.items" }
+},
+{
+  "systemName": "when",
+  "operationData": { "condition": "scope.currentItem.invalid" }
+},
+{
+  "systemName": "continueForEach",
+  "operationData": {}
+},
+{
+  "systemName": "endWhen",
+  "operationData": {}
+},
+{
+  "systemName": "startAction",
+  "operationData": { "actionOperationData": { "item": "scope.currentItem" } }
+},
+{
+  "systemName": "endForEach",
+  "operationData": {}
+}
 ```
 
-### Example 3: Mixed Typed and Untyped Code
+### Example 2: Early Exit on Condition
 
 ```eligian
-// Untyped action (legacy code)
-action oldAction(x) [
-  selectElement(x)
-]
+for (slide in slides) {
+  processSlide(@@currentItem)
 
-// Typed action (new code)
-action newAction(selector: string) [
-  oldAction(selector)  // ✅ Valid - type flows through
-]
+  if ($operationdata.errorOccurred) {
+    break  // Exit loop immediately
+  }
+}
+```
 
-const num = 42
-newAction(@num)  // ❌ Error - type error caught even in mixed code
+**Generated Eligius Operations**:
+```json
+{
+  "systemName": "forEach",
+  "operationData": { "collection": "operationdata.slides" }
+},
+{
+  "systemName": "startAction",
+  "operationData": { "actionOperationData": { "slide": "scope.currentItem" } }
+},
+{
+  "systemName": "when",
+  "operationData": { "condition": "operationdata.errorOccurred" }
+},
+{
+  "systemName": "breakForEach",
+  "operationData": {}
+},
+{
+  "systemName": "endWhen",
+  "operationData": {}
+},
+{
+  "systemName": "endForEach",
+  "operationData": {}
+}
+```
+
+### Example 3: Nested Loops (Both Keywords Work)
+
+```eligian
+for (outer in outerItems) {
+  for (inner in @@currentItem.innerItems) {
+    if (@@currentItem.skipInner) {
+      continue  // Skip inner iteration
+    }
+
+    if (@@currentItem.stopAll) {
+      break  // Exit inner loop (Eligius doesn't support breaking outer)
+    }
+
+    processInnerItem(@@currentItem)
+  }
+}
 ```
 
 ## Dependencies
 
-- Langium validation framework
-- Operation registry with parameter type information
-- Cross-reference resolution (already implemented in Phase 16.8)
+- Langium grammar and AST generation
+- Existing operation registry (`breakForEach`, `continueForEach`)
+- AST transformer infrastructure
+- Validation framework
+
+## Backwards Compatibility
+
+**100% backwards compatible**:
+- Existing code using `breakForEach()` operation calls continues to work
+- Existing code without loop control continues to work
+- No breaking changes to grammar, transformer, or validator
+- Both syntactic sugar and explicit operations can coexist
 
 ## References
 
-- TypeScript type inference: https://www.typescriptlang.org/docs/handbook/type-inference.html
-- Langium validation: https://langium.org/docs/reference/validation/
-- Existing operation registry: `packages/language/src/compiler/operations/registry.ts`
+- Eligius loop operations: `breakForEach`, `continueForEach`, `forEach`, `endForEach`
+- Operation registry: `packages/language/src/compiler/operations/registry.generated.ts`
+- Existing syntactic sugar patterns: `if/else` → `when/otherwise/endWhen`, `for` → `forEach/endForEach`
+- Constitution Principle X: Validation Pattern (compiler-first)
+- Constitution Principle XIII: Operation Metadata Consultation

@@ -102,7 +102,7 @@ TypeAnnotation returns string:
  * - Variable declarations (const varName = value)
  */
 OperationStatement:
-    IfStatement | ForStatement | VariableDeclaration | OperationCall;
+    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | OperationCall;
 
 /**
  * If/Else Statement - Syntactic sugar for when/otherwise/endWhen
@@ -138,6 +138,40 @@ IfStatement:
  */
 ForStatement:
     'for' '(' itemName=ID 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
+
+/**
+ * Break Statement - Exit current loop immediately
+ *
+ * Compiles to: breakForEach() operation
+ *
+ * Examples:
+ *   for (item in items) {
+ *     if (@@currentItem.invalid) {
+ *       break  // Exit loop
+ *     }
+ *   }
+ *
+ * Validation: Must appear inside a ForStatement
+ */
+BreakStatement:
+    {infer BreakStatement} 'break';
+
+/**
+ * Continue Statement - Skip to next loop iteration
+ *
+ * Compiles to: continueForEach() operation
+ *
+ * Examples:
+ *   for (item in items) {
+ *     if (@@currentItem.skip) {
+ *       continue  // Skip this iteration
+ *     }
+ *   }
+ *
+ * Validation: Must appear inside a ForStatement
+ */
+ContinueStatement:
+    {infer ContinueStatement} 'continue';
 
 /**
  * Variable Declaration - Declare a constant variable

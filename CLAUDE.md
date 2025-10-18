@@ -279,6 +279,87 @@ packages/
 └── templates/                # Feature planning templates
 ```
 
+## Loop Control: Break and Continue
+
+The Eligian DSL provides clean syntactic sugar for loop control operations using familiar `break` and `continue` keywords, similar to existing sugar for `if/else` and `for` loops.
+
+### Overview
+
+These keywords compile to the underlying Eligius `breakForEach` and `continueForEach` operations, providing cleaner syntax while maintaining full compatibility with existing code.
+
+### Syntax
+
+**Break Statement** (exit loop immediately):
+```eligian
+for (item in items) {
+  if (@@currentItem.stop) {
+    break  // Exit the loop
+  }
+  processItem(@@currentItem)
+}
+```
+
+**Continue Statement** (skip to next iteration):
+```eligian
+for (item in items) {
+  if (@@currentItem.skip) {
+    continue  // Skip this iteration
+  }
+  processItem(@@currentItem)
+}
+```
+
+### Validation
+
+- `break` and `continue` can **only** be used inside `for` loops
+- Using them outside a loop produces a **compile error**:
+  ```eligian
+  action invalid [
+    break  // ❌ ERROR: 'break' can only be used inside a loop
+  ]
+  ```
+
+### Backwards Compatibility
+
+Both new keywords and old operation calls work together:
+```eligian
+for (item in items) {
+  // New syntax
+  if (condition1) {
+    continue
+  }
+
+  // Old syntax (still works)
+  if (condition2) {
+    continueForEach()
+  }
+
+  // Both can coexist
+  if (condition3) {
+    break
+  }
+  if (condition4) {
+    breakForEach()
+  }
+}
+```
+
+### Documentation
+
+- **Example File**: `examples/break-continue-demo.eligian` - Comprehensive usage examples
+- **Feature Spec**: `specs/main/spec.md` - Complete specification
+- **Implementation Plan**: `specs/main/plan.md` - Technical implementation details
+
+### Implementation
+
+- **Grammar**: Added `BreakStatement` and `ContinueStatement` to `eligian.langium`
+- **Transformer**: Maps to `breakForEach`/`continueForEach` operations in `ast-transformer.ts`
+- **Validation**: Loop context checking in `eligian-validator.ts`
+- **Tests**:
+  - 3 parsing tests in `parsing.spec.ts`
+  - 3 transformer tests in `transformer.spec.ts`
+  - 6 validation tests in `validation.spec.ts`
+
 ## Type System (Phase 18)
 
 The Eligian DSL includes an **optional** static type checking system inspired by TypeScript. This system catches type errors at compile time without affecting runtime behavior.

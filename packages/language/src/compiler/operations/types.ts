@@ -45,7 +45,8 @@ export type ParameterType =
   | 'ParameterType:QuadrantPosition'
   | 'ParameterType:jQuery'
   | 'ParameterType:expression'
-  | 'ParameterType:mathfunction';
+  | 'ParameterType:mathfunction'
+  | 'ParameterType:cssProperties';
 
 /**
  * Represents a constant value constraint (enum-like).

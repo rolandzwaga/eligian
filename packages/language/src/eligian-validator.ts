@@ -10,6 +10,8 @@ import {
 } from './compiler/index.js';
 import type { EligianServices } from './eligian-module.js';
 import type {
+  BreakStatement,
+  ContinueStatement,
   EligianAstType,
   EndableActionDefinition,
   Expression,
@@ -50,6 +52,8 @@ export function registerValidationChecks(services: EligianServices) {
       // TODO T216: Re-enable checkDependencies once we implement proper dependency tracking across sequences
       // validator.checkDependencies
     ],
+    BreakStatement: validator.checkBreakInsideLoop,
+    ContinueStatement: validator.checkContinueInsideLoop,
     RegularActionDefinition: [
       validator.checkControlFlowPairing,
       validator.checkErasedPropertiesInAction, // T254-T255: Erased property validation
@@ -943,5 +947,51 @@ export class EligianValidator {
         code: 'type-mismatch',
       });
     }
+  }
+
+  /**
+   * Validate that 'break' statement only appears inside a for loop.
+   *
+   * Break/continue syntactic sugar only works with forEach operations,
+   * so they can only be used inside for loops.
+   */
+  checkBreakInsideLoop(stmt: BreakStatement, accept: ValidationAcceptor): void {
+    if (!this.isInsideForLoop(stmt)) {
+      accept('error', "'break' can only be used inside a loop", {
+        node: stmt,
+      });
+    }
+  }
+
+  /**
+   * Validate that 'continue' statement only appears inside a for loop.
+   *
+   * Break/continue syntactic sugar only works with forEach operations,
+   * so they can only be used inside for loops.
+   */
+  checkContinueInsideLoop(stmt: ContinueStatement, accept: ValidationAcceptor): void {
+    if (!this.isInsideForLoop(stmt)) {
+      accept('error', "'continue' can only be used inside a loop", {
+        node: stmt,
+      });
+    }
+  }
+
+  /**
+   * Helper: Check if an AST node is inside a ForStatement.
+   *
+   * Walks up the AST container chain looking for a ForStatement.
+   */
+  private isInsideForLoop(node: BreakStatement | ContinueStatement): boolean {
+    let current: any = node.$container;
+
+    while (current) {
+      if (current.$type === 'ForStatement') {
+        return true;
+      }
+      current = current.$container;
+    }
+
+    return false;
   }
 }

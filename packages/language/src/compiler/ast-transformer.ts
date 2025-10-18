@@ -18,6 +18,8 @@
 import { Effect } from 'effect';
 import type {
   TimeExpression as AstTimeExpression,
+  BreakStatement,
+  ContinueStatement,
   EndableActionDefinition,
   Expression,
   ForStatement,
@@ -791,6 +793,8 @@ const transformStaggerBlock = (
         // Transform inline operations with stagger scope
         // Inside stagger blocks, @item resolves to @@currentItem
         const staggerScope: ScopeContext = {
+          inActionBody: false,
+          actionParameters: [],
           loopVariableName: 'item', // Default variable name for stagger items
         };
 
@@ -1210,6 +1214,14 @@ const transformOperationStatement = (
         // Action-scoped variable → setVariable operation
         return yield* _(transformVariableDeclaration(stmt, scope));
 
+      case 'BreakStatement':
+        // break → breakForEach operation
+        return yield* _(transformBreakStatement(stmt, scope));
+
+      case 'ContinueStatement':
+        // continue → continueForEach operation
+        return yield* _(transformContinueStatement(stmt, scope));
+
       default:
         return yield* _(
           Effect.fail({
@@ -1352,6 +1364,50 @@ const transformForStatement = (
 
     return operations;
   });
+
+/**
+ * Transform BreakStatement → breakForEach operation
+ *
+ * Transforms:
+ *   break
+ *
+ * Into:
+ *   { systemName: 'breakForEach', operationData: {} }
+ */
+const transformBreakStatement = (
+  stmt: BreakStatement,
+  scope: ScopeContext = createEmptyScope()
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.succeed([
+    {
+      id: crypto.randomUUID(),
+      systemName: 'breakForEach',
+      operationData: {},
+      sourceLocation: getSourceLocation(stmt),
+    },
+  ]);
+
+/**
+ * Transform ContinueStatement → continueForEach operation
+ *
+ * Transforms:
+ *   continue
+ *
+ * Into:
+ *   { systemName: 'continueForEach', operationData: {} }
+ */
+const transformContinueStatement = (
+  stmt: ContinueStatement,
+  scope: ScopeContext = createEmptyScope()
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.succeed([
+    {
+      id: crypto.randomUUID(),
+      systemName: 'continueForEach',
+      operationData: {},
+      sourceLocation: getSourceLocation(stmt),
+    },
+  ]);
 
 /**
  * Transform VariableDeclaration → setVariable operation (T184)
