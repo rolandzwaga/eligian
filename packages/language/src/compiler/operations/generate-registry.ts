@@ -80,6 +80,8 @@ const OPERATION_CATEGORIES: Record<string, string> = {
   endWhen: 'Control Flow',
   forEach: 'Control Flow',
   endForEach: 'Control Flow',
+  continueForEach: 'Control Flow',
+  breakForEach: 'Control Flow',
 
   // Events
   broadcastEvent: 'Events',
@@ -104,10 +106,12 @@ const OPERATION_SYSTEM_NAMES: Record<string, string> = {
   animate: 'animate',
   animateWithClass: 'animateWithClass',
   broadcastEvent: 'broadcastEvent',
+  breakForEach: 'breakForEach',
   calc: 'calc',
   clearElement: 'clearElement',
   clearOperationData: 'clearOperationData',
   createElement: 'createElement',
+  continueForEach: 'continueForEach',
   customFunction: 'customFunction',
   endAction: 'endAction',
   endForEach: 'endForEach',

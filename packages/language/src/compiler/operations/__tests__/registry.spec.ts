@@ -19,8 +19,9 @@ describe('T224: Operation Registry Tests', () => {
   describe('Registry completeness', () => {
     it('should have all non-deprecated operations registered', () => {
       const allOperations = getAllOperations();
-      // We expect 45 operations (46 from Eligius - 1 deprecated: resizeAction)
-      expect(allOperations.length).toBeGreaterThanOrEqual(45);
+      // We expect 48 operations (49 from Eligius - 1 deprecated: resizeAction)
+      // Latest additions: breakForEach, continueForEach (Eligius 1.3.0)
+      expect(allOperations.length).toBe(48);
     });
 
     it('should have no duplicate operation names', () => {
@@ -44,6 +45,8 @@ describe('T224: Operation Registry Tests', () => {
         'endWhen',
         'forEach',
         'endForEach',
+        'breakForEach',
+        'continueForEach',
       ];
 
       for (const opName of expectedOperations) {
@@ -193,6 +196,20 @@ describe('T224: Operation Registry Tests', () => {
       expect(endForEach).toBeDefined();
       expect(endForEach?.systemName).toBe('endForEach');
     });
+
+    it('should have correct signatures for loop control operations', () => {
+      const breakForEach = getOperationSignature('breakForEach');
+      expect(breakForEach).toBeDefined();
+      expect(breakForEach?.systemName).toBe('breakForEach');
+      expect(breakForEach?.category).toBe('Control Flow');
+      expect(breakForEach?.parameters).toBeDefined();
+
+      const continueForEach = getOperationSignature('continueForEach');
+      expect(continueForEach).toBeDefined();
+      expect(continueForEach?.systemName).toBe('continueForEach');
+      expect(continueForEach?.category).toBe('Control Flow');
+      expect(continueForEach?.parameters).toBeDefined();
+    });
   });
 
   describe('Registry lookup functions', () => {
@@ -236,7 +253,7 @@ describe('T224: Operation Registry Tests', () => {
       expect(typeof registry).toBe('object');
 
       const keys = Object.keys(registry);
-      expect(keys.length).toBeGreaterThanOrEqual(45);
+      expect(keys.length).toBe(48);
 
       for (const key of keys) {
         const operation = registry[key];

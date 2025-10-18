@@ -1645,3 +1645,158 @@ case 'VariableReference': {
 - Validates our compiler implementation against canonical schema
 
 ---
+## Phase 16.10: Type System Refactoring ✅
+**Status**: COMPLETE | **Tasks**: T274-T289 (16/16 complete)
+**Deliverable**: Compiler uses Eligius types directly, eliminating duplicate IR types and preventing type drift
+
+**Purpose**: Eliminate intermediate representation (IR) types in favor of using Eligius types directly throughout the compiler. This prevents type drift, simplifies maintenance, and ensures the compiler always emits correct Eligius JSON structure.
+
+**Key Achievement**: Complete type system refactoring - compiler now builds IEngineConfiguration directly
+
+**Implementation Tasks**:
+
+- [X] T274 [Analysis] Audit current IR types vs Eligius types
+- [X] T275 [Types] Import Eligius types into compiler
+- [X] T276 [IR] Replace IR types with Eligius types
+- [X] T277 [SourceMap] Create parallel SourceMap structure
+- [X] T278 [Transformer] Update AST transformer
+- [X] T279 [TypeChecker] Update type checker
+- [X] T280 [Optimizer] Update optimizer
+- [X] T281 [Emitter] Simplify emitter
+- [X] T282-T286 [Tests] Update all test suites (transformer, type-checker, optimizer, emitter, pipeline)
+- [X] T287 [Quality] Run Biome check - 0 errors
+- [X] T288 [Quality] Run full test suite - All 256 tests passing
+- [X] T289 [Docs] Update architecture documentation
+
+**Benefits**:
+- ✅ Zero maintenance burden - Eligius updates surface as compile errors
+- ✅ No type drift - impossible to emit wrong structure
+- ✅ Simpler emitter - just serialize, no transformation
+- ✅ Type safety - TypeScript enforces correctness
+- ✅ Source maps - separate parallel structure for debugging
+
+**Final Status**: All 256 tests passing ✅, Biome clean, Build successful
+
+---
+
+## Phase 18: Type System Enhancements ✅
+
+**Status**: COMPLETE | **Tasks**: T290-T319 (30/30 complete)
+**Deliverable**: Optional static type checking - catch type errors at compile time
+
+**Purpose**: Add TypeScript-style optional type checking to catch type mismatches before running timelines
+
+**User Stories**:
+- **US1 (P1)**: Type annotations for self-documentation
+- **US2 (P2)**: Catch type errors at compile time
+- **US3 (P3)**: Type inference without annotations
+
+### Key Milestones
+
+**Setup & Infrastructure (T290-T291)**:
+- Created `packages/language/src/type-system/` directory
+- Defined `EligianType`: `'string' | 'number' | 'boolean' | 'object' | 'array' | 'unknown'`
+- Type system interfaces and infrastructure
+
+**US1: Type Annotations (T292-T295)**:
+- Added type annotation syntax to grammar: `name: string`, `count: number`
+- Updated Parameter rule: `name=ID (':' type=TypeAnnotation)?`
+- Created example file: `examples/type-annotation-test.eligian`
+- All 270 tests passing (9 new parsing tests + 5 new validation tests)
+
+**US2: Compile-Time Type Checking (T296-T307)**:
+- Implemented literal type inference for all 5 types
+- Variable type tracking with TypeEnvironment
+- Type compatibility checking with 'unknown' opt-out
+- Operation registry integration - maps 23 ParameterTypes to 5 EligianTypes
+- Type checking for: operation calls, variable declarations, variable references, parameter references
+- Integration with action validation (6 validators added)
+- All 290 tests passing (20 new tests)
+
+**US3: Type Inference (T308-T313)**:
+- Constraint collection from operation usage
+- Constraint unification (detects conflicts)
+- Full parameter type inference without annotations
+- Integration with validation system
+- All 298 tests passing (8 new tests)
+
+**Polish & Cross-Cutting (T314-T319)**:
+- Comprehensive documentation (README, JSDoc, examples)
+- Performance optimization (caching, <1ms overhead)
+- Error recovery for partial type info
+- Biome checks: 0 errors, 0 warnings
+- Full test suite: 298 passing, 8 skipped (306 total)
+
+### Type System Features
+
+**Type Annotations (US1)**:
+```eligian
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  animate({opacity: 1}, duration)
+]
+```
+
+**Type Inference (US3)**:
+```eligian
+action fadeIn(selector, duration) [
+  selectElement(selector)         // selector inferred as 'string'
+  animate({opacity: 1}, duration) // duration inferred as 'number'
+]
+```
+
+**Type Error Detection (US2)**:
+```eligian
+action bad(selector: number) [
+  selectElement(selector)  // ❌ Compile error: selector is number, selectElement expects string
+]
+```
+
+### Architecture
+
+**Location**: `packages/language/src/type-system/`
+
+**Core Modules**:
+- `types.ts` - Type definitions (EligianType, TypeConstraint, TypeError)
+- `inference.ts` - Type inference engine (constraint collection, unification)
+- `validator.ts` - Type compatibility checking
+- `index.ts` - Public API
+
+**Integration**: Type checking integrated into `eligian-validator.ts` at action validation level
+
+### Design Decisions
+
+1. **Opt-In**: Type checking is completely optional - untyped code works exactly as before
+2. **Backwards Compatible**: All existing DSL code continues to work (100% compatibility maintained)
+3. **Compile-Time Only**: Type annotations stripped during compilation - zero runtime overhead
+4. **Unknown Type**: Parameters without annotations or usage remain `'unknown'` (opt-out of type checking)
+
+### Files Added
+
+- `packages/language/src/type-system/` (new directory)
+  - `types.ts`, `inference.ts`, `validator.ts`, `index.ts`, `README.md`
+- `examples/type-annotation-test.eligian`
+- `examples/type-inference-demo.eligian`
+
+### Files Modified
+
+- `packages/language/src/eligian.langium` (type annotation grammar)
+- `packages/language/src/eligian-validator.ts` (type checking integration)
+- `packages/language/src/__tests__/parsing.spec.ts` (9 new tests)
+- `packages/language/src/__tests__/validation.spec.ts` (5 new tests)
+- `packages/language/src/__tests__/type-system.spec.ts` (25 new tests)
+- `CLAUDE.md` (type system documentation section)
+
+### Benefits
+
+- ✅ Optional static type checking without runtime overhead
+- ✅ 100% backwards compatibility - opt-in system
+- ✅ Type annotations for self-documentation (US1)
+- ✅ Compile-time error detection (US2)
+- ✅ Type inference reduces annotation burden (US3)
+- ✅ Clear error messages with hints
+- ✅ Fast performance (<1ms overhead per action)
+
+**Final Status**: All 298 tests passing ✅, Biome clean, Build successful
+
+---
