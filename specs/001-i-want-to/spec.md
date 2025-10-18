@@ -71,6 +71,24 @@ As an Eligian developer, I want basic playback controls (play, pause, restart) i
 
 ---
 
+### User Story 5 - EventBus Debug Viewer (Priority: P3)
+
+As an Eligian developer debugging complex timelines, I want to see all EventBus events in real-time, so I can understand the sequence of events and diagnose timing or state issues.
+
+**Why this priority**: Development/debugging tool that helps understand internal engine behavior. Not essential for basic timeline development but very valuable for debugging complex interactions and custom operations.
+
+**Independent Test**: Can be tested by opening preview, enabling the debug viewer, and verifying that all EventBus events (play, pause, timeline events, custom events) are displayed with their arguments.
+
+**Acceptance Scenarios**:
+
+1. **Given** I have a preview open, **When** I click the "Debug Events" button in the control bar, **Then** a floating debug panel appears showing all EventBus events in real-time
+2. **Given** the debug viewer is open, **When** timeline events fire (play, pause, stop, time updates), **Then** each event appears in the list with timestamp, event name, topic, and arguments
+3. **Given** the debug viewer shows many events, **When** I use the filter input, **Then** only events matching the filter (by name or topic) are displayed
+4. **Given** the debug viewer is visible, **When** I drag its title bar, **Then** I can reposition it anywhere on the screen
+5. **Given** the debug viewer is open, **When** I click the "Debug Events" button again, **Then** the viewer closes/hides
+
+---
+
 ### Edge Cases
 
 - What happens when an `.eligian` file is empty or contains only comments?
@@ -103,6 +121,12 @@ As an Eligian developer, I want basic playback controls (play, pause, restart) i
 - **FR-015**: Preview MUST be accessible via command palette (e.g., "Eligian: Preview Timeline")
 - **FR-016**: Preview MUST be accessible via context menu when right-clicking an `.eligian` file
 - **FR-017**: Preview MUST be accessible via keyboard shortcut `Ctrl+K V` (Windows/Linux) or `Cmd+K V` (Mac), following VS Code's Markdown preview convention
+- **FR-018**: System MUST provide a toggle button in the preview control bar to show/hide the EventBus debug viewer
+- **FR-019**: Debug viewer MUST register as an EventBus listener and display all events in real-time
+- **FR-020**: Debug viewer MUST show event timestamp, event name, topic (if present), and arguments for each event
+- **FR-021**: Debug viewer MUST be draggable by its title bar to allow repositioning on screen
+- **FR-022**: Debug viewer MUST provide filtering capability to filter events by name or topic
+- **FR-023**: Debug viewer MUST persist its visibility state (open/closed) across preview updates
 
 ### Key Entities
 

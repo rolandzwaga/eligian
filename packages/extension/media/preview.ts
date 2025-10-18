@@ -133,6 +133,186 @@ async function destroyEngine(): Promise<void> {
   }
 }
 
+/**
+ * EventBus Debug Viewer - Implements IEventbusListener to monitor all EventBus events
+ */
+class EventbusDebugViewer implements IEventbusListener {
+  private events: Array<{
+    timestamp: number;
+    eventName: string;
+    eventTopic?: string;
+    args: any[];
+  }> = [];
+  private filterText = '';
+  private isVisible = false;
+
+  constructor() {
+    this.setupUI();
+  }
+
+  /**
+   * IEventbusListener implementation - called for every EventBus event
+   */
+  handleEvent(eventName: string, eventTopic: string | undefined, args: any[]): void {
+    // Store event in history
+    this.events.unshift({
+      // Add to front (newest first)
+      timestamp: Date.now(),
+      eventName,
+      eventTopic,
+      args: this.serializeArgs(args),
+    });
+
+    // Update UI if visible
+    if (this.isVisible) {
+      this.renderEvents();
+    }
+  }
+
+  /**
+   * Safely serialize arguments for display
+   */
+  private serializeArgs(args: any[]): any[] {
+    try {
+      // Use JSON parse/stringify to clone and handle circular references
+      return JSON.parse(JSON.stringify(args));
+    } catch (error) {
+      return [`[Serialization Error: ${error}]`];
+    }
+  }
+
+  /**
+   * Setup UI event handlers
+   */
+  private setupUI(): void {
+    // Toggle button
+    const toggleBtn = document.getElementById('debug-toggle-btn')!;
+    toggleBtn.addEventListener('click', () => this.toggle());
+
+    // Clear button
+    const clearBtn = document.getElementById('debug-clear-btn')!;
+    clearBtn.addEventListener('click', () => this.clear());
+
+    // Filter input
+    const filterInput = document.getElementById('debug-filter') as HTMLInputElement;
+    filterInput.addEventListener('input', () => {
+      this.filterText = filterInput.value.toLowerCase();
+      this.renderEvents();
+    });
+
+    // Make panel draggable
+    this.setupDraggable();
+  }
+
+  /**
+   * Setup draggable behavior for the debug panel
+   */
+  private setupDraggable(): void {
+    const panel = document.getElementById('debug-viewer')!;
+    const header = document.getElementById('debug-header')!;
+    let isDragging = false;
+    let currentX = 0;
+    let currentY = 0;
+    let initialX = 0;
+    let initialY = 0;
+
+    header.addEventListener('mousedown', (e: MouseEvent) => {
+      isDragging = true;
+      initialX = e.clientX - currentX;
+      initialY = e.clientY - currentY;
+    });
+
+    document.addEventListener('mousemove', (e: MouseEvent) => {
+      if (isDragging) {
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+        panel.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+  }
+
+  /**
+   * Toggle debug viewer visibility
+   */
+  toggle(): void {
+    this.isVisible = !this.isVisible;
+    const panel = document.getElementById('debug-viewer')!;
+    panel.style.display = this.isVisible ? 'flex' : 'none';
+
+    if (this.isVisible) {
+      this.renderEvents();
+    }
+  }
+
+  /**
+   * Clear all events
+   */
+  clear(): void {
+    this.events = [];
+    this.renderEvents();
+  }
+
+  /**
+   * Render events to the UI
+   */
+  private renderEvents(): void {
+    const container = document.getElementById('debug-events')!;
+
+    // Filter events based on filter text
+    const filteredEvents = this.filterText
+      ? this.events.filter(
+          event =>
+            event.eventName.toLowerCase().includes(this.filterText) ||
+            event.eventTopic?.toLowerCase().includes(this.filterText)
+        )
+      : this.events;
+
+    // Render events
+    container.innerHTML = filteredEvents
+      .map(event => {
+        const time = new Date(event.timestamp).toLocaleTimeString('en-US', {
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          fractionalSecondDigits: 3,
+        });
+
+        const topicHtml = event.eventTopic
+          ? `<div class="debug-event-topic">Topic: ${event.eventTopic}</div>`
+          : '';
+
+        const argsJson = JSON.stringify(event.args, null, 2);
+
+        return `
+          <div class="debug-event">
+            <div class="debug-event-header">
+              <span class="debug-event-name">${event.eventName}</span>
+              <span class="debug-event-time">${time}</span>
+            </div>
+            ${topicHtml}
+            <div class="debug-event-args">${argsJson}</div>
+          </div>
+        `;
+      })
+      .join('');
+
+    // Show message if no events
+    if (filteredEvents.length === 0) {
+      container.innerHTML =
+        '<div style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground);">No events to display</div>';
+    }
+  }
+}
+
+// Create debug viewer instance
+const debugViewer = new EventbusDebugViewer();
+
 // Listen for messages from extension
 window.addEventListener('message', async event => {
   const message = event.data;
@@ -299,6 +479,10 @@ function setupTimelineEventListeners(): void {
     updateControlStates(true);
     vscode.postMessage({ type: 'playbackStarted' });
   });
+
+  // Register debug viewer to receive ALL eventbus events
+  eventbus.registerEventlistener(debugViewer);
+  console.log('[Webview] Debug viewer registered as eventbus listener');
 }
 
 // Initialize controls after DOM loads

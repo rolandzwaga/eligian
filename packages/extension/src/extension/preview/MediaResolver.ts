@@ -255,7 +255,7 @@ export class MediaResolver {
         // We'll assume the path is valid and let Eligius handle load errors
         // Convert to webview URI
         return this.webview.asWebviewUri(fileUri);
-      } catch (error) {}
+      } catch (_error) {}
     }
 
     // File not found - track as missing
