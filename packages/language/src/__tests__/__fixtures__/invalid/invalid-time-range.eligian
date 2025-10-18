@@ -1,7 +1,7 @@
 // Test fixture: Invalid time range (T038)
 // Should trigger validation error: "Timeline event start time must be less than or equal to end time"
 
-timeline "test" using raf {
+timeline "test" in ".test-container" using raf {
   // Invalid: start > end
   at 10s..5s [
     selectElement("#element")

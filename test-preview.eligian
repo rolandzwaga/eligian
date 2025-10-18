@@ -1,0 +1,5 @@
+timeline "Test Preview" in ".eligius" using raf {
+  at 0s..10s [
+    log("Hello from Eligian preview!")
+  ] []
+}

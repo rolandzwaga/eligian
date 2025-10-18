@@ -213,7 +213,7 @@ OperationCall:
  *   }
  */
 Timeline:
-    'timeline' name=STRING 'using' provider=TimelineProvider ('from' source=STRING)?
+    'timeline' name=STRING 'in' containerSelector=STRING 'using' provider=TimelineProvider ('from' source=STRING)?
     '{' (events += TimelineEvent)* '}';
 
 TimelineProvider returns string:

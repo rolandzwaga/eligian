@@ -2,7 +2,7 @@
 // Should trigger validation error: "Timeline provider requires a source file"
 
 // Video provider without source
-timeline "test" using video {
+timeline "test" in ".test-container" using video {
   at 0s..5s [
     selectElement("#element")
     addClass("visible")

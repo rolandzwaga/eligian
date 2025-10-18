@@ -5,6 +5,7 @@ import { Effect } from 'effect';
 import type * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import { registerPreviewCommand } from './commands/preview.js';
 
 let client: LanguageClient;
 
@@ -14,6 +15,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register compile command
   context.subscriptions.push(registerCompileCommand());
+
+  // Register preview command
+  context.subscriptions.push(registerPreviewCommand(context));
 }
 
 // This function is called when the extension is deactivated.

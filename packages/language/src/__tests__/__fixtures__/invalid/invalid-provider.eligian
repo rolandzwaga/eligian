@@ -2,7 +2,7 @@
 // Should trigger validation error: "Invalid timeline provider"
 
 // Invalid provider name - must be: video, audio, raf, or custom
-timeline "test" using websocket from "ws://localhost:8080" {
+timeline "test" in ".test-container" using websocket from "ws://localhost:8080" {
   at 0s..5s [
     selectElement("#element")
     addClass("visible")

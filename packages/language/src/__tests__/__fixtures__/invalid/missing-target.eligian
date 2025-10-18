@@ -1,7 +1,7 @@
 // Note: New grammar doesn't have built-in show/hide/animate actions
 // All actions are generic operation calls - validation happens at compile time
 
-timeline "test" using raf {
+timeline "test" in ".test-container" using raf {
   at 0s..10s [
     // Missing required parameters - these would be caught by type checking
     selectElement()

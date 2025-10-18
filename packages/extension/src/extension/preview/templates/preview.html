@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${cspSource}; style-src ${cspSource} 'unsafe-inline'; img-src ${cspSource} https: data:; media-src ${cspSource} https: data:; font-src ${cspSource};">
+    <title>Eligian Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: var(--vscode-font-family);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+        }
+        #loading {
+            display: block;
+            text-align: center;
+            padding: 40px;
+            color: var(--vscode-descriptionForeground);
+        }
+        #eligius-container {
+            width: 100%;
+            height: 100%;
+        }
+        #error-container {
+            display: none;
+            padding: 20px;
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            border-radius: 4px;
+        }
+        #error-container h2 {
+            margin-top: 0;
+            color: var(--vscode-errorForeground);
+        }
+        .error-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: var(--vscode-editor-background);
+            border-left: 3px solid var(--vscode-errorForeground);
+        }
+        #controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: 6px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+        #controls button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--vscode-font-family);
+            font-size: 13px;
+        }
+        #controls button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        #controls button:active {
+            background-color: var(--vscode-button-activeBackground);
+        }
+        #controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Compiling timeline...</div>
+    <div id="eligius-container"></div>
+    <div id="error-container">
+        <h2>Compilation Errors</h2>
+        <div id="error-list"></div>
+    </div>
+
+    <!-- Playback controls -->
+    <div id="controls">
+        <button id="play-btn">Play</button>
+        <button id="pause-btn" disabled>Pause</button>
+        <button id="stop-btn" disabled>Stop</button>
+        <button id="restart-btn" disabled>Restart</button>
+    </div>
+
+    <script src="${scriptUri}"></script>
+</body>
+</html>

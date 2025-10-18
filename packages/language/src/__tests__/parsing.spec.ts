@@ -35,41 +35,51 @@ async function parseEligian(text: string): Promise<Program> {
 describe('Eligian Grammar - Parsing', () => {
   describe('Timeline parsing', () => {
     test('should parse video timeline with source', async () => {
-      const program = await parseEligian('timeline "main" using video from "video.mp4" {}');
+      const program = await parseEligian(
+        'timeline "main" in ".container" using video from "video.mp4" {}'
+      );
 
       expect(program.elements).toHaveLength(1);
       const timeline = program.elements[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
       expect(timeline.name).toBe('main');
+      expect(timeline.containerSelector).toBe('.container');
       expect(timeline.provider).toBe('video');
       expect(timeline.source).toBe('video.mp4');
     });
 
     test('should parse audio timeline with source', async () => {
-      const program = await parseEligian('timeline "audio" using audio from "audio.mp3" {}');
+      const program = await parseEligian(
+        'timeline "audio" in "#audio-player" using audio from "audio.mp3" {}'
+      );
 
       expect(program.elements).toHaveLength(1);
       const timeline = program.elements[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
+      expect(timeline.containerSelector).toBe('#audio-player');
       expect(timeline.provider).toBe('audio');
       expect(timeline.source).toBe('audio.mp3');
     });
 
     test('should parse raf timeline without source', async () => {
-      const program = await parseEligian('timeline "animation" using raf {}');
+      const program = await parseEligian(
+        'timeline "animation" in ".animation-container" using raf {}'
+      );
 
       expect(program.elements).toHaveLength(1);
       const timeline = program.elements[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
+      expect(timeline.containerSelector).toBe('.animation-container');
       expect(timeline.provider).toBe('raf');
     });
 
     test('should parse custom timeline', async () => {
-      const program = await parseEligian('timeline "custom" using custom {}');
+      const program = await parseEligian('timeline "custom" in ".custom-timeline" using custom {}');
 
       expect(program.elements).toHaveLength(1);
       const timeline = program.elements[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
+      expect(timeline.containerSelector).toBe('.custom-timeline');
       expect(timeline.provider).toBe('custom');
     });
   });
@@ -77,7 +87,7 @@ describe('Eligian Grammar - Parsing', () => {
   describe('Timeline event parsing', () => {
     test('should parse simple timeline event with inline endable action', async () => {
       const program = await parseEligian(`
-        timeline "main" using raf {
+        timeline "main" in ".container" using raf {
           at 0s..5s [
             selectElement("#title")
             addClass("visible")
@@ -103,7 +113,7 @@ describe('Eligian Grammar - Parsing', () => {
           removeClass("visible")
         ]
 
-        timeline "main" using raf {
+        timeline "main" in ".container" using raf {
           at 0s..5s {
             fadeIn()
           }
@@ -118,7 +128,7 @@ describe('Eligian Grammar - Parsing', () => {
 
     test('should parse timeline event with time expressions', async () => {
       const program = await parseEligian(`
-        timeline "main" using raf {
+        timeline "main" in ".container" using raf {
           at 5s + 2s..10s * 2s [
             selectElement("#content")
           ] [
@@ -133,7 +143,7 @@ describe('Eligian Grammar - Parsing', () => {
 
     test('should parse multiple timeline events', async () => {
       const program = await parseEligian(`
-        timeline "main" using raf {
+        timeline "main" in ".container" using raf {
           at 0s..5s [
             selectElement("#title")
           ] [

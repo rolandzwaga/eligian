@@ -41,7 +41,7 @@ describe('AST Transformer', () => {
   describe('Timeline transformation (T050)', () => {
     test('should transform video timeline with source', async () => {
       const code = `
-                timeline "test" using video from "test.mp4" {
+                timeline "test" in ".test-container" using video from "test.mp4" {
                     at 0s..5s [
                         selectElement("#el")
                     ] [
@@ -59,7 +59,7 @@ describe('AST Transformer', () => {
 
     test('should transform raf timeline without source', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#el")
                     ] [
@@ -79,7 +79,7 @@ describe('AST Transformer', () => {
   describe('Timeline Event transformation (T051)', () => {
     test('should transform inline endable action to TimelineAction', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#title")
                         addClass("visible")
@@ -111,7 +111,7 @@ describe('AST Transformer', () => {
                     removeClass("visible")
                 ]
 
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 10s..20s {
                         fadeIn()
                     }
@@ -150,7 +150,7 @@ describe('AST Transformer', () => {
                     removeClass("visible")
                 ]
 
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -169,7 +169,7 @@ describe('AST Transformer', () => {
                     addClass("highlight")
                 ]
 
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -188,7 +188,7 @@ describe('AST Transformer', () => {
                 action test [
                     selectElement("#myId")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -206,7 +206,7 @@ describe('AST Transformer', () => {
                     selectElement("#el")
                     setStyle({ opacity: 0, color: "red" })
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -226,7 +226,7 @@ describe('AST Transformer', () => {
                     selectElement("#el")
                     animate({ opacity: 1 }, 500, "ease")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -247,7 +247,7 @@ describe('AST Transformer', () => {
                 action test [
                     setData({ "operationdata.name": $scope.currentItem })
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -266,7 +266,7 @@ describe('AST Transformer', () => {
                 action test [
                     wait(10)
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -282,7 +282,7 @@ describe('AST Transformer', () => {
   describe('Time expression transformation (T054)', () => {
     test('should transform number literals in duration', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 42s..100s [
                         selectElement("#el")
                     ] [
@@ -300,7 +300,7 @@ describe('AST Transformer', () => {
 
     test('should transform relative time expressions (T189)', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..3s [
                         selectElement("#intro")
                     ] []
@@ -328,7 +328,7 @@ describe('AST Transformer', () => {
 
     test('should support mixed absolute and relative times (T189)', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#first")
                     ] []
@@ -369,7 +369,7 @@ describe('AST Transformer', () => {
                     selectElement("#outro")
                 ] []
 
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     sequence {
                         intro() for 5s
                         main() for 10s
@@ -406,7 +406,7 @@ describe('AST Transformer', () => {
                     selectElement($operationdata.selector)
                 ] []
 
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     sequence {
                         fadeIn(".title", 1000) for 2s
                         fadeIn(".content", 500) for 3s
@@ -447,7 +447,7 @@ describe('AST Transformer', () => {
                     selectElement("#step2")
                 ] []
 
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     sequence {
                         step1() for 3s
                         step2() for 2s
@@ -486,7 +486,7 @@ describe('AST Transformer', () => {
                     addClass("visible")
                 ] []
 
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
                 }
             `;
@@ -522,7 +522,7 @@ describe('AST Transformer', () => {
 
     test('should transform stagger block with inline operations', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     stagger 100ms [".box-1", ".box-2"] for 1s [
                         selectElement(@@currentItem)
                         addClass("active")
@@ -557,7 +557,7 @@ describe('AST Transformer', () => {
                     selectElement($operationdata.selector)
                 ] []
 
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#intro")
                     ] []
@@ -590,7 +590,7 @@ describe('AST Transformer', () => {
   describe('transformAST (T055) - Full program transformation', () => {
     test('should transform simple program to complete IEngineConfiguration IR', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#el")
                     ] [
@@ -606,9 +606,10 @@ describe('AST Transformer', () => {
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       ); // UUID v4
       expect(result.config.engine.systemName).toBe('EligiusEngine');
-      expect(result.config.containerSelector).toBe('body');
+      expect(result.config.containerSelector).toBe('#eligius-container');
       expect(result.config.language).toBe('en-US');
-      expect(result.config.layoutTemplate).toBe('default');
+      // layoutTemplate is now generated HTML for timeline containers
+      expect(result.config.layoutTemplate).toBe('<div class="test-container"></div>');
       expect(result.config.availableLanguages).toHaveLength(1);
       expect(result.config.availableLanguages[0].id).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -641,7 +642,7 @@ describe('AST Transformer', () => {
                     removeClass("visible")
                 ]
 
-                timeline "main" using video from "test.mp4" {
+                timeline "main" in ".main-container" using video from "test.mp4" {
                     at 0s..5s {
                         intro()
                     }
@@ -672,7 +673,7 @@ describe('AST Transformer', () => {
 
     test('should include source locations (T057)', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#el")
                     ] [
@@ -697,7 +698,7 @@ describe('AST Transformer', () => {
     });
 
     test('should handle programs with no events gracefully', async () => {
-      const code = 'timeline "test" using raf {}';
+      const code = 'timeline "test" in ".test-container" using raf {}';
       const program = await parseDSL(code);
 
       const result = await Effect.runPromise(transformAST(program));
@@ -748,7 +749,7 @@ describe('AST Transformer', () => {
                 action test [
                     unknownOperation("test")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -762,7 +763,7 @@ describe('AST Transformer', () => {
                 action test [
                     addClass("visible", "extra", "tooMany")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -776,7 +777,7 @@ describe('AST Transformer', () => {
                 action test [
                     addClass()
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -791,7 +792,7 @@ describe('AST Transformer', () => {
                     selectElement("#el")
                     addClass("visible")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -808,7 +809,7 @@ describe('AST Transformer', () => {
                     unknownOp()
                     addClass("visible")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -823,7 +824,7 @@ describe('AST Transformer', () => {
                 action test [
                     addClas("test")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const program = await parseDSL(code);
 
@@ -845,7 +846,7 @@ describe('AST Transformer', () => {
             break
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const program = await parseDSL(code);
 
@@ -868,7 +869,7 @@ describe('AST Transformer', () => {
             continue
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const program = await parseDSL(code);
 
@@ -896,7 +897,7 @@ describe('AST Transformer', () => {
             }
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const program = await parseDSL(code);
 
@@ -923,7 +924,7 @@ describe('AST Transformer', () => {
             selectElement(@@item)
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const program = await parseDSL(code);
 
@@ -950,7 +951,7 @@ describe('AST Transformer', () => {
           const selector = "#box"
           selectElement(@selector)
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const program = await parseDSL(code);
 
@@ -971,7 +972,7 @@ describe('AST Transformer', () => {
           selectElement(selector)
           animate({opacity: 1}, duration)
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const program = await parseDSL(code);
 

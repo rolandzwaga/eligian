@@ -13,7 +13,7 @@ endable action showSubtitle [
   removeClass("visible")
 ]
 
-timeline "main" using video from "presentation.mp4" {
+timeline "main" in ".presentation" using video from "presentation.mp4" {
   at 0s..5s {
     showTitle()
   }

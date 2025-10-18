@@ -78,8 +78,8 @@ describe('Eligian Grammar - Validation', () => {
       for (const provider of validProviders) {
         const code =
           provider === 'video' || provider === 'audio'
-            ? `timeline "test" using ${provider} from "test.mp4" {}`
-            : `timeline "test" using ${provider} {}`;
+            ? `timeline "test" in ".test-container" using ${provider} from "test.mp4" {}`
+            : `timeline "test" in ".test-container" using ${provider} {}`;
 
         const { validationErrors } = await parseAndValidate(code);
 
@@ -111,7 +111,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should require source for audio provider', async () => {
       const code = `
-                timeline "test" using audio {}
+                timeline "test" in ".test-container" using audio {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -121,7 +121,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should not require source for raf provider', async () => {
       const code = `
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -134,7 +134,7 @@ describe('Eligian Grammar - Validation', () => {
   describe('Timeline event validation (T038, T039)', () => {
     test('should accept unique timeline events (no IDs)', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#el1")
                     ] [
@@ -171,7 +171,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should accept valid time range (start <= end)', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..10s [
                         selectElement("#el")
                     ] [
@@ -209,7 +209,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should accept non-negative times', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..10s [
                         selectElement("#el")
                     ] [
@@ -234,7 +234,7 @@ describe('Eligian Grammar - Validation', () => {
                 action test [
                     log()
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { document, validationErrors } = await parseAndValidate(code);
 
@@ -250,7 +250,7 @@ describe('Eligian Grammar - Validation', () => {
                     addClass("visible")
                     setStyle({ opacity: 1 })
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { document, validationErrors } = await parseAndValidate(code);
 
@@ -264,7 +264,7 @@ describe('Eligian Grammar - Validation', () => {
                 action test [
                     setData({ "operationdata.name": $scope.currentItem })
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { document, validationErrors } = await parseAndValidate(code);
 
@@ -294,7 +294,7 @@ describe('Eligian Grammar - Validation', () => {
                     removeClass("visible")
                 ]
 
-                timeline "presentation" using video from "presentation.mp4" {
+                timeline "presentation" in ".presentation-container" using video from "presentation.mp4" {
                     at 0s..5s {
                         showTitle()
                     }
@@ -344,7 +344,7 @@ describe('Eligian Grammar - Validation', () => {
                     selectElement("#test")
                     addClass("highlight")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -362,7 +362,7 @@ describe('Eligian Grammar - Validation', () => {
                     addClass("active")
                     removeClass("inactive")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -377,7 +377,7 @@ describe('Eligian Grammar - Validation', () => {
                 action test [
                     addClass("highlight")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -401,7 +401,7 @@ describe('Eligian Grammar - Validation', () => {
                     setStyle({ opacity: 1 })
                     removeClass("hidden")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -420,7 +420,7 @@ describe('Eligian Grammar - Validation', () => {
                         addClass("few")
                     }
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -437,7 +437,7 @@ describe('Eligian Grammar - Validation', () => {
                         addClass("active")
                     }
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -453,7 +453,7 @@ describe('Eligian Grammar - Validation', () => {
                     addClass("visible")
                 ] [
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -470,7 +470,7 @@ describe('Eligian Grammar - Validation', () => {
                 ] [
                     addClass("hidden")
                 ]
-                timeline "test" using raf {}
+                timeline "test" in ".test-container" using raf {}
             `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -486,7 +486,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should validate inline endable actions', async () => {
       const code = `
-                timeline "test" using raf {
+                timeline "test" in ".test-container" using raf {
                     at 0s..5s [
                         selectElement("#box")
                         addClass("visible")
@@ -514,7 +514,7 @@ describe('Eligian Grammar - Validation', () => {
         action fadeIn(selector: string, duration: number) [
           selectElement(selector)
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const document = await parseAndValidate(code);
       const action = document.program.elements[0] as RegularActionDefinition;
@@ -532,7 +532,7 @@ describe('Eligian Grammar - Validation', () => {
         endable action show(element: string, fade: boolean) [
           selectElement(element)
         ] []
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const document = await parseAndValidate(code);
       const action = document.program.elements[0] as EndableActionDefinition;
@@ -551,7 +551,7 @@ describe('Eligian Grammar - Validation', () => {
           selectElement(selector)
           animate({opacity: 1}, duration)
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const document = await parseAndValidate(code);
       const action = document.program.elements[0] as RegularActionDefinition;
@@ -572,7 +572,7 @@ describe('Eligian Grammar - Validation', () => {
           selectElement(selector)
           animate({opacity: 1}, duration)
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const document = await parseAndValidate(code);
       const action = document.program.elements[0] as RegularActionDefinition;
@@ -592,7 +592,7 @@ describe('Eligian Grammar - Validation', () => {
         action test(str: string, num: number, bool: boolean, obj: object, arr: array) [
           selectElement(str)
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const document = await parseAndValidate(code);
       const action = document.program.elements[0] as RegularActionDefinition;
@@ -615,7 +615,7 @@ describe('Eligian Grammar - Validation', () => {
         action test [
           break
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -630,7 +630,7 @@ describe('Eligian Grammar - Validation', () => {
         action test [
           continue
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -647,7 +647,7 @@ describe('Eligian Grammar - Validation', () => {
             break
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -664,7 +664,7 @@ describe('Eligian Grammar - Validation', () => {
             continue
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -686,7 +686,7 @@ describe('Eligian Grammar - Validation', () => {
             }
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const { validationErrors } = await parseAndValidate(code);
 
@@ -706,7 +706,7 @@ describe('Eligian Grammar - Validation', () => {
             break
           }
         ]
-        timeline "test" using raf {}
+        timeline "test" in ".test-container" using raf {}
       `;
       const { validationErrors } = await parseAndValidate(code);
 

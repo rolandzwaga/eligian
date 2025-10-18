@@ -37,7 +37,7 @@ endable action showAgenda [
   removeClass("visible")
 ]
 
-timeline "presentation" using raf {
+timeline "presentation" in ".presentation-container" using raf {
   at 0s..3s {
     showTitle()
   }

@@ -32,7 +32,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer string type from string literal', async () => {
     const program = await parseProgram(`
       const message = "hello"
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -47,7 +47,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer number type from number literal', async () => {
     const program = await parseProgram(`
       const duration = 1000
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -62,7 +62,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer number type from decimal literal', async () => {
     const program = await parseProgram(`
       const opacity = 0.5
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -77,7 +77,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer boolean type from true literal', async () => {
     const program = await parseProgram(`
       const enabled = true
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -92,7 +92,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer boolean type from false literal', async () => {
     const program = await parseProgram(`
       const disabled = false
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -107,7 +107,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer object type from object literal', async () => {
     const program = await parseProgram(`
       const styles = { opacity: 1, color: "red" }
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -122,7 +122,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer array type from array literal', async () => {
     const program = await parseProgram(`
       const items = [1, 2, 3]
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -138,7 +138,7 @@ describe('Type Inference - Literal Types (T296)', () => {
     const program = await parseProgram(`
       const x = 10
       const y = @x
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[1];
@@ -153,7 +153,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should return unknown for non-literal expressions (binary expression)', async () => {
     const program = await parseProgram(`
       const result = 10 + 20
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -168,7 +168,7 @@ describe('Type Inference - Literal Types (T296)', () => {
   test('should infer string type from single-quoted string', async () => {
     const program = await parseProgram(`
       const name = 'world'
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `);
 
     const varDecl = program.elements[0];
@@ -189,7 +189,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         animate({opacity: 1}, duration)
       ]
 
-      timeline "test" using raf {
+      timeline "test" in ".test-container" using raf {
         at 0s..2s {
           fadeIn("#box", 1000)
         }
@@ -211,7 +211,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement("#test")
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -225,7 +225,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement(selector)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -239,7 +239,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement(selector)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -256,7 +256,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         removeClass("visible")
       ]
 
-      timeline "test" using raf {
+      timeline "test" in ".test-container" using raf {
         at 0s..2s {
           showHide("#box", 1000)
         }
@@ -280,7 +280,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement(text)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -294,7 +294,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement("#test")
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -308,7 +308,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement("#outer")
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -318,7 +318,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
 
   test('should allow inline endable actions', async () => {
     const code = `
-      timeline "test" using raf {
+      timeline "test" in ".test-container" using raf {
         at 0s..2s [
           selectElement("#box")
           addClass("active")
@@ -339,7 +339,7 @@ describe('Type Checking - Integration (Phase 18 - T305)', () => {
         selectElement("#test")
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -355,7 +355,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         selectElement(selector)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -371,7 +371,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         animate({opacity: 1}, duration)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -388,7 +388,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         setAttribute(selector, "data-active", "true")
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -405,7 +405,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         }
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -422,7 +422,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         }
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -438,7 +438,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         animate({opacity: 1}, duration)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -456,7 +456,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         removeClass("active")
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);
@@ -471,7 +471,7 @@ describe('Type Inference - Parameter Types (Phase 18 - T312)', () => {
         selectElement(selector)
       ]
 
-      timeline "test" using raf {}
+      timeline "test" in ".test-container" using raf {}
     `;
 
     const document = await parse(code);

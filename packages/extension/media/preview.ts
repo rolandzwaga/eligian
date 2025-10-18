@@ -1,0 +1,276 @@
+/**
+ * preview.ts - Webview script for Eligian preview
+ *
+ * This script runs in the webview context (browser environment) and:
+ * - Handles postMessage communication with the extension
+ * - Manages the Eligius engine lifecycle
+ * - Controls timeline playback
+ *
+ * Constitution Principle I: Simplicity & Documentation
+ * Constitution Principle XIII: Eligius Domain Expert Consultation
+ */
+
+import {
+  EligiusResourceImporter,
+  EngineFactory,
+  type IEligiusEngine,
+  type IEngineConfiguration,
+} from 'eligius';
+import 'jquery';
+import lottie from 'lottie-web';
+import 'video.js';
+
+// Make lottie available globally for Eligius operations
+(window as any).lottie = lottie;
+
+// VS Code API (injected by webview)
+declare function acquireVsCodeApi(): {
+  postMessage(message: unknown): void;
+  getState(): unknown;
+  setState(state: unknown): void;
+};
+
+const vscode = acquireVsCodeApi();
+console.log('[Webview] Script loaded, vscode API acquired');
+
+// Eligius engine instance (null until initialized)
+let engine: IEligiusEngine | null = null;
+let factory: EngineFactory | null = null;
+
+/**
+ * Initialize the Eligius engine with the given configuration.
+ *
+ * Timeline container elements are automatically created by Eligius via the layoutTemplate.
+ */
+async function initializeEngine(config: IEngineConfiguration): Promise<void> {
+  console.log('[Webview] Initializing Eligius engine with config:', config.id);
+
+  try {
+    // Clean up previous engine if exists
+    if (engine) {
+      console.log('[Webview] Destroying previous engine instance');
+      await engine.destroy();
+      engine = null;
+    }
+
+    // Timeline containers are created by Eligius via layoutTemplate
+    // (no need to manually create them here)
+
+    // Create engine factory
+    factory = new EngineFactory(new EligiusResourceImporter(), window);
+    console.log('[Webview] Engine factory created');
+
+    // Create engine from config
+    engine = factory.createEngine(config);
+    console.log('[Webview] Engine instance created');
+
+    // Initialize engine
+    await engine.init();
+    console.log('[Webview] ✓ Engine initialized successfully');
+
+    // Show playback controls
+    showControls();
+
+    // Notify extension of successful initialization
+    vscode.postMessage({
+      type: 'initialized',
+      payload: { success: true },
+    });
+  } catch (error) {
+    console.error('[Webview] ✗ Engine initialization failed:', error);
+
+    // Notify extension of initialization failure
+    vscode.postMessage({
+      type: 'error',
+      payload: {
+        message: error instanceof Error ? error.message : String(error),
+        error,
+      },
+    });
+
+    // Also notify as failed initialization
+    vscode.postMessage({
+      type: 'initialized',
+      payload: { success: false },
+    });
+  }
+}
+
+/**
+ * Destroy the Eligius engine and clean up resources.
+ */
+async function destroyEngine(): Promise<void> {
+  if (engine) {
+    console.log('[Webview] Destroying engine');
+    try {
+      await engine.destroy();
+      engine = null;
+      factory = null;
+
+      vscode.postMessage({ type: 'destroyed' });
+    } catch (error) {
+      console.error('[Webview] ✗ Engine destruction failed:', error);
+      vscode.postMessage({
+        type: 'error',
+        payload: {
+          message: error instanceof Error ? error.message : String(error),
+          error,
+        },
+      });
+    }
+  }
+}
+
+// Listen for messages from extension
+window.addEventListener('message', async event => {
+  const message = event.data;
+  console.log('[Webview] Received message:', message.type, message);
+
+  switch (message.type) {
+    case 'updateConfig': {
+      // Hide loading, show error container
+      document.getElementById('loading')!.style.display = 'none';
+      document.getElementById('error-container')!.style.display = 'none';
+
+      // Log config for debugging
+      console.log('Received config:', message.payload);
+
+      // Show eligius container (don't clear innerHTML - timeline containers will be created during init)
+      const container = document.getElementById('eligius-container')!;
+      container.style.display = 'block';
+      break;
+    }
+
+    case 'showError': {
+      // Hide loading, show errors
+      document.getElementById('loading')!.style.display = 'none';
+      document.getElementById('eligius-container')!.style.display = 'none';
+      document.getElementById('error-container')!.style.display = 'block';
+
+      // Display errors
+      const errorList = document.getElementById('error-list')!;
+      errorList.innerHTML = message.payload.errors
+        .map(
+          (error: any) =>
+            `<div class="error-item">
+          <strong>${error.message}</strong><br>
+          ${error.line ? `Line ${error.line}, Column ${error.column}` : ''}
+        </div>`
+        )
+        .join('');
+      break;
+    }
+
+    case 'showLoading':
+      document.getElementById('loading')!.style.display = 'block';
+      document.getElementById('error-container')!.style.display = 'none';
+      break;
+
+    // Engine commands
+    case 'initialize':
+      await initializeEngine(message.payload.config);
+      break;
+
+    case 'play':
+      console.log('[Webview] Play command received');
+      vscode.postMessage({ type: 'playbackStarted' });
+      break;
+
+    case 'pause':
+      console.log('[Webview] Pause command received');
+      vscode.postMessage({ type: 'playbackPaused' });
+      break;
+
+    case 'stop':
+      console.log('[Webview] Stop command received');
+      vscode.postMessage({ type: 'playbackStopped' });
+      break;
+
+    case 'restart':
+      console.log('[Webview] Restart command received');
+      vscode.postMessage({ type: 'playbackStopped' });
+      // Will implement actual restart logic later
+      vscode.postMessage({ type: 'playbackStarted' });
+      break;
+
+    case 'destroy':
+      await destroyEngine();
+      break;
+  }
+});
+
+/**
+ * Update control button states based on playback state.
+ */
+function updateControlStates(isPlaying: boolean): void {
+  const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
+  const pauseBtn = document.getElementById('pause-btn') as HTMLButtonElement;
+  const stopBtn = document.getElementById('stop-btn') as HTMLButtonElement;
+  const restartBtn = document.getElementById('restart-btn') as HTMLButtonElement;
+
+  if (isPlaying) {
+    playBtn.disabled = true;
+    pauseBtn.disabled = false;
+    stopBtn.disabled = false;
+    restartBtn.disabled = false;
+  } else {
+    playBtn.disabled = false;
+    pauseBtn.disabled = true;
+    stopBtn.disabled = true;
+    restartBtn.disabled = false;
+  }
+}
+
+/**
+ * Show playback controls after engine initialization.
+ */
+function showControls(): void {
+  const controls = document.getElementById('controls')!;
+  controls.style.display = 'block';
+  updateControlStates(false); // Initially not playing
+}
+
+/**
+ * Hide playback controls (reserved for future use).
+ */
+function _hideControls(): void {
+  const controls = document.getElementById('controls')!;
+  controls.style.display = 'none';
+}
+
+// Initialize controls after DOM loads
+window.addEventListener('DOMContentLoaded', () => {
+  const playBtn = document.getElementById('play-btn')!;
+  const pauseBtn = document.getElementById('pause-btn')!;
+  const stopBtn = document.getElementById('stop-btn')!;
+  const restartBtn = document.getElementById('restart-btn')!;
+
+  // Wire up button click handlers
+  playBtn.addEventListener('click', () => {
+    console.log('[Webview] Play button clicked');
+    vscode.postMessage({ type: 'play' });
+    updateControlStates(true);
+  });
+
+  pauseBtn.addEventListener('click', () => {
+    console.log('[Webview] Pause button clicked');
+    vscode.postMessage({ type: 'pause' });
+    updateControlStates(false);
+  });
+
+  stopBtn.addEventListener('click', () => {
+    console.log('[Webview] Stop button clicked');
+    vscode.postMessage({ type: 'stop' });
+    updateControlStates(false);
+  });
+
+  restartBtn.addEventListener('click', () => {
+    console.log('[Webview] Restart button clicked');
+    vscode.postMessage({ type: 'restart' });
+    updateControlStates(true);
+  });
+});
+
+// Send ready message to extension
+console.log('[Webview] Sending ready message to extension');
+vscode.postMessage({ type: 'ready' });

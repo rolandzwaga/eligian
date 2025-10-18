@@ -26,6 +26,7 @@ const plugins = [{
     },
 }];
 
+// Build extension and language server (Node.js)
 const ctx = await esbuild.context({
     // Entry points for the vscode extension and the language server
     entryPoints: ['src/extension/main.ts', 'src/language/main.ts'],
@@ -46,9 +47,30 @@ const ctx = await esbuild.context({
     plugins
 });
 
+// Build webview script (Browser)
+const webviewCtx = await esbuild.context({
+    entryPoints: ['media/preview.ts'],
+    outdir: 'out/media',
+    bundle: true,
+    target: 'es2020',
+    format: 'iife',
+    platform: 'browser',
+    sourcemap: !minify,
+    minify,
+    // Provide empty stubs for Node.js modules (not used in browser context)
+    alias: {
+        'node:fs': './media/empty-stub.ts',
+        'node:path': './media/empty-stub.ts'
+    },
+    plugins
+});
+
 if (watch) {
     await ctx.watch();
+    await webviewCtx.watch();
 } else {
     await ctx.rebuild();
+    await webviewCtx.rebuild();
     ctx.dispose();
+    webviewCtx.dispose();
 }
