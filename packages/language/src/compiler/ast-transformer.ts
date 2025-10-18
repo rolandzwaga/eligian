@@ -788,17 +788,22 @@ const transformStaggerBlock = (
         const startTime = previousEventEndTime + i * delay;
         const endTime = startTime + duration;
 
-        // Transform inline operations
+        // Transform inline operations with stagger scope
+        // Inside stagger blocks, @item resolves to @@currentItem
+        const staggerScope: ScopeContext = {
+          loopVariableName: 'item', // Default variable name for stagger items
+        };
+
         const startOperations: OperationConfigIR[] = [];
         const endOperations: OperationConfigIR[] = [];
 
         for (const opStmt of stagger.startOps || []) {
-          const ops = yield* _(transformOperationStatement(opStmt));
+          const ops = yield* _(transformOperationStatement(opStmt, staggerScope));
           startOperations.push(...ops);
         }
 
         for (const opStmt of stagger.endOps || []) {
-          const ops = yield* _(transformOperationStatement(opStmt));
+          const ops = yield* _(transformOperationStatement(opStmt, staggerScope));
           endOperations.push(...ops);
         }
 

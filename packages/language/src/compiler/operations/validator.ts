@@ -331,7 +331,12 @@ function isTypeSingleCompatible(argType: string, paramTypeStr: string): boolean 
 
   // Object types
   if (argType === 'object') {
-    return paramTypeStr.includes('object') || paramTypeStr.includes('Object');
+    return (
+      paramTypeStr.includes('object') ||
+      paramTypeStr.includes('Object') ||
+      paramTypeStr.includes('cssProperties') || // CSS property objects
+      paramTypeStr.includes('animationProperties') // Animation property objects
+    );
   }
 
   // Array types

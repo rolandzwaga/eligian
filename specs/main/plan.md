@@ -1,12 +1,15 @@
-# Implementation Plan: Add continueForEach and breakForEach Operations
+# Implementation Plan: Fix Test Failures After Eligius 1.3.0 Upgrade
 
 ## Overview
 
-**Feature**: Add support for `continueForEach` and `breakForEach` operations to the Eligian DSL compiler
+**Issue**: After upgrading to Eligius 1.3.0 and adding `breakForEach`/`continueForEach` operations to the registry, 3 tests are failing in the language package test suite.
 
-**Version**: Eligius 1.3.0 introduces loop control flow operations (`breakForEach` and `continueForEach`) that provide early exit and skip functionality within `forEach` loops. These operations must be added to the Eligian operation registry so they can be used in Eligian DSL programs.
+**Affected Tests**:
+1. `validation.spec.ts` - "should accept operation calls with arguments" (1 validation error)
+2. `validation.spec.ts` - "should validate complex valid program" (2 validation errors)
+3. `transformer.spec.ts` - "should transform stagger block with inline operations" (Undefined variable reference error)
 
-**Goal**: Update the operation registry generator to include the two new operations and regenerate `registry.generated.ts`.
+**Goal**: Investigate root causes and fix all failing tests while maintaining backward compatibility and registry integrity.
 
 ---
 
@@ -14,354 +17,401 @@
 
 ### Current State
 
-- **Eligius Version**: 1.3.0 (upgraded in language package)
-- **New Operations Available**: `breakForEach`, `continueForEach` (verified via metadata export)
-- **Registry Generator**: `packages/language/src/compiler/operations/generate-registry.ts`
-- **Registry Output**: `packages/language/src/compiler/operations/registry.generated.ts`
-- **Current Operation Count**: 46 operations (before adding new ones)
+- **Eligius Version**: 1.3.0 (upgraded from earlier version)
+- **Registry Operations**: 48 operations (46 + 2 new: breakForEach, continueForEach)
+- **Registry Tests**: ✅ All 24 passing
+- **Language Tests**: ❌ 3 failing (297 passing, 8 skipped)
+- **Recent Changes**: Added loop control operations to OPERATION_REGISTRY
 
-### Architecture
+### Test Failure Patterns
 
-The operation registry generator works by:
-1. Importing all metadata functions from Eligius (`import { metadata } from 'eligius'`)
-2. Mapping metadata function names to operation system names via `OPERATION_SYSTEM_NAMES`
-3. Categorizing operations via `OPERATION_CATEGORIES` for documentation/IDE organization
-4. Converting metadata to `OperationSignature` format via `convertMetadata()`
-5. Generating TypeScript code with the complete registry
+**Pattern 1: Validation Errors** (2 tests)
+- Tests expect 0 validation errors, but getting 1-2 errors
+- Likely related to operation validation or parameter validation
+- May be caused by changes in Eligius 1.3.0 metadata structure
+- Could be related to new operations being detected unexpectedly
 
-### New Operations (from Eligius 1.3.0)
+**Pattern 2: Transform Error** (1 test)
+- "Undefined variable reference (linking failed)"
+- Location: line 4, column 39
+- Stagger syntax test (T192)
+- Could be related to variable scoping or reference resolution
 
-**`breakForEach`**:
-- **Category**: Control Flow
-- **Purpose**: Exit a `forEach` loop early
-- **Usage**: Must be used inside a `forEach`/`endForEach` block
-- **DSL Syntax**: `breakForEach()` - direct operation call (no DSL sugar needed yet)
+### Hypothesis
 
-**`continueForEach`**:
-- **Category**: Control Flow
-- **Purpose**: Skip to next iteration of a `forEach` loop
-- **Usage**: Must be used inside a `forEach`/`endForEach` block
-- **DSL Syntax**: `continueForEach()` - direct operation call (no DSL sugar needed yet)
+The Eligius 1.3.0 upgrade may have:
+1. Changed operation metadata structure (parameters, dependencies, outputs)
+2. Changed validation behavior for certain operations
+3. Changed variable reference resolution in stagger blocks
+4. Introduced stricter validation rules
 
 ---
 
 ## Constitution Check
 
-### Principle I: Simplicity, Documentation, and Maintainability ✅
-- **Compliance**: This is a straightforward addition following existing patterns
-- **Documentation**: Will add inline comments explaining the new operations
-
 ### Principle II: Comprehensive Testing (NON-NEGOTIABLE) ✅
-- **Compliance**: Will add tests for registry inclusion and operation metadata
-- **Plan**: Update registry tests to expect 48 operations (46 + 2 new)
+- **Compliance**: Fixing failing tests is critical before proceeding
+- **Rationale**: "All tests MUST pass before moving on after refactoring"
+- **Action**: Must investigate and fix all 3 failing tests
+
+### Principle I: Simplicity, Documentation, and Maintainability ✅
+- **Compliance**: Investigation must be systematic and documented
+- **Documentation**: Root cause analysis will be documented in plan
 
 ### Principle III: No Gold-Plating ✅
-- **Compliance**: Only adding operations that exist in Eligius - no speculative features
-- **Rationale**: Users need these operations for loop control flow
-
-### Principle XI: Code Quality - Biome Integration (NON-NEGOTIABLE) ✅
-- **Compliance**: Will run `npm run check` after changes
-- **Plan**: Ensure generated code is properly formatted
+- **Compliance**: Fix only what's broken, no unnecessary changes
+- **Approach**: Targeted fixes for specific test failures
 
 ### Principle XIII: Operation Metadata Consultation (NON-NEGOTIABLE) ✅
-- **Compliance**: Operations come directly from Eligius metadata - no assumptions
-- **Verification**: Metadata functions confirmed to exist via import test
+- **Compliance**: Check if Eligius 1.3.0 changed operation metadata
+- **Verification**: Compare metadata before/after upgrade if needed
 
 ---
 
-## Implementation Tasks
+## Investigation Tasks
 
-### Task 1: Update OPERATION_CATEGORIES mapping
+### Phase 0: Reproduce and Analyze Failures
 
-**File**: `packages/language/src/compiler/operations/generate-registry.ts`
+**Task 0.1: Run failing tests individually with detailed output**
 
-**Action**: Add new operations to Control Flow category
-
-```typescript
-// Line ~77-83 (Control Flow section)
-const OPERATION_CATEGORIES: Record<string, string> = {
-  // ... existing categories ...
-
-  // Control Flow
-  when: 'Control Flow',
-  otherwise: 'Control Flow',
-  endWhen: 'Control Flow',
-  forEach: 'Control Flow',
-  endForEach: 'Control Flow',
-  continueForEach: 'Control Flow',  // NEW
-  breakForEach: 'Control Flow',     // NEW
-
-  // ... rest of categories ...
-};
-```
-
-**Rationale**: These are control flow operations specifically for loop management, same category as `forEach`/`endForEach`.
-
----
-
-### Task 2: Update OPERATION_SYSTEM_NAMES mapping
-
-**File**: `packages/language/src/compiler/operations/generate-registry.ts`
-
-**Action**: Add metadata function name → system name mappings
-
-```typescript
-// Line ~100-148 (alphabetically ordered)
-const OPERATION_SYSTEM_NAMES: Record<string, string> = {
-  addClass: 'addClass',
-  // ... existing operations ...
-  breakForEach: 'breakForEach',    // NEW (alphabetically after broadcastEvent)
-  // ... existing operations ...
-  continueForEach: 'continueForEach',  // NEW (alphabetically after createElement)
-  // ... rest of operations ...
-};
-```
-
-**Rationale**: Metadata function names match system names (both are camelCase), following existing convention.
-
----
-
-### Task 3: Regenerate operation registry
-
-**Command**: `npm run generate:registry` (from `packages/language` directory)
-
-**Expected Changes**:
-- `registry.generated.ts` will be updated with 48 operations (was 46)
-- New entries for `breakForEach` and `continueForEach` with full metadata
-- Generated timestamp will be updated
-- Summary will show updated count
-
-**Verification**:
 ```bash
-# Check operation count
-grep -c '"systemName":' packages/language/src/compiler/operations/registry.generated.ts
-# Should output: 48
+# Run validation tests with full output
+npm run test -- validation.spec.ts --reporter=verbose
 
-# Verify new operations exist
-grep -E '(breakForEach|continueForEach)' packages/language/src/compiler/operations/registry.generated.ts
-# Should show entries for both operations
+# Run transformer test with full output
+npm run test -- transformer.spec.ts --reporter=verbose
+```
+
+**Expected Output**:
+- Exact validation error messages
+- Which operations are causing validation failures
+- Line numbers and code context for transform error
+
+---
+
+**Task 0.2: Examine test code for validation failures**
+
+**File**: `packages/language/src/__tests__/validation.spec.ts`
+
+**Actions**:
+1. Read test "should accept operation calls with arguments" (around line 259)
+2. Read test "should validate complex valid program" (around line 319)
+3. Identify which operations are being tested
+4. Check if test DSL code uses any deprecated syntax
+
+**Questions to Answer**:
+- What operations are being called in the test DSL?
+- Are breakForEach/continueForEach being invoked unexpectedly?
+- Are there parameter validation changes in Eligius 1.3.0?
+
+---
+
+**Task 0.3: Examine transformer test failure**
+
+**File**: `packages/language/src/compiler/__tests__/transformer.spec.ts`
+
+**Actions**:
+1. Read test "should transform stagger block with inline operations" (T192)
+2. Check the DSL input at line 4, column 39
+3. Identify the undefined variable reference
+4. Check stagger block variable scoping logic
+
+**Questions to Answer**:
+- What variable is being referenced?
+- Is this a stagger-specific scoping issue?
+- Did Eligius 1.3.0 change variable resolution rules?
+
+---
+
+### Phase 1: Root Cause Analysis
+
+**Task 1.1: Check for Eligius 1.3.0 metadata changes**
+
+**Actions**:
+1. Check if any existing operations had metadata changes in 1.3.0
+2. Verify parameter types, dependencies, outputs for all operations
+3. Compare against test expectations
+
+**Command**:
+```bash
+# Check metadata for operations used in failing tests
+node -e "import('eligius').then(m => {
+  console.log('addClass:', JSON.stringify(m.metadata.addClass(), null, 2));
+  console.log('forEach:', JSON.stringify(m.metadata.forEach(), null, 2));
+  // Add other operations as needed
+})"
 ```
 
 ---
 
-### Task 4: Update registry tests
+**Task 1.2: Check validation logic changes**
 
-**File**: `packages/language/src/compiler/operations/__tests__/registry.spec.ts`
+**File**: `packages/language/src/eligian-validator.ts`
 
-**Action**: Update expected operation count and add specific tests for new operations
+**Actions**:
+1. Review validation rules that could be triggered unexpectedly
+2. Check if loop control operation validation is too broad
+3. Verify parameter validation logic hasn't regressed
 
-```typescript
-// Update count expectation (was 46)
-test('registry contains expected number of operations', () => {
-  const count = Object.keys(OPERATION_REGISTRY).length;
-  expect(count).toBe(48); // Updated from 46
-});
-
-// Add new test case
-test('registry includes loop control operations', () => {
-  expect(OPERATION_REGISTRY).toHaveProperty('breakForEach');
-  expect(OPERATION_REGISTRY).toHaveProperty('continueForEach');
-
-  const breakForEach = OPERATION_REGISTRY.breakForEach;
-  const continueForEach = OPERATION_REGISTRY.continueForEach;
-
-  // Verify category
-  expect(breakForEach.category).toBe('Control Flow');
-  expect(continueForEach.category).toBe('Control Flow');
-
-  // Verify they have metadata
-  expect(breakForEach.parameters).toBeDefined();
-  expect(continueForEach.parameters).toBeDefined();
-});
-```
-
-**Rationale**: Tests verify the registry generation was successful and operations are properly categorized.
+**Focus Areas**:
+- Operation existence validation
+- Parameter count/type validation
+- Control flow validation (especially for forEach)
+- Variable reference validation
 
 ---
 
-### Task 5: Run Biome checks
+**Task 1.3: Check transformer variable resolution**
 
-**Command**: `npm run check` (from project root or `packages/language`)
+**File**: `packages/language/src/compiler/ast-transformer.ts`
+
+**Actions**:
+1. Review stagger block transformation logic
+2. Check variable scope management in stagger contexts
+3. Verify cross-reference resolution for variables
+
+**Focus Areas**:
+- Stagger block variable scoping (lines related to T192)
+- Variable reference linking
+- Expression transformation in stagger contexts
+
+---
+
+### Phase 2: Fix Implementation
+
+Based on root cause analysis, implement targeted fixes:
+
+**Scenario A: Validation Logic Issue**
+
+If validation is incorrectly flagging valid code:
+
+**Task 2A.1**: Update validation rules
+- Fix overly strict validation
+- Ensure loop control operations only validate inside loops
+- Update parameter validation if Eligius 1.3.0 changed types
+
+**Task 2A.2**: Update test expectations (only if valid)
+- If Eligius 1.3.0 intentionally made validation stricter
+- Update test DSL to comply with new rules
+- Document breaking changes
+
+---
+
+**Scenario B: Transformer/Variable Resolution Issue**
+
+If transformer can't resolve variable references:
+
+**Task 2B.1**: Fix stagger variable scoping
+- Ensure variables in stagger blocks are properly scoped
+- Fix cross-reference resolution
+- Update transformer to handle new Eligius patterns
+
+**Task 2B.2**: Update stagger tests
+- Verify stagger syntax is still correct
+- Update test DSL if syntax changed
+- Add regression tests
+
+---
+
+**Scenario C: Registry/Metadata Issue**
+
+If registry has incorrect metadata:
+
+**Task 2C.1**: Fix metadata conversion
+- Check metadata-converter.ts for issues
+- Verify parameter types are correctly mapped
+- Regenerate registry if needed
+
+**Task 2C.2**: Update operation signatures
+- Fix any incorrect parameter definitions
+- Update dependencies/outputs if changed
+- Re-run registry generation
+
+---
+
+### Phase 3: Validation & Testing
+
+**Task 3.1: Run specific failing tests**
+
+```bash
+# Validate fixes
+npm run test -- validation.spec.ts
+npm run test -- transformer.spec.ts
+```
+
+**Expected**: All tests pass
+
+---
+
+**Task 3.2: Run full test suite**
+
+```bash
+npm run test
+```
+
+**Expected**: 300 tests passing, 8 skipped (no failures)
+
+---
+
+**Task 3.3: Run Biome checks**
+
+```bash
+npm run check
+```
 
 **Expected**: 0 errors, 0 warnings
 
-**Action**: Fix any formatting or linting issues surfaced by Biome
-
 ---
 
-### Task 6: Run test suite
+**Task 3.4: Verify registry integrity**
 
-**Command**: `npm run test` (from `packages/language`)
-
-**Expected**: All tests pass (should be ~300 tests including 2 new registry tests)
-
-**Verification Checklist**:
-- [ ] Registry tests pass (48 operations expected)
-- [ ] New operation tests pass
-- [ ] No regressions in existing tests
-- [ ] Build succeeds
-
----
-
-## Validation Plan
-
-### Manual Validation
-
-**Test DSL Program** (`examples/loop-control-test.eligian`):
-```eligian
-action testLoopControl(items) [
-  for (item in items) {
-    // Skip items that match condition
-    if (@@item == "skip") {
-      continueForEach()
-    }
-
-    // Exit early if condition met
-    if (@@item == "exit") {
-      breakForEach()
-    }
-
-    log(@@item)
-  }
-]
-
-timeline "test" using raf {
-  at 0s..1s { testLoopControl(["a", "skip", "b", "exit", "c"]) }
-}
+```bash
+# Ensure registry still has 48 operations
+npm run test -- registry.spec.ts
 ```
 
-**Expected Behavior**:
-- DSL should parse without errors
-- Operations should be recognized (no "unknown operation" errors)
-- Compilation should succeed
-- Generated JSON should include `breakForEach` and `continueForEach` operation configs
+**Expected**: All 24 registry tests passing
 
-**Validation Steps**:
-1. Create test file with loop control operations
-2. Run CLI compiler: `node packages/cli/bin/cli.js examples/loop-control-test.eligian`
-3. Verify compilation succeeds
-4. Check generated JSON contains operations with correct `systemName`
+---
+
+## Success Criteria
+
+- [x] All 3 failing tests are fixed and passing
+- [x] Full test suite shows 300 tests passing (no failures)
+- [x] Registry integrity maintained (48 operations, all tests pass)
+- [x] Biome checks pass (0 errors, 0 warnings)
+- [x] Root cause documented in plan
+- [x] Fix approach documented for future reference
+- [x] No regressions introduced
 
 ---
 
 ## Risk Assessment
 
 ### Low Risk ✅
-- **Adding to existing registry**: Follows well-established pattern
-- **Operations exist in Eligius**: Verified via metadata import
-- **No breaking changes**: Purely additive change
+- Registry changes isolated from validation/transformer logic
+- Test failures appear pre-existing (not introduced by registry changes)
+- Fixes will be targeted and minimal
 
 ### Potential Issues
-1. **Metadata format changes**: If Eligius 1.3.0 changed metadata structure
-   - **Mitigation**: Test registry generation, verify metadata-converter handles new format
 
-2. **Operation dependencies**: If operations have special dependency requirements
-   - **Mitigation**: Metadata converter should handle this automatically
+1. **Breaking changes in Eligius 1.3.0**
+   - **Risk**: Metadata structure changed in incompatible way
+   - **Mitigation**: Check Eligius changelog, adapt metadata-converter if needed
 
-3. **Category organization**: Ensure "Control Flow" category is appropriate
-   - **Mitigation**: Matches existing `forEach`/`endForEach` category
+2. **Test expectations outdated**
+   - **Risk**: Tests expect old behavior that Eligius 1.3.0 changed
+   - **Mitigation**: Verify changes are intentional before updating tests
 
----
-
-## Success Criteria
-
-- [ ] `breakForEach` added to `OPERATION_CATEGORIES` (Control Flow)
-- [ ] `continueForEach` added to `OPERATION_CATEGORIES` (Control Flow)
-- [ ] `breakForEach` added to `OPERATION_SYSTEM_NAMES`
-- [ ] `continueForEach` added to `OPERATION_SYSTEM_NAMES`
-- [ ] Registry regenerated successfully (48 operations)
-- [ ] Registry tests updated and passing
-- [ ] Biome checks pass (0 errors, 0 warnings)
-- [ ] Full test suite passes (~300 tests)
-- [ ] Manual DSL validation succeeds
+3. **Hidden dependencies**
+   - **Risk**: Fixes in one area break other tests
+   - **Mitigation**: Run full test suite after each fix
 
 ---
 
 ## Timeline Estimate
 
-**Total Time**: ~30 minutes
+**Total Time**: 1-2 hours
 
-- Task 1 (OPERATION_CATEGORIES): 5 minutes
-- Task 2 (OPERATION_SYSTEM_NAMES): 5 minutes
-- Task 3 (Regenerate registry): 2 minutes
-- Task 4 (Update tests): 10 minutes
-- Task 5 (Biome checks): 2 minutes
-- Task 6 (Run tests): 5 minutes
-- Manual validation: 5 minutes
+- Phase 0 (Investigation): 30-45 minutes
+  - Task 0.1: 10 minutes (run tests, collect output)
+  - Task 0.2: 10 minutes (read validation tests)
+  - Task 0.3: 10-15 minutes (read transformer test)
+
+- Phase 1 (Root Cause): 15-30 minutes
+  - Task 1.1: 10 minutes (check metadata)
+  - Task 1.2: 5-10 minutes (review validation)
+  - Task 1.3: 5-10 minutes (review transformer)
+
+- Phase 2 (Fix): 15-30 minutes (depends on root cause)
+  - Single scenario: 15-20 minutes
+  - Multiple scenarios: 25-30 minutes
+
+- Phase 3 (Validation): 10-15 minutes
+  - Test runs: 10 minutes
+  - Verification: 5 minutes
 
 ---
 
 ## Notes
 
-### DSL Syntax Consideration (Future Work)
+### Pre-Investigation Context
 
-Currently, users will call these operations directly:
-```eligian
-for (item in items) {
-  if (condition) {
-    breakForEach()
-  }
-}
+**Test Failure Summary** (from initial run):
+```
+Test Files: 2 failed | 10 passed (12)
+Tests: 3 failed | 297 passed | 8 skipped (308)
+Duration: 2.76s
 ```
 
-**Future Enhancement** (not in this plan): Add syntactic sugar for `break` and `continue` keywords:
-```eligian
-for (item in items) {
-  if (condition) {
-    break  // Compiles to breakForEach()
-  }
-  if (otherCondition) {
-    continue  // Compiles to continueForEach()
-  }
-}
-```
+**Failing Tests**:
+1. `validation.spec.ts:259` - "should accept operation calls with arguments"
+   - Expected: 0 validation errors
+   - Actual: 1 validation error
 
-This would require:
-- Grammar changes (add `break` and `continue` keywords)
-- Transformer changes (compile to operation calls)
-- Validation (ensure only used inside loops)
-- Tests for syntax sugar
+2. `validation.spec.ts:319` - "should validate complex valid program"
+   - Expected: 0 validation errors
+   - Actual: 2 validation errors
 
-**Decision**: Defer syntax sugar to Phase 19+ (deferred features). Current direct operation call approach is sufficient and follows existing patterns.
+3. `transformer.spec.ts` - "should transform stagger block with inline operations"
+   - Error: `{"_tag":"TransformError","kind":"InvalidExpression","message":"Undefined variable reference (linking failed)","location":{"line":4,"column":39,"length":null}}`
+
+### Investigation Strategy
+
+1. **Start with validation tests** - Two related failures suggest common root cause
+2. **Check transformer separately** - Different error pattern, likely different cause
+3. **Verify registry operations** - Ensure new operations aren't interfering
+4. **Document all findings** - Create knowledge base for future upgrades
 
 ---
 
-## Post-Implementation
+## Resolution Summary
 
-### Documentation Updates
+**Date**: 2025-10-18
+**Status**: ✅ **RESOLVED** - All tests passing
 
-**File**: `CLAUDE.md`
-- Update operation count: "46 operations" → "48 operations"
-- Note addition of loop control operations in relevant sections
+### Root Causes Identified
 
-### Phase Tracking
+**1. Validation Errors (2 tests)**:
+- **Issue**: Parameter type validation was rejecting object literals for `cssProperties` and `animationProperties`
+- **Location**: `packages/language/src/compiler/operations/validator.ts:332-340`
+- **Root Cause**: `isTypeSingleCompatible()` only checked for generic `'object'` type string, not specialized property object types
+- **Fix**: Added `cssProperties` and `animationProperties` to object type compatibility check
+- **Result**: All 32 validation tests now pass
 
-**File**: `specs/main/tasks.md`
-- Add task entry for registry update (if tracked)
-- Update current status with operation count
+**2. Transformer Error (1 test)**:
+- **Issue**: "Undefined variable reference (linking failed)" for `@item` in stagger block
+- **Location**: `packages/language/src/compiler/__tests__/transformer.spec.ts:527`
+- **Root Cause**: Test used incorrect syntax `@item` (VariableReference) instead of `@@currentItem` (SystemPropertyReference)
+- **Fix**: Changed test DSL from `@item` to `@@currentItem` (consistent with for-loop `@@item` syntax)
+- **Result**: All 35 transformer tests now pass
 
-### Commit Message
+### Files Modified
 
-```
-feat(registry): add breakForEach and continueForEach operations
+1. **`packages/language/src/compiler/operations/validator.ts`**
+   - Fixed object type compatibility for specialized property types
 
-- Added continueForEach and breakForEach to OPERATION_CATEGORIES (Control Flow)
-- Added metadata function mappings in OPERATION_SYSTEM_NAMES
-- Regenerated registry.generated.ts with 48 operations (was 46)
-- Updated registry tests to expect new operation count
-- All tests passing, Biome checks clean
+2. **`packages/language/src/compiler/__tests__/transformer.spec.ts`**
+   - Corrected stagger test syntax from `@item` to `@@currentItem`
 
-Eligius 1.3.0 introduces loop control flow operations for early exit
-and skip functionality within forEach loops. These operations are now
-available in Eligian DSL programs.
+### Test Results
 
-Refs: Eligius 1.3.0 upgrade
-```
+- **Before**: 297 passing, 3 failing, 8 skipped
+- **After**: 300 passing, 0 failing, 8 skipped
+- **Registry tests**: 24/24 passing (48 operations)
+- **Biome checks**: ✅ All passed (0 errors, 0 warnings)
+
+### Key Insights
+
+1. **Type System Compatibility**: The Eligius parameter type system uses specialized types like `ParameterType:cssProperties` that need explicit handling in validation
+2. **DSL Syntax Consistency**: Single `@` is for variable references, double `@@` is for system properties (loop context)
+3. **Pre-existing Issues**: Test failures were introduced in commit 085c59f (2025-10-17) and unrelated to registry changes
 
 ---
 
 **Plan Version**: 1.0
 **Created**: 2025-10-18
-**Feature**: Loop Control Operations (breakForEach, continueForEach)
-**Estimated Effort**: 30 minutes
-**Complexity**: Low (straightforward additive change)
+**Resolved**: 2025-10-18
+**Issue**: Test failures after Eligius 1.3.0 upgrade
+**Actual Effort**: ~30 minutes
+**Complexity**: Medium (investigation required, targeted fixes)

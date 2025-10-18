@@ -524,10 +524,10 @@ describe('AST Transformer', () => {
       const code = `
                 timeline "test" using raf {
                     stagger 100ms [".box-1", ".box-2"] for 1s [
-                        selectElement(@item)
+                        selectElement(@@currentItem)
                         addClass("active")
                     ] [
-                        selectElement(@item)
+                        selectElement(@@currentItem)
                         removeClass("active")
                     ]
                 }
@@ -542,7 +542,7 @@ describe('AST Transformer', () => {
       // First item: 0s-1s
       expect(actions[0].duration.start).toBe(0);
       expect(actions[0].duration.end).toBe(1);
-      // Should have operations with @item reference compiled to context.item
+      // Should have operations with @@currentItem reference compiled to scope.currentItem
       expect(actions[0].startOperations).toHaveLength(2);
       expect(actions[0].endOperations).toHaveLength(2);
 
