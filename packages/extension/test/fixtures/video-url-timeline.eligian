@@ -1,0 +1,12 @@
+// Video Timeline with Public URL
+// Tests HTTPS URL pass-through (no local file needed)
+
+timeline "Video URL Test" in ".video-container" using video from "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" {
+  at 10s..11s [
+    log("Event at 10 seconds")
+  ] []
+
+  at 20s..21s [
+    log("Event at 20 seconds")
+  ] []
+}

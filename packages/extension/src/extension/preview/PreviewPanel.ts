@@ -14,6 +14,7 @@ import * as vscode from 'vscode';
 import { CompilationService } from './CompilationService.js';
 import { EligiusEngineService, type EngineEvent } from './EligiusEngineService.js';
 import { FileWatcher } from './FileWatcher.js';
+import { MediaResolver } from './MediaResolver.js';
 
 /**
  * Manages the lifecycle of a single preview webview panel.
@@ -206,18 +207,36 @@ export class PreviewPanel {
       });
 
       if (result.success && result.config) {
+        // Resolve media paths to webview URIs
+        console.log('[Preview] Resolving media paths...');
+        const mediaResolver = new MediaResolver(
+          vscode.workspace.workspaceFolders,
+          this.panel.webview,
+          this.documentUri
+        );
+        const resolvedConfig = mediaResolver.resolveMediaPaths(result.config);
+
+        // Check for missing media files
+        const missingFiles = mediaResolver.getMissingFiles();
+        if (missingFiles.length > 0) {
+          console.warn('[Preview] Missing media files:', missingFiles);
+          vscode.window.showWarningMessage(
+            `Preview: ${missingFiles.length} media file(s) not found: ${missingFiles.join(', ')}`
+          );
+        }
+
         // Send successful compilation result to webview
-        console.log('[Preview] Sending updateConfig message with config');
+        console.log('[Preview] Sending updateConfig message with resolved config');
         await this.panel.webview.postMessage({
           type: 'updateConfig',
           payload: {
-            config: result.config,
+            config: resolvedConfig,
           },
         });
 
         // Initialize Eligius engine with the compiled config
         console.log('[Preview] Initializing Eligius engine');
-        await this.engineService.initialize(result.config);
+        await this.engineService.initialize(resolvedConfig);
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
       } else {

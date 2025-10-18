@@ -1,0 +1,12 @@
+// Video Timeline Test Fixture
+// Tests media resolution and video timeline playback
+
+timeline "Video Test" in ".video-container" using video from "media/test-video.mp4" {
+  at 1s..2s [
+    log("Event at 1 second")
+  ] []
+
+  at 3s..4s [
+    log("Event at 3 seconds")
+  ] []
+}

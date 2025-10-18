@@ -1,0 +1,12 @@
+// Audio Timeline Test Fixture
+// Tests audio timeline playback
+
+timeline "Audio Test" in ".audio-container" using audio from "media/test-audio.mp3" {
+  at 1s..2s [
+    log("Audio event at 1 second")
+  ] []
+
+  at 3s..4s [
+    log("Audio event at 3 seconds")
+  ] []
+}
