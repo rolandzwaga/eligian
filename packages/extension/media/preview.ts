@@ -13,8 +13,11 @@
 import {
   EligiusResourceImporter,
   EngineFactory,
+  Eventbus,
   type IEligiusEngine,
   type IEngineConfiguration,
+  type IEventbus,
+  TimelineEventNames,
 } from 'eligius';
 import 'jquery';
 import lottie from 'lottie-web';
@@ -37,6 +40,10 @@ console.log('[Webview] Script loaded, vscode API acquired');
 let engine: IEligiusEngine | null = null;
 let factory: EngineFactory | null = null;
 
+// Create shared eventbus for controlling playback
+const eventbus: IEventbus = new Eventbus();
+console.log('[Webview] Shared eventbus created');
+
 /**
  * Initialize the Eligius engine with the given configuration.
  *
@@ -56,9 +63,11 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     // Timeline containers are created by Eligius via layoutTemplate
     // (no need to manually create them here)
 
-    // Create engine factory
-    factory = new EngineFactory(new EligiusResourceImporter(), window);
-    console.log('[Webview] Engine factory created');
+    // Create engine factory with shared eventbus
+    factory = new EngineFactory(new EligiusResourceImporter(), window, {
+      eventbus, // Pass our eventbus so we can control playback
+    });
+    console.log('[Webview] Engine factory created with shared eventbus');
 
     // Create engine from config
     engine = factory.createEngine(config);
@@ -67,6 +76,9 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     // Initialize engine
     await engine.init();
     console.log('[Webview] ✓ Engine initialized successfully');
+
+    // Set up timeline event listeners for UI state updates
+    setupTimelineEventListeners();
 
     // Show playback controls
     showControls();
@@ -246,6 +258,49 @@ function _hideControls(): void {
   controls.style.display = 'none';
 }
 
+/**
+ * Set up event listeners for timeline state changes.
+ * These listeners update the UI based on timeline events broadcast by Eligius.
+ */
+function setupTimelineEventListeners(): void {
+  console.log('[Webview] Setting up timeline event listeners');
+
+  // Listen for PLAY event - timeline has started
+  eventbus.on(TimelineEventNames.PLAY, () => {
+    console.log('[Webview] Timeline PLAY event received');
+    updateControlStates(true);
+    vscode.postMessage({ type: 'playbackStarted' });
+  });
+
+  // Listen for PAUSE event - timeline has paused
+  eventbus.on(TimelineEventNames.PAUSE, () => {
+    console.log('[Webview] Timeline PAUSE event received');
+    updateControlStates(false);
+    vscode.postMessage({ type: 'playbackPaused' });
+  });
+
+  // Listen for STOP event - timeline has stopped
+  eventbus.on(TimelineEventNames.STOP, () => {
+    console.log('[Webview] Timeline STOP event received');
+    updateControlStates(false);
+    vscode.postMessage({ type: 'playbackStopped' });
+  });
+
+  // Listen for COMPLETE event - timeline has finished
+  eventbus.on(TimelineEventNames.COMPLETE, () => {
+    console.log('[Webview] Timeline COMPLETE event received');
+    updateControlStates(false);
+    vscode.postMessage({ type: 'playbackStopped' });
+  });
+
+  // Listen for RESTART event - timeline has restarted
+  eventbus.on(TimelineEventNames.RESTART, () => {
+    console.log('[Webview] Timeline RESTART event received');
+    updateControlStates(true);
+    vscode.postMessage({ type: 'playbackStarted' });
+  });
+}
+
 // Initialize controls after DOM loads
 window.addEventListener('DOMContentLoaded', () => {
   const playBtn = document.getElementById('play-btn')!;
@@ -253,29 +308,30 @@ window.addEventListener('DOMContentLoaded', () => {
   const stopBtn = document.getElementById('stop-btn')!;
   const restartBtn = document.getElementById('restart-btn')!;
 
-  // Wire up button click handlers
+  // Wire up button click handlers to broadcast timeline control events
   playBtn.addEventListener('click', () => {
-    console.log('[Webview] Play button clicked');
-    vscode.postMessage({ type: 'play' });
-    updateControlStates(true);
+    console.log('[Webview] Play button clicked - broadcasting PLAY_REQUEST');
+    eventbus.broadcast(TimelineEventNames.PLAY_REQUEST, []);
   });
 
   pauseBtn.addEventListener('click', () => {
-    console.log('[Webview] Pause button clicked');
-    vscode.postMessage({ type: 'pause' });
-    updateControlStates(false);
+    console.log('[Webview] Pause button clicked - broadcasting PAUSE_REQUEST');
+    eventbus.broadcast(TimelineEventNames.PAUSE_REQUEST, []);
   });
 
   stopBtn.addEventListener('click', () => {
-    console.log('[Webview] Stop button clicked');
-    vscode.postMessage({ type: 'stop' });
-    updateControlStates(false);
+    console.log('[Webview] Stop button clicked - broadcasting STOP_REQUEST');
+    eventbus.broadcast(TimelineEventNames.STOP_REQUEST, []);
   });
 
   restartBtn.addEventListener('click', () => {
-    console.log('[Webview] Restart button clicked');
-    vscode.postMessage({ type: 'restart' });
-    updateControlStates(true);
+    console.log('[Webview] Restart button clicked - broadcasting STOP then PLAY');
+    // Restart = stop then play
+    eventbus.broadcast(TimelineEventNames.STOP_REQUEST, []);
+    // Small delay to ensure stop completes before play
+    setTimeout(() => {
+      eventbus.broadcast(TimelineEventNames.PLAY_REQUEST, []);
+    }, 50);
   });
 
   // Wire up retry button for error handling
