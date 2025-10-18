@@ -30,6 +30,8 @@ import { MediaResolver } from './MediaResolver.js';
  * panel.onDispose(() => console.log('Panel closed'));
  */
 export class PreviewPanel {
+  private static diagnostics: vscode.DiagnosticCollection | null = null;
+
   private panel: vscode.WebviewPanel;
   private documentUri: vscode.Uri;
   private extensionUri: vscode.Uri;
@@ -39,6 +41,26 @@ export class PreviewPanel {
   private compilationService: CompilationService;
   private fileWatcher: FileWatcher;
   private engineService: EligiusEngineService;
+
+  /**
+   * Initialize the static diagnostics collection (called once per extension activation).
+   */
+  public static initializeDiagnostics(): vscode.DiagnosticCollection {
+    if (!PreviewPanel.diagnostics) {
+      PreviewPanel.diagnostics = vscode.languages.createDiagnosticCollection('eligian-preview');
+    }
+    return PreviewPanel.diagnostics;
+  }
+
+  /**
+   * Dispose the static diagnostics collection (called on extension deactivation).
+   */
+  public static disposeDiagnostics(): void {
+    if (PreviewPanel.diagnostics) {
+      PreviewPanel.diagnostics.dispose();
+      PreviewPanel.diagnostics = null;
+    }
+  }
 
   /**
    * Create a new preview panel.
@@ -234,12 +256,45 @@ export class PreviewPanel {
           },
         });
 
+        // Clear diagnostics on successful compilation
+        if (PreviewPanel.diagnostics) {
+          PreviewPanel.diagnostics.set(this.documentUri, []);
+        }
+
         // Initialize Eligius engine with the compiled config
         console.log('[Preview] Initializing Eligius engine');
         await this.engineService.initialize(resolvedConfig);
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
       } else {
+        // Add diagnostics to Problems panel
+        if (PreviewPanel.diagnostics) {
+          const vsDiagnostics = result.errors.map(error => {
+            const line = (error.line || 1) - 1; // VS Code uses 0-based line numbers
+            const column = (error.column || 1) - 1; // VS Code uses 0-based column numbers
+            const length = error.length || 1;
+
+            const range = new vscode.Range(line, column, line, column + length);
+
+            const diagnostic = new vscode.Diagnostic(
+              range,
+              error.message,
+              error.severity === 'warning'
+                ? vscode.DiagnosticSeverity.Warning
+                : vscode.DiagnosticSeverity.Error
+            );
+
+            if (error.code) {
+              diagnostic.code = error.code;
+            }
+            diagnostic.source = 'Eligian Preview';
+
+            return diagnostic;
+          });
+
+          PreviewPanel.diagnostics.set(this.documentUri, vsDiagnostics);
+        }
+
         // Send errors to webview
         console.log('[Preview] Sending showError message with errors:', result.errors);
         await this.panel.webview.postMessage({
@@ -284,6 +339,18 @@ export class PreviewPanel {
         console.log('[Preview] Webview ready');
         break;
 
+      case 'retry':
+        // User clicked retry button - recompile
+        console.log('[Preview] Retry requested by user');
+        this.compileAndUpdate();
+        break;
+
+      case 'runtimeError':
+        // Runtime error from Eligius engine
+        console.error('[Preview] Runtime error from Eligius:', message.payload.message);
+        vscode.window.showErrorMessage(`Eligian Preview Runtime Error: ${message.payload.message}`);
+        break;
+
       // Route engine events to engine service
       case 'initialized':
       case 'error':
@@ -317,7 +384,8 @@ export class PreviewPanel {
 
       case 'error':
         console.error('[Preview] ✗ Engine error:', event.payload.message);
-        // Could show error in status bar or notification here
+        // Show error notification to user
+        vscode.window.showErrorMessage(`Eligian Preview: ${event.payload.message}`);
         break;
 
       case 'playbackStarted':

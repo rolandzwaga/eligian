@@ -147,17 +147,25 @@ window.addEventListener('message', async event => {
       document.getElementById('eligius-container')!.style.display = 'none';
       document.getElementById('error-container')!.style.display = 'block';
 
-      // Display errors
+      // Display errors with enhanced formatting
       const errorList = document.getElementById('error-list')!;
       errorList.innerHTML = message.payload.errors
         .map(
           (error: any) =>
-            `<div class="error-item">
-          <strong>${error.message}</strong><br>
-          ${error.line ? `Line ${error.line}, Column ${error.column}` : ''}
+            `<div class="error-item ${error.severity || 'error'}">
+          <div class="error-severity">${error.severity === 'warning' ? '⚠️ Warning' : '❌ Error'}</div>
+          <div class="error-message">${error.message}</div>
+          ${error.line ? `<div class="error-location">Line ${error.line}${error.column ? `, Column ${error.column}` : ''}</div>` : ''}
+          ${error.code ? `<div class="error-code">[${error.code}]</div>` : ''}
         </div>`
         )
         .join('');
+
+      // Show source file if provided
+      if (message.payload.sourceFile) {
+        const errorHeader = document.querySelector('#error-container h2')!;
+        errorHeader.textContent = `Compilation Errors in ${message.payload.sourceFile}`;
+      }
       break;
     }
 
@@ -268,6 +276,16 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('[Webview] Restart button clicked');
     vscode.postMessage({ type: 'restart' });
     updateControlStates(true);
+  });
+
+  // Wire up retry button for error handling
+  const retryBtn = document.getElementById('retry-button')!;
+  retryBtn.addEventListener('click', () => {
+    console.log('[Webview] Retry button clicked');
+    vscode.postMessage({ type: 'retry' });
+    // Show loading state
+    document.getElementById('error-container')!.style.display = 'none';
+    document.getElementById('loading')!.style.display = 'block';
   });
 });
 
