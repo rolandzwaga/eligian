@@ -1,15 +1,16 @@
 <!--
 Sync Impact Report:
-- Version change: 1.6.0 → 1.7.0
-- Amendment: Added Principle XIII (Eligius Domain Expert Consultation)
-- Modified principles: Renumbered XIII→XIV (Operation Metadata Consultation)
-- Added sections: Principle XIII - Eligius Domain Expert Consultation (NON-NEGOTIABLE)
+- Version change: 1.7.0 → 1.8.0
+- Amendment: Added Principle XIV (Question-First Implementation)
+- Modified principles: Renumbered XIV→XV (Operation Metadata Consultation)
+- Added sections: Principle XIV - Question-First Implementation (NON-NEGOTIABLE)
 - Removed sections: None
 - Templates requiring updates: None (workflow guidance for Claude when implementing)
 - Follow-up TODOs:
-  - Apply this principle when implementing Eligius integration (Phase 4)
-  - Reference this principle when unclear about Eligius runtime behavior
-  - Document all confirmed Eligius behaviors in code comments
+  - Apply this principle immediately when asking ANY question during implementation
+  - STOP all implementation work after asking questions
+  - WAIT for user answers before proceeding
+  - Document user's answers and how they inform implementation
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -350,7 +351,46 @@ it's designed to allow multiple animations on the same selected element. The era
 is only set on properties that represent one-time actions or temporary state."
 ```
 
-### XIV. Operation Metadata Consultation (NON-NEGOTIABLE)
+### XIV. Question-First Implementation (NON-NEGOTIABLE)
+
+When Claude encounters uncertainty, asks the user a question, or requests clarification during
+implementation, Claude MUST STOP and WAIT for the user's response before proceeding with ANY
+further implementation work. Questions are asked because more information is needed - continuing
+without that information defeats the entire purpose of asking.
+
+**Rationale**: Asking questions and then immediately proceeding with implementation without
+waiting for answers is completely backwards and wastes everyone's time. If Claude is uncertain
+enough to ask a question, then Claude lacks the information needed to proceed correctly.
+Continuing implementation while questions are pending creates work that may need to be undone,
+generates incorrect code based on assumptions, and frustrates the user who took time to provide
+answers that were then ignored.
+
+**Requirements**:
+- MUST stop ALL implementation work after asking a question
+- MUST wait for user response before writing ANY new code
+- MUST NOT make assumptions or "fill in the blanks" while waiting for answers
+- MUST read and incorporate user's answers before proceeding
+- MAY perform read-only investigation (reading files, searching code) while waiting
+- MAY ask follow-up clarifying questions based on investigation findings
+- MUST NOT write, edit, or generate any code until user provides requested information
+- After receiving answers, MUST acknowledge them and explain how they inform the implementation
+
+**Pattern Example**:
+```
+Claude: "I'm uncertain about how Eligius handles enum types in parameters. Looking at the
+calc operation, I see type can be an array of {value: string} objects. Should I:
+1) Keep type as string in the interface and convert arrays to string representation?
+2) Change the interface to allow type: string | Array<{value: string}>?
+3) Something else?
+
+What's your preference for handling this?"
+
+❌ WRONG: Immediately starts writing code for option #2 without waiting
+
+✅ CORRECT: Waits for user response, reads it, then proceeds based on user's guidance
+```
+
+### XV. Operation Metadata Consultation (NON-NEGOTIABLE)
 
 Before implementing any transformation or generation of Eligius operations, the operation's
 metadata MUST be consulted from the operation registry (`registry.generated.ts`). Never make
@@ -474,4 +514,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.7.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-18
+**Version**: 1.8.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-19

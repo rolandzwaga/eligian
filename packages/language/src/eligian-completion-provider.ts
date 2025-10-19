@@ -1,0 +1,211 @@
+/**
+ * Eligian Completion Provider
+ *
+ * This is the main completion provider for Eligian DSL. It orchestrates
+ * all completion logic based on cursor context, delegating to specialized
+ * completion modules for operations, actions, keywords, etc.
+ */
+
+import type { MaybePromise } from 'langium';
+import type { CompletionContext } from 'langium/lsp';
+import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
+import type { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import { getActionCompletions } from './completion/actions.js';
+import { detectContext } from './completion/context.js';
+import { getOperationCompletions } from './completion/operations.js';
+import { getVariableCompletions } from './completion/variables.js';
+
+/**
+ * Eligian-specific completion provider
+ *
+ * Extends Langium's DefaultCompletionProvider and adds custom completion logic
+ * based on Eligian DSL syntax and Eligius operation metadata.
+ */
+export class EligianCompletionProvider extends DefaultCompletionProvider {
+  /**
+   * Main completion entry point
+   *
+   * This method is called by Langium when the user requests completions.
+   * We detect the cursor context and can add custom completions before/after
+   * calling the default provider.
+   *
+   * @param context - Langium completion context
+   * @param next - Next parser element to complete
+   * @param acceptor - Function to add completion items
+   * @returns Completion items or void
+   */
+  protected override completionFor(
+    context: CompletionContext,
+    next: NextFeature,
+    acceptor: CompletionAcceptor
+  ): MaybePromise<void> {
+    try {
+      // Get document and position from context
+      const document = context.document;
+
+      // Use tokenOffset to detect context, as this points to the start of the token being completed
+      // For @@loop<cursor>, tokenOffset points to 'l' in 'loop', which is inside SystemPropertyReference
+      const tokenPosition = document.textDocument.positionAt(context.tokenOffset);
+      const cursorContext = detectContext(document, tokenPosition);
+
+      // Check if we're completing the 'name' property of SystemPropertyReference
+      // This handles @@<cursor> and @@loop<cursor> cases
+      if (cursorContext.isAfterVariablePrefix) {
+        const variableCompletions = getVariableCompletions(context, cursorContext);
+        for (const item of variableCompletions) {
+          acceptor(context, item);
+        }
+        // Don't call default completions for SystemPropertyReference names
+        return;
+      }
+
+      // If inside an action body, provide operation and action completions
+      // BUT only if we're in a statement position, NOT inside an expression (like operation parameters)
+      //
+      // When cursor is inside an OperationCall node:
+      // - If completing the operationName property (e.g., "se<cursor>"), show operations (statement position)
+      // - If completing arguments/parameters (e.g., "selectElement(<cursor>)"), DON'T show operations (expression position)
+      const isCompletingOperationName = next.property === 'operationName';
+      const isInsideArguments = cursorContext.insideOperationCall && !isCompletingOperationName;
+
+      if (cursorContext.isInsideAction && !isInsideArguments) {
+        // Add operation completions
+        const operationCompletions = getOperationCompletions(context);
+        for (const item of operationCompletions) {
+          acceptor(context, item);
+        }
+
+        // Add custom action completions
+        const actionCompletions = getActionCompletions(document);
+        for (const item of actionCompletions) {
+          acceptor(context, item);
+        }
+      }
+
+      // Provide variable completions in two cases:
+      // 1. After typing @@ (explicit variable reference)
+      // 2. Inside operation arguments (proactive suggestions)
+      const shouldShowVariables = cursorContext.isAfterVariablePrefix || isInsideArguments;
+
+      if (shouldShowVariables && !cursorContext.isAfterVariablePrefix) {
+        // When proactively suggesting in operation arguments (not after @@),
+        // prepend @@ to the completion labels so users know it's a variable reference
+        const variableCompletions = getVariableCompletions(context, cursorContext);
+        for (const item of variableCompletions) {
+          // Prepend @@ to make it clear this is a variable reference
+          const labelWithPrefix = `@@${item.label}`;
+
+          // Determine sort order: loop variable first, then system properties
+          const isLoopVariable = item.detail?.includes('loop variable');
+          const sortPrefix = isLoopVariable ? '0_' : '1_';
+
+          acceptor(context, {
+            ...item,
+            label: labelWithPrefix,
+            // Update filter text so typing "item" will match "@@item"
+            filterText: item.label,
+            // Insert the full @@item text
+            insertText: labelWithPrefix,
+            sortText: `${sortPrefix}${item.label}`, // Loop variable first (0_), then system properties (1_)
+          });
+        }
+      } else if (cursorContext.isAfterVariablePrefix) {
+        // After @@, just show the variable names (without @@ prefix)
+        const variableCompletions = getVariableCompletions(context, cursorContext);
+        for (const item of variableCompletions) {
+          acceptor(context, item);
+        }
+      }
+
+      // If inside timeline, provide timeline-specific completions
+      if (cursorContext.isInsideTimeline && !cursorContext.isInsideEvent) {
+        // TODO: Call timeline events completion module
+        // completeTimelineEvents(context, acceptor, cursorContext);
+      }
+
+      // Create a filtering acceptor to prevent invalid keywords and operations in wrong contexts
+      const filteringAcceptor: CompletionAcceptor = (ctx, item) => {
+        // Filter out break/continue keywords when not inside a loop
+        if (!cursorContext.isInsideLoop) {
+          if (item.label === 'break' || item.label === 'continue') {
+            return; // Skip these keywords
+          }
+        }
+
+        // Filter out operations and actions when inside operation arguments (expression position)
+        if (isInsideArguments) {
+          // CompletionItemKind.Function (3) = operations
+          // CompletionItemKind.Method (2) = custom actions
+          if (item.kind === 3 || item.kind === 2) {
+            return; // Skip operations/actions in expression position
+          }
+
+          // Push literals (true, false, null) to the bottom when inside arguments
+          // CompletionItemKind.Constant (14) or CompletionItemKind.Value (12)
+          if (
+            item.kind === 14 ||
+            item.kind === 12 ||
+            item.label === 'true' ||
+            item.label === 'false' ||
+            item.label === 'null'
+          ) {
+            // Modify sortText to put literals at the bottom
+            item.sortText = `9_${item.label}`; // 9_ prefix puts them last
+          }
+
+          // Parameters from default provider (e.g., 'items' from action parameters)
+          // CompletionItemKind.Reference (18) = parameters from default provider
+          // Override their sortText to put them between variables and literals
+          if (item.kind === 18 && item.detail === 'Parameter') {
+            item.sortText = `2_${item.sortText || ''}`; // Parameters go between @@vars (0_,1_) and literals (9_)
+          }
+        }
+
+        // Accept all other completions
+        acceptor(ctx, item);
+      };
+
+      // Fallback to default Langium completions (keywords, grammar-based)
+      // Use filtering acceptor to prevent invalid keywords
+      return super.completionFor(context, next, filteringAcceptor);
+    } catch (error) {
+      // Graceful error handling - log warning but don't break completion
+      console.warn('Error in Eligian completion provider:', error);
+      // Fallback to default completion
+      return super.completionFor(context, next, acceptor);
+    }
+  }
+
+  /**
+   * Create a completion item
+   *
+   * Helper method to create standardized completion items.
+   *
+   * @param label - The text to insert
+   * @param kind - Completion item kind (Function, Variable, etc.)
+   * @param detail - Short description shown in completion list
+   * @param documentation - Full documentation shown in hover
+   * @returns CompletionItem
+   */
+  protected createCompletionItem(
+    label: string,
+    kind: CompletionItemKind,
+    detail?: string,
+    documentation?: string
+  ): CompletionItem {
+    const item: CompletionItem = {
+      label,
+      kind,
+    };
+
+    if (detail) {
+      item.detail = detail;
+    }
+
+    if (documentation) {
+      item.documentation = documentation;
+    }
+
+    return item;
+  }
+}

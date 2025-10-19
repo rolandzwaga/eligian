@@ -28,11 +28,13 @@
   },
   "scripts": {
     "clean": "shx rm -fr *.tsbuildinfo out",
-    "build": "tsc -p tsconfig.src.json",
+    "generate:metadata": "tsx src/completion/generate-metadata.ts",
+    "generate:registry": "tsx src/compiler/operations/generate-registry.ts",
+    "generate": "pnpm run generate:metadata && pnpm run generate:registry",
+    "build": "pnpm run generate && tsc -p tsconfig.src.json",
     "build:clean": "pnpm run clean && pnpm run build",
     "langium:generate": "langium generate",
     "langium:watch": "langium generate --watch",
-    "generate:registry": "tsx src/compiler/operations/generate-registry.ts",
     "test": "vitest run"
   },
   "dependencies": {
