@@ -5,6 +5,8 @@ import { Effect } from 'effect';
 import type * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import { registerPreviewCommand } from './commands/preview.js';
+import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
 
@@ -12,12 +14,22 @@ let client: LanguageClient;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   client = await startLanguageClient(context);
 
+  // Initialize diagnostics collection for preview errors
+  const diagnostics = PreviewPanel.initializeDiagnostics();
+  context.subscriptions.push(diagnostics);
+
   // Register compile command
   context.subscriptions.push(registerCompileCommand());
+
+  // Register preview command
+  context.subscriptions.push(registerPreviewCommand(context));
 }
 
 // This function is called when the extension is deactivated.
 export function deactivate(): Thenable<void> | undefined {
+  // Clean up diagnostics
+  PreviewPanel.disposeDiagnostics();
+
   if (client) {
     return client.stop();
   }

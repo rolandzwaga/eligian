@@ -1,0 +1,14 @@
+// Syntax Error Test Fixture
+// This file contains intentional syntax errors for testing error display
+
+timeline "Syntax Error Test" in ".test-container" using raf {
+  // This will cause an undefined action error
+  at 1s..2s {
+    undefinedAction()
+  }
+
+  // Missing closing bracket - will cause parser error
+  at 3s..4s [
+    log("Missing end action block")
+  // Missing the closing ] for end actions
+}

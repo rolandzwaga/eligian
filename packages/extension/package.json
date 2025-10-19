@@ -36,6 +36,12 @@
         "command": "eligian.compile",
         "title": "Eligian: Compile Current File",
         "category": "Eligian"
+      },
+      {
+        "command": "eligian.preview",
+        "title": "Eligian: Preview Timeline",
+        "category": "Eligian",
+        "icon": "$(preview)"
       }
     ],
     "menus": {
@@ -44,15 +50,32 @@
           "when": "resourceLangId == eligian",
           "command": "eligian.compile",
           "group": "eligian"
+        },
+        {
+          "when": "resourceLangId == eligian",
+          "command": "eligian.preview",
+          "group": "eligian"
         }
       ],
       "commandPalette": [
         {
           "command": "eligian.compile",
           "when": "editorLangId == eligian"
+        },
+        {
+          "command": "eligian.preview",
+          "when": "editorLangId == eligian"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "eligian.preview",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorLangId == eligian"
+      }
+    ]
   },
   "activationEvents": [
     "onLanguage:eligian"
@@ -69,6 +92,10 @@
   "dependencies": {
     "@eligian/language": "workspace:*",
     "effect": "3.18.4",
+    "eligius": "^1.3.0",
+    "jquery": "^3.7.1",
+    "lottie-web": "^5.13.0",
+    "video.js": "^8.23.4",
     "vscode-languageclient": "9.0.1",
     "vscode-languageserver": "9.0.1"
   },

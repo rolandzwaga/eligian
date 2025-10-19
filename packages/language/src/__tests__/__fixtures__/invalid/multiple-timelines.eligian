@@ -1,7 +1,7 @@
 // Test fixture: Multiple timeline declarations
 // Valid: Multiple timelines are now supported for complex scenarios (e.g., synchronized video+audio)
 
-timeline "first" using video from "video1.mp4" {
+timeline "first" in ".video-container" using video from "video1.mp4" {
   at 0s..5s [
     selectElement("#element")
     addClass("visible")
@@ -11,7 +11,7 @@ timeline "first" using video from "video1.mp4" {
 }
 
 // Second timeline - synchronized audio with the video
-timeline "second" using audio from "audio1.mp3" {
+timeline "second" in ".audio-container" using audio from "audio1.mp3" {
   at 0s..5s [
     selectElement("#element")
     addClass("visible")

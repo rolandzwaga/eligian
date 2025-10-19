@@ -22,7 +22,7 @@ action highlightElement [
   addClass("active")
 ]
 
-timeline "main" using raf {
+timeline "main" in ".main-container" using raf {
   at 0s..5s {
     fadeIn()
   }

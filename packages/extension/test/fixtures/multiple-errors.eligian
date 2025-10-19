@@ -1,0 +1,25 @@
+// Multiple Errors Test Fixture
+// Tests display of multiple errors at once
+
+// Error 1: Missing parameter type
+action badAction1(param) [
+  undefinedOp1()
+]
+
+// Error 2: Invalid timeline provider
+timeline "Error Test" in ".container" using invalidProvider {
+  // Error 3: Undefined action
+  at 1s..2s {
+    nonExistentAction()
+  }
+
+  // Error 4: Type mismatch
+  at 3s..4s [
+    log(undefined + undefined)
+  ] []
+
+  // Error 5: Invalid time range
+  at 10s..5s [
+    log("Backwards time range")
+  ] []
+}

@@ -24,7 +24,7 @@ endable action showChapter3 [
   removeClass("visible")
 ]
 
-timeline "lecture" using video from "lecture.mp4" {
+timeline "lecture" in ".video-container" using video from "lecture.mp4" {
   at 0s..30s {
     showChapter1()
   }

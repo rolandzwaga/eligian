@@ -1,0 +1,20 @@
+// Validation Error Test Fixture
+// This file contains semantic/validation errors
+
+// Define an action with a type error
+action testAction(param: string) [
+  // Type error: param should be string, but we're using it as a number
+  log(param + 5)
+]
+
+timeline "Validation Test" in ".test-container" using video from "nonexistent-video.mp4" {
+  // Missing media file error
+  at 1s..2s {
+    testAction("hello")
+  }
+
+  // Undefined operation error
+  at 3s..4s [
+    nonExistentOperation()
+  ] []
+}

@@ -1,7 +1,7 @@
 // Test fixture: Negative times (T039)
 // Should trigger validation error: "Timeline event time cannot be negative"
 
-timeline "test" using raf {
+timeline "test" in ".test-container" using raf {
   // Negative start time
   at -5s..10s [
     selectElement("#element1")

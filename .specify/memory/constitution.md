@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 1.5.0 → 1.6.0
-- Amendment: Added Principle XII (Eligius Architecture Understanding)
-- Modified principles: Renumbered XII→XIII (Operation Metadata Consultation)
-- Added sections: Principle XII - Eligius Architecture Understanding (NON-NEGOTIABLE)
+- Version change: 1.6.0 → 1.7.0
+- Amendment: Added Principle XIII (Eligius Domain Expert Consultation)
+- Modified principles: Renumbered XIII→XIV (Operation Metadata Consultation)
+- Added sections: Principle XIII - Eligius Domain Expert Consultation (NON-NEGOTIABLE)
 - Removed sections: None
-- Templates requiring updates: None (architecture documentation for implementers)
+- Templates requiring updates: None (workflow guidance for Claude when implementing)
 - Follow-up TODOs:
-  - Ensure erased property validation (T254-T256) follows this architecture
-  - Reference this principle when implementing operation data flow features
-  - Verify all existing operation transformations align with operationData vs $scope distinction
+  - Apply this principle when implementing Eligius integration (Phase 4)
+  - Reference this principle when unclear about Eligius runtime behavior
+  - Document all confirmed Eligius behaviors in code comments
 -->
 
 # Eligius GF-RGL MCP Server Constitution
@@ -311,7 +311,46 @@ prevents runtime errors by catching bugs at compile time.
 - MUST NOT confuse operation dependencies (what's on `operationData`) with scope properties
 - Document any operation data flow logic with references to this architecture section
 
-### XIII. Operation Metadata Consultation (NON-NEGOTIABLE)
+### XIII. Eligius Domain Expert Consultation (NON-NEGOTIABLE)
+
+When implementing features that interact with Eligius engine internals, runtime behavior,
+or architectural patterns, Claude MUST first attempt to understand the issue independently
+through documentation, source code analysis, and metadata consultation. However, Claude
+MUST confirm understanding with the user (Roland Zwaga, Eligius author) before proceeding
+with implementation when uncertainty exists.
+
+**Rationale**: Eligius is a complex story-telling engine with specific architectural patterns,
+runtime behaviors, and design decisions that may not be fully documented or immediately apparent
+from code inspection. The author has deep knowledge of edge cases, intentional design choices,
+and future compatibility considerations. Making incorrect assumptions about Eligius internals
+can lead to subtle bugs that only surface at runtime or break future Eligius versions.
+
+**Requirements**:
+- MUST read existing documentation, source code, and metadata FIRST before asking questions
+- MUST formulate specific, targeted questions based on investigation findings
+- MUST explain what was discovered and where uncertainty remains
+- MUST NOT make assumptions about Eligius runtime behavior without confirmation
+- MUST document confirmed behaviors in code comments for future reference
+- MAY proceed with implementation only after domain expert confirms understanding
+- Questions SHOULD be specific: "Does operation X delete property Y?" not "How does X work?"
+
+**Pattern Example**:
+```
+Claude Investigation:
+"I examined the selectElement operation metadata and see it outputs 'selectedElement'
+to operationData. I also see the animate operation has a dependency on 'selectedElement'.
+However, I'm uncertain if animate ERASES selectedElement after use, which would affect
+subsequent operations in the chain.
+
+Question: Does the animate operation erase the 'selectedElement' property from operationData,
+or does it remain available for subsequent operations?"
+
+User Response: "Good investigation! The animate operation does NOT erase selectedElement -
+it's designed to allow multiple animations on the same selected element. The erased flag
+is only set on properties that represent one-time actions or temporary state."
+```
+
+### XIV. Operation Metadata Consultation (NON-NEGOTIABLE)
 
 Before implementing any transformation or generation of Eligius operations, the operation's
 metadata MUST be consulted from the operation registry (`registry.generated.ts`). Never make
@@ -435,4 +474,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.6.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-17
+**Version**: 1.7.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-18

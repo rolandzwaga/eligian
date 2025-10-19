@@ -174,6 +174,9 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     // Generate default configuration values
     const defaults = createDefaultConfiguration();
 
+    // Generate layoutTemplate with container divs for all timelines
+    const layoutTemplate = generateLayoutTemplate(timelines);
+
     // T273: Generate timelineProviderSettings based on timeline types used
     const providerSettings = generateTimelineProviderSettings(timelines);
 
@@ -201,7 +204,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       engine: defaults.engine,
       containerSelector: defaults.containerSelector,
       language: defaults.language,
-      layoutTemplate: defaults.layoutTemplate,
+      layoutTemplate,
       availableLanguages: defaults.availableLanguages,
       labels: defaults.labels,
       initActions: eligiusInitActions,
@@ -238,7 +241,7 @@ function createDefaultConfiguration() {
     engine: {
       systemName: 'EligiusEngine',
     } as IEngineInfo,
-    containerSelector: 'body',
+    containerSelector: '#eligius-container',
     language: 'en-US' as const,
     layoutTemplate: 'default',
     // T275: ILabel requires id property
@@ -248,6 +251,45 @@ function createDefaultConfiguration() {
     ],
     labels: [] as LanguageLabelIR[],
   };
+}
+
+/**
+ * Generate HTML layout template with container divs for all timeline selectors.
+ *
+ * Eligius sets containerSelector.html(layoutTemplate) during initialization,
+ * so we need to provide HTML that includes divs for all timeline selectors.
+ *
+ * @param timelines - All timeline configurations
+ * @returns HTML string with container divs
+ *
+ * @example
+ * Input: [{ selector: '.timeline1' }, { selector: '#timeline2' }]
+ * Output: '<div class="timeline1"></div><div id="timeline2"></div>'
+ */
+function generateLayoutTemplate(timelines: TimelineConfigIR[]): string {
+  const containerDivs = timelines.map(timeline => {
+    const selector = timeline.selector;
+
+    // Parse selector to create appropriate HTML
+    if (selector.startsWith('.')) {
+      // Class selector: .timeline → <div class="timeline"></div>
+      const className = selector.slice(1);
+      return `<div class="${className}"></div>`;
+    }
+    if (selector.startsWith('#')) {
+      // ID selector: #timeline → <div id="timeline"></div>
+      const id = selector.slice(1);
+      return `<div id="${id}"></div>`;
+    }
+
+    // For other selectors, use as class name (simplified)
+    const safeClass = selector.replace(/[^a-zA-Z0-9-_]/g, '');
+    return `<div class="${safeClass}"></div>`;
+  });
+
+  // Return only the timeline container divs
+  // UI controls are kept separate in the webview HTML (outside #eligius-container)
+  return containerDivs.join('');
 }
 
 /**
@@ -532,7 +574,7 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
       type: timelineType,
       duration: maxDuration,
       loop: false, // TODO: Could add DSL support for loop
-      selector: '', // TODO: Could add DSL support for selector
+      selector: timeline.containerSelector,
       timelineActions,
       sourceLocation: getSourceLocation(timeline),
     };
@@ -1376,7 +1418,7 @@ const transformForStatement = (
  */
 const transformBreakStatement = (
   stmt: BreakStatement,
-  scope: ScopeContext = createEmptyScope()
+  _scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.succeed([
     {
@@ -1398,7 +1440,7 @@ const transformBreakStatement = (
  */
 const transformContinueStatement = (
   stmt: ContinueStatement,
-  scope: ScopeContext = createEmptyScope()
+  _scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.succeed([
     {

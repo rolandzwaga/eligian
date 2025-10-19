@@ -1,7 +1,7 @@
 // Note: New grammar doesn't have named events, so this test is no longer applicable
 // Timeline events don't have IDs - they are anonymous time ranges
 
-timeline "test" using video from "test.mp4" {
+timeline "test" in ".test-container" using video from "test.mp4" {
   at 0s..5s [
     selectElement("#title")
     addClass("visible")
