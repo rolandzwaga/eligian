@@ -1,0 +1,15 @@
+// Minimal test file
+
+action simple [
+  selectElement("#box")
+  addClass("visible")
+]
+
+timeline "test" in "#container" using raf {
+  at 0s..1s [
+    simple()
+  ] [
+    selectElement("#box")
+    addClass("hidden")
+  ]
+}

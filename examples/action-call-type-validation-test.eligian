@@ -1,0 +1,36 @@
+// Manual Test File: Action Call Type Validation (US4)
+//
+// Testing Goals:
+// - T063: Action calls are type-checked against action parameter types
+// - Verify that fadeIn(123, 1000) shows type error on first argument
+//
+// Instructions:
+// 1. Open this file in VS Code with Eligian extension
+// 2. Verify RED squiggles on lines marked "❌ ERROR"
+// 3. Verify NO red squiggles on lines marked "✅ NO ERROR"
+// 4. Hover over errors to see type mismatch messages
+
+// Define action with typed parameters
+endable action fadeIn(selector: string, duration) [
+  selectElement(selector)
+  setStyle({opacity: 0})
+  animate({opacity: 1}, duration)
+] [
+  selectElement(selector)
+  animate({opacity: 0}, duration)
+]
+
+// Timeline with action calls
+timeline "test" in "#container" using raf {
+  // ✅ NO ERROR: Correct types (string, number)
+  at 0s..1s { fadeIn("#box", 1000) }
+
+  // ❌ ERROR: First argument is number, expected string
+  at 1s..2s { fadeIn(123, 1000) }
+
+  // ❌ ERROR: Second argument is string, expected number
+  at 2s..3s { fadeIn("#box", "slow") }
+
+  // ❌ ERROR: Both arguments wrong type
+  at 3s..4s { fadeIn(999, "very slow") }
+}

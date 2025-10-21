@@ -59,6 +59,9 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkErasedPropertiesInInlineStart, // T254-T255: Erased property validation
       validator.checkErasedPropertiesInInlineEnd, // T254-T255: Erased property validation
     ],
+    // ActionCallExpression type validation is handled by Typir
+    // Register empty check to ensure Typir validation is triggered
+    ActionCallExpression: [],
   };
   registry.register(checks, validator);
 }

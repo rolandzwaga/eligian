@@ -5,17 +5,21 @@ import { OPERATION_REGISTRY } from '../compiler/operations/registry.generated.js
 import type { ConstantValue, ParameterType } from '../compiler/operations/types.js';
 import { isConstantValueArray } from '../compiler/operations/types.js';
 import type {
+  ActionCallExpression,
   ArrayLiteral,
   BooleanLiteral,
+  EndableActionDefinition,
   NumberLiteral,
   ObjectLiteral,
   OperationCall,
   Parameter,
   ParameterReference,
+  RegularActionDefinition,
   StringLiteral,
   VariableDeclaration,
   VariableReference,
 } from '../generated/ast.js';
+import { isEndableActionDefinition, isRegularActionDefinition } from '../generated/ast.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
 
 /**
@@ -31,6 +35,17 @@ import type { EligianSpecifics } from './eligian-specifics.js';
  * document lifecycle and validation infrastructure.
  */
 export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpecifics> {
+  // Store Typir services reference for use in onNewAstNode()
+  private typirServices!: TypirLangiumServices<EligianSpecifics>;
+
+  // Store primitive type references for use in action function type creation
+  private stringType: any;
+  private numberType: any;
+  private booleanType: any;
+  private objectType: any;
+  private arrayType: any;
+  private unknownType: any;
+
   /**
    * Initialize constant types (primitives, operation function types).
    *
@@ -40,39 +55,41 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
    * @param typir Typir services for type creation and registration
    */
   onInitialize(typir: TypirLangiumServices<EligianSpecifics>): void {
+    // Store reference for later use
+    this.typirServices = typir;
     // ═══════════════════════════════════════════════════════════════════
     // STEP 1: Create Primitive Types (T013-T018)
     // ═══════════════════════════════════════════════════════════════════
 
-    const stringType = typir.factory.Primitives.create({ primitiveName: 'string' })
+    this.stringType = typir.factory.Primitives.create({ primitiveName: 'string' })
       .inferenceRule({
         languageKey: 'StringLiteral',
         matching: (node: AstNode): node is StringLiteral => node.$type === 'StringLiteral',
       })
       .finish();
 
-    const numberType = typir.factory.Primitives.create({ primitiveName: 'number' })
+    this.numberType = typir.factory.Primitives.create({ primitiveName: 'number' })
       .inferenceRule({
         languageKey: 'NumberLiteral',
         matching: (node: AstNode): node is NumberLiteral => node.$type === 'NumberLiteral',
       })
       .finish();
 
-    const booleanType = typir.factory.Primitives.create({ primitiveName: 'boolean' })
+    this.booleanType = typir.factory.Primitives.create({ primitiveName: 'boolean' })
       .inferenceRule({
         languageKey: 'BooleanLiteral',
         matching: (node: AstNode): node is BooleanLiteral => node.$type === 'BooleanLiteral',
       })
       .finish();
 
-    const objectType = typir.factory.Primitives.create({ primitiveName: 'object' })
+    this.objectType = typir.factory.Primitives.create({ primitiveName: 'object' })
       .inferenceRule({
         languageKey: 'ObjectLiteral',
         matching: (node: AstNode): node is ObjectLiteral => node.$type === 'ObjectLiteral',
       })
       .finish();
 
-    const arrayType = typir.factory.Primitives.create({ primitiveName: 'array' })
+    this.arrayType = typir.factory.Primitives.create({ primitiveName: 'array' })
       .inferenceRule({
         languageKey: 'ArrayLiteral',
         matching: (node: AstNode): node is ArrayLiteral => node.$type === 'ArrayLiteral',
@@ -80,7 +97,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       .finish();
 
     // Unknown type (top type - compatible with everything)
-    const unknownType = typir.factory.Top.create({}).finish();
+    this.unknownType = typir.factory.Top.create({}).finish();
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 2: Helper - Map ParameterType to Typir Type (T019)
@@ -88,12 +105,12 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     const mapParameterTypeToTypirType = (paramTypes: ParameterType[] | ConstantValue[]) => {
       if (!paramTypes || paramTypes.length === 0) {
-        return unknownType;
+        return this.unknownType;
       }
 
       // Handle constant values (enums)
       if (isConstantValueArray(paramTypes)) {
-        return stringType;
+        return this.stringType;
       }
 
       const paramType = paramTypes[0];
@@ -106,26 +123,26 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         case 'htmlElementName':
         case 'eventTopic':
         case 'actionName':
-          return stringType;
+          return this.stringType;
 
         case 'number':
         case 'dimensions':
         case 'dimensionsModifier':
-          return numberType;
+          return this.numberType;
 
         case 'boolean':
-          return booleanType;
+          return this.booleanType;
 
         case 'object':
         case 'jQuery':
-          return objectType;
+          return this.objectType;
 
         case 'array':
-          return arrayType;
+          return this.arrayType;
 
         default:
           // Constant values (enums) are strings
-          return stringType;
+          return this.stringType;
       }
     };
 
@@ -143,7 +160,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         functionName: opName,
         outputParameter: {
           name: '$return',
-          type: unknownType,
+          type: this.unknownType,
         },
         inputParameters: inputParams,
       })
@@ -151,7 +168,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
           languageKey: 'OperationCall',
           matching: (call: OperationCall) => call.operationName === opName,
           inputArguments: (call: OperationCall) => call.args,
-          validateArgumentsOfFunctionCalls: false,
+          validateArgumentsOfFunctionCalls: false, // Disabled - optional params handled in Langium validator
         })
         .finish();
     }
@@ -167,17 +184,17 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
           // Map type annotation to Typir type
           switch (param.type) {
             case 'string':
-              return stringType;
+              return this.stringType;
             case 'number':
-              return numberType;
+              return this.numberType;
             case 'boolean':
-              return booleanType;
+              return this.booleanType;
             case 'object':
-              return objectType;
+              return this.objectType;
             case 'array':
-              return arrayType;
+              return this.arrayType;
             default:
-              return unknownType;
+              return this.unknownType;
           }
         }
         // No annotation - let Typir infer from usage
@@ -189,20 +206,20 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         if (varDecl.value) {
           return varDecl.value; // Recursive inference
         } else {
-          return unknownType;
+          return this.unknownType;
         }
       },
 
       // Variable references: lookup variable declaration
       VariableReference: (varRef: VariableReference) => {
         const decl = varRef.variable?.ref;
-        return decl ? decl : unknownType;
+        return decl ? decl : this.unknownType;
       },
 
       // Parameter references: lookup parameter declaration
       ParameterReference: (paramRef: ParameterReference) => {
         const decl = paramRef.parameter?.ref;
-        return decl ? decl : unknownType;
+        return decl ? decl : this.unknownType;
       },
     });
 
@@ -221,14 +238,84 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
    * This method is called for each AST node when a document is processed.
    * Types created here are associated with the document and invalidated when it changes.
    *
-   * Currently Eligian has no user-defined types (no classes, interfaces, etc.),
-   * so this method is empty.
+   * User Story 4: Create function types for user-defined actions to enable
+   * type checking of action calls (e.g., fadeIn(123, 1000) with typed parameters).
    *
    * @param languageNode AST node from the parsed document
-   * @param typir Typir services for type creation
    */
-  onNewAstNode(_languageNode: AstNode, _typir: TypirLangiumServices<EligianSpecifics>): void {
-    // Eligian has no user-defined types currently
-    // Leave empty per Phase 2 requirements
+  onNewAstNode(languageNode: AstNode): void {
+    // ═══════════════════════════════════════════════════════════════════
+    // User Story 4 (T060): Create function types for user-defined actions
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Handle regular actions: action myAction(param1: type1, param2) [...]
+    if (isRegularActionDefinition(languageNode)) {
+      this.createActionFunctionType(languageNode, languageNode.parameters);
+    }
+
+    // Handle endable actions: endable action myAction(param1: type1) [...] [...]
+    if (isEndableActionDefinition(languageNode)) {
+      this.createActionFunctionType(languageNode, languageNode.parameters);
+    }
+  }
+
+  /**
+   * Create a function type for a user-defined action.
+   *
+   * This enables Typir to type-check action calls just like operation calls.
+   * For example:
+   *   action fadeIn(selector: string, duration: number) [...]
+   *   fadeIn(123, 1000)  // ERROR: 123 is not a string
+   *
+   * @param action The action definition (regular or endable)
+   * @param parameters The action's parameters
+   * @param typir Typir services
+   */
+  private createActionFunctionType(
+    action: RegularActionDefinition | EndableActionDefinition,
+    parameters: Parameter[]
+  ): void {
+    // Use stored primitive type references
+
+    // Map action parameters to Typir function input parameters
+    const inputParams = parameters.map(param => ({
+      name: param.name,
+      // Use explicit type annotation if present, otherwise unknown
+      type: param.type
+        ? (() => {
+            switch (param.type) {
+              case 'string':
+                return this.stringType;
+              case 'number':
+                return this.numberType;
+              case 'boolean':
+                return this.booleanType;
+              case 'object':
+                return this.objectType;
+              case 'array':
+                return this.arrayType;
+              default:
+                return this.unknownType;
+            }
+          })()
+        : this.unknownType,
+    }));
+
+    // Create function type for this action
+    this.typirServices.factory.Functions.create({
+      functionName: action.name,
+      outputParameter: {
+        name: '$return',
+        type: this.unknownType, // Actions don't return values
+      },
+      inputParameters: inputParams,
+    })
+      .inferenceRuleForCalls({
+        languageKey: 'ActionCallExpression',
+        matching: (call: ActionCallExpression) => call.action.ref === action,
+        inputArguments: (call: ActionCallExpression) => call.args,
+        validateArgumentsOfFunctionCalls: true, // Enable type checking for action calls
+      })
+      .finish();
   }
 }
