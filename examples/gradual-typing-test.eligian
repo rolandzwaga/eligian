@@ -1,0 +1,113 @@
+// Gradual Typing Test - User Story 5
+// Tests backward compatibility and incremental type adoption
+
+// ============================================================================
+// SECTION 1: Fully Untyped Actions (Should work without errors)
+// ============================================================================
+
+// No type annotations - accepts any argument types
+action fullyUntyped(selector, duration, opacity) [
+  selectElement(selector)
+  animate({opacity: opacity}, duration)
+]
+
+// No annotations, used with various argument types
+action processData(data, count) [
+  selectElement("#output")
+  setText(data)
+]
+
+// ============================================================================
+// SECTION 2: Fully Typed Actions (Should enforce types)
+// ============================================================================
+
+// All parameters typed
+action fullyTyped(selector: string, duration: number, opacity: number) [
+  selectElement(selector)
+  animate({opacity: opacity}, duration)
+]
+
+// ============================================================================
+// SECTION 3: Mixed Typed/Untyped Actions (Gradual adoption)
+// ============================================================================
+
+// Some parameters typed, some not
+action partiallyTyped(selector: string, data, count: number) [
+  selectElement(selector)
+  setText(data)  // 'data' is untyped - accepts anything
+  setAttr("data-count", count)
+]
+
+// ============================================================================
+// SECTION 4: Interactions Between Typed and Untyped
+// ============================================================================
+
+// Untyped action calling typed action - should work
+action untypedCallsTyped(x, y, z) [
+  fullyTyped(x, y, z)  // Should accept any arguments
+]
+
+// Typed action calling untyped action - should work
+action typedCallsUntyped(selector: string, value: number) [
+  processData(selector, value)  // Untyped accepts anything
+]
+
+// Chain of mixed calls
+action mixedChain(input: string, count) [
+  partiallyTyped(input, count, 42)  // typed, untyped, literal
+  fullyUntyped(input, count, 0.5)   // All untyped accepts everything
+]
+
+// ============================================================================
+// SECTION 5: Timeline Usage (All should work)
+// ============================================================================
+
+timeline "gradual-test" in "#container" using raf {
+  // Call untyped action with various argument types
+  at 0s..1s {
+    fullyUntyped("#box1", 1000, 0.8)       // ✅ Works - untyped accepts anything
+    fullyUntyped(123, "slow", "visible")   // ✅ Works - untyped accepts anything
+  }
+
+  // Call typed action with correct types
+  at 1s..2s {
+    fullyTyped("#box2", 500, 0.5)  // ✅ Correct types
+  }
+
+  // Call typed action with WRONG types - should show errors
+  at 2s..3s {
+    fullyTyped(999, "fast", "opaque")  // ❌ All wrong types - should error
+  }
+
+  // Call partially typed action
+  at 3s..4s {
+    partiallyTyped("#box3", "any-data", 100)     // ✅ Correct
+    partiallyTyped(123, {obj: true}, "wrong")    // ❌ selector and count wrong types
+  }
+
+  // Mixed calls
+  at 4s..5s {
+    untypedCallsTyped("#box4", 1000, 0.7)  // ✅ Works
+    typedCallsUntyped("#box5", 42)         // ✅ Works
+    mixedChain("test", {data: "value"})    // ✅ Works
+  }
+}
+
+// ============================================================================
+// EXPECTED RESULTS:
+// ============================================================================
+//
+// ✅ NO ERRORS for:
+//    - Untyped actions with any argument types
+//    - Correctly typed actions
+//    - Mixed typed/untyped interactions
+//
+// ❌ ERRORS ONLY for:
+//    - Line 58: fullyTyped(999, "fast", "opaque") - 3 type errors
+//    - Line 64: partiallyTyped(123, {obj: true}, "wrong") - 2 type errors
+//
+// This demonstrates:
+// 1. 100% backward compatibility - untyped code works unchanged
+// 2. Gradual adoption - can add types incrementally
+// 3. Type safety - typed parameters are enforced
+// 4. No false positives - untyped parameters don't generate errors

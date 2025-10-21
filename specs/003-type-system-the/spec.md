@@ -1,6 +1,7 @@
 # Feature Specification: Robust Type System with Typir Integration
 
 **Feature Branch**: `003-type-system-the`
+**Completed**: 2025-10-22
 **Created**: 2025-10-19
 **Status**: Draft
 **Input**: User description: "type system. The time has come to implement a solid and robust actual type system for Eligian, the grammar alone is not enough to properly validate the syntax and drive the code completions. There exists a very nice library for building typesystems called Typir, which has specialized integrations with Langium. A perfect companion!"

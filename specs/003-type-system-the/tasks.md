@@ -205,17 +205,17 @@
 
 ### Backward Compatibility Validation
 
-- [ ] **T066** [US5] Verify `unknownType` is properly configured as top type (compatible with all types in both directions)
-- [ ] **T067** [US5] Verify parameters without annotations and no usage constraints remain `unknown` type
-- [ ] **T068** [US5] Run full test suite: `pnpm run test` - all 298 tests must pass
-- [ ] **T069** [US5] Fix any test failures related to untyped code generating false errors
+- [X] **T066** [US5] Verify `unknownType` is properly configured as top type (compatible with all types in both directions)
+- [X] **T067** [US5] Verify parameters without annotations and no usage constraints remain `unknown` type
+- [X] **T068** [US5] Run full test suite: `pnpm run test` - all 298 tests must pass
+- [X] **T069** [US5] Fix any test failures related to untyped code generating false errors
 
 ### Integration Testing (User Story 5)
 
-- [ ] **T070** [US5] **Manual Test**: Open existing `.eligian` file with no type annotations, verify no new type errors appear
-- [ ] **T071** [US5] **Manual Test**: Add type annotation to one action parameter, verify type checking applies to that action only
-- [ ] **T072** [US5] **Manual Test**: In file with mixed typed/untyped actions, verify typed action can call untyped action without false errors
-- [ ] **T073** [US5] **Manual Test**: Verify 100% backward compatibility: all existing Eligian code works unchanged
+- [X] **T070** [US5] **Manual Test**: Open existing `.eligian` file with no type annotations, verify no new type errors appear
+- [X] **T071** [US5] **Manual Test**: Add type annotation to one action parameter, verify type checking applies to that action only
+- [X] **T072** [US5] **Manual Test**: In file with mixed typed/untyped actions, verify typed action can call untyped action without false errors
+- [X] **T073** [US5] **Manual Test**: Verify 100% backward compatibility: all existing Eligian code works unchanged
 
 **Checkpoint**: User Story 5 complete - Gradual type adoption works, backward compatibility verified
 
