@@ -199,7 +199,21 @@ sed -i '91s/.*/const hint = generateHint();/' file.ts  # Will corrupt random lin
 - TypeScript compilation without overhead
 - Simple configuration
 
-### Current Status: NOT STARTED ✅
+### Type System Migration
+
+**Previous**: Custom type system in `packages/language/src/type-system/`
+**Current**: Typir-based system in `packages/language/src/type-system-typir/`
+
+The project migrated from a custom constraint-based type system to Typir (TypeFox's type system framework) for better inference, validation, and IDE integration.
+
+**Migration Status**: Phase 3 Complete (User Story 1)
+- ✅ Primitive types and operation validation
+- ✅ Real-time type error detection in IDE
+- ⏳ Action call validation (US4), type inference (US3), code completion (US2) pending
+
+**Documentation**: See `packages/language/src/type-system-typir/README.md`
+
+**Local Typir Reference**: The Typir library is cloned at `f:/projects/typir/` for documentation and API reference.
 
 ### Development Approach
 - Always plan thoroughly before implementing code changes
