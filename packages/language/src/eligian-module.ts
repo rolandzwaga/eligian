@@ -7,11 +7,18 @@ import {
   type LangiumSharedServices,
   type PartialLangiumServices,
 } from 'langium/lsp';
+import {
+  createTypirLangiumServices,
+  initializeLangiumTypirServices,
+  type TypirLangiumServices,
+} from 'typir-langium';
 import { EligianCompletionProvider } from './eligian-completion-provider.js';
 import { EligianHoverProvider } from './eligian-hover-provider.js';
 import { EligianScopeProvider } from './eligian-scope-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
+import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
+import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -24,6 +31,7 @@ export type EligianAddedServices = {
     HoverProvider: EligianHoverProvider;
     CompletionProvider: EligianCompletionProvider;
   };
+  typir: TypirLangiumServices<EligianSpecifics>;
 };
 
 /**
@@ -49,6 +57,13 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       HoverProvider: services => new EligianHoverProvider(services),
       CompletionProvider: services => new EligianCompletionProvider(services),
     },
+    typir: services =>
+      createTypirLangiumServices(
+        services.shared,
+        new EligianAstReflection(),
+        new EligianTypeSystem(),
+        {}
+      ),
   };
 
 /**
@@ -73,6 +88,10 @@ export function createEligianServices(context: DefaultSharedModuleContext): {
   const shared = inject(createDefaultSharedModule(context), EligianGeneratedSharedModule);
   const Eligian = inject(createDefaultModule({ shared }), EligianGeneratedModule, EligianModule);
   shared.ServiceRegistry.register(Eligian);
+
+  // Initialize Typir services AFTER service creation
+  initializeLangiumTypirServices(Eligian, Eligian.typir);
+
   registerValidationChecks(Eligian);
   if (!context.connection) {
     // We don't run inside a language server

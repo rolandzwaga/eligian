@@ -1,9 +1,10 @@
 <!--
 Sync Impact Report:
-- Version change: 1.7.0 → 1.8.0
-- Amendment: Added Principle XIV (Question-First Implementation)
+- Version change: 1.8.0 → 1.9.0
+- Amendment: Added Principle XVI (Question-First Implementation)
 - Modified principles: Renumbered XIV→XV (Operation Metadata Consultation)
-- Added sections: Principle XIV - Question-First Implementation (NON-NEGOTIABLE)
+- Modified principles: Renumbered XV→XVI (Operation Metadata Consultation)
+- Added sections: Principle XVI - Concise Communication Implementation (NON-NEGOTIABLE)
 - Removed sections: None
 - Templates requiring updates: None (workflow guidance for Claude when implementing)
 - Follow-up TODOs:
@@ -514,4 +515,46 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.8.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-19
+**Version**: 1.9.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-21
+
+### XVI. Concise Communication (NON-NEGOTIABLE)
+
+The user is a senior developer. Brief, technical communication only.
+
+**Rationale**: Verbose communication wastes time and tokens. Senior developers don't need explanations of basic operations.
+
+**Requirements**:
+- Keep responses SHORT and TO THE POINT
+- NO hand-holding explanations  
+- NO verbose status updates about routine operations
+- State what you did, not how or why (unless asked)
+- Be verbose only when: user requests detail, critical errors, architectural proposals, or 5+ failed debug attempts
+
+
+### XVII. Language Specification Maintenance (NON-NEGOTIABLE)
+
+The `LANGUAGE_SPEC.md` file is the authoritative documentation of Eligian syntax, semantics, and compilation behavior. It MUST be updated whenever ANY language feature is added, modified, or removed. The spec is a living document that defines the language contract.
+
+**Rationale**: A DSL without a complete, accurate specification becomes impossible to maintain, extend, or use correctly. Grammar changes, new syntax features, or semantic changes must be documented immediately while context is fresh. Outdated specs lead to incorrect implementations and user confusion.
+
+**Requirements**:
+- MUST update `LANGUAGE_SPEC.md` when adding/changing/removing language features
+- MUST update spec BEFORE implementing the feature (spec drives implementation)
+- MUST update version number in spec header when modified
+- MUST document syntax, semantics, compilation behavior, and examples for each feature
+- MUST verify spec examples compile correctly with the CLI compiler
+- Spec updates are NOT optional - feature is incomplete without spec documentation
+- Grammar changes MUST be reflected in spec within same commit/PR
+- Run `node packages/cli/bin/cli.js --check` on all spec examples to verify correctness
+
+**Workflow**:
+```bash
+# When adding a language feature:
+1. Update LANGUAGE_SPEC.md with syntax and semantics
+2. Add examples to spec
+3. Verify examples: node packages/cli/bin/cli.js --check <example-file>
+4. Implement grammar changes
+5. Implement compiler transformations
+6. Verify spec examples still compile correctly
+7. Commit with message: "feat: <feature> (with spec update)"
+```

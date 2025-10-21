@@ -14,7 +14,6 @@ import type {
   ContinueStatement,
   EligianAstType,
   EndableActionDefinition,
-  Expression,
   InlineEndableAction,
   OperationCall,
   OperationStatement,
@@ -22,18 +21,8 @@ import type {
   RegularActionDefinition,
   Timeline,
   TimelineEvent,
-  VariableDeclaration,
 } from './generated/ast.js';
-import { isParameterReference, isVariableReference } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
-import type { EligianType } from './type-system/index.js';
-import {
-  getOperationParameterTypes,
-  inferLiteralType,
-  inferParameterTypes,
-  TypeEnvironment,
-  validateTypeCompatibility,
-} from './type-system/index.js';
 
 /**
  * Register custom validation checks.
@@ -57,23 +46,18 @@ export function registerValidationChecks(services: EligianServices) {
     RegularActionDefinition: [
       validator.checkControlFlowPairing,
       validator.checkErasedPropertiesInAction, // T254-T255: Erased property validation
-      validator.checkTypeAnnotationsInAction, // Phase 18 T304: Type checking
     ],
     EndableActionDefinition: [
       validator.checkControlFlowPairingInStartOps,
       validator.checkControlFlowPairingInEndOps,
       validator.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
       validator.checkErasedPropertiesInEndOps, // T254-T255: Erased property validation
-      validator.checkTypeAnnotationsInStartOps, // Phase 18 T304: Type checking
-      validator.checkTypeAnnotationsInEndOps, // Phase 18 T304: Type checking
     ],
     InlineEndableAction: [
       validator.checkControlFlowPairingInInlineStart,
       validator.checkControlFlowPairingInInlineEnd,
       validator.checkErasedPropertiesInInlineStart, // T254-T255: Erased property validation
       validator.checkErasedPropertiesInInlineEnd, // T254-T255: Erased property validation
-      validator.checkTypeAnnotationsInInlineStart, // Phase 18 T304: Type checking
-      validator.checkTypeAnnotationsInInlineEnd, // Phase 18 T304: Type checking
     ],
   };
   registry.register(checks, validator);
@@ -470,53 +454,6 @@ export class EligianValidator {
   }
 
   /**
-   * Collect type annotations from action parameters (Phase 18 - T294 + T311).
-   *
-   * Extracts type annotations from parameter declarations and attempts to infer
-   * types for parameters without annotations (US3). Returns a map of parameter
-   * name -> EligianType.
-   *
-   * **Type Inference (T311)**:
-   * - Parameters with explicit annotations use the annotated type
-   * - Parameters without annotations are inferred from their usage in operations
-   * - If inference fails (conflicts or no usage), parameter remains 'unknown'
-   *
-   * @param action - Regular or endable action definition
-   * @returns Map of parameter names to their types (annotated or inferred)
-   */
-  collectTypeAnnotations(
-    action: RegularActionDefinition | EndableActionDefinition
-  ): Map<string, string> {
-    const typeMap = new Map<string, string>();
-
-    // Step 1: Extract explicit type annotations from parameters
-    for (const param of action.parameters) {
-      if (param.type) {
-        // Type annotation exists - use it
-        typeMap.set(param.name, param.type);
-      }
-    }
-
-    // Step 2: Infer types for parameters without annotations (T311 - US3)
-    const result = inferParameterTypes(action);
-
-    // Check if inference succeeded (returns Map) or failed (returns TypeError[])
-    if (result instanceof Map) {
-      // Inference succeeded - merge inferred types with explicit annotations
-      for (const [paramName, inferredType] of result.entries()) {
-        // Only add inferred types for parameters without explicit annotations
-        if (!typeMap.has(paramName)) {
-          typeMap.set(paramName, inferredType);
-        }
-      }
-    }
-    // If inference failed (errors), we just skip inference for those parameters
-    // They will remain unknown and won't be type-checked
-
-    return typeMap;
-  }
-
-  /**
    * Validate erased properties in regular action operations.
    * Checks that operations don't access properties erased by previous operations.
    */
@@ -635,317 +572,6 @@ export class EligianValidator {
         this.validateOperationSequence(statement.body, accept, context, currentTracker.clone());
       } else if (statement.$type === 'VariableDeclaration') {
       }
-    }
-  }
-
-  /**
-   * Phase 18 T304: Type checking for regular action operations.
-   * Validates type annotations for parameters and variables.
-   */
-  checkTypeAnnotationsInAction(action: RegularActionDefinition, accept: ValidationAcceptor): void {
-    // Collect parameter type annotations
-    const paramTypes = this.collectTypeAnnotations(action);
-
-    // Validate operations with type checking
-    this.validateTypeSequence(action.operations, accept, action, paramTypes);
-  }
-
-  /**
-   * Phase 18 T304: Type checking for endable action start operations.
-   */
-  checkTypeAnnotationsInStartOps(
-    action: EndableActionDefinition,
-    accept: ValidationAcceptor
-  ): void {
-    const paramTypes = this.collectTypeAnnotations(action);
-    this.validateTypeSequence(action.startOperations, accept, action, paramTypes);
-  }
-
-  /**
-   * Phase 18 T304: Type checking for endable action end operations.
-   */
-  checkTypeAnnotationsInEndOps(action: EndableActionDefinition, accept: ValidationAcceptor): void {
-    const paramTypes = this.collectTypeAnnotations(action);
-    this.validateTypeSequence(action.endOperations, accept, action, paramTypes);
-  }
-
-  /**
-   * Phase 18 T304: Type checking for inline endable action start operations.
-   */
-  checkTypeAnnotationsInInlineStart(action: InlineEndableAction, accept: ValidationAcceptor): void {
-    const paramTypes = new Map<string, string>(); // Inline actions don't have parameters
-    this.validateTypeSequence(action.startOperations, accept, action, paramTypes);
-  }
-
-  /**
-   * Phase 18 T304: Type checking for inline endable action end operations.
-   */
-  checkTypeAnnotationsInInlineEnd(action: InlineEndableAction, accept: ValidationAcceptor): void {
-    const paramTypes = new Map<string, string>(); // Inline actions don't have parameters
-    this.validateTypeSequence(action.endOperations, accept, action, paramTypes);
-  }
-
-  /**
-   * Phase 18 T304: Helper to validate a sequence of operations with type checking.
-   *
-   * Walks through operations and tracks variable types using TypeEnvironment.
-   * This is parallel to validateOperationSequence() which tracks erased properties.
-   *
-   * @param operations - Sequence of operation statements to validate
-   * @param accept - Validation acceptor for reporting errors
-   * @param context - Parent action node for error reporting
-   * @param paramTypes - Map of parameter names to their annotated types
-   * @param env - Optional type environment to continue from (for nested scopes)
-   */
-  private validateTypeSequence(
-    operations: Array<OperationStatement>,
-    accept: ValidationAcceptor,
-    context: RegularActionDefinition | EndableActionDefinition | InlineEndableAction,
-    paramTypes: Map<string, string>,
-    env?: TypeEnvironment
-  ): void {
-    // Create new environment if not provided (top-level call)
-    const currentEnv = env ?? new TypeEnvironment();
-
-    // Walk through operations and track variable types
-    for (const statement of operations) {
-      if (statement.$type === 'VariableDeclaration') {
-        // T301: Track variable type
-        this.checkVariableDeclarationType(statement, currentEnv, accept);
-      } else if (statement.$type === 'IfStatement') {
-        // Handle if/else branches with cloned environment
-        this.validateTypeSequence(
-          statement.thenOps,
-          accept,
-          context,
-          paramTypes,
-          currentEnv.clone()
-        );
-        this.validateTypeSequence(
-          statement.elseOps,
-          accept,
-          context,
-          paramTypes,
-          currentEnv.clone()
-        );
-      } else if (statement.$type === 'ForStatement') {
-        // Handle loop body with cloned environment
-        this.validateTypeSequence(statement.body, accept, context, paramTypes, currentEnv.clone());
-      } else if (statement.$type === 'OperationCall') {
-        // T300: Type check operation call arguments
-        this.checkOperationCallTypes(statement, currentEnv, paramTypes, accept);
-      }
-    }
-  }
-
-  /**
-   * Type checking for operation call arguments (Phase 18 - T300).
-   *
-   * Validates that arguments passed to operations match the expected types
-   * from the operation registry. Checks parameter references and variable references.
-   *
-   * @param call - Operation call to validate
-   * @param env - Type environment for looking up variable types
-   * @param paramTypes - Map of parameter names to their annotated types
-   * @param accept - Validation acceptor for reporting errors
-   */
-  private checkOperationCallTypes(
-    call: OperationCall,
-    env: TypeEnvironment,
-    paramTypes: Map<string, string>,
-    accept: ValidationAcceptor
-  ): void {
-    const opName = call.operationName;
-
-    // Only validate if operation exists (avoid duplicate errors)
-    if (!hasOperation(opName)) {
-      return;
-    }
-
-    // Get expected parameter types from operation registry
-    const expectedTypes = getOperationParameterTypes(opName);
-    if (expectedTypes.size === 0) {
-      return; // No type information available for this operation
-    }
-
-    // Check each argument against expected type
-    const signature = OPERATION_REGISTRY[opName];
-    for (let i = 0; i < call.args.length && i < signature.parameters.length; i++) {
-      const arg = call.args[i];
-      const param = signature.parameters[i];
-      const expectedType = expectedTypes.get(param.name);
-
-      if (!expectedType) {
-        continue; // No type info for this parameter
-      }
-
-      // Infer the actual type of the argument
-      let actualType: EligianType;
-
-      if (isParameterReference(arg)) {
-        // It's a parameter reference - check annotation
-        const paramName = arg.parameter.ref?.name ?? '';
-        const annotatedType = paramTypes.get(paramName);
-        if (!annotatedType) {
-          continue; // No type annotation - skip checking
-        }
-        actualType = annotatedType as EligianType;
-      } else if (isVariableReference(arg)) {
-        // It's a variable reference - check environment
-        const varName = arg.variable.ref?.name ?? '';
-        const varType = env.getVariableType(varName);
-        if (!varType) {
-          continue; // Variable not in environment - skip checking
-        }
-        actualType = varType;
-      } else {
-        // It's a literal - infer type
-        actualType = inferLiteralType(arg as Expression);
-        if (actualType === 'unknown') {
-          continue; // Can't infer type - skip checking
-        }
-      }
-
-      // Check type compatibility
-      const error = validateTypeCompatibility(actualType, expectedType, {
-        line: 0,
-        column: 0,
-        length: 0,
-      });
-
-      if (error) {
-        accept(
-          'error',
-          `Argument ${i + 1} for '${opName}': ${error.message}${error.hint ? `. ${error.hint}` : ''}`,
-          {
-            node: call,
-            property: 'args',
-            index: i,
-            code: 'type-mismatch',
-          }
-        );
-      }
-    }
-  }
-
-  /**
-   * Type checking for variable declarations (Phase 18 - T301).
-   *
-   * Infers the type of the variable from its initialization expression
-   * and adds it to the type environment for subsequent references.
-   *
-   * @param decl - Variable declaration to check
-   * @param env - Type environment for tracking variable types
-   * @param accept - Validation acceptor for reporting errors
-   */
-  checkVariableDeclarationType(
-    decl: VariableDeclaration,
-    env: TypeEnvironment,
-    _accept: ValidationAcceptor
-  ): void {
-    // Infer type from the initialization expression
-    const inferredType = inferLiteralType(decl.value as Expression);
-
-    // Add to type environment
-    env.addVariable(decl.name, inferredType);
-
-    // Note: We don't report errors here - just track the type
-    // Type mismatches will be caught when the variable is used
-  }
-
-  /**
-   * Type checking for variable references (Phase 18 - T302).
-   *
-   * Validates that a variable reference (@varName) has a compatible type
-   * with the expected type for its usage context.
-   *
-   * @param expr - Expression that may be a variable reference
-   * @param expectedType - Expected type for this expression
-   * @param env - Type environment for looking up variable types
-   * @param accept - Validation acceptor for reporting errors
-   * @param node - AST node for error reporting
-   * @param property - Property name for error reporting
-   */
-  checkVariableReferenceType(
-    expr: Expression,
-    expectedType: EligianType,
-    env: TypeEnvironment,
-    accept: ValidationAcceptor,
-    node: any,
-    property: string
-  ): void {
-    if (!isVariableReference(expr)) return;
-
-    // Look up variable type in environment
-    const actualType = env.getVariableType(expr.variable.ref?.name ?? '');
-
-    if (!actualType) {
-      // Variable not found in type environment - skip type checking
-      // (the cross-reference validator will catch undefined variables)
-      return;
-    }
-
-    // Check type compatibility
-    const error = validateTypeCompatibility(actualType, expectedType, {
-      line: 0,
-      column: 0,
-      length: 0,
-    });
-
-    if (error) {
-      accept('error', error.message + (error.hint ? `. ${error.hint}` : ''), {
-        node,
-        property,
-        code: 'type-mismatch',
-      });
-    }
-  }
-
-  /**
-   * Type checking for parameter references (Phase 18 - T303).
-   *
-   * Validates that a parameter reference (bare identifier) has a compatible type
-   * with the expected type for its usage context.
-   *
-   * @param expr - Expression that may be a parameter reference
-   * @param expectedType - Expected type for this expression
-   * @param paramTypes - Map of parameter name → annotated type
-   * @param accept - Validation acceptor for reporting errors
-   * @param node - AST node for error reporting
-   * @param property - Property name for error reporting
-   */
-  checkParameterReferenceType(
-    expr: Expression,
-    expectedType: EligianType,
-    paramTypes: Map<string, EligianType>,
-    accept: ValidationAcceptor,
-    node: any,
-    property: string
-  ): void {
-    if (!isParameterReference(expr)) return;
-
-    // Look up parameter type from annotations
-    const actualType = paramTypes.get(expr.parameter.ref?.name ?? '');
-
-    if (!actualType) {
-      // Parameter has no type annotation - skip type checking
-      // (type inference will handle this in US3)
-      return;
-    }
-
-    // Check type compatibility
-    const error = validateTypeCompatibility(actualType, expectedType, {
-      line: 0,
-      column: 0,
-      length: 0,
-    });
-
-    if (error) {
-      accept('error', error.message + (error.hint ? `. ${error.hint}` : ''), {
-        node,
-        property,
-        code: 'type-mismatch',
-      });
     }
   }
 

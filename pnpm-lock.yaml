@@ -92,12 +92,18 @@ importers:
         specifier: 4.3.0
         version: 4.3.0
       langium:
-        specifier: 4.1.0
-        version: 4.1.0
+        specifier: 4.0.3
+        version: 4.0.3
+      typir:
+        specifier: ^0.3.0
+        version: 0.3.0
+      typir-langium:
+        specifier: ^0.3.0
+        version: 0.3.0
     devDependencies:
       langium-cli:
-        specifier: 4.1.0
-        version: 4.1.0
+        specifier: 4.0.0
+        version: 4.0.0
       tsx:
         specifier: 4.20.6
         version: 4.20.6
@@ -786,16 +792,16 @@ packages:
   jsonschema@1.5.0:
     resolution: {integrity: sha512-K+A9hhqbn0f3pJX17Q/7H6yQfD/5OXgdrR5UE12gMXCiN9D5Xq2o5mddV2QEcX/bjla99ASsAAQUyMCCRWAEhw==, tarball: https://registry.npmjs.org/jsonschema/-/jsonschema-1.5.0.tgz}
 
-  langium-cli@4.1.0:
-    resolution: {integrity: sha512-MhjE6R/K+oBjHhOP5j3orSR3q3FKeFNgJ533tOC+dJw/6WMDFMc9tROCbJGx6Aj+3Dt3jkuHDD6npa+dH/dV6Q==, tarball: https://registry.npmjs.org/langium-cli/-/langium-cli-4.1.0.tgz}
+  langium-cli@4.0.0:
+    resolution: {integrity: sha512-vlOo2z+Z0pzbKVLVkBrqIsCnnoS3hqObV3/w2DHS/7FBvRo+8sx4ArHt/vpv8Cqf1hD8XggvsStbetgeXzzGMA==, tarball: https://registry.npmjs.org/langium-cli/-/langium-cli-4.0.0.tgz}
     engines: {node: '>=20.10.0', npm: '>=10.2.3'}
     hasBin: true
 
-  langium-railroad@4.1.0:
-    resolution: {integrity: sha512-3m9TeMNnS/rMYaueGDIAPnxhBz7eJLy4iEmMrmSt5FycxAgGtGIVbWT2ry3YRqBy/ICOaAwu530gp4IWcRM5Jg==, tarball: https://registry.npmjs.org/langium-railroad/-/langium-railroad-4.1.0.tgz}
+  langium-railroad@4.0.0:
+    resolution: {integrity: sha512-x+aHyIVq8gemJd6jR40NgJpGGdXXQtb2+jDZf1/BnBaLFX63xdaaCW/nXDlPnxlDCVINQkGESo0TgYNr7SNvrg==, tarball: https://registry.npmjs.org/langium-railroad/-/langium-railroad-4.0.0.tgz}
 
-  langium@4.1.0:
-    resolution: {integrity: sha512-y5vwnQmH8ZSeubUA5eo36KP3m0kGqnQZZoydfttGOog2B+gojoEhOa+DLHVEiaOnouSE6MhnhP650C+2AqRbNw==, tarball: https://registry.npmjs.org/langium/-/langium-4.1.0.tgz}
+  langium@4.0.3:
+    resolution: {integrity: sha512-f61gF/jzfddwQqC7s+Tv5sNcxIUKMxGgZylApVvxMQV8+AsSWxCHQLwclmh84GSzXKGm7y3KY9DxDGOPoiEuPQ==, tarball: https://registry.npmjs.org/langium/-/langium-4.0.3.tgz}
     engines: {node: '>=20.10.0', npm: '>=10.2.3'}
 
   lodash-es@4.17.21:
@@ -1077,6 +1083,14 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==, tarball: https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  typir-langium@0.3.0:
+    resolution: {integrity: sha512-so1QcFgNSZjGKr5R8REjDOZ36nkyJdVagnsWA1JOvU/07cJa0enMto3w3IL8v8pZJ1lKBFVt0AeVgKVnHNN6XA==, tarball: https://registry.npmjs.org/typir-langium/-/typir-langium-0.3.0.tgz}
+    engines: {node: '>= 18.0.0'}
+
+  typir@0.3.0:
+    resolution: {integrity: sha512-znG9gY+qfBG3Btev3+72hvGf2nG/BlPxBezpZ6dvTCuJiLrdho4TMuPh7aeESwNNkcJ7gSiqHFQBjn0VnWzkdA==, tarball: https://registry.npmjs.org/typir/-/typir-0.3.0.tgz}
+    engines: {node: '>= 18.0.0'}
 
   undici-types@7.14.0:
     resolution: {integrity: sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==, tarball: https://registry.npmjs.org/undici-types/-/undici-types-7.14.0.tgz}
@@ -1807,22 +1821,22 @@ snapshots:
 
   jsonschema@1.5.0: {}
 
-  langium-cli@4.1.0:
+  langium-cli@4.0.0:
     dependencies:
       chalk: 5.4.1
       commander: 14.0.1
       fs-extra: 11.3.2
       jsonschema: 1.5.0
-      langium: 4.1.0
-      langium-railroad: 4.1.0
+      langium: 4.0.3
+      langium-railroad: 4.0.0
       lodash: 4.17.21
 
-  langium-railroad@4.1.0:
+  langium-railroad@4.0.0:
     dependencies:
-      langium: 4.1.0
+      langium: 4.0.3
       railroad-diagrams: 1.0.0
 
-  langium@4.1.0:
+  langium@4.0.3:
     dependencies:
       chevrotain: 11.0.3
       chevrotain-allstar: 0.3.1(chevrotain@11.0.3)
@@ -2081,6 +2095,13 @@ snapshots:
       fsevents: 2.3.3
 
   typescript@5.9.3: {}
+
+  typir-langium@0.3.0:
+    dependencies:
+      langium: 4.0.3
+      typir: 0.3.0
+
+  typir@0.3.0: {}
 
   undici-types@7.14.0: {}
 

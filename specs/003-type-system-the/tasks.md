@@ -23,11 +23,11 @@
 
 **Purpose**: Install dependencies and create basic Typir integration structure
 
-- [ ] **T001** [P] [Setup] Install Typir dependencies: `pnpm add typir typir-langium --filter @eligian/language`
-- [ ] **T002** [P] [Setup] Create directory `packages/language/src/type-system-typir/`
-- [ ] **T003** [P] [Setup] Create file `packages/language/src/type-system-typir/eligian-specifics.ts` with `EligianSpecifics` interface
-- [ ] **T004** [P] [Setup] Create file `packages/language/src/type-system-typir/index.ts` for public exports
-- [ ] **T005** [Setup] Verify setup: `pnpm run build` succeeds without errors
+- [X] **T001** [P] [Setup] Install Typir dependencies: `pnpm add typir typir-langium --filter @eligian/language`
+- [X] **T002** [P] [Setup] Create directory `packages/language/src/type-system-typir/`
+- [X] **T003** [P] [Setup] Create file `packages/language/src/type-system-typir/eligian-specifics.ts` with `EligianSpecifics` interface
+- [X] **T004** [P] [Setup] Create file `packages/language/src/type-system-typir/index.ts` for public exports
+- [X] **T005** [Setup] Verify setup: `pnpm run build` succeeds without errors
 
 **Checkpoint**: Typir packages installed, directory structure created
 
@@ -41,13 +41,13 @@
 
 ### Typir Service Integration
 
-- [ ] **T006** [Foundation] Create `packages/language/src/type-system-typir/eligian-type-system.ts` with `EligianTypeSystem` class implementing `LangiumTypeSystemDefinition<EligianSpecifics>`
-- [ ] **T007** [Foundation] Implement empty `onInitialize()` method in `EligianTypeSystem` (will be filled in user story phases)
-- [ ] **T008** [Foundation] Implement empty `onNewAstNode()` method in `EligianTypeSystem` (currently no user-defined types needed)
-- [ ] **T009** [Foundation] Add `typir: TypirLangiumServices<EligianSpecifics>` to `EligianAddedServices` type in `packages/language/src/eligian-module.ts`
-- [ ] **T010** [Foundation] Add Typir service creation in `createEligianModule()`: `typir: () => createTypirLangiumServices(shared, reflection, new EligianTypeSystem(), {})`
-- [ ] **T011** [Foundation] Add `initializeLangiumTypirServices(Eligian, Eligian.typir)` call in `createEligianServices()` after service creation
-- [ ] **T012** [Foundation] Verify Typir integration: `pnpm run build` succeeds, language server starts without errors
+- [X] **T006** [Foundation] Create `packages/language/src/type-system-typir/eligian-type-system.ts` with `EligianTypeSystem` class implementing `LangiumTypeSystemDefinition<EligianSpecifics>`
+- [X] **T007** [Foundation] Implement empty `onInitialize()` method in `EligianTypeSystem` (will be filled in user story phases)
+- [X] **T008** [Foundation] Implement empty `onNewAstNode()` method in `EligianTypeSystem` (currently no user-defined types needed)
+- [X] **T009** [Foundation] Add `typir: TypirLangiumServices<EligianSpecifics>` to `EligianAddedServices` type in `packages/language/src/eligian-module.ts`
+- [X] **T010** [Foundation] Add Typir service creation in `createEligianModule()`: `typir: () => createTypirLangiumServices(shared, reflection, new EligianTypeSystem(), {})`
+- [X] **T011** [Foundation] Add `initializeLangiumTypirServices(Eligian, Eligian.typir)` call in `createEligianServices()` after service creation
+- [X] **T012** [Foundation] Verify Typir integration: `pnpm run build` succeeds, language server starts without errors
 
 **Checkpoint**: Foundation ready - Typir is integrated into Langium services, user story implementation can now begin
 
@@ -61,39 +61,39 @@
 
 ### Primitive Types and Inference Rules
 
-- [ ] **T013** [P] [US1] In `onInitialize()`: Create `stringType` primitive with inference rules for `StringLiteral` and `TypeAnnotation` (type === 'string')
-- [ ] **T014** [P] [US1] In `onInitialize()`: Create `numberType` primitive with inference rules for `NumberLiteral` and `TypeAnnotation` (type === 'number')
-- [ ] **T015** [P] [US1] In `onInitialize()`: Create `booleanType` primitive with inference rules for `BooleanLiteral` and `TypeAnnotation` (type === 'boolean')
-- [ ] **T016** [P] [US1] In `onInitialize()`: Create `objectType` primitive with inference rules for `ObjectLiteral` and `TypeAnnotation` (type === 'object')
-- [ ] **T017** [P] [US1] In `onInitialize()`: Create `arrayType` primitive with inference rules for `ArrayLiteral` and `TypeAnnotation` (type === 'array')
-- [ ] **T018** [P] [US1] In `onInitialize()`: Create `unknownType` using `typir.factory.Top.create({ typeName: 'unknown' })` (top type compatible with all types)
+- [X] **T013** [P] [US1] In `onInitialize()`: Create `stringType` primitive with inference rules for `StringLiteral` and `TypeAnnotation` (type === 'string')
+- [X] **T014** [P] [US1] In `onInitialize()`: Create `numberType` primitive with inference rules for `NumberLiteral` and `TypeAnnotation` (type === 'number')
+- [X] **T015** [P] [US1] In `onInitialize()`: Create `booleanType` primitive with inference rules for `BooleanLiteral` and `TypeAnnotation` (type === 'boolean')
+- [X] **T016** [P] [US1] In `onInitialize()`: Create `objectType` primitive with inference rules for `ObjectLiteral` and `TypeAnnotation` (type === 'object')
+- [X] **T017** [P] [US1] In `onInitialize()`: Create `arrayType` primitive with inference rules for `ArrayLiteral` and `TypeAnnotation` (type === 'array')
+- [X] **T018** [P] [US1] In `onInitialize()`: Create `unknownType` using `typir.factory.Top.create({ typeName: 'unknown' })` (top type compatible with all types)
 
 ### Operation Registry Integration
 
-- [ ] **T019** [US1] In `onInitialize()`: Create helper function `mapParameterTypeToTypirType(paramType, primitives)` to map `ParameterType` enum to Typir primitive types (see research.md for mapping logic)
-- [ ] **T020** [US1] In `onInitialize()`: Import `OPERATION_REGISTRY` from `packages/language/src/compiler/operations/registry.generated.ts`
-- [ ] **T021** [US1] In `onInitialize()`: Iterate over `OPERATION_REGISTRY` entries, create function type for each operation using `typir.factory.Functions.create()`
-- [ ] **T022** [US1] In `onInitialize()`: For each operation function type, register inference rule for operation calls using `.inferenceRuleForCalls()` with `validateArgumentsOfFunctionCalls: true` (enables automatic type checking)
+- [X] **T019** [US1] In `onInitialize()`: Create helper function `mapParameterTypeToTypirType(paramType, primitives)` to map `ParameterType` enum to Typir primitive types (see research.md for mapping logic)
+- [X] **T020** [US1] In `onInitialize()`: Import `OPERATION_REGISTRY` from `packages/language/src/compiler/operations/registry.generated.ts`
+- [X] **T021** [US1] In `onInitialize()`: Iterate over `OPERATION_REGISTRY` entries, create function type for each operation using `typir.factory.Functions.create()`
+- [X] **T022** [US1] In `onInitialize()`: For each operation function type, register inference rule for operation calls using `.inferenceRuleForCalls()` with `validateArgumentsOfFunctionCalls: true` (enables automatic type checking)
 
 ### Basic Validation Rules
 
-- [ ] **T023** [US1] In `onInitialize()`: Register validation rule for `VariableDeclaration` using `typir.validation.Collector.addValidationRulesForAstNodes()`
-- [ ] **T024** [US1] In validation rule: Use `typir.validation.Constraints.ensureNodeIsAssignable()` to check variable initialization type matches declaration type
-- [ ] **T025** [US1] In validation rule: Format error messages to match existing format: "Cannot initialize variable '{name}' with type '{actual}'. Expected '{expected}'."
+- [X] **T023** [US1] In `onInitialize()`: Register validation rule for `VariableDeclaration` using `typir.validation.Collector.addValidationRulesForAstNodes()`
+- [X] **T024** [US1] In validation rule: Use `typir.validation.Constraints.ensureNodeIsAssignable()` to check variable initialization type matches declaration type
+- [X] **T025** [US1] In validation rule: Format error messages to match existing format: "Cannot initialize variable '{name}' with type '{actual}'. Expected '{expected}'."
 
 ### Test Migration (User Story 1)
 
-- [ ] **T026** [US1] Run existing type system tests: `pnpm run test -- type-system.spec.ts`
-- [ ] **T027** [US1] Fix failing type annotation syntax tests (should mostly pass - grammar unchanged)
-- [ ] **T028** [US1] Fix failing type checking integration tests - verify Typir error messages match expected format
-- [ ] **T029** [US1] Update test assertions if needed to accommodate Typir error format differences (preserve semantics)
+- [X] **T026** [US1] Run existing type system tests: `pnpm run test -- type-system.spec.ts`
+- [X] **T027** [US1] Fix failing type annotation syntax tests (should mostly pass - grammar unchanged)
+- [X] **T028** [US1] Fix failing type checking integration tests - verify Typir error messages match expected format
+- [X] **T029** [US1] Update test assertions if needed to accommodate Typir error format differences (preserve semantics)
 
 ### Cleanup (User Story 1 Scope)
 
-- [ ] **T030** [US1] Remove type checking methods from `packages/language/src/eligian-validator.ts`: `checkTypeAnnotationsInAction()`, `checkTypeAnnotationsInStartOps()`, `checkTypeAnnotationsInEndOps()`
-- [ ] **T031** [US1] Remove helper methods from `eligian-validator.ts`: `collectTypeAnnotations()`, `validateTypeSequence()`, all type-related check methods
-- [ ] **T032** [US1] Remove type checking registration from `ValidationChecks<EligianAstType>` in `eligian-validator.ts`
-- [ ] **T033** [US1] Verify cleanup: `pnpm run build` succeeds, no imports referencing old type system
+- [X] **T030** [US1] Remove type checking methods from `packages/language/src/eligian-validator.ts`: `checkTypeAnnotationsInAction()`, `checkTypeAnnotationsInStartOps()`, `checkTypeAnnotationsInEndOps()`
+- [X] **T031** [US1] Remove helper methods from `eligian-validator.ts`: `collectTypeAnnotations()`, `validateTypeSequence()`, all type-related check methods
+- [X] **T032** [US1] Remove type checking registration from `ValidationChecks<EligianAstType>` in `eligian-validator.ts`
+- [X] **T033** [US1] Verify cleanup: `pnpm run build` succeeds, no imports referencing old type system
 
 ### Integration Testing (User Story 1)
 
