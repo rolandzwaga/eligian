@@ -10,7 +10,7 @@ For a full current spec of the language check [this](./LANGUAGE_SPEC.md)
 
 > **📝 File Extension**: Eligian programs use the **`.eligian`** file extension (e.g., `my-timeline.eligian`).
 
-**NOTE** This is very much a work in progress still, so the language is in flux, half-ready and far from suitable for anything production level.
+**NOTE:** This is very much a work in progress still, so the language is in flux, half-ready and far from suitable for anything production level.
 
 ## 🎯 What is Eligius?
 
