@@ -8,16 +8,16 @@
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
-2. [Lexical Structure](#lexical-structure)
-3. [Program Structure](#program-structure)
-4. [Actions](#actions)
-5. [Timelines](#timelines)
-6. [Expressions](#expressions)
-7. [Statements](#statements)
-8. [Type System](#type-system)
-9. [Scoping and References](#scoping-and-references)
-10. [Compilation Model](#compilation-model)
+1. [Introduction](#1-introduction)
+2. [Lexical Structure](#2-lexical-structure)
+3. [Program Structure](#3-program-structure)
+4. [Actions](#4-actions)
+5. [Timelines](#5-timelines)
+6. [Expressions](#6-expressions)
+7. [Statements](#7-statements)
+8. [Type System](#8-type-system)
+9. [Scoping and References](#9-scoping-and-references)
+10. [Compilation Model](#10-compilation-model)
 
 ---
 
