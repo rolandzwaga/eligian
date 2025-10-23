@@ -960,9 +960,9 @@ describe('AST Transformer', () => {
       const action = result.config.actions[0];
       const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
 
-      // ❌ BUG: This currently produces {} but should have selector
+      // ✅ FIXED: Constant folding now inlines the constant value
       expect(selectOp?.operationData).toEqual({
-        selector: '$scope.variables.selector', // @selector → $scope.variables.selector
+        selector: '#box', // @selector is inlined to its constant value "#box"
       });
     });
 
@@ -988,6 +988,204 @@ describe('AST Transformer', () => {
       });
 
       expect(animateOp?.operationData?.animationDuration).toBe('$operationdata.duration');
+    });
+  });
+
+  describe('Constant Folding - Reference Inlining (T007)', () => {
+    test('should inline string constant', async () => {
+      const code = `
+        const MESSAGE = "hello";
+
+        action test() [
+          log(@MESSAGE)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Find the log operation
+      const action = result.config.actions[0];
+      const logOp = action.startOperations.find(op => op.systemName === 'log');
+
+      expect(logOp).toBeDefined();
+      expect(logOp?.operationData?.logValue).toBe('hello'); // Inlined literal
+
+      // Verify no globalData reference
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData.MESSAGE');
+      expect(jsonStr).not.toContain('globaldata.MESSAGE');
+    });
+
+    test('should inline number constant', async () => {
+      const code = `
+        const DELAY = 1000;
+
+        action test() [
+          wait(@DELAY)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const waitOp = action.startOperations.find(op => op.systemName === 'wait');
+
+      expect(waitOp).toBeDefined();
+      expect(waitOp?.operationData?.milliseconds).toBe(1000); // Inlined literal
+
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData.DELAY');
+    });
+
+    test('should inline boolean constant', async () => {
+      const code = `
+        const ENABLED = true;
+
+        action test() [
+          setVariable("flag", @ENABLED)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const setVarOp = action.startOperations.find(op => op.systemName === 'setVariable');
+
+      expect(setVarOp).toBeDefined();
+      expect(setVarOp?.operationData?.value).toBe(true); // Inlined boolean
+
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData.ENABLED');
+    });
+
+    test('should inline multiple references to same constant', async () => {
+      const code = `
+        const SELECTOR = "#element";
+
+        action test() [
+          selectElement(@SELECTOR)
+          addClass("visible")
+          selectElement(@SELECTOR)
+          removeClass("visible")
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const selectOps = action.startOperations.filter(op => op.systemName === 'selectElement');
+
+      expect(selectOps).toHaveLength(2);
+      expect(selectOps[0].operationData?.selector).toBe('#element');
+      expect(selectOps[1].operationData?.selector).toBe('#element');
+
+      // Verify no globalData references anywhere
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData');
+      expect(jsonStr).not.toContain('globaldata');
+    });
+  });
+
+  describe('Constant Folding - Expression Evaluation (T021 - US3)', () => {
+    test('should inline arithmetic expression result', async () => {
+      const code = `
+        const SUM = 10 + 20;
+
+        action test() [
+          log(@SUM)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const logOp = action.startOperations.find(op => op.systemName === 'log');
+
+      expect(logOp).toBeDefined();
+      expect(logOp?.operationData?.logValue).toBe(30); // Computed: 10 + 20
+
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData');
+    });
+
+    test('should inline string concatenation result', async () => {
+      const code = `
+        const NAME = "Hello" + " World";
+
+        action test() [
+          log(@NAME)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const logOp = action.startOperations.find(op => op.systemName === 'log');
+
+      expect(logOp).toBeDefined();
+      expect(logOp?.operationData?.logValue).toBe('Hello World'); // Computed
+
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData');
+    });
+
+    test('should inline logical expression result', async () => {
+      const code = `
+        const FLAG = true && false;
+
+        action test() [
+          setVariable("enabled", @FLAG)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const setVarOp = action.startOperations.find(op => op.systemName === 'setVariable');
+
+      expect(setVarOp).toBeDefined();
+      expect(setVarOp?.operationData?.value).toBe(false); // Computed: true && false
+
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData');
+    });
+
+    test('should inline transitive constant', async () => {
+      const code = `
+        const A = 5;
+        const B = @A + 3;
+
+        action test() [
+          log(@B)
+        ]
+
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const logOp = action.startOperations.find(op => op.systemName === 'log');
+
+      expect(logOp).toBeDefined();
+      expect(logOp?.operationData?.logValue).toBe(8); // Computed: A + 3 = 5 + 3 = 8
+
+      const jsonStr = JSON.stringify(result.config);
+      expect(jsonStr).not.toContain('$globalData');
     });
   });
 });
