@@ -34,10 +34,13 @@ import type {
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
+import { buildConstantMap } from './constant-folder.js';
+import { evaluateExpression } from './expression-evaluator.js';
 import { getOperationSignature } from './operations/index.js';
 import { mapParameters } from './operations/mapper.js';
 import { trackOutputs, validateDependencies, validateOperation } from './operations/validator.js';
 import type { SourceLocation } from './types/common.js';
+import type { ConstantMap } from './types/constant-folding.js';
 import type {
   EligiusIR,
   EndableActionIR,
@@ -70,6 +73,8 @@ import type { TransformError } from './types/errors.js';
  * - Bare identifiers → action parameters (when inActionBody=true)
  * - @@identifier → system context properties (with loop variable aliasing)
  * - @identifier → user variables (context.variables.*)
+ *
+ * Also tracks action-scoped constants for inlining optimization.
  */
 interface ScopeContext {
   /** Are we currently inside an action body? */
@@ -78,7 +83,18 @@ interface ScopeContext {
   actionParameters: string[];
   /** Current loop variable name (for aliasing @@varName → @@currentItem) */
   loopVariableName?: string;
+  /** Action-scoped constants (for inlining within the current scope) */
+  scopedConstants: ConstantMap;
 }
+
+/**
+ * Module-level constant map for the current program being transformed.
+ * Set at the start of transformAST and used throughout transformation.
+ *
+ * Note: This is safe because transformAST is called sequentially per program.
+ * For concurrent compilation, this would need to be thread-local or passed through context.
+ */
+let currentConstantMap: ConstantMap = new Map();
 
 /**
  * Create an empty scope context
@@ -88,6 +104,7 @@ function createEmptyScope(): ScopeContext {
     inActionBody: false,
     actionParameters: [],
     loopVariableName: undefined,
+    scopedConstants: new Map(),
   };
 }
 
@@ -99,6 +116,10 @@ function createEmptyScope(): ScopeContext {
  */
 export const transformAST = (program: Program): Effect.Effect<EligiusIR, TransformError> =>
   Effect.gen(function* (_) {
+    // CONSTANT FOLDING (T008): Build constant map FIRST
+    // This map will be used throughout transformation to inline constant values
+    currentConstantMap = buildConstantMap(program);
+
     // Find all timelines (validation ensures at least one exists)
     const timelineNodes = program.elements.filter(el => el.$type === 'Timeline') as Timeline[];
     if (timelineNodes.length === 0) {
@@ -113,8 +134,11 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     }
 
     // Extract program-level variable declarations (T182: Global variables)
+    // CONSTANT FOLDING (T008): Filter out constants - they will be inlined, not stored in globalData
     const variableDeclarations = program.elements.filter(
-      el => el.$type === 'VariableDeclaration'
+      el =>
+        el.$type === 'VariableDeclaration' &&
+        !currentConstantMap.has((el as VariableDeclaration).name)
     ) as VariableDeclaration[];
 
     // Transform program-level variables to initActions
@@ -1095,6 +1119,7 @@ const transformActionDefinition = (
       inActionBody: true,
       actionParameters: (actionDef.parameters || []).map(p => p.name),
       loopVariableName: undefined,
+      scopedConstants: new Map(), // Start with empty map for action-scoped constants
     };
 
     if (actionDef.$type === 'EndableActionDefinition') {
@@ -1316,8 +1341,13 @@ const transformIfStatement = (
     });
 
     // 2. Transform then operations (recursively handle nested control flow)
+    // Create a new scope for the then block (constants don't leak to else)
+    const thenScope: ScopeContext = {
+      ...scope,
+      scopedConstants: new Map(scope.scopedConstants), // Clone the map
+    };
     for (const thenOp of stmt.thenOps) {
-      const ops = yield* _(transformOperationStatement(thenOp, scope));
+      const ops = yield* _(transformOperationStatement(thenOp, thenScope));
       operations.push(...ops);
     }
 
@@ -1330,8 +1360,13 @@ const transformIfStatement = (
         sourceLocation: getSourceLocation(stmt),
       });
 
+      // Create a new scope for the else block (separate from then block)
+      const elseScope: ScopeContext = {
+        ...scope,
+        scopedConstants: new Map(scope.scopedConstants), // Clone the map
+      };
       for (const elseOp of stmt.elseOps) {
-        const ops = yield* _(transformOperationStatement(elseOp, scope));
+        const ops = yield* _(transformOperationStatement(elseOp, elseScope));
         operations.push(...ops);
       }
     }
@@ -1386,9 +1421,11 @@ const transformForStatement = (
     // 2. Transform loop body (recursively handle nested control flow)
     // T232: Create loop scope with variable aliasing
     // Inside the loop, @@itemName resolves to @@currentItem
+    // Also clone scopedConstants so loop-scoped constants don't leak out
     const loopScope: ScopeContext = {
       ...scope,
       loopVariableName: stmt.itemName, // e.g., "item" in for (item in items)
+      scopedConstants: new Map(scope.scopedConstants), // Clone the map
     };
 
     for (const bodyOp of stmt.body) {
@@ -1467,7 +1504,35 @@ const transformVariableDeclaration = (
   scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
-    // Transform the value expression
+    // ACTION-SCOPED CONSTANT FOLDING: Try to evaluate at compile time
+    // Build a combined constant map: global constants + action-scoped constants
+    const combinedConstants = new Map([
+      ...currentConstantMap.entries(),
+      ...scope.scopedConstants.entries(),
+    ]);
+
+    const evalResult = evaluateExpression(stmt.value, combinedConstants);
+
+    if (evalResult.canEvaluate) {
+      // This is a constant that can be inlined!
+      // Add it to the scope's constant map for later references
+      scope.scopedConstants.set(stmt.name, {
+        name: stmt.name,
+        value: evalResult.value!,
+        type: typeof evalResult.value as 'string' | 'number' | 'boolean',
+        sourceLocation: {
+          line: stmt.$cstNode?.range.start.line ?? 0,
+          column: stmt.$cstNode?.range.start.character ?? 0,
+          file: stmt.$document?.uri.fsPath ?? 'unknown',
+        },
+      });
+
+      // Don't generate setVariable operation - constant will be inlined
+      return [];
+    }
+
+    // Cannot evaluate - treat as regular variable
+    // Transform the value expression normally
     const value = yield* _(transformExpression(stmt.value, scope));
 
     // Create setVariable operation
@@ -1544,8 +1609,7 @@ const transformExpression = (
 
       case 'VariableReference': {
         // Variable reference: @varName (T233)
-        // Compiles to $scope.variables.varName
-        // Now uses cross-reference to VariableDeclaration
+        // CONSTANT FOLDING: Check if this is a constant first
         if (!expr.variable?.ref) {
           return yield* _(
             Effect.fail({
@@ -1556,7 +1620,23 @@ const transformExpression = (
             })
           );
         }
-        return `$scope.variables.${expr.variable.ref.name}`;
+
+        const varName = expr.variable.ref.name;
+
+        // Check action-scoped constants first (more specific scope)
+        if (scope.scopedConstants.has(varName)) {
+          const constant = scope.scopedConstants.get(varName)!;
+          return constant.value; // Inline action-scoped constant
+        }
+
+        // Check global constants
+        if (currentConstantMap.has(varName)) {
+          const constant = currentConstantMap.get(varName)!;
+          return constant.value; // Inline global constant
+        }
+
+        // Otherwise, it's a runtime scope variable
+        return `$scope.variables.${varName}`;
       }
 
       case 'SystemPropertyReference': {
