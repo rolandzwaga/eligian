@@ -862,6 +862,7 @@ const transformStaggerBlock = (
           inActionBody: false,
           actionParameters: [],
           loopVariableName: 'item', // Default variable name for stagger items
+          scopedConstants: new Map(), // No scoped constants in stagger blocks
         };
 
         const startOperations: OperationConfigIR[] = [];
