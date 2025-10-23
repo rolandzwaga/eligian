@@ -1,20 +1,113 @@
 <!--
-Sync Impact Report:
-- Version change: 1.8.0 → 1.9.0
-- Amendment: Added Principle XVI (Question-First Implementation)
-- Modified principles: Renumbered XIV→XV (Operation Metadata Consultation)
-- Modified principles: Renumbered XV→XVI (Operation Metadata Consultation)
-- Added sections: Principle XVI - Concise Communication Implementation (NON-NEGOTIABLE)
-- Removed sections: None
-- Templates requiring updates: None (workflow guidance for Claude when implementing)
-- Follow-up TODOs:
-  - Apply this principle immediately when asking ANY question during implementation
-  - STOP all implementation work after asking questions
-  - WAIT for user answers before proceeding
-  - Document user's answers and how they inform implementation
+===================================================================================
+SYNC IMPACT REPORT - Constitution Update
+===================================================================================
+
+VERSION CHANGE: 1.9.0 → 2.0.0
+Rationale: MAJOR version bump - Enhanced Principle II (Test-First Development) with
+strict enforcement workflow that redefines testing requirements, making "tests later"
+a constitutional violation (backward incompatible with prior "encouraged" TDD stance).
+Added 5 new principles that significantly expand governance scope.
+
+AMENDMENTS (v2.0.0):
+* Enhanced Principle II: Comprehensive Testing (NON-NEGOTIABLE)
+  - Added explicit Red-Green-Refactor workflow enforcement
+  - Added strict rule: "I'll add tests later" is NOT acceptable and is a violation
+  - Added enforcement: Implementation commits without tests will be rejected
+  - Added mandatory coverage verification (80% threshold with blocking)
+  - This is BACKWARD INCOMPATIBLE - previously TDD was "encouraged", now MANDATORY
+
+* Enhanced Principle XI: Code Quality: Biome Integration (NON-NEGOTIABLE)
+  - Added mandatory TypeScript type checking after Biome checks
+  - Requires `npm run typecheck` after Biome passes
+  - Mandates fixing all type errors before task completion
+  - Updated workflow: lint → format → check → typecheck → all pass before commit
+
++ Added Principle XVIII: Research & Documentation Standards (NON-NEGOTIABLE)
+  - Mandates use of context7 MCP server for library research and API patterns
+  - Requires verification against official documentation
+  - Documents research workflow and examples
+
++ Added Principle XIX: Dependency Management (NON-NEGOTIABLE)
+  - Prohibits automatic package.json modifications
+  - Requires user consultation before adding dependencies
+  - Enforces approval workflow for new dependencies
+
++ Added Principle XX: Debugging Attempt Limit (NON-NEGOTIABLE)
+  - Limits troubleshooting to 5 attempts before user consultation
+  - Defines "attempt" and tracking requirements
+  - Prevents infinite debugging loops
+
++ Added Principle XXI: Token Efficiency (NON-NEGOTIABLE)
+  - Prohibits generating test coverage reports in documentation
+  - Prevents redundant documentation of machine-readable output
+  - Focuses documentation on insights, not data dumps
+
++ Added Principle XXII: Accessibility Standards (NON-NEGOTIABLE)
+  - Mandates WCAG 2.1 AA compliance for all UI components
+  - Requires keyboard navigation and screen reader support
+  - Defines accessibility requirements for CLI/extension interfaces
+
+MODIFIED SECTIONS:
+- Principle II: Now strictly enforces TDD with Red-Green-Refactor workflow
+- Principle XI: Expanded to include TypeScript type checking
+- Development Workflow → Testing Standards: Added coverage verification requirements
+- Governance → Compliance Review: Added new principle checkpoints
+
+PRINCIPLES ESTABLISHED (v1.0.0 - v1.9.0):
+I. Simplicity, Documentation, and Maintainability
+II. Comprehensive Testing (NOW NON-NEGOTIABLE with strict enforcement)
+III. No Gold-Plating
+IV. Mandatory Code Reviews
+V. UX Consistency
+VI. Functional Programming with Pragmatic Performance
+VII. UUID-Based Identifiers (NON-NEGOTIABLE)
+VIII. Debug Cleanup and Workspace Hygiene (NON-NEGOTIABLE)
+IX. ESM Import Extensions (NON-NEGOTIABLE)
+X. Validation Pattern: Compiler-First with Langium Integration (NON-NEGOTIABLE)
+XI. Code Quality: Biome Integration (NON-NEGOTIABLE) - ENHANCED with typecheck
+XII. Eligius Architecture Understanding (NON-NEGOTIABLE)
+XIII. Eligius Domain Expert Consultation (NON-NEGOTIABLE)
+XIV. Question-First Implementation (NON-NEGOTIABLE)
+XV. Operation Metadata Consultation (NON-NEGOTIABLE)
+XVI. Concise Communication (NON-NEGOTIABLE)
+XVII. Language Specification Maintenance (NON-NEGOTIABLE)
+XVIII. Research & Documentation Standards (NON-NEGOTIABLE) - NEW
+XIX. Dependency Management (NON-NEGOTIABLE) - NEW
+XX. Debugging Attempt Limit (NON-NEGOTIABLE) - NEW
+XXI. Token Efficiency (NON-NEGOTIABLE) - NEW
+XXII. Accessibility Standards (NON-NEGOTIABLE) - NEW
+
+TEMPLATE CONSISTENCY CHECK:
+✅ plan-template.md - Constitution Check section aligns with new principles
+✅ spec-template.md - No changes required (principles don't affect spec structure)
+✅ tasks-template.md - No changes required (task generation unaffected)
+✅ Development Workflow section - Updated with new testing and quality requirements
+✅ Compliance Review section - Updated with new principle checkpoints
+
+FOLLOW-UP TODOS:
+- Update CLAUDE.md to reference new principles (especially context7, dependency management)
+- Ensure all contributors are aware of strict TDD enforcement (breaking change)
+- Update PR templates to include new principle checkpoints
+- Consider adding automated checks for principle compliance in CI/CD
+
+PROJECT CONTEXT:
+- Project: Eligian - Langium-based DSL and compiler for Eligius library
+- Domain: Story-telling engine DSL with VS Code extension
+- Tech Stack: TypeScript, Langium, Effect-TS, Vitest, Biome, Node.js ESM
+- Development Model: Test-First Development (NOW STRICTLY ENFORCED)
+- Code Quality: Biome + TypeScript type checking (mandatory enforcement)
+- Testing: Vitest with 80% coverage threshold + mandatory verification
+- Research Tool: context7 MCP server (NOW MANDATORY for library research)
+- Dependency Policy: NO automatic installations, user approval required
+- Debugging Policy: Maximum 5 attempts before user consultation
+- Communication Policy: Brief, technical communication for senior developers
+- Documentation Policy: NEVER generate redundant coverage reports
+
+===================================================================================
 -->
 
-# Eligius GF-RGL MCP Server Constitution
+# Eligian DSL Constitution
 
 ## Core Principles
 
@@ -25,9 +118,10 @@ cleverness. Every component MUST be documented with clear purpose, usage example
 architectural rationale. Code MUST be written for maintainability first, anticipating
 future developers who need to understand and modify it.
 
-**Rationale**: The project addresses lacking GF RGL documentation by providing programmatic
-access to source code. If the tool itself lacks clarity and documentation, it defeats its
-own purpose. Maintainability ensures long-term viability as GF and RGL evolve.
+**Rationale**: The Eligian project provides a DSL that simplifies Eligius configuration
+by reducing JSON verbosity and improving readability. If the DSL compiler itself lacks
+clarity and documentation, it defeats its own purpose. Maintainability ensures long-term
+viability as both Eligius and the DSL evolve.
 
 **Requirements**:
 - All modules MUST include purpose documentation at the top
@@ -38,24 +132,54 @@ own purpose. Maintainability ensures long-term viability as GF and RGL evolve.
 
 ### II. Comprehensive Testing (NON-NEGOTIABLE)
 
-All production code MUST have both unit tests and basic integration tests. Tests are
-non-negotiable - no feature is complete without tests. Unit tests verify individual
-components in isolation. Integration tests verify real-world scenarios and component
-interactions.
+**STRICTLY ENFORCED**: Every feature MUST begin with tests before any implementation code
+is written. No implementation code shall be written without a failing test first. "I'll add
+tests later" is NOT acceptable and constitutes a constitutional violation.
 
-**Rationale**: The MCP server parses complex GF source code and provides accurate results
-to AI assistants. Incorrect parsing or broken tools directly impact user productivity.
-Comprehensive testing ensures reliability and catches regressions early.
+All production code MUST have both unit tests and integration tests. Tests verify individual
+components in isolation and real-world scenarios. Test coverage MUST meet the 80% threshold
+for business logic, with mandatory verification after spec completion.
+
+**Rationale**: The DSL compiler transforms user code into Eligius configuration. Incorrect
+parsing, validation, or compilation directly impacts user productivity and runtime correctness.
+Test-first development ensures every behavior is explicitly defined and verified before
+implementation, reducing bugs and driving proper design. Tests written after implementation
+often miss edge cases and validation requirements.
+
+**Test-First Development Workflow (NO EXCEPTIONS)**:
+
+1. **RED**: Write failing test that describes desired behavior (BEFORE ANY IMPLEMENTATION)
+2. **GREEN**: Write MINIMUM code necessary to make the test pass
+3. **REFACTOR**: Improve code quality while keeping tests green
+4. **NEVER**: Write implementation before test exists
 
 **Requirements**:
-- Every public function MUST have unit tests
-- Every MCP tool MUST have integration tests using real GF-RGL source files
-- Tests MUST be written before or alongside implementation (TDD encouraged)
-- All tests MUST pass before code review
-- **All tests MUST pass before moving on after refactoring** - If a refactor breaks tests, fix them immediately before proceeding to new work
-- Test coverage SHOULD be tracked and maintained above 80%
-- Integration tests MUST use realistic GF source examples from actual RGL modules
+- Every public function MUST have unit tests written FIRST
+- Every MCP tool MUST have integration tests using real Eligian DSL source files
+- ANY file containing `function`, `const fn =`, `class`, or executable code MUST have corresponding test file
+- Implementation commits without tests will be REJECTED in code review
+- All tests MUST pass before moving on after refactoring
+- Test coverage MUST be tracked and maintained above 80% for business logic
+- Integration tests MUST use realistic DSL examples from actual use cases
 - When tests fail due to intentional changes (grammar updates, API changes), update test expectations immediately
+
+**Coverage Verification (MANDATORY after spec completion)**:
+- Run `npm run test:coverage` when spec is finished
+- Analyze coverage report and identify files/functions below 80% threshold
+- Implement missing tests to achieve 80% coverage for ALL business logic
+- **Exception process**: If coverage cannot be achieved for valid reason:
+  1. **STOP IMMEDIATELY** - Do not continue
+  2. Document specific files/functions that cannot reach 80%
+  3. Provide detailed technical justification for why coverage is impossible
+  4. Present findings to user and **WAIT for explicit approval**
+  5. Only proceed after user grants exception or provides alternative approach
+- NO EXCEPTIONS for business logic, utilities, or critical workflows without user approval
+- A spec is NOT complete until coverage requirements met or user has approved exception
+
+**Enforcement**:
+- Implementation commits without tests will be rejected in code review
+- "I'll add tests later" is a constitutional violation
+- Each commit MUST show test written before implementation (reviewable in git history)
 
 ### III. No Gold-Plating
 
@@ -63,7 +187,7 @@ Favor "good enough" solutions over perfect, over-engineered ones. Features MUST 
 real, immediate problems. Avoid speculative features, premature optimization, and
 unnecessary abstraction. Every addition must justify its complexity.
 
-**Rationale**: The project is production-ready with focused functionality. Adding
+**Rationale**: The Eligian DSL is production-ready with focused functionality. Adding
 unnecessary features or complexity risks introducing bugs, maintenance burden, and
 cognitive overhead without proportional benefit.
 
@@ -93,20 +217,21 @@ codebase with external immutability requirements.
 
 ### V. UX Consistency
 
-User experience across all MCP tools MUST be consistent. Same interaction patterns,
-same response formats, same error handling, same accessibility considerations.
+User experience across all tools (CLI, VS Code extension, programmatic API) MUST be
+consistent. Same interaction patterns, same error formats, same validation messages,
+same accessibility considerations.
 
-**Rationale**: As an MCP server, the UX is primarily API-driven. Consistent tool
-behavior, error messages, and response formats ensure AI assistants (like Claude)
-can reliably use the tools and provide predictable results to end users.
+**Rationale**: Consistent UX across CLI compilation, IDE validation, and programmatic
+usage ensures users can predict behavior and understand errors regardless of how they
+invoke the compiler. Inconsistent error messages or validation between CLI and IDE
+would confuse users and reduce trust.
 
 **Requirements**:
-- All MCP tools MUST follow consistent naming conventions
-- All MCP tools MUST return structured data in the same format
-- Error messages MUST be clear, actionable, and formatted consistently
-- Tool descriptions MUST follow the same documentation pattern
-- Response times SHOULD be predictable and similar across tools
-- Tool parameters MUST use consistent naming and validation patterns
+- CLI, VS Code extension, and programmatic API MUST use same validation logic
+- Error messages MUST be clear, actionable, and formatted consistently across all interfaces
+- Tool descriptions and documentation MUST follow the same pattern
+- Response times SHOULD be predictable across compilation modes
+- Validation rules MUST be identical in IDE and CLI (compiler-first pattern enforces this)
 
 ### VI. Functional Programming with Pragmatic Performance
 
@@ -116,8 +241,8 @@ handling, and type safety. Prioritize referential transparency at API boundaries
 
 **Rationale**: Functional programming with immutable data structures provides
 predictability, testability, and concurrent safety. However, performance matters for
-parsing large RGL source trees. Internal mutation keeps code performant while
-maintaining external purity.
+parsing and transforming large DSL files and ASTs. Internal mutation keeps code performant
+while maintaining external purity.
 
 **Requirements**:
 - All public functions MUST have referentially transparent signatures (same input → same output)
@@ -162,7 +287,7 @@ for maintainability and professionalism.
 **Requirements**:
 - All debug scripts (`debug-*.js`, `debug-*.mjs`, `test-*.js`, etc.) MUST be deleted after debugging completes
 - Temporary investigation files MUST NOT be committed to version control
-- Test files belong in `__tests__/` or `test/` directories, never in root or `src/` directories
+- Test files belong in `__tests__/` directories, never in root or `src/` directories
 - Build artifacts (`.tsbuildinfo`, `out/`, `dist/`) should be in `.gitignore`, not tracked
 - After any debugging session: review workspace, delete temporary files, restore clean state
 - If a debug script proves useful, convert it to a proper test in `__tests__/` directory
@@ -232,37 +357,43 @@ checkOperationExists(op: OperationCall, accept: ValidationAcceptor): void {
 
 ### XI. Code Quality: Biome Integration (NON-NEGOTIABLE)
 
-All code changes MUST be formatted and linted with Biome after each task completion. Any
-issues surfaced by Biome (formatting, linting errors, unused imports, code smells) MUST be
-fixed as part of that task before the task is considered complete. Biome ensures consistent
-code style, catches common mistakes, and maintains code quality across the project.
+All code changes MUST be formatted and linted with Biome, followed by TypeScript type
+checking, after each task completion. Any issues surfaced by Biome or TypeScript (formatting,
+linting errors, unused imports, type errors, code smells) MUST be fixed as part of that task
+before the task is considered complete.
 
 **Rationale**: Consistent code formatting and linting prevent style bikeshedding, catch
 common bugs early (unused variables, missing returns, etc.), and ensure the codebase
-remains clean and maintainable. Running Biome after each task ensures issues are caught
-immediately when context is fresh, rather than accumulating and creating large cleanup PRs.
+remains clean and maintainable. TypeScript type checking catches entire classes of bugs
+at compile time. Running both after each task ensures issues are caught immediately when
+context is fresh, rather than accumulating and creating large cleanup PRs.
 
 **Requirements**:
 - MUST run `npm run check` after completing each task (formats and lints with auto-fix)
-- All Biome errors MUST be fixed before the task is considered complete
+- MUST run `npm run typecheck` after Biome passes (verify TypeScript type correctness)
+- All Biome errors and TypeScript type errors MUST be fixed before task completion
 - Biome warnings SHOULD be addressed or explicitly suppressed with justification
 - Configuration changes to `biome.json` MUST be documented with rationale
 - Generated files (`.generated.ts`, `out/`, `dist/`) MUST be excluded from Biome checks
-- Task completion checklist MUST include "Biome checks pass" as final step
-- If Biome surfaces legitimate issues, fix them; if false positives, update configuration
-- When adding new rules, ensure they don't break existing valid patterns
+- Task completion checklist MUST include "Biome + typecheck pass" as final step
+- If issues are legitimate, fix them; if false positives, update configuration with justification
+- NEVER commit code with unresolved linting, formatting, or type errors
 
 **Workflow**:
 ```bash
 # After completing a task:
-npm run check  # Format and lint with auto-fix
+npm run check      # Format and lint with auto-fix
+npm run typecheck  # Verify TypeScript types
 
-# If issues remain:
-npm run lint   # Review issues
+# If Biome issues remain:
+npm run lint       # Review issues
 # Fix issues or update biome.json if false positives
 
+# If typecheck issues remain:
+# Fix type errors - no suppression without justification
+
 # Verify clean:
-npm run check  # Should show "0 errors, 0 warnings"
+npm run check && npm run typecheck  # Both must pass
 ```
 
 ### XII. Eligius Architecture Understanding (NON-NEGOTIABLE)
@@ -443,6 +574,259 @@ operations.push({
 6. Check `outputs` array for what this operation provides to subsequent operations
 7. Implement transformation based on metadata, not assumptions
 
+### XVI. Concise Communication (NON-NEGOTIABLE)
+
+The user is a senior developer. Brief, technical communication only.
+
+**Rationale**: Verbose communication wastes time and tokens. Senior developers don't need
+explanations of basic operations or hand-holding through routine tasks.
+
+**Requirements**:
+- Keep responses SHORT and TO THE POINT
+- NO hand-holding explanations
+- NO verbose status updates about routine operations
+- State what you did, not how or why (unless asked)
+- Be verbose only when: user requests detail, critical errors, architectural proposals, or 5+ failed debug attempts
+
+### XVII. Language Specification Maintenance (NON-NEGOTIABLE)
+
+The `LANGUAGE_SPEC.md` file is the authoritative documentation of Eligian syntax, semantics,
+and compilation behavior. It MUST be updated whenever ANY language feature is added, modified,
+or removed. The spec is a living document that defines the language contract.
+
+**Rationale**: A DSL without a complete, accurate specification becomes impossible to maintain,
+extend, or use correctly. Grammar changes, new syntax features, or semantic changes must be
+documented immediately while context is fresh. Outdated specs lead to incorrect implementations
+and user confusion.
+
+**Requirements**:
+- MUST update `LANGUAGE_SPEC.md` when adding/changing/removing language features
+- MUST update spec BEFORE implementing the feature (spec drives implementation)
+- MUST update version number in spec header when modified
+- MUST document syntax, semantics, compilation behavior, and examples for each feature
+- MUST verify spec examples compile correctly with the CLI compiler
+- Spec updates are NOT optional - feature is incomplete without spec documentation
+- Grammar changes MUST be reflected in spec within same commit/PR
+- Run `node packages/cli/bin/cli.js --check` on all spec examples to verify correctness
+
+**Workflow**:
+```bash
+# When adding a language feature:
+1. Update LANGUAGE_SPEC.md with syntax and semantics
+2. Add examples to spec
+3. Verify examples: node packages/cli/bin/cli.js --check <example-file>
+4. Implement grammar changes
+5. Implement compiler transformations
+6. Verify spec examples still compile correctly
+7. Commit with message: "feat: <feature> (with spec update)"
+```
+
+### XVIII. Research & Documentation Standards (NON-NEGOTIABLE)
+
+When researching library usage, API patterns, or implementation details, accuracy is critical.
+ALWAYS consult the context7 MCP server when researching how to use code libraries and
+implementations to ensure current, authoritative documentation is used.
+
+**Rationale**: Outdated or incorrect library usage leads to bugs, technical debt, and maintenance
+burden. The context7 MCP server provides access to current, authoritative documentation, reducing
+implementation errors and ensuring code follows established patterns. In DSL compilation,
+using libraries incorrectly (Langium, Effect-TS, Typir) can introduce subtle bugs that compromise
+compilation correctness or IDE integration.
+
+**Requirements**:
+- ALWAYS consult context7 MCP server when researching library usage and API patterns
+- Use context7 to retrieve current, accurate documentation for dependencies (Langium, Effect-TS, Typir, Vitest, etc.)
+- Verify API signatures and patterns against official documentation via context7
+- When implementing features with unfamiliar libraries, query context7 BEFORE writing code
+- Cross-reference implementation patterns with context7 to ensure best practices
+- Document any discrepancies between context7 documentation and actual behavior
+
+**Context7 Usage Examples**:
+- "How do I use Langium's validation API for custom rules?"
+- "What's the correct Effect-TS pattern for error handling in pipelines?"
+- "Show me the Typir API for type inference and validation"
+- "How do I test Langium validators with @solidjs/testing-library?"
+
+### XIX. Dependency Management (NON-NEGOTIABLE)
+
+**CRITICAL**: Dependency changes affect application stability, security, and maintainability.
+All dependency modifications require explicit user approval.
+
+**Rationale**: In DSL compilation projects, every dependency is a potential security risk,
+maintenance burden, and stability concern. Uncontrolled dependency growth leads to version
+conflicts, security vulnerabilities, and increased attack surface. User approval ensures
+dependencies are necessary, vetted, and aligned with project goals. This principle prevents
+dependency bloat and maintains a stable, auditable dependency graph.
+
+**Requirements**:
+- DO NOT automatically install or modify package.json
+- DO NOT add new dependencies without user consultation and approval
+- When a new dependency is required, STOP and discuss with the user first
+- DO NOT continue working until user approval is obtained
+- Focus development efforts on:
+  - Project structure and file organization
+  - Configuration files (tsconfig.json, vitest.config.ts, etc.)
+  - Code organization and architecture
+  - Implementation using existing dependencies
+- Document dependency requirements in planning phase for user review
+- Justify every new dependency with specific use case and rationale
+- Consider alternatives using existing dependencies before proposing new ones
+
+**Approval Process for New Dependencies**:
+1. Identify the need during planning or implementation
+2. Research alternatives using existing dependencies
+3. Document the specific requirement and justification
+4. Present options to user with pros/cons
+5. Wait for explicit user approval
+6. Only after approval, proceed with installation
+
+### XX. Debugging Attempt Limit (NON-NEGOTIABLE)
+
+**CRITICAL**: When debugging or troubleshooting issues, you are limited to **5 attempts**
+before requiring user consultation.
+
+**Rationale**: Infinite debugging loops waste time and often indicate a fundamental
+misunderstanding of the problem. After 5 failed attempts, it's clear that either the approach
+is wrong, critical information is missing, or the problem requires a different perspective.
+Consulting the user after 5 attempts prevents wasted effort, brings fresh insight, and often
+reveals that the entire approach needs to change.
+
+**Attempt Definition**: An "attempt" is any iteration of trying a different approach to solve
+the same problem, including:
+- Modifying code in a different way
+- Trying a different configuration
+- Clearing caches or reinstalling dependencies
+- Changing file structure or imports
+- Applying patches or workarounds
+
+**The 5-Attempt Rule**:
+1. **Attempt 1**: Initial diagnosis and first solution attempt
+2. **Attempt 2**: If failed, try a different approach based on new information
+3. **Attempt 3**: If failed, research the issue more deeply (context7, documentation)
+4. **Attempt 4**: If failed, try a more fundamental approach or alternative solution
+5. **Attempt 5**: If failed, document the attempts and prepare questions for user
+
+**After 5 Failed Attempts**:
+- **STOP IMMEDIATELY** - Do not continue troubleshooting
+- **DOCUMENT** what was tried and why each attempt failed
+- **ANALYZE** the common patterns across failures
+- **FORMULATE** specific, focused questions for the user:
+  - What have I tried?
+  - What patterns did I observe?
+  - What are the possible root causes?
+  - What information do I need to proceed?
+- **PRESENT** findings and questions clearly to the user
+- **WAIT** for user response before continuing
+
+**DO NOT**:
+- Continue brute-forcing solutions past 5 attempts
+- Try variations of the same failed approach
+- Keep debugging indefinitely without user consultation
+- Assume the next attempt will work "this time"
+
+**Example Tracking** (internal):
+```
+Issue: Type inference not working for operation parameters
+Attempt 1: Added type annotations to metadata - FAILED
+Attempt 2: Updated Typir inference rules - FAILED
+Attempt 3: Checked Typir documentation via context7 - FAILED
+Attempt 4: Simplified type constraints - FAILED
+Attempt 5: Added logging to trace inference flow - FAILED
+→ STOP. Consult user about Typir type system architecture.
+```
+
+### XXI. Token Efficiency (NON-NEGOTIABLE)
+
+**CRITICAL**: Token usage is a finite resource. NEVER generate documentation that duplicates
+machine-readable output.
+
+**Rationale**: Test coverage reports, lint output, and other machine-readable data can be
+generated instantly with commands. Documenting this output in markdown files wastes thousands
+of tokens transcribing data that provides zero additional value over running the command.
+Token efficiency is critical for senior developers who value concise, actionable information
+over verbose data dumps.
+
+**Prohibited Documentation Practices**:
+- NEVER generate test coverage reports in spec documentation (e.g., coverage-report.md)
+- NEVER copy/paste or transcribe output from `npm run test:coverage` into markdown files
+- NEVER document coverage metrics, percentages, or file-by-file breakdowns
+- NEVER create "Coverage Report" or "Test Results" sections in spec completion documents
+- NEVER duplicate information that can be obtained by running a single command
+
+**Required Practices**:
+- ALWAYS run `npm run test:coverage` to view coverage (per Principle II)
+- ALWAYS analyze coverage output directly from the terminal
+- ONLY document coverage-related INSIGHTS if they require human interpretation:
+  - Explanation of why a specific file has low coverage (if valid reason exists)
+  - Justification for coverage exceptions (if user approved)
+  - Architecture decisions that affect testability
+- VERIFY coverage meets 80% threshold via command output, not documentation
+
+**What to Document Instead**:
+- ✅ Test strategy and approach
+- ✅ Edge cases that were explicitly tested
+- ✅ Rationale for test organization decisions
+- ✅ User-approved coverage exceptions with justification
+- ❌ Coverage percentages, metrics, or reports (use `npm run test:coverage` instead)
+
+**Examples**:
+
+**Good (Insight-based documentation)**:
+```markdown
+## Testing Notes
+- Langium AST traversal tests skip certain edge cases due to Langium's internal node structure
+- User approved 72% coverage for AST transformer due to unreachable error paths in generated code
+```
+
+**Bad (Redundant data dump)**:
+```markdown
+## Coverage Report
+- Statements: 95.37%
+- Branches: 92.44%
+- Functions: 97.04%
+- Lines: 95.37%
+
+### By Module
+- compiler/ast-transformer.ts: 97.85%
+- compiler/validator.ts: 100%
+- compiler/optimizer.ts: 92.14%
+[... 50 more lines of redundant data ...]
+```
+
+### XXII. Accessibility Standards (NON-NEGOTIABLE)
+
+All user-facing interfaces (CLI output, VS Code extension UI, error messages) MUST be
+accessible to users with disabilities. Follow WCAG 2.1 AA standards for all interactive
+components and output.
+
+**Rationale**: Accessibility is both a legal requirement and moral obligation. Developers
+with disabilities must have equal access to DSL compilation tools, IDE integration, and
+error diagnostics. Inaccessible error messages or IDE UI elements prevent users from
+effectively using the Eligian DSL.
+
+**Requirements**:
+- Follow WCAG 2.1 AA standards for ALL user-facing components (CLI, extension UI)
+- Ensure keyboard navigation for all interactive elements in VS Code extension
+- Provide clear, actionable error messages and validation feedback
+- Use semantic HTML/markup in extension webviews (if any)
+- Include ARIA labels and roles where semantic markup is insufficient
+- Ensure color contrast ratios meet WCAG AA requirements (4.5:1 for normal text)
+- Support screen readers and assistive technologies
+- Test CLI output with screen readers (ensure error messages are readable)
+- Test VS Code extension with keyboard-only navigation
+
+**CLI-Specific Requirements**:
+- Error messages MUST be clear and parseable by screen readers
+- Use standard exit codes (0 for success, non-zero for errors)
+- Provide progress indicators that work with screen readers (avoid spinners, use text)
+- Support `--no-color` flag for color-blind users or terminals without color support
+
+**VS Code Extension-Specific Requirements**:
+- Diagnostic messages MUST include clear descriptions and locations
+- Quick fixes MUST be keyboard-accessible
+- Extension commands MUST have descriptive labels
+- Webviews (if any) MUST follow WCAG 2.1 AA standards
+
 ## Development Workflow
 
 ### Pull Request Process
@@ -450,29 +834,34 @@ operations.push({
 All code changes follow this workflow:
 
 1. **Branch Creation**: Create feature branch from main with descriptive name
-2. **Implementation**: Write code following constitution principles
-3. **Testing**: Write and run unit tests + integration tests (all must pass)
-4. **Documentation**: Update relevant documentation (code comments, CLAUDE.md, etc.)
-5. **Self Review**: Review own changes for constitution compliance
-6. **Pull Request**: Create PR with clear description of changes and rationale
-7. **Code Review**: Address reviewer feedback, maintain constitution compliance
-8. **Merge**: Merge only after approval and passing CI/CD checks
+2. **Test-First Implementation**: Write failing tests BEFORE any implementation
+3. **Implementation**: Write MINIMUM code to pass tests, then refactor
+4. **Testing**: Verify all tests pass (unit + integration)
+5. **Code Quality**: Run `npm run check && npm run typecheck` and fix all issues
+6. **Coverage Verification**: Run `npm run test:coverage` and ensure 80%+ for business logic
+7. **Documentation**: Update relevant documentation (code comments, CLAUDE.md, LANGUAGE_SPEC.md)
+8. **Self Review**: Review own changes for constitution compliance
+9. **Pull Request**: Create PR with clear description of changes and rationale
+10. **Code Review**: Address reviewer feedback, maintain constitution compliance
+11. **Merge**: Merge only after approval and passing CI/CD checks
 
 ### Testing Standards
 
+- **Test-First Development**: Write failing tests BEFORE implementation (RED-GREEN-REFACTOR)
 - **Unit Tests**: Test individual functions/modules in isolation
-- **Integration Tests**: Test MCP tools end-to-end with real GF-RGL sources
-- **Test Location**: Tests in `tests/` directory mirroring `src/` structure
-- **Test Naming**: `test_<function_name>_<scenario>.ts` or `<module>.test.ts`
-- **Coverage**: Minimum 80% coverage, aim for 90%+
+- **Integration Tests**: Test compilation end-to-end with real Eligian DSL source files
+- **Test Location**: Tests in `__tests__/` subdirectories alongside code
+- **Test Naming**: `*.spec.ts` extension
+- **Coverage**: Minimum 80% coverage for business logic, verified after spec completion
+- **Coverage Verification**: Run `npm run test:coverage`, achieve threshold, or get user approval for exceptions
 
 ### Documentation Requirements
 
 - **Code Documentation**: Inline comments for complex logic, docstrings for all public APIs
 - **Architecture Documentation**: Major decisions documented in CLAUDE.md
-- **Technical Analysis**: Complex domains (like GF syntax) documented in dedicated files
-- **Progress Tracking**: PROJECT_PROGRESS.md maintained for status and next steps
-- **README**: Keep up to date with setup, usage, and contribution guidelines
+- **Language Specification**: LANGUAGE_SPEC.md kept up to date with all grammar changes
+- **Technical Analysis**: Complex domains (Eligius architecture) documented in dedicated sections
+- **NO Redundant Documentation**: Never duplicate machine-readable output (coverage reports, lint results)
 
 ## Governance
 
@@ -500,10 +889,17 @@ Constitution follows semantic versioning (MAJOR.MINOR.PATCH):
 All pull requests MUST verify compliance with this constitution:
 
 - Does the code follow functional programming principles?
+- Were tests written FIRST (verify git history if needed)?
 - Are tests comprehensive (unit + integration)?
-- Is documentation complete and clear?
+- Does test coverage meet 80% threshold for business logic?
+- Did Biome and TypeScript type checking pass without errors?
+- Is documentation complete and clear (no redundant coverage reports)?
 - Is the solution appropriately simple (no gold-plating)?
 - Is UX consistent with existing tools?
+- Were dependencies added without user approval? (constitutional violation if yes)
+- Did debugging exceed 5 attempts without user consultation? (constitutional violation if yes)
+- Was context7 consulted for library research?
+- Are error messages accessible (WCAG 2.1 AA)?
 - Has code review been completed?
 
 Complexity MUST be justified. If a feature violates a principle (e.g., adds significant
@@ -515,46 +911,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 1.9.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-21
-
-### XVI. Concise Communication (NON-NEGOTIABLE)
-
-The user is a senior developer. Brief, technical communication only.
-
-**Rationale**: Verbose communication wastes time and tokens. Senior developers don't need explanations of basic operations.
-
-**Requirements**:
-- Keep responses SHORT and TO THE POINT
-- NO hand-holding explanations  
-- NO verbose status updates about routine operations
-- State what you did, not how or why (unless asked)
-- Be verbose only when: user requests detail, critical errors, architectural proposals, or 5+ failed debug attempts
-
-
-### XVII. Language Specification Maintenance (NON-NEGOTIABLE)
-
-The `LANGUAGE_SPEC.md` file is the authoritative documentation of Eligian syntax, semantics, and compilation behavior. It MUST be updated whenever ANY language feature is added, modified, or removed. The spec is a living document that defines the language contract.
-
-**Rationale**: A DSL without a complete, accurate specification becomes impossible to maintain, extend, or use correctly. Grammar changes, new syntax features, or semantic changes must be documented immediately while context is fresh. Outdated specs lead to incorrect implementations and user confusion.
-
-**Requirements**:
-- MUST update `LANGUAGE_SPEC.md` when adding/changing/removing language features
-- MUST update spec BEFORE implementing the feature (spec drives implementation)
-- MUST update version number in spec header when modified
-- MUST document syntax, semantics, compilation behavior, and examples for each feature
-- MUST verify spec examples compile correctly with the CLI compiler
-- Spec updates are NOT optional - feature is incomplete without spec documentation
-- Grammar changes MUST be reflected in spec within same commit/PR
-- Run `node packages/cli/bin/cli.js --check` on all spec examples to verify correctness
-
-**Workflow**:
-```bash
-# When adding a language feature:
-1. Update LANGUAGE_SPEC.md with syntax and semantics
-2. Add examples to spec
-3. Verify examples: node packages/cli/bin/cli.js --check <example-file>
-4. Implement grammar changes
-5. Implement compiler transformations
-6. Verify spec examples still compile correctly
-7. Commit with message: "feat: <feature> (with spec update)"
-```
+**Version**: 2.0.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-01-23

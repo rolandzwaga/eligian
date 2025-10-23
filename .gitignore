@@ -27,3 +27,4 @@ check-*.js
 check-*.mjs
 *.log
 .DS_Store
+/packages/language/coverage

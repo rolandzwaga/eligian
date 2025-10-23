@@ -30,8 +30,8 @@ describe('Action Call Type Validation', () => {
     // Get validation diagnostics
     const diagnostics = await services.validation.DocumentValidator.validateDocument(document);
 
-    console.log('All diagnostics:', diagnostics);
-    console.log('Number of diagnostics:', diagnostics.length);
+    //console.log('All diagnostics:', diagnostics);
+    //console.log('Number of diagnostics:', diagnostics.length);
 
     // Filter for type-related errors
     const typeErrors = diagnostics.filter(
@@ -42,7 +42,7 @@ describe('Action Call Type Validation', () => {
         d.message.includes('match')
     );
 
-    console.log('Type-related diagnostics:', typeErrors);
+    //console.log('Type-related diagnostics:', typeErrors);
 
     // We expect at least one type error for test(123)
     expect(typeErrors.length).toBeGreaterThan(0);
@@ -68,8 +68,8 @@ describe('Action Call Type Validation', () => {
     // Access Typir services to check if function type was created
     const typirServices = services.typir;
 
-    console.log('Typir services:', typirServices);
-    console.log('Typir Functions:', typirServices?.Functions);
+    //console.log('Typir services:', typirServices);
+    //console.log('Typir Functions:', typirServices?.Functions);
 
     // Try to get all registered functions
     if (typirServices?.Functions) {
@@ -112,7 +112,7 @@ describe('Action Call Type Validation', () => {
       // Try to infer type of action calls
       const timeline = program.elements.find(e => e.$type === 'Timeline') as any;
       if (timeline) {
-        console.log('Timeline events:', timeline.events);
+        //console.log('Timeline events:', timeline.events);
 
         for (const event of timeline.events) {
           if (event.actionInvocation?.actionCall) {
@@ -138,9 +138,9 @@ describe('Action Call Type Validation', () => {
     }
 
     const diagnostics = await services.validation.DocumentValidator.validateDocument(document);
-    console.log('Diagnostics:', diagnostics);
+    //console.log('Diagnostics:', diagnostics);
 
-    const typeErrors = diagnostics.filter(d => d.severity === 1); // Error severity
-    console.log('Errors:', typeErrors);
+    const _typeErrors = diagnostics.filter(d => d.severity === 1); // Error severity
+    //console.log('Errors:', _typeErrors);
   });
 });
