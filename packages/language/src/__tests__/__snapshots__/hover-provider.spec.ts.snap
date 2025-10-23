@@ -1,0 +1,32 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`EligianHoverProvider > markdown snapshot tests > should generate consistent markdown for simple operation 1`] = `
+"### log
+
+Logs a message to console
+
+**Parameters:**
+- \`message\`: \`string\` *(required)*
+"
+`;
+
+exports[`EligianHoverProvider > markdown snapshot tests > should generate consistent markdown for standard operation 1`] = `
+"### animate
+
+Animates CSS properties over time
+
+**Parameters:**
+- \`properties\`: \`object\` *(required)*
+  - CSS properties to animate
+- \`duration\`: \`number\` *(required)*
+  - Duration in milliseconds
+- \`easing\`: "linear" | "ease-in" | "ease-out" *(optional)*
+  - Easing function
+
+**Requires:**
+- \`selectedElement\` (\`Element\`)
+
+**Provides:**
+- \`animation\` (\`Animation\`)
+"
+`;

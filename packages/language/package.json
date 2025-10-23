@@ -35,7 +35,8 @@
     "build:clean": "pnpm run clean && pnpm run build",
     "langium:generate": "langium generate",
     "langium:watch": "langium generate --watch",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage:ci": "vitest run --coverage"
   },
   "dependencies": {
     "effect": "3.18.4",
