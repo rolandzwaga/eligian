@@ -188,16 +188,23 @@ VariableDeclaration:
     'const' name=ID '=' value=Expression;
 
 /**
- * Operation Call - Function-style call with positional parameters
+ * Operation Call - Unified syntax for both built-in operations and custom actions
+ *
+ * Feature 006 unified the syntax for operation and action calls.
+ * Feature 007 adds cross-reference support for "Go to Definition":
+ *
+ * - operationName is a cross-reference that may resolve to an ActionDefinition
+ * - If resolved (ref !== undefined) → custom action call, supports "Go to Definition"
+ * - If unresolved (ref === undefined) → built-in operation, validate against registry
+ * - Use $refText to always get the name string for both cases
  *
  * Examples:
- *   selectElement(".target")
- *   animate({ opacity: 1 }, 500, "ease")
- *   setStyle({ color: "red", opacity: 0 })
- *   when($operationdata.count > 5)
+ *   selectElement("#title")      // Built-in operation (ref undefined)
+ *   fadeIn("#box", 1000)         // Custom action (ref = ActionDefinition if exists)
+ *   animate({ opacity: 1 }, 500) // Built-in operation (ref undefined)
  */
 OperationCall:
-    operationName=ID '(' (args += Expression (',' args += Expression)*)? ')';
+    operationName=[ActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
 
 // ============================================================================
 // Timeline Definitions

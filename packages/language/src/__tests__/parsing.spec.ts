@@ -212,7 +212,7 @@ describe('Eligian Grammar - Parsing', () => {
 
       const action = program.elements[0] as RegularActionDefinition;
       expect(action.operations).toHaveLength(1);
-      expect(action.operations[0].operationName).toBe('wait');
+      expect(action.operations[0].operationName.$refText).toBe('wait');
       expect(action.operations[0].args).toHaveLength(0);
     });
 
@@ -224,7 +224,7 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = program.elements[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName).toBe('selectElement');
+      expect(action.operations[0].operationName.$refText).toBe('selectElement');
       expect(action.operations[0].args).toHaveLength(1);
     });
 
@@ -236,7 +236,7 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = program.elements[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName).toBe('animate');
+      expect(action.operations[0].operationName.$refText).toBe('animate');
       expect(action.operations[0].args).toHaveLength(3);
     });
 
@@ -248,7 +248,7 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = program.elements[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName).toBe('setStyle');
+      expect(action.operations[0].operationName.$refText).toBe('setStyle');
       expect(action.operations[0].args).toHaveLength(1);
       expect(action.operations[0].args[0].$type).toBe('ObjectLiteral');
     });
@@ -261,7 +261,7 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = program.elements[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName).toBe('setData');
+      expect(action.operations[0].operationName.$refText).toBe('setData');
       const objLiteral = action.operations[0].args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('PropertyChainReference');
     });

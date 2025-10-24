@@ -1,0 +1,374 @@
+# Scope Resolution API Contract
+# Custom Action Reference Resolution
+# Date: 2025-10-24 (Updated for indexed approach)
+
+# This document defines the interface contracts for EligianScopeComputation and
+# EligianScopeProvider that enable "Go to Definition" functionality for custom actions.
+
+---
+# Scope Computation (Action Indexing)
+
+EligianScopeComputation:
+  extends: DefaultScopeComputation
+  description: |
+    Precomputes action index for O(1) lookup during reference resolution.
+    Runs once per document change, caches results for efficient lookup.
+    Critical for library import support (100+ actions in scope).
+
+  methods:
+    computeLocalScopes:
+      signature: (document: LangiumDocument) => Promise<PrecomputedScopes>
+      description: |
+        Index all ActionDefinition nodes in the document, creating a precomputed
+        lookup map. Called automatically by Langium when document changes.
+
+      parameters:
+        document:
+          type: LangiumDocument
+          description: Document to index actions from
+
+      returns:
+        type: PrecomputedScopes (MultiMap<AstNode, AstNodeDescription>)
+        description: |
+          Precomputed scopes containing indexed action descriptions.
+          Stored at model level (available everywhere in document).
+
+      behavior:
+        - step: "Get model from document"
+          action: "const model = document.parseResult.value as EligianModel"
+
+        - step: "Create MultiMap for scopes"
+          action: "const scopes = new MultiMap<AstNode, AstNodeDescription>()"
+
+        - step: "Index all actions"
+          action: |
+            for (const action of model.actions) {
+              const description = this.descriptions.createDescription(
+                action,
+                action.name,
+                document
+              );
+              scopes.add(model, description);
+            }
+
+        - step: "Return precomputed scopes"
+          action: "return scopes"
+
+      performance:
+        time_complexity: "O(n) where n = number of actions (runs once per document change)"
+        space_complexity: "O(n) for storing descriptions"
+        cache_behavior: "Langium caches result, recomputes only on document change"
+        typical_time: "< 1ms for 5-20 actions, < 10ms for 100+ actions"
+
+      future_extension:
+        description: "When library imports added, extend to index imported actions"
+        example: |
+          // Future: Index imported actions
+          for (const importStmt of model.imports) {
+            const importedDoc = await resolveImport(importStmt.path);
+            for (const action of importedDoc.actions.filter(a => a.exported)) {
+              scopes.add(model, this.descriptions.createDescription(action, action.name, importedDoc));
+            }
+          }
+
+---
+# Scope Provider (Reference Resolution)
+
+EligianScopeProvider:
+  extends: DefaultScopeProvider
+  description: |
+    Custom scope provider for Eligian DSL that resolves custom action references
+    in addition to default scoping behavior. Enables "Go to Definition" navigation
+    from action calls to action definitions.
+
+  methods:
+    getScope:
+      signature: (context: ReferenceInfo) => Scope
+      description: |
+        Resolves the scope for a given reference context. For OperationCall nodes
+        with property "operationName", checks if the operation name matches a custom
+        action definition and returns a scope containing that action. Otherwise
+        delegates to parent DefaultScopeProvider for standard resolution.
+
+      parameters:
+        context:
+          type: ReferenceInfo
+          description: Reference resolution context from Langium Linker
+          properties:
+            reference:
+              type: Reference
+              description: The reference object being resolved
+            container:
+              type: AstNode
+              description: Parent AST node (e.g., OperationCall)
+            property:
+              type: string
+              description: Property name being resolved (e.g., "operationName")
+            index:
+              type: number | undefined
+              description: Array index if reference is in array (optional)
+
+      returns:
+        type: Scope
+        description: |
+          Scope containing available symbols for resolution:
+          - MapScope with ActionDefinition if action name matches
+          - EMPTY_SCOPE if operation name doesn't match any action
+          - Result of super.getScope(context) for non-OperationCall containers
+
+      behavior:
+        - step: "Check if context.container is OperationCall"
+          condition: "isOperationCall(context.container)"
+
+        - step: "Check if property is 'operationName'"
+          condition: "context.property === 'operationName'"
+
+        - step: "Get document and model"
+          action: |
+            const document = AstUtils.getDocument(context.container);
+            const model = document.parseResult.value;
+
+        - step: "Get precomputed scopes (O(1) lookup)"
+          action: "const precomputedScopes = await this.scopeComputation.computeLocalScopes(document)"
+
+        - step: "Get all descriptions at model level"
+          action: "const descriptions = precomputedScopes.get(model)"
+
+        - step: "Filter for ActionDefinition types"
+          action: |
+            if (descriptions) {
+              const actionDescriptions = descriptions.filter(
+                desc => desc.type === 'ActionDefinition'
+              );
+              return this.createScope(actionDescriptions);
+            }
+
+        - step: "If no descriptions found, return empty scope"
+          action: "return EMPTY_SCOPE;"
+
+        - step: "For non-OperationCall containers, delegate to parent"
+          action: "return super.getScope(context);"
+
+      error_handling:
+        - case: "Document not found"
+          behavior: "Return EMPTY_SCOPE (graceful degradation)"
+
+        - case: "Multiple actions with same name"
+          behavior: "Return first match (validator prevents duplicates)"
+
+        - case: "Action name matches built-in operation"
+          behavior: "Return EMPTY_SCOPE (validator prevents name collision)"
+
+      performance:
+        time_complexity: "O(1) hash map lookup from precomputed scopes"
+        space_complexity: "O(1) for filtering descriptions"
+        expected_time: "< 100ms for 100+ action definitions (O(1) lookup)"
+        expected_overhead: "< 5% increase in LSP response time"
+        cache_behavior: "Uses Langium's cached precomputed scopes"
+
+---
+# Integration Points
+
+LangiumServices:
+  description: |
+    The EligianScopeProvider is registered in the Langium services module
+    and injected into the reference resolution pipeline automatically.
+
+  registration:
+    module: EligianModule
+    path: "packages/language/src/eligian-module.ts"
+    code: |
+      export const EligianModule: Module<...> = {
+        references: {
+          ScopeComputation: (services) => new EligianScopeComputation(services),
+          ScopeProvider: (services) => new EligianScopeProvider(services)
+        }
+      };
+
+  dependencies:
+    - AstNodeDescriptionProvider: "services.workspace.AstNodeDescriptionProvider"
+    - ScopeComputation: "services.references.ScopeComputation"
+    - IndexManager: "services.shared.workspace.IndexManager"
+    - NameProvider: "services.references.NameProvider"
+
+DefaultReferencesProvider:
+  description: |
+    Langium's default LSP references provider. Automatically provides "Go to Definition"
+    and "Find All References" functionality once ScopeProvider returns proper scopes.
+    No custom implementation needed.
+
+  features_enabled:
+    - "Go to Definition (F12, Ctrl+Click)"
+    - "Peek Definition (Alt+F12)"
+    - "Find All References (Shift+F12)"
+    - "Find All Implementations"
+
+  requirements:
+    - "ScopeProvider.getScope() returns Scope with target AST node"
+    - "Reference is resolved during linking phase"
+    - "Target AST node has valid source location ($cstNode)"
+
+---
+# Timeline Context Support
+
+DirectTimelineCall:
+  syntax: "at 0s..1s fadeIn()"
+  container_type: "OperationCall"
+  property: "operationName"
+  resolution: "Standard resolution (context.container is OperationCall)"
+
+InlineEndableBlock:
+  syntax: "at 0s..3s [ fadeIn() ] [ fadeOut() ]"
+  container_type: "OperationCall"
+  property: "operationName"
+  resolution: "Standard resolution (context.container is OperationCall)"
+
+SequenceBlock:
+  syntax: "sequence { fadeIn() for 1s }"
+  container_type: "OperationCall"
+  property: "operationName"
+  resolution: "Standard resolution (context.container is OperationCall)"
+
+StaggerBlock:
+  syntax: "stagger 200ms items with fadeIn() for 1s"
+  container_type: "OperationCall"
+  property: "operationName"
+  resolution: "Standard resolution (context.container is OperationCall)"
+
+ActionBody:
+  syntax: "action a [ b() ]"
+  container_type: "OperationCall"
+  property: "operationName"
+  resolution: "Recursive resolution (action calling another action)"
+
+---
+# Testing Contract
+
+UnitTests:
+  file: "packages/language/src/__tests__/references.spec.ts"
+  framework: "Vitest with Langium test utilities"
+
+  test_cases:
+    - name: "Resolves action reference in direct timeline call"
+      given: "Document with action 'fadeIn' and call 'fadeIn()'"
+      when: "getScope() called for OperationCall"
+      then: "Returns MapScope with ActionDefinition"
+
+    - name: "Returns empty scope for non-existent action"
+      given: "Document with no actions and call 'unknownAction()'"
+      when: "getScope() called for OperationCall"
+      then: "Returns EMPTY_SCOPE"
+
+    - name: "Delegates to parent for non-OperationCall"
+      given: "Context with container type 'Timeline'"
+      when: "getScope() called"
+      then: "Calls super.getScope(context)"
+
+    - name: "Handles multiple actions correctly"
+      given: "Document with 'fadeIn' and 'slideIn' actions"
+      when: "getScope() called for 'slideIn()' call"
+      then: "Returns scope with 'slideIn' ActionDefinition (not 'fadeIn')"
+
+IntegrationTests:
+  file: "packages/language/src/__tests__/lsp-navigation.spec.ts"
+  framework: "Vitest with parseHelper from langium/test"
+
+  test_cases:
+    - name: "Reference resolves correctly in direct call"
+      given: "action fadeIn() [...] \nat 0s..1s fadeIn()"
+      when: "Parse document"
+      then: "operationCall.operationName.ref === actionDefinition"
+
+    - name: "Reference resolves in inline block"
+      given: "action fadeIn() [...] \nat 0s..1s [ fadeIn() ] []"
+      when: "Parse document"
+      then: "operationCall.operationName.ref === actionDefinition"
+
+    - name: "Reference resolves in sequence"
+      given: "action fadeIn() [...] \nsequence { fadeIn() for 1s }"
+      when: "Parse document"
+      then: "operationCall.operationName.ref === actionDefinition"
+
+    - name: "Reference resolves in stagger"
+      given: "action fadeIn() [...] \nstagger 200ms items with fadeIn() for 1s"
+      when: "Parse document"
+      then: "operationCall.operationName.ref === actionDefinition"
+
+    - name: "Reference is undefined for non-existent action"
+      given: "at 0s..1s unknownAction()"
+      when: "Parse document"
+      then: "operationCall.operationName.ref === undefined"
+
+    - name: "Multiple actions resolve correctly"
+      given: "action a() [...]\naction b() [...]\nat 0s..1s a()\nat 1s..2s b()"
+      when: "Parse document"
+      then: "First call refs 'a', second call refs 'b'"
+
+---
+# Success Criteria Mapping
+
+SC-001:
+  requirement: "Navigation completes in under 1 second for 100 action definitions"
+  contract_section: "performance.expected_time"
+  verification: "Benchmark test with 100 ActionDefinitions"
+
+SC-002:
+  requirement: "100% resolution accuracy across all timeline contexts"
+  contract_section: "Timeline Context Support"
+  verification: "Integration tests cover all 5 contexts"
+
+SC-003:
+  requirement: "Zero false positives/negatives"
+  contract_section: "error_handling"
+  verification: "Unit tests verify correct/empty scopes"
+
+SC-004:
+  requirement: "Find All References works correctly"
+  contract_section: "DefaultReferencesProvider.features_enabled"
+  verification: "Automatic after reference resolution"
+
+SC-005:
+  requirement: "Zero config changes needed"
+  contract_section: "LangiumServices.registration"
+  verification: "ScopeProvider auto-registers in module"
+
+SC-006:
+  requirement: "< 5% LSP overhead"
+  contract_section: "performance.expected_overhead"
+  verification: "Benchmark LSP response times before/after"
+
+SC-007:
+  requirement: "90% adoption without docs"
+  contract_section: "DefaultReferencesProvider.features_enabled"
+  verification: "Standard Ctrl+Click behavior (intuitive)"
+
+---
+# Implementation Checklist
+
+- [ ] Create EligianScopeComputation class with computeLocalScopes() override
+- [ ] Register ScopeComputation in EligianModule
+- [ ] Write unit tests for ScopeComputation action indexing
+- [ ] Extend EligianScopeProvider with getScope() override (using precomputed scopes)
+- [ ] Add isOperationCall() type guard (if not exists)
+- [ ] Write unit tests for ScopeProvider getScope() logic
+- [ ] Write integration tests for all timeline contexts
+- [ ] Benchmark performance with 100 action definitions (verify O(1) lookup)
+- [ ] Verify "Find All References" works automatically
+- [ ] Verify all 445 existing tests still pass
+- [ ] Run Biome check and typecheck
+- [ ] Document future library import extension pattern
+
+---
+# API Version
+
+version: 2.0.0
+status: Draft
+last_updated: 2025-10-24
+changelog: |
+  v2.0.0 (2025-10-24): Updated to indexed approach with ScopeComputation
+    - Added EligianScopeComputation for O(1) action lookup
+    - Updated ScopeProvider to use precomputed scopes
+    - Removed findActionByName() helper (no longer needed)
+    - Future-proofed for library import support (100+ actions)
+
+  v1.0.0 (2025-10-24): Initial draft with linear search approach

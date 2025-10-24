@@ -4,6 +4,7 @@
  * Handles scoping for:
  * - Parameter references (action parameters)
  * - Variable references (global and local const declarations)
+ * - Action references (custom action calls in OperationCall nodes) - Feature 007
  *
  * Based on Langium scoping architecture.
  */
@@ -12,14 +13,17 @@ import {
   type AstNode,
   AstUtils,
   DefaultScopeProvider,
+  EMPTY_SCOPE,
   type ReferenceInfo,
   type Scope,
 } from 'langium';
 import {
   isActionDefinition,
+  isOperationCall,
   isParameterReference,
   isVariableDeclaration,
   isVariableReference,
+  type Program,
   type VariableDeclaration,
 } from './generated/ast.js';
 
@@ -35,8 +39,46 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       return this.getScopeForVariableReference(context);
     }
 
+    // Feature 007: Handle action references in OperationCall nodes
+    if (isOperationCall(context.container) && context.property === 'operationName') {
+      return this.getScopeForActionReference(context);
+    }
+
     // Default scope resolution for everything else
     return super.getScope(context);
+  }
+
+  /**
+   * Get scope for action references in OperationCall nodes (Feature 007).
+   *
+   * Returns all ActionDefinition nodes from the document. The reference will:
+   * - Resolve to an ActionDefinition if an action with that name exists
+   * - Remain unresolved (ref = undefined) if it's a built-in operation
+   *
+   * This enables "Go to Definition" for custom action calls while allowing
+   * built-in operation calls to work normally.
+   */
+  private getScopeForActionReference(context: ReferenceInfo): Scope {
+    // Get the document containing this OperationCall
+    const document = AstUtils.getDocument(context.container);
+    const model = document.parseResult.value as Program;
+
+    // Get all ActionDefinition nodes from the program
+    // Simple O(n) scan through program elements
+    const actionDefinitions = model.elements.filter(isActionDefinition);
+
+    if (actionDefinitions.length === 0) {
+      // No actions defined in document
+      return EMPTY_SCOPE;
+    }
+
+    // Create AstNodeDescription for each action
+    const actionDescriptions = actionDefinitions.map(action =>
+      this.descriptions.createDescription(action, action.name, document)
+    );
+
+    // Return scope with all available actions
+    return this.createScope(actionDescriptions);
   }
 
   /**
