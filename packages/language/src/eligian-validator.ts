@@ -52,11 +52,13 @@ export function registerValidationChecks(services: EligianServices) {
     ContinueStatement: validator.checkContinueInsideLoop,
     RegularActionDefinition: [
       validator.checkActionNameCollision, // T039: US2 - Name collision detection
+      validator.checkRecursiveActionCalls, // Detect infinite recursion
       validator.checkControlFlowPairing,
       validator.checkErasedPropertiesInAction, // T254-T255: Erased property validation
     ],
     EndableActionDefinition: [
       validator.checkActionNameCollision, // T039: US2 - Name collision detection
+      validator.checkRecursiveActionCalls, // Detect infinite recursion
       validator.checkControlFlowPairingInStartOps,
       validator.checkControlFlowPairingInEndOps,
       validator.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
@@ -376,7 +378,7 @@ export class EligianValidator {
    * For now, we just inform users about required dependencies.
    */
   checkDependencies(operation: OperationCall, accept: ValidationAcceptor): void {
-    const opName = operation.operationName;
+    const opName = operation.operationName.$refText;
 
     // Only validate if operation exists (avoid duplicate errors)
     if (!hasOperation(opName)) {
@@ -842,5 +844,120 @@ export class EligianValidator {
       current = current.$container;
     }
     return undefined;
+  }
+
+  /**
+   * Check for recursive action calls that would cause infinite loops.
+   *
+   * Detects both direct recursion (action calls itself) and indirect recursion
+   * (cycle through multiple actions: A → B → A).
+   *
+   * Uses depth-first search with visited tracking to detect cycles in the
+   * action call graph.
+   *
+   * @param action - The action definition to check
+   * @param accept - Validation acceptor for reporting errors
+   */
+  checkRecursiveActionCalls(
+    action: RegularActionDefinition | EndableActionDefinition,
+    accept: ValidationAcceptor
+  ): void {
+    // Track action names in current call chain to detect cycles
+    const callChain: string[] = [action.name];
+
+    // Helper: Recursively check for cycles starting from an action
+    const checkForCycles = (
+      currentAction: RegularActionDefinition | EndableActionDefinition,
+      chain: string[]
+    ): void => {
+      // Get all operation calls from the action body
+      const operationCalls = this.getAllOperationCalls(currentAction);
+
+      for (const opCall of operationCalls) {
+        // Check if this is a custom action call (not a built-in operation)
+        const actionRef = opCall.operationName.ref;
+        if (!actionRef) {
+          // Not resolved or is a built-in operation - skip
+          continue;
+        }
+
+        const calledActionName = opCall.operationName.$refText;
+
+        // Check if this action is already in our call chain (cycle detected!)
+        if (chain.includes(calledActionName)) {
+          // Found a cycle - report error
+          const cycleChain = [...chain, calledActionName].join(' → ');
+          accept(
+            'error',
+            `Recursive action call detected: '${calledActionName}' creates an infinite loop\n  Call chain: ${cycleChain}`,
+            {
+              node: opCall,
+              property: 'operationName',
+              code: 'recursive_action_call',
+            }
+          );
+        } else {
+          // No cycle yet - recurse deeper with this action added to chain
+          checkForCycles(actionRef, [...chain, calledActionName]);
+        }
+      }
+    };
+
+    // Start cycle detection from this action
+    checkForCycles(action, callChain);
+  }
+
+  /**
+   * Helper: Get all OperationCall nodes from an action's body.
+   *
+   * Handles both RegularActionDefinition and EndableActionDefinition by
+   * checking their respective operation lists.
+   *
+   * @param action - The action definition to extract calls from
+   * @returns Array of all OperationCall nodes found in the action
+   */
+  private getAllOperationCalls(
+    action: RegularActionDefinition | EndableActionDefinition
+  ): OperationCall[] {
+    const calls: OperationCall[] = [];
+
+    if (action.$type === 'RegularActionDefinition') {
+      // Regular action: check operations array
+      this.collectOperationCallsFromStatements(action.operations, calls);
+    } else if (action.$type === 'EndableActionDefinition') {
+      // Endable action: check both startOperations and endOperations
+      this.collectOperationCallsFromStatements(action.startOperations, calls);
+      this.collectOperationCallsFromStatements(action.endOperations, calls);
+    }
+
+    return calls;
+  }
+
+  /**
+   * Helper: Recursively collect OperationCall nodes from operation statements.
+   *
+   * Handles nested structures like if statements, for loops, and sequence blocks.
+   *
+   * @param statements - Array of operation statements to search
+   * @param calls - Array to accumulate found OperationCall nodes
+   */
+  private collectOperationCallsFromStatements(
+    statements: OperationStatement[],
+    calls: OperationCall[]
+  ): void {
+    for (const stmt of statements) {
+      if (stmt.$type === 'OperationCall') {
+        // Direct operation call
+        calls.push(stmt);
+      } else if (stmt.$type === 'IfStatement') {
+        // Recursively check if/else branches
+        this.collectOperationCallsFromStatements(stmt.thenOps, calls);
+        this.collectOperationCallsFromStatements(stmt.elseOps, calls);
+      } else if (stmt.$type === 'ForStatement') {
+        // Recursively check for loop body
+        this.collectOperationCallsFromStatements(stmt.body, calls);
+      }
+      // VariableDeclaration, BreakStatement, ContinueStatement don't contain calls
+    }
   }
 }

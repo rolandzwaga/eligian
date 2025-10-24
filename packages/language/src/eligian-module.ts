@@ -13,6 +13,7 @@ import {
   type TypirLangiumServices,
 } from 'typir-langium';
 import { EligianCompletionProvider } from './eligian-completion-provider.js';
+import { EligianDocumentValidator } from './eligian-document-validator.js';
 import { EligianHoverProvider } from './eligian-hover-provider.js';
 import { EligianScopeProvider } from './eligian-scope-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
@@ -52,6 +53,7 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
     },
     validation: {
       EligianValidator: () => new EligianValidator(),
+      DocumentValidator: services => new EligianDocumentValidator(services),
     },
     lsp: {
       HoverProvider: services => new EligianHoverProvider(services),

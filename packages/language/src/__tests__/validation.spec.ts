@@ -843,4 +843,288 @@ describe('Eligian Grammar - Validation', () => {
       expect(undefinedErrors.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Recursive action call validation', () => {
+    describe('Direct recursion (immediate self-call)', () => {
+      test('should error when regular action calls itself', async () => {
+        const code = `
+          action fadeIn(selector: string, duration) [
+            fadeIn(selector, duration)
+            selectElement(selector)
+          ]
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        // Should have error about recursive call
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+        expect(recursionErrors[0].message).toContain('fadeIn');
+      });
+
+      test('should error when endable action calls itself in start block', async () => {
+        const code = `
+          endable action fadeIn(selector: string) [
+            fadeIn(selector)
+            selectElement(selector)
+          ] [
+            selectElement(selector)
+          ]
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+
+      test('should error when endable action calls itself in end block', async () => {
+        const code = `
+          endable action fadeIn(selector: string) [
+            selectElement(selector)
+          ] [
+            fadeIn(selector)
+          ]
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+
+      test('should error when action calls itself inside if statement', async () => {
+        const code = `
+          action test(value) [
+            if (value > 0) {
+              test(value - 1)
+            }
+          ]
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+
+      test('should error when action calls itself inside for loop', async () => {
+        const code = `
+          action test(items) [
+            for (item in items) {
+              test(item)
+            }
+          ]
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Indirect recursion (mutual recursion)', () => {
+      test('should error when two actions call each other (A → B → A)', async () => {
+        const code = `
+          action actionA() [
+            actionB()
+          ]
+
+          action actionB() [
+            actionA()
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        // Should detect cycle in both actions
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+
+      test('should error for three-action cycle (A → B → C → A)', async () => {
+        const code = `
+          action actionA() [
+            actionB()
+          ]
+
+          action actionB() [
+            actionC()
+          ]
+
+          action actionC() [
+            actionA()
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+
+      test('should error for complex cycle with branching (A → B, A → C, C → A)', async () => {
+        const code = `
+          action actionA() [
+            actionB()
+            actionC()
+          ]
+
+          action actionB() [
+            selectElement("#box")
+          ]
+
+          action actionC() [
+            actionA()
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Valid non-recursive cases (should NOT error)', () => {
+      test('should allow action calling different action', async () => {
+        const code = `
+          action fadeIn(selector: string) [
+            selectElement(selector)
+          ]
+
+          action setup() [
+            fadeIn("#box")
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        // Should have NO recursion errors
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBe(0);
+      });
+
+      test('should allow linear call chain without cycles (A → B → C)', async () => {
+        const code = `
+          action actionA() [
+            actionB()
+          ]
+
+          action actionB() [
+            actionC()
+          ]
+
+          action actionC() [
+            selectElement("#box")
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBe(0);
+      });
+
+      test('should allow action with same name as parameter', async () => {
+        const code = `
+          action test(test) [
+            selectElement(test)
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBe(0);
+      });
+
+      test('should allow multiple actions calling same action (diamond pattern)', async () => {
+        const code = `
+          action shared() [
+            selectElement("#box")
+          ]
+
+          action actionA() [
+            shared()
+          ]
+
+          action actionB() [
+            shared()
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBe(0);
+      });
+    });
+
+    describe('Edge cases', () => {
+      test('should handle action with no operations', async () => {
+        const code = `
+          action empty() []
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        // Should have no recursion errors (empty action can't be recursive)
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBe(0);
+      });
+
+      test('should handle action that only calls built-in operations', async () => {
+        const code = `
+          action onlyBuiltins() [
+            selectElement("#box")
+            addClass("active")
+          ]
+
+          timeline "test" in ".container" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const recursionErrors = validationErrors.filter(
+          e => e.message.includes('Recursive') || e.message.includes('infinite loop')
+        );
+        expect(recursionErrors.length).toBe(0);
+      });
+    });
+  });
 });
