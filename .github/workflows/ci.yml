@@ -32,14 +32,14 @@ jobs:
       - name: Check code quality (Biome)
         run: pnpm run ci
 
-      - name: Type check
-        run: pnpm run typecheck
-
       - name: Lint code (Biome)
         run: pnpm run lint
 
       - name: Build
         run: pnpm run build
+
+      - name: Type check
+        run: pnpm run typecheck
 
       - name: Run tests with coverage
         run: pnpm run test:coverage:ci
