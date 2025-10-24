@@ -11,6 +11,7 @@ import type { Hover, HoverParams } from 'vscode-languageserver';
 import { getOperationSignature } from './compiler/operations/index.js';
 import type { OperationSignature } from './compiler/operations/types.js';
 import { isOperationCall } from './generated/ast.js';
+import { getOperationCallName } from './utils/operation-call-utils.js';
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   /**
@@ -32,16 +33,19 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     // Check if we're hovering over an operation call
     if (cstNode?.astNode && isOperationCall(cstNode.astNode)) {
       const operationCall = cstNode.astNode;
+      const opName = getOperationCallName(operationCall);
 
-      const signature = getOperationSignature(operationCall.operationName);
-      if (signature) {
-        const markdown = this.buildOperationHoverMarkdown(signature);
-        return {
-          contents: {
-            kind: 'markdown',
-            value: markdown,
-          },
-        };
+      if (opName) {
+        const signature = getOperationSignature(opName);
+        if (signature) {
+          const markdown = this.buildOperationHoverMarkdown(signature);
+          return {
+            contents: {
+              kind: 'markdown',
+              value: markdown,
+            },
+          };
+        }
       }
     }
 

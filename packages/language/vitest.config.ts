@@ -63,7 +63,6 @@ export default defineConfig({
       ],
 
       // Fix for duplicate entries with v8 provider
-      all: true,
       clean: true,
       reportsDirectory: './coverage',
 

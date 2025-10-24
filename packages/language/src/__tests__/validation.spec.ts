@@ -774,4 +774,73 @@ describe('Eligian Grammar - Validation', () => {
       expect(undefinedErrors.length).toBeGreaterThan(0);
     });
   });
+
+  // Test for action calls inside inline endable action blocks
+  describe('Action calls in inline endable action blocks', () => {
+    test('should allow custom action calls in inline endable action blocks', async () => {
+      const code = `
+        endable action fadeIn(selector: string, duration) [
+          selectElement(selector)
+          setStyle({opacity: 0})
+          animate({opacity: 1}, duration)
+        ] [
+          selectElement(selector)
+          animate({opacity: 0}, duration)
+        ]
+
+        timeline "demo" in "bleep" using raf {
+          at 0s..3s [
+            fadeIn("123", 1000)
+          ] []
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Debug: print errors
+      if (validationErrors.length > 0) {
+        console.log(
+          'Validation errors:',
+          validationErrors.map(e => e.message)
+        );
+      }
+
+      // Should have no errors - fadeIn is a defined action and can be called in inline blocks
+      expect(validationErrors.length).toBe(0);
+    });
+
+    test('should allow operations in inline endable action blocks', async () => {
+      const code = `
+        timeline "demo" in "bleep" using raf {
+          at 0s..3s [
+            selectElement("#box")
+            addClass("visible")
+          ] [
+            selectElement("#box")
+            removeClass("visible")
+          ]
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - operations are allowed in inline endable action blocks
+      expect(validationErrors.length).toBe(0);
+    });
+
+    test('should error when undefined action called in inline endable action blocks', async () => {
+      const code = `
+        timeline "demo" in "bleep" using raf {
+          at 0s..3s [
+            undefinedAction("123", 1000)
+          ] []
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - undefinedAction is neither a defined action nor an operation
+      const undefinedErrors = validationErrors.filter(
+        e => e.message.includes('Unknown') || e.message.includes('not found')
+      );
+      expect(undefinedErrors.length).toBeGreaterThan(0);
+    });
+  });
 });

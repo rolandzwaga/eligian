@@ -21,6 +21,7 @@ import {
   type OperationCall,
   type Timeline,
 } from '../generated/ast.js';
+import { getOperationCallName } from '../utils/operation-call-utils.js';
 
 /**
  * Completion context information
@@ -151,7 +152,7 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   // Detect if inside an operation call
   const operationCall = AstUtils.getContainerOfType(astNode, isOperationCall);
   if (operationCall) {
-    context.insideOperationCall = operationCall.operationName;
+    context.insideOperationCall = getOperationCallName(operationCall);
     context.operationCall = operationCall;
   }
 

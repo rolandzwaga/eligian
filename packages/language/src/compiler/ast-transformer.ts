@@ -34,6 +34,7 @@ import type {
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
+import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { buildConstantMap } from './constant-folder.js';
 import { evaluateExpression } from './expression-evaluator.js';
 import { findActionByName } from './name-resolver.js';
@@ -641,7 +642,7 @@ const transformSequenceBlock = (
 
       // Get action name and arguments
       const actionCall = item.actionCall;
-      const actionName = actionCall.operationName;
+      const actionName = getOperationCallName(actionCall);
       const program = yield* _(getProgram(actionCall));
       const actionRef = findActionByName(actionName, program);
 
@@ -774,7 +775,7 @@ const transformStaggerBlock = (
     if (hasActionCall) {
       // Form 1: stagger delay items with actionCall for duration
       const actionCall = stagger.actionCall!;
-      const actionName = actionCall.operationName;
+      const actionName = getOperationCallName(actionCall);
       const program = yield* _(getProgram(actionCall));
       const actionRef = findActionByName(actionName, program);
 
@@ -951,7 +952,7 @@ const transformTimedEvent = (
       // Example: at 0s..5s fadeIn(".box", 1000)
       // This OperationCall should resolve to an action (validated in validator)
 
-      const callName = action.operationName;
+      const callName = getOperationCallName(action);
 
       // Find the action definition in the program
       const program = yield* _(getProgram(event));
@@ -1197,7 +1198,7 @@ const transformOperationCall = (
   scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR, TransformError> =>
   Effect.gen(function* (_) {
-    const operationName = opCall.operationName;
+    const operationName = getOperationCallName(opCall);
     const args = opCall.args || [];
 
     // T218: Validate operation before transforming
@@ -1287,7 +1288,7 @@ const transformOperationStatement = (
     switch (stmt.$type) {
       case 'OperationCall': {
         // T058: US3 - Check if this is an action call (for control flow in timelines)
-        const operationName = stmt.operationName;
+        const operationName = getOperationCallName(stmt);
         const program = yield* _(getProgram(stmt));
         const actionDef = findActionByName(operationName, program);
 

@@ -25,6 +25,7 @@ import type {
   TimelineEvent,
 } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
+import { getOperationCallName } from './utils/operation-call-utils.js';
 
 /**
  * Register custom validation checks.
@@ -274,19 +275,17 @@ export class EligianValidator {
    * This gives instant IDE feedback with red squiggles and helpful suggestions.
    */
   checkOperationExists(operation: OperationCall, accept: ValidationAcceptor): void {
-    const opName = operation.operationName;
+    const opName = getOperationCallName(operation);
 
-    // T020: Skip operation validation if this is an action call in timeline context
-    // (already validated by checkTimelineOperationCall)
-    const isInTimeline = this.isInTimelineContext(operation);
-    if (isInTimeline) {
-      const program = this.getProgram(operation);
-      if (program) {
-        const action = findActionByName(opName, program);
-        if (action) {
-          // This is a valid action call - skip operation validation
-          return;
-        }
+    // T020: Skip operation validation if this is an action call
+    // (Action calls are validated by checkTimelineOperationCall for direct timeline calls,
+    //  or allowed in InlineEndableAction blocks)
+    const program = this.getProgram(operation);
+    if (program) {
+      const action = findActionByName(opName, program);
+      if (action) {
+        // This is a valid action call - skip operation validation
+        return;
       }
     }
 
@@ -309,7 +308,7 @@ export class EligianValidator {
    * Checks against required and optional parameters from the registry.
    */
   checkParameterCount(operation: OperationCall, accept: ValidationAcceptor): void {
-    const opName = operation.operationName;
+    const opName = getOperationCallName(operation);
 
     // Only validate if operation exists (avoid duplicate errors)
     if (!hasOperation(opName)) {
@@ -340,7 +339,7 @@ export class EligianValidator {
    * Property chains and expressions are validated at runtime, not compile-time.
    */
   checkParameterTypes(operation: OperationCall, accept: ValidationAcceptor): void {
-    const opName = operation.operationName;
+    const opName = getOperationCallName(operation);
 
     // Only validate if operation exists (avoid duplicate errors)
     if (!hasOperation(opName)) {
@@ -419,7 +418,8 @@ export class EligianValidator {
     // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
     const operationNames = action.operations
       .filter(op => op.$type === 'OperationCall')
-      .map(op => (op as any).operationName);
+      .map(op => getOperationCallName(op as OperationCall))
+      .filter((name): name is string => name !== undefined);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -443,7 +443,8 @@ export class EligianValidator {
     // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
     const operationNames = action.startOperations
       .filter(op => op.$type === 'OperationCall')
-      .map(op => (op as any).operationName);
+      .map(op => getOperationCallName(op as OperationCall))
+      .filter((name): name is string => name !== undefined);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -467,7 +468,8 @@ export class EligianValidator {
     // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
     const operationNames = action.endOperations
       .filter(op => op.$type === 'OperationCall')
-      .map(op => (op as any).operationName);
+      .map(op => getOperationCallName(op as OperationCall))
+      .filter((name): name is string => name !== undefined);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -491,7 +493,8 @@ export class EligianValidator {
     // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
     const operationNames = action.startOperations
       .filter(op => op.$type === 'OperationCall')
-      .map(op => (op as any).operationName);
+      .map(op => getOperationCallName(op as OperationCall))
+      .filter((name): name is string => name !== undefined);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -515,7 +518,8 @@ export class EligianValidator {
     // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
     const operationNames = action.endOperations
       .filter(op => op.$type === 'OperationCall')
-      .map(op => (op as any).operationName);
+      .map(op => getOperationCallName(op as OperationCall))
+      .filter((name): name is string => name !== undefined);
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
@@ -595,7 +599,7 @@ export class EligianValidator {
     // Walk through operations and track operationData state
     for (const statement of operations) {
       if (statement.$type === 'OperationCall') {
-        const opName = statement.operationName;
+        const opName = getOperationCallName(statement);
 
         // Only validate if operation exists (avoid duplicate errors)
         if (!hasOperation(opName)) {
@@ -704,17 +708,17 @@ export class EligianValidator {
    * We need to validate that it resolves to a defined action (not an operation).
    */
   checkTimelineOperationCall(call: OperationCall, accept: ValidationAcceptor): void {
-    // Check if this OperationCall is in a timeline context
-    // It's in timeline context if its container is a TimedEvent or InlineEndableAction
-    const isInTimeline = this.isInTimelineContext(call);
+    // Check if this OperationCall is in a direct timeline event (not in InlineEndableAction)
+    const isDirectTimelineCall = this.isDirectTimelineCall(call);
 
-    if (!isInTimeline) {
-      // Not in timeline - normal operation call validation applies
+    if (!isDirectTimelineCall) {
+      // Not a direct timeline call - normal validation applies
+      // (could be in action body, InlineEndableAction, control flow, etc.)
       return;
     }
 
-    // In timeline context - must be an action call
-    const callName = call.operationName;
+    // Direct timeline call - must be an action call, NOT an operation
+    const callName = getOperationCallName(call);
 
     // Get the program to search for actions
     const program = this.getProgram(call);
@@ -729,7 +733,7 @@ export class EligianValidator {
       return;
     }
 
-    // Check if it's an operation (ERROR - operations not allowed in timeline)
+    // Check if it's an operation (ERROR - operations not allowed as direct timeline actions)
     if (hasOperation(callName)) {
       accept(
         'error',
@@ -754,17 +758,40 @@ export class EligianValidator {
   }
 
   /**
-   * Helper: Check if an OperationCall is in timeline context
+   * Helper: Check if an OperationCall is a direct timeline call
+   * (as opposed to being inside InlineEndableAction or action definition body)
    */
   /**
-   * T053-T054: US3 - Check if OperationCall is in timeline context
+   * T053-T054: US3 - Check if OperationCall is a direct timeline call
    * Handles direct calls and calls within ForStatement/IfStatement in timelines
+   *
+   * Returns true only for direct timeline calls like:
+   *   at 0s..5s actionCall()
+   *   at 0s..5s for (...) { actionCall() }
+   *
+   * Returns false for:
+   *   - Calls inside action definition bodies
+   *   - Calls inside InlineEndableAction blocks (operations allowed there)
    */
-  private isInTimelineContext(call: OperationCall): boolean {
+  private isDirectTimelineCall(call: OperationCall): boolean {
     let current: any = call.$container;
 
-    // Walk up to find if we're inside a TimedEvent
+    // Walk up to find if we're in a direct timeline context
     while (current) {
+      // If we hit an action definition body, we're NOT a direct timeline call
+      if (
+        current.$type === 'RegularActionDefinition' ||
+        current.$type === 'EndableActionDefinition'
+      ) {
+        return false;
+      }
+
+      // If we're inside an InlineEndableAction, we're NOT a direct timeline call
+      // (operations are allowed inside inline endable action blocks)
+      if (current.$type === 'InlineEndableAction') {
+        return false;
+      }
+
       if (current.$type === 'TimedEvent') {
         const timedEvent = current as TimedEvent;
 

@@ -19,6 +19,7 @@ import type {
   VariableReference,
 } from '../generated/ast.js';
 import { isEndableActionDefinition, isRegularActionDefinition } from '../generated/ast.js';
+import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
 
 /**
@@ -165,7 +166,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       })
         .inferenceRuleForCalls({
           languageKey: 'OperationCall',
-          matching: (call: OperationCall) => call.operationName === opName,
+          matching: (call: OperationCall) => getOperationCallName(call) === opName,
           inputArguments: (call: OperationCall) => call.args,
           validateArgumentsOfFunctionCalls: false, // Disabled - optional params handled in Langium validator
         })
@@ -313,7 +314,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         languageKey: 'OperationCall',
         matching: (call: OperationCall) => {
           // Only match if the call name matches this action
-          if (call.operationName !== action.name) {
+          if (getOperationCallName(call) !== action.name) {
             return false;
           }
 
