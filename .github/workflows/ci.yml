@@ -30,19 +30,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check code quality (Biome)
-        run: pnpm ci
+        run: pnpm run ci
 
       - name: Type check
-        run: pnpm typecheck
+        run: pnpm run typecheck
 
       - name: Lint code (Biome)
-        run: pnpm lint
+        run: pnpm run lint
 
       - name: Build
-        run: pnpm build
+        run: pnpm run build
 
       - name: Run tests with coverage
-        run: pnpm test:coverage:ci
+        run: pnpm run test:coverage:ci
 
       - name: Report Coverage
         # Run even if tests fail to see coverage of failing tests
