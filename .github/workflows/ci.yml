@@ -52,3 +52,4 @@ jobs:
           # Show coverage only for changed files to reduce noise
           file-coverage-mode: changes
           name: 'Coverage Report'
+          json-summary-path: 'packages/language/coverage/coverage-summary.json'
