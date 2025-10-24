@@ -68,17 +68,71 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       const isCompletingOperationName = next.property === 'operationName';
       const isInsideArguments = cursorContext.insideOperationCall && !isCompletingOperationName;
 
+      // Get custom action completions once to reuse for both adding and filtering
+      const actionCompletions = getActionCompletions(document);
+      const actionNames = new Set(
+        actionCompletions.map(a => a.insertText || a.label.replace('action: ', ''))
+      );
+
+      // Create a filtering acceptor FIRST, before we add any completions
+      // This will wrap ALL completion additions (both ours and default provider's)
+      const filteringAcceptor: CompletionAcceptor = (ctx, item) => {
+        // Filter out break/continue keywords when not inside a loop
+        if (!cursorContext.isInsideLoop) {
+          if (item.label === 'break' || item.label === 'continue') {
+            return; // Skip these keywords
+          }
+        }
+
+        // Filter out action names from default completions
+        // (We already added them with "action:" prefix above)
+        if (item.label && actionNames.has(item.label)) {
+          return; // Skip - we've already added this action with proper prefix
+        }
+
+        // Filter out operations and actions when inside operation arguments (expression position)
+        if (isInsideArguments) {
+          // CompletionItemKind.Function (3) = operations
+          // CompletionItemKind.Method (2) = custom actions
+          if (item.kind === 3 || item.kind === 2) {
+            return; // Skip operations/actions in expression position
+          }
+
+          // Push literals (true, false, null) to the bottom when inside arguments
+          // CompletionItemKind.Constant (14) or CompletionItemKind.Value (12)
+          if (
+            item.kind === 14 ||
+            item.kind === 12 ||
+            item.label === 'true' ||
+            item.label === 'false' ||
+            item.label === 'null'
+          ) {
+            // Modify sortText to put literals at the bottom
+            item.sortText = `9_${item.label}`; // 9_ prefix puts them last
+          }
+
+          // Parameters from default provider (e.g., 'items' from action parameters)
+          // CompletionItemKind.Reference (18) = parameters from default provider
+          // Override their sortText to put them between variables and literals
+          if (item.kind === 18 && item.detail === 'Parameter') {
+            item.sortText = `2_${item.sortText || ''}`; // Parameters go between @@vars (0_,1_) and literals (9_)
+          }
+        }
+
+        // Accept all other completions
+        acceptor(ctx, item);
+      };
+
       if (cursorContext.isInsideAction && !isInsideArguments) {
         // Add operation completions
         const operationCompletions = getOperationCompletions(context);
         for (const item of operationCompletions) {
-          acceptor(context, item);
+          filteringAcceptor(context, item);
         }
 
         // Add custom action completions
-        const actionCompletions = getActionCompletions(document);
         for (const item of actionCompletions) {
-          acceptor(context, item);
+          filteringAcceptor(context, item);
         }
       }
 
@@ -123,50 +177,16 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         // completeTimelineEvents(context, acceptor, cursorContext);
       }
 
-      // Create a filtering acceptor to prevent invalid keywords and operations in wrong contexts
-      const filteringAcceptor: CompletionAcceptor = (ctx, item) => {
-        // Filter out break/continue keywords when not inside a loop
-        if (!cursorContext.isInsideLoop) {
-          if (item.label === 'break' || item.label === 'continue') {
-            return; // Skip these keywords
-          }
-        }
-
-        // Filter out operations and actions when inside operation arguments (expression position)
-        if (isInsideArguments) {
-          // CompletionItemKind.Function (3) = operations
-          // CompletionItemKind.Method (2) = custom actions
-          if (item.kind === 3 || item.kind === 2) {
-            return; // Skip operations/actions in expression position
-          }
-
-          // Push literals (true, false, null) to the bottom when inside arguments
-          // CompletionItemKind.Constant (14) or CompletionItemKind.Value (12)
-          if (
-            item.kind === 14 ||
-            item.kind === 12 ||
-            item.label === 'true' ||
-            item.label === 'false' ||
-            item.label === 'null'
-          ) {
-            // Modify sortText to put literals at the bottom
-            item.sortText = `9_${item.label}`; // 9_ prefix puts them last
-          }
-
-          // Parameters from default provider (e.g., 'items' from action parameters)
-          // CompletionItemKind.Reference (18) = parameters from default provider
-          // Override their sortText to put them between variables and literals
-          if (item.kind === 18 && item.detail === 'Parameter') {
-            item.sortText = `2_${item.sortText || ''}`; // Parameters go between @@vars (0_,1_) and literals (9_)
-          }
-        }
-
-        // Accept all other completions
-        acceptor(ctx, item);
-      };
+      // IMPORTANT: Don't call super if this is an OperationCall operationName completion
+      // We've already added all operations and actions with proper prefixes above
+      // Calling super would add duplicate action names from cross-reference completion
+      if (next.type === 'OperationCall' && next.property === 'operationName') {
+        // Don't call super - we've already provided all completions
+        return;
+      }
 
       // Fallback to default Langium completions (keywords, grammar-based)
-      // Use filtering acceptor to prevent invalid keywords
+      // Use filtering acceptor to prevent invalid keywords and duplicates
       return super.completionFor(context, next, filteringAcceptor);
     } catch (error) {
       // Graceful error handling - log warning but don't break completion
