@@ -13,6 +13,12 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
 
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,3 +59,4 @@ jobs:
           file-coverage-mode: changes
           name: 'Coverage Report'
           json-summary-path: 'packages/language/coverage/coverage-summary.json'
+          json-final-path: 'packages/language/coverage/coverage-final.json'
