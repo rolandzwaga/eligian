@@ -60,3 +60,4 @@ jobs:
           name: 'Coverage Report'
           json-summary-path: 'packages/language/coverage/coverage-summary.json'
           json-final-path: 'packages/language/coverage/coverage-final.json'
+          vite-config-path: 'packages/language/vitest.config.ts'
