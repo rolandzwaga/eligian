@@ -35,9 +35,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check code quality (Biome)
-        run: pnpm run ci
-
       - name: Lint code (Biome)
         run: pnpm run lint
 
