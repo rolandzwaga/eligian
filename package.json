@@ -7,7 +7,7 @@
     "scripts": {
         "clean": "pnpm -r clean",
         "watch": "tsc -b tsconfig.build.json --watch",
-        "build": "tsc -b tsconfig.build.json && pnpm -r build",
+        "build": "pnpm -r build",
         "build:clean": "pnpm clean && pnpm build",
         "langium:generate": "pnpm --filter @eligian/language langium:generate",
         "langium:watch": "pnpm --filter @eligian/language langium:watch",

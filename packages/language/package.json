@@ -27,7 +27,7 @@
     }
   },
   "scripts": {
-    "clean": "shx rm -fr *.tsbuildinfo out",
+    "clean": "shx rm -fr *.tsbuildinfo out coverage",
     "generate:metadata": "tsx src/completion/generate-metadata.ts",
     "generate:registry": "tsx src/compiler/operations/generate-registry.ts",
     "generate": "pnpm run generate:metadata && pnpm run generate:registry",
