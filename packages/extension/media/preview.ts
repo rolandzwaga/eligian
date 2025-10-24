@@ -17,6 +17,7 @@ import {
   type IEligiusEngine,
   type IEngineConfiguration,
   type IEventbus,
+  type IEventbusListener,
   TimelineEventNames,
 } from 'eligius';
 import 'jquery';
@@ -281,7 +282,7 @@ class EventbusDebugViewer implements IEventbusListener {
           minute: '2-digit',
           second: '2-digit',
           fractionalSecondDigits: 3,
-        });
+        } as Intl.DateTimeFormatOptions);
 
         const topicHtml = event.eventTopic
           ? `<div class="debug-event-topic">Topic: ${event.eventTopic}</div>`
@@ -433,6 +434,7 @@ function showControls(): void {
 /**
  * Hide playback controls (reserved for future use).
  */
+// @ts-expect-error - Reserved for future use
 function _hideControls(): void {
   const controls = document.getElementById('controls')!;
   controls.style.display = 'none';

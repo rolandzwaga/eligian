@@ -29,3 +29,4 @@ check-*.mjs
 .DS_Store
 /packages/language/coverage
 /TODO.txt
+/nul

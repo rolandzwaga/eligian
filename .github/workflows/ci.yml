@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check code quality (Biome)
+        run: pnpm run ci
+
+      - name: Lint code (Biome)
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Run tests with coverage
+        run: pnpm run test:coverage:ci
+
+      - name: Report Coverage
+        # Run even if tests fail to see coverage of failing tests
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          # Show coverage only for changed files to reduce noise
+          file-coverage-mode: changes
+          name: 'Coverage Report'
+          json-summary-path: 'packages/language/coverage/coverage-summary.json'
+          json-final-path: 'packages/language/coverage/coverage-final.json'
+          vite-config-path: 'packages/language/vitest.config.ts'

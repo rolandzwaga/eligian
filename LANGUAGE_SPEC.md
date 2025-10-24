@@ -259,6 +259,44 @@ action demo(value: number) [
 ]
 ```
 
+### 4.4 Calling Actions
+
+Actions use the **unified call syntax** - they're called exactly like built-in operations:
+
+```eligian
+// Define an action
+action fadeIn(selector: string) [
+  selectElement($operationdata.selector)
+  addClass("visible")
+]
+
+// Call it in a timeline - same syntax as operations
+timeline "demo" in "#app" using raf {
+  at 0s..5s fadeIn("#box")
+  at 5s..10s selectElement("#other")  // Built-in operation - identical syntax
+}
+```
+
+**Key Points**:
+- Actions and operations use **identical calling syntax**
+- The compiler automatically distinguishes between them by name resolution
+- Action names **cannot** conflict with built-in operation names (compile error)
+- This unified syntax works in all contexts: timeline events, control flow, sequence/stagger blocks
+
+**Name Collision Prevention**:
+
+```eligian
+// ❌ ERROR: Cannot define action with operation name
+action selectElement() [  // Compile error: name conflicts with built-in operation
+  ...
+]
+
+// ✅ OK: Custom name that doesn't conflict
+action mySelectElement() [
+  ...
+]
+```
+
 ---
 
 ## 5. Timelines
@@ -287,12 +325,12 @@ timeline <name> in <containerSelector> using <provider> [from <source>] {
 
 ```eligian
 timeline "presentation" in ".slide-container" using video from "slides.mp4" {
-  at 0s..5s { showTitle() }
-  at 5s..10s { showContent() }
+  at 0s..5s showTitle()
+  at 5s..10s showContent()
 }
 
 timeline "animation" in "#canvas" using raf {
-  at 0s..2s { fadeIn("#box") }
+  at 0s..2s fadeIn("#box")
 }
 ```
 
@@ -301,15 +339,20 @@ timeline "animation" in "#canvas" using raf {
 #### Timed Events
 
 ```eligian
-at <start>..<end> { <actionCall> }
+at <start>..<end> <actionCall>
+at <start>..<end> <operationCall>
+at <start>..<end> <controlFlow>
 at <start>..<end> [ <start-ops>* ] [ <end-ops>* ]
 ```
 
 **Examples**:
 
 ```eligian
-// Named action call
-at 0s..5s { fadeIn("#title") }
+// Action call (unified syntax)
+at 0s..5s fadeIn("#title")
+
+// Built-in operation call (same syntax as actions)
+at 0s..5s selectElement("#box")
 
 // Inline endable action
 at 5s..10s [
@@ -318,7 +361,15 @@ at 5s..10s [
 ] [
   removeClass("visible")
 ]
+
+// Control flow with mixed action/operation calls
+at 10s..15s for (item in items) {
+  fadeIn(@@item)        // Custom action
+  addClass("active")    // Built-in operation
+}
 ```
+
+**Note**: Custom actions and built-in operations use identical syntax. The compiler distinguishes them automatically based on name resolution.
 
 #### Sequence Blocks
 
@@ -342,9 +393,9 @@ sequence {
 }
 
 // Compiles to:
-// at 0s..5s { intro() }
-// at 5s..15s { main() }
-// at 15s..18s { outro() }
+// at 0s..5s intro()
+// at 5s..15s main()
+// at 15s..18s outro()
 ```
 
 #### Stagger Blocks
@@ -644,9 +695,9 @@ action fadeIn(selector: string, duration: number) [
 ]
 
 timeline "test" in "#app" using raf {
-  at 0s..1s { fadeIn("#box", 500) }          // ✅ Correct
-  at 1s..2s { fadeIn(123, "slow") }          // ❌ ERROR: Both args wrong type
-  at 2s..3s { fadeIn("#box", "slow") }       // ❌ ERROR: duration expects number
+  at 0s..1s fadeIn("#box", 500)          // ✅ Correct
+  at 1s..2s fadeIn(123, "slow")          // ❌ ERROR: Both args wrong type
+  at 2s..3s fadeIn("#box", "slow")       // ❌ ERROR: duration expects number
 }
 ```
 

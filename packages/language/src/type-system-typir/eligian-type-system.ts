@@ -5,7 +5,6 @@ import { OPERATION_REGISTRY } from '../compiler/operations/registry.generated.js
 import type { ConstantValue, ParameterType } from '../compiler/operations/types.js';
 import { isConstantValueArray } from '../compiler/operations/types.js';
 import type {
-  ActionCallExpression,
   ArrayLiteral,
   BooleanLiteral,
   EndableActionDefinition,
@@ -311,9 +310,35 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       inputParameters: inputParams,
     })
       .inferenceRuleForCalls({
-        languageKey: 'ActionCallExpression',
-        matching: (call: ActionCallExpression) => call.action.ref === action,
-        inputArguments: (call: ActionCallExpression) => call.args,
+        languageKey: 'OperationCall',
+        matching: (call: OperationCall) => {
+          // Only match if the call name matches this action
+          if (call.operationName !== action.name) {
+            return false;
+          }
+
+          // Don't match calls inside action bodies (parameters as bare identifiers can't be typed)
+          // Only match calls in timeline contexts
+          let current: AstNode | undefined = call.$container;
+          while (current) {
+            // If we're inside an action definition body, don't match
+            if (
+              current.$type === 'RegularActionDefinition' ||
+              current.$type === 'EndableActionDefinition' ||
+              current.$type === 'InlineEndableAction'
+            ) {
+              return false;
+            }
+            // If we're inside a timeline, we can match
+            if (current.$type === 'Timeline' || current.$type === 'TimedEvent') {
+              return true;
+            }
+            current = current.$container;
+          }
+
+          return false;
+        },
+        inputArguments: (call: OperationCall) => call.args,
         validateArgumentsOfFunctionCalls: true, // Enable type checking for action calls
       })
       .finish();

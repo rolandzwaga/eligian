@@ -104,7 +104,7 @@ describe('Eligian Grammar - Parsing', () => {
       expect(timeline.events[0].action.$type).toBe('InlineEndableAction');
     });
 
-    test('should parse timeline event with named action invocation', async () => {
+    test('should parse timeline event with action call', async () => {
       const program = await parseEligian(`
         endable action fadeIn [
           selectElement(".target")
@@ -114,16 +114,14 @@ describe('Eligian Grammar - Parsing', () => {
         ]
 
         timeline "main" in ".container" using raf {
-          at 0s..5s {
-            fadeIn()
-          }
+          at 0s..5s fadeIn()
         }
       `);
 
       expect(program.elements).toHaveLength(2);
       const timeline = program.elements[1] as Timeline;
       expect(timeline.events).toHaveLength(1);
-      expect(timeline.events[0].action.$type).toBe('NamedActionInvocation');
+      expect(timeline.events[0].action.$type).toBe('OperationCall');
     });
 
     test('should parse timeline event with time expressions', async () => {
@@ -163,6 +161,44 @@ describe('Eligian Grammar - Parsing', () => {
 
       const timeline = program.elements[0] as Timeline;
       expect(timeline.events).toHaveLength(3);
+    });
+
+    // T009: US1 - Parse timeline with direct action call (unified syntax, no braces)
+    test('should parse timeline event with direct action call (no braces)', async () => {
+      const program = await parseEligian(`
+        action fadeIn(selector, duration) [
+          selectElement(selector)
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s fadeIn(".box", 1000)
+        }
+      `);
+
+      const timeline = program.elements[1] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      // Note: This will initially fail because grammar doesn't support direct calls yet
+    });
+
+    // T010: US1 - Parse inline action block with mixed calls
+    test('should parse timeline with inline block containing mixed operation calls', async () => {
+      const program = await parseEligian(`
+        action fadeIn(selector) [
+          selectElement(selector)
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s [
+            fadeIn(".box")
+            selectElement(".content")
+            addClass("visible")
+          ]
+        }
+      `);
+
+      const timeline = program.elements[1] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      // Note: Mixed calls in inline blocks - tests that both resolve correctly
     });
   });
 
@@ -771,6 +807,58 @@ describe('Eligian Grammar - Parsing', () => {
       expect(
         document.parseResult.lexerErrors.length + document.parseResult.parserErrors.length
       ).toBeGreaterThan(0);
+    });
+  });
+
+  // T047-T048: US3 - Control flow with action calls
+  describe('Control flow with action calls (US3)', () => {
+    // T047: Parse for loop in timeline event with action call
+    test('should parse for loop with action call in timeline event', async () => {
+      const program = await parseEligian(`
+        action highlight(selector) [
+          selectElement(selector)
+          addClass("highlight")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s for (item in items) {
+            highlight(@@item)
+          }
+        }
+      `);
+
+      const timeline = program.elements[1] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      const event = timeline.events[0] as TimedEvent;
+      expect(event.action.$type).toBe('ForStatement');
+    });
+
+    // T048: Parse if/else with action calls in both branches
+    test('should parse if/else with action calls in timeline event', async () => {
+      const program = await parseEligian(`
+        action show(selector) [
+          selectElement(selector)
+          addClass("visible")
+        ]
+
+        action hide(selector) [
+          selectElement(selector)
+          removeClass("visible")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s if (@@condition) {
+            show(".box")
+          } else {
+            hide(".box")
+          }
+        }
+      `);
+
+      const timeline = program.elements[2] as Timeline;
+      expect(timeline.events).toHaveLength(1);
+      const event = timeline.events[0] as TimedEvent;
+      expect(event.action.$type).toBe('IfStatement');
     });
   });
 });

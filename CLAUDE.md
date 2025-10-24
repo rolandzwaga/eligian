@@ -469,6 +469,61 @@ action fadeIn(selector, duration) [  // No annotations
 - **Integration tests**: `src/__tests__/type-system.spec.ts`
 - **Validation tests**: `src/__tests__/validation.spec.ts`
 
+## Unified Action and Operation Call Syntax (Feature 006)
+
+Custom actions and built-in operations use **identical calling syntax** throughout the DSL. The compiler automatically distinguishes between them based on name resolution.
+
+### Syntax
+
+**Old Syntax (REMOVED)**:
+```eligian
+at 0s..5s { fadeIn("#box") }  // ❌ No longer valid
+```
+
+**New Unified Syntax**:
+```eligian
+at 0s..5s fadeIn("#box")     // ✅ Custom action call
+at 0s..5s selectElement("#box")  // ✅ Built-in operation call - identical syntax
+```
+
+### Key Features
+
+1. **Unified Syntax**: Actions and operations called identically in all contexts:
+   - Timeline events: `at 0s..5s fadeIn()`
+   - Control flow: `for (item in items) { fadeIn(@@item) }`
+   - Sequence blocks: `fadeIn() for 2s`
+   - Stagger blocks: `stagger 200ms items with fadeIn() for 1s`
+
+2. **Name Collision Prevention**: Action names cannot conflict with built-in operation names
+   ```eligian
+   action selectElement() [...]  // ❌ ERROR: name conflicts with built-in operation
+   ```
+
+3. **Automatic Resolution**: Compiler checks if name is an action first, then falls back to operations
+   - If action: expands to `requestAction` + `startAction` operations
+   - If operation: generates operation call directly
+   - If neither: error with suggestions from both
+
+### Implementation
+
+**Name Resolution** ([name-resolver.ts](packages/language/src/compiler/name-resolver.ts)):
+- `buildNameRegistry()` - Tracks all action and operation names
+- `findActionByName()` - Looks up action definitions
+- `suggestSimilarActions()` - Provides suggestions for typos
+
+**Validation** ([eligian-validator.ts](packages/language/src/eligian-validator.ts)):
+- `checkActionNameCollision()` - Prevents action names conflicting with operations
+- `checkDuplicateActions()` - Prevents duplicate action definitions
+- `checkTimelineOperationCall()` - Validates calls in timeline context
+
+**Transformation** ([ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts:1363-1409)):
+- `transformOperationStatement()` - Expands action calls to requestAction/startAction
+- Works in all contexts: timeline events, control flow, sequences, staggers
+
+### Example
+
+See [examples/unified-action-syntax.eligian](examples/unified-action-syntax.eligian) for comprehensive demonstration.
+
 ## Testing Strategy
 
 Following constitution principle **II. Comprehensive Testing**:
