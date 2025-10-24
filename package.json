@@ -18,7 +18,7 @@
         "format": "biome format --write .",
         "check": "biome check --write .",
         "ci": "biome ci .",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc -b tsconfig.build.json"
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.6",

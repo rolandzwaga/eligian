@@ -4,12 +4,13 @@
     "composite": true,
     "rootDir": ".",
     "outDir": "./out",
-    "tsBuildInfoFile": "./out/.tsbuildinfo"
+    "tsBuildInfoFile": "./out/.tsbuildinfo",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },
   "references": [
     {
       "path": "../language/tsconfig.src.json"
     }
   ],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "media/**/*.ts"]
 }
