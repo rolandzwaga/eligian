@@ -101,7 +101,7 @@ describe('AST Transformer', () => {
       expect(action.endOperations).toHaveLength(2);
     });
 
-    test('should handle named action invocation', async () => {
+    test('should handle action call', async () => {
       const code = `
                 endable action fadeIn [
                     selectElement(".target")
@@ -112,9 +112,7 @@ describe('AST Transformer', () => {
                 ]
 
                 timeline "test" in ".test-container" using raf {
-                    at 10s..20s {
-                        fadeIn()
-                    }
+                    at 10s..20s fadeIn()
                 }
             `;
       const program = await parseDSL(code);
@@ -643,9 +641,7 @@ describe('AST Transformer', () => {
                 ]
 
                 timeline "main" in ".main-container" using video from "test.mp4" {
-                    at 0s..5s {
-                        intro()
-                    }
+                    at 0s..5s intro()
 
                     at 5s..10s [
                         selectElement("#content")
@@ -1186,6 +1182,123 @@ describe('AST Transformer', () => {
 
       const jsonStr = JSON.stringify(result.config);
       expect(jsonStr).not.toContain('$globalData');
+    });
+  });
+
+  // T012: US1 - Transform action call to requestAction + startAction
+  describe('Unified action call transformation (US1)', () => {
+    test('should transform direct action call to requestAction + startAction', async () => {
+      const code = `
+        action fadeIn(selector, duration) [
+          selectElement(selector)
+          animate({opacity: 1}, duration)
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s fadeIn(".box", 1000)
+        }
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Get timeline actions from the first timeline
+      const timeline = result.config.timelines[0];
+      expect(timeline).toBeDefined();
+      expect(timeline.timelineActions.length).toBeGreaterThan(0);
+
+      const timelineAction = timeline.timelineActions[0];
+      const requestAction = timelineAction.startOperations?.find(
+        op => op.systemName === 'requestAction'
+      );
+      const startAction = timelineAction.startOperations?.find(
+        op => op.systemName === 'startAction'
+      );
+
+      // Should generate requestAction + startAction
+      expect(requestAction).toBeDefined();
+      expect(requestAction?.operationData?.systemName).toBe('fadeIn');
+      expect(startAction).toBeDefined();
+      expect(startAction?.operationData?.actionOperationData).toBeDefined();
+    });
+
+    // T013: Transform action call with multiple parameters
+    test('should transform action call with multiple parameters', async () => {
+      const code = `
+        action highlight(selector, color) [
+          selectElement(selector)
+          addClass(color)
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s highlight(".box", "red")
+        }
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const timeline = result.config.timelines[0];
+      const timelineAction = timeline.timelineActions[0];
+      const startOps = timelineAction.startOperations || [];
+
+      // Should have: requestAction, startAction
+      const requestAction = startOps.find(op => op.systemName === 'requestAction');
+      const startAction = startOps.find(op => op.systemName === 'startAction');
+
+      expect(requestAction).toBeDefined();
+      expect(requestAction?.operationData?.systemName).toBe('highlight');
+      expect(startAction).toBeDefined();
+      expect(startAction?.operationData?.actionOperationData?.selector).toBe('.box');
+      expect(startAction?.operationData?.actionOperationData?.color).toBe('red');
+    });
+
+    test('should use endAction for endable action calls in end operations block', async () => {
+      const code = `
+        endable action fadeIn(selector: string, duration) [
+          selectElement(selector)
+          setStyle({opacity: 0})
+          animate({opacity: 1}, duration)
+        ] [
+          selectElement(selector)
+          animate({opacity: 0}, duration)
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..3s [
+            fadeIn("123", 1000)
+          ] [
+            fadeIn("123", 1000)
+          ]
+        }
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      const timeline = result.config.timelines[0];
+      const timelineAction = timeline.timelineActions[0];
+
+      // Start operations should use startAction
+      const startOps = timelineAction.startOperations || [];
+      const startRequestAction = startOps.find(op => op.systemName === 'requestAction');
+      const startAction = startOps.find(op => op.systemName === 'startAction');
+
+      expect(startRequestAction).toBeDefined();
+      expect(startRequestAction?.operationData?.systemName).toBe('fadeIn');
+      expect(startAction).toBeDefined();
+      expect(startAction?.operationData?.actionOperationData?.selector).toBe('123');
+      expect(startAction?.operationData?.actionOperationData?.duration).toBe(1000);
+
+      // End operations should use endAction (NOT startAction)
+      const endOps = timelineAction.endOperations || [];
+      const endRequestAction = endOps.find(op => op.systemName === 'requestAction');
+      const endAction = endOps.find(op => op.systemName === 'endAction');
+      const wrongStartAction = endOps.find(op => op.systemName === 'startAction');
+
+      expect(endRequestAction).toBeDefined();
+      expect(endRequestAction?.operationData?.systemName).toBe('fadeIn');
+      expect(endAction).toBeDefined();
+      expect(endAction?.operationData?.actionOperationData?.selector).toBe('123');
+      expect(endAction?.operationData?.actionOperationData?.duration).toBe(1000);
+      expect(wrongStartAction).toBeUndefined(); // Should NOT have startAction in end ops
     });
   });
 });

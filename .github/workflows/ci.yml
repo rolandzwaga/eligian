@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check code quality (Biome)
+        run: pnpm ci
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint code (Biome)
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage:ci
+
+      - name: Report Coverage
+        # Run even if tests fail to see coverage of failing tests
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          # Show coverage only for changed files to reduce noise
+          file-coverage-mode: changes
+          name: 'Coverage Report'

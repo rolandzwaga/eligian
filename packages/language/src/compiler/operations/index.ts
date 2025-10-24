@@ -184,7 +184,8 @@ export function searchOperations(query: string): OperationSignature[] {
  */
 export function suggestSimilarOperations(
   unknownName: string,
-  maxSuggestions: number = 3
+  maxSuggestions: number = 3,
+  maxDistance: number = 3
 ): string[] {
   const allNames = Object.keys(OPERATION_REGISTRY);
 
@@ -194,8 +195,9 @@ export function suggestSimilarOperations(
     distance: levenshteinDistance(unknownName.toLowerCase(), name.toLowerCase()),
   }));
 
-  // Sort by distance (closest first) and return top N
+  // Filter by distance threshold, sort by distance (closest first), and return top N
   return distances
+    .filter(item => item.distance <= maxDistance)
     .sort((a, b) => a.distance - b.distance)
     .slice(0, maxSuggestions)
     .map(item => item.name);

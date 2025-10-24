@@ -250,7 +250,7 @@ TimedEvent:
     'at' timeRange=TimeRange (action=TimelineAction);
 
 TimelineAction:
-    InlineEndableAction | NamedActionInvocation;
+    InlineEndableAction | OperationCall | ForStatement | IfStatement;
 
 /**
  * Sequence Block - Sequential events with automatic time calculation (T190)
@@ -269,7 +269,7 @@ SequenceBlock:
     'sequence' '{' (items += SequenceItem)* '}';
 
 SequenceItem:
-    actionCall=ActionCallExpression 'for' duration=TimeExpression;
+    actionCall=OperationCall 'for' duration=TimeExpression;
 
 /**
  * Stagger Block - Staggered events with incremental start times (T192)
@@ -291,17 +291,9 @@ SequenceItem:
  *   ]
  */
 StaggerBlock:
-    'stagger' delay=TimeExpression items=Expression 'with' actionCall=ActionCallExpression 'for' duration=TimeExpression |
+    'stagger' delay=TimeExpression items=Expression 'with' actionCall=OperationCall 'for' duration=TimeExpression |
     'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' '[' (endOps += OperationStatement)* ']';
 
-/**
- * Named action invocation - calls a defined action (endable or regular)
- */
-NamedActionInvocation:
-    '{' actionCall=ActionCallExpression '}';
-
-ActionCallExpression:
-    action=[ActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
 
 /**
  * Inline endable action - anonymous endable action defined at use site

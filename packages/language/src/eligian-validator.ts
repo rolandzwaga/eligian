@@ -8,6 +8,7 @@ import {
   validateParameterCount,
   validateParameterTypes,
 } from './compiler/index.js';
+import { findActionByName } from './compiler/name-resolver.js';
 import type { EligianServices } from './eligian-module.js';
 import type {
   BreakStatement,
@@ -19,6 +20,7 @@ import type {
   OperationStatement,
   Program,
   RegularActionDefinition,
+  TimedEvent,
   Timeline,
   TimelineEvent,
 } from './generated/ast.js';
@@ -31,10 +33,14 @@ export function registerValidationChecks(services: EligianServices) {
   const registry = services.validation.ValidationRegistry;
   const validator = services.validation.EligianValidator;
   const checks: ValidationChecks<EligianAstType> = {
-    Program: validator.checkTimelineRequired,
+    Program: [
+      validator.checkTimelineRequired,
+      validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
+    ],
     Timeline: [validator.checkValidProvider, validator.checkSourceRequired],
     TimelineEvent: [validator.checkValidTimeRange, validator.checkNonNegativeTimes],
     OperationCall: [
+      validator.checkTimelineOperationCall, // T020: Check timeline context for unified syntax
       validator.checkOperationExists,
       validator.checkParameterCount,
       validator.checkParameterTypes,
@@ -44,10 +50,12 @@ export function registerValidationChecks(services: EligianServices) {
     BreakStatement: validator.checkBreakInsideLoop,
     ContinueStatement: validator.checkContinueInsideLoop,
     RegularActionDefinition: [
+      validator.checkActionNameCollision, // T039: US2 - Name collision detection
       validator.checkControlFlowPairing,
       validator.checkErasedPropertiesInAction, // T254-T255: Erased property validation
     ],
     EndableActionDefinition: [
+      validator.checkActionNameCollision, // T039: US2 - Name collision detection
       validator.checkControlFlowPairingInStartOps,
       validator.checkControlFlowPairingInEndOps,
       validator.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
@@ -59,9 +67,6 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkErasedPropertiesInInlineStart, // T254-T255: Erased property validation
       validator.checkErasedPropertiesInInlineEnd, // T254-T255: Erased property validation
     ],
-    // ActionCallExpression type validation is handled by Typir
-    // Register empty check to ensure Typir validation is triggered
-    ActionCallExpression: [],
   };
   registry.register(checks, validator);
 }
@@ -94,6 +99,60 @@ export class EligianValidator {
       );
     }
     // Multiple timelines are now allowed (removed restriction)
+  }
+
+  /**
+   * T042: US2 - Check for duplicate action definitions
+   * Emit error if the same action name is defined multiple times
+   */
+  checkDuplicateActions(program: Program, accept: ValidationAcceptor): void {
+    const actionNames = new Map<string, RegularActionDefinition | EndableActionDefinition>();
+
+    for (const element of program.elements) {
+      if (
+        element.$type === 'RegularActionDefinition' ||
+        element.$type === 'EndableActionDefinition'
+      ) {
+        const existing = actionNames.get(element.name);
+        if (existing) {
+          // Found duplicate - report error on the second definition
+          accept(
+            'error',
+            `Duplicate action definition '${element.name}'. Action already defined.`,
+            {
+              node: element,
+              property: 'name',
+              code: 'duplicate_action',
+            }
+          );
+        } else {
+          actionNames.set(element.name, element);
+        }
+      }
+    }
+  }
+
+  /**
+   * T039-T041: US2 - Check for action name collision with built-in operations
+   * Emit error if action name matches an operation name
+   */
+  checkActionNameCollision(
+    action: RegularActionDefinition | EndableActionDefinition,
+    accept: ValidationAcceptor
+  ): void {
+    // T040: Check if action.name exists in operation registry
+    if (hasOperation(action.name)) {
+      // T041: Emit error with code and message
+      accept(
+        'error',
+        `Cannot define action '${action.name}': name conflicts with built-in operation`,
+        {
+          node: action,
+          property: 'name',
+          code: 'action_operation_collision',
+        }
+      );
+    }
   }
 
   /**
@@ -216,6 +275,20 @@ export class EligianValidator {
    */
   checkOperationExists(operation: OperationCall, accept: ValidationAcceptor): void {
     const opName = operation.operationName;
+
+    // T020: Skip operation validation if this is an action call in timeline context
+    // (already validated by checkTimelineOperationCall)
+    const isInTimeline = this.isInTimelineContext(operation);
+    if (isInTimeline) {
+      const program = this.getProgram(operation);
+      if (program) {
+        const action = findActionByName(opName, program);
+        if (action) {
+          // This is a valid action call - skip operation validation
+          return;
+        }
+      }
+    }
 
     // Use compiler validation logic
     const error = validateOperationExists(opName);
@@ -622,5 +695,125 @@ export class EligianValidator {
     }
 
     return false;
+  }
+
+  /**
+   * T020-T023: Validate OperationCall when used in timeline context
+   *
+   * With unified syntax, OperationCall can appear as TimelineAction.
+   * We need to validate that it resolves to a defined action (not an operation).
+   */
+  checkTimelineOperationCall(call: OperationCall, accept: ValidationAcceptor): void {
+    // Check if this OperationCall is in a timeline context
+    // It's in timeline context if its container is a TimedEvent or InlineEndableAction
+    const isInTimeline = this.isInTimelineContext(call);
+
+    if (!isInTimeline) {
+      // Not in timeline - normal operation call validation applies
+      return;
+    }
+
+    // In timeline context - must be an action call
+    const callName = call.operationName;
+
+    // Get the program to search for actions
+    const program = this.getProgram(call);
+    if (!program) {
+      return; // Can't validate without program context
+    }
+
+    // Check if it's a defined action
+    const action = findActionByName(callName, program);
+    if (action) {
+      // Valid action call - success
+      return;
+    }
+
+    // Check if it's an operation (ERROR - operations not allowed in timeline)
+    if (hasOperation(callName)) {
+      accept(
+        'error',
+        `Operation '${callName}' cannot be used directly in timeline events. Define an action that calls this operation, then call the action.`,
+        {
+          node: call,
+          property: 'operationName',
+        }
+      );
+      return;
+    }
+
+    // Unknown - neither action nor operation
+    accept(
+      'error',
+      `Unknown action: ${callName}. Define this action before using it in timeline events.`,
+      {
+        node: call,
+        property: 'operationName',
+      }
+    );
+  }
+
+  /**
+   * Helper: Check if an OperationCall is in timeline context
+   */
+  /**
+   * T053-T054: US3 - Check if OperationCall is in timeline context
+   * Handles direct calls and calls within ForStatement/IfStatement in timelines
+   */
+  private isInTimelineContext(call: OperationCall): boolean {
+    let current: any = call.$container;
+
+    // Walk up to find if we're inside a TimedEvent
+    while (current) {
+      if (current.$type === 'TimedEvent') {
+        const timedEvent = current as TimedEvent;
+
+        // Direct action: OperationCall is the timeline action itself
+        if (timedEvent.action === call) {
+          return true;
+        }
+
+        // T053: Control flow in timeline: Check if call is inside ForStatement/IfStatement
+        // that is the timeline action
+        if (
+          timedEvent.action &&
+          (timedEvent.action.$type === 'ForStatement' || timedEvent.action.$type === 'IfStatement')
+        ) {
+          // The call is somewhere inside control flow - check if it's in this timeline event
+          return this.isDescendantOf(call, timedEvent.action);
+        }
+      }
+      current = current.$container;
+    }
+
+    return false;
+  }
+
+  /**
+   * T053: Helper - Check if node is a descendant of ancestor
+   */
+  private isDescendantOf(node: any, ancestor: any): boolean {
+    let current = node.$container;
+    while (current) {
+      if (current === ancestor) {
+        return true;
+      }
+      current = current.$container;
+    }
+    return false;
+  }
+
+  /**
+   * Helper: Get the Program node from any AST node
+   */
+  private getProgram(node: any): Program | undefined {
+    let current = node;
+    while (current) {
+      if (current.$type === 'Program') {
+        return current as Program;
+      }
+      current = current.$container;
+    }
+    return undefined;
   }
 }

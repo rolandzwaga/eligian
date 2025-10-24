@@ -213,7 +213,7 @@ describe('Context Detection', () => {
     it('should detect cursor inside timeline block', async () => {
       const text = s`
         timeline "main" in "#container" using video from "video.mp4" {
-          <|>at 0s..5s { fadeIn() }
+          <|>at 0s..5s fadeIn()
         }
       `;
 
@@ -228,7 +228,7 @@ describe('Context Detection', () => {
     it('should detect timeline even when cursor is on timeline keyword', async () => {
       const text = s`
         <|>timeline "main" in "#container" using video from "video.mp4" {
-          at 0s..5s { fadeIn() }
+          at 0s..5s fadeIn()
         }
       `;
 

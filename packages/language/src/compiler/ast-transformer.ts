@@ -36,6 +36,7 @@ import type {
 } from '../generated/ast.js';
 import { buildConstantMap } from './constant-folder.js';
 import { evaluateExpression } from './expression-evaluator.js';
+import { findActionByName } from './name-resolver.js';
 import { getOperationSignature } from './operations/index.js';
 import { mapParameters } from './operations/mapper.js';
 import { trackOutputs, validateDependencies, validateOperation } from './operations/validator.js';
@@ -640,8 +641,9 @@ const transformSequenceBlock = (
 
       // Get action name and arguments
       const actionCall = item.actionCall;
-      const actionName = actionCall?.action?.$refText || 'unknown';
-      const actionRef = actionCall?.action?.ref;
+      const actionName = actionCall.operationName;
+      const program = yield* _(getProgram(actionCall));
+      const actionRef = findActionByName(actionName, program);
 
       // Check if this is an endable action or regular action
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
@@ -772,8 +774,9 @@ const transformStaggerBlock = (
     if (hasActionCall) {
       // Form 1: stagger delay items with actionCall for duration
       const actionCall = stagger.actionCall!;
-      const actionName = actionCall.action?.$refText || 'unknown';
-      const actionRef = actionCall.action?.ref;
+      const actionName = actionCall.operationName;
+      const program = yield* _(getProgram(actionCall));
+      const actionRef = findActionByName(actionName, program);
 
       // Check if this is an endable action or regular action
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
@@ -933,41 +936,61 @@ const transformTimedEvent = (
     const startOperations: OperationConfigIR[] = [];
     const endOperations: OperationConfigIR[] = [];
 
-    if (action.$type === 'NamedActionInvocation') {
-      // Named action reference: { showSlide1() } or { fadeIn(".title", 300) }
-      // Per Eligius operation registry, action invocation requires two steps:
-      // 1. requestAction: Takes systemName, outputs actionInstance to operation data
-      // 2. startAction: Depends on actionInstance from previous operation
-      const actionCall = action.actionCall;
-      const actionName = actionCall?.action?.$refText || 'unknown';
-      const actionRef = actionCall?.action?.ref;
+    if (action.$type === 'InlineEndableAction') {
+      // Inline endable action: [ ... ] [ ... ]
+      for (const opStmt of action.startOperations) {
+        const ops = yield* _(transformOperationStatement(opStmt, createEmptyScope(), false));
+        startOperations.push(...ops);
+      }
+      for (const opStmt of action.endOperations) {
+        const ops = yield* _(transformOperationStatement(opStmt, createEmptyScope(), true));
+        endOperations.push(...ops);
+      }
+    } else if (action.$type === 'OperationCall') {
+      // T024-T027: Unified syntax - direct action call without braces
+      // Example: at 0s..5s fadeIn(".box", 1000)
+      // This OperationCall should resolve to an action (validated in validator)
 
-      // Check if this is an endable action or regular action
-      const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
+      const callName = action.operationName;
 
-      // T187: Transform action arguments to actionOperationData
+      // Find the action definition in the program
+      const program = yield* _(getProgram(event));
+      const actionDef = findActionByName(callName, program);
+
+      if (!actionDef) {
+        // Validation should have caught this, but handle defensively
+        return yield* _(
+          Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'ValidationError' as const,
+            message: `Action '${callName}' not found. This should have been caught by validation.`,
+            location: getSourceLocation(action),
+          })
+        );
+      }
+
+      const isEndableAction = actionDef.$type === 'EndableActionDefinition';
+
+      // Transform arguments to actionOperationData
       let actionOperationData: Record<string, JsonValue> | undefined;
-      if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
-        // Map positional arguments to parameter names
-        const parameters = actionRef.parameters || [];
-        const args = actionCall.args;
+      if (action.args && action.args.length > 0) {
+        const parameters = actionDef.parameters || [];
 
-        if (args.length !== parameters.length) {
+        if (action.args.length !== parameters.length) {
           return yield* _(
             Effect.fail({
               _tag: 'TransformError' as const,
               kind: 'ValidationError' as const,
-              message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
+              message: `Action '${callName}' expects ${parameters.length} arguments but got ${action.args.length}`,
               location: getSourceLocation(action),
             })
           );
         }
 
-        // Map each argument to its corresponding parameter name
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* _(transformExpression(args[i]));
+          const argValue = yield* _(transformExpression(action.args[i]));
           actionOperationData[paramName] = argValue;
         }
       }
@@ -977,13 +1000,12 @@ const transformTimedEvent = (
         id: crypto.randomUUID(),
         systemName: 'requestAction',
         operationData: {
-          systemName: actionName,
+          systemName: callName,
         },
         sourceLocation: getSourceLocation(action),
       });
 
-      // Step 2: Start the action (uses actionInstance from requestAction)
-      // T187: Pass actionOperationData if action has parameters
+      // Step 2: Start the action
       startOperations.push({
         id: crypto.randomUUID(),
         systemName: 'startAction',
@@ -991,19 +1013,17 @@ const transformTimedEvent = (
         sourceLocation: getSourceLocation(action),
       });
 
-      // End operations: Only generate for endable actions
-      // Regular actions don't have end operations, so leave endOperations empty
+      // End operations: Only for endable actions
       if (isEndableAction) {
         endOperations.push({
           id: crypto.randomUUID(),
           systemName: 'requestAction',
           operationData: {
-            systemName: actionName,
+            systemName: callName,
           },
           sourceLocation: getSourceLocation(action),
         });
 
-        // T187: Pass same actionOperationData to endAction
         endOperations.push({
           id: crypto.randomUUID(),
           systemName: 'endAction',
@@ -1011,16 +1031,16 @@ const transformTimedEvent = (
           sourceLocation: getSourceLocation(action),
         });
       }
-    } else if (action.$type === 'InlineEndableAction') {
-      // Inline endable action: [ ... ] [ ... ]
-      for (const opStmt of action.startOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt));
-        startOperations.push(...ops);
-      }
-      for (const opStmt of action.endOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt));
-        endOperations.push(...ops);
-      }
+    } else if (action.$type === 'ForStatement') {
+      // T056: US3 - ForStatement in timeline context
+      // Transform the for loop body and add to startOperations
+      const forOps = yield* _(transformForStatement(action));
+      startOperations.push(...forOps);
+    } else if (action.$type === 'IfStatement') {
+      // T057: US3 - IfStatement in timeline context
+      // Transform the if/else branches and add to startOperations
+      const ifOps = yield* _(transformIfStatement(action));
+      startOperations.push(...ifOps);
     }
 
     // T173: Validate dependencies in timeline event operations
@@ -1260,12 +1280,58 @@ const transformOperationCall = (
  */
 const transformOperationStatement = (
   stmt: OperationStatement,
-  scope: ScopeContext = createEmptyScope()
+  scope: ScopeContext = createEmptyScope(),
+  isEndOperation: boolean = false
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     switch (stmt.$type) {
       case 'OperationCall': {
-        // Single operation call → single operation
+        // T058: US3 - Check if this is an action call (for control flow in timelines)
+        const operationName = stmt.operationName;
+        const program = yield* _(getProgram(stmt));
+        const actionDef = findActionByName(operationName, program);
+
+        if (actionDef) {
+          // This is an action call - expand to requestAction + startAction/endAction
+          // If isEndOperation is true and action is endable, use endAction instead of startAction
+
+          // Transform arguments to actionOperationData
+          let actionOperationData: Record<string, JsonValue> | undefined;
+          if (stmt.args && stmt.args.length > 0) {
+            const parameters = actionDef.parameters || [];
+            actionOperationData = {};
+            for (let i = 0; i < parameters.length; i++) {
+              const paramName = parameters[i].name;
+              const argValue = yield* _(transformExpression(stmt.args[i], scope));
+              actionOperationData[paramName] = argValue;
+            }
+          }
+
+          const operations: OperationConfigIR[] = [];
+
+          // requestAction
+          operations.push({
+            id: crypto.randomUUID(),
+            systemName: 'requestAction',
+            operationData: { systemName: operationName },
+            sourceLocation: getSourceLocation(stmt),
+          });
+
+          // startAction or endAction (depending on context and action type)
+          const isEndableAction = actionDef.$type === 'EndableActionDefinition';
+          const actionOperation = isEndOperation && isEndableAction ? 'endAction' : 'startAction';
+
+          operations.push({
+            id: crypto.randomUUID(),
+            systemName: actionOperation,
+            operationData: actionOperationData ? { actionOperationData } : {},
+            sourceLocation: getSourceLocation(stmt),
+          });
+
+          return operations;
+        }
+
+        // Not an action - treat as normal operation
         const op = yield* _(transformOperationCall(stmt, scope));
         return [op];
       }
@@ -1893,4 +1959,24 @@ function getSourceLocation(node: any): SourceLocation {
     column: 1,
     length: 0,
   };
+}
+
+/**
+ * T024: Helper to get Program from any AST node
+ */
+function getProgram(node: any): Effect.Effect<Program, TransformError> {
+  let current = node;
+  while (current) {
+    if (current.$type === 'Program') {
+      return Effect.succeed(current as Program);
+    }
+    current = current.$container;
+  }
+
+  return Effect.fail({
+    _tag: 'TransformError' as const,
+    kind: 'ValidationError' as const,
+    message: 'Could not find Program root',
+    location: getSourceLocation(node),
+  });
 }

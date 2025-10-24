@@ -290,13 +290,9 @@ describe('Eligian Grammar - Validation', () => {
                 ]
 
                 timeline "presentation" in ".presentation-container" using video from "presentation.mp4" {
-                    at 0s..5s {
-                        showTitle()
-                    }
+                    at 0s..5s showTitle()
 
-                    at 5s..120s {
-                        fadeIn()
-                    }
+                    at 5s..120s fadeIn()
 
                     at 120s..130s [
                         selectElement("#credits")
@@ -610,6 +606,172 @@ describe('Eligian Grammar - Validation', () => {
           e.message.includes("'continue' can only be used inside a loop")
       );
       expect(loopErrors.length).toBe(0);
+    });
+  });
+
+  // T011: US1 - Validate action call resolves to defined action
+  describe('Unified action call syntax validation (US1)', () => {
+    test('should validate that action call resolves to defined action', async () => {
+      const code = `
+        action fadeIn(selector, duration) [
+          selectElement(selector)
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s fadeIn(".box", 1000)
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - action is defined
+      expect(validationErrors.length).toBe(0);
+    });
+
+    test('should error when action call references undefined action', async () => {
+      const code = `
+        timeline "test" in ".container" using raf {
+          at 0s..5s undefinedAction(".box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - action not defined
+      // Note: This test will fail until validation logic is implemented
+      const undefinedErrors = validationErrors.filter(
+        e => e.message.includes('Unknown action') || e.message.includes('undefined')
+      );
+      expect(undefinedErrors.length).toBeGreaterThan(0);
+    });
+  });
+
+  // T031-T033: US2 - Name collision prevention tests
+  describe('Action name collision prevention (US2)', () => {
+    // T031: Reject action with operation name
+    test('should error when action name conflicts with built-in operation', async () => {
+      const code = `
+        action selectElement(selector) [
+          addClass("test")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement(".box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - action name collides with operation
+      const collisionErrors = validationErrors.filter(
+        e => e.message.includes('conflicts') || e.message.includes('collision')
+      );
+      expect(collisionErrors.length).toBeGreaterThan(0);
+      expect(collisionErrors[0].message).toContain('selectElement');
+    });
+
+    // T032: Reject duplicate action definitions
+    test('should error when duplicate action definitions exist', async () => {
+      const code = `
+        action fadeIn(selector) [
+          selectElement(selector)
+        ]
+
+        action fadeIn(selector) [
+          addClass("visible")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s fadeIn(".box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - duplicate action definition
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBeGreaterThan(0);
+    });
+
+    // T033: Allow action with similar (but not identical) name
+    test('should allow action with similar name that does not collide', async () => {
+      const code = `
+        action mySelectElement(selector) [
+          selectElement(selector)
+          addClass("selected")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s mySelectElement(".box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - name is different
+      expect(validationErrors.length).toBe(0);
+    });
+  });
+
+  // T049: US3 - Control flow with action calls validation
+  describe('Control flow with action calls validation (US3)', () => {
+    test('should validate action calls within for loops', async () => {
+      const code = `
+        action highlight(selector) [
+          selectElement(selector)
+          addClass("highlight")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s for (item in $operationdata.items) {
+            highlight(".box")
+          }
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - action is defined and used correctly
+      expect(validationErrors.length).toBe(0);
+    });
+
+    test('should validate action calls within if/else statements', async () => {
+      const code = `
+        action show(selector) [
+          selectElement(selector)
+          addClass("visible")
+        ]
+
+        action hide(selector) [
+          selectElement(selector)
+          removeClass("visible")
+        ]
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s if (@@condition) {
+            show(".box")
+          } else {
+            hide(".box")
+          }
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - both actions are defined
+      expect(validationErrors.length).toBe(0);
+    });
+
+    test('should error when undefined action called in control flow', async () => {
+      const code = `
+        timeline "test" in ".container" using raf {
+          at 0s..5s for (item in items) {
+            undefinedAction(@@item)
+          }
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - action not defined
+      const undefinedErrors = validationErrors.filter(
+        e => e.message.includes('Unknown action') || e.message.includes('undefined')
+      );
+      expect(undefinedErrors.length).toBeGreaterThan(0);
     });
   });
 });
