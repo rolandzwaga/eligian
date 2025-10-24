@@ -32,9 +32,11 @@ export function getActionCompletions(document: LangiumDocument): CompletionItem[
     const documentation = buildActionDocumentation(action);
 
     return {
-      label: action.name,
-      kind: CompletionItemKind.Class, // Use Class to distinguish from operations (Function)
-      sortText: `2_${action.name}`, // Prefix '2_' ensures actions sort after operations ('1_')
+      label: `action: ${action.name}`, // Prefix with "action:" for clarity
+      insertText: action.name, // Insert only the name (without prefix)
+      filterText: action.name, // Filter by name only (without prefix)
+      kind: CompletionItemKind.Function, // Use Function (same as operations, prefix distinguishes)
+      sortText: action.name.toLowerCase(), // Sort alphabetically by name (case-insensitive)
       detail: signature,
       documentation: documentation
         ? {

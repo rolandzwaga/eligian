@@ -33,9 +33,11 @@ export function getOperationCompletions(_context: CompletionContext): Completion
     );
 
     return {
-      label: operation.name,
+      label: `operation: ${operation.name}`, // Prefix with "operation:" for clarity
+      insertText: operation.name, // Insert only the name (without prefix)
+      filterText: operation.name, // Filter by name only (without prefix)
       kind: CompletionItemKind.Function,
-      sortText: `1_${operation.name}`, // Prefix ensures operations sort before other items
+      sortText: operation.name.toLowerCase(), // Sort alphabetically by name (case-insensitive)
       detail: 'Eligius operation',
       documentation: {
         kind: 'markdown',
