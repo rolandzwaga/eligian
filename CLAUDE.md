@@ -481,6 +481,155 @@ action fadeIn(selector, duration) [  // No annotations
 - **Integration tests**: `src/__tests__/type-system.spec.ts`
 - **Validation tests**: `src/__tests__/validation.spec.ts`
 
+## CSS Loading with Live Reload (Features 010-011)
+
+The Eligian DSL supports importing CSS files that are automatically loaded into the preview with hot-reload capabilities. This enables visual styling of Eligius presentations without restarting the timeline engine.
+
+### Syntax (Feature 010 - Asset Loading)
+
+**CSS Import**:
+```eligian
+// Import single CSS file
+styles "./styles/main.css"
+
+// Import multiple CSS files (loaded in order)
+styles "./styles/base.css"
+styles "./styles/theme.css"
+styles "./styles/animations.css"
+```
+
+**Compilation**: CSS imports are extracted by the compiler and added to the Eligius configuration's `cssFiles` array.
+
+### Preview Integration (Feature 011)
+
+The VS Code extension preview automatically:
+1. **Loads CSS files** when the preview opens
+2. **Hot-reloads CSS** when files change (preserves timeline state)
+3. **Handles errors gracefully** (file not found, permission denied, etc.)
+
+### Architecture
+
+**Core Modules** (`packages/extension/src/extension/`):
+
+1. **[css-loader.ts](packages/extension/src/extension/css-loader.ts)** - Pure utility functions
+   - `generateCSSId()` - Generate stable IDs from file paths (SHA-256 hash)
+   - `convertToWebviewUri()` - Convert file paths to webview URIs
+   - `rewriteCSSUrls()` - Rewrite CSS `url()` paths for webview compatibility
+   - `loadCSSFile()` - Load CSS content with typed error handling
+   - `extractCSSFiles()` - Extract CSS file paths from Eligius config
+
+2. **[webview-css-injector.ts](packages/extension/src/extension/webview-css-injector.ts)** - CSS lifecycle management
+   - `injectCSS()` - Initial CSS load when preview opens
+   - `reloadCSS()` - Hot-reload single CSS file (preserves engine state)
+   - `showCSSError()` - Display error notifications with rate limiting
+   - Error tracking: tracks failed files, rate limits notifications (max 3/min/file)
+
+3. **[css-watcher.ts](packages/extension/src/extension/css-watcher.ts)** - File watching for hot-reload
+   - `CSSWatcherManager` - Watches CSS files for changes
+   - Single `FileSystemWatcher` for all CSS files (efficient)
+   - Per-file debouncing (300ms) to handle auto-save
+   - Independent timers for each file (parallel editing support)
+
+4. **[preview.ts](packages/extension/media/preview.ts)** - Webview message handlers
+   - `css-load` - Inject `<style>` tags with `data-css-id` attributes
+   - `css-reload` - Update existing `<style>` tag content (hot-reload)
+   - `css-remove` - Remove `<style>` tags from DOM
+   - `css-error` - Log errors, retain previous CSS
+
+### How It Works
+
+**Initial Load**:
+1. User opens `.eligian` file with `styles` imports
+2. Compiler extracts CSS file paths → `config.cssFiles[]`
+3. PreviewPanel creates `WebviewCSSInjector` with workspace root
+4. After Eligius engine initializes, CSS files are loaded
+5. CSS `url()` paths are rewritten to webview URIs
+6. `css-load` messages sent to webview with content
+7. Webview creates `<style data-css-id="...">` tags in `<head>`
+8. `CSSWatcherManager` starts watching CSS files
+
+**Hot-Reload**:
+1. Developer edits CSS file, saves
+2. FileSystemWatcher detects change
+3. 300ms debounce timer starts (per-file)
+4. Timer completes → `handleCSSFileChange()` called
+5. CSS file reloaded, URLs rewritten
+6. `css-reload` message sent to webview
+7. Webview updates `<style>` tag's `textContent`
+8. **Timeline continues playing** (no engine restart)
+
+**Error Handling**:
+- **Typed Errors**: `FileNotFoundError`, `PermissionError`, `ReadError`
+- **Rate Limiting**: Max 3 notifications per minute per file (prevents spam)
+- **Graceful Degradation**: Preview remains functional with previous valid CSS
+- **VS Code Notifications**: Clear error messages with "Open File" action
+
+### Content Security Policy
+
+The preview HTML template includes CSP directives for CSS:
+- `style-src 'unsafe-inline'` - Required for inline `<style>` tags
+- `img-src ${cspSource} https: data:` - Required for images in CSS
+- `font-src ${cspSource}` - Required for fonts in CSS
+
+**Security Note**: Using `textContent` (NOT `innerHTML`) when injecting CSS prevents XSS vulnerabilities.
+
+### URL Rewriting for Webview
+
+CSS `url()` paths are rewritten to webview URIs because inline `<style>` tags have no file context:
+
+```css
+/* Original CSS */
+.bg { background: url('./image.png'); }
+
+/* Rewritten for webview */
+.bg { background: url('vscode-webview://authority/path/to/workspace/image.png'); }
+```
+
+This ensures images, fonts, and other assets load correctly in the webview context.
+
+### Performance Characteristics
+
+- **Initial Load**: CSS loads in <500ms (per success criteria)
+- **Hot-Reload**: CSS reloads in <300ms (per success criteria)
+- **Debouncing**: 300ms per-file delay handles auto-save scenarios
+- **Max Files**: Supports up to 10 CSS files efficiently
+- **Memory**: Single FileSystemWatcher for all CSS files (efficient)
+
+### Example
+
+```eligian
+// styles/main.css - Base styles
+styles "./styles/main.css"
+
+// styles/animations.css - Animation styles with images
+styles "./styles/animations.css"
+
+timeline "My Presentation" at 0s {
+  at 0s..5s selectElement("#intro") {
+    animate({opacity: 1}, 1000)
+  }
+}
+```
+
+When you save changes to `styles/main.css` or `styles/animations.css`, the preview automatically reloads the CSS without restarting the timeline.
+
+### Implementation Status
+
+- ✅ **Feature 010** (Asset Loading & Validation): Complete
+  - CSS import syntax (`styles "./file.css"`)
+  - Compiler extracts CSS paths → `config.cssFiles[]`
+- ✅ **Feature 011** (Preview CSS Support with Live Reload): Complete
+  - User Story 1: Apply Imported CSS in Preview (MVP)
+  - User Story 2: Live Reload CSS on File Change
+  - User Story 3: Handle CSS File Errors Gracefully
+
+### Documentation
+
+- **Feature Spec**: `specs/011-preview-css-support/spec.md`
+- **Implementation Plan**: `specs/011-preview-css-support/plan.md`
+- **Tasks**: `specs/011-preview-css-support/tasks.md` (22 tasks completed)
+- **Quickstart Guide**: `specs/011-preview-css-support/quickstart.md`
+
 ## Unified Action and Operation Call Syntax (Feature 006)
 
 Custom actions and built-in operations use **identical calling syntax** throughout the DSL. The compiler automatically distinguishes between them based on name resolution.
