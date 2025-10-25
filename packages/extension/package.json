@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "displayName": "Eligian",
   "type": "module",
+  "publisher": "rolandzwaga",
   "engines": {
     "vscode": "^1.105.0"
   },

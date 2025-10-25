@@ -51,7 +51,10 @@ const EXTENSION_MAP: Record<string, AssetType> = {
  * inferAssetType('./file.min.html')  // → 'html' (uses final extension)
  * ```
  */
-export function inferAssetType(path: string): AssetType | undefined {
+export function inferAssetType(path: string | undefined): AssetType | undefined {
+  // Handle undefined/empty path
+  if (!path) return undefined;
+
   // Extract final extension (after last dot)
   const ext = path.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
   if (!ext) return undefined;

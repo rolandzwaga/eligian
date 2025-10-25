@@ -8,15 +8,16 @@
     "npm": ">=10.2.3"
   },
   "files": [
+    "dist",
     "out",
     "src"
   ],
-  "main": "./out/index.js",
-  "module": "./out/index.js",
+  "main": "./dist/index.cjs",
+  "types": "./out/index.d.ts",
   "exports": {
     ".": {
       "types": "./out/index.d.ts",
-      "default": "./out/index.js"
+      "default": "./dist/index.cjs"
     }
   },
   "typesVersions": {
@@ -27,11 +28,11 @@
     }
   },
   "scripts": {
-    "clean": "shx rm -fr *.tsbuildinfo out coverage",
+    "clean": "shx rm -fr *.tsbuildinfo out dist coverage",
     "generate:metadata": "tsx src/completion/generate-metadata.ts",
     "generate:registry": "tsx src/compiler/operations/generate-registry.ts",
     "generate": "pnpm run generate:metadata && pnpm run generate:registry && pnpm run langium:generate",
-    "build": "pnpm run generate && tsc -p tsconfig.src.json",
+    "build": "pnpm run generate && node esbuild.mjs && tsc -p tsconfig.src.json --emitDeclarationOnly",
     "build:clean": "pnpm run clean && pnpm run build",
     "langium:generate": "langium generate",
     "langium:watch": "langium generate --watch",
@@ -39,14 +40,19 @@
     "test:coverage:ci": "vitest run --coverage"
   },
   "dependencies": {
+    "css-tree": "^2.3.1",
+    "domhandler": "^5.0.3",
+    "domutils": "^3.2.2",
     "effect": "3.18.4",
     "eligius": "1.3.1",
     "fast-check": "4.3.0",
+    "htmlparser2": "^9.1.0",
     "langium": "4.0.3",
     "typir": "^0.3.0",
     "typir-langium": "^0.3.0"
   },
   "devDependencies": {
+    "@types/css-tree": "^2.3.11",
     "langium-cli": "4.0.0",
     "tsx": "4.20.6",
     "vitest": "3.2.4"

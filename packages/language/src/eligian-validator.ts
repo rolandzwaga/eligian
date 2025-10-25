@@ -1,4 +1,5 @@
 import type { ValidationAcceptor, ValidationChecks } from 'langium';
+import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 import {
   hasOperation,
   OPERATION_REGISTRY,
@@ -48,6 +49,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
       validator.checkDefaultImports, // T027-T028: US1 - Duplicate default import detection
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
+      validator.checkAssetLoading, // Feature 010: Asset loading and validation
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: [
@@ -1090,6 +1092,64 @@ export class EligianValidator {
         property: 'path',
         code: error.code,
       });
+    }
+  }
+
+  /**
+   * Feature 010: Asset Loading & Validation - LSP Integration
+   *
+   * Loads and validates all assets referenced in import statements.
+   * Reports file existence, HTML syntax, and CSS syntax errors.
+   *
+   * Constitution Principle X: Compiler-First Validation
+   * - Uses loadProgramAssets() from asset-loading module
+   * - Langium validator is thin adapter
+   */
+  checkAssetLoading(program: Program, accept: ValidationAcceptor): void {
+    // Skip if no imports
+    if (!hasImports(program)) {
+      return;
+    }
+
+    // Get source file path from document URI
+    const filePath = program.$document?.uri?.fsPath;
+    if (!filePath) {
+      // No file path available (e.g., in-memory document during tests)
+      // Skip asset validation for in-memory documents
+      return;
+    }
+
+    // Validate that filePath is a valid absolute path
+    if (typeof filePath !== 'string' || filePath.trim() === '') {
+      // Invalid file path - skip validation
+      return;
+    }
+
+    try {
+      // Load and validate assets
+      const result = loadProgramAssets(program, filePath);
+
+      // Report validation errors
+      for (const error of result.errors) {
+        // Find the import statement that caused this error
+        const imports = getImports(program);
+        const importStmt = imports.find(
+          imp =>
+            (isDefaultImport(imp) && imp.path === error.filePath) ||
+            (isNamedImport(imp) && imp.path === error.filePath)
+        );
+
+        if (importStmt) {
+          accept('error', `${error.message}${error.hint ? `. ${error.hint}` : ''}`, {
+            node: importStmt,
+            property: 'path',
+          });
+        }
+      }
+    } catch (_err) {
+      // Catch any errors from asset loading to prevent extension crash
+      // Errors during asset loading should not crash the LSP
+      // console.error('[Asset Validator] Error loading assets:', _err);
     }
   }
 }

@@ -9,7 +9,13 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as url from 'node:url';
-import { compile, formatErrors } from '@eligian/language';
+import {
+  compile,
+  formatErrors,
+  hasImports,
+  loadProgramAssets,
+  parseSource,
+} from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Effect } from 'effect';
@@ -49,6 +55,71 @@ async function compileFile(inputPath: string, options: CompileOptions): Promise<
 
     if (options.verbose) {
       console.log(chalk.blue(`Compiling ${inputPath}...`));
+    }
+
+    // Parse source to AST for asset validation
+    const parseEffect = parseSource(sourceCode);
+    const program = await Effect.runPromise(parseEffect).catch(error => {
+      // Handle parse errors
+      const formatted = formatErrors([error], sourceCode);
+      console.error(chalk.red('\nParse failed:\n'));
+
+      for (const err of formatted) {
+        console.error(err.message);
+
+        if (err.codeSnippet) {
+          console.error(`\n${err.codeSnippet}`);
+        }
+
+        if (err.hint) {
+          console.error(`\n${chalk.yellow(`💡 ${err.hint}`)}`);
+        }
+
+        console.error(); // blank line
+      }
+
+      process.exit(EXIT_COMPILE_ERROR);
+    });
+
+    // Validate and load assets if imports exist
+    if (hasImports(program)) {
+      const absoluteInputPath = path.resolve(inputPath);
+      const assetResult = loadProgramAssets(program, absoluteInputPath);
+
+      if (assetResult.errors.length > 0) {
+        console.error(chalk.red('\nAsset validation failed:\n'));
+
+        for (const error of assetResult.errors) {
+          console.error(chalk.red(`✗ ${error.message}`));
+          console.error(chalk.gray(`  File: ${error.filePath}`));
+          console.error(chalk.gray(`  Path: ${error.absolutePath}`));
+          console.error(
+            chalk.gray(
+              `  Location: ${error.sourceLocation.file}:${error.sourceLocation.line}:${error.sourceLocation.column}`
+            )
+          );
+
+          if (error.hint) {
+            console.error(chalk.yellow(`  💡 ${error.hint}`));
+          }
+
+          if (error.details) {
+            console.error(chalk.gray(`  Details: ${error.details}`));
+          }
+
+          console.error(); // blank line
+        }
+
+        process.exit(EXIT_COMPILE_ERROR);
+      }
+
+      if (options.verbose && assetResult.errors.length === 0) {
+        const assetCount =
+          (assetResult.layoutTemplate ? 1 : 0) +
+          assetResult.cssFiles.length +
+          Object.keys(assetResult.importMap).length;
+        console.log(chalk.green(`✓ Validated ${assetCount} asset(s)`));
+      }
     }
 
     // Run compiler pipeline

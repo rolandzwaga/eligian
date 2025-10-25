@@ -1,35 +1,31 @@
-# Implementation Plan: Break and Continue Syntactic Sugar
+# Implementation Plan: [FEATURE]
 
-**Branch**: `main` | **Date**: 2025-10-18 | **Spec**: [spec.md](spec.md)
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Add `break` and `continue` keywords to the Eligian DSL as syntactic sugar for `breakForEach` and `continueForEach` operations. This provides familiar control flow syntax that matches common programming languages, improving developer experience while maintaining 100% backwards compatibility with existing code.
-
-**Technical Approach**:
-1. Extend Langium grammar with `BreakStatement` and `ContinueStatement`
-2. Transform statements to operation calls in AST transformer
-3. Add validation to ensure keywords only appear inside loops
-4. Comprehensive testing at all layers (parsing, validation, transformation, integration)
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x with Node.js 20+
-**Primary Dependencies**: Langium 3.x, Effect-ts 3.x, Vitest 3.x
-**Testing**: Vitest for unit and integration tests
-**Target Platform**: Node.js CLI + VS Code extension
-**Project Type**: Single project (monorepo with packages)
-**Performance Goals**: No measurable impact on compilation time (<1ms overhead)
-**Constraints**:
-- Zero breaking changes (existing DSL code must work)
-- Langium grammar must remain deterministic (no ambiguity)
-- Generated Eligius JSON must match existing operation patterns
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
 
-**Scale/Scope**:
-- Grammar: +2 statement types
-- Transformer: +2 transformation functions
-- Validator: +2 validation rules
-- Tests: ~15-20 new tests across 4 test suites
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [single/web/mobile - determines source structure]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
@@ -37,658 +33,81 @@ Add `break` and `continue` keywords to the Eligian DSL as syntactic sugar for `b
 
 Verify compliance with `.specify/memory/constitution.md`:
 
-- [x] **Simplicity & Documentation**: Clear syntactic sugar pattern matching existing `if/else` and `for` patterns. Well-documented in spec.
-- [x] **Comprehensive Testing**: Unit tests for parsing, validation, transformation, and integration tests planned.
-- [x] **No Gold-Plating**: Solves real need (developer ergonomics) without unnecessary features (no labels, no advanced patterns).
-- [x] **Code Review**: Standard PR process applies.
-- [x] **UX Consistency**: Follows existing syntactic sugar patterns (`for`, `if/else`). Consistent error messages.
-- [x] **Functional Programming**: Pure transformation functions, Effect-ts for composition. No mutation of AST.
-- [x] **Operation Metadata Consultation**: `breakForEach` and `continueForEach` metadata already verified in registry.
-- [x] **Biome Integration**: Will run `npm run check` after each phase.
-- [x] **ESM Import Extensions**: All imports use `.js` extensions.
-- [x] **Validation Pattern**: Validation will be compiler-first (though simple AST walking).
+- [ ] **Simplicity & Documentation**: Is the approach clear and well-documented? No unnecessary complexity?
+- [ ] **Comprehensive Testing**: Are unit tests + integration tests planned for all components?
+- [ ] **No Gold-Plating**: Does this solve a real, documented need? No speculative features?
+- [ ] **Code Review**: Is the review process defined?
+- [ ] **UX Consistency**: Are tool interfaces consistent with existing MCP tools?
+- [ ] **Functional Programming**: Does the design maintain external immutability? Effect-ts usage planned?
 
-*All checks pass. No complexity tracking needed - this is a straightforward feature following established patterns.*
+*If any checks fail, document justification in Complexity Tracking section below.*
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```
-specs/main/
-├── plan.md              # This file
-├── spec.md              # Feature specification (already created)
-└── tasks.md             # Will be generated by /speckit.tasks command
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```
-packages/language/
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
+
+tests/
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
 ├── src/
-│   ├── eligian.langium                              # ← Grammar (add BreakStatement, ContinueStatement)
-│   ├── generated/
-│   │   └── ast.ts                                   # ← Generated AST types (auto-updated by Langium)
-│   ├── eligian-validator.ts                        # ← Add checkBreakStatement, checkContinueStatement
-│   ├── compiler/
-│   │   ├── ast-transformer.ts                      # ← Add transformBreakStatement, transformContinueStatement
-│   │   └── __tests__/
-│   │       └── transformer.spec.ts                 # ← Add transformer tests
-│   └── __tests__/
-│       ├── parsing.spec.ts                         # ← Add parsing tests
-│       └── validation.spec.ts                      # ← Add validation tests
-│
-examples/
-└── loop-control-demo.eligian                       # ← New example file
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
 
-CLAUDE.md                                            # ← Update with new syntax patterns
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-## Phase 0: Research & Discovery
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
-**Goal**: Resolve any unknowns and validate design decisions.
+## Complexity Tracking
 
-### Research Tasks
+*Fill ONLY if Constitution Check has violations that must be justified*
 
-1. **Verify Langium Grammar Patterns**
-   - ✅ Review existing statement patterns (`IfStatement`, `ForStatement`)
-   - ✅ Confirm keyword syntax (simple terminal rules)
-   - ✅ Check for grammar conflicts with existing keywords
-
-2. **Verify Transformer Patterns**
-   - ✅ Review how `IfStatement` → `when/otherwise/endWhen`
-   - ✅ Review how `ForStatement` → `forEach/endForEach`
-   - ✅ Confirm operation generation pattern
-
-3. **Verify Validation Patterns**
-   - ✅ Review existing validators in `eligian-validator.ts`
-   - ✅ Check AST utility functions for parent node traversal
-   - ✅ Confirm ValidationAcceptor usage patterns
-
-### Findings
-
-**Grammar Pattern**:
-```langium
-// Existing pattern for simple statements
-VariableDeclaration:
-    'const' name=ID '=' value=Expression;
-
-// Our pattern (even simpler - no parameters)
-BreakStatement:
-    'break';
-
-ContinueStatement:
-    'continue';
-```
-
-**Transformer Pattern**:
-```typescript
-// Existing pattern: IfStatement → when/otherwise/endWhen operations
-function* transformIfStatement(stmt: IfStatement, scope?: ScopeContext): Effect.Effect<OperationConfigIR[], TransformError> {
-  const operations: OperationConfigIR[] = [];
-  operations.push({ systemName: 'when', operationData: { ... } });
-  // ... transform body ...
-  operations.push({ systemName: 'endWhen', operationData: {} });
-  return operations;
-}
-
-// Our pattern (simpler - single operation, no nesting)
-function* transformBreakStatement(stmt: BreakStatement, scope?: ScopeContext): Effect.Effect<OperationConfigIR[], TransformError> {
-  return [{ systemName: 'breakForEach', operationData: {} }];
-}
-```
-
-**Validation Pattern**:
-```typescript
-// Existing pattern: Walk up AST to check context
-import { AstUtils } from 'langium';
-
-function isInsideForLoop(node: AstNode): boolean {
-  let current = node.$container;
-  while (current) {
-    if (isForStatement(current)) {
-      return true;
-    }
-    current = current.$container;
-  }
-  return false;
-}
-```
-
-### Design Decisions
-
-1. **Grammar Location**: Add statements to `OperationStatement` alternatives (alongside `IfStatement`, `ForStatement`)
-2. **Validation Approach**: AST traversal to find containing `ForStatement` (simple, no compiler infrastructure needed)
-3. **Error Messages**: Match existing Langium validator style (clear, actionable)
-4. **Test Strategy**: Follow existing test organization (parsing → validation → transformation → integration)
-
-**Research Complete**: All patterns validated. No unknowns remaining.
-
----
-
-## Phase 1: Design Artifacts
-
-### Data Model
-
-**AST Nodes** (generated by Langium):
-
-```typescript
-// Generated in packages/language/src/generated/ast.ts
-
-export interface BreakStatement extends AstNode {
-  $type: 'BreakStatement';
-  // No properties - just the keyword
-}
-
-export interface ContinueStatement extends AstNode {
-  $type: 'ContinueStatement';
-  // No properties - just the keyword
-}
-```
-
-**Transformer Output** (IR):
-
-```typescript
-// Break statement transforms to:
-{
-  systemName: 'breakForEach',
-  operationData: {}
-}
-
-// Continue statement transforms to:
-{
-  systemName: 'continueForEach',
-  operationData: {}
-}
-```
-
-No new types needed - these map directly to existing Eligius operations.
-
-### API Contracts
-
-**Grammar Contract** (`eligian.langium`):
-
-```langium
-/**
- * Operation Statement - Any statement that can appear in an action or timeline body
- */
-OperationStatement:
-    IfStatement
-    | ForStatement
-    | VariableDeclaration
-    | BreakStatement      // ← NEW
-    | ContinueStatement   // ← NEW
-    | OperationCall;
-
-/**
- * Break Statement - Exit current loop immediately
- *
- * Compiles to: breakForEach() operation
- *
- * Examples:
- *   for (item in items) {
- *     if (@@currentItem.invalid) {
- *       break  // Exit loop
- *     }
- *   }
- *
- * Validation: Must appear inside a ForStatement
- */
-BreakStatement:
-    'break';
-
-/**
- * Continue Statement - Skip to next loop iteration
- *
- * Compiles to: continueForEach() operation
- *
- * Examples:
- *   for (item in items) {
- *     if (@@currentItem.skip) {
- *       continue  // Skip this iteration
- *     }
- *   }
- *
- * Validation: Must appear inside a ForStatement
- */
-ContinueStatement:
-    'continue';
-```
-
-**Transformer Contract** (`ast-transformer.ts`):
-
-```typescript
-/**
- * Transform a BreakStatement to breakForEach operation.
- *
- * @param stmt - BreakStatement AST node
- * @param scope - Current scope context (loop variables, etc.)
- * @returns Effect producing array with single breakForEach operation
- */
-export function* transformBreakStatement(
-  stmt: BreakStatement,
-  scope?: ScopeContext
-): Effect.Effect<OperationConfigIR[], TransformError>;
-
-/**
- * Transform a ContinueStatement to continueForEach operation.
- *
- * @param stmt - ContinueStatement AST node
- * @param scope - Current scope context (loop variables, etc.)
- * @returns Effect producing array with single continueForEach operation
- */
-export function* transformContinueStatement(
-  stmt: ContinueStatement,
-  scope?: ScopeContext
-): Effect.Effect<OperationConfigIR[], TransformError>;
-```
-
-**Validator Contract** (`eligian-validator.ts`):
-
-```typescript
-/**
- * Validate that break statement appears inside a loop.
- *
- * Error if:
- * - Statement is not inside a ForStatement
- *
- * @param stmt - BreakStatement to validate
- * @param accept - Langium validation acceptor
- */
-checkBreakStatement(stmt: BreakStatement, accept: ValidationAcceptor): void;
-
-/**
- * Validate that continue statement appears inside a loop.
- *
- * Error if:
- * - Statement is not inside a ForStatement
- *
- * @param stmt - ContinueStatement to validate
- * @param accept - Langium validation acceptor
- */
-checkContinueStatement(stmt: ContinueStatement, accept: ValidationAcceptor): void;
-```
-
-### Quickstart Examples
-
-**Example 1: Skip invalid items**
-
-```eligian
-// DSL with continue
-for (item in items) {
-  if (@@currentItem.invalid) {
-    continue  // Skip this iteration
-  }
-
-  processItem(@@currentItem)
-}
-```
-
-**Example 2: Early exit on error**
-
-```eligian
-// DSL with break
-for (slide in slides) {
-  processSlide(@@currentItem)
-
-  if ($operationdata.errorOccurred) {
-    break  // Exit loop immediately
-  }
-}
-```
-
-**Example 3: Mixed with explicit operations (backwards compatibility)**
-
-```eligian
-for (item in items) {
-  // Old style - still works
-  if (condition1) {
-    continueForEach()
-  }
-
-  // New style - also works
-  if (condition2) {
-    continue
-  }
-
-  processItem(@@currentItem)
-}
-```
-
----
-
-## Phase 2: Implementation Tasks
-
-**Note**: Detailed task breakdown will be generated by `/speckit.tasks` command.
-
-### High-Level Task Groups
-
-1. **Grammar Extension**
-   - Add `BreakStatement` and `ContinueStatement` to grammar
-   - Regenerate Langium artifacts (`npm run langium:generate`)
-   - Add parsing tests
-
-2. **AST Transformer**
-   - Implement `transformBreakStatement`
-   - Implement `transformContinueStatement`
-   - Update `transformOperationStatement` dispatcher
-   - Add transformer tests
-
-3. **Validation**
-   - Implement `checkBreakStatement` validator
-   - Implement `checkContinueStatement` validator
-   - Add helper function `isInsideForLoop`
-   - Add validation tests
-
-4. **Integration Testing**
-   - Add pipeline integration tests
-   - Add example files demonstrating usage
-   - Verify VS Code integration (red squiggles for errors)
-
-5. **Documentation & Cleanup**
-   - Update CLAUDE.md with new syntax
-   - Add grammar documentation comments
-   - Run Biome checks (`npm run check`)
-   - Verify all tests pass
-
----
-
-## Testing Strategy
-
-### Unit Tests
-
-**Parsing Tests** (`packages/language/src/__tests__/parsing.spec.ts`):
-```typescript
-describe('Break and Continue Statements', () => {
-  test('should parse break statement', async () => {
-    const code = 'for (item in items) { break }';
-    const result = await parseHelper.parse(code);
-    expect(result.parserErrors).toHaveLength(0);
-    const breakStmt = result.value.actions[0].operations[0];
-    expect(isBreakStatement(breakStmt)).toBe(true);
-  });
-
-  test('should parse continue statement', async () => {
-    const code = 'for (item in items) { continue }';
-    const result = await parseHelper.parse(code);
-    expect(result.parserErrors).toHaveLength(0);
-    const continueStmt = result.value.actions[0].operations[0];
-    expect(isContinueStatement(continueStmt)).toBe(true);
-  });
-
-  test('should parse multiple break/continue in loop', async () => {
-    const code = `
-      for (item in items) {
-        if (condition1) { continue }
-        if (condition2) { break }
-      }
-    `;
-    const result = await parseHelper.parse(code);
-    expect(result.parserErrors).toHaveLength(0);
-  });
-});
-```
-
-**Validation Tests** (`packages/language/src/__tests__/validation.spec.ts`):
-```typescript
-describe('Break and Continue Validation', () => {
-  test('should error on break outside loop', async () => {
-    const code = 'action demo [ break ]';
-    const result = await parseHelper.parse(code);
-    const validationErrors = await validationHelper.validate(result);
-    expect(validationErrors).toContainEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('break can only be used inside a loop'),
-        severity: 'error'
-      })
-    );
-  });
-
-  test('should error on continue outside loop', async () => {
-    const code = 'action demo [ continue ]';
-    const result = await parseHelper.parse(code);
-    const validationErrors = await validationHelper.validate(result);
-    expect(validationErrors).toContainEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('continue can only be used inside a loop'),
-        severity: 'error'
-      })
-    );
-  });
-
-  test('should allow break inside loop', async () => {
-    const code = 'action demo [ for (item in items) { break } ]';
-    const result = await parseHelper.parse(code);
-    const validationErrors = await validationHelper.validate(result);
-    expect(validationErrors).toHaveLength(0);
-  });
-
-  test('should allow continue inside loop', async () => {
-    const code = 'action demo [ for (item in items) { continue } ]';
-    const result = await parseHelper.parse(code);
-    const validationErrors = await validationHelper.validate(result);
-    expect(validationErrors).toHaveLength(0);
-  });
-
-  test('should allow break in nested loop', async () => {
-    const code = `
-      action demo [
-        for (outer in items) {
-          for (inner in subitems) {
-            break
-          }
-        }
-      ]
-    `;
-    const result = await parseHelper.parse(code);
-    const validationErrors = await validationHelper.validate(result);
-    expect(validationErrors).toHaveLength(0);
-  });
-});
-```
-
-**Transformer Tests** (`packages/language/src/compiler/__tests__/transformer.spec.ts`):
-```typescript
-describe('Break and Continue Transformation', () => {
-  test('should transform break to breakForEach operation', async () => {
-    const code = `
-      timeline "test" using raf {
-        for (item in items) {
-          break
-        }
-      }
-    `;
-    const program = await parseDSL(code);
-    const result = await Effect.runPromise(transformAST(program));
-
-    const operations = result.config.timelines[0].timelineActions[0].startOperations;
-    const breakOp = operations.find(op => op.systemName === 'breakForEach');
-    expect(breakOp).toBeDefined();
-    expect(breakOp?.operationData).toEqual({});
-  });
-
-  test('should transform continue to continueForEach operation', async () => {
-    const code = `
-      timeline "test" using raf {
-        for (item in items) {
-          continue
-        }
-      }
-    `;
-    const program = await parseDSL(code);
-    const result = await Effect.runPromise(transformAST(program));
-
-    const operations = result.config.timelines[0].timelineActions[0].startOperations;
-    const continueOp = operations.find(op => op.systemName === 'continueForEach');
-    expect(continueOp).toBeDefined();
-    expect(continueOp?.operationData).toEqual({});
-  });
-
-  test('should transform conditional break/continue', async () => {
-    const code = `
-      timeline "test" using raf {
-        for (item in items) {
-          if (@@currentItem.skip) {
-            continue
-          }
-          if (@@currentItem.stop) {
-            break
-          }
-          processItem(@@currentItem)
-        }
-      }
-    `;
-    const program = await parseDSL(code);
-    const result = await Effect.runPromise(transformAST(program));
-
-    const operations = result.config.timelines[0].timelineActions[0].startOperations;
-
-    // Should have: forEach, when, continue, endWhen, when, break, endWhen, startAction, endForEach
-    expect(operations.some(op => op.systemName === 'continueForEach')).toBe(true);
-    expect(operations.some(op => op.systemName === 'breakForEach')).toBe(true);
-  });
-});
-```
-
-### Integration Tests
-
-**Pipeline Tests** (`packages/language/src/compiler/__tests__/pipeline.spec.ts`):
-```typescript
-describe('Break and Continue Pipeline Integration', () => {
-  test('should compile DSL with break to valid Eligius JSON', async () => {
-    const code = `
-      timeline "test" using raf {
-        for (item in items) {
-          selectElement(@@currentItem)
-          if ($operationdata.done) {
-            break
-          }
-        }
-      }
-    `;
-    const result = await Effect.runPromise(compile(code).pipe(Effect.provide(testLayer)));
-
-    expect(result.config.timelines[0].timelineActions).toHaveLength(1);
-    const operations = result.config.timelines[0].timelineActions[0].startOperations;
-    expect(operations.some(op => op.systemName === 'breakForEach')).toBe(true);
-  });
-
-  test('should compile DSL with continue to valid Eligius JSON', async () => {
-    const code = `
-      timeline "test" using raf {
-        for (item in items) {
-          if (@@currentItem.invalid) {
-            continue
-          }
-          processItem(@@currentItem)
-        }
-      }
-    `;
-    const result = await Effect.runPromise(compile(code).pipe(Effect.provide(testLayer)));
-
-    expect(result.config.timelines[0].timelineActions).toHaveLength(1);
-    const operations = result.config.timelines[0].timelineActions[0].startOperations;
-    expect(operations.some(op => op.systemName === 'continueForEach')).toBe(true);
-  });
-});
-```
-
----
-
-## Risk Assessment
-
-### Low Risk Areas
-
-- **Grammar Extension**: Simple terminal rules, no ambiguity
-- **Transformer**: Straightforward mapping to single operation
-- **Testing**: Patterns well-established from existing features
-
-### Medium Risk Areas
-
-- **Validation**: AST traversal for loop detection
-  - **Mitigation**: Use Langium's `AstUtils` for safe traversal
-  - **Testing**: Comprehensive validation tests including nested loops
-
-### High Risk Areas
-
-None identified.
-
----
-
-## Dependencies & Prerequisites
-
-### External Dependencies
-- Langium 3.x (existing)
-- Effect-ts 3.x (existing)
-- Vitest 3.x (existing)
-
-### Internal Prerequisites
-- Operation registry already has `breakForEach` and `continueForEach` (✅ completed)
-- Existing transformer patterns for statements (✅ available)
-- Existing validation patterns (✅ available)
-
-### Blocking Issues
-None.
-
----
-
-## Success Metrics
-
-### Functional Requirements
-- [x] `break` keyword parses correctly
-- [x] `continue` keyword parses correctly
-- [x] Transform to correct Eligius operations
-- [x] Validation catches misuse (outside loops)
-- [x] All existing tests pass (no regressions)
-
-### Quality Requirements
-- [x] 100% test coverage for new code
-- [x] Biome checks pass (0 errors, 0 warnings)
-- [x] Documentation complete (grammar comments, examples)
-- [x] VS Code integration works (errors show as red squiggles)
-
-### Performance Requirements
-- [x] No measurable compilation time increase (<1ms overhead)
-- [x] Grammar remains deterministic (no parse ambiguity)
-
----
-
-## Rollback Plan
-
-If critical issues arise:
-
-1. **Grammar Issues**: Revert grammar changes, regenerate Langium artifacts
-2. **Transformer Issues**: Disable transformation (return empty operations)
-3. **Validation Issues**: Disable validators (allow all usage temporarily)
-
-**Full Rollback**: Single PR can be reverted cleanly (all changes in one commit).
-
----
-
-## Post-Implementation
-
-### Follow-Up Tasks
-- [ ] Monitor user feedback on syntax clarity
-- [ ] Consider adding similar sugar for other control flow operations (if Eligius adds them)
-
-### Documentation Updates
-- [ ] Update CLAUDE.md with new syntax patterns
-- [ ] Add to grammar documentation
-- [ ] Create example files in `examples/`
-
-### Metrics to Track
-- Usage adoption (grep for `break`/`continue` vs `breakForEach()`/`continueForEach()`)
-- Validation error frequency (misuse outside loops)
-
----
-
-**Plan Status**: ✅ **COMPLETE** - Ready for task generation (`/speckit.tasks`)
-
-**Estimated Effort**: 2-3 hours
-- Grammar & Parsing: 30 minutes
-- Transformer: 30 minutes
-- Validation: 45 minutes
-- Testing: 45 minutes
-- Documentation & Cleanup: 30 minutes
-
-**Complexity**: **Low** - Straightforward syntactic sugar following established patterns
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

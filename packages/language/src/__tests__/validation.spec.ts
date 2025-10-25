@@ -1389,9 +1389,9 @@ describe('Eligian Grammar - Validation', () => {
 
       test('T062: should accept unknown extension with explicit as type', async () => {
         const code = `
-          import template from './page.tmpl' as html
-          import styles from './theme.scss' as css
-          import audio from './sound.ogg' as media
+          import pageTemplate from './page.tmpl' as html
+          import themeStyles from './theme.scss' as css
+          import soundFile from './sound.ogg' as media
         `;
         const { validationErrors } = await parseAndValidate(code);
 
@@ -1404,10 +1404,10 @@ describe('Eligian Grammar - Validation', () => {
 
       test('should accept imports with inferrable extensions (no explicit type needed)', async () => {
         const code = `
-          import template from './page.html'
-          import styles from './theme.css'
-          import video from './intro.mp4'
-          import audio from './music.mp3'
+          import pageTemplate from './page.html'
+          import themeStyles from './theme.css'
+          import introVideo from './intro.mp4'
+          import musicFile from './music.mp3'
         `;
         const { validationErrors } = await parseAndValidate(code);
 

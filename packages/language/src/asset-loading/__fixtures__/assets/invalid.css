@@ -1,0 +1,9 @@
+.test {
+  color: red;
+  background: blue
+  /* Missing semicolon above */
+}
+
+.broken {
+  font-size: 16px
+  /* Another missing semicolon */

@@ -35,40 +35,51 @@ This is the exact reason why we want to create the DSL: we need a language that 
 - **Familiar**: Borrow conventions from existing languages (JS/TS where sensible)
 - **Completable**: Full IDE support with autocompletion for Eligius APIs
 
+## Package Manager
+
+**CRITICAL**: This project uses **pnpm** as the package manager, NOT npm or yarn.
+
+- ✅ Use: `pnpm install`, `pnpm run build`, `pnpm test`
+- ❌ Never use: `npm install`, `yarn install`, etc.
+
+**Rationale**: The project is configured with `"packageManager": "pnpm@10.19.0"` in package.json. All scripts use pnpm workspace commands (`pnpm -r`, `pnpm --filter`). Using npm or yarn will cause workspace resolution failures and dependency conflicts.
+
 ## Development Commands
-- `npm run build`: Compile TypeScript to JavaScript
-- `npm run dev`: Run development extension
-- `npm run test`: Run all tests (language package)
-- `npm run clean`: Remove build artifacts
+- `pnpm run build`: Compile TypeScript to JavaScript
+- `pnpm run dev`: Run development extension
+- `pnpm run test`: Run all tests (language package)
+- `pnpm run clean`: Remove build artifacts
+
+**Note**: While `npm run <script>` will work for running scripts (npm delegates to the configured package manager), always use `pnpm install` for dependency management and `pnpm` commands for workspace operations.
 
 ### Code Quality with Biome (REQUIRED)
 
 **IMPORTANT**: All code changes MUST be formatted and linted with Biome after each task completion (Constitution Principle XI).
 
 #### Biome Commands
-- `npm run check`: Format and lint with auto-fix (run after each task)
-- `npm run lint`: Lint only (check for issues without fixing)
-- `npm run format`: Format code only (no linting)
-- `npm run ci`: Check without modifying files (for CI/CD)
+- `pnpm run check`: Format and lint with auto-fix (run after each task)
+- `pnpm run lint`: Lint only (check for issues without fixing)
+- `pnpm run format`: Format code only (no linting)
+- `pnpm run ci`: Check without modifying files (for CI/CD)
 
 #### Workflow: After Each Task
 ```bash
 # 1. Complete your code changes
 # 2. Run Biome check with auto-fix
-npm run check
+pnpm run check
 
 # 3. If issues remain (errors shown):
-npm run lint  # Review what issues remain
+pnpm run lint  # Review what issues remain
 
 # 4. Fix remaining issues:
 #    - If legitimate issues: fix the code
 #    - If false positives: update biome.json with justification
 
 # 5. Verify clean:
-npm run check  # Should show "0 errors, 0 warnings"
+pnpm run check  # Should show "0 errors, 0 warnings"
 
 # 6. Run tests to ensure no breakage:
-npm run test  # All tests must pass
+pnpm run test  # All tests must pass
 ```
 
 #### Biome Configuration (`biome.json`)
@@ -115,8 +126,9 @@ Only update Biome configuration when:
 
 Before considering any task complete:
 - [ ] Code changes implemented
-- [ ] `npm run check` passes (0 errors, 0 warnings)
-- [ ] `npm run test` passes (all tests green)
+- [ ] `pnpm run build` passes (TypeScript compiles successfully)
+- [ ] `pnpm run check` passes (0 errors, 0 warnings)
+- [ ] `pnpm run test` passes (all tests green)
 - [ ] Documentation updated (if applicable)
 - [ ] Biome configuration updated (if rules needed adjustment)
 

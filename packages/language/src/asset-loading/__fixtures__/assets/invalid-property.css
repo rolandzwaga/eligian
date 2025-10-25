@@ -1,0 +1,9 @@
+/* Invalid CSS - Malformed property */
+.container {
+  color red;  /* Missing colon */
+  font-size: 16px
+}
+
+.button {
+  background: /* Missing value */
+}
