@@ -1174,9 +1174,7 @@ describe('Eligian Grammar - Validation', () => {
         const code = "layout './layout.html'";
         const { validationErrors } = await parseAndValidate(code);
 
-        const pathErrors = validationErrors.filter(e =>
-          e.message.includes('relative')
-        );
+        const pathErrors = validationErrors.filter(e => e.message.includes('relative'));
         expect(pathErrors.length).toBe(0);
       });
 
@@ -1184,9 +1182,7 @@ describe('Eligian Grammar - Validation', () => {
         const code = "layout '../shared/layout.html'";
         const { validationErrors } = await parseAndValidate(code);
 
-        const pathErrors = validationErrors.filter(e =>
-          e.message.includes('relative')
-        );
+        const pathErrors = validationErrors.filter(e => e.message.includes('relative'));
         expect(pathErrors.length).toBe(0);
       });
 
@@ -1200,6 +1196,43 @@ describe('Eligian Grammar - Validation', () => {
             e => e.message.includes('relative') && e.message.includes('portable')
           )
         ).toBe(true);
+      });
+    });
+
+    describe('US1 - Default layout import validation', () => {
+      test('T022: should reject duplicate layout imports', async () => {
+        const code = `
+          layout './layout1.html'
+          layout './layout2.html'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('Duplicate') && e.message.includes('layout')
+          )
+        ).toBe(true);
+      });
+
+      test('should accept single layout import', async () => {
+        const code = "layout './layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        expect(duplicateErrors.length).toBe(0);
+      });
+
+      test('should accept layout with action and timeline', async () => {
+        const code = `
+          layout './layout.html'
+          action test [ selectElement("#box") ]
+          timeline "t" in ".c" using raf {}
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        expect(duplicateErrors.length).toBe(0);
       });
     });
   });

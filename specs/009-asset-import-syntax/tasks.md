@@ -90,19 +90,19 @@
 
 ### Tests for User Story 1 (TDD - Write First) ⚠️
 
-- [ ] T020 [P] [US1] Parsing test: Parse `layout` default import in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T021 [P] [US1] Parsing test: Parse complete document with layout import + action in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T022 [P] [US1] Validation test: Reject duplicate `layout` imports in `packages/language/src/__tests__/validation.spec.ts`
-- [ ] T023 [P] [US1] Unit test: `validateDefaultImports()` with layout duplicates in `packages/language/src/validators/__tests__/default-import-validator.spec.ts`
+- [X] T020 [P] [US1] Parsing test: Parse `layout` default import in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T021 [P] [US1] Parsing test: Parse complete document with layout import + action in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T022 [P] [US1] Validation test: Reject duplicate `layout` imports in `packages/language/src/__tests__/validation.spec.ts`
+- [X] T023 [P] [US1] Unit test: `validateDefaultImports()` with layout duplicates in `packages/language/src/validators/__tests__/default-import-validator.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T024 [US1] Add `DefaultImport` grammar rule in `packages/language/src/eligian.langium` for `layout` keyword (see contracts/grammar-contract.langium)
-- [ ] T025 [US1] Run `npm run langium:generate` to update AST types
-- [ ] T026 [US1] Create `validateDefaultImports()` pure function in `packages/language/src/validators/default-import-validator.ts` (checks for duplicate layout imports)
-- [ ] T027 [US1] Add `checkDefaultImports()` Langium validator method to `packages/language/src/eligian-validator.ts` (thin adapter)
-- [ ] T028 [US1] Run `npm run test` to verify all US1 tests pass
-- [ ] T029 [US1] Run `npm run check` (Biome linting/formatting)
+- [X] T024 [US1] Add `DefaultImport` grammar rule in `packages/language/src/eligian.langium` for `layout` keyword (see contracts/grammar-contract.langium)
+- [X] T025 [US1] Run `npm run langium:generate` to update AST types
+- [X] T026 [US1] Create `validateDefaultImports()` pure function in `packages/language/src/validators/default-import-validator.ts` (checks for duplicate layout imports)
+- [X] T027 [US1] Add `checkDefaultImports()` Langium validator method to `packages/language/src/eligian-validator.ts` (thin adapter)
+- [X] T028 [US1] Run `npm run test` to verify all US1 tests pass
+- [X] T029 [US1] Run `npm run check` (Biome linting/formatting)
 
 **Checkpoint**: Layout imports working - developers can specify main HTML template
 

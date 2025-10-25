@@ -881,9 +881,7 @@ describe('Eligian Grammar - Parsing', () => {
       });
 
       test('T011: should parse named import with relative path', async () => {
-        const program = await parseEligian(
-          "import tooltip from './tooltip.html'"
-        );
+        const program = await parseEligian("import tooltip from './tooltip.html'");
 
         expect(program.imports).toHaveLength(1);
         const importStmt = program.imports[0] as NamedImport;
@@ -894,9 +892,7 @@ describe('Eligian Grammar - Parsing', () => {
       });
 
       test('should parse import with parent directory path', async () => {
-        const program = await parseEligian(
-          "layout '../shared/layout.html'"
-        );
+        const program = await parseEligian("layout '../shared/layout.html'");
 
         expect(program.imports).toHaveLength(1);
         const importStmt = program.imports[0] as DefaultImport;
@@ -904,13 +900,55 @@ describe('Eligian Grammar - Parsing', () => {
       });
 
       test('should parse import with deeply nested path', async () => {
-        const program = await parseEligian(
-          "layout './assets/templates/main/layout.html'"
-        );
+        const program = await parseEligian("layout './assets/templates/main/layout.html'");
 
         expect(program.imports).toHaveLength(1);
         const importStmt = program.imports[0] as DefaultImport;
         expect(importStmt.path).toBe('./assets/templates/main/layout.html');
+      });
+    });
+
+    describe('US1 - Default layout import', () => {
+      test('T020: should parse layout default import', async () => {
+        const program = await parseEligian("layout './layout.html'");
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as DefaultImport;
+        expect(importStmt.$type).toBe('DefaultImport');
+        expect(importStmt.type).toBe('layout');
+        expect(importStmt.path).toBe('./layout.html');
+      });
+
+      test('T021: should parse complete document with layout import + action', async () => {
+        const program = await parseEligian(`
+          layout './layout.html'
+
+          action fadeIn [
+            selectElement(".box")
+            animate({opacity: 1}, 500)
+          ]
+
+          timeline "main" in ".container" using raf {}
+        `);
+
+        expect(program.imports).toHaveLength(1);
+        expect(program.imports[0].$type).toBe('DefaultImport');
+        expect((program.imports[0] as DefaultImport).type).toBe('layout');
+
+        expect(program.elements).toHaveLength(2);
+        expect(program.elements[0].$type).toBe('RegularActionDefinition');
+        expect(program.elements[1].$type).toBe('Timeline');
+      });
+
+      test('should parse layout import at document start', async () => {
+        const program = await parseEligian(`
+          layout './main.html'
+          action test [ selectElement("#box") ]
+          timeline "t" in ".c" using raf {}
+        `);
+
+        expect(program.imports).toHaveLength(1);
+        expect((program.imports[0] as DefaultImport).type).toBe('layout');
       });
     });
   });

@@ -34,9 +34,7 @@ describe('validateImportPath() - T015', () => {
     });
 
     test('should accept deeply nested path', () => {
-      const result = validateImportPath(
-        './level1/level2/level3/level4/file.html'
-      );
+      const result = validateImportPath('./level1/level2/level3/level4/file.html');
       expect(result).toBeUndefined();
     });
 

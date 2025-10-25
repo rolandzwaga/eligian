@@ -27,8 +27,9 @@ import type {
   TimelineEvent,
 } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
-import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
+import { isDefaultImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import { validateDefaultImports } from './validators/default-import-validator.js';
 import { validateImportPath } from './validators/import-path-validator.js';
 
 /**
@@ -41,6 +42,7 @@ export function registerValidationChecks(services: EligianServices) {
     Program: [
       validator.checkTimelineRequired,
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
+      validator.checkDefaultImports, // T027-T028: US1 - Duplicate default import detection
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: validator.checkImportPath, // T017: US5 - Path validation for named imports
@@ -981,15 +983,39 @@ export class EligianValidator {
    *
    * Validates both DefaultImport and NamedImport path properties.
    */
-  checkImportPath(
-    importStmt: DefaultImport | NamedImport,
-    accept: ValidationAcceptor
-  ): void {
+  checkImportPath(importStmt: DefaultImport | NamedImport, accept: ValidationAcceptor): void {
     const error = validateImportPath(importStmt.path);
     if (error) {
       accept('error', `${error.message}. ${error.hint}`, {
         node: importStmt,
         property: 'path',
+        code: error.code,
+      });
+    }
+  }
+
+  /**
+   * T027-T028: US1 - Validate no duplicate default imports
+   *
+   * Thin Langium adapter that calls the pure validateDefaultImports() function.
+   * Ensures only one default import per type (layout, styles, provider).
+   *
+   * Follows Constitution Principle X (Compiler-First Validation):
+   * - Business logic in pure validator function
+   * - Langium validator is thin wrapper
+   */
+  checkDefaultImports(program: Program, accept: ValidationAcceptor): void {
+    // Filter to get only default imports
+    const defaultImports = program.imports.filter(isDefaultImport);
+
+    // Validate for duplicates
+    const errors = validateDefaultImports(defaultImports);
+
+    // Report errors
+    for (const [importStmt, error] of errors) {
+      accept('error', `${error.message}. ${error.hint}`, {
+        node: importStmt,
+        property: 'type',
         code: error.code,
       });
     }
