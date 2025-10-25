@@ -68,8 +68,8 @@ export class CompilationService {
       // Read file content
       const fileContent = await this.readFile(documentUri);
 
-      // Compile with timeout protection
-      const compilationPromise = this.compileSource(fileContent);
+      // Compile with timeout protection (pass URI for asset resolution)
+      const compilationPromise = this.compileSource(fileContent, documentUri);
       const timeoutPromise = this.createTimeout(timeout);
 
       const result = await Promise.race([compilationPromise, timeoutPromise]);
@@ -121,10 +121,17 @@ export class CompilationService {
   /**
    * Compile source text to Eligius configuration.
    */
-  private async compileSource(source: string): Promise<Omit<CompilationResult, 'timestamp'>> {
+  private async compileSource(
+    source: string,
+    documentUri: vscode.Uri
+  ): Promise<Omit<CompilationResult, 'timestamp'>> {
     try {
-      // Use the Eligian compiler (returns Effect, need to run it)
-      const config = await Effect.runPromise(compileString(source));
+      // Use the Eligian compiler with sourceUri for asset resolution (Feature 010)
+      const config = await Effect.runPromise(
+        compileString(source, {
+          sourceUri: documentUri.fsPath,
+        })
+      );
 
       return {
         success: true,

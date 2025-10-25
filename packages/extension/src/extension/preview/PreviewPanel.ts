@@ -11,6 +11,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { extractCSSFiles } from '../css-loader.js';
+import { CSSWatcherManager } from '../css-watcher.js';
+import { WebviewCSSInjector } from '../webview-css-injector.js';
 import { CompilationService } from './CompilationService.js';
 import { EligiusEngineService, type EngineEvent } from './EligiusEngineService.js';
 import { FileWatcher } from './FileWatcher.js';
@@ -41,6 +44,9 @@ export class PreviewPanel {
   private compilationService: CompilationService;
   private fileWatcher: FileWatcher;
   private engineService: EligiusEngineService;
+  private cssInjector: WebviewCSSInjector;
+  private cssWatcher: CSSWatcherManager;
+  private workspaceRoot: string;
 
   /**
    * Initialize the static diagnostics collection (called once per extension activation).
@@ -92,6 +98,14 @@ export class PreviewPanel {
     // Set up Eligius engine service
     this.engineService = new EligiusEngineService(this.panel.webview);
     this.engineService.onEvent(event => this.handleEngineEvent(event));
+
+    // Set up CSS injector for hot-reload (Feature 011)
+    this.workspaceRoot =
+      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || path.dirname(documentUri.fsPath);
+    this.cssInjector = new WebviewCSSInjector(this.panel.webview, this.workspaceRoot);
+
+    // Set up CSS watcher for hot-reload (Feature 011 - User Story 2)
+    this.cssWatcher = new CSSWatcherManager(filePath => this.handleCSSFileChange(filePath));
 
     // Set up file watching for auto-recompilation
     this.fileWatcher = new FileWatcher();
@@ -188,6 +202,9 @@ export class PreviewPanel {
     // Stop watching file
     this.fileWatcher.dispose();
 
+    // Stop watching CSS files (Feature 011 - US2)
+    this.cssWatcher.dispose();
+
     // Notify listeners
     for (const callback of this.disposeCallbacks) {
       callback();
@@ -264,6 +281,23 @@ export class PreviewPanel {
         // Initialize Eligius engine with the compiled config
         console.log('[Preview] Initializing Eligius engine');
         await this.engineService.initialize(resolvedConfig);
+
+        // Inject CSS files into preview (Feature 011 - US1)
+        console.log('[Preview] DEBUG: Checking for cssFiles in config...');
+        console.log('[Preview] DEBUG: config.cssFiles =', (resolvedConfig as any).cssFiles);
+        const cssFiles = extractCSSFiles(resolvedConfig);
+        console.log('[Preview] DEBUG: extractCSSFiles returned:', cssFiles);
+        if (cssFiles.length > 0) {
+          console.log(`[Preview] Injecting ${cssFiles.length} CSS file(s):`, cssFiles);
+          await this.cssInjector.injectCSS(cssFiles);
+
+          // Start watching CSS files for hot-reload (Feature 011 - US2)
+          // Convert relative paths to absolute paths
+          const absoluteCSSFiles = cssFiles.map(file =>
+            path.isAbsolute(file) ? file : path.resolve(this.workspaceRoot, file)
+          );
+          this.cssWatcher.startWatching(absoluteCSSFiles, this.workspaceRoot);
+        }
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
       } else {
@@ -403,6 +437,20 @@ export class PreviewPanel {
       case 'destroyed':
         console.log('[Preview] Engine destroyed');
         break;
+    }
+  }
+
+  /**
+   * Handle CSS file change events from the watcher (hot-reload)
+   */
+  private async handleCSSFileChange(filePath: string): Promise<void> {
+    console.log('[Preview] CSS file changed, reloading:', filePath);
+
+    try {
+      await this.cssInjector.reloadCSS(filePath);
+      console.log('[Preview] ✓ CSS hot-reloaded successfully');
+    } catch (error) {
+      console.error('[Preview] ✗ CSS hot-reload failed:', error);
     }
   }
 }

@@ -397,6 +397,58 @@ window.addEventListener('message', async event => {
     case 'destroy':
       await destroyEngine();
       break;
+
+    // CSS injection and hot-reload (Feature 011)
+    case 'css-load': {
+      const { cssId, content, loadOrder } = message.payload;
+      console.log(`[Webview] Loading CSS: ${cssId} (order: ${loadOrder})`);
+
+      let styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.setAttribute('data-css-id', cssId);
+        styleTag.setAttribute('data-load-order', loadOrder.toString());
+        document.head.appendChild(styleTag);
+      }
+      // CRITICAL: Use textContent (NOT innerHTML) for security
+      styleTag.textContent = content;
+      console.log(`[Webview] ✓ CSS loaded: ${cssId}`);
+      break;
+    }
+
+    case 'css-reload': {
+      const { cssId, content } = message.payload;
+      console.log(`[Webview] Reloading CSS: ${cssId}`);
+
+      const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
+      if (styleTag) {
+        // Hot-reload: just update content (timeline continues)
+        styleTag.textContent = content;
+        console.log(`[Webview] ✓ CSS reloaded: ${cssId}`);
+      } else {
+        console.warn(`[Webview] ⚠ CSS reload failed: style tag not found for ${cssId}`);
+      }
+      break;
+    }
+
+    case 'css-remove': {
+      const { cssId } = message.payload;
+      console.log(`[Webview] Removing CSS: ${cssId}`);
+
+      const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`);
+      if (styleTag) {
+        styleTag.remove();
+        console.log(`[Webview] ✓ CSS removed: ${cssId}`);
+      }
+      break;
+    }
+
+    case 'css-error': {
+      const { cssId, filePath, error } = message.payload;
+      console.error(`[Webview] CSS Error for ${filePath} (${cssId}):`, error);
+      // Keep previous CSS (if any) - no changes to DOM
+      break;
+    }
   }
 });
 
