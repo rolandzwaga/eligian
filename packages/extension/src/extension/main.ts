@@ -104,6 +104,7 @@ function registerCompileCommand(): any {
           const compileEffect = compile(sourceCode, {
             optimize: true,
             minify: false,
+            sourceUri: sourceUri.fsPath,
           });
 
           const result = await Effect.runPromise(compileEffect).catch(error => {

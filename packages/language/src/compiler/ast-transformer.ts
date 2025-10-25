@@ -116,8 +116,14 @@ function createEmptyScope(): ScopeContext {
  *
  * Transforms a complete Langium Program AST into EligiusIR aligned with IEngineConfiguration.
  * Supports multiple timelines for complex scenarios (e.g., synchronized video+audio).
+ *
+ * @param program - Parsed Langium AST
+ * @param assets - Optional loaded assets (layout HTML, CSS files) from asset-loading pipeline
  */
-export const transformAST = (program: Program): Effect.Effect<EligiusIR, TransformError> =>
+export const transformAST = (
+  program: Program,
+  assets?: import('../asset-loading/compiler-integration.js').AssetLoadingResult
+): Effect.Effect<EligiusIR, TransformError> =>
   Effect.gen(function* (_) {
     // CONSTANT FOLDING (T008): Build constant map FIRST
     // This map will be used throughout transformation to inline constant values
@@ -197,8 +203,8 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     // Generate default configuration values
     const defaults = createDefaultConfiguration();
 
-    // Generate layoutTemplate with container divs for all timelines
-    const layoutTemplate = generateLayoutTemplate(timelines);
+    // Use loaded layout template if available, otherwise generate default
+    const layoutTemplate = assets?.layoutTemplate ?? generateLayoutTemplate(timelines);
 
     // T273: Generate timelineProviderSettings based on timeline types used
     const providerSettings = generateTimelineProviderSettings(timelines);
@@ -228,7 +234,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       containerSelector: defaults.containerSelector,
       language: defaults.language,
       layoutTemplate,
-      cssFiles: [], // TODO: Populate from 'styles' import when implemented
+      cssFiles: assets?.cssFiles ?? [], // Use loaded CSS files from asset imports
       availableLanguages: defaults.availableLanguages,
       labels: defaults.labels,
       initActions: eligiusInitActions,

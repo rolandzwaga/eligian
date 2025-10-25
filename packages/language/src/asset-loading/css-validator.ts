@@ -1,17 +1,19 @@
 /**
  * CSS Validator Implementation
  *
- * Validates CSS syntax using css-tree.
+ * Validates CSS syntax using PostCSS for strict syntax validation.
+ * css-tree is kept as a dependency for future class name extraction features.
  */
 
-import { parse, type SyntaxParseError } from 'css-tree';
+import postcss from 'postcss';
 import type { ICssValidator } from './interfaces.js';
 import type { CssValidationError, CssValidationResult } from './types.js';
 
 /**
- * CSS validator implementation using css-tree
+ * CSS validator implementation using PostCSS
  *
- * Validates CSS syntax by attempting to parse with css-tree and catching errors.
+ * Validates CSS syntax by attempting to parse with PostCSS and catching CssSyntaxError.
+ * PostCSS is stricter than css-tree and catches unclosed braces, missing brackets, etc.
  */
 export class CssValidator implements ICssValidator {
   /**
@@ -32,26 +34,29 @@ export class CssValidator implements ICssValidator {
     const errors: CssValidationError[] = [];
 
     try {
-      // Parse CSS with css-tree
-      // css-tree will throw CssSyntaxError for invalid CSS
-      parse(css, {
-        positions: true, // Include line/column positions
-        parseAtrulePrelude: true, // Parse @ rule preludes
-        parseCustomProperty: true, // Parse CSS custom properties (--var)
+      // Parse CSS with PostCSS
+      // PostCSS will throw CssSyntaxError for invalid CSS
+      postcss.parse(css, {
+        from: undefined, // No source file (in-memory validation)
       });
     } catch (err) {
       // Handle CSS syntax errors
-      if (err instanceof Error && 'name' in err && err.name === 'SyntaxError') {
-        const syntaxError = err as SyntaxParseError;
+      if (err instanceof Error && err.name === 'CssSyntaxError') {
+        // PostCSS CssSyntaxError has line, column, and reason properties
+        const syntaxError = err as any; // Type as any to access PostCSS error properties
 
-        // Calculate line and column from offset
-        const { line, column } = this.offsetToLineColumn(css, syntaxError.offset);
+        // Extract line and column from error
+        const line = syntaxError.line || 0;
+        const column = syntaxError.column || 0;
+
+        // Use PostCSS's reason property for the error message
+        const message = syntaxError.reason || syntaxError.message || 'CSS syntax error';
 
         // Generate helpful hint based on error message
-        const hint = this.generateHint(syntaxError.message);
+        const hint = this.generateHint(message);
 
         errors.push({
-          message: syntaxError.message || 'CSS syntax error',
+          message,
           line,
           column,
           hint,
@@ -75,32 +80,9 @@ export class CssValidator implements ICssValidator {
   }
 
   /**
-   * Convert byte offset to line and column numbers
-   *
-   * @param text - The CSS text
-   * @param offset - Byte offset in the text
-   * @returns Line and column numbers (1-indexed)
-   */
-  private offsetToLineColumn(text: string, offset: number): { line: number; column: number } {
-    let line = 1;
-    let column = 1;
-
-    for (let i = 0; i < offset && i < text.length; i++) {
-      if (text[i] === '\n') {
-        line++;
-        column = 1;
-      } else {
-        column++;
-      }
-    }
-
-    return { line, column };
-  }
-
-  /**
    * Generate helpful hint based on error message
    *
-   * @param errorMessage - Error message from css-tree
+   * @param errorMessage - Error message from PostCSS
    * @returns Helpful hint for the user
    */
   private generateHint(errorMessage: string): string {

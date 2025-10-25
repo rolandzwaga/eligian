@@ -139,9 +139,8 @@ h1 + p {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should accept CSS with browser-tolerant quirks', () => {
-      // css-tree (like browsers) is forgiving with many CSS errors
-      // Missing semicolons, missing closing braces, etc. are often auto-corrected
+    it('should reject CSS with missing semicolons', () => {
+      // PostCSS is stricter than css-tree and catches missing semicolons
       const css = `
 .container {
   color: red
@@ -150,8 +149,10 @@ h1 + p {
 `;
       const result = validator.validate(css);
 
-      // This is valid in fault-tolerant mode
-      expect(result.valid).toBe(true);
+      // PostCSS catches missing semicolons (stricter validation)
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('semicolon');
     });
   });
 

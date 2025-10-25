@@ -21,6 +21,10 @@
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import { EmptyFileSystem, URI } from 'langium';
+import {
+  type AssetLoadingResult,
+  loadProgramAssets,
+} from '../asset-loading/compiler-integration.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
 import { transformAST } from './ast-transformer.js';
@@ -65,6 +69,12 @@ export interface CompileOptions {
    * Note: Not yet implemented
    */
   sourcemap?: boolean;
+
+  /**
+   * Source file URI/path for resolving relative asset imports
+   * Required for asset validation to resolve relative paths
+   */
+  sourceUri?: string;
 
   /**
    * Target Eligius version (default: '1.x')
@@ -209,13 +219,19 @@ export const compile = (
 ): Effect.Effect<IEngineConfiguration, CompileError> =>
   Effect.gen(function* (_) {
     // T076: Parse source to AST
-    const program = yield* _(parseSource(source));
+    const program = yield* _(parseSource(source, options.sourceUri));
 
     // T077: Validate AST (no-op, done during parsing)
     const validatedProgram = yield* _(validateAST(program));
 
+    // Load assets (layout HTML, CSS files, media) if sourceUri is provided
+    let assets: AssetLoadingResult | undefined;
+    if (options.sourceUri) {
+      assets = loadProgramAssets(validatedProgram, options.sourceUri);
+    }
+
     // T050-T059: Transform AST to IR
-    const ir = yield* _(transformAST(validatedProgram));
+    const ir = yield* _(transformAST(validatedProgram, assets));
 
     // T060-T064: Type check IR
     const typedIR = yield* _(typeCheck(ir));
