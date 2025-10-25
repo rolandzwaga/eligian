@@ -3,6 +3,7 @@ import { parseHelper } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
+import { getElements } from '../utils/program-helpers.js';
 
 describe('Action Call Type Validation', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;
@@ -112,7 +113,7 @@ describe('Action Call Type Validation', () => {
       const program = document.parseResult.value;
 
       // Try to infer type of action calls
-      const timeline = program.elements.find(e => e.$type === 'Timeline') as any;
+      const timeline = getElements(program).find(e => e.$type === 'Timeline') as any;
       if (timeline) {
         //console.log('Timeline events:', timeline.events);
 

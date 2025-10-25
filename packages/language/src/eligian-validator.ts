@@ -27,10 +27,14 @@ import type {
   TimelineEvent,
 } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
-import { isDefaultImport } from './utils/ast-helpers.js';
+import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import { getElements, getImports, getTimelines } from './utils/program-helpers.js';
+import { validateAssetType } from './validators/asset-type-validator.js';
 import { validateDefaultImports } from './validators/default-import-validator.js';
+import { validateImportName } from './validators/import-name-validator.js';
 import { validateImportPath } from './validators/import-path-validator.js';
+import { RESERVED_KEYWORDS } from './validators/validation-constants.js';
 
 /**
  * Register custom validation checks.
@@ -43,9 +47,13 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkTimelineRequired,
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
       validator.checkDefaultImports, // T027-T028: US1 - Duplicate default import detection
+      validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
-    NamedImport: validator.checkImportPath, // T017: US5 - Path validation for named imports
+    NamedImport: [
+      validator.checkImportPath, // T017: US5 - Path validation for named imports
+      validator.checkAssetType, // T067-T068: US4 - Type inference validation
+    ],
     Timeline: [validator.checkValidProvider, validator.checkSourceRequired],
     TimelineEvent: [validator.checkValidTimeRange, validator.checkNonNegativeTimes],
     OperationCall: [
@@ -97,7 +105,7 @@ export class EligianValidator {
    * Multiple timelines are supported for complex scenarios (e.g., synchronized video+audio).
    */
   checkTimelineRequired(program: Program, accept: ValidationAcceptor): void {
-    const timelines = program.elements.filter(el => el.$type === 'Timeline');
+    const timelines = getTimelines(program);
 
     if (timelines.length === 0) {
       accept(
@@ -105,7 +113,7 @@ export class EligianValidator {
         'A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }',
         {
           node: program,
-          property: 'elements',
+          property: 'statements',
         }
       );
     }
@@ -119,7 +127,7 @@ export class EligianValidator {
   checkDuplicateActions(program: Program, accept: ValidationAcceptor): void {
     const actionNames = new Map<string, RegularActionDefinition | EndableActionDefinition>();
 
-    for (const element of program.elements) {
+    for (const element of getElements(program)) {
       if (
         element.$type === 'RegularActionDefinition' ||
         element.$type === 'EndableActionDefinition'
@@ -1006,7 +1014,7 @@ export class EligianValidator {
    */
   checkDefaultImports(program: Program, accept: ValidationAcceptor): void {
     // Filter to get only default imports
-    const defaultImports = program.imports.filter(isDefaultImport);
+    const defaultImports = getImports(program).filter(isDefaultImport);
 
     // Validate for duplicates
     const errors = validateDefaultImports(defaultImports);
@@ -1016,6 +1024,70 @@ export class EligianValidator {
       accept('error', `${error.message}. ${error.hint}`, {
         node: importStmt,
         property: 'type',
+        code: error.code,
+      });
+    }
+  }
+
+  /**
+   * T048-T051: US2 - Validate named import names
+   *
+   * Thin Langium adapter that calls the pure validateImportName() function.
+   * Ensures import names are unique and don't conflict with reserved keywords or operations.
+   *
+   * Follows Constitution Principle X (Compiler-First Validation):
+   * - Business logic in pure validator function
+   * - Langium validator is thin wrapper
+   */
+  checkNamedImportNames(program: Program, accept: ValidationAcceptor): void {
+    // Filter to get only named imports
+    const namedImports = getImports(program).filter(isNamedImport);
+
+    // Build set of existing import names
+    const existingNames = new Set<string>();
+
+    // Get operation names from registry
+    const operationNames = new Set(Object.keys(OPERATION_REGISTRY));
+
+    // Validate each named import
+    for (const importStmt of namedImports) {
+      const error = validateImportName(
+        importStmt.name,
+        existingNames,
+        RESERVED_KEYWORDS,
+        operationNames
+      );
+
+      if (error) {
+        accept('error', `${error.message}. ${error.hint}`, {
+          node: importStmt,
+          property: 'name',
+          code: error.code,
+        });
+      } else {
+        // Add to existing names set for next iteration
+        existingNames.add(importStmt.name);
+      }
+    }
+  }
+
+  /**
+   * T067-T068: US4 - Validate asset type inference
+   *
+   * Thin Langium adapter that calls the pure validateAssetType() function.
+   * Ensures named imports either have inferrable extensions or explicit type overrides.
+   *
+   * Follows Constitution Principle X (Compiler-First Validation):
+   * - Business logic in pure validator function
+   * - Langium validator is thin wrapper
+   */
+  checkAssetType(importStmt: NamedImport, accept: ValidationAcceptor): void {
+    const error = validateAssetType(importStmt);
+
+    if (error) {
+      accept('error', `${error.message}. ${error.hint}`, {
+        node: importStmt,
+        property: 'path',
         code: error.code,
       });
     }

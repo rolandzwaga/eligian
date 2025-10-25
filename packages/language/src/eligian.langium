@@ -21,8 +21,10 @@ grammar Eligian
 // ============================================================================
 
 entry Program:
-    (imports += ImportStatement)*
-    (elements += ProgramElement)*;
+    (statements += ProgramStatement)*;
+
+ProgramStatement:
+    ImportStatement | ProgramElement;
 
 ProgramElement:
     ActionDefinition | Timeline | VariableDeclaration;

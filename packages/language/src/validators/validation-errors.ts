@@ -84,9 +84,9 @@ export const ERROR_MESSAGES = {
     hint: 'Choose a different name for this import',
   }),
 
-  RESERVED_KEYWORD: (name: string) => ({
+  RESERVED_KEYWORD: (name: string, keywords: Set<string>) => ({
     message: `Cannot use reserved keyword '${name}' as import name`,
-    hint: 'Reserved keywords: if, else, for, break, continue, at, action, timeline, layout, styles, provider, import, from, as',
+    hint: `Reserved keywords: ${Array.from(keywords).sort().join(', ')}`,
   }),
 
   OPERATION_NAME_CONFLICT: (name: string) => ({

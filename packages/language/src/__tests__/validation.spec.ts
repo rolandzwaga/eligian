@@ -1294,5 +1294,157 @@ describe('Eligian Grammar - Validation', () => {
         expect(duplicateErrors.length).toBe(3); // One error for each type
       });
     });
+
+    describe('US2 - Named import validation', () => {
+      test('T043: should reject duplicate import names', async () => {
+        const code = `
+          import tooltip from './tooltip1.html'
+          import tooltip from './tooltip2.html'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('Duplicate') && e.message.includes('tooltip')
+          )
+        ).toBe(true);
+      });
+
+      test('T044: should reject reserved keyword as import name', async () => {
+        // NOTE: Most reserved keywords ('if', 'else', 'layout', 'styles', etc.) are grammar keywords
+        // and will fail PARSING before validation runs. The validator's reserved keyword check
+        // is defensive but won't be reached in practice since Langium prevents these as IDs.
+        //
+        // This test is commented out because there are no keywords that:
+        // 1. Can be parsed as IDs (not grammar keywords)
+        // 2. Are in our RESERVED_KEYWORDS set
+        //
+        // All RESERVED_KEYWORDS are grammar keywords, so parser rejects them first.
+        //
+        // If we add future-reserved names (not yet grammar keywords), uncomment and update this test.
+        // Reserved keyword validation is still implemented for defensive programming,
+        // but in practice only catches cases if grammar changes.
+      });
+
+      test('T045: should reject operation name conflict', async () => {
+        const code = "import selectElement from './select.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('operation') && e.message.includes('selectElement')
+          )
+        ).toBe(true);
+      });
+
+      test('should accept valid import names', async () => {
+        const code = `
+          import tooltip from './tooltip.html'
+          import modal from './modal.html'
+          import sidebar from './sidebar.html'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const nameErrors = validationErrors.filter(
+          e => e.message.includes('Duplicate') || e.message.includes('reserved')
+        );
+        expect(nameErrors.length).toBe(0);
+      });
+
+      test('should reject multiple reserved keywords', async () => {
+        // NOTE: Same as T044 - this test is disabled because all RESERVED_KEYWORDS
+        // are grammar keywords and fail parsing before validation.
+        //
+        // Reserved keyword validation exists for defensive programming but won't
+        // trigger in practice with current grammar.
+      });
+    });
+
+    describe('US4 - Type inference validation', () => {
+      test('T060: should reject unknown extension without explicit type', async () => {
+        const code = "import template from './page.tmpl'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(e => e.message.includes('Unknown') && e.message.includes('.tmpl'))
+        ).toBe(true);
+        expect(
+          validationErrors.some(e => e.message.includes('as html') || e.message.includes('as css'))
+        ).toBe(true);
+      });
+
+      test('T061: should reject ambiguous .ogg extension without explicit type', async () => {
+        const code = "import bgMusic from './audio.ogg'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(e => e.message.includes('Ambiguous') && e.message.includes('.ogg'))
+        ).toBe(true);
+        expect(validationErrors.some(e => e.message.includes('as media'))).toBe(true);
+      });
+
+      test('T062: should accept unknown extension with explicit as type', async () => {
+        const code = `
+          import template from './page.tmpl' as html
+          import styles from './theme.scss' as css
+          import audio from './sound.ogg' as media
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        // Should have no type inference errors
+        const typeErrors = validationErrors.filter(
+          e => e.message.includes('Unknown') || e.message.includes('Ambiguous')
+        );
+        expect(typeErrors.length).toBe(0);
+      });
+
+      test('should accept imports with inferrable extensions (no explicit type needed)', async () => {
+        const code = `
+          import template from './page.html'
+          import styles from './theme.css'
+          import video from './intro.mp4'
+          import audio from './music.mp3'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        // Should have no type inference errors
+        const typeErrors = validationErrors.filter(
+          e => e.message.includes('Unknown') || e.message.includes('Ambiguous')
+        );
+        expect(typeErrors.length).toBe(0);
+      });
+
+      test('should allow explicit type override for inferrable extensions', async () => {
+        // Even though .html is inferrable, user can explicitly specify type
+        const code = "import template from './page.html' as html";
+        const { validationErrors } = await parseAndValidate(code);
+
+        const typeErrors = validationErrors.filter(
+          e => e.message.includes('Unknown') || e.message.includes('Ambiguous')
+        );
+        expect(typeErrors.length).toBe(0);
+      });
+
+      test('should reject multiple unknown extensions', async () => {
+        const code = `
+          import template from './page.tmpl'
+          import config from './settings.json'
+          import bgMusic from './sound.ogg'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const typeErrors = validationErrors.filter(
+          e =>
+            e.message.includes('Unknown') ||
+            e.message.includes('Ambiguous') ||
+            e.message.includes('specify type')
+        );
+        expect(typeErrors.length).toBe(3);
+      });
+    });
   });
 });

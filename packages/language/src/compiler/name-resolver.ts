@@ -6,6 +6,7 @@
  */
 
 import type { ActionDefinition, Program } from '../generated/ast.js';
+import { getElements } from '../utils/program-helpers.js';
 import { hasOperation, OPERATION_REGISTRY } from './operations/index.js';
 
 /**
@@ -38,7 +39,7 @@ export function buildNameRegistry(program: Program): NameRegistry {
   }
 
   // T038: Populate actions from program's ActionDefinition nodes
-  for (const element of program.elements) {
+  for (const element of getElements(program)) {
     if (
       element.$type === 'RegularActionDefinition' ||
       element.$type === 'EndableActionDefinition'
@@ -55,7 +56,7 @@ export function buildNameRegistry(program: Program): NameRegistry {
  * T018: Helper function for action lookup
  */
 export function findActionByName(name: string, program: Program): ActionDefinition | undefined {
-  for (const element of program.elements) {
+  for (const element of getElements(program)) {
     if (
       (element.$type === 'RegularActionDefinition' ||
         element.$type === 'EndableActionDefinition') &&

@@ -21,6 +21,7 @@ import {
   type RegularActionDefinition,
   type Timeline,
 } from '../generated/ast.js';
+import { getElements, getImports } from '../utils/program-helpers.js';
 
 const services = createEligianServices(EmptyFileSystem).Eligian;
 
@@ -41,8 +42,8 @@ describe('Eligian Grammar - Parsing', () => {
         'timeline "main" in ".container" using video from "video.mp4" {}'
       );
 
-      expect(program.elements).toHaveLength(1);
-      const timeline = program.elements[0] as Timeline;
+      expect(getElements(program)).toHaveLength(1);
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
       expect(timeline.name).toBe('main');
       expect(timeline.containerSelector).toBe('.container');
@@ -55,8 +56,8 @@ describe('Eligian Grammar - Parsing', () => {
         'timeline "audio" in "#audio-player" using audio from "audio.mp3" {}'
       );
 
-      expect(program.elements).toHaveLength(1);
-      const timeline = program.elements[0] as Timeline;
+      expect(getElements(program)).toHaveLength(1);
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
       expect(timeline.containerSelector).toBe('#audio-player');
       expect(timeline.provider).toBe('audio');
@@ -68,8 +69,8 @@ describe('Eligian Grammar - Parsing', () => {
         'timeline "animation" in ".animation-container" using raf {}'
       );
 
-      expect(program.elements).toHaveLength(1);
-      const timeline = program.elements[0] as Timeline;
+      expect(getElements(program)).toHaveLength(1);
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
       expect(timeline.containerSelector).toBe('.animation-container');
       expect(timeline.provider).toBe('raf');
@@ -78,8 +79,8 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse custom timeline', async () => {
       const program = await parseEligian('timeline "custom" in ".custom-timeline" using custom {}');
 
-      expect(program.elements).toHaveLength(1);
-      const timeline = program.elements[0] as Timeline;
+      expect(getElements(program)).toHaveLength(1);
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.$type).toBe('Timeline');
       expect(timeline.containerSelector).toBe('.custom-timeline');
       expect(timeline.provider).toBe('custom');
@@ -99,8 +100,8 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      expect(program.elements).toHaveLength(1);
-      const timeline = program.elements[0] as Timeline;
+      expect(getElements(program)).toHaveLength(1);
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.events).toHaveLength(1);
       expect(timeline.events[0].timeRange).toBeDefined();
       expect(timeline.events[0].action.$type).toBe('InlineEndableAction');
@@ -120,8 +121,8 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      expect(program.elements).toHaveLength(2);
-      const timeline = program.elements[1] as Timeline;
+      expect(getElements(program)).toHaveLength(2);
+      const timeline = getElements(program)[1] as Timeline;
       expect(timeline.events).toHaveLength(1);
       expect(timeline.events[0].action.$type).toBe('OperationCall');
     });
@@ -136,7 +137,7 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      const timeline = program.elements[0] as Timeline;
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.events).toHaveLength(1);
       expect(timeline.events[0].timeRange).toBeDefined();
     });
@@ -161,7 +162,7 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      const timeline = program.elements[0] as Timeline;
+      const timeline = getElements(program)[0] as Timeline;
       expect(timeline.events).toHaveLength(3);
     });
 
@@ -177,7 +178,7 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      const timeline = program.elements[1] as Timeline;
+      const timeline = getElements(program)[1] as Timeline;
       expect(timeline.events).toHaveLength(1);
       // Note: This will initially fail because grammar doesn't support direct calls yet
     });
@@ -198,7 +199,7 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      const timeline = program.elements[1] as Timeline;
+      const timeline = getElements(program)[1] as Timeline;
       expect(timeline.events).toHaveLength(1);
       // Note: Mixed calls in inline blocks - tests that both resolve correctly
     });
@@ -212,7 +213,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations).toHaveLength(1);
       expect(action.operations[0].operationName.$refText).toBe('wait');
       expect(action.operations[0].args).toHaveLength(0);
@@ -225,7 +226,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].operationName.$refText).toBe('selectElement');
       expect(action.operations[0].args).toHaveLength(1);
     });
@@ -237,7 +238,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].operationName.$refText).toBe('animate');
       expect(action.operations[0].args).toHaveLength(3);
     });
@@ -249,7 +250,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].operationName.$refText).toBe('setStyle');
       expect(action.operations[0].args).toHaveLength(1);
       expect(action.operations[0].args[0].$type).toBe('ObjectLiteral');
@@ -262,7 +263,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].operationName.$refText).toBe('setData');
       const objLiteral = action.operations[0].args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('PropertyChainReference');
@@ -277,7 +278,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters).toHaveLength(1);
       expect(action.parameters[0].name).toBe('selector');
       expect(action.parameters[0].type).toBe('string');
@@ -290,7 +291,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters[0].name).toBe('duration');
       expect(action.parameters[0].type).toBe('number');
     });
@@ -302,7 +303,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters[0].name).toBe('enabled');
       expect(action.parameters[0].type).toBe('boolean');
     });
@@ -314,7 +315,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters[0].name).toBe('config');
       expect(action.parameters[0].type).toBe('object');
     });
@@ -326,7 +327,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters[0].name).toBe('items');
       expect(action.parameters[0].type).toBe('array');
     });
@@ -339,7 +340,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters).toHaveLength(3);
       expect(action.parameters[0].name).toBe('selector');
       expect(action.parameters[0].type).toBe('string');
@@ -356,7 +357,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters).toHaveLength(3);
       expect(action.parameters[0].type).toBe('string');
       expect(action.parameters[1].type).toBeUndefined(); // No type annotation
@@ -370,7 +371,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.parameters).toHaveLength(2);
       expect(action.parameters[0].type).toBeUndefined();
       expect(action.parameters[1].type).toBeUndefined();
@@ -386,7 +387,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as EndableActionDefinition;
+      const action = getElements(program)[0] as EndableActionDefinition;
       expect(action.parameters).toHaveLength(2);
       expect(action.parameters[0].name).toBe('selector');
       expect(action.parameters[0].type).toBe('string');
@@ -404,8 +405,8 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      expect(program.elements).toHaveLength(1);
-      const action = program.elements[0] as RegularActionDefinition;
+      expect(getElements(program)).toHaveLength(1);
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.$type).toBe('RegularActionDefinition');
       expect(action.name).toBe('fadeIn');
       expect(action.operations).toHaveLength(2);
@@ -421,7 +422,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as EndableActionDefinition;
+      const action = getElements(program)[0] as EndableActionDefinition;
       expect(action.$type).toBe('EndableActionDefinition');
       expect(action.name).toBe('showHide');
       expect(action.startOperations).toHaveLength(2);
@@ -441,9 +442,9 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      expect(program.elements).toHaveLength(2);
-      expect(program.elements[0].$type).toBe('RegularActionDefinition');
-      expect(program.elements[1].$type).toBe('EndableActionDefinition');
+      expect(getElements(program)).toHaveLength(2);
+      expect(getElements(program)[0].$type).toBe('RegularActionDefinition');
+      expect(getElements(program)[1].$type).toBe('EndableActionDefinition');
     });
   });
 
@@ -455,7 +456,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].args[0].$type).toBe('StringLiteral');
     });
 
@@ -466,7 +467,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].args[0].$type).toBe('NumberLiteral');
     });
 
@@ -477,7 +478,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       const objLiteral = action.operations[0].args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('BooleanLiteral');
     });
@@ -489,7 +490,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       const objLiteral = action.operations[0].args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('ArrayLiteral');
     });
@@ -501,7 +502,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations[0].args).toHaveLength(3);
     });
   });
@@ -511,8 +512,8 @@ describe('Eligian Grammar - Parsing', () => {
       const source = loadFixture('valid/simple-timeline.eligian');
       const program = await parseEligian(source);
 
-      expect(program.elements.length).toBeGreaterThan(0);
-      const timeline = program.elements.find((e: any) => e.$type === 'Timeline');
+      expect(getElements(program).length).toBeGreaterThan(0);
+      const timeline = getElements(program).find((e: any) => e.$type === 'Timeline');
       expect(timeline).toBeDefined();
     });
 
@@ -520,7 +521,7 @@ describe('Eligian Grammar - Parsing', () => {
       const source = loadFixture('valid/action-definition.eligian');
       const program = await parseEligian(source);
 
-      const actions = program.elements.filter(
+      const actions = getElements(program).filter(
         (e: any) => e.$type === 'RegularActionDefinition' || e.$type === 'EndableActionDefinition'
       );
       expect(actions.length).toBeGreaterThan(0);
@@ -530,7 +531,7 @@ describe('Eligian Grammar - Parsing', () => {
       const source = loadFixture('valid/video-annotation.eligian');
       const program = await parseEligian(source);
 
-      const timeline = program.elements.find((e: any) => e.$type === 'Timeline') as Timeline;
+      const timeline = getElements(program).find((e: any) => e.$type === 'Timeline') as Timeline;
       expect(timeline).toBeDefined();
       expect(timeline.provider).toBe('video');
     });
@@ -539,7 +540,7 @@ describe('Eligian Grammar - Parsing', () => {
       const source = loadFixture('valid/presentation.eligian');
       const program = await parseEligian(source);
 
-      const actions = program.elements.filter(
+      const actions = getElements(program).filter(
         (e: any) => e.$type === 'RegularActionDefinition' || e.$type === 'EndableActionDefinition'
       );
       expect(actions.length).toBeGreaterThan(0);
@@ -557,7 +558,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         expect(action.operations).toHaveLength(1);
         expect(action.operations[0].$type).toBe('IfStatement');
         const ifStmt = action.operations[0] as any;
@@ -578,7 +579,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const ifStmt = action.operations[0] as any;
         expect(ifStmt.$type).toBe('IfStatement');
         expect(ifStmt.thenOps).toHaveLength(2);
@@ -598,7 +599,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const outerIf = action.operations[0] as any;
         expect(outerIf.$type).toBe('IfStatement');
         expect(outerIf.thenOps).toHaveLength(1);
@@ -618,7 +619,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const ifStmt = action.operations[0] as any;
         expect(ifStmt.$type).toBe('IfStatement');
         expect(ifStmt.condition.$type).toBe('BinaryExpression');
@@ -637,7 +638,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         expect(action.operations).toHaveLength(1);
         expect(action.operations[0].$type).toBe('ForStatement');
         const forStmt = action.operations[0] as any;
@@ -655,7 +656,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const forStmt = action.operations[0] as any;
         expect(forStmt.$type).toBe('ForStatement');
         expect(forStmt.collection.$type).toBe('ArrayLiteral');
@@ -673,7 +674,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const outerFor = action.operations[0] as any;
         expect(outerFor.$type).toBe('ForStatement');
         expect(outerFor.body).toHaveLength(1);
@@ -694,7 +695,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const forStmt = action.operations[0] as any;
         expect(forStmt.$type).toBe('ForStatement');
         expect(forStmt.body).toHaveLength(1);
@@ -717,7 +718,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const forStmt = action.operations[0] as any;
         expect(forStmt.body).toHaveLength(2);
         expect(forStmt.body[0].$type).toBe('OperationCall');
@@ -737,7 +738,7 @@ describe('Eligian Grammar - Parsing', () => {
           ]
         `);
 
-        const action = program.elements[0] as RegularActionDefinition;
+        const action = getElements(program)[0] as RegularActionDefinition;
         const ifStmt = action.operations[0] as any;
         expect(ifStmt.thenOps).toHaveLength(1);
         expect(ifStmt.thenOps[0].$type).toBe('ForStatement');
@@ -757,7 +758,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       const forStmt = action.operations[0] as any;
       const breakStmt = forStmt.body[0];
 
@@ -773,7 +774,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       const forStmt = action.operations[0] as any;
       const continueStmt = forStmt.body[0];
 
@@ -790,7 +791,7 @@ describe('Eligian Grammar - Parsing', () => {
         ]
       `);
 
-      const action = program.elements[0] as RegularActionDefinition;
+      const action = getElements(program)[0] as RegularActionDefinition;
       const forStmt = action.operations[0] as any;
 
       // Should have both break and continue
@@ -829,7 +830,7 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      const timeline = program.elements[1] as Timeline;
+      const timeline = getElements(program)[1] as Timeline;
       expect(timeline.events).toHaveLength(1);
       const event = timeline.events[0] as TimedEvent;
       expect(event.action.$type).toBe('ForStatement');
@@ -857,7 +858,7 @@ describe('Eligian Grammar - Parsing', () => {
         }
       `);
 
-      const timeline = program.elements[2] as Timeline;
+      const timeline = getElements(program)[2] as Timeline;
       expect(timeline.events).toHaveLength(1);
       const event = timeline.events[0] as TimedEvent;
       expect(event.action.$type).toBe('IfStatement');
@@ -873,8 +874,8 @@ describe('Eligian Grammar - Parsing', () => {
       test('T010: should parse default import with relative path', async () => {
         const program = await parseEligian("layout './layout.html'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as DefaultImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.$type).toBe('DefaultImport');
         expect(importStmt.type).toBe('layout');
         expect(importStmt.path).toBe('./layout.html');
@@ -883,8 +884,8 @@ describe('Eligian Grammar - Parsing', () => {
       test('T011: should parse named import with relative path', async () => {
         const program = await parseEligian("import tooltip from './tooltip.html'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as NamedImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as NamedImport;
         expect(importStmt.$type).toBe('NamedImport');
         expect(importStmt.name).toBe('tooltip');
         expect(importStmt.path).toBe('./tooltip.html');
@@ -894,16 +895,16 @@ describe('Eligian Grammar - Parsing', () => {
       test('should parse import with parent directory path', async () => {
         const program = await parseEligian("layout '../shared/layout.html'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as DefaultImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.path).toBe('../shared/layout.html');
       });
 
       test('should parse import with deeply nested path', async () => {
         const program = await parseEligian("layout './assets/templates/main/layout.html'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as DefaultImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.path).toBe('./assets/templates/main/layout.html');
       });
     });
@@ -912,8 +913,8 @@ describe('Eligian Grammar - Parsing', () => {
       test('T020: should parse layout default import', async () => {
         const program = await parseEligian("layout './layout.html'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as DefaultImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.$type).toBe('DefaultImport');
         expect(importStmt.type).toBe('layout');
         expect(importStmt.path).toBe('./layout.html');
@@ -931,13 +932,13 @@ describe('Eligian Grammar - Parsing', () => {
           timeline "main" in ".container" using raf {}
         `);
 
-        expect(program.imports).toHaveLength(1);
-        expect(program.imports[0].$type).toBe('DefaultImport');
-        expect((program.imports[0] as DefaultImport).type).toBe('layout');
+        expect(getImports(program)).toHaveLength(1);
+        expect(getImports(program)[0].$type).toBe('DefaultImport');
+        expect((getImports(program)[0] as DefaultImport).type).toBe('layout');
 
-        expect(program.elements).toHaveLength(2);
-        expect(program.elements[0].$type).toBe('RegularActionDefinition');
-        expect(program.elements[1].$type).toBe('Timeline');
+        expect(getElements(program)).toHaveLength(2);
+        expect(getElements(program)[0].$type).toBe('RegularActionDefinition');
+        expect(getElements(program)[1].$type).toBe('Timeline');
       });
 
       test('should parse layout import at document start', async () => {
@@ -947,8 +948,8 @@ describe('Eligian Grammar - Parsing', () => {
           timeline "t" in ".c" using raf {}
         `);
 
-        expect(program.imports).toHaveLength(1);
-        expect((program.imports[0] as DefaultImport).type).toBe('layout');
+        expect(getImports(program)).toHaveLength(1);
+        expect((getImports(program)[0] as DefaultImport).type).toBe('layout');
       });
     });
 
@@ -956,8 +957,8 @@ describe('Eligian Grammar - Parsing', () => {
       test('T030: should parse styles default import', async () => {
         const program = await parseEligian("styles './main.css'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as DefaultImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.$type).toBe('DefaultImport');
         expect(importStmt.type).toBe('styles');
         expect(importStmt.path).toBe('./main.css');
@@ -966,8 +967,8 @@ describe('Eligian Grammar - Parsing', () => {
       test('T031: should parse provider default import', async () => {
         const program = await parseEligian("provider './video.mp4'");
 
-        expect(program.imports).toHaveLength(1);
-        const importStmt = program.imports[0] as DefaultImport;
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.$type).toBe('DefaultImport');
         expect(importStmt.type).toBe('provider');
         expect(importStmt.path).toBe('./video.mp4');
@@ -980,10 +981,10 @@ describe('Eligian Grammar - Parsing', () => {
           provider './video.mp4'
         `);
 
-        expect(program.imports).toHaveLength(3);
-        expect((program.imports[0] as DefaultImport).type).toBe('layout');
-        expect((program.imports[1] as DefaultImport).type).toBe('styles');
-        expect((program.imports[2] as DefaultImport).type).toBe('provider');
+        expect(getImports(program)).toHaveLength(3);
+        expect((getImports(program)[0] as DefaultImport).type).toBe('layout');
+        expect((getImports(program)[1] as DefaultImport).type).toBe('styles');
+        expect((getImports(program)[2] as DefaultImport).type).toBe('provider');
       });
 
       test('should parse complete document with all import types', async () => {
@@ -996,8 +997,107 @@ describe('Eligian Grammar - Parsing', () => {
           timeline "t" in ".c" using raf {}
         `);
 
-        expect(program.imports).toHaveLength(3);
-        expect(program.elements).toHaveLength(2);
+        expect(getImports(program)).toHaveLength(3);
+        expect(getElements(program)).toHaveLength(2);
+      });
+    });
+
+    describe('US2 - Named HTML imports', () => {
+      test('T040: should parse single named import', async () => {
+        const program = await parseEligian("import tooltip from './tooltip.html'");
+
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as NamedImport;
+        expect(importStmt.$type).toBe('NamedImport');
+        expect(importStmt.name).toBe('tooltip');
+        expect(importStmt.path).toBe('./tooltip.html');
+        expect(importStmt.assetType).toBeUndefined();
+      });
+
+      test('T041: should parse multiple named imports', async () => {
+        const program = await parseEligian(`
+          import tooltip from './tooltip.html'
+          import modal from './modal.html'
+          import sidebar from './sidebar.html'
+        `);
+
+        expect(getImports(program)).toHaveLength(3);
+        expect((getImports(program)[0] as NamedImport).name).toBe('tooltip');
+        expect((getImports(program)[1] as NamedImport).name).toBe('modal');
+        expect((getImports(program)[2] as NamedImport).name).toBe('sidebar');
+      });
+
+      test('T042: should parse mixed default + named imports', async () => {
+        const program = await parseEligian(`
+          layout './layout.html'
+          import tooltip from './tooltip.html'
+          styles './main.css'
+          import modal from './modal.html'
+          provider './video.mp4'
+        `);
+
+        expect(getImports(program)).toHaveLength(5);
+        expect((getImports(program)[0] as DefaultImport).type).toBe('layout');
+        expect((getImports(program)[1] as NamedImport).name).toBe('tooltip');
+        expect((getImports(program)[2] as DefaultImport).type).toBe('styles');
+        expect((getImports(program)[3] as NamedImport).name).toBe('modal');
+        expect((getImports(program)[4] as DefaultImport).type).toBe('provider');
+      });
+    });
+
+    describe('US4 - Type inference with explicit override', () => {
+      test('T057: should parse named import with explicit as html', async () => {
+        const program = await parseEligian("import template from './page.tmpl' as html");
+
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as NamedImport;
+        expect(importStmt.$type).toBe('NamedImport');
+        expect(importStmt.name).toBe('template');
+        expect(importStmt.path).toBe('./page.tmpl');
+        expect(importStmt.assetType).toBe('html');
+      });
+
+      test('T058: should parse named import with explicit as css', async () => {
+        const program = await parseEligian("import theme from './colors.scss' as css");
+
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as NamedImport;
+        expect(importStmt.$type).toBe('NamedImport');
+        expect(importStmt.name).toBe('theme');
+        expect(importStmt.path).toBe('./colors.scss');
+        expect(importStmt.assetType).toBe('css');
+      });
+
+      test('T059: should parse named import with explicit as media', async () => {
+        const program = await parseEligian("import bgMusic from './music.ogg' as media");
+
+        expect(getImports(program)).toHaveLength(1);
+        const importStmt = getImports(program)[0] as NamedImport;
+        expect(importStmt.$type).toBe('NamedImport');
+        expect(importStmt.name).toBe('bgMusic');
+        expect(importStmt.path).toBe('./music.ogg');
+        expect(importStmt.assetType).toBe('media');
+      });
+
+      test('should allow explicit override even for inferrable extensions', async () => {
+        // User can explicitly specify type even if it can be inferred
+        const program = await parseEligian("import template from './page.html' as html");
+
+        const importStmt = getImports(program)[0] as NamedImport;
+        expect(importStmt.assetType).toBe('html');
+      });
+
+      test('should parse multiple imports with mixed inference and explicit types', async () => {
+        const program = await parseEligian(`
+          import template from './page.html'
+          import theme from './theme.scss' as css
+          import bgMusic from './sound.ogg' as media
+        `);
+
+        expect(getImports(program)).toHaveLength(3);
+        expect((getImports(program)[0] as NamedImport).assetType).toBeUndefined(); // Inferred from .html
+        expect((getImports(program)[1] as NamedImport).assetType).toBe('css'); // Explicit
+        expect((getImports(program)[2] as NamedImport).assetType).toBe('media'); // Explicit
       });
     });
   });

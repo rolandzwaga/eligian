@@ -36,6 +36,11 @@ import { ERROR_MESSAGES } from './validation-errors.js';
  * ```
  */
 export function validateImportPath(path: string): PathError | undefined {
+  // Handle undefined/null path (malformed AST from parser errors)
+  if (!path) {
+    return undefined; // Skip validation - parser error will be reported separately
+  }
+
   // Check if path is relative (starts with ./ or ../)
   if (isRelativePath(path)) {
     return undefined; // Valid

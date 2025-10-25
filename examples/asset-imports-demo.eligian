@@ -1,0 +1,219 @@
+/**
+ * Asset Imports Demo - Feature 009
+ *
+ * Demonstrates all import syntax features:
+ * - Default imports (layout, styles, provider)
+ * - Named imports (HTML, CSS, media)
+ * - Type inference from extensions
+ * - Explicit type override with 'as' clause
+ * - Path validation (relative paths only)
+ *
+ * NOTE: This is syntax validation only. File loading and content processing
+ * are future features. Import statements are validated but files are not loaded.
+ */
+
+// ============================================================================
+// DEFAULT IMPORTS (Auto-Assignment)
+// ============================================================================
+
+// Layout template - assigns to layoutTemplate property
+layout './assets/layout.html'
+
+// Styles - registers CSS for future IDE completions
+styles './assets/main.css'
+
+// Timeline provider - assigns to timelineProvider.source
+provider './assets/presentation.mp4'
+
+
+// ============================================================================
+// NAMED IMPORTS - HTML Components (Type: html)
+// ============================================================================
+
+// Inferred from .html extension
+import tooltip from './components/tooltip.html'
+import modal from './components/modal.html'
+import sidebar from './components/sidebar.html'
+import header from './components/header.html'
+
+
+// ============================================================================
+// NAMED IMPORTS - CSS Themes (Type: css)
+// ============================================================================
+
+// Inferred from .css extension
+import darkTheme from './themes/dark.css'
+import lightTheme from './themes/light.css'
+
+
+// ============================================================================
+// NAMED IMPORTS - Media Files (Type: media)
+// ============================================================================
+
+// Video files - inferred from .mp4, .webm extensions
+import introVideo from './videos/intro.mp4'
+import outroVideo from './videos/outro.webm'
+
+// Audio files - inferred from .mp3, .wav extensions
+import bgMusic from './audio/background.mp3'
+import clickSound from './audio/click.wav'
+
+// Ambiguous extension - requires explicit type
+import ambientSound from './audio/ambient.ogg' as media
+
+
+// ============================================================================
+// EXPLICIT TYPE OVERRIDE - Non-Standard Extensions
+// ============================================================================
+
+// Unknown extensions require explicit type specification
+import templateData from './data/template.txt' as html
+import customCSS from './styles/custom.scss' as css
+import binaryMedia from './media/video.bin' as media
+
+
+// ============================================================================
+// RELATIVE PATH EXAMPLES
+// ============================================================================
+
+// Same directory
+import component1 from './component.html'
+
+// Parent directory
+import sharedComponent from '../shared/component.html'
+
+// Nested directories
+import deepAsset from './assets/deep/nested/file.html'
+
+// Multiple levels up
+import rootAsset from '../../root/asset.html'
+
+
+// ============================================================================
+// ACTIONS USING IMPORTED ASSETS
+// ============================================================================
+
+action showTooltip [
+  selectElement(".info-icon")
+  setElementContent(tooltip)
+  addClass("visible")
+]
+
+action hideTooltip [
+  selectElement(".info-icon")
+  removeClass("visible")
+]
+
+action showModal [
+  selectElement(".modal-container")
+  setElementContent(modal)
+  addClass("modal-open")
+]
+
+action hideModal [
+  selectElement(".modal-container")
+  removeClass("modal-open")
+]
+
+action toggleSidebar [
+  selectElement(".sidebar")
+  setElementContent(sidebar)
+  toggleClass("sidebar-visible")
+]
+
+action playClickSound [
+  // Future: Play imported audio
+  selectElement(".button")
+  addClass("clicked")
+]
+
+
+// ============================================================================
+// TIMELINE EVENTS
+// ============================================================================
+
+timeline {
+  // Show header at start
+  at 0s selectElement(".header") then setElementContent(header)
+
+  // Show tooltip on hover (simulated at 2s)
+  at 2s..5s showTooltip()
+
+  // Open modal
+  at 5s..10s showModal()
+
+  // Close modal
+  at 10s hideModal()
+
+  // Toggle sidebar
+  at 12s toggleSidebar()
+
+  // Play click sound effect
+  at 15s playClickSound()
+}
+
+
+// ============================================================================
+// VALIDATION EXAMPLES
+// ============================================================================
+
+/**
+ * VALID EXAMPLES (Already Shown Above):
+ *
+ * ✅ Default imports:
+ *    layout './layout.html'
+ *    styles './main.css'
+ *    provider './video.mp4'
+ *
+ * ✅ Named imports with inference:
+ *    import tooltip from './tooltip.html'  // Type: html
+ *    import theme from './theme.css'        // Type: css
+ *    import video from './video.mp4'        // Type: media
+ *
+ * ✅ Explicit type override:
+ *    import data from './template.txt' as html
+ *    import audio from './sound.ogg' as media
+ *
+ * ✅ Relative paths:
+ *    import x from './file.html'       // Same directory
+ *    import y from '../file.html'      // Parent directory
+ *    import z from './sub/file.html'   // Nested directory
+ */
+
+/**
+ * INVALID EXAMPLES (Will Cause Errors):
+ *
+ * ❌ Duplicate import names:
+ *    import tooltip from './tooltip1.html'
+ *    import tooltip from './tooltip2.html'  // ERROR: Duplicate name
+ *
+ * ❌ Reserved keywords:
+ *    import if from './template.html'       // ERROR: 'if' is reserved
+ *    import for from './loop.html'          // ERROR: 'for' is reserved
+ *
+ * ❌ Operation name conflicts:
+ *    import selectElement from './select.html'  // ERROR: conflicts with operation
+ *
+ * ❌ Unknown extension without type:
+ *    import data from './file.xyz'          // ERROR: unknown extension
+ *    Fix: import data from './file.xyz' as html
+ *
+ * ❌ Ambiguous extension without type:
+ *    import audio from './sound.ogg'        // ERROR: .ogg is ambiguous
+ *    Fix: import audio from './sound.ogg' as media
+ *
+ * ❌ Absolute paths:
+ *    import x from '/absolute/path.html'    // ERROR: absolute path
+ *    import y from 'C:\windows\path.html'   // ERROR: Windows absolute
+ *    import z from 'https://url/file.html'  // ERROR: URL
+ *    Fix: Use relative paths starting with './' or '../'
+ *
+ * ❌ Duplicate default imports:
+ *    layout './layout1.html'
+ *    layout './layout2.html'                // ERROR: duplicate layout
+ */
+
+
+// ============================================================================
+// END OF DEMO
+// ============================================================================

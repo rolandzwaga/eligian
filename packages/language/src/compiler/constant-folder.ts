@@ -15,6 +15,7 @@
  */
 
 import type { Program, VariableDeclaration } from '../generated/ast.js';
+import { getElements } from '../utils/program-helpers.js';
 import { evaluateExpression } from './expression-evaluator.js';
 import type { ConstantMap, ConstantValue } from './types/constant-folding.js';
 
@@ -47,8 +48,8 @@ import type { ConstantMap, ConstantValue } from './types/constant-folding.js';
 export function buildConstantMap(program: Program): ConstantMap {
   const map: ConstantMap = new Map();
 
-  // Traverse all global declarations (program.elements)
-  for (const element of program.elements) {
+  // Traverse all global declarations (getElements(program))
+  for (const element of getElements(program)) {
     if (element.$type !== 'VariableDeclaration') {
       continue; // Skip timelines, action definitions, etc.
     }

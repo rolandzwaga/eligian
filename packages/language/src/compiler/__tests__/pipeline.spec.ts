@@ -25,8 +25,8 @@ describe('Pipeline', () => {
 
       expect(result).toBeDefined();
       expect(result.$type).toBe('Program');
-      expect(result.elements).toBeDefined();
-      expect(result.elements.length).toBeGreaterThan(0);
+      expect(result.statements).toBeDefined();
+      expect(result.statements.length).toBeGreaterThan(0);
     });
 
     test('should fail on lexer error', async () => {
