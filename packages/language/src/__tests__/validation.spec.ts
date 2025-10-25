@@ -1235,5 +1235,64 @@ describe('Eligian Grammar - Validation', () => {
         expect(duplicateErrors.length).toBe(0);
       });
     });
+
+    describe('US3 - Styles and provider import validation', () => {
+      test('T033: should reject duplicate styles imports', async () => {
+        const code = `
+          styles './main.css'
+          styles './theme.css'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('Duplicate') && e.message.includes('styles')
+          )
+        ).toBe(true);
+      });
+
+      test('T034: should reject duplicate provider imports', async () => {
+        const code = `
+          provider './video1.mp4'
+          provider './video2.mp4'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('Duplicate') && e.message.includes('provider')
+          )
+        ).toBe(true);
+      });
+
+      test('should accept all three import types without duplicates', async () => {
+        const code = `
+          layout './layout.html'
+          styles './main.css'
+          provider './video.mp4'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        expect(duplicateErrors.length).toBe(0);
+      });
+
+      test('should reject duplicates of each type independently', async () => {
+        const code = `
+          layout './layout1.html'
+          layout './layout2.html'
+          styles './main.css'
+          styles './theme.css'
+          provider './video1.mp4'
+          provider './video2.mp4'
+        `;
+        const { validationErrors } = await parseAndValidate(code);
+
+        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        expect(duplicateErrors.length).toBe(3); // One error for each type
+      });
+    });
   });
 });

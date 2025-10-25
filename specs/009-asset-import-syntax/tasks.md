@@ -118,19 +118,19 @@
 
 ### Tests for User Story 3 (TDD - Write First) ⚠️
 
-- [ ] T030 [P] [US3] Parsing test: Parse `styles` default import in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T031 [P] [US3] Parsing test: Parse `provider` default import in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T032 [P] [US3] Parsing test: Parse all three default imports together in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T033 [P] [US3] Validation test: Reject duplicate `styles` imports in `packages/language/src/__tests__/validation.spec.ts`
-- [ ] T034 [P] [US3] Validation test: Reject duplicate `provider` imports in `packages/language/src/__tests__/validation.spec.ts`
+- [X] T030 [P] [US3] Parsing test: Parse `styles` default import in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T031 [P] [US3] Parsing test: Parse `provider` default import in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T032 [P] [US3] Parsing test: Parse all three default imports together in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T033 [P] [US3] Validation test: Reject duplicate `styles` imports in `packages/language/src/__tests__/validation.spec.ts`
+- [X] T034 [P] [US3] Validation test: Reject duplicate `provider` imports in `packages/language/src/__tests__/validation.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Extend `DefaultImport` grammar rule in `packages/language/src/eligian.langium` to include `styles` and `provider` keywords
-- [ ] T036 [US3] Run `npm run langium:generate` to update AST types
-- [ ] T037 [US3] Update `validateDefaultImports()` in `packages/language/src/validators/default-import-validator.ts` to check styles and provider duplicates
-- [ ] T038 [US3] Run `npm run test` to verify all US3 tests pass
-- [ ] T039 [US3] Run `npm run check` (Biome)
+- [X] T035 [US3] Extend `DefaultImport` grammar rule in `packages/language/src/eligian.langium` to include `styles` and `provider` keywords
+- [X] T036 [US3] Run `npm run langium:generate` to update AST types
+- [X] T037 [US3] Update `validateDefaultImports()` in `packages/language/src/validators/default-import-validator.ts` to check styles and provider duplicates
+- [X] T038 [US3] Run `npm run test` to verify all US3 tests pass
+- [X] T039 [US3] Run `npm run check` (Biome)
 
 **Checkpoint**: All default import types working - layout, styles, provider
 

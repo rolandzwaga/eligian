@@ -951,5 +951,54 @@ describe('Eligian Grammar - Parsing', () => {
         expect((program.imports[0] as DefaultImport).type).toBe('layout');
       });
     });
+
+    describe('US3 - Styles and provider imports', () => {
+      test('T030: should parse styles default import', async () => {
+        const program = await parseEligian("styles './main.css'");
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as DefaultImport;
+        expect(importStmt.$type).toBe('DefaultImport');
+        expect(importStmt.type).toBe('styles');
+        expect(importStmt.path).toBe('./main.css');
+      });
+
+      test('T031: should parse provider default import', async () => {
+        const program = await parseEligian("provider './video.mp4'");
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as DefaultImport;
+        expect(importStmt.$type).toBe('DefaultImport');
+        expect(importStmt.type).toBe('provider');
+        expect(importStmt.path).toBe('./video.mp4');
+      });
+
+      test('T032: should parse all three default imports together', async () => {
+        const program = await parseEligian(`
+          layout './layout.html'
+          styles './main.css'
+          provider './video.mp4'
+        `);
+
+        expect(program.imports).toHaveLength(3);
+        expect((program.imports[0] as DefaultImport).type).toBe('layout');
+        expect((program.imports[1] as DefaultImport).type).toBe('styles');
+        expect((program.imports[2] as DefaultImport).type).toBe('provider');
+      });
+
+      test('should parse complete document with all import types', async () => {
+        const program = await parseEligian(`
+          layout './layout.html'
+          styles './theme.css'
+          provider './intro.mp4'
+
+          action fadeIn [ selectElement(".box") ]
+          timeline "t" in ".c" using raf {}
+        `);
+
+        expect(program.imports).toHaveLength(3);
+        expect(program.elements).toHaveLength(2);
+      });
+    });
   });
 });
