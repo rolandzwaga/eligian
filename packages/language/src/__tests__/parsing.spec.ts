@@ -12,9 +12,11 @@ import { parseDocument } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
 import {
+  type DefaultImport,
   type EndableActionDefinition,
   isBreakStatement,
   isContinueStatement,
+  type NamedImport,
   type Program,
   type RegularActionDefinition,
   type Timeline,
@@ -859,6 +861,57 @@ describe('Eligian Grammar - Parsing', () => {
       expect(timeline.events).toHaveLength(1);
       const event = timeline.events[0] as TimedEvent;
       expect(event.action.$type).toBe('IfStatement');
+    });
+  });
+
+  // ========================================================================
+  // Import Statement Parsing (Feature 009 - US5)
+  // ========================================================================
+
+  describe('Import statement parsing', () => {
+    describe('US5 - Path validation (parsing)', () => {
+      test('T010: should parse default import with relative path', async () => {
+        const program = await parseEligian("layout './layout.html'");
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as DefaultImport;
+        expect(importStmt.$type).toBe('DefaultImport');
+        expect(importStmt.type).toBe('layout');
+        expect(importStmt.path).toBe('./layout.html');
+      });
+
+      test('T011: should parse named import with relative path', async () => {
+        const program = await parseEligian(
+          "import tooltip from './tooltip.html'"
+        );
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as NamedImport;
+        expect(importStmt.$type).toBe('NamedImport');
+        expect(importStmt.name).toBe('tooltip');
+        expect(importStmt.path).toBe('./tooltip.html');
+        expect(importStmt.assetType).toBeUndefined();
+      });
+
+      test('should parse import with parent directory path', async () => {
+        const program = await parseEligian(
+          "layout '../shared/layout.html'"
+        );
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as DefaultImport;
+        expect(importStmt.path).toBe('../shared/layout.html');
+      });
+
+      test('should parse import with deeply nested path', async () => {
+        const program = await parseEligian(
+          "layout './assets/templates/main/layout.html'"
+        );
+
+        expect(program.imports).toHaveLength(1);
+        const importStmt = program.imports[0] as DefaultImport;
+        expect(importStmt.path).toBe('./assets/templates/main/layout.html');
+      });
     });
   });
 });

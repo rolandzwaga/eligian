@@ -13,9 +13,11 @@ import type { EligianServices } from './eligian-module.js';
 import type {
   BreakStatement,
   ContinueStatement,
+  DefaultImport,
   EligianAstType,
   EndableActionDefinition,
   InlineEndableAction,
+  NamedImport,
   OperationCall,
   OperationStatement,
   Program,
@@ -25,7 +27,9 @@ import type {
   TimelineEvent,
 } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
+import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import { validateImportPath } from './validators/import-path-validator.js';
 
 /**
  * Register custom validation checks.
@@ -38,6 +42,8 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkTimelineRequired,
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
     ],
+    DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
+    NamedImport: validator.checkImportPath, // T017: US5 - Path validation for named imports
     Timeline: [validator.checkValidProvider, validator.checkSourceRequired],
     TimelineEvent: [validator.checkValidTimeRange, validator.checkNonNegativeTimes],
     OperationCall: [
@@ -958,6 +964,34 @@ export class EligianValidator {
         this.collectOperationCallsFromStatements(stmt.body, calls);
       }
       // VariableDeclaration, BreakStatement, ContinueStatement don't contain calls
+    }
+  }
+
+  // ========================================================================
+  // Import Validation (Feature 009)
+  // ========================================================================
+
+  /**
+   * T017-T018: US5 - Validate import path is relative and portable
+   *
+   * Thin Langium adapter that calls the pure validateImportPath() function.
+   * Follows Constitution Principle X (Compiler-First Validation):
+   * - Business logic in pure validator function
+   * - Langium validator is thin wrapper
+   *
+   * Validates both DefaultImport and NamedImport path properties.
+   */
+  checkImportPath(
+    importStmt: DefaultImport | NamedImport,
+    accept: ValidationAcceptor
+  ): void {
+    const error = validateImportPath(importStmt.path);
+    if (error) {
+      accept('error', `${error.message}. ${error.hint}`, {
+        node: importStmt,
+        property: 'path',
+        code: error.code,
+      });
     }
   }
 }

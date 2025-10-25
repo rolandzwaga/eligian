@@ -1127,4 +1127,80 @@ describe('Eligian Grammar - Validation', () => {
       });
     });
   });
+
+  // ========================================================================
+  // Import Statement Validation (Feature 009)
+  // ========================================================================
+
+  describe('Import validation', () => {
+    describe('US5 - Path validation', () => {
+      test('T012: should reject Unix absolute path (/file)', async () => {
+        const code = "layout '/absolute/path/layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('relative') && e.message.includes('portable')
+          )
+        ).toBe(true);
+      });
+
+      test('T013: should reject Windows absolute path (C:\\file)', async () => {
+        const code = "layout 'C:\\\\absolute\\\\layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('relative') && e.message.includes('portable')
+          )
+        ).toBe(true);
+      });
+
+      test('T014: should reject URL paths (https://file)', async () => {
+        const code = "layout 'https://example.com/layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('relative') && e.message.includes('portable')
+          )
+        ).toBe(true);
+      });
+
+      test('should accept relative path with ./', async () => {
+        const code = "layout './layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        const pathErrors = validationErrors.filter(e =>
+          e.message.includes('relative')
+        );
+        expect(pathErrors.length).toBe(0);
+      });
+
+      test('should accept relative path with ../', async () => {
+        const code = "layout '../shared/layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        const pathErrors = validationErrors.filter(e =>
+          e.message.includes('relative')
+        );
+        expect(pathErrors.length).toBe(0);
+      });
+
+      test('should reject file:// protocol', async () => {
+        const code = "layout 'file:///path/to/layout.html'";
+        const { validationErrors } = await parseAndValidate(code);
+
+        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(
+          validationErrors.some(
+            e => e.message.includes('relative') && e.message.includes('portable')
+          )
+        ).toBe(true);
+      });
+    });
+  });
 });

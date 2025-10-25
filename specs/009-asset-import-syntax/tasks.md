@@ -25,10 +25,10 @@
 
 **Purpose**: Prepare workspace and create shared utilities needed by all user stories
 
-- [ ] T001 Create feature branch `009-asset-import-syntax` from main
-- [ ] T002 [P] Create utility module `packages/language/src/utils/asset-type-inference.ts` with `inferAssetType()` function (pure function, see data-model.md)
-- [ ] T003 [P] Create error types module `packages/language/src/validators/validation-errors.ts` with `PathError`, `ImportNameError`, `TypeInferenceError`, `DuplicateDefaultImportError` interfaces
-- [ ] T004 [P] Create constants module `packages/language/src/validators/validation-constants.ts` with `RESERVED_KEYWORDS`, `EXTENSION_MAP`, `AMBIGUOUS_EXTENSIONS` sets
+- [X] T001 Create feature branch `009-asset-import-syntax` from main
+- [X] T002 [P] Create utility module `packages/language/src/utils/asset-type-inference.ts` with `inferAssetType()` function (pure function, see data-model.md)
+- [X] T003 [P] Create error types module `packages/language/src/validators/validation-errors.ts` with `PathError`, `ImportNameError`, `TypeInferenceError`, `DuplicateDefaultImportError` interfaces
+- [X] T004 [P] Create constants module `packages/language/src/validators/validation-constants.ts` with `RESERVED_KEYWORDS`, `EXTENSION_MAP`, `AMBIGUOUS_EXTENSIONS` sets
 
 **Checkpoint**: Shared utilities ready - grammar and validator work can begin
 
@@ -40,11 +40,11 @@
 
 **⚠️ CRITICAL**: No validator work can begin until this phase is complete
 
-- [ ] T005 Update grammar entry rule in `packages/language/src/eligian.langium` to add `(imports+=ImportStatement)*` before existing rules
-- [ ] T006 Add `ImportStatement` grammar rule in `packages/language/src/eligian.langium` (union of DefaultImport | NamedImport)
-- [ ] T007 Add `AssetType` grammar rule in `packages/language/src/eligian.langium` (alternatives: 'html' | 'css' | 'media')
-- [ ] T008 Run `npm run langium:generate` to regenerate AST types in `packages/language/src/generated/ast.ts`
-- [ ] T009 Create type guards `isDefaultImport()` and `isNamedImport()` in `packages/language/src/utils/ast-helpers.ts`
+- [X] T005 Update grammar entry rule in `packages/language/src/eligian.langium` to add `(imports+=ImportStatement)*` before existing rules
+- [X] T006 Add `ImportStatement` grammar rule in `packages/language/src/eligian.langium` (union of DefaultImport | NamedImport)
+- [X] T007 Add `AssetType` grammar rule in `packages/language/src/eligian.langium` (alternatives: 'html' | 'css' | 'media')
+- [X] T008 Run `npm run langium:generate` to regenerate AST types in `packages/language/src/generated/ast.ts`
+- [X] T009 Create type guards `isDefaultImport()` and `isNamedImport()` in `packages/language/src/utils/ast-helpers.ts`
 
 **Checkpoint**: Foundation ready - user story validation can now begin in parallel
 
@@ -62,19 +62,19 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US5] Parsing test: Parse default import with relative path in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T011 [P] [US5] Parsing test: Parse named import with relative path in `packages/language/src/__tests__/parsing.spec.ts`
-- [ ] T012 [P] [US5] Validation test: Reject Unix absolute path (`/file`) in `packages/language/src/__tests__/validation.spec.ts`
-- [ ] T013 [P] [US5] Validation test: Reject Windows absolute path (`C:\file`) in `packages/language/src/__tests__/validation.spec.ts`
-- [ ] T014 [P] [US5] Validation test: Reject URL paths (`https://file`) in `packages/language/src/__tests__/validation.spec.ts`
-- [ ] T015 [P] [US5] Unit test: `validateImportPath()` with all path formats in `packages/language/src/validators/__tests__/import-path-validator.spec.ts`
+- [X] T010 [P] [US5] Parsing test: Parse default import with relative path in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T011 [P] [US5] Parsing test: Parse named import with relative path in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] T012 [P] [US5] Validation test: Reject Unix absolute path (`/file`) in `packages/language/src/__tests__/validation.spec.ts`
+- [X] T013 [P] [US5] Validation test: Reject Windows absolute path (`C:\file`) in `packages/language/src/__tests__/validation.spec.ts`
+- [X] T014 [P] [US5] Validation test: Reject URL paths (`https://file`) in `packages/language/src/__tests__/validation.spec.ts`
+- [X] T015 [P] [US5] Unit test: `validateImportPath()` with all path formats in `packages/language/src/validators/__tests__/import-path-validator.spec.ts`
 
 ### Implementation for User Story 5
 
-- [ ] T016 [US5] Create `validateImportPath()` pure function in `packages/language/src/validators/import-path-validator.ts` (returns `PathError | undefined`)
-- [ ] T017 [US5] Add `checkImportPath()` Langium validator method to `packages/language/src/eligian-validator.ts` (thin adapter calling `validateImportPath()`)
-- [ ] T018 [US5] Register `checkImportPath()` validator for both `DefaultImport` and `NamedImport` nodes in `packages/language/src/eligian-validator.ts`
-- [ ] T019 [US5] Run `npm run test` to verify all US5 tests pass
+- [X] T016 [US5] Create `validateImportPath()` pure function in `packages/language/src/validators/import-path-validator.ts` (returns `PathError | undefined`)
+- [X] T017 [US5] Add `checkImportPath()` Langium validator method to `packages/language/src/eligian-validator.ts` (thin adapter calling `validateImportPath()`)
+- [X] T018 [US5] Register `checkImportPath()` validator for both `DefaultImport` and `NamedImport` nodes in `packages/language/src/eligian-validator.ts`
+- [X] T019 [US5] Run `npm run test` to verify all US5 tests pass
 
 **Checkpoint**: Path validation complete - all imports now enforce relative paths
 

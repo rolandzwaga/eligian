@@ -21,10 +21,71 @@ grammar Eligian
 // ============================================================================
 
 entry Program:
+    (imports += ImportStatement)*
     (elements += ProgramElement)*;
 
 ProgramElement:
     ActionDefinition | Timeline | VariableDeclaration;
+
+// ============================================================================
+// Import Statements (Feature 009)
+// ============================================================================
+
+/**
+ * Import Statement - Asset imports for HTML, CSS, and media files
+ *
+ * Union type for default imports (auto-assignment) and named imports (reusable):
+ * - DefaultImport: layout './file', styles './file', provider './file'
+ * - NamedImport: import name from './file' as type?
+ */
+ImportStatement:
+    DefaultImport | NamedImport;
+
+/**
+ * Default Import - Auto-assignment to configuration properties
+ *
+ * Syntax: <type> '<path>'
+ *
+ * Examples:
+ *   layout './layout.html'      → assigns to layoutTemplate property
+ *   styles './main.css'         → registers CSS for future completions
+ *   provider './video.mp4'      → assigns to timelineProvider.source
+ *
+ * Type is inferred from file extension.
+ * Path must be relative (validated in eligian-validator.ts).
+ * Only ONE of each type allowed per document.
+ */
+DefaultImport:
+    type=('layout' | 'styles' | 'provider') path=STRING;
+
+/**
+ * Named Import - Reusable asset reference with identifier
+ *
+ * Syntax: import <name> from '<path>' (as <type>)?
+ *
+ * Examples:
+ *   import tooltip from './tooltip.html'
+ *   import theme from './theme.css'
+ *   import video from './intro.mp4'
+ *   import data from './template.txt' as html  // explicit type override
+ *
+ * Name must be unique within document (validated in eligian-validator.ts).
+ * Type is inferred from extension OR explicitly specified via 'as' clause.
+ * Path must be relative (validated in eligian-validator.ts).
+ */
+NamedImport:
+    'import' name=ID 'from' path=STRING ('as' assetType=AssetType)?;
+
+/**
+ * Asset Type - Supported asset types for explicit type override
+ *
+ * Values:
+ *   html  - HTML files (layouts, content snippets)
+ *   css   - CSS stylesheets (styling, class definitions)
+ *   media - Video/audio files (timeline providers)
+ */
+AssetType returns string:
+    'html' | 'css' | 'media';
 
 // ============================================================================
 // Action Definitions
