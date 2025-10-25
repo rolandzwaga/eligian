@@ -35,6 +35,7 @@ import type {
   VariableDeclaration,
 } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
+import { getActions, getTimelines, getVariables } from '../utils/program-helpers.js';
 import { buildConstantMap } from './constant-folder.js';
 import { evaluateExpression } from './expression-evaluator.js';
 import { findActionByName } from './name-resolver.js';
@@ -123,7 +124,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     currentConstantMap = buildConstantMap(program);
 
     // Find all timelines (validation ensures at least one exists)
-    const timelineNodes = program.elements.filter(el => el.$type === 'Timeline') as Timeline[];
+    const timelineNodes = getTimelines(program);
     if (timelineNodes.length === 0) {
       return yield* _(
         Effect.fail({
@@ -137,11 +138,9 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
 
     // Extract program-level variable declarations (T182: Global variables)
     // CONSTANT FOLDING (T008): Filter out constants - they will be inlined, not stored in globalData
-    const variableDeclarations = program.elements.filter(
-      el =>
-        el.$type === 'VariableDeclaration' &&
-        !currentConstantMap.has((el as VariableDeclaration).name)
-    ) as VariableDeclaration[];
+    const variableDeclarations = getVariables(program).filter(
+      el => !currentConstantMap.has(el.name)
+    );
 
     // Transform program-level variables to initActions
     // T274: initActions must be IEndableActionConfiguration[], not IOperationConfiguration[]
@@ -179,9 +178,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
     }
 
     // Extract action definitions (both regular and endable)
-    const actionDefinitions = program.elements.filter(
-      el => el.$type === 'EndableActionDefinition' || el.$type === 'RegularActionDefinition'
-    ) as (EndableActionDefinition | RegularActionDefinition)[];
+    const actionDefinitions = getActions(program);
 
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
@@ -231,6 +228,7 @@ export const transformAST = (program: Program): Effect.Effect<EligiusIR, Transfo
       containerSelector: defaults.containerSelector,
       language: defaults.language,
       layoutTemplate,
+      cssFiles: [], // TODO: Populate from 'styles' import when implemented
       availableLanguages: defaults.availableLanguages,
       labels: defaults.labels,
       initActions: eligiusInitActions,

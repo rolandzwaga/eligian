@@ -26,6 +26,7 @@ import {
   type Program,
   type VariableDeclaration,
 } from './generated/ast.js';
+import { getElements } from './utils/program-helpers.js';
 
 export class EligianScopeProvider extends DefaultScopeProvider {
   override getScope(context: ReferenceInfo): Scope {
@@ -65,7 +66,7 @@ export class EligianScopeProvider extends DefaultScopeProvider {
 
     // Get all ActionDefinition nodes from the program
     // Simple O(n) scan through program elements
-    const actionDefinitions = model.elements.filter(isActionDefinition);
+    const actionDefinitions = getElements(model).filter(isActionDefinition);
 
     if (actionDefinitions.length === 0) {
       // No actions defined in document

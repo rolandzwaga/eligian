@@ -1,7 +1,7 @@
 # Eligian Language Specification
 
-**Version**: 1.0.0
-**Last Updated**: 2025-10-21
+**Version**: 1.1.0
+**Last Updated**: 2025-10-25
 **Status**: Living Document - Updated with every language feature change
 
 ---
@@ -123,17 +123,27 @@ h           // Hours
 
 ### 3.1 Program Elements
 
-An Eligian program consists of zero or more program elements:
+An Eligian program consists of zero or more program statements in any order:
 
 ```eligian
-Program := (ActionDefinition | Timeline | VariableDeclaration)*
+Program := (ImportStatement | ActionDefinition | Timeline | VariableDeclaration)*
 ```
+
+**Key Points**:
+- **Flexible Ordering**: Imports, constants, actions, and timelines can appear in any order
+- **No Strict Grouping**: You can mix imports with other declarations as needed
 
 **Example**:
 
 ```eligian
+// Import can come first
+import layout from "./layout.html"
+
 // Global variable
 const duration = 1000
+
+// Another import - flexible ordering
+import styles from "./styles.css"
 
 // Action definition
 action fadeIn(selector: string) [
@@ -143,15 +153,86 @@ action fadeIn(selector: string) [
 
 // Timeline
 timeline "main" in "#app" using raf {
-  at 0s..2s { fadeIn("#title") }
+  at 0s..2s fadeIn("#title")
 }
 ```
 
-### 3.2 Execution Model
+### 3.2 Import Statements
 
-1. **Global variables** are evaluated first and added to `$globaldata` scope
-2. **Actions** are registered (not executed until called)
-3. **Timelines** define event schedules (executed by Eligius runtime)
+Import statements allow you to reference external HTML, CSS, and media assets.
+
+#### 3.2.1 Default Import Syntax
+
+```eligian
+import <name> from "<path>"
+import <name> from "<path>" as <type>
+```
+
+**Import Types**:
+- `html` - HTML layout files
+- `css` - CSS stylesheet files
+- `media` - Media files (images, audio, video)
+
+**Type Inference**: The compiler automatically infers the import type from file extensions:
+- `.html`, `.htm` → `html`
+- `.css` → `css`
+- `.jpg`, `.jpeg`, `.png`, `.gif`, `.svg`, `.webp`, `.mp3`, `.wav`, `.ogg`, `.mp4`, `.webm`, `.ogv` → `media`
+
+**Examples**:
+
+```eligian
+// Type inferred from extension
+import layout from "./layout.html"         // Inferred as 'html'
+import styles from "./styles.css"          // Inferred as 'css'
+import logo from "./logo.png"              // Inferred as 'media'
+
+// Explicit type override (for unknown extensions)
+import template from "./template.tpl" as html
+import custom from "./custom.unknown" as media
+```
+
+#### 3.2.2 Named Import Syntax
+
+```eligian
+import { <name1>, <name2>, ... } from "<path>"
+import { <name1>, <name2> } from "<path>" as <type>
+```
+
+**Examples**:
+
+```eligian
+// Import multiple HTML fragments
+import { header, footer, sidebar } from "./components.html"
+
+// Import multiple stylesheets
+import { base, theme } from "./styles.css"
+
+// Import multiple media files with explicit type
+import { icon1, icon2 } from "./icons.svg" as media
+```
+
+#### 3.2.3 Path Validation
+
+Import paths must be **relative paths** only:
+
+✅ **Valid**:
+- `"./file.html"` - Same directory
+- `"../parent/file.css"` - Parent directory
+- `"./nested/deep/file.png"` - Nested directories
+
+❌ **Invalid**:
+- `"/absolute/path.html"` - Absolute Unix path
+- `"C:\absolute\path.css"` - Absolute Windows path
+- `"https://example.com/file.js"` - URL path
+
+**Reserved Names**: Import names cannot be reserved keywords (`action`, `timeline`, `const`, `for`, `if`, etc.)
+
+### 3.3 Execution Model
+
+1. **Imports** are resolved and assets are loaded
+2. **Global variables** are evaluated and added to `$globaldata` scope
+3. **Actions** are registered (not executed until called)
+4. **Timelines** define event schedules (executed by Eligius runtime)
 
 ---
 

@@ -10,6 +10,7 @@ import { parseDocument } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../../eligian-module.js';
 import type { Expression, Program } from '../../generated/ast.js';
+import { getElements } from '../../utils/program-helpers.js';
 import { evaluateExpression } from '../expression-evaluator.js';
 import type { ConstantMap } from '../types/constant-folding.js';
 
@@ -19,7 +20,7 @@ async function parseExpression(code: string): Promise<Expression> {
   const fullCode = `const TEST = ${code};`;
   const document = await parseDocument(services, fullCode);
   const program = document.parseResult.value as Program;
-  const varDecl = program.elements[0];
+  const varDecl = getElements(program)[0];
   if (varDecl.$type !== 'VariableDeclaration') {
     throw new Error('Expected VariableDeclaration');
   }
@@ -139,7 +140,7 @@ describe('Expression Evaluator - Constant References', () => {
     const program = document.parseResult.value as Program;
 
     // Get B's expression
-    const bDecl = program.elements[1];
+    const bDecl = getElements(program)[1];
     if (bDecl.$type !== 'VariableDeclaration') {
       throw new Error('Expected VariableDeclaration');
     }
@@ -163,7 +164,7 @@ describe('Expression Evaluator - Constant References', () => {
     const document = await parseDocument(services, fullCode);
     const program = document.parseResult.value as Program;
 
-    const cDecl = program.elements[2];
+    const cDecl = getElements(program)[2];
     if (cDecl.$type !== 'VariableDeclaration') {
       throw new Error('Expected VariableDeclaration');
     }
@@ -188,7 +189,7 @@ describe('Expression Evaluator - Constant References', () => {
     const document = await parseDocument(services, fullCode);
     const program = document.parseResult.value as Program;
 
-    const yDecl = program.elements[1];
+    const yDecl = getElements(program)[1];
     if (yDecl.$type !== 'VariableDeclaration') {
       throw new Error('Expected VariableDeclaration');
     }

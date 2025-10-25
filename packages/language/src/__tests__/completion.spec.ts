@@ -29,7 +29,9 @@ describe('Eligian Completion Provider', () => {
           expect(completions.items.length).toBeGreaterThan(0);
 
           // Check if selectElement is present (with "operation:" prefix)
-          const selectElement = completions.items.find(item => item.label === 'operation: selectElement');
+          const selectElement = completions.items.find(
+            item => item.label === 'operation: selectElement'
+          );
           expect(selectElement).toBeDefined();
           expect(selectElement?.kind).toBe(3); // CompletionItemKind.Function = 3
           expect(selectElement?.documentation).toBeDefined();
@@ -47,7 +49,9 @@ describe('Eligian Completion Provider', () => {
         index: 0,
         assert: (completions: CompletionList) => {
           // Should find selectElement when typing "sel" (with "operation:" prefix)
-          const selectElement = completions.items.find(item => item.label === 'operation: selectElement');
+          const selectElement = completions.items.find(
+            item => item.label === 'operation: selectElement'
+          );
           expect(selectElement).toBeDefined();
         },
       });
@@ -109,7 +113,9 @@ describe('Eligian Completion Provider', () => {
         index: 0,
         assert: (completions: CompletionList) => {
           // Find selectElement operation (with "operation:" prefix)
-          const selectElement = completions.items.find(item => item.label === 'operation: selectElement');
+          const selectElement = completions.items.find(
+            item => item.label === 'operation: selectElement'
+          );
           expect(selectElement).toBeDefined();
 
           // Should have documentation with description
@@ -135,7 +141,9 @@ describe('Eligian Completion Provider', () => {
         index: 0,
         assert: (completions: CompletionList) => {
           // Find selectElement operation (with "operation:" prefix)
-          const selectElement = completions.items.find(item => item.label === 'operation: selectElement');
+          const selectElement = completions.items.find(
+            item => item.label === 'operation: selectElement'
+          );
           expect(selectElement).toBeDefined();
           expect(selectElement?.kind).toBe(3); // CompletionItemKind.Function = 3
         },
@@ -239,7 +247,9 @@ describe('Eligian Completion Provider', () => {
         index: 0,
         assert: (completions: CompletionList) => {
           // Custom actions should have "action:" prefix and CompletionItemKind.Function (3)
-          const customAction = completions.items.find(item => item.label === 'action: customAction');
+          const customAction = completions.items.find(
+            item => item.label === 'action: customAction'
+          );
           expect(customAction).toBeDefined();
           expect(customAction?.kind).toBe(3); // CompletionItemKind.Function = 3
 
