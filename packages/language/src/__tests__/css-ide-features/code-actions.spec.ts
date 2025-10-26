@@ -18,6 +18,8 @@ import {
   extractIDNameFromDiagnostic,
   isCSSRelatedDiagnostic,
 } from '../../css/code-action-helpers.js';
+import { CSSCodeActionProvider } from '../../css/css-code-actions.js';
+import { CSSRegistryService } from '../../css/css-registry.js';
 
 describe('CSS Code Action Helpers', () => {
   describe('extractClassNameFromDiagnostic', () => {
@@ -255,6 +257,175 @@ describe('CSS Code Action Helpers', () => {
 
     it('should include invalid_css_selector', () => {
       expect(CSS_RELATED_CODES).toContain('invalid_css_selector');
+    });
+  });
+});
+
+describe('CSSCodeActionProvider', () => {
+  describe('provideCodeActions', () => {
+    it('should return empty array when no CSS files imported', async () => {
+      const provider = new CSSCodeActionProvider();
+      const cssRegistry = new CSSRegistryService();
+      const params = {
+        textDocument: { uri: 'file:///test.eligian' },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        context: {
+          diagnostics: [
+            {
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+              message: "Unknown CSS class 'button'",
+              severity: DiagnosticSeverity.Error,
+              data: { code: 'unknown_css_class' },
+            },
+          ],
+        },
+      };
+
+      const actions = await provider.provideCodeActions(
+        params as any,
+        'file:///test.eligian',
+        cssRegistry,
+        async () => ''
+      );
+
+      expect(actions).toEqual([]);
+    });
+
+    it('should return empty array when CSS file cannot be read', async () => {
+      const provider = new CSSCodeActionProvider();
+      const cssRegistry = new CSSRegistryService();
+
+      // Register CSS import
+      cssRegistry.registerImports('file:///test.eligian', ['./styles.css']);
+
+      const params = {
+        textDocument: { uri: 'file:///test.eligian' },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        context: {
+          diagnostics: [
+            {
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+              message: "Unknown CSS class 'button'",
+              severity: DiagnosticSeverity.Error,
+              data: { code: 'unknown_css_class' },
+            },
+          ],
+        },
+      };
+
+      const actions = await provider.provideCodeActions(
+        params as any,
+        'file:///test.eligian',
+        cssRegistry,
+        async () => {
+          throw new Error('File not found');
+        }
+      );
+
+      expect(actions).toEqual([]);
+    });
+
+    it('should create code action for unknown CSS class', async () => {
+      const provider = new CSSCodeActionProvider();
+      const cssRegistry = new CSSRegistryService();
+
+      // Register CSS import
+      cssRegistry.registerImports('file:///test.eligian', ['./styles.css']);
+
+      const params = {
+        textDocument: { uri: 'file:///test.eligian' },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        context: {
+          diagnostics: [
+            {
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+              message: "Unknown CSS class 'button'",
+              severity: DiagnosticSeverity.Error,
+              data: { code: 'unknown_css_class' },
+            },
+          ],
+        },
+      };
+
+      const cssFileContent = '.existing { color: red; }';
+      const actions = await provider.provideCodeActions(
+        params as any,
+        'file:///test.eligian',
+        cssRegistry,
+        async () => cssFileContent
+      );
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0]?.title).toContain("Create '.button'");
+      expect(actions[0]?.kind).toBe('quickfix');
+    });
+
+    it('should skip non-CSS diagnostics', async () => {
+      const provider = new CSSCodeActionProvider();
+      const cssRegistry = new CSSRegistryService();
+
+      cssRegistry.registerImports('file:///test.eligian', ['./styles.css']);
+
+      const params = {
+        textDocument: { uri: 'file:///test.eligian' },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        context: {
+          diagnostics: [
+            {
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+              message: 'Syntax error',
+              severity: DiagnosticSeverity.Error,
+              data: { code: 'syntax-error' },
+            },
+          ],
+        },
+      };
+
+      const actions = await provider.provideCodeActions(
+        params as any,
+        'file:///test.eligian',
+        cssRegistry,
+        async () => '.existing { }'
+      );
+
+      expect(actions).toEqual([]);
+    });
+
+    it('should create multiple code actions for multiple CSS errors', async () => {
+      const provider = new CSSCodeActionProvider();
+      const cssRegistry = new CSSRegistryService();
+
+      cssRegistry.registerImports('file:///test.eligian', ['./styles.css']);
+
+      const params = {
+        textDocument: { uri: 'file:///test.eligian' },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        context: {
+          diagnostics: [
+            {
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+              message: "Unknown CSS class 'button'",
+              severity: DiagnosticSeverity.Error,
+              data: { code: 'unknown_css_class' },
+            },
+            {
+              range: { start: { line: 1, character: 0 }, end: { line: 1, character: 10 } },
+              message: "Unknown CSS class 'primary'",
+              severity: DiagnosticSeverity.Error,
+              data: { code: 'unknown_css_class' },
+            },
+          ],
+        },
+      };
+
+      const actions = await provider.provideCodeActions(
+        params as any,
+        'file:///test.eligian',
+        cssRegistry,
+        async () => ''
+      );
+
+      expect(actions).toHaveLength(2);
     });
   });
 });
