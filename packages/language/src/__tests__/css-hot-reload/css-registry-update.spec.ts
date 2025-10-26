@@ -57,7 +57,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
 
     // First validation: should have error for 'new-class'
     const { document, validationErrors: errors1 } = await parseAndValidate(code);
-    const unknownClassErrors1 = errors1.filter(e => e.code === 'unknown_css_class');
+    const unknownClassErrors1 = errors1.filter(e => e.data?.code === 'unknown_css_class');
     expect(unknownClassErrors1.length).toBeGreaterThan(0);
     expect(unknownClassErrors1[0].message).toContain('new-class');
 
@@ -125,7 +125,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     // Re-validate the same document
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const errors2 = document.diagnostics ?? [];
-    const unknownClassErrors2 = errors2.filter(e => e.code === 'unknown_css_class');
+    const unknownClassErrors2 = errors2.filter(e => e.data?.code === 'unknown_css_class');
 
     // Error should appear
     expect(unknownClassErrors2.length).toBeGreaterThan(0);
@@ -228,8 +228,8 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     const { document: doc2, validationErrors: errors2 } = await parseAndValidate(code2);
 
     // Both should have errors for 'primary'
-    const unknownClass1 = errors1.filter(e => e.code === 'unknown_css_class');
-    const unknownClass2 = errors2.filter(e => e.code === 'unknown_css_class');
+    const unknownClass1 = errors1.filter(e => e.data?.code === 'unknown_css_class');
+    const unknownClass2 = errors2.filter(e => e.data?.code === 'unknown_css_class');
     expect(unknownClass1.length).toBeGreaterThan(0);
     expect(unknownClass2.length).toBeGreaterThan(0);
 
@@ -249,8 +249,8 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     await services.shared.workspace.DocumentBuilder.build([doc2], { validation: true });
 
     // Both should have no errors now
-    const errors1After = doc1.diagnostics?.filter(e => e.code === 'unknown_css_class') ?? [];
-    const errors2After = doc2.diagnostics?.filter(e => e.code === 'unknown_css_class') ?? [];
+    const errors1After = doc1.diagnostics?.filter(e => e.data?.code === 'unknown_css_class') ?? [];
+    const errors2After = doc2.diagnostics?.filter(e => e.data?.code === 'unknown_css_class') ?? [];
     expect(errors1After.length).toBe(0);
     expect(errors2After.length).toBe(0);
   });
@@ -291,7 +291,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     const { validationErrors } = await parseAndValidate(code);
 
     // Should have error about CSS file issues (at import statement)
-    const cssFileErrors = validationErrors.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBeGreaterThan(0);
     expect(cssFileErrors[0].message).toContain('syntax errors');
   });
@@ -331,7 +331,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
 
     // First validation: should have CSS file error (not unknown class error)
     const { document, validationErrors: errors1 } = await parseAndValidate(code);
-    const cssFileErrors1 = errors1.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors1 = errors1.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors1.length).toBeGreaterThan(0);
 
     // Simulate CSS file fix: valid CSS now
@@ -348,8 +348,8 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     // Re-validate
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const errors2 = document.diagnostics ?? [];
-    const cssFileErrors2 = errors2.filter(e => e.code === 'invalid_css_file');
-    const unknownClassErrors2 = errors2.filter(e => e.code === 'unknown_css_class');
+    const cssFileErrors2 = errors2.filter(e => e.data?.code === 'invalid_css_file');
+    const unknownClassErrors2 = errors2.filter(e => e.data?.code === 'unknown_css_class');
 
     // CSS file error should disappear
     expect(cssFileErrors2.length).toBe(0);

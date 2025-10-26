@@ -61,21 +61,47 @@ export class CSSWatcherManager {
    * Used to determine which documents need re-validation when a CSS file changes.
    *
    * @param documentUri - Absolute Eligian document URI (file:///...)
-   * @param cssFileUris - Absolute CSS file URIs imported by the document
+   * @param cssFileUris - CSS file URIs imported by the document (may be relative like "./styles.css")
    */
   registerImports(documentUri: string, cssFileUris: string[]): void {
     // For each CSS file, track that this document imports it
     for (const cssFileUri of cssFileUris) {
-      let documents = this.importsByCSS.get(cssFileUri);
+      // Convert relative CSS paths to absolute URIs to match file change events
+      const absoluteCSSUri = this.resolveAbsoluteCSSUri(documentUri, cssFileUri);
+
+      let documents = this.importsByCSS.get(absoluteCSSUri);
       if (!documents) {
         documents = new Set();
-        this.importsByCSS.set(cssFileUri, documents);
+        this.importsByCSS.set(absoluteCSSUri, documents);
       }
       documents.add(documentUri);
     }
-    console.log(
-      `[CSSWatcher] Registered imports for ${documentUri}: ${cssFileUris.length} CSS file(s)`
-    );
+  }
+
+  /**
+   * Resolve a relative CSS file URI to an absolute file URI
+   *
+   * @param documentUri - Absolute Eligian document URI (e.g., "file:///c%3A/projects/test.eligian")
+   * @param cssFileUri - CSS file URI (may be relative like "./styles.css" or absolute)
+   * @returns Absolute CSS file URI (e.g., "file:///c%3A/projects/styles.css")
+   */
+  private resolveAbsoluteCSSUri(documentUri: string, cssFileUri: string): string {
+    // If already absolute, return as-is
+    if (cssFileUri.startsWith('file://')) {
+      return cssFileUri;
+    }
+
+    // Parse document URI to get directory
+    const docUri = vscode.Uri.parse(documentUri);
+    const docPath = docUri.fsPath;
+    const docDir = docPath.substring(0, docPath.lastIndexOf('\\'));
+
+    // Remove leading "./" from CSS path
+    const cleanPath = cssFileUri.startsWith('./') ? cssFileUri.substring(2) : cssFileUri;
+
+    // Combine directory with CSS path and convert to URI
+    const absolutePath = `${docDir}\\${cleanPath}`;
+    return vscode.Uri.file(absolutePath).toString();
   }
 
   /**

@@ -179,7 +179,6 @@ function generateRegistry(): OperationRegistry {
 
     // Skip deprecated operations
     if (DEPRECATED_OPERATIONS.has(systemName)) {
-      console.log(`⚠️  Skipping deprecated operation: ${systemName}`);
       continue;
     }
 
@@ -225,12 +224,8 @@ export const OPERATION_REGISTRY: OperationRegistry = ${registryJson};
  * Main entry point - generate and write the registry file.
  */
 function main() {
-  console.log('🔨 Generating operation registry...');
-
   // Generate registry from Eligius metadata
   const registry = generateRegistry();
-
-  console.log(`✅ Generated ${Object.keys(registry).length} operation signatures`);
 
   // Generate TypeScript code
   const code = generateRegistryCode(registry);
@@ -239,8 +234,6 @@ function main() {
   const outputPath = join(__dirname, 'registry.generated.ts');
   writeFileSync(outputPath, code, 'utf-8');
 
-  console.log(`📝 Written to: ${outputPath}`);
-
   // Print summary by category
   const categoryCounts: Record<string, number> = {};
   for (const signature of Object.values(registry)) {
@@ -248,9 +241,7 @@ function main() {
     categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
   }
 
-  console.log('\n📊 Operations by category:');
-  for (const [category, count] of Object.entries(categoryCounts).sort()) {
-    console.log(`  ${category}: ${count}`);
+  for (const [_category, _count] of Object.entries(categoryCounts).sort()) {
   }
 }
 

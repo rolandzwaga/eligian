@@ -24,8 +24,6 @@ import type {
  * @example
  * ```typescript
  * if (isDefaultImport(node)) {
- *   console.log(node.type);  // 'layout' | 'styles' | 'provider'
- *   console.log(node.path);  // './layout.html'
  * }
  * ```
  */
@@ -42,9 +40,6 @@ export function isDefaultImport(node: AstNode | undefined): node is DefaultImpor
  * @example
  * ```typescript
  * if (isNamedImport(node)) {
- *   console.log(node.name);       // 'tooltip'
- *   console.log(node.path);       // './tooltip.html'
- *   console.log(node.assetType);  // 'html' | 'css' | 'media' | undefined
  * }
  * ```
  */
@@ -100,7 +95,6 @@ export function isProgramElement(node: AstNode | undefined): node is ProgramElem
  * @example
  * ```typescript
  * if (isActionDefinition(node)) {
- *   console.log(node.name);  // Action name
  * }
  * ```
  */

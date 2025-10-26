@@ -79,8 +79,6 @@ function convertMetadata(name: string, metadataFn: () => any) {
  * Generate operations.generated.ts
  */
 function generateOperationsMetadata(metadataModule: any) {
-  console.log('📦 Generating operation metadata...');
-
   const operations = [];
 
   // Loop through all exported metadata functions
@@ -144,7 +142,6 @@ export const FILTERED_OPERATIONS = new Set([
 
   const outputPath = join(OUTPUT_DIR, 'operations.generated.ts');
   writeFileSync(outputPath, tsCode, 'utf-8');
-  console.log(`✅ Generated ${filteredOperations.length} operations → ${outputPath}`);
 
   return filteredOperations.length;
 }
@@ -153,8 +150,6 @@ export const FILTERED_OPERATIONS = new Set([
  * Generate timeline-events.generated.ts
  */
 function generateTimelineEventsMetadata(TimelineEventNames: any) {
-  console.log('📅 Generating timeline events metadata...');
-
   const events = [];
 
   // Get all static properties from TimelineEventNames class
@@ -233,7 +228,6 @@ export const TIMELINE_EVENTS: TimelineEventMetadata[] = ${JSON.stringify(events,
 
   const outputPath = join(OUTPUT_DIR, 'timeline-events.generated.ts');
   writeFileSync(outputPath, tsCode, 'utf-8');
-  console.log(`✅ Generated ${events.length} events → ${outputPath}`);
 
   return events.length;
 }
@@ -242,15 +236,9 @@ export const TIMELINE_EVENTS: TimelineEventMetadata[] = ${JSON.stringify(events,
  * Main execution
  */
 function main() {
-  console.log('🚀 Eligian Metadata Generator');
-  console.log('━'.repeat(50));
-
   try {
-    const opsCount = generateOperationsMetadata(metadata);
-    const eventsCount = generateTimelineEventsMetadata(TimelineEventNames);
-
-    console.log('━'.repeat(50));
-    console.log(`✨ Success! Generated ${opsCount} operations + ${eventsCount} events`);
+    generateOperationsMetadata(metadata);
+    generateTimelineEventsMetadata(TimelineEventNames);
   } catch (error) {
     console.error('❌ Error:', (error as Error).message);
     console.error((error as Error).stack);

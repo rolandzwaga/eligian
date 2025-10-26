@@ -62,7 +62,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const { validationErrors } = await parseAndValidate(code);
 
     // Should have error at CSS import statement
-    const cssFileErrors = validationErrors.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBeGreaterThan(0);
     expect(cssFileErrors[0].message).toContain('syntax errors');
     expect(cssFileErrors[0].message).toContain('line 5');
@@ -102,7 +102,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const { validationErrors } = await parseAndValidate(code);
 
     // Should show CSS file error, not unknown class error
-    const cssFileErrors = validationErrors.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBeGreaterThan(0);
   });
 
@@ -140,7 +140,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const { document, validationErrors: errors1 } = await parseAndValidate(code);
 
     // Should have CSS file error
-    const cssFileErrors1 = errors1.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors1 = errors1.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors1.length).toBeGreaterThan(0);
 
     // Fix CSS file - update registry with valid CSS
@@ -170,11 +170,11 @@ describe('Invalid CSS File Handling (T025)', () => {
     const errors2 = document.diagnostics ?? [];
 
     // CSS file error should disappear
-    const cssFileErrors2 = errors2.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors2 = errors2.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors2.length).toBe(0);
 
     // Class should be available (no unknown class error)
-    const unknownClassErrors = errors2.filter(e => e.code === 'unknown_css_class');
+    const unknownClassErrors = errors2.filter(e => e.data?.code === 'unknown_css_class');
     expect(unknownClassErrors.length).toBe(0);
   });
 
@@ -235,13 +235,13 @@ describe('Invalid CSS File Handling (T025)', () => {
     const { validationErrors } = await parseAndValidate(code);
 
     // Should have error for invalid CSS file
-    const cssFileErrors = validationErrors.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBe(1);
     expect(cssFileErrors[0].message).toContain('invalid.css');
 
     // Should NOT have unknown class error for valid-class
     const unknownClassErrors = validationErrors.filter(
-      e => e.code === 'unknown_css_class' && e.message.includes('valid-class')
+      e => e.data?.code === 'unknown_css_class' && e.message.includes('valid-class')
     );
     expect(unknownClassErrors.length).toBe(0);
   });
@@ -297,7 +297,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const { validationErrors } = await parseAndValidate(code);
 
     // Should have errors for both CSS files
-    const cssFileErrors = validationErrors.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBe(2);
 
     // Check both errors are present
@@ -337,7 +337,7 @@ describe('Invalid CSS File Handling (T025)', () => {
 
     const { validationErrors } = await parseAndValidate(code);
 
-    const cssFileErrors = validationErrors.filter(e => e.code === 'invalid_css_file');
+    const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBe(1);
 
     // Error message should include line, column, and original error message
