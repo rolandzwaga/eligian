@@ -1,18 +1,49 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { compile, formatErrors } from '@eligian/language';
+import {
+  CSS_IMPORTS_DISCOVERED_NOTIFICATION,
+  type CSSImportsDiscoveredParams,
+  compile,
+  formatErrors,
+} from '@eligian/language';
 import { Effect } from 'effect';
 import type * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
+import { CSSWatcherManager } from './css-watcher.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
+// T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
+// This watcher is independent of preview panels and exists for the lifetime of the extension
+let validationCSSWatcher: CSSWatcherManager | null = null;
 
 // This function is called when the extension is activated.
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Start language client first
   client = await startLanguageClient(context);
+
+  // T023: Initialize shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
+  // This watcher sends LSP notifications when CSS files change, triggering re-validation
+  // It's separate from preview-specific watchers and exists for the extension lifetime
+  validationCSSWatcher = new CSSWatcherManager(() => {
+    // No-op callback - validation is handled via LSP notifications, not callbacks
+  }, client);
+  context.subscriptions.push({
+    dispose: () => validationCSSWatcher?.dispose(),
+  });
+
+  // T023: Register handler for CSS imports discovered notification (Feature 013 - User Story 3)
+  // The language server sends this notification when a document's CSS imports are discovered.
+  // We register these imports with the validationCSSWatcher so it knows which documents to
+  // re-validate when a CSS file changes.
+  client.onNotification(
+    CSS_IMPORTS_DISCOVERED_NOTIFICATION,
+    (params: CSSImportsDiscoveredParams) => {
+      validationCSSWatcher?.registerImports(params.documentUri, params.cssFileUris);
+    }
+  );
 
   // Initialize diagnostics collection for preview errors
   const diagnostics = PreviewPanel.initializeDiagnostics();
@@ -65,6 +96,7 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
 
   // Start the client. This will also launch the server
   await client.start();
+
   return client;
 }
 

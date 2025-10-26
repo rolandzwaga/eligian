@@ -57,8 +57,12 @@ async function compileFile(inputPath: string, options: CompileOptions): Promise<
       console.log(chalk.blue(`Compiling ${inputPath}...`));
     }
 
+    // Get absolute path for URI resolution
+    const absoluteInputPath = path.resolve(inputPath);
+
     // Parse source to AST for asset validation
-    const parseEffect = parseSource(sourceCode);
+    // Pass URI so CSS files can be parsed and loaded into registry
+    const parseEffect = parseSource(sourceCode, absoluteInputPath);
     const program = await Effect.runPromise(parseEffect).catch(error => {
       // Handle parse errors
       const formatted = formatErrors([error], sourceCode);
@@ -83,7 +87,6 @@ async function compileFile(inputPath: string, options: CompileOptions): Promise<
 
     // Validate and load assets if imports exist
     if (hasImports(program)) {
-      const absoluteInputPath = path.resolve(inputPath);
       const assetResult = loadProgramAssets(program, absoluteInputPath);
 
       if (assetResult.errors.length > 0) {
@@ -126,6 +129,7 @@ async function compileFile(inputPath: string, options: CompileOptions): Promise<
     const compileEffect = compile(sourceCode, {
       optimize: options.optimize,
       minify: options.minify,
+      sourceUri: absoluteInputPath,
     });
 
     const result = await Effect.runPromise(compileEffect).catch(error => {
@@ -228,3 +232,6 @@ export default function main(): void {
     program.outputHelp();
   }
 }
+
+// Run the CLI
+main();

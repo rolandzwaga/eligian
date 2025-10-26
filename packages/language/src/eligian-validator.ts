@@ -10,6 +10,8 @@ import {
   validateParameterTypes,
 } from './compiler/index.js';
 import { findActionByName } from './compiler/name-resolver.js';
+import { findSimilarClasses } from './css/levenshtein.js';
+import { parseSelector } from './css/selector-parser.js';
 import type { EligianServices } from './eligian-module.js';
 import type {
   BreakStatement,
@@ -50,6 +52,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkDefaultImports, // T027-T028: US1 - Duplicate default import detection
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
+      validator.checkCSSImports, // Feature 013 T016: Extract and register CSS imports
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: [
@@ -63,6 +66,8 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkOperationExists,
       validator.checkParameterCount,
       validator.checkParameterTypes,
+      validator.checkClassNameParameter, // Feature 013 T017: Validate className parameters
+      validator.checkSelectorParameter, // Feature 013 T020: Validate selector parameters
       // TODO T216: Re-enable checkDependencies once we implement proper dependency tracking across sequences
       // validator.checkDependencies
     ],
@@ -98,8 +103,14 @@ export function registerValidationChecks(services: EligianServices) {
  * Validation rules enforce Eligius-specific semantic constraints:
  * - Timeline requirements (at least one timeline, valid provider, source requirements)
  * - Timeline event constraints (valid time ranges, non-negative times)
+ * - CSS className validation (Feature 013)
  */
 export class EligianValidator {
+  private services?: EligianServices;
+
+  constructor(services?: EligianServices) {
+    this.services = services;
+  }
   /**
    * Validate that every program has at least one timeline declaration.
    *
@@ -1150,6 +1161,312 @@ export class EligianValidator {
       // Catch any errors from asset loading to prevent extension crash
       // Errors during asset loading should not crash the LSP
       // console.error('[Asset Validator] Error loading assets:', _err);
+    }
+  }
+
+  /**
+   * Helper method to register CSS imports for a document.
+   *
+   * This extracts CSS import statements from the Program node and registers
+   * them with the CSSRegistryService. It's called from:
+   * - checkCSSImports (Program validator, runs after child validators)
+   * - checkClassNameParameter (OperationCall validator, lazy initialization)
+   *
+   * @param program - The Program AST node
+   * @param documentUri - The document URI
+   */
+  private ensureCSSImportsRegistered(program: Program, documentUri: string): void {
+    if (!this.services) return;
+
+    const cssRegistry = this.services.css.CSSRegistry;
+
+    // Extract all CSS imports (DefaultImport with type='styles')
+    const allImports = getImports(program);
+    const cssImports = allImports.filter(imp => isDefaultImport(imp) && imp.type === 'styles');
+
+    // Convert CSS file paths to URIs
+    const cssFileUris: string[] = [];
+    for (const cssImport of cssImports) {
+      const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
+      cssFileUris.push(cssPath);
+    }
+
+    // Register CSS imports with the registry (idempotent - safe to call multiple times)
+    cssRegistry.registerImports(documentUri, cssFileUris);
+  }
+
+  /**
+   * Feature 013 - T016: Extract CSS imports and register with CSS registry
+   * Feature 013 - T026: Validate CSS file errors
+   *
+   * This validator runs on every Program node and:
+   * 1. Extracts all CSS import statements (DefaultImport with type='styles')
+   * 2. Resolves CSS file paths relative to document URI
+   * 3. Registers imports with CSSRegistryService for className validation
+   * 4. Validates that imported CSS files don't have syntax errors (T026)
+   *
+   * Note: Actual CSS file parsing happens via LSP notifications (see main.ts)
+   */
+  checkCSSImports(program: Program, accept: ValidationAcceptor): void {
+    if (!this.services) return;
+
+    const documentUri = program.$document?.uri?.toString();
+    if (!documentUri) return;
+
+    // Register CSS imports using the helper method
+    this.ensureCSSImportsRegistered(program, documentUri);
+
+    // T026: Validate CSS file errors
+    this.validateCSSFileErrors(program, accept);
+  }
+
+  /**
+   * Feature 013 - T026 [US4]: Validate that imported CSS files don't have syntax errors
+   *
+   * For each imported CSS file, check if it has parse errors and report them at the
+   * import statement location.
+   *
+   * @param program - AST Program node
+   * @param accept - Validation acceptor for reporting errors
+   */
+  private validateCSSFileErrors(program: Program, accept: ValidationAcceptor): void {
+    if (!this.services) return;
+
+    const cssRegistry = this.services.css.CSSRegistry;
+    const documentUri = program.$document?.uri?.toString();
+    if (!documentUri) return;
+
+    // Get all CSS imports for this document
+    const cssImports = getImports(program)
+      .filter(isDefaultImport)
+      .filter(imp => imp.type === 'styles');
+
+    for (const cssImport of cssImports) {
+      const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
+
+      // Check if CSS file has errors
+      if (cssRegistry.hasErrors(cssPath)) {
+        const errors = cssRegistry.getErrors(cssPath);
+
+        // Report error at the import statement
+        if (errors.length > 0) {
+          const firstError = errors[0];
+          const errorMessage = `CSS file '${cssPath}' has syntax errors (line ${firstError.line}, column ${firstError.column}): ${firstError.message}`;
+
+          accept('error', errorMessage, {
+            node: cssImport,
+            property: 'path',
+            code: 'invalid_css_file',
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Feature 013 - T017: Validate className parameters in operation calls
+   *
+   * This validator checks if className parameters reference valid CSS classes
+   * from imported CSS files. It provides "Did you mean?" suggestions for typos.
+   *
+   * Operations with className parameters (from OPERATION_REGISTRY):
+   * - addClass(className)
+   * - removeClass(className)
+   * - toggleClass(className)
+   */
+  checkClassNameParameter(operation: OperationCall, accept: ValidationAcceptor): void {
+    if (!this.services) return; // No services available
+
+    const cssRegistry = this.services.css.CSSRegistry;
+
+    // Traverse up the AST to find the root Program node
+    let node: any = operation;
+    while (node && node.$type !== 'Program') {
+      node = node.$container;
+    }
+
+    const documentUri = node?.$document?.uri?.toString();
+    if (!documentUri) return; // No document URI available
+
+    // CRITICAL: Register CSS imports BEFORE checking for classes
+    // This ensures the registry has the document→CSS file mapping even if
+    // child validators (like this one) run before parent validators (checkCSSImports)
+    const program: Program = node;
+    this.ensureCSSImportsRegistered(program, documentUri);
+
+    // Get operation name
+    const operationName = getOperationCallName(operation);
+    if (!operationName) return;
+
+    // Check if this operation has className parameters
+    const operationSignature = OPERATION_REGISTRY[operationName];
+    if (!operationSignature) return; // Unknown operation (will be caught by checkOperationExists)
+
+    // Find className parameter indices
+    const classNameParamIndices: number[] = [];
+    for (let i = 0; i < operationSignature.parameters.length; i++) {
+      const param = operationSignature.parameters[i];
+      // Check if parameter type array includes 'ParameterType:className'
+      // param.type can be ParameterType[] or ConstantValue[], we need to check if it's ParameterType[]
+      if (
+        Array.isArray(param.type) &&
+        param.type.some(t => typeof t === 'string' && t === 'ParameterType:className')
+      ) {
+        classNameParamIndices.push(i);
+      }
+    }
+
+    if (classNameParamIndices.length === 0) return; // No className parameters
+
+    // Get available CSS classes from imported CSS files
+    const availableClasses = cssRegistry.getClassesForDocument(documentUri);
+
+    // If no CSS files imported, skip validation (className validation is opt-in)
+    if (availableClasses.size === 0) {
+      return;
+    }
+
+    // Validate each className parameter
+    for (const paramIndex of classNameParamIndices) {
+      const arg = operation.args[paramIndex];
+      if (!arg) continue; // Missing argument (will be caught by checkParameterCount)
+
+      // Only validate string literals (not variables or expressions)
+      if (arg.$type !== 'StringLiteral') continue;
+
+      const className = arg.value;
+
+      // Check if className exists in available classes
+      if (!availableClasses.has(className)) {
+        // Class not found - generate "Did you mean?" suggestions
+        const suggestions = findSimilarClasses(className, availableClasses, 2, 3);
+
+        let message = `Unknown CSS class: '${className}'.`;
+        if (suggestions.length > 0) {
+          message += ` Did you mean: ${suggestions.join(', ')}?`;
+        }
+
+        accept('error', message, {
+          node: arg,
+          code: 'unknown_css_class',
+        });
+      }
+    }
+  }
+
+  /**
+   * Feature 013 - T020: Validate selector parameters in operation calls
+   *
+   * This validator checks if selector parameters contain valid CSS classes and IDs
+   * from imported CSS files. It validates each component of complex selectors.
+   *
+   * Operations with selector parameters (from OPERATION_REGISTRY):
+   * - selectElement(selector)
+   * - moveToNewParent(newParentSelector)
+   */
+  checkSelectorParameter(operation: OperationCall, accept: ValidationAcceptor): void {
+    const operationName = getOperationCallName(operation);
+    if (!this.services) {
+      return;
+    }
+
+    const cssRegistry = this.services.css.CSSRegistry;
+
+    // Traverse up the AST to find the root Program node
+    let node: any = operation;
+    while (node && node.$type !== 'Program') {
+      node = node.$container;
+    }
+
+    const documentUri = node?.$document?.uri?.toString();
+    if (!documentUri) {
+      return;
+    }
+
+    // CRITICAL: Register CSS imports BEFORE checking for classes/IDs
+    const program: Program = node;
+    this.ensureCSSImportsRegistered(program, documentUri);
+
+    // operationName already declared at top of function
+    if (!operationName) return;
+
+    // Check if this operation has selector parameters
+    const operationSignature = OPERATION_REGISTRY[operationName];
+    if (!operationSignature) return;
+
+    // Find selector parameter indices
+    const selectorParamIndices: number[] = [];
+    for (let i = 0; i < operationSignature.parameters.length; i++) {
+      const param = operationSignature.parameters[i];
+      if (
+        Array.isArray(param.type) &&
+        param.type.some(t => typeof t === 'string' && t === 'ParameterType:selector')
+      ) {
+        selectorParamIndices.push(i);
+      }
+    }
+
+    if (selectorParamIndices.length === 0) return;
+
+    // Get available CSS classes and IDs from imported CSS files
+    const availableClasses = cssRegistry.getClassesForDocument(documentUri);
+    const availableIDs = cssRegistry.getIDsForDocument(documentUri);
+
+    // If no CSS files imported, skip validation (selector validation is opt-in)
+    if (availableClasses.size === 0 && availableIDs.size === 0) {
+      return;
+    }
+
+    // Validate each selector parameter
+    for (const paramIndex of selectorParamIndices) {
+      const arg = operation.args[paramIndex];
+      if (!arg) continue; // Missing argument (will be caught by checkParameterCount)
+
+      // Only validate string literals (not variables or expressions)
+      if (arg.$type !== 'StringLiteral') continue;
+
+      const selectorString = arg.value;
+
+      // Parse the selector to extract classes and IDs
+      const { classes, ids, valid, error } = parseSelector(selectorString);
+
+      // Check for invalid selector syntax
+      if (!valid) {
+        accept('error', `Invalid CSS selector syntax: ${error}`, {
+          node: arg,
+          code: 'invalid_css_selector',
+        });
+        continue; // Don't validate classes/IDs if syntax is invalid
+      }
+
+      // Validate each class in the selector
+      for (const className of classes) {
+        if (!availableClasses.has(className)) {
+          // Class not found - generate "Did you mean?" suggestions
+          const suggestions = findSimilarClasses(className, availableClasses, 2, 3);
+
+          let message = `Unknown CSS class in selector: '${className}'.`;
+          if (suggestions.length > 0) {
+            message += ` Did you mean: ${suggestions.join(', ')}?`;
+          }
+
+          accept('error', message, {
+            node: arg,
+            code: 'unknown_css_class_in_selector',
+          });
+        }
+      }
+
+      // Validate each ID in the selector
+      for (const idName of ids) {
+        if (!availableIDs.has(idName)) {
+          // ID not found - no suggestions for IDs (less common to typo)
+          accept('error', `Unknown CSS ID in selector: '${idName}'.`, {
+            node: arg,
+            code: 'unknown_css_id_in_selector',
+          });
+        }
+      }
     }
   }
 }

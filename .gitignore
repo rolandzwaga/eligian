@@ -30,3 +30,4 @@ check-*.mjs
 /packages/language/coverage
 /TODO.txt
 /nul
+/examples/nul
