@@ -1,0 +1,88 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "cbd108f1-87f2-49aa-afbb-4cdf67e4daa0",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div id=\"container\"></div>",
+  "cssFiles": [
+    "./test-styles.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "d6c11c39-cd0f-4f0c-ae1a-1519e91430bb",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "6d8f1224-98b8-4846-8580-bafc535146b9",
+      "name": "test",
+      "startOperations": [
+        {
+          "id": "990a3eb6-af21-41b7-9ab4-e62bb481d6b3",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#test"
+          }
+        },
+        {
+          "id": "2c71f3ae-d4f0-4f77-8061-226d2f867278",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "eligius"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "977d2693-06b8-4123-bbcb-bf6c31c0f1f9",
+      "uri": "test",
+      "type": "animation",
+      "duration": 5,
+      "loop": false,
+      "selector": "#container",
+      "timelineActions": [
+        {
+          "id": "2887a68d-e886-456c-9613-be4901404031",
+          "name": "timeline-action-0-5",
+          "startOperations": [
+            {
+              "id": "410f34f1-6fe7-4b4a-9c1c-e0b85871168e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "test"
+              }
+            },
+            {
+              "id": "f327ff27-caae-4382-bf5e-68f152c23b8f",
+              "systemName": "startAction",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 5
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "id": "8b7c29a8-ecf5-4080-8e8f-291a946b2da5",
+      "vendor": "",
+      "systemName": "RequestAnimationFrameTimelineProvider"
+    }
+  }
+}

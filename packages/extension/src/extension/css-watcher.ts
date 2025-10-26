@@ -5,10 +5,15 @@
  * the Eligius engine. Uses a single FileSystemWatcher with per-file debouncing
  * to handle rapid file changes (e.g., auto-save).
  *
+ * Feature 013 T022: Extended to support LSP notifications for validation hot-reload.
+ * When a CSS file changes, notifies the language server so validation can be re-triggered.
+ *
  * Constitution Principle I: Simplicity & Documentation
  */
 
+import { CSS_UPDATED_NOTIFICATION } from '@eligian/language';
 import * as vscode from 'vscode';
+import type { LanguageClient } from 'vscode-languageclient/node.js';
 
 /**
  * Callback invoked when a CSS file changes after debouncing
@@ -17,11 +22,13 @@ export type CSSChangeCallback = (filePath: string) => void | Promise<void>;
 
 /**
  * T015-T019: Manages file watching for CSS hot-reload
+ * T022: Extended to support LSP notifications for validation hot-reload
  *
  * Design:
  * - Single FileSystemWatcher for all CSS files (efficient)
  * - Per-file debouncing (300ms) to handle auto-save
  * - Independent timers for each file (parallel editing support)
+ * - Reverse mapping: CSS file URI → documents that import it (for LSP notifications)
  * - Graceful cleanup on disposal
  */
 export class CSSWatcherManager {
@@ -32,13 +39,43 @@ export class CSSWatcherManager {
   private readonly onChange: CSSChangeCallback;
   private disposables: vscode.Disposable[] = [];
 
+  // T022: LSP notification support for validation hot-reload
+  private client: LanguageClient | null = null;
+  private importsByCSS = new Map<string, Set<string>>(); // CSS file URI → Set<document URIs>
+
   /**
    * Create a new CSS watcher manager
    *
    * @param onChange - Callback invoked when CSS file changes (after debouncing)
+   * @param client - Optional LanguageClient for sending LSP notifications (Feature 013 T022)
    */
-  constructor(onChange: CSSChangeCallback) {
+  constructor(onChange: CSSChangeCallback, client?: LanguageClient) {
     this.onChange = onChange;
+    this.client = client || null;
+  }
+
+  /**
+   * T022: Register which CSS files an Eligian document imports
+   *
+   * Builds reverse mapping: CSS file URI → Set of document URIs that import it.
+   * Used to determine which documents need re-validation when a CSS file changes.
+   *
+   * @param documentUri - Absolute Eligian document URI (file:///...)
+   * @param cssFileUris - Absolute CSS file URIs imported by the document
+   */
+  registerImports(documentUri: string, cssFileUris: string[]): void {
+    // For each CSS file, track that this document imports it
+    for (const cssFileUri of cssFileUris) {
+      let documents = this.importsByCSS.get(cssFileUri);
+      if (!documents) {
+        documents = new Set();
+        this.importsByCSS.set(cssFileUri, documents);
+      }
+      documents.add(documentUri);
+    }
+    console.log(
+      `[CSSWatcher] Registered imports for ${documentUri}: ${cssFileUris.length} CSS file(s)`
+    );
   }
 
   /**
@@ -127,6 +164,7 @@ export class CSSWatcherManager {
 
   /**
    * T017: Debounce file change events per-file with 300ms delay
+   * T022: Send LSP notifications for validation hot-reload
    *
    * Uses independent timers for each file to support parallel editing.
    * This handles auto-save scenarios where files are saved multiple times
@@ -146,7 +184,23 @@ export class CSSWatcherManager {
       console.log('[CSSWatcher] Debounce complete, triggering reload:', filePath);
       this.debounceTimers.delete(filePath);
 
-      // Invoke callback (async-safe)
+      // T022: Send LSP notification for validation hot-reload
+      if (this.client) {
+        const cssFileUri = vscode.Uri.file(filePath).toString();
+        const documentUris = Array.from(this.importsByCSS.get(cssFileUri) || []);
+
+        if (documentUris.length > 0) {
+          console.log(
+            `[CSSWatcher] Sending LSP notification for ${cssFileUri} → ${documentUris.length} document(s)`
+          );
+          this.client.sendNotification(CSS_UPDATED_NOTIFICATION, {
+            cssFileUri,
+            documentUris,
+          });
+        }
+      }
+
+      // Invoke callback (async-safe) for preview hot-reload
       Promise.resolve(this.onChange(filePath)).catch(error => {
         console.error('[CSSWatcher] Error in onChange callback:', error);
       });

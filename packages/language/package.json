@@ -49,6 +49,7 @@
     "htmlparser2": "^9.1.0",
     "langium": "4.0.3",
     "postcss": "^8.5.6",
+    "postcss-selector-parser": "^6.1.2",
     "typir": "^0.3.0",
     "typir-langium": "^0.3.0"
   },

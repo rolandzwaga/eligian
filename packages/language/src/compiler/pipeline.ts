@@ -18,6 +18,7 @@
  * - No side effects (parsing/file I/O handled externally)
  */
 
+import { readFileSync } from 'node:fs';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import { EmptyFileSystem, URI } from 'langium';
@@ -25,8 +26,10 @@ import {
   type AssetLoadingResult,
   loadProgramAssets,
 } from '../asset-loading/compiler-integration.js';
+import { parseCSS } from '../css/css-parser.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
+import { isDefaultImport } from '../utils/ast-helpers.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
 import { optimize } from './optimizer.js';
@@ -126,8 +129,72 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             documentUri
           );
 
-          // Build document (runs lexer, parser, linker)
-          await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+          // Build document up to Parsed state (before validation)
+          await services.shared.workspace.DocumentBuilder.build([document], {
+            validation: false,
+          });
+
+          // Parse CSS files and load into registry BEFORE validation
+          // This ensures validators can check against loaded CSS
+          // Accept both file:// URIs and absolute file paths
+          if (uri) {
+            const cssRegistry = services.Eligian.css.CSSRegistry;
+            const root = document.parseResult.value;
+
+            // Extract CSS imports from AST
+            const cssFiles: string[] = [];
+            for (const statement of root.statements) {
+              if (isDefaultImport(statement) && statement.type === 'styles') {
+                const cssPath = statement.path.replace(/^["']|["']$/g, '');
+                cssFiles.push(cssPath);
+              }
+            }
+
+            // Parse each CSS file and load into registry
+            const docPath = documentUri.fsPath;
+            const docDir = docPath.substring(
+              0,
+              docPath.lastIndexOf('\\') || docPath.lastIndexOf('/')
+            );
+            for (const cssFileUri of cssFiles) {
+              try {
+                // Convert relative path to absolute
+                const cssFilePath = cssFileUri.startsWith('./')
+                  ? `${docDir}${cssFileUri.substring(1)}`
+                  : cssFileUri;
+
+                // Read and parse CSS file
+                const cssContent = readFileSync(cssFilePath, 'utf-8');
+                const parseResult = parseCSS(cssContent, cssFilePath);
+
+                // Update registry with parsed CSS
+                cssRegistry.updateCSSFile(cssFileUri, parseResult);
+              } catch (error) {
+                console.error(`Failed to parse CSS file ${cssFileUri}:`, error);
+                // Register error in registry
+                cssRegistry.updateCSSFile(cssFileUri, {
+                  classes: new Set(),
+                  ids: new Set(),
+                  classLocations: new Map(),
+                  idLocations: new Map(),
+                  classRules: new Map(),
+                  idRules: new Map(),
+                  errors: [
+                    {
+                      message: error instanceof Error ? error.message : 'Unknown error',
+                      filePath: cssFileUri,
+                      line: 0,
+                      column: 0,
+                    },
+                  ],
+                });
+              }
+            }
+          }
+
+          // Now run validation with CSS loaded
+          document.diagnostics =
+            await services.Eligian.validation.DocumentValidator.validateDocument(document);
 
           return document;
         },
