@@ -13,12 +13,14 @@ As a developer writing Eligian code, I want autocomplete to suggest available CS
 
 **Why this priority**: This is the most frequently used IDE feature for CSS classes. Every time a developer types `addClass()` or similar operations, they need to reference CSS class names. Autocomplete provides immediate value and reduces context switching.
 
-**Independent Test**: Can be fully tested by typing `addClass("")` with cursor between quotes and verifying that all CSS classes from imported files appear in the autocomplete menu. Delivers immediate value by eliminating the need to open CSS files to check class names.
+**Independent Test**: Can be fully tested by typing `addClass()` with cursor between parentheses and verifying that all CSS classes from imported files appear in the autocomplete menu. Delivers immediate value by eliminating the need to open CSS files to check class names.
+
+**Implementation Limitation**: Due to Langium framework constraints, CSS completions only work when the cursor is between parentheses (e.g., `addClass(|)`), not inside existing string literals (e.g., `addClass(""|)`). When triggered between parens, completions automatically insert quoted text: `addClass()` → `addClass("button")`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a `.eligian` file imports `styles.css` containing `.button` and `.primary` classes, **When** developer types `addClass("")` and positions cursor between quotes, **Then** autocomplete shows "button" and "primary" as suggestions with "CSS class" detail
-2. **Given** developer is inside a className parameter, **When** they type the first letters of a class name (e.g., "bu"), **Then** autocomplete filters to matching classes (e.g., "button")
+1. **Given** a `.eligian` file imports `styles.css` containing `.button` and `.primary` classes, **When** developer types `addClass()` and positions cursor between parens, **Then** autocomplete shows "button" and "primary" as suggestions with "CSS class" detail and quoted insertText
+2. **Given** developer is inside a className parameter between parens, **When** they type the first letters of a class name (e.g., `addClass(bu)`), **Then** autocomplete filters to matching classes (e.g., "button")
 3. **Given** multiple CSS files are imported with overlapping class names, **When** developer triggers autocomplete, **Then** all unique class names from all imported files appear
 4. **Given** no CSS files are imported, **When** developer triggers autocomplete in className parameter, **Then** no CSS class suggestions appear (only other completions)
 

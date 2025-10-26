@@ -13,6 +13,7 @@ import {
   type TypirLangiumServices,
 } from 'typir-langium';
 import { CSSRegistryService } from './css/css-registry.js';
+import { EligianCodeActionProvider } from './eligian-code-action-provider.js';
 import { EligianCompletionProvider } from './eligian-completion-provider.js';
 import { EligianDocumentValidator } from './eligian-document-validator.js';
 import { EligianHoverProvider } from './eligian-hover-provider.js';
@@ -32,6 +33,7 @@ export type EligianAddedServices = {
   lsp: {
     HoverProvider: EligianHoverProvider;
     CompletionProvider: EligianCompletionProvider;
+    CodeActionProvider: EligianCodeActionProvider;
   };
   css: {
     CSSRegistry: CSSRegistryService;
@@ -60,8 +62,9 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       DocumentValidator: services => new EligianDocumentValidator(services),
     },
     lsp: {
-      HoverProvider: services => new EligianHoverProvider(services),
+      HoverProvider: services => new EligianHoverProvider(services.css.CSSRegistry, services),
       CompletionProvider: services => new EligianCompletionProvider(services),
+      CodeActionProvider: services => new EligianCodeActionProvider(services),
     },
     css: {
       CSSRegistry: () => new CSSRegistryService(),

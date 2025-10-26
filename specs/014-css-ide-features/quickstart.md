@@ -204,6 +204,10 @@ action test [
 - When **no CSS files imported** - fix unavailable (can't determine target file)
 - For CSS IDs - currently not supported (classes only)
 
+**Post-Fix Behavior**:
+- After applying quick fix, the CSS file automatically opens
+- Validation error disappears immediately via hot-reload (no need to manually save)
+
 ### Quick Fix Performance
 
 - **Execution Time**: <1s from click to CSS file updated

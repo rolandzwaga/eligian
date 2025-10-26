@@ -659,7 +659,6 @@ export type ValidationResult =
  * @example
  * const result = validateOperation('addClass', 1);
  * if (result.success) {
- *   console.log(result.signature.parameters);
  * } else {
  *   console.error(result.errors);
  * }

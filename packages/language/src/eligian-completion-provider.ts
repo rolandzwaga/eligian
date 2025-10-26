@@ -14,6 +14,12 @@ import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
 import { getOperationCompletions } from './completion/operations.js';
 import { getVariableCompletions } from './completion/variables.js';
+import {
+  CompletionContextType,
+  detectCompletionContext as detectCSSCompletionContext,
+} from './css/context-detection.js';
+import { CSSCompletionProvider } from './css/css-completion.js';
+import type { EligianServices } from './eligian-module.js';
 
 /**
  * Eligian-specific completion provider
@@ -22,6 +28,37 @@ import { getVariableCompletions } from './completion/variables.js';
  * based on Eligian DSL syntax and Eligius operation metadata.
  */
 export class EligianCompletionProvider extends DefaultCompletionProvider {
+  private readonly cssCompletionProvider: CSSCompletionProvider;
+  private readonly services: EligianServices;
+
+  constructor(services: EligianServices) {
+    super(services);
+    this.services = services;
+    this.cssCompletionProvider = new CSSCompletionProvider();
+  }
+
+  /**
+   * Check if cursor is inside a string literal
+   */
+  private isCursorInString(text: string, offset: number): boolean {
+    // Search backwards for opening quote
+    for (let i = offset - 1; i >= 0; i--) {
+      const char = text[i];
+      if (char === '\n' || char === '\r') break;
+      if (char === '"' || char === "'") {
+        // Found opening quote, now search forwards for closing quote
+        const quoteChar = char;
+        for (let j = offset; j < text.length; j++) {
+          const c = text[j];
+          if (c === '\n' || c === '\r') return false;
+          if (c === quoteChar) return true; // Found matching closing quote
+        }
+        return false;
+      }
+    }
+    return false;
+  }
+
   /**
    * Main completion entry point
    *
@@ -122,6 +159,62 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         // Accept all other completions
         acceptor(ctx, item);
       };
+
+      // Check if we're in a CSS completion context (className parameters or selectors)
+      const cssContext = detectCSSCompletionContext(context);
+      if (cssContext !== CompletionContextType.None) {
+        const cssRegistry = this.services.css.CSSRegistry;
+        const documentUri = document.uri.toString();
+
+        const classes = cssRegistry.getClassesForDocument(documentUri);
+        const ids = cssRegistry.getIDsForDocument(documentUri);
+
+        if (cssContext === CompletionContextType.ClassName) {
+          // Check if cursor is inside quotes or between parens
+          const text = context.document.textDocument.getText();
+          const offset = context.offset;
+          const needsQuotes = !this.isCursorInString(text, offset);
+
+          // ALWAYS add CSS completions when in className context, regardless of next.type
+          // This ensures they're added for ALL Langium completion queries
+          this.cssCompletionProvider.provideCSSClassCompletions(
+            context,
+            classes,
+            acceptor,
+            needsQuotes
+          );
+
+          // ALWAYS return early for className context - don't let super process anything
+          // Calling super seems to clear/filter our completions
+          return;
+        } else if (cssContext === CompletionContextType.SelectorClass) {
+          this.cssCompletionProvider.provideSelectorCompletions(
+            context,
+            classes,
+            ids,
+            'class',
+            acceptor
+          );
+          // Call super with a no-op acceptor to finalize completion without adding more items
+          const noOpAcceptor = () => {
+            /* Don't add any more items */
+          };
+          return super.completionFor(context, next, noOpAcceptor);
+        } else if (cssContext === CompletionContextType.SelectorID) {
+          this.cssCompletionProvider.provideSelectorCompletions(
+            context,
+            classes,
+            ids,
+            'id',
+            acceptor
+          );
+          // Call super with a no-op acceptor to finalize completion without adding more items
+          const noOpAcceptor = () => {
+            /* Don't add any more items */
+          };
+          return super.completionFor(context, next, noOpAcceptor);
+        }
+      }
 
       if (cursorContext.isInsideAction && !isInsideArguments) {
         // Add operation completions

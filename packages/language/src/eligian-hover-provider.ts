@@ -1,8 +1,9 @@
 /**
  * Eligian Hover Provider
  *
- * Provides rich hover information for operations, showing their descriptions
- * from the operation registry.
+ * Provides rich hover information for:
+ * - Operations (showing their descriptions from the operation registry)
+ * - CSS classes and IDs (showing definitions and rules from imported CSS)
  */
 
 import { type AstNode, CstUtils, type LangiumDocument } from 'langium';
@@ -10,12 +11,27 @@ import { AstNodeHoverProvider } from 'langium/lsp';
 import type { Hover, HoverParams } from 'vscode-languageserver';
 import { getOperationSignature } from './compiler/operations/index.js';
 import type { OperationSignature } from './compiler/operations/types.js';
+import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
+import type { CSSRegistryService } from './css/css-registry.js';
+import { detectHoverTarget } from './css/hover-detection.js';
 import { isOperationCall } from './generated/ast.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
+  private cssHoverProvider = new CSSHoverProvider();
+
+  constructor(
+    private cssRegistry: CSSRegistryService,
+    services?: any
+  ) {
+    // AstNodeHoverProvider requires services parameter
+    // If services provided (for testing), use them; otherwise create minimal mock
+    super(services || ({ References: {} } as any));
+  }
   /**
-   * Override the main hover method to handle operation names.
+   * Override the main hover method to handle:
+   * 1. CSS classes and IDs (in operation arguments)
+   * 2. Operation names
    * This is called before getAstNodeHoverContent.
    */
   override async getHoverContent(
@@ -30,7 +46,34 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     const offset = document.textDocument.offsetAt(params.position);
     const cstNode = CstUtils.findLeafNodeAtOffset(rootNode, offset);
 
-    // Check if we're hovering over an operation call
+    // 1. Check if we're hovering over a CSS class or ID
+    if (cstNode?.astNode) {
+      const cssTarget = detectHoverTarget(cstNode.astNode, params);
+      if (cssTarget) {
+        // Get imported CSS files for this document
+        const documentUri = document.uri.toString();
+        const importsSet = this.cssRegistry.getDocumentImports(documentUri);
+        const imports = Array.from(importsSet);
+
+        if (imports.length > 0) {
+          if (cssTarget.type === 'class') {
+            const classInfo = buildCSSClassInfo(cssTarget.name, imports, uri =>
+              this.cssRegistry.getMetadata(uri)
+            );
+            const hover = this.cssHoverProvider.provideCSSClassHover(classInfo);
+            if (hover) return hover;
+          } else if (cssTarget.type === 'id') {
+            const idInfo = buildCSSIDInfo(cssTarget.name, imports, uri =>
+              this.cssRegistry.getMetadata(uri)
+            );
+            const hover = this.cssHoverProvider.provideCSSIDHover(idInfo);
+            if (hover) return hover;
+          }
+        }
+      }
+    }
+
+    // 2. Check if we're hovering over an operation call
     if (cstNode?.astNode && isOperationCall(cstNode.astNode)) {
       const operationCall = cstNode.astNode;
       const opName = getOperationCallName(operationCall);

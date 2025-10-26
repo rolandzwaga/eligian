@@ -1256,7 +1256,9 @@ export class EligianValidator {
           accept('error', errorMessage, {
             node: cssImport,
             property: 'path',
-            code: 'invalid_css_file',
+            data: {
+              code: 'invalid_css_file',
+            },
           });
         }
       }
@@ -1348,7 +1350,9 @@ export class EligianValidator {
 
         accept('error', message, {
           node: arg,
-          code: 'unknown_css_class',
+          data: {
+            code: 'unknown_css_class',
+          },
         });
       }
     }
@@ -1434,7 +1438,9 @@ export class EligianValidator {
       if (!valid) {
         accept('error', `Invalid CSS selector syntax: ${error}`, {
           node: arg,
-          code: 'invalid_css_selector',
+          data: {
+            code: 'invalid_css_selector',
+          },
         });
         continue; // Don't validate classes/IDs if syntax is invalid
       }
@@ -1452,7 +1458,9 @@ export class EligianValidator {
 
           accept('error', message, {
             node: arg,
-            code: 'unknown_css_class_in_selector',
+            data: {
+              code: 'unknown_css_class_in_selector',
+            },
           });
         }
       }
@@ -1463,7 +1471,9 @@ export class EligianValidator {
           // ID not found - no suggestions for IDs (less common to typo)
           accept('error', `Unknown CSS ID in selector: '${idName}'.`, {
             node: arg,
-            code: 'unknown_css_id_in_selector',
+            data: {
+              code: 'unknown_css_id_in_selector',
+            },
           });
         }
       }

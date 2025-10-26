@@ -42,7 +42,6 @@ export {
  * @example
  * const signature = getOperationSignature('addClass');
  * if (signature) {
- *   console.log(signature.parameters); // [{ name: 'className', type: 'ParameterType:className', required: true }]
  * }
  */
 export function getOperationSignature(name: string): OperationSignature | undefined {
@@ -71,7 +70,6 @@ export function hasOperation(name: string): boolean {
  *
  * @example
  * const allOps = getAllOperations();
- * console.log(`Total operations: ${allOps.length}`); // Total operations: 46
  */
 export function getAllOperations(): OperationSignature[] {
   return Object.values(OPERATION_REGISTRY);
@@ -97,8 +95,6 @@ export function getAllOperationNames(): string[] {
  *
  * @example
  * const byCategory = getOperationsByCategory();
- * console.log(byCategory['CSS']); // [addClass, removeClass, toggleClass]
- * console.log(byCategory['DOM']); // [selectElement, createElement, ...]
  */
 export function getOperationsByCategory(): Record<string, OperationSignature[]> {
   const result: Record<string, OperationSignature[]> = {};
