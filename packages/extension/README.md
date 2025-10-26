@@ -9,6 +9,8 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Validation**: Real-time error checking and semantic validation
 - **Compilation**: Compile `.eligian` files directly from VS Code
 - **Diagnostics**: View errors and warnings in the Problems panel
+- **Live Preview**: Interactive preview with Eligius engine integration
+- **CSS Hot-Reload**: Import CSS files with instant hot-reload (no preview restart)
 
 ## Installation
 
@@ -97,6 +99,86 @@ The extension will:
 - Validate operations (`selectElement`, `addClass`, `fadeIn`)
 - Check parameter types
 - Show errors if any
+
+## CSS Styling with Hot-Reload
+
+Import CSS files to style your Eligius presentations. Changes to CSS files are automatically reloaded in the preview without restarting the timeline.
+
+### Importing CSS
+
+Use the `styles` keyword to import CSS files:
+
+```eligian
+// Import single CSS file
+styles "./styles/main.css"
+
+// Import multiple CSS files (loaded in order)
+styles "./styles/base.css"
+styles "./styles/theme.css"
+styles "./styles/animations.css"
+
+timeline raf {
+  0..5: {
+    selectElement("#title")
+    addClass("fade-in")  // CSS class from animations.css
+  }
+}
+```
+
+### Hot-Reload
+
+When you save changes to imported CSS files:
+- ✅ CSS reloads instantly (< 300ms)
+- ✅ Timeline continues playing (no restart)
+- ✅ Element states preserved
+- ✅ Works with multiple CSS files
+
+### CSS Features
+
+**Supported**:
+- Relative paths (resolved from `.eligian` file location)
+- Images and fonts in CSS (`url()` paths automatically resolved)
+- Multiple CSS files (loaded in order)
+- Standard CSS syntax
+
+**Error Handling**:
+- Clear notifications if files are missing
+- "Open File" button to quickly fix paths
+- Preview stays functional with previous valid CSS
+- Rate-limited notifications (max 3 per minute per file)
+
+### Example with CSS
+
+Create `styles/main.css`:
+```css
+#title {
+  font-size: 48px;
+  color: #333;
+}
+
+.fade-in {
+  animation: fadeIn 1s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+```
+
+Create `presentation.eligian`:
+```eligian
+styles "./styles/main.css"
+
+timeline raf {
+  0..5: {
+    selectElement("#title")
+    addClass("fade-in")
+  }
+}
+```
+
+**Result**: Open preview, see styled content. Edit CSS, see changes instantly without restarting timeline!
 
 ## Compilation Output
 

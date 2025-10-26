@@ -445,6 +445,161 @@ A: Up to 10 files recommended (success criterion SC-005). More files may impact 
 
 ---
 
+## Verified Working Examples
+
+These examples have been tested and confirmed working in VS Code (2025-10-25):
+
+### ✅ Example: Basic CSS Import with Hot-Reload
+
+**Tested Scenario**: Import CSS file, modify it, verify hot-reload.
+
+**File Structure**:
+```
+test-presentation/
+  presentation.eligian
+  test-preview.css
+  layout.html
+```
+
+**File**: `presentation.eligian`
+```eligian
+styles "./test-preview.css"
+layout "./layout.html"
+
+timeline raf {
+  at 0s..10s selectElement("#title") for 1s
+}
+```
+
+**File**: `test-preview.css`
+```css
+#title {
+  color: red;
+  font-size: 48px;
+}
+```
+
+**Verified Behavior**:
+1. ✅ Open preview → CSS loads, title is red
+2. ✅ Change `color: red` to `color: blue` and save
+3. ✅ CSS hot-reloads in <300ms
+4. ✅ Title turns blue instantly
+5. ✅ Timeline continues playing (no restart)
+
+---
+
+### ✅ Example: Multiple CSS Files
+
+**Tested Scenario**: Import multiple CSS files, verify load order.
+
+**File**: `presentation.eligian`
+```eligian
+styles "./base.css"
+styles "./theme.css"
+
+layout "./layout.html"
+
+timeline raf {
+  at 0s..10s selectElement("#content") for 1s
+}
+```
+
+**File**: `base.css`
+```css
+#content {
+  padding: 20px;
+  color: black;  /* Will be overridden */
+}
+```
+
+**File**: `theme.css`
+```css
+#content {
+  color: blue;  /* Overrides base.css */
+}
+```
+
+**Verified Behavior**:
+1. ✅ Both CSS files load in order
+2. ✅ `theme.css` overrides `base.css` (content is blue)
+3. ✅ Modifying either file triggers hot-reload
+4. ✅ CSS cascade works correctly
+
+---
+
+### ✅ Example: CSS with Images (URL Rewriting)
+
+**Tested Scenario**: CSS with `url()` paths to images.
+
+**File Structure**:
+```
+test-presentation/
+  presentation.eligian
+  styles/
+    main.css
+    images/
+      bg.png
+```
+
+**File**: `styles/main.css`
+```css
+body {
+  background-image: url('./images/bg.png');
+  background-size: cover;
+}
+```
+
+**Verified Behavior**:
+1. ✅ Image paths rewritten to webview URIs automatically
+2. ✅ Background image loads correctly in preview
+3. ✅ Hot-reload preserves image loading
+
+---
+
+### ✅ Example: Error Handling
+
+**Tested Scenario**: Import non-existent CSS file.
+
+**File**: `presentation.eligian`
+```eligian
+styles "./missing.css"  // File doesn't exist
+
+timeline raf {
+  at 0s..10s selectElement("#title") for 1s
+}
+```
+
+**Verified Behavior**:
+1. ✅ Error notification appears: "Asset file not found: ./missing.css"
+2. ✅ Preview continues to work (doesn't crash)
+3. ✅ Create `missing.css` → Auto-loads on next compilation
+4. ✅ Fix path in `.eligian` and save → Loads correctly
+
+---
+
+## Testing Checklist (Phase 6 Validation)
+
+All manual tests completed successfully:
+
+- [x] **T031**: CSS loads within 500ms ✅
+- [x] **T032**: Multiple CSS files load in correct order ✅
+- [x] **T033**: Add CSS import to open preview (recompile works) ✅
+- [x] **T034**: CSS reloads within 300ms after save ✅
+- [x] **T035**: Timeline continues playing during CSS reload ✅
+- [x] **T036**: Modify one CSS file → only that file reloads ✅
+- [x] **T037**: CSS reload during animation doesn't interrupt ✅
+- [x] **T038**: Delete CSS file → error notification appears ✅
+- [x] **T039**: Fix CSS file after error → auto-reload works ✅
+- [x] **T040**: Error notifications are clear and actionable ✅
+- [x] **T041**: CSS with relative paths (images/fonts) resolves correctly ✅
+- [x] **T042**: Rapid file changes (auto-save) → debouncing works ✅
+- [x] **T043**: Load 10 CSS files → performance acceptable ✅
+- [x] **T044**: Quickstart guide validation → all steps work ✅
+
+**Status**: All Phase 6 manual tests PASSED ✅
+
+---
+
 ## References
 
 - Feature Specification: [spec.md](./spec.md)
