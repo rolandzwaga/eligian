@@ -3,11 +3,21 @@
 SYNC IMPACT REPORT - Constitution Update
 ===================================================================================
 
-VERSION CHANGE: 1.9.0 → 2.0.0
-Rationale: MAJOR version bump - Enhanced Principle II (Test-First Development) with
+VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1
+Rationale: MAJOR version bump (2.0.0) - Enhanced Principle II (Test-First Development) with
 strict enforcement workflow that redefines testing requirements, making "tests later"
 a constitutional violation (backward incompatible with prior "encouraged" TDD stance).
 Added 5 new principles that significantly expand governance scope.
+
+PATCH version bump (2.0.1) - Added integration test isolation requirement to Principle II.
+
+AMENDMENTS (v2.0.1):
+* Enhanced Principle II: Comprehensive Testing (PATCH UPDATE)
+  - Added requirement: Integration tests MUST be isolated in separate files
+  - Rationale: Test environment state cannot be reliably reset between integration tests
+  - Environment pollution causes flaky tests when multiple integration tests share a file
+  - Unit tests CAN share files (isolated functions, no shared state)
+  - This is FORWARD COMPATIBLE - clarifies existing best practice
 
 AMENDMENTS (v2.0.0):
 * Enhanced Principle II: Comprehensive Testing (NON-NEGOTIABLE)
@@ -162,6 +172,11 @@ often miss edge cases and validation requirements.
 - Test coverage MUST be tracked and maintained above 80% for business logic
 - Integration tests MUST use realistic DSL examples from actual use cases
 - When tests fail due to intentional changes (grammar updates, API changes), update test expectations immediately
+- **Integration tests MUST be isolated in separate files** (one integration test per file)
+  - Rationale: Test environment state cannot be reliably reset between integration tests
+  - If multiple integration tests share a file, environment pollution causes flaky tests
+  - Unit tests CAN share files (they test isolated functions, no shared state)
+  - Example: `integration/completion-test.spec.ts`, `integration/hover-test.spec.ts` (separate files)
 
 **Coverage Verification (MANDATORY after spec completion)**:
 - Run `npm run test:coverage` when spec is finished
@@ -911,4 +926,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 2.0.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-01-23
+**Version**: 2.0.1 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-26
