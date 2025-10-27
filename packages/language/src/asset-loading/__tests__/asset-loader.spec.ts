@@ -107,13 +107,16 @@ describe('IAssetLoader Interface', () => {
         expect(resolved).toBe('/project/src/assets/styles/main.css');
       });
 
-      it('should handle Windows paths', () => {
-        const sourcePath = 'C:\\project\\src\\main.eligian';
-        const relativePath = '.\\layout.html';
+      it('should handle Windows-style backslash separators', () => {
+        // Use real fixture path but with Windows-style backslash separator in relative path
+        const sourcePath = resolve(fixturesDir, 'test.eligian');
+        const relativePath = '.\\valid.html'; // Windows-style backslash
+
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        // Normalized to forward slashes on all platforms
-        expect(resolved).toContain('layout.html');
+        // Should normalize backslashes to forward slashes
+        expect(resolved).toContain('valid.html');
+        expect(resolved).not.toContain('\\'); // No backslashes in result
       });
 
       it('should normalize path separators', () => {

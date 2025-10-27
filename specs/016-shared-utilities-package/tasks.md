@@ -657,11 +657,25 @@ Run full test suite and verify coverage.
 - **Cross-Platform**: Tests verified to work on both Windows and Unix (GitHub Actions ready)
 - **Ready for PR**: All acceptance criteria met
 
-**Cross-Platform Test Fix** (2025-01-27):
+**Cross-Platform Test Fixes** (2025-01-27):
+
+**Issue 1 - Absolute path detection**:
 - Fixed `asset-loader.spec.ts` to handle both Windows (`F:/...`) and Unix (`/...`) absolute paths
 - Changed from `path.resolve(resolved) === resolved` to regex check: `resolved.startsWith('/') || /^[A-Z]:/i.test(resolved)`
-- Removed unused `toUnixPath()` helper function after simplifying test approach
-- All tests now pass on both Windows (development) and Ubuntu (GitHub Actions CI)
+- Reason: On Unix, `path.resolve('F:/...')` treats it as relative and prepends cwd
+
+**Issue 2 - Fake Windows paths in tests**:
+- Fixed `asset-loader.spec.ts` "should handle Windows paths" test
+- Changed from fake path `C:\project\src\main.eligian` to real fixture path with backslash separator
+- Reason: On Unix, fake Windows paths get treated as relative paths, causing security validation failures
+
+**Issue 3 - Path normalization inconsistency**:
+- Fixed `html-import-utils.spec.ts` to use `normalizePath()` from shared-utils instead of custom `toUnixPath()`
+- Applied `normalizePath()` to both expected and actual values for consistent comparison
+- Normalized `FIXTURES_DIR` once at initialization
+- Reason: `path.join()` normalizes paths differently on Unix vs Windows (e.g., `./` collapsing)
+
+**Result**: All 1061 tests pass on both Windows (development) and Ubuntu (GitHub Actions CI)
 
 ---
 

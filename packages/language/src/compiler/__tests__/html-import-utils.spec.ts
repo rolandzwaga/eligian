@@ -7,19 +7,12 @@
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { normalizePath } from '@eligian/shared-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { loadHTMLFile, resolveHTMLPath, validateHTMLSize } from '../html-import-utils.js';
 
 // Test fixture directory
-const FIXTURES_DIR = join(process.cwd(), '__test-fixtures-html-utils__');
-
-/**
- * Normalize path to Unix-style for comparison
- * (shared-utils returns Unix-style paths regardless of platform)
- */
-function toUnixPath(filePath: string): string {
-  return filePath.replace(/\\/g, '/');
-}
+const FIXTURES_DIR = normalizePath(join(process.cwd(), '__test-fixtures-html-utils__'));
 
 beforeEach(() => {
   // Clean up and recreate fixtures directory
@@ -33,36 +26,36 @@ beforeEach(() => {
 
 describe('resolveHTMLPath', () => {
   it('should resolve relative path from source file', () => {
-    const sourceFile = join(FIXTURES_DIR, 'test.eligian');
+    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
     const projectRoot = FIXTURES_DIR;
     const importPath = './snippet.html';
 
     const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
 
-    // Shared-utils returns Unix-style paths, normalize expected for comparison
-    expect(result).toBe(toUnixPath(join(FIXTURES_DIR, 'snippet.html')));
+    // Both sides normalized for cross-platform comparison
+    expect(result).toBe(normalizePath(join(FIXTURES_DIR, 'snippet.html')));
   });
 
   it('should resolve nested relative path', () => {
-    const sourceFile = join(FIXTURES_DIR, 'test.eligian');
+    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
     const projectRoot = FIXTURES_DIR;
     const importPath = './components/header.html';
 
     const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
 
-    // Shared-utils returns Unix-style paths, normalize expected for comparison
-    expect(result).toBe(toUnixPath(join(FIXTURES_DIR, 'components', 'header.html')));
+    // Both sides normalized for cross-platform comparison
+    expect(result).toBe(normalizePath(join(FIXTURES_DIR, 'components', 'header.html')));
   });
 
   it('should normalize Windows backslashes', () => {
-    const sourceFile = join(FIXTURES_DIR, 'test.eligian');
+    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
     const projectRoot = FIXTURES_DIR;
     const importPath = '.\\components\\header.html';
 
     const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
 
-    // Shared-utils returns Unix-style paths, normalize expected for comparison
-    expect(result).toBe(toUnixPath(join(FIXTURES_DIR, 'components', 'header.html')));
+    // Both sides normalized for cross-platform comparison
+    expect(result).toBe(normalizePath(join(FIXTURES_DIR, 'components', 'header.html')));
   });
 
   it('should reject paths that escape project root with ..', () => {
@@ -87,7 +80,7 @@ describe('resolveHTMLPath', () => {
   });
 
   it('should include import path and source file in error message', () => {
-    const sourceFile = join(FIXTURES_DIR, 'test.eligian');
+    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
     const projectRoot = FIXTURES_DIR;
     const importPath = '../escape.html';
 
@@ -96,7 +89,7 @@ describe('resolveHTMLPath', () => {
       `Import path: '${importPath}'`
     );
     expect(() => resolveHTMLPath(importPath, sourceFile, projectRoot)).toThrow(
-      `Source file: '${toUnixPath(sourceFile)}'`
+      `Source file: '${sourceFile}'`
     );
   });
 });
