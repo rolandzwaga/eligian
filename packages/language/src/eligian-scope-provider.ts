@@ -4,6 +4,7 @@
  * Handles scoping for:
  * - Parameter references (action parameters)
  * - Variable references (global and local const declarations)
+ * - HTML imports (NamedImport nodes with .html extension) - Feature 015
  * - Action references (custom action calls in OperationCall nodes) - Feature 007
  *
  * Based on Langium scoping architecture.
@@ -19,10 +20,12 @@ import {
 } from 'langium';
 import {
   isActionDefinition,
+  isNamedImport,
   isOperationCall,
   isParameterReference,
   isVariableDeclaration,
   isVariableReference,
+  type NamedImport,
   type Program,
   type VariableDeclaration,
 } from './generated/ast.js';
@@ -107,17 +110,59 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    * Get scope for variable references (@varName).
    *
    * Variables can be:
+   * - HTML imports: NamedImport nodes with .html extension (Feature 015)
    * - Local: declared within the current action body (with const)
    * - Global: declared at program level (with const)
    *
    * Local variables shadow global ones.
    */
   private getScopeForVariableReference(context: ReferenceInfo): Scope {
+    const document = AstUtils.getDocument(context.container);
+
     // Collect all visible variable declarations
     const visibleVariables = this.getVisibleVariables(context.container);
 
-    // Create scope from variable declarations
-    return this.createScopeForNodes(visibleVariables);
+    // Collect HTML imports (Feature 015)
+    const htmlImports = this.getHTMLImports(context.container);
+
+    // Create descriptions for all nodes
+    // HTML imports are treated as VariableDeclarations for scoping purposes
+    const descriptions = [
+      ...htmlImports.map(imp => this.descriptions.createDescription(imp, imp.name, document)),
+      ...visibleVariables.map(varDecl =>
+        this.descriptions.createDescription(varDecl, varDecl.name, document)
+      ),
+    ];
+
+    // Create scope from descriptions
+    return this.createScope(descriptions);
+  }
+
+  /**
+   * Collect all HTML imports from the program (Feature 015).
+   *
+   * HTML imports are NamedImport nodes that either:
+   * - Have explicit assetType='html'
+   * - Have .html file extension
+   *
+   * These are treated like constants and can be referenced with @variableName.
+   */
+  private getHTMLImports(node: AstNode): NamedImport[] {
+    const program = AstUtils.getDocument(node).parseResult.value as Program;
+
+    // Get all statements (includes both imports and program elements)
+    const allStatements = program.statements || [];
+
+    // Filter to only NamedImport nodes
+    // TypeScript doesn't understand that isNamedImport narrows the type, so we use type assertion
+    const imports = allStatements.filter(isNamedImport) as unknown as NamedImport[];
+
+    // Filter to only HTML imports (explicit type or .html extension)
+    return imports.filter(imp => {
+      const explicitType = imp.assetType === 'html';
+      const htmlExtension = imp.path.endsWith('.html');
+      return explicitType || htmlExtension;
+    });
   }
 
   /**

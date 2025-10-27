@@ -1,0 +1,69 @@
+/**
+ * HTML Variables Demo - Feature 015
+ *
+ * Demonstrates HTML import functionality:
+ * - Import HTML files as compile-time constants
+ * - Reference with @variableName (inlined during compilation)
+ * - Distinction from layout keyword
+ * - Multiple imports in single file
+ * - Reuse across multiple operations
+ */
+
+// ============================================================================
+// HTML IMPORTS (Feature 015) - String Variables
+// ============================================================================
+
+// Import HTML snippets as reusable variables
+import header from '../packages/language/src/__tests__/__fixtures__/html-imports/valid/header.html'
+import footer from '../packages/language/src/__tests__/__fixtures__/html-imports/valid/footer.html'
+import snippet from '../packages/language/src/__tests__/__fixtures__/html-imports/valid/snippet.html'
+
+// ============================================================================
+// LAYOUT (Feature 009) - Not a variable, assigns to layoutTemplate
+// ============================================================================
+
+// Layout is distinct from imports - assigns to config.layoutTemplate
+// (Commented out - layout file doesn't exist in this demo)
+// layout './assets/layout.html'
+
+// ============================================================================
+// ACTIONS USING HTML VARIABLES
+// ============================================================================
+
+action showHeader [
+  selectElement("#header-container")
+  setElementContent(@header)
+]
+
+action showFooter [
+  selectElement("#footer-container")
+  setElementContent(@footer)
+]
+
+action showSnippet [
+  selectElement("#content")
+  setElementContent(@snippet)
+]
+
+action reuseHeader [
+  selectElement("#alternate-location")
+  setElementContent(@header)
+]
+
+// ============================================================================
+// TIMELINE USING HTML IMPORTS
+// ============================================================================
+
+timeline "html-imports-demo" in "#root" using raf {
+  // Load header at start
+  at 0s..1s showHeader()
+
+  // Load snippet content after 1 second
+  at 1s..2s showSnippet()
+
+  // Load footer at end
+  at 2s..3s showFooter()
+
+  // Reuse header again (same HTML variable)
+  at 3s..4s reuseHeader()
+}

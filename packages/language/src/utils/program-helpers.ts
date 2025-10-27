@@ -11,12 +11,18 @@
 import type {
   ActionDefinition,
   ImportStatement,
+  NamedImport,
   Program,
   ProgramElement,
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
-import { isActionDefinition, isImportStatement, isProgramElement } from './ast-helpers.js';
+import {
+  isActionDefinition,
+  isImportStatement,
+  isNamedImport,
+  isProgramElement,
+} from './ast-helpers.js';
 
 /**
  * Get all import statements from a program
@@ -68,4 +74,21 @@ export function getVariables(program: Program): VariableDeclaration[] {
   return getElements(program).filter(
     el => el.$type === 'VariableDeclaration'
   ) as VariableDeclaration[];
+}
+
+/**
+ * Get all HTML named imports from a program
+ *
+ * @param program - Program AST node
+ * @returns Array of NamedImport nodes with type 'html' or .html extension
+ */
+export function getHTMLImports(program: Program): NamedImport[] {
+  return getImports(program)
+    .filter(isNamedImport)
+    .filter(imp => {
+      // Include if explicit type is 'html' OR extension is .html
+      const explicitType = imp.assetType === 'html';
+      const htmlExtension = imp.path.endsWith('.html');
+      return explicitType || htmlExtension;
+    });
 }

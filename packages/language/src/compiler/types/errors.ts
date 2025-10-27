@@ -86,6 +86,7 @@ export type TransformErrorKind =
   | 'InvalidEvent'
   | 'InvalidAction'
   | 'InvalidExpression'
+  | 'InvalidImport'
   | 'ValidationError';
 
 /**

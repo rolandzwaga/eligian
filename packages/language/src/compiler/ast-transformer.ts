@@ -144,6 +144,7 @@ export const transformAST = (
 
     // Extract program-level variable declarations (T182: Global variables)
     // CONSTANT FOLDING (T008): Filter out constants - they will be inlined, not stored in globalData
+    // FEATURE 015: HTML imports are treated as constants (loaded in buildConstantMap, inlined during transformation)
     const variableDeclarations = getVariables(program).filter(
       el => !currentConstantMap.has(el.name)
     );
@@ -153,18 +154,21 @@ export const transformAST = (
     const initActions: EndableActionIR[] = [];
     if (variableDeclarations.length > 0) {
       const properties: Record<string, JsonValue> = {};
+
+      // Add regular variable declarations (non-constants)
       for (const varDecl of variableDeclarations) {
         const value = yield* _(transformExpression(varDecl.value));
         properties[`globaldata.${varDecl.name}`] = value;
       }
 
       // Create single setData operation wrapped in an IEndableActionConfiguration
+      const firstSource = variableDeclarations[0];
       const setDataOperation: OperationConfigIR = {
         id: crypto.randomUUID(),
         systemName: 'setData',
         operationData: { properties },
-        sourceLocation: variableDeclarations[0]
-          ? getSourceLocation(variableDeclarations[0])
+        sourceLocation: firstSource
+          ? getSourceLocation(firstSource)
           : {
               file: undefined,
               line: 1,
@@ -179,7 +183,7 @@ export const transformAST = (
         name: 'init-globaldata',
         startOperations: [setDataOperation],
         endOperations: [], // No end operations for init actions
-        sourceLocation: getSourceLocation(variableDeclarations[0]),
+        sourceLocation: getSourceLocation(firstSource),
       });
     }
 
