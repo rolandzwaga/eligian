@@ -26,36 +26,36 @@ beforeEach(() => {
 
 describe('resolveHTMLPath', () => {
   it('should resolve relative path from source file', () => {
-    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
+    const sourceFile = `${FIXTURES_DIR}/test.eligian`;
     const projectRoot = FIXTURES_DIR;
     const importPath = './snippet.html';
 
     const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
 
-    // Both sides normalized for cross-platform comparison
-    expect(result).toBe(normalizePath(join(FIXTURES_DIR, 'snippet.html')));
+    // Build expected path with forward slashes (Unix-style)
+    expect(result).toBe(`${FIXTURES_DIR}/snippet.html`);
   });
 
   it('should resolve nested relative path', () => {
-    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
+    const sourceFile = `${FIXTURES_DIR}/test.eligian`;
     const projectRoot = FIXTURES_DIR;
     const importPath = './components/header.html';
 
     const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
 
-    // Both sides normalized for cross-platform comparison
-    expect(result).toBe(normalizePath(join(FIXTURES_DIR, 'components', 'header.html')));
+    // Build expected path with forward slashes (Unix-style)
+    expect(result).toBe(`${FIXTURES_DIR}/components/header.html`);
   });
 
   it('should normalize Windows backslashes', () => {
-    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
+    const sourceFile = `${FIXTURES_DIR}/test.eligian`;
     const projectRoot = FIXTURES_DIR;
     const importPath = '.\\components\\header.html';
 
     const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
 
-    // Both sides normalized for cross-platform comparison
-    expect(result).toBe(normalizePath(join(FIXTURES_DIR, 'components', 'header.html')));
+    // Build expected path with forward slashes (Unix-style)
+    expect(result).toBe(`${FIXTURES_DIR}/components/header.html`);
   });
 
   it('should reject paths that escape project root with ..', () => {
@@ -80,7 +80,7 @@ describe('resolveHTMLPath', () => {
   });
 
   it('should include import path and source file in error message', () => {
-    const sourceFile = normalizePath(join(FIXTURES_DIR, 'test.eligian'));
+    const sourceFile = `${FIXTURES_DIR}/test.eligian`;
     const projectRoot = FIXTURES_DIR;
     const importPath = '../escape.html';
 
