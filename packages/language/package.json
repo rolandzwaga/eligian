@@ -40,6 +40,7 @@
     "test:coverage:ci": "vitest run --coverage"
   },
   "dependencies": {
+    "@eligian/shared-utils": "workspace:*",
     "css-tree": "^2.3.1",
     "domhandler": "^5.0.3",
     "domutils": "^3.2.2",

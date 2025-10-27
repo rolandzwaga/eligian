@@ -1,5 +1,0 @@
-styles "./test.css"
-
-action test [
-  addClass("")
-]

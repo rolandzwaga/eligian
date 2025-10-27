@@ -83,15 +83,19 @@ describe('IAssetLoader Interface', () => {
         const relativePath = './layout.html';
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolved).toBe(resolve('/project/src', 'layout.html'));
+        // Shared-utils returns Unix-style paths without platform-specific prefixes
+        expect(resolved).toBe('/project/src/layout.html');
       });
 
       it('should resolve parent directory references', () => {
         const sourcePath = '/project/src/features/main.eligian';
         const relativePath = '../shared/layout.html';
-        const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolved).toBe(resolve('/project/src/shared', 'layout.html'));
+        // Updated: ../ navigation is now BLOCKED (escapes source file directory)
+        // Source file is in /project/src/features/, so ../ goes to /project/src/ which is outside
+        expect(() => loader.resolvePath(sourcePath, relativePath)).toThrow(
+          /Path resolution failed/
+        );
       });
 
       it('should resolve nested relative paths', () => {
@@ -99,16 +103,20 @@ describe('IAssetLoader Interface', () => {
         const relativePath = './assets/styles/main.css';
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolved).toBe(resolve('/project/src/assets/styles', 'main.css'));
+        // Shared-utils returns Unix-style paths without platform-specific prefixes
+        expect(resolved).toBe('/project/src/assets/styles/main.css');
       });
 
-      it('should handle Windows paths', () => {
-        const sourcePath = 'C:\\project\\src\\main.eligian';
-        const relativePath = '.\\layout.html';
+      it('should handle Windows-style backslash separators', () => {
+        // Use real fixture path but with Windows-style backslash separator in relative path
+        const sourcePath = resolve(fixturesDir, 'test.eligian');
+        const relativePath = '.\\valid.html'; // Windows-style backslash
+
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        // Normalized to forward slashes on all platforms
-        expect(resolved).toContain('layout.html');
+        // Should normalize backslashes to forward slashes
+        expect(resolved).toContain('valid.html');
+        expect(resolved).not.toContain('\\'); // No backslashes in result
       });
 
       it('should normalize path separators', () => {
@@ -125,7 +133,11 @@ describe('IAssetLoader Interface', () => {
         const relativePath = './valid.html';
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolve(resolved)).toBe(resolved); // Is absolute
+        // Shared-utils returns Unix-style absolute paths
+        // On Windows: starts with drive letter (e.g., F:/...)
+        // On Unix: starts with / (e.g., /home/...)
+        const isAbsolute = resolved.startsWith('/') || /^[A-Z]:/i.test(resolved);
+        expect(isAbsolute).toBe(true);
         expect(loader.fileExists(resolved)).toBe(true); // Actually exists
       });
     });

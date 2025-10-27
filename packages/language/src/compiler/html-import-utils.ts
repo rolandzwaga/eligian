@@ -5,42 +5,43 @@
  * Used by ast-transformer to process HTML imports into variables.
  */
 
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { loadFileSync, normalizePath, resolvePath } from '@eligian/shared-utils';
 
 /**
  * Resolve HTML import path relative to source file
  *
  * @param importPath - Relative path from import statement (e.g., './snippet.html')
  * @param sourceFilePath - Absolute path to source .eligian file
- * @param projectRoot - Absolute path to project root (for security validation)
+ * @param projectRoot - Absolute path to project root (DEPRECATED - no longer used for security)
  * @returns Absolute path to HTML file
- * @throws Error if path escapes project directory
+ * @throws Error if path escapes source file directory
+ *
+ * @remarks
+ * Security boundary is the source file's directory, not the project root.
+ * Paths cannot navigate outside the .eligian file's directory.
  */
 export function resolveHTMLPath(
   importPath: string,
   sourceFilePath: string,
-  projectRoot: string
+  _projectRoot: string
 ): string {
-  // Normalize path separators (handle Windows backslashes)
-  const normalized = importPath.replace(/\\/g, '/');
-
-  // Resolve relative to source file directory
+  // Get source file directory (security boundary)
   const sourceDir = path.dirname(sourceFilePath);
-  const absolutePath = path.resolve(sourceDir, normalized);
 
-  // Security check: ensure path is within project directory
-  const relativePath = path.relative(projectRoot, absolutePath);
-  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+  // Use shared-utils path resolver with security validation
+  const result = resolvePath(importPath, sourceDir);
+
+  if (!result.success) {
     throw new Error(
-      `Security violation: HTML import path escapes project directory.\n` +
+      `Security violation: HTML import path escapes source file directory.\n` +
         `  Import path: '${importPath}'\n` +
-        `  Resolves to: '${absolutePath}'\n` +
-        `  Project root: '${projectRoot}'`
+        `  Source file: '${normalizePath(sourceFilePath)}'\n` +
+        `  Error: ${result.error.message}`
     );
   }
 
-  return absolutePath;
+  return result.absolutePath;
 }
 
 /**
@@ -51,17 +52,16 @@ export function resolveHTMLPath(
  * @throws Error if file cannot be read
  */
 export function loadHTMLFile(absolutePath: string): string {
-  try {
-    return readFileSync(absolutePath, 'utf-8');
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      throw new Error(`HTML file not found: ${absolutePath}`);
-    }
-    if (error.code === 'EACCES') {
-      throw new Error(`Permission denied reading HTML file: ${absolutePath}`);
-    }
-    throw new Error(`Failed to read HTML file: ${absolutePath} (${error.message})`);
+  // Use shared-utils file loader with typed error handling
+  const result = loadFileSync(absolutePath);
+
+  if (!result.success) {
+    // Convert typed error to thrown error for backwards compatibility
+    const error = result.error;
+    throw new Error(`${error.message}${error.hint ? `\n${error.hint}` : ''}`);
   }
+
+  return result.content;
 }
 
 /**

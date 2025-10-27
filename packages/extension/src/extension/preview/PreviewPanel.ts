@@ -248,11 +248,7 @@ export class PreviewPanel {
       if (result.success && result.config) {
         // Resolve media paths to webview URIs
         console.log('[Preview] Resolving media paths...');
-        const mediaResolver = new MediaResolver(
-          vscode.workspace.workspaceFolders,
-          this.panel.webview,
-          this.documentUri
-        );
+        const mediaResolver = new MediaResolver(this.panel.webview, this.documentUri);
         const resolvedConfig = mediaResolver.resolveMediaPaths(result.config);
 
         // Check for missing media files
