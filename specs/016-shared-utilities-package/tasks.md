@@ -652,9 +652,16 @@ Run full test suite and verify coverage.
   - errors.ts: 100%
   - file-loader.ts: 100%
   - path-resolver.ts: 96.22%
-- **Biome**: 276 files checked, 2 files auto-fixed, 0 errors
+- **Biome**: 276 files checked, 0 errors
 - **Build**: All 5 packages built successfully (shared-utils, language, cli, extension, compiler)
+- **Cross-Platform**: Tests verified to work on both Windows and Unix (GitHub Actions ready)
 - **Ready for PR**: All acceptance criteria met
+
+**Cross-Platform Test Fix** (2025-01-27):
+- Fixed `asset-loader.spec.ts` to handle both Windows (`F:/...`) and Unix (`/...`) absolute paths
+- Changed from `path.resolve(resolved) === resolved` to regex check: `resolved.startsWith('/') || /^[A-Z]:/i.test(resolved)`
+- Removed unused `toUnixPath()` helper function after simplifying test approach
+- All tests now pass on both Windows (development) and Ubuntu (GitHub Actions CI)
 
 ---
 

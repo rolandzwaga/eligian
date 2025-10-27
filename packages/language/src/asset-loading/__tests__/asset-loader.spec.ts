@@ -13,14 +13,6 @@ import { NodeAssetLoader } from '../node-asset-loader.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Normalize path to Unix-style for comparison
- * (shared-utils returns Unix-style paths regardless of platform)
- */
-function toUnixPath(filePath: string): string {
-  return filePath.replace(/\\/g, '/');
-}
-
 describe('IAssetLoader Interface', () => {
   describe('NodeAssetLoader', () => {
     const loader = new NodeAssetLoader();
@@ -139,8 +131,10 @@ describe('IAssetLoader Interface', () => {
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
         // Shared-utils returns Unix-style absolute paths
-        // On Windows, path.resolve() won't recognize Unix-style as absolute, so normalize first
-        expect(toUnixPath(resolve(resolved))).toBe(toUnixPath(resolved)); // Is absolute
+        // On Windows: starts with drive letter (e.g., F:/...)
+        // On Unix: starts with / (e.g., /home/...)
+        const isAbsolute = resolved.startsWith('/') || /^[A-Z]:/i.test(resolved);
+        expect(isAbsolute).toBe(true);
         expect(loader.fileExists(resolved)).toBe(true); // Actually exists
       });
     });
