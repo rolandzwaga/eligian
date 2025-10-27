@@ -1,0 +1,7 @@
+import content from "./multiline.html"
+
+timeline "Test" at 0s {
+  at 0s selectElement("#test") {
+    setElementContent(@content)
+  }
+}
