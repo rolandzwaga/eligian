@@ -6,8 +6,8 @@
  */
 
 import * as crypto from 'node:crypto';
-import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { loadFileAsync } from '@eligian/shared-utils';
 import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 
@@ -138,31 +138,23 @@ export function rewriteCSSUrls(css: string, cssFilePath: string, webview: vscode
  * const css = await loadCSSFile('/workspace/styles/main.css');
  */
 export async function loadCSSFile(filePath: string): Promise<string> {
-  try {
-    // Check if file exists
-    await fs.access(filePath, fs.constants.R_OK);
+  // Use shared-utils file loader with typed error handling
+  const result = await loadFileAsync(filePath);
 
-    // Read file content
-    const content = await fs.readFile(filePath, 'utf8');
-    return content;
-  } catch (error) {
-    if (error instanceof Error) {
-      // File not found
-      if ('code' in error && error.code === 'ENOENT') {
-        throw new FileNotFoundError(filePath);
-      }
-
-      // Permission denied
-      if ('code' in error && (error.code === 'EACCES' || error.code === 'EPERM')) {
-        throw new PermissionError(filePath);
-      }
-
-      // Other read errors
-      throw new ReadError(filePath, error);
+  if (!result.success) {
+    // Convert typed error to thrown error for backwards compatibility
+    const error = result.error;
+    switch (error._tag) {
+      case 'FileNotFoundError':
+        throw new FileNotFoundError(error.path);
+      case 'PermissionError':
+        throw new PermissionError(error.path);
+      case 'ReadError':
+        throw new ReadError(error.path, new Error(error.message));
     }
-
-    throw error;
   }
+
+  return result.content;
 }
 
 /**

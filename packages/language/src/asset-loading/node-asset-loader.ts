@@ -2,10 +2,12 @@
  * Node.js Asset Loader Implementation
  *
  * File system-based implementation of IAssetLoader using Node.js fs module.
+ * Uses @eligian/shared-utils for consistent path resolution and file loading.
  */
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, statSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { loadFileSync, resolvePath } from '@eligian/shared-utils';
 import type { IAssetLoader } from './interfaces.js';
 
 /**
@@ -43,18 +45,16 @@ export class NodeAssetLoader implements IAssetLoader {
    * @throws Error if file doesn't exist or can't be read
    */
   loadFile(absolutePath: string): string {
-    try {
-      if (!this.fileExists(absolutePath)) {
-        throw new Error(`File not found: ${absolutePath}`);
-      }
+    // Use shared-utils file loader with typed error handling
+    const result = loadFileSync(absolutePath);
 
-      return readFileSync(absolutePath, 'utf-8');
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error(`Failed to load file: ${absolutePath}`);
+    if (!result.success) {
+      // Convert typed error to thrown error for IAssetLoader interface compatibility
+      const error = result.error;
+      throw new Error(`${error.message}${error.hint ? `\n${error.hint}` : ''}`);
     }
+
+    return result.content;
   }
 
   /**
@@ -63,6 +63,7 @@ export class NodeAssetLoader implements IAssetLoader {
    * @param sourcePath - Absolute path to the source .eligian file
    * @param relativePath - Relative path from the import statement
    * @returns Absolute path to the target file
+   * @throws Error if path escapes source file directory (security violation)
    *
    * @example
    * ```typescript
@@ -74,11 +75,22 @@ export class NodeAssetLoader implements IAssetLoader {
    * ```
    */
   resolvePath(sourcePath: string, relativePath: string): string {
-    // Get directory of source file
+    // Get directory of source file (security boundary)
     const sourceDir = dirname(sourcePath);
 
-    // Resolve relative path from source directory
-    // Node.js path.resolve automatically handles cross-platform paths
-    return resolve(sourceDir, relativePath);
+    // Use shared-utils path resolver with security validation
+    const result = resolvePath(relativePath, sourceDir);
+
+    if (!result.success) {
+      // Convert typed error to thrown error for IAssetLoader interface compatibility
+      const error = result.error;
+      throw new Error(
+        `Path resolution failed: ${error.message}\n` +
+          `  Source file: ${sourcePath}\n` +
+          `  Relative path: ${relativePath}`
+      );
+    }
+
+    return result.absolutePath;
   }
 }

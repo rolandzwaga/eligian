@@ -13,6 +13,14 @@ import { NodeAssetLoader } from '../node-asset-loader.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * Normalize path to Unix-style for comparison
+ * (shared-utils returns Unix-style paths regardless of platform)
+ */
+function toUnixPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/');
+}
+
 describe('IAssetLoader Interface', () => {
   describe('NodeAssetLoader', () => {
     const loader = new NodeAssetLoader();
@@ -83,15 +91,19 @@ describe('IAssetLoader Interface', () => {
         const relativePath = './layout.html';
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolved).toBe(resolve('/project/src', 'layout.html'));
+        // Shared-utils returns Unix-style paths without platform-specific prefixes
+        expect(resolved).toBe('/project/src/layout.html');
       });
 
       it('should resolve parent directory references', () => {
         const sourcePath = '/project/src/features/main.eligian';
         const relativePath = '../shared/layout.html';
-        const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolved).toBe(resolve('/project/src/shared', 'layout.html'));
+        // Updated: ../ navigation is now BLOCKED (escapes source file directory)
+        // Source file is in /project/src/features/, so ../ goes to /project/src/ which is outside
+        expect(() => loader.resolvePath(sourcePath, relativePath)).toThrow(
+          /Path resolution failed/
+        );
       });
 
       it('should resolve nested relative paths', () => {
@@ -99,7 +111,8 @@ describe('IAssetLoader Interface', () => {
         const relativePath = './assets/styles/main.css';
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolved).toBe(resolve('/project/src/assets/styles', 'main.css'));
+        // Shared-utils returns Unix-style paths without platform-specific prefixes
+        expect(resolved).toBe('/project/src/assets/styles/main.css');
       });
 
       it('should handle Windows paths', () => {
@@ -125,7 +138,9 @@ describe('IAssetLoader Interface', () => {
         const relativePath = './valid.html';
         const resolved = loader.resolvePath(sourcePath, relativePath);
 
-        expect(resolve(resolved)).toBe(resolved); // Is absolute
+        // Shared-utils returns Unix-style absolute paths
+        // On Windows, path.resolve() won't recognize Unix-style as absolute, so normalize first
+        expect(toUnixPath(resolve(resolved))).toBe(toUnixPath(resolved)); // Is absolute
         expect(loader.fileExists(resolved)).toBe(true); // Actually exists
       });
     });

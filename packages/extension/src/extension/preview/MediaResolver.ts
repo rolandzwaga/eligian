@@ -1,4 +1,4 @@
-import * as path from 'node:path';
+import { resolvePath } from '@eligian/shared-utils';
 import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 
@@ -18,17 +18,16 @@ interface MediaReference {
  * Resolves media file paths in Eligius configurations to webview-accessible URIs.
  *
  * This service walks through compiled configurations, finds media references
- * (video, audio, image files), resolves their paths relative to the workspace,
- * and converts them to webview URIs that can be loaded in the preview panel.
+ * (video, audio, image files), resolves their paths relative to the document
+ * directory, and converts them to webview URIs that can be loaded in the preview panel.
  *
- * Security features:
+ * Security features (delegated to shared-utils):
  * - Rejects absolute paths (security risk)
  * - Prevents path traversal attacks (../)
- * - Only resolves paths within workspace boundaries
- * - Validates file existence before resolution
+ * - Only resolves paths within document directory boundaries
+ * - Consistent with HTML/CSS import security model
  */
 export class MediaResolver {
-  private readonly workspaceFolders: readonly vscode.WorkspaceFolder[] | undefined;
   private readonly webview: vscode.Webview;
   private readonly documentUri: vscode.Uri;
   private readonly missingFiles: string[] = [];
@@ -56,12 +55,7 @@ export class MediaResolver {
     'imageSrc',
   ];
 
-  constructor(
-    workspaceFolders: readonly vscode.WorkspaceFolder[] | undefined,
-    webview: vscode.Webview,
-    documentUri: vscode.Uri
-  ) {
-    this.workspaceFolders = workspaceFolders;
+  constructor(webview: vscode.Webview, documentUri: vscode.Uri) {
     this.webview = webview;
     this.documentUri = documentUri;
   }
@@ -199,11 +193,8 @@ export class MediaResolver {
    *
    * Resolution strategy:
    * 1. HTTPS URLs → pass through unchanged
-   * 2. Absolute paths → reject (security)
-   * 3. Relative paths → resolve relative to:
-   *    a. Document directory
-   *    b. Workspace folders (in order)
-   * 4. Convert resolved path to webview URI
+   * 2. Relative paths → resolve relative to document directory using shared-utils
+   * 3. Convert resolved path to webview URI
    *
    * @param mediaPath - Original media path from config
    * @returns Resolved webview URI or null if resolution failed
@@ -218,72 +209,26 @@ export class MediaResolver {
       }
     }
 
-    // Reject absolute paths (security)
-    if (path.isAbsolute(mediaPath)) {
-      console.warn(`[MediaResolver] Rejected absolute path (security): ${mediaPath}`);
+    // Use shared-utils to resolve path relative to document directory
+    // This ensures consistent security validation (no path traversal, no absolute paths)
+    const result = resolvePath(mediaPath, this.documentUri.fsPath);
+
+    if (!result.success) {
+      // Path resolution failed (security violation, invalid path, etc.)
+      console.warn(`[MediaResolver] Path resolution failed: ${result.error.message}`);
+      this.missingFiles.push(mediaPath);
       return null;
     }
 
-    // Try to resolve relative path
-    const documentDir = path.dirname(this.documentUri.fsPath);
-    const candidatePaths = [
-      // Try relative to document first
-      path.resolve(documentDir, mediaPath),
-    ];
-
-    // Add workspace folders as candidates
-    if (this.workspaceFolders) {
-      for (const folder of this.workspaceFolders) {
-        candidatePaths.push(path.resolve(folder.uri.fsPath, mediaPath));
-      }
+    // Convert resolved absolute path to webview URI
+    try {
+      const fileUri = vscode.Uri.file(result.absolutePath);
+      return this.webview.asWebviewUri(fileUri);
+    } catch (error) {
+      console.warn(`[MediaResolver] Failed to convert to webview URI: ${mediaPath}`, error);
+      this.missingFiles.push(mediaPath);
+      return null;
     }
-
-    // Find first existing file
-    for (const candidatePath of candidatePaths) {
-      // Security: Ensure resolved path doesn't escape workspace
-      if (!this.isPathWithinWorkspace(candidatePath)) {
-        console.warn(
-          `[MediaResolver] Rejected path outside workspace (security): ${candidatePath}`
-        );
-        continue;
-      }
-
-      // Check if file exists (synchronously for simplicity)
-      try {
-        const fileUri = vscode.Uri.file(candidatePath);
-        // Note: We can't easily check file existence synchronously in VS Code API
-        // We'll assume the path is valid and let Eligius handle load errors
-        // Convert to webview URI
-        return this.webview.asWebviewUri(fileUri);
-      } catch (_error) {}
-    }
-
-    // File not found - track as missing
-    this.missingFiles.push(mediaPath);
-    console.warn(`[MediaResolver] Media file not found: ${mediaPath}`);
-    return null;
-  }
-
-  /**
-   * Check if a resolved path is within workspace boundaries.
-   *
-   * Prevents path traversal attacks (../../etc/passwd).
-   *
-   * @param resolvedPath - Absolute path after resolution
-   * @returns True if path is within workspace
-   */
-  private isPathWithinWorkspace(resolvedPath: string): boolean {
-    if (!this.workspaceFolders || this.workspaceFolders.length === 0) {
-      // No workspace - only allow paths relative to document
-      const documentDir = path.dirname(this.documentUri.fsPath);
-      return resolvedPath.startsWith(documentDir);
-    }
-
-    // Check if path is within any workspace folder
-    return this.workspaceFolders.some(folder => {
-      const workspaceRoot = folder.uri.fsPath;
-      return resolvedPath.startsWith(workspaceRoot);
-    });
   }
 
   /**

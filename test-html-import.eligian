@@ -1,8 +1,0 @@
-import header from './header.html'
-
-timeline "Test" {
-  at 0s..1s {
-    selectElement("#box")
-    setElementContent(@header)
-  }
-}
