@@ -1,0 +1,10 @@
+import header from './header.html'
+
+action testHTML [
+  selectElement("#box")
+  setElementContent($globaldata.header)
+]
+
+timeline "Test" in "#root" using raf {
+  at 0s..1s testHTML()
+}

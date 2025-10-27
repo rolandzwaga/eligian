@@ -15,8 +15,9 @@
  */
 
 import type { Program, VariableDeclaration } from '../generated/ast.js';
-import { getElements } from '../utils/program-helpers.js';
+import { getElements, getHTMLImports } from '../utils/program-helpers.js';
 import { evaluateExpression } from './expression-evaluator.js';
+import { loadHTMLFile, resolveHTMLPath } from './html-import-utils.js';
 import type { ConstantMap, ConstantValue } from './types/constant-folding.js';
 
 /**
@@ -47,6 +48,36 @@ import type { ConstantMap, ConstantValue } from './types/constant-folding.js';
  */
 export function buildConstantMap(program: Program): ConstantMap {
   const map: ConstantMap = new Map();
+
+  // FEATURE 015: Add HTML imports as constants (they get inlined like const)
+  const htmlImports = getHTMLImports(program);
+  for (const htmlImport of htmlImports) {
+    try {
+      // Resolve path relative to source .eligian file
+      const sourceUri = program.$document?.uri?.fsPath || process.cwd();
+      // Use the .eligian file's directory as the project root
+      // HTML imports are resolved relative to the .eligian file that contains them
+      const path = require('node:path');
+      const sourceDir = path.dirname(sourceUri);
+      const absolutePath = resolveHTMLPath(htmlImport.path, sourceUri, sourceDir);
+
+      // Load HTML content
+      const htmlContent = loadHTMLFile(absolutePath);
+
+      // Add to constant map (will be inlined wherever @variableName is used)
+      const constantValue: ConstantValue = {
+        name: htmlImport.name,
+        value: htmlContent,
+        type: 'string',
+        sourceLocation: extractSourceLocation(htmlImport),
+      };
+
+      map.set(htmlImport.name, constantValue);
+    } catch (error: any) {
+      // Log warning but don't fail - transformer will catch missing constants
+      console.warn(`[HTML Import] Failed to load '${htmlImport.name}': ${error.message}`);
+    }
+  }
 
   // Traverse all global declarations (getElements(program))
   for (const element of getElements(program)) {
