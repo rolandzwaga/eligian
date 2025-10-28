@@ -33,7 +33,8 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
   test('should show error before CSS update, no error after CSS update (className)', async () => {
     // Setup: Register CSS with only 'button' class
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -62,7 +63,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     expect(unknownClassErrors1[0].message).toContain('new-class');
 
     // Simulate CSS file update: add 'new-class'
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button', 'new-class']),
       ids: new Set(),
       classLocations: new Map(),
@@ -84,7 +85,8 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
   test('should show error after CSS update removes class (className)', async () => {
     // Setup: Register CSS with 'button' and 'primary' classes
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button', 'primary']),
       ids: new Set(),
       classLocations: new Map(),
@@ -112,7 +114,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     expect(unknownClassErrors1.length).toBe(0);
 
     // Simulate CSS file update: remove 'primary'
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -135,7 +137,8 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
   test('should show error before CSS update, no error after CSS update (selector)', async () => {
     // Setup: Register CSS with only '.button' class
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -165,7 +168,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     expect(unknownClassErrors1.length).toBeGreaterThan(0);
 
     // Simulate CSS file update: add 'primary'
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button', 'primary']),
       ids: new Set(),
       classLocations: new Map(),
@@ -189,7 +192,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
   test('should update validation for multiple documents importing same CSS', async () => {
     // Setup: Register CSS with only 'button' class
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./shared.css', {
+    cssRegistry.updateCSSFile('file:///shared.css', {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -224,8 +227,9 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     `;
 
     // Parse and validate both documents
-    const { document: doc1, validationErrors: errors1 } = await parseAndValidate(code1);
-    const { document: doc2, validationErrors: errors2 } = await parseAndValidate(code2);
+    const cssFileUri = 'file:///shared.css';
+    const { document: doc1, validationErrors: errors1 } = await parseAndValidate(code1, cssFileUri);
+    const { document: doc2, validationErrors: errors2 } = await parseAndValidate(code2, cssFileUri);
 
     // Both should have errors for 'primary'
     const unknownClass1 = errors1.filter(e => e.data?.code === 'unknown_css_class');
@@ -234,7 +238,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     expect(unknownClass2.length).toBeGreaterThan(0);
 
     // Simulate CSS file update: add 'primary' to shared.css
-    cssRegistry.updateCSSFile('./shared.css', {
+    cssRegistry.updateCSSFile('file:///shared.css', {
       classes: new Set(['button', 'primary']),
       ids: new Set(),
       classLocations: new Map(),
@@ -259,7 +263,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
   test('should show error when CSS has syntax errors', async () => {
     // Setup: Register CSS with parse errors
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./broken.css', {
+    cssRegistry.updateCSSFile('file:///broken.css', {
       classes: new Set(), // No classes available when CSS has errors
       ids: new Set(),
       classLocations: new Map(),
@@ -300,7 +304,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
   test('should make classes available after CSS is fixed', async () => {
     // Setup: Register CSS with parse errors
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./fixable.css', {
+    cssRegistry.updateCSSFile('file:///fixable.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),
@@ -335,7 +339,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
     expect(cssFileErrors1.length).toBeGreaterThan(0);
 
     // Simulate CSS file fix: valid CSS now
-    cssRegistry.updateCSSFile('./fixable.css', {
+    cssRegistry.updateCSSFile('file:///fixable.css', {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),

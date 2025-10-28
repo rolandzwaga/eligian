@@ -22,7 +22,8 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should error when selector contains unknown class', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -54,7 +55,8 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should error when selector contains unknown ID', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(),
       ids: new Set(['header']),
       classLocations: new Map(),
@@ -86,7 +88,8 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should error for multiple unknown classes in selector', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -125,7 +128,8 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should provide suggestions for similar class names', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['primary', 'secondary', 'button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -158,7 +162,8 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should validate unknown classes in combinator selectors', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['parent']),
       ids: new Set(),
       classLocations: new Map(),

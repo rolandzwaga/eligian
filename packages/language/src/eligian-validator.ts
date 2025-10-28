@@ -1,4 +1,6 @@
+import * as path from 'node:path';
 import type { ValidationAcceptor, ValidationChecks } from 'langium';
+import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 import {
   hasOperation,
@@ -1184,11 +1186,18 @@ export class EligianValidator {
     const allImports = getImports(program);
     const cssImports = allImports.filter(imp => isDefaultImport(imp) && imp.type === 'styles');
 
-    // Convert CSS file paths to URIs
+    // Convert CSS file paths to absolute URIs (must match language server format)
     const cssFileUris: string[] = [];
+    const docPath = URI.parse(documentUri).fsPath;
+    const docDir = path.dirname(docPath);
+
     for (const cssImport of cssImports) {
       const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
-      cssFileUris.push(cssPath);
+      // Resolve relative path to absolute URI
+      const cleanPath = cssPath.startsWith('./') ? cssPath.substring(2) : cssPath;
+      const absolutePath = path.join(docDir, cleanPath);
+      const absoluteUri = URI.file(absolutePath).toString();
+      cssFileUris.push(absoluteUri);
     }
 
     // Register CSS imports with the registry (idempotent - safe to call multiple times)
@@ -1241,12 +1250,21 @@ export class EligianValidator {
       .filter(isDefaultImport)
       .filter(imp => imp.type === 'styles');
 
+    // Resolve CSS paths to absolute URIs (same as ensureCSSImportsRegistered)
+    const docPath = URI.parse(documentUri).fsPath;
+    const docDir = path.dirname(docPath);
+
     for (const cssImport of cssImports) {
       const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
 
-      // Check if CSS file has errors
-      if (cssRegistry.hasErrors(cssPath)) {
-        const errors = cssRegistry.getErrors(cssPath);
+      // Resolve to absolute URI to match registry keys
+      const cleanPath = cssPath.startsWith('./') ? cssPath.substring(2) : cssPath;
+      const absolutePath = path.join(docDir, cleanPath);
+      const cssFileUri = URI.file(absolutePath).toString();
+
+      // Check if CSS file has errors (using absolute URI)
+      if (cssRegistry.hasErrors(cssFileUri)) {
+        const errors = cssRegistry.getErrors(cssFileUri);
 
         // Report error at the import statement
         if (errors.length > 0) {

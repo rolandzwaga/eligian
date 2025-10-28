@@ -18,6 +18,10 @@
     ".": {
       "types": "./out/index.d.ts",
       "default": "./dist/index.cjs"
+    },
+    "./css-service": {
+      "types": "./out/css/css-service.d.ts",
+      "default": "./dist/css/css-service.cjs"
     }
   },
   "typesVersions": {

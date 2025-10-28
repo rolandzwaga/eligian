@@ -1,15 +1,22 @@
 /**
  * CSS Loader Utilities
  *
- * Pure functions for loading CSS files, converting paths, and rewriting URLs
- * for webview compatibility.
+ * Thin wrappers around @eligian/language CSS service for VS Code extension integration.
+ * Most functionality delegated to language package (Feature 017 - Phase 2).
  */
 
-import * as crypto from 'node:crypto';
-import * as path from 'node:path';
-import { loadFileAsync } from '@eligian/shared-utils';
+// Import from language package (Feature 017)
+import {
+  type FileNotFoundError,
+  generateCSSId as generateCSSIdInternal,
+  loadCSS as loadCSSInternal,
+  type PermissionError,
+  type ReadError,
+  rewriteUrls as rewriteUrlsInternal,
+} from '@eligian/language';
 import type { IEngineConfiguration } from 'eligius';
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
+import { VSCodeWebviewUriConverter } from './webview-uri-converter.js';
 
 /**
  * Extended Eligius configuration with cssFiles support (Feature 010)
@@ -19,37 +26,14 @@ export interface IEngineConfigurationWithCSS extends IEngineConfiguration {
 }
 
 /**
- * Custom error types for CSS loading failures
+ * Re-export error types from language package for backwards compatibility
  */
-export class FileNotFoundError extends Error {
-  constructor(filePath: string) {
-    super(`CSS file not found: ${filePath}`);
-    this.name = 'FileNotFoundError';
-  }
-}
-
-export class PermissionError extends Error {
-  constructor(filePath: string) {
-    super(`Permission denied reading CSS file: ${filePath}`);
-    this.name = 'PermissionError';
-  }
-}
-
-export class ReadError extends Error {
-  public readonly cause: Error;
-
-  constructor(
-    public readonly filePath: string,
-    cause: Error
-  ) {
-    super(`Failed to read CSS file: ${filePath} (${cause.message})`);
-    this.name = 'ReadError';
-    this.cause = cause;
-  }
-}
+export type { FileNotFoundError, PermissionError, ReadError };
 
 /**
- * T004: Generate stable unique identifier from file path using SHA-256 hash
+ * Generate stable unique identifier from file path using SHA-256 hash
+ *
+ * Delegates to @eligian/language CSS service (Feature 017).
  *
  * @param filePath - Absolute file system path to CSS file
  * @returns 16-character hex string (SHA-256 hash truncated)
@@ -58,32 +42,13 @@ export class ReadError extends Error {
  * generateCSSId('/workspace/styles/main.css') // 'a3f5b2c8d9e1f4b7'
  */
 export function generateCSSId(filePath: string): string {
-  const hash = crypto.createHash('sha256');
-  hash.update(filePath);
-  return hash.digest('hex').substring(0, 16);
+  return generateCSSIdInternal(filePath);
 }
 
 /**
- * T005: Convert file system path to webview-compatible URI
+ * Rewrite CSS url() paths to webview URIs for images/fonts
  *
- * @param filePath - Absolute file system path
- * @param webview - VS Code webview instance
- * @returns Webview URI (vscode-webview:// protocol)
- *
- * @example
- * convertToWebviewUri('/workspace/image.png', webview)
- * // Uri { scheme: 'vscode-webview', ... }
- */
-export function convertToWebviewUri(filePath: string, webview: vscode.Webview): vscode.Uri {
-  const fileUri = vscode.Uri.file(filePath);
-  return webview.asWebviewUri(fileUri);
-}
-
-/**
- * T006: Rewrite CSS url() paths to webview URIs for images/fonts
- *
- * Converts relative paths in CSS (like url(./image.png)) to webview URIs
- * so assets load correctly in the webview context.
+ * Delegates to @eligian/language CSS service (Feature 017).
  *
  * @param css - CSS file content
  * @param cssFilePath - Absolute path to CSS file (for resolving relative paths)
@@ -96,64 +61,29 @@ export function convertToWebviewUri(filePath: string, webview: vscode.Webview): 
  * // ".bg { background: url('vscode-webview://.../styles/image.png'); }"
  */
 export function rewriteCSSUrls(css: string, cssFilePath: string, webview: vscode.Webview): string {
-  const cssDir = path.dirname(cssFilePath);
-
-  // Match url(...) patterns in CSS
-  // Handles: url(./file), url("./file"), url('../file'), url('file')
-  const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
-
-  return css.replace(urlRegex, (match, urlPath) => {
-    // Skip absolute URLs (http://, https://, data:)
-    if (
-      urlPath.startsWith('http://') ||
-      urlPath.startsWith('https://') ||
-      urlPath.startsWith('data:')
-    ) {
-      return match;
-    }
-
-    // Resolve relative path to absolute
-    const absolutePath = path.resolve(cssDir, urlPath);
-
-    // Normalize Windows paths (CSS doesn't accept backslashes)
-    const normalizedPath = absolutePath.replace(/\\/g, '/');
-
-    // Convert to webview URI
-    const webviewUri = convertToWebviewUri(normalizedPath, webview);
-
-    return `url('${webviewUri.toString()}')`;
-  });
+  const converter = new VSCodeWebviewUriConverter(webview);
+  return rewriteUrlsInternal(css, cssFilePath, converter);
 }
 
 /**
- * T007: Load CSS file content from disk with error handling
+ * Load CSS file content from disk with error handling
+ *
+ * Delegates to @eligian/language CSS service (Feature 017).
  *
  * @param filePath - Absolute path to CSS file
  * @returns CSS file content (UTF-8)
- * @throws {FileNotFoundError} If file doesn't exist
- * @throws {PermissionError} If insufficient permissions to read
- * @throws {ReadError} If file read fails for other reasons
+ * @throws Error with typed error information if file cannot be read
  *
  * @example
  * const css = await loadCSSFile('/workspace/styles/main.css');
  */
 export async function loadCSSFile(filePath: string): Promise<string> {
-  // Use shared-utils file loader with typed error handling
-  const result = await loadFileAsync(filePath);
+  // Use dummy webview converter (we only need content, not URL rewriting)
+  const dummyConverter = {
+    convertToWebviewUri: (uri: any) => uri,
+  };
 
-  if (!result.success) {
-    // Convert typed error to thrown error for backwards compatibility
-    const error = result.error;
-    switch (error._tag) {
-      case 'FileNotFoundError':
-        throw new FileNotFoundError(error.path);
-      case 'PermissionError':
-        throw new PermissionError(error.path);
-      case 'ReadError':
-        throw new ReadError(error.path, new Error(error.message));
-    }
-  }
-
+  const result = await loadCSSInternal(filePath, dummyConverter as any);
   return result.content;
 }
 

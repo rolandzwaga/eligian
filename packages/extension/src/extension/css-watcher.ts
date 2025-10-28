@@ -11,6 +11,7 @@
  * Constitution Principle I: Simplicity & Documentation
  */
 
+import * as path from 'node:path';
 import { CSS_UPDATED_NOTIFICATION } from '@eligian/language';
 import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
@@ -60,14 +61,41 @@ export class CSSWatcherManager {
    * Builds reverse mapping: CSS file URI → Set of document URIs that import it.
    * Used to determine which documents need re-validation when a CSS file changes.
    *
+   * This method also automatically starts watching the CSS files if not already watching.
+   *
    * @param documentUri - Absolute Eligian document URI (file:///...)
    * @param cssFileUris - CSS file URIs imported by the document (may be relative like "./styles.css")
    */
   registerImports(documentUri: string, cssFileUris: string[]): void {
+    console.log('[CSSWatcher] registerImports called:', {
+      documentUri,
+      cssFileUris,
+    });
+
+    if (cssFileUris.length === 0) {
+      console.log('[CSSWatcher] No CSS files to register, skipping');
+      return;
+    }
+
+    // Parse document URI to get workspace root
+    const vscode = require('vscode');
+    const docUri = vscode.Uri.parse(documentUri);
+    const docPath = docUri.fsPath;
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
+    const workspaceRoot = workspaceFolder?.uri.fsPath || require('node:path').dirname(docPath);
+
+    // Collect CSS file absolute paths for watching
+    const cssFilePaths: string[] = [];
+
     // For each CSS file, track that this document imports it
     for (const cssFileUri of cssFileUris) {
       // Convert relative CSS paths to absolute URIs to match file change events
       const absoluteCSSUri = this.resolveAbsoluteCSSUri(documentUri, cssFileUri);
+
+      console.log('[CSSWatcher] Resolved CSS URI:', {
+        input: cssFileUri,
+        output: absoluteCSSUri,
+      });
 
       let documents = this.importsByCSS.get(absoluteCSSUri);
       if (!documents) {
@@ -75,7 +103,20 @@ export class CSSWatcherManager {
         this.importsByCSS.set(absoluteCSSUri, documents);
       }
       documents.add(documentUri);
+
+      // Extract file path for watching
+      const cssUri = vscode.Uri.parse(absoluteCSSUri);
+      cssFilePaths.push(cssUri.fsPath);
     }
+
+    console.log('[CSSWatcher] importsByCSS after registration:', {
+      size: this.importsByCSS.size,
+      keys: Array.from(this.importsByCSS.keys()),
+    });
+
+    // Start watching the CSS files (this is idempotent - won't recreate watcher if already exists)
+    console.log('[CSSWatcher] Starting file watcher for CSS files');
+    this.startWatching(cssFilePaths, workspaceRoot);
   }
 
   /**
@@ -94,13 +135,13 @@ export class CSSWatcherManager {
     // Parse document URI to get directory
     const docUri = vscode.Uri.parse(documentUri);
     const docPath = docUri.fsPath;
-    const docDir = docPath.substring(0, docPath.lastIndexOf('\\'));
+    const docDir = path.dirname(docPath);
 
     // Remove leading "./" from CSS path
     const cleanPath = cssFileUri.startsWith('./') ? cssFileUri.substring(2) : cssFileUri;
 
-    // Combine directory with CSS path and convert to URI
-    const absolutePath = `${docDir}\\${cleanPath}`;
+    // Combine directory with CSS path and convert to URI (cross-platform)
+    const absolutePath = path.join(docDir, cleanPath);
     return vscode.Uri.file(absolutePath).toString();
   }
 
@@ -125,15 +166,21 @@ export class CSSWatcherManager {
     if (!this.watcher) {
       // Watch all CSS files in workspace (efficient single watcher)
       const pattern = new vscode.RelativePattern(workspaceRoot, '**/*.css');
+      console.log('[CSSWatcher] Creating watcher with pattern:', {
+        workspaceRoot,
+        pattern: pattern.pattern,
+      });
       this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
       // Handle file changes
       this.watcher.onDidChange(uri => {
+        console.log('[CSSWatcher] onDidChange fired for:', uri.toString());
         this.handleFileChange(uri);
       });
 
       // Handle file deletions (stop watching)
       this.watcher.onDidDelete(uri => {
+        console.log('[CSSWatcher] onDidDelete fired for:', uri.toString());
         this.handleFileDelete(uri);
       });
 
@@ -150,8 +197,10 @@ export class CSSWatcherManager {
   updateTrackedFiles(cssFiles: string[]): void {
     this.trackedFiles.clear();
     for (const file of cssFiles) {
+      console.log('[CSSWatcher] Adding tracked file:', file);
       this.trackedFiles.add(file);
     }
+    console.log('[CSSWatcher] All tracked files:', Array.from(this.trackedFiles));
   }
 
   /**
@@ -159,6 +208,13 @@ export class CSSWatcherManager {
    */
   private handleFileChange(uri: vscode.Uri): void {
     const filePath = uri.fsPath;
+
+    console.log('[CSSWatcher] handleFileChange called:', {
+      uriString: uri.toString(),
+      fsPath: filePath,
+      isTracked: this.trackedFiles.has(filePath),
+      trackedFiles: Array.from(this.trackedFiles),
+    });
 
     // Only process tracked files
     if (!this.trackedFiles.has(filePath)) {
@@ -215,6 +271,13 @@ export class CSSWatcherManager {
         const cssFileUri = vscode.Uri.file(filePath).toString();
         const documentUris = Array.from(this.importsByCSS.get(cssFileUri) || []);
 
+        console.log('[CSSWatcher] Lookup for changed file:', {
+          filePath,
+          cssFileUri,
+          foundDocuments: documentUris.length,
+          allKeys: Array.from(this.importsByCSS.keys()),
+        });
+
         if (documentUris.length > 0) {
           console.log(
             `[CSSWatcher] Sending LSP notification for ${cssFileUri} → ${documentUris.length} document(s)`
@@ -223,6 +286,8 @@ export class CSSWatcherManager {
             cssFileUri,
             documentUris,
           });
+        } else {
+          console.warn('[CSSWatcher] No documents found for changed CSS file:', cssFileUri);
         }
       }
 

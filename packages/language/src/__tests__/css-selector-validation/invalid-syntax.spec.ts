@@ -22,7 +22,8 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
 
   test('should error for unclosed attribute selector', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -53,7 +54,8 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
 
   test('should error for unclosed pseudo-class', () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map(),
@@ -85,7 +87,8 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
 
   test('should error for unclosed string in attribute', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    const cssFileUri = 'file:///styles.css';
+    cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['input']),
       ids: new Set(),
       classLocations: new Map(),
