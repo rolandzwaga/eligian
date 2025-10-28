@@ -22,6 +22,10 @@
     "./css-service": {
       "types": "./out/css/css-service.d.ts",
       "default": "./dist/css/css-service.cjs"
+    },
+    "./errors": {
+      "types": "./out/errors/index.d.ts",
+      "default": "./dist/errors/index.cjs"
     }
   },
   "typesVersions": {

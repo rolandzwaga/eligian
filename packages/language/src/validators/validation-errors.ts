@@ -1,6 +1,10 @@
 /**
  * Validation Error Types for Import Statements
  *
+ * @deprecated Error type interfaces in this file are deprecated.
+ * Use ValidationError from '@eligian/language/errors' for new code.
+ * ERROR_MESSAGES is still maintained for backwards compatibility.
+ *
  * All error types follow Constitution Principle X (Compiler-First Validation):
  * Pure, testable error types that are returned by validator functions.
  *

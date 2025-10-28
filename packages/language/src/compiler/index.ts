@@ -15,7 +15,6 @@ export {
   FileSystemLive,
   FileSystemService,
   FileSystemTest,
-  IOError,
   LoggerLive,
   LoggerService,
   LoggerSilent,
@@ -25,14 +24,7 @@ export {
   TestLayer,
 } from './effects/index.js';
 // Error formatting exports
-export {
-  formatError,
-  formatErrors,
-  formatParseError,
-  formatTransformError,
-  formatTypeError,
-  formatValidationError,
-} from './error-reporter.js';
+export { formatErrors } from './error-reporter.js';
 // Operation registry exports
 export {
   type ConstantValue,
@@ -70,9 +62,7 @@ export {
 export {
   type ControlFlowError,
   type MissingDependencyError,
-  type OperationValidationError,
   type ParameterCountError,
-  type ParameterTypeError,
   trackOutputs,
   type UnknownOperationError,
   type ValidationError as OperationValidationErrorBase,
@@ -106,15 +96,6 @@ export {
   createSourceLocation,
   formatSourceLocation,
 } from './types/common.js';
-// Error constructors
-export {
-  createEmitError,
-  createOptimizationError,
-  createParseError,
-  createTransformError,
-  createTypeError,
-  createValidationError,
-} from './types/errors.js';
 // Type exports
 export type {
   ActionCallIR,
@@ -123,9 +104,7 @@ export type {
   BuiltInActionIR,
   // Our IR types
   EligiusIR,
-  EmitError,
   EventIR,
-  FormattedError,
   IActionConfiguration,
   IDuration,
   IEndableActionConfiguration,
@@ -139,19 +118,13 @@ export type {
   JsonObject,
   JsonValue,
   OperationIR,
-  OptimizationError,
   ParameterIR,
-  ParseError,
   RawOperationIR,
   // Common types
-  SourceLocation,
   TargetSelector,
   TimeExpression,
   TimelineIR,
   TimelineTypes,
-  TransformError,
-  TypeError,
-  ValidationError,
 } from './types/index.js';
 
 /**

@@ -127,7 +127,90 @@ function formatCompilerError(error: CompilerError): string {
 }
 ```
 
-### 5. Format Errors for Display
+### 5. Exhaustive Pattern Matching (NO Default Case)
+
+TypeScript's exhaustiveness checking allows you to omit the `default` case when all variants are handled. If you add a new error type and forget to handle it, TypeScript will show a compile-time error.
+
+```typescript
+import { type CompilerError } from '@eligian/language/errors';
+
+/**
+ * Format CompilerError using exhaustive switch
+ *
+ * NO default case needed - TypeScript verifies all cases are handled.
+ * If we add a new CompilerError variant and forget to handle it here,
+ * TypeScript will show: "Function lacks ending return statement"
+ */
+function formatCompilerError(error: CompilerError): string {
+  switch (error._tag) {
+    case 'ParseError':
+      return `Parse: ${error.message} (expected: ${error.expected ?? 'unknown'})`;
+    case 'ValidationError':
+      return `Validation: ${error.kind} - ${error.message}`;
+    case 'TypeError':
+      return `Type: expected ${error.expected}, got ${error.actual}`;
+    case 'TransformError':
+      return `Transform: ${error.kind} - ${error.message}`;
+    case 'OptimizationError':
+      return `Optimization (${error.pass}): ${error.message}`;
+    case 'EmitError':
+      return `Emit: ${error.message}`;
+    // NO default case - TypeScript checks exhaustiveness
+  }
+}
+
+/**
+ * Alternative: Exhaustive checking with hierarchical type guards
+ *
+ * This pattern first checks the category (Compiler/Asset/IO), then
+ * delegates to category-specific handlers.
+ */
+function formatAllErrors(error: AllErrors): string {
+  // Check CompilerError (6 variants)
+  if (
+    error._tag === 'ParseError' ||
+    error._tag === 'ValidationError' ||
+    error._tag === 'TypeError' ||
+    error._tag === 'TransformError' ||
+    error._tag === 'OptimizationError' ||
+    error._tag === 'EmitError'
+  ) {
+    return formatCompilerError(error);
+  }
+
+  // Check AssetError (4 variants)
+  if (
+    error._tag === 'HtmlImportError' ||
+    error._tag === 'CssImportError' ||
+    error._tag === 'CssParseError' ||
+    error._tag === 'MediaImportError'
+  ) {
+    return formatAssetError(error);
+  }
+
+  // Check IOError (4 variants)
+  if (
+    error._tag === 'FileNotFoundError' ||
+    error._tag === 'PermissionError' ||
+    error._tag === 'ReadError' ||
+    error._tag === 'SecurityError'
+  ) {
+    return formatIOError(error);
+  }
+
+  // If TypeScript allows this line, we have a bug in our type system
+  const _exhaustive: never = error;
+  throw new Error(`Unhandled error type: ${(_exhaustive as AllErrors)._tag}`);
+}
+```
+
+**Benefits of exhaustive checking**:
+- **Compile-time safety**: TypeScript catches missing cases at compile time
+- **Maintainability**: When adding new error types, TypeScript shows all places that need updates
+- **No runtime overhead**: Exhaustiveness checking is purely a compile-time feature
+- **Self-documenting**: The absence of a default case signals that all cases are handled
+
+### 6. Format Errors for Display
 
 ```typescript
 import { formatError, formatErrors } from '@eligian/language/errors';

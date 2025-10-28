@@ -1,6 +1,12 @@
 import postcss, { type CssSyntaxError, type Root, type Rule } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
+/**
+ * CSS source location with start/end line/column information
+ *
+ * NOTE: This is distinct from the unified SourceLocation type which only has
+ * a single line/column. This type is needed for CSS rule locations.
+ */
 export interface CSSSourceLocation {
   filePath: string;
   startLine: number;
@@ -9,6 +15,13 @@ export interface CSSSourceLocation {
   endColumn: number;
 }
 
+/**
+ * CSS parse error (old format)
+ *
+ * @deprecated This interface format is deprecated.
+ * For new code, use CssParseError from @eligian/language/errors instead.
+ * This interface is maintained for backwards compatibility with CSS registry.
+ */
 export interface CSSParseError {
   message: string;
   filePath: string;

@@ -8,7 +8,6 @@ export type {
   ReadError,
   SecurityError,
 } from '@eligian/shared-utils';
-
 export {
   createFileNotFoundError,
   createPermissionError,
@@ -19,10 +18,8 @@ export {
   isReadError,
   isSecurityError,
 } from '@eligian/shared-utils';
-
 // Asset loading exports (only for CLI use - minimal exports)
 export { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
-
 // Compiler exports (all compiler functionality is now part of language package)
 export * from './compiler/index.js';
 export * from './css/css-parser.js';
@@ -34,6 +31,11 @@ export * from './css/selector-parser.js';
 // LSP/Langium exports (only needed for extension language server)
 export * from './eligian-module.js';
 export * from './eligian-validator.js';
+// Error type exports (Feature 018 - US3)
+// All error types from unified namespace
+// Old error locations have @deprecated warnings and re-export from here
+// Migration complete - all old locations re-export from unified namespace
+export * from './errors/index.js';
 export { isProgram, type Program } from './generated/ast.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';

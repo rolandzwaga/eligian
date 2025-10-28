@@ -7,9 +7,14 @@
  *
  * Constitution Principle I: Simplicity & Documentation
  * Constitution Principle VI: Functional Programming (pure compilation wrapper)
+ *
+ * Feature 018 (US1): Uses consistent error formatting via formatError()
+ * from the @eligian/language error formatting module.
  */
 
-import { type CompileError, compileString, type IEngineConfiguration } from '@eligian/language';
+import { compileString, type IEngineConfiguration } from '@eligian/language';
+// Feature 018 (US1): Import error types from unified error system
+import { type AllErrors, formatError } from '@eligian/language/errors';
 import { Effect } from 'effect';
 import * as vscode from 'vscode';
 
@@ -152,15 +157,21 @@ export class CompilationService {
 
   /**
    * Convert compiler error to CompilationError format.
+   *
+   * Feature 018 (US1): Uses formatError() for consistent error messages
+   * across all Eligian tools (CLI, extension, language server).
    */
   private convertCompilerError(error: unknown): CompilationError[] {
     // Handle Effect-style errors (from compiler)
     if (error && typeof error === 'object' && '_tag' in error) {
-      const compileError = error as CompileError;
+      const compileError = error as AllErrors;
+
+      // Use the consistent formatError() function
+      const formattedMessage = formatError(compileError);
 
       return [
         {
-          message: compileError.message || 'Compilation failed',
+          message: formattedMessage,
           line: 'location' in compileError ? compileError.location?.line : undefined,
           column: 'location' in compileError ? compileError.location?.column : undefined,
           code: compileError._tag,
