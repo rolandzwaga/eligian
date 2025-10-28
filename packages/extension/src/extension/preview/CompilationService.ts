@@ -154,22 +154,37 @@ export class CompilationService {
    * Convert compiler error to CompilationError format.
    */
   private convertCompilerError(error: unknown): CompilationError[] {
+    console.log('[CompilationService] Converting compiler error:', error);
+    console.log('[CompilationService] Error type:', typeof error);
+    console.log('[CompilationService] Has _tag:', error && typeof error === 'object' && '_tag' in error);
+
     // Handle Effect-style errors (from compiler)
     if (error && typeof error === 'object' && '_tag' in error) {
       const compileError = error as CompileError;
 
-      return [
+      console.log('[CompilationService] CompileError details:', {
+        _tag: compileError._tag,
+        message: compileError.message,
+        hasLocation: 'location' in compileError,
+        location: 'location' in compileError ? compileError.location : undefined,
+      });
+
+      const converted = [
         {
           message: compileError.message || 'Compilation failed',
           line: 'location' in compileError ? compileError.location?.line : undefined,
           column: 'location' in compileError ? compileError.location?.column : undefined,
           code: compileError._tag,
-          severity: 'error',
+          severity: 'error' as const,
         },
       ];
+
+      console.log('[CompilationService] Converted error:', converted);
+      return converted;
     }
 
     // Handle generic errors
+    console.log('[CompilationService] Converting as generic error');
     return [
       {
         message: error instanceof Error ? error.message : String(error),

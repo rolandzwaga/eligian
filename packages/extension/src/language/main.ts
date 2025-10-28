@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import {
   CSS_ERROR_NOTIFICATION,
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
@@ -91,24 +92,40 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
         }
       }
 
+      // Resolve CSS file paths to absolute URIs for the extension
+      const cssFileUris: string[] = [];
+      const docPath = URI.parse(documentUri).fsPath;
+      const docDir = path.dirname(docPath);
+
       // Parse each CSS file and load into registry (if not already loaded)
-      for (const cssFileUri of cssFiles) {
+      for (const cssFileRelativePath of cssFiles) {
         try {
-          // Convert relative path to absolute file path
-          const docPath = URI.parse(documentUri).fsPath;
-          const docDir = docPath.substring(0, docPath.lastIndexOf('\\'));
-          const cssFilePath = cssFileUri.startsWith('./')
-            ? `${docDir}\\${cssFileUri.substring(2)}`
-            : cssFileUri;
+          // Convert relative path to absolute file path (cross-platform)
+          const cleanPath = cssFileRelativePath.startsWith('./')
+            ? cssFileRelativePath.substring(2)
+            : cssFileRelativePath;
+          const cssFilePath = path.join(docDir, cleanPath);
+          const cssFileUri = URI.file(cssFilePath).toString();
+
+          // Track absolute URI for notification
+          cssFileUris.push(cssFileUri);
 
           // Read and parse CSS file
           const cssContent = readFileSync(cssFilePath, 'utf-8');
           const parseResult = parseCSS(cssContent, cssFilePath);
 
-          // Update registry with parsed CSS
+          // Update registry with parsed CSS (use absolute URI as key)
           cssRegistry.updateCSSFile(cssFileUri, parseResult);
         } catch (error) {
-          console.error(`Failed to parse CSS file ${cssFileUri}:`, error);
+          console.error(`Failed to parse CSS file ${cssFileRelativePath}:`, error);
+          // Still track the URI even if parsing failed
+          const cleanPath = cssFileRelativePath.startsWith('./')
+            ? cssFileRelativePath.substring(2)
+            : cssFileRelativePath;
+          const cssFilePath = path.join(docDir, cleanPath);
+          const cssFileUri = URI.file(cssFilePath).toString();
+          cssFileUris.push(cssFileUri);
+
           // Register error in registry
           cssRegistry.updateCSSFile(cssFileUri, {
             classes: new Set(),
@@ -120,7 +137,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
             errors: [
               {
                 message: error instanceof Error ? error.message : 'Unknown error',
-                filePath: cssFileUri,
+                filePath: cssFileRelativePath,
                 line: 0,
                 column: 0,
               },
@@ -129,10 +146,10 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
         }
       }
 
-      // Send notification to extension with discovered CSS imports
+      // Send notification to extension with discovered CSS imports (absolute URIs)
       const params: CSSImportsDiscoveredParams = {
         documentUri,
-        cssFileUris: Array.from(cssFiles),
+        cssFileUris: cssFileUris,
       };
 
       connection.sendNotification(CSS_IMPORTS_DISCOVERED_NOTIFICATION, params);

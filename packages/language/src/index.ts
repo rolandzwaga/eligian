@@ -1,5 +1,25 @@
 // Language core exports
 
+// Re-export shared-utils error types for convenience (Feature 017 - Phase 2)
+export type {
+  FileNotFoundError,
+  FileOperationError,
+  PermissionError,
+  ReadError,
+  SecurityError,
+} from '@eligian/shared-utils';
+
+export {
+  createFileNotFoundError,
+  createPermissionError,
+  createReadError,
+  createSecurityError,
+  isFileNotFoundError,
+  isPermissionError,
+  isReadError,
+  isSecurityError,
+} from '@eligian/shared-utils';
+
 // Asset loading exports (only for CLI use - minimal exports)
 export { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 
@@ -7,6 +27,8 @@ export { hasImports, loadProgramAssets } from './asset-loading/compiler-integrat
 export * from './compiler/index.js';
 export * from './css/css-parser.js';
 export * from './css/css-registry.js';
+// CSS service exports (Feature 017 - Phase 2)
+export * from './css/css-service.js';
 export * from './css/levenshtein.js';
 export * from './css/selector-parser.js';
 // LSP/Langium exports (only needed for extension language server)

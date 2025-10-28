@@ -292,7 +292,12 @@ export class PreviewPanel {
           const absoluteCSSFiles = cssFiles.map(file =>
             path.isAbsolute(file) ? file : path.resolve(this.workspaceRoot, file)
           );
+          console.log('[Preview] About to call cssWatcher.startWatching with:', {
+            absoluteCSSFiles,
+            workspaceRoot: this.workspaceRoot,
+          });
           this.cssWatcher.startWatching(absoluteCSSFiles, this.workspaceRoot);
+          console.log('[Preview] cssWatcher.startWatching returned');
         }
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
