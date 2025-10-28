@@ -34,7 +34,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     // Register invalid CSS file in registry
     // NOTE: CSS files are stored with the same path as used in import statements
     const cssRegistry = services.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),
@@ -72,7 +72,7 @@ describe('Invalid CSS File Handling (T025)', () => {
   it('should indicate CSS file is invalid rather than "unknown class"', async () => {
     // Register invalid CSS file
     const cssRegistry = services.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./broken.css', {
+    cssRegistry.updateCSSFile('file:///broken.css', {
       classes: new Set(), // No classes available due to syntax error
       ids: new Set(),
       classLocations: new Map(),
@@ -110,7 +110,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const cssRegistry = services.css.CSSRegistry;
 
     // Initial state: CSS file has errors
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),
@@ -144,7 +144,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     expect(cssFileErrors1.length).toBeGreaterThan(0);
 
     // Fix CSS file - update registry with valid CSS
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(['button']),
       ids: new Set(),
       classLocations: new Map([
@@ -182,7 +182,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const cssRegistry = services.css.CSSRegistry;
 
     // Valid CSS file
-    cssRegistry.updateCSSFile('./valid.css', {
+    cssRegistry.updateCSSFile('file:///valid.css', {
       classes: new Set(['valid-class']),
       ids: new Set(),
       classLocations: new Map([
@@ -204,7 +204,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     });
 
     // Invalid CSS file
-    cssRegistry.updateCSSFile('./invalid.css', {
+    cssRegistry.updateCSSFile('file:///invalid.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),
@@ -250,7 +250,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     const cssRegistry = services.css.CSSRegistry;
 
     // First invalid CSS file
-    cssRegistry.updateCSSFile('./broken1.css', {
+    cssRegistry.updateCSSFile('file:///broken1.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),
@@ -268,7 +268,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     });
 
     // Second invalid CSS file
-    cssRegistry.updateCSSFile('./broken2.css', {
+    cssRegistry.updateCSSFile('file:///broken2.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),
@@ -310,7 +310,7 @@ describe('Invalid CSS File Handling (T025)', () => {
   it('should include error details from CSS parser in message', async () => {
     const cssRegistry = services.css.CSSRegistry;
 
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(),
       ids: new Set(),
       classLocations: new Map(),

@@ -279,10 +279,7 @@ export class PreviewPanel {
         await this.engineService.initialize(resolvedConfig);
 
         // Inject CSS files into preview (Feature 011 - US1)
-        console.log('[Preview] DEBUG: Checking for cssFiles in config...');
-        console.log('[Preview] DEBUG: config.cssFiles =', (resolvedConfig as any).cssFiles);
         const cssFiles = extractCSSFiles(resolvedConfig);
-        console.log('[Preview] DEBUG: extractCSSFiles returned:', cssFiles);
         if (cssFiles.length > 0) {
           console.log(`[Preview] Injecting ${cssFiles.length} CSS file(s):`, cssFiles);
           await this.cssInjector.injectCSS(cssFiles);
@@ -292,12 +289,7 @@ export class PreviewPanel {
           const absoluteCSSFiles = cssFiles.map(file =>
             path.isAbsolute(file) ? file : path.resolve(this.workspaceRoot, file)
           );
-          console.log('[Preview] About to call cssWatcher.startWatching with:', {
-            absoluteCSSFiles,
-            workspaceRoot: this.workspaceRoot,
-          });
           this.cssWatcher.startWatching(absoluteCSSFiles, this.workspaceRoot);
-          console.log('[Preview] cssWatcher.startWatching returned');
         }
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
