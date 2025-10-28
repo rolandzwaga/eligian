@@ -42,9 +42,25 @@ const ctxCjs = await esbuild.context({
     plugins
 });
 
+// Build errors module as separate CommonJS bundle (Feature 018 - US1)
+const ctxErrors = await esbuild.context({
+    entryPoints: ['src/errors/index.ts'],
+    outfile: 'dist/errors/index.cjs',
+    bundle: true,
+    target: 'ES2017',
+    format: 'cjs',
+    loader: { '.ts': 'ts', '.json': 'json' },
+    external: ['vscode', '@eligian/shared-utils'],
+    platform: 'node',
+    sourcemap: !minify,
+    minify,
+    plugins
+});
+
 if (watch) {
-    await ctxCjs.watch();
+    await Promise.all([ctxCjs.watch(), ctxErrors.watch()]);
 } else {
-    await ctxCjs.rebuild();
+    await Promise.all([ctxCjs.rebuild(), ctxErrors.rebuild()]);
     ctxCjs.dispose();
+    ctxErrors.dispose();
 }

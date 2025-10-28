@@ -1,8 +1,24 @@
 /**
  * Error Types for the Eligius DSL Compiler
  *
- * All compiler errors are typed for pattern matching with Effect.
- * Each pipeline stage has specific error types.
+ * @deprecated This file is deprecated. Import from '@eligian/language/errors' instead.
+ *
+ * All error types have been moved to a unified error namespace in
+ * `packages/language/src/errors/` for single source of truth (Feature 018 - US3).
+ *
+ * Migration guide:
+ * ```typescript
+ * // Before:
+ * import { CompileError, ParseError } from './compiler/types/errors.js';
+ *
+ * // After:
+ * import { CompilerError, ParseError } from '@eligian/language/errors';
+ * ```
+ *
+ * Note: `CompileError` has been renamed to `CompilerError` for consistency.
+ *
+ * This file maintains the original definitions for backwards compatibility.
+ * Do NOT import from ../errors/ to avoid circular bundling issues.
  *
  * @module errors
  */
@@ -11,6 +27,8 @@ import type { SourceLocation } from './common.js';
 
 /**
  * Union of all possible compilation errors
+ *
+ * @deprecated Use CompilerError from '@eligian/language/errors' instead
  */
 export type CompileError =
   | ParseError
@@ -22,6 +40,8 @@ export type CompileError =
 
 /**
  * Parse error - syntax errors from Langium parser
+ *
+ * @deprecated Use ParseError from '@eligian/language/errors' instead
  */
 export type ParseError = {
   readonly _tag: 'ParseError';
@@ -33,6 +53,8 @@ export type ParseError = {
 
 /**
  * Validation error - semantic validation failures
+ *
+ * @deprecated Use ValidationError from '@eligian/language/errors' instead
  */
 export type ValidationError = {
   readonly _tag: 'ValidationError';
@@ -42,6 +64,9 @@ export type ValidationError = {
   readonly hint?: string;
 };
 
+/**
+ * @deprecated Use ValidationErrorKind from '@eligian/language/errors' instead
+ */
 export type ValidationErrorKind =
   | 'UndefinedReference'
   | 'DuplicateDefinition'
@@ -59,6 +84,8 @@ export type ValidationErrorKind =
 
 /**
  * Type error - type checking failures
+ *
+ * @deprecated Use TypeError from '@eligian/language/errors' instead
  */
 export type TypeError = {
   readonly _tag: 'TypeError';
@@ -71,6 +98,8 @@ export type TypeError = {
 
 /**
  * Transform error - AST → IR transformation failures
+ *
+ * @deprecated Use TransformError from '@eligian/language/errors' instead
  */
 export type TransformError = {
   readonly _tag: 'TransformError';
@@ -80,6 +109,9 @@ export type TransformError = {
   readonly astNode?: string;
 };
 
+/**
+ * @deprecated Use TransformErrorKind from '@eligian/language/errors' instead
+ */
 export type TransformErrorKind =
   | 'UnknownNode'
   | 'InvalidTimeline'
@@ -91,6 +123,8 @@ export type TransformErrorKind =
 
 /**
  * Optimization error - should rarely fail
+ *
+ * @deprecated Use OptimizationError from '@eligian/language/errors' instead
  */
 export type OptimizationError = {
   readonly _tag: 'OptimizationError';
@@ -101,6 +135,8 @@ export type OptimizationError = {
 
 /**
  * Emit error - IR → Eligius JSON emission failures
+ *
+ * @deprecated Use EmitError from '@eligian/language/errors' instead
  */
 export type EmitError = {
   readonly _tag: 'EmitError';
@@ -111,6 +147,8 @@ export type EmitError = {
 
 /**
  * Formatted error for display (CLI, VS Code diagnostics)
+ *
+ * @deprecated Use FormattedError from '@eligian/language/errors' instead
  */
 export type FormattedError = {
   readonly severity: 'error' | 'warning' | 'info';
@@ -121,13 +159,20 @@ export type FormattedError = {
   readonly relatedInfo?: ReadonlyArray<RelatedInfo>;
 };
 
+/**
+ * @deprecated Use RelatedInfo from '@eligian/language/errors' instead
+ */
 export type RelatedInfo = {
   readonly message: string;
   readonly location: SourceLocation;
 };
 
 // Error Constructors
+// @deprecated Use constructors from '@eligian/language/errors' instead
 
+/**
+ * @deprecated Use createParseError from '@eligian/language/errors' instead
+ */
 export const createParseError = (
   message: string,
   location: SourceLocation,
@@ -141,6 +186,9 @@ export const createParseError = (
   actual,
 });
 
+/**
+ * @deprecated Use createValidationError from '@eligian/language/errors' instead
+ */
 export const createValidationError = (
   kind: ValidationErrorKind,
   message: string,
@@ -154,6 +202,9 @@ export const createValidationError = (
   hint,
 });
 
+/**
+ * @deprecated Use createTypeError from '@eligian/language/errors' instead
+ */
 export const createTypeError = (
   message: string,
   location: SourceLocation,
@@ -169,6 +220,9 @@ export const createTypeError = (
   hint,
 });
 
+/**
+ * @deprecated Use createTransformError from '@eligian/language/errors' instead
+ */
 export const createTransformError = (
   kind: TransformErrorKind,
   message: string,
@@ -182,6 +236,9 @@ export const createTransformError = (
   astNode,
 });
 
+/**
+ * @deprecated Use createOptimizationError from '@eligian/language/errors' instead
+ */
 export const createOptimizationError = (
   message: string,
   pass: string,
@@ -193,6 +250,9 @@ export const createOptimizationError = (
   hint,
 });
 
+/**
+ * @deprecated Use createEmitError from '@eligian/language/errors' instead
+ */
 export const createEmitError = (message: string, ir?: string, hint?: string): EmitError => ({
   _tag: 'EmitError',
   message,
