@@ -36,7 +36,14 @@ export * from './eligian-validator.js';
 // Old error locations have @deprecated warnings and re-export from here
 // Migration complete - all old locations re-export from unified namespace
 export * from './errors/index.js';
-export { isProgram, type Program } from './generated/ast.js';
+export {
+  type EndableActionDefinition,
+  type InlineEndableAction,
+  isEndableActionDefinition,
+  isInlineEndableAction,
+  isProgram,
+  type Program,
+} from './generated/ast.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // AST helper exports (for language server)

@@ -12,12 +12,15 @@ import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
+import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
 // T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
 // This watcher is independent of preview panels and exists for the lifetime of the extension
 let validationCSSWatcher: CSSWatcherManager | null = null;
+// Block label decoration provider for superscript start/end labels
+let blockLabelProvider: BlockLabelDecorationProvider | null = null;
 
 // This function is called when the extension is activated.
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -54,6 +57,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
+
+  // Initialize block label decoration provider
+  blockLabelProvider = new BlockLabelDecorationProvider();
+  context.subscriptions.push(blockLabelProvider);
+
+  // Update decorations for active editor
+  const vscode = await import('vscode');
+  if (vscode.window.activeTextEditor) {
+    blockLabelProvider.updateDecorations(vscode.window.activeTextEditor);
+  }
+
+  // Update decorations when editor changes
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(editor => {
+      if (editor && blockLabelProvider) {
+        blockLabelProvider.updateDecorations(editor);
+      }
+    })
+  );
+
+  // Update decorations when document changes
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument(event => {
+      const editor = vscode.window.activeTextEditor;
+      if (editor && event.document === editor.document && blockLabelProvider) {
+        blockLabelProvider.updateDecorations(editor);
+      }
+    })
+  );
 }
 
 // This function is called when the extension is deactivated.

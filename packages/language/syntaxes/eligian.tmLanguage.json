@@ -29,6 +29,18 @@
           "include": "#string-character-escape"
         }
       ]
+    },
+    {
+      "name": "punctuation.bracket.square.eligian",
+      "match": "\\[|\\]"
+    },
+    {
+      "name": "punctuation.bracket.round.eligian",
+      "match": "\\(|\\)"
+    },
+    {
+      "name": "punctuation.bracket.curly.eligian",
+      "match": "\\{|\\}"
     }
   ],
   "repository": {
