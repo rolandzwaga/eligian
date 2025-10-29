@@ -20,144 +20,7 @@ import type { OperationRegistry } from './types.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Operation categories for grouping related operations.
- * This helps with IDE organization and documentation.
- */
-const OPERATION_CATEGORIES: Record<string, string> = {
-  // DOM Selection & Manipulation
-  selectElement: 'DOM',
-  createElement: 'DOM',
-  removeElement: 'DOM',
-  clearElement: 'DOM',
-  reparentElement: 'DOM',
-  toggleElement: 'DOM',
-
-  // CSS Classes
-  addClass: 'CSS',
-  removeClass: 'CSS',
-  toggleClass: 'CSS',
-
-  // Element Content & Attributes
-  setElementContent: 'Content',
-  setElementAttributes: 'Attributes',
-  getAttributesFromElement: 'Attributes',
-
-  // Styling
-  setStyle: 'Styling',
-  animate: 'Animation',
-  animateWithClass: 'Animation',
-
-  // Actions
-  startAction: 'Actions',
-  endAction: 'Actions',
-  requestAction: 'Actions',
-  resizeAction: 'Actions',
-
-  // Controllers
-  addControllerToElement: 'Controllers',
-  removeControllerFromElement: 'Controllers',
-  getControllerFromElement: 'Controllers',
-  getControllerInstance: 'Controllers',
-  extendController: 'Controllers',
-
-  // Data Management
-  setData: 'Data',
-  setGlobalData: 'Data',
-  setOperationData: 'Data',
-  setVariable: 'Data',
-  clearOperationData: 'Data',
-  removePropertiesFromOperationData: 'Data',
-  addGlobalsToOperation: 'Data',
-  getElementDimensions: 'Data',
-  getQueryParams: 'Data',
-  getImport: 'Data',
-  loadJson: 'Data',
-
-  // Control Flow
-  when: 'Control Flow',
-  otherwise: 'Control Flow',
-  endWhen: 'Control Flow',
-  forEach: 'Control Flow',
-  endForEach: 'Control Flow',
-  continueForEach: 'Control Flow',
-  breakForEach: 'Control Flow',
-
-  // Events
-  broadcastEvent: 'Events',
-
-  // Utilities
-  calc: 'Utilities',
-  math: 'Utilities',
-  log: 'Utilities',
-  wait: 'Utilities',
-  customFunction: 'Utilities',
-  invokeObjectMethod: 'Utilities',
-};
-
-/**
- * Mapping of metadata function names to operation system names.
- * Most are camelCase → camelCase, but this allows for exceptions.
- */
-const OPERATION_SYSTEM_NAMES: Record<string, string> = {
-  addClass: 'addClass',
-  addControllerToElement: 'addControllerToElement',
-  addGlobalsToOperation: 'addGlobalsToOperation',
-  animate: 'animate',
-  animateWithClass: 'animateWithClass',
-  broadcastEvent: 'broadcastEvent',
-  breakForEach: 'breakForEach',
-  calc: 'calc',
-  clearElement: 'clearElement',
-  clearOperationData: 'clearOperationData',
-  createElement: 'createElement',
-  continueForEach: 'continueForEach',
-  customFunction: 'customFunction',
-  endAction: 'endAction',
-  endForEach: 'endForEach',
-  endWhen: 'endWhen',
-  extendController: 'extendController',
-  forEach: 'forEach',
-  getAttributesFromElement: 'getAttributesFromElement',
-  getControllerFromElement: 'getControllerFromElement',
-  getControllerInstance: 'getControllerInstance',
-  getElementDimensions: 'getElementDimensions',
-  getImport: 'getImport',
-  getQueryParams: 'getQueryParams',
-  invokeObjectMethod: 'invokeObjectMethod',
-  loadJson: 'loadJson',
-  log: 'log',
-  math: 'math',
-  otherwise: 'otherwise',
-  removeClass: 'removeClass',
-  removeControllerFromElement: 'removeControllerFromElement',
-  removeElement: 'removeElement',
-  removePropertiesFromOperationData: 'removePropertiesFromOperationData',
-  reparentElement: 'reparentElement',
-  requestAction: 'requestAction',
-  resizeAction: 'resizeAction',
-  selectElement: 'selectElement',
-  setData: 'setData',
-  setElementAttributes: 'setElementAttributes',
-  setElementContent: 'setElementContent',
-  setGlobalData: 'setGlobalData',
-  setOperationData: 'setOperationData',
-  setVariable: 'setVariable',
-  setStyle: 'setStyle',
-  startAction: 'startAction',
-  toggleClass: 'toggleClass',
-  toggleElement: 'toggleElement',
-  wait: 'wait',
-  when: 'when',
-};
-
-/**
- * Deprecated operations that should be skipped.
- * These operations are deprecated in Eligius and will be removed.
- */
-const DEPRECATED_OPERATIONS = new Set([
-  'resizeAction', // Deprecated - will be removed from Eligius
-]);
+// No custom mappings needed - use Eligius operation names and categories directly
 
 /**
  * Generate the operation registry by converting all Eligius metadata.
@@ -170,25 +33,15 @@ function generateRegistry(): OperationRegistry {
     // Skip non-function exports (like types)
     if (typeof metadataFunction !== 'function') continue;
 
-    // Get the system name for this operation
-    const systemName = OPERATION_SYSTEM_NAMES[functionName];
-    if (!systemName) {
-      console.warn(`No system name mapping for metadata function: ${functionName}`);
-      continue;
-    }
-
-    // Skip deprecated operations
-    if (DEPRECATED_OPERATIONS.has(systemName)) {
-      continue;
-    }
+    // Get the system name for this     // Use Eligius function name directly as system name (no custom mapping)
+    const systemName = functionName;
 
     // Call the metadata function to get IOperationMetadata
     const operationMetadata = metadataFunction();
 
-    // Get category if available
-    const category = OPERATION_CATEGORIES[systemName];
+    // Extract category directly from Eligius metadata (no hardcoded lookup)
+    const category = operationMetadata.category;
 
-    // Convert to our OperationSignature format
     const signature = convertMetadata(systemName, operationMetadata, category);
 
     // Add to registry

@@ -6,14 +6,18 @@
  * work with Eligius metadata functions that provide rich parameter type information.
  *
  * Key features:
- * - 23 rich ParameterTypes (className, selector, actionName, etc.) from Eligius
+ * - Rich ParameterTypes (className, selector, actionName, etc.) from Eligius
  * - Constant value constraints for enum-like validation
  * - Explicit dependency and output tracking
  * - Support for required/optional parameters with defaults
  */
 
+import type { metadata } from 'eligius';
+
 /**
  * Rich parameter types from Eligius metadata.
+ * This is a type alias to metadata.TParameterTypes to ensure we stay in sync with Eligius.
+ *
  * These go beyond basic types (string, number) to provide semantic validation.
  *
  * Examples:
@@ -22,31 +26,7 @@
  * - ParameterType:actionName - Action references (can validate action exists)
  * - ParameterType:eventTopic - Event topics (can validate topic exists)
  */
-export type ParameterType =
-  | 'ParameterType:htmlElementName'
-  | 'ParameterType:className'
-  | 'ParameterType:selector'
-  | 'ParameterType:string'
-  | 'ParameterType:number'
-  | 'ParameterType:object'
-  | 'ParameterType:boolean'
-  | 'ParameterType:array'
-  | 'ParameterType:eventTopic'
-  | 'ParameterType:eventName'
-  | 'ParameterType:systemName'
-  | 'ParameterType:actionName'
-  | 'ParameterType:controllerName'
-  | 'ParameterType:dimensions'
-  | 'ParameterType:dimensionsModifier'
-  | 'ParameterType:url'
-  | 'ParameterType:htmlContent'
-  | 'ParameterType:labelId'
-  | 'ParameterType:ImagePath'
-  | 'ParameterType:QuadrantPosition'
-  | 'ParameterType:jQuery'
-  | 'ParameterType:expression'
-  | 'ParameterType:mathfunction'
-  | 'ParameterType:cssProperties';
+export type ParameterType = metadata.TParameterTypes;
 
 /**
  * Represents a constant value constraint (enum-like).

@@ -703,4 +703,90 @@ describe('CSSRegistryService', () => {
       expect(classes.size).toBe(2);
     });
   });
+
+  describe('clearDocument', () => {
+    it('should remove document imports', () => {
+      registry.registerImports('file:///fileA.eligian', ['file:///styles.css']);
+
+      registry.clearDocument('file:///fileA.eligian');
+
+      expect(registry.getDocumentImports('file:///fileA.eligian').size).toBe(0);
+    });
+
+    it('should keep CSS files if other documents reference them', () => {
+      const metadata: CSSParseResult = {
+        classes: new Set(['button']),
+        ids: new Set(),
+        classLocations: new Map(),
+        idLocations: new Map(),
+        classRules: new Map(),
+        idRules: new Map(),
+        errors: [],
+      };
+
+      registry.updateCSSFile('file:///styles.css', metadata);
+      registry.registerImports('file:///fileA.eligian', ['file:///styles.css']);
+      registry.registerImports('file:///fileB.eligian', ['file:///styles.css']);
+
+      registry.clearDocument('file:///fileA.eligian');
+
+      // styles.css still available (fileB references it)
+      const classes = registry.getClassesForDocument('file:///fileB.eligian');
+      expect(classes.has('button')).toBe(true);
+    });
+
+    it('should be idempotent', () => {
+      // Clear non-existent document (should not throw)
+      expect(() => registry.clearDocument('file:///nonexistent.eligian')).not.toThrow();
+
+      // Clear twice (should not throw)
+      registry.registerImports('file:///fileA.eligian', ['file:///styles.css']);
+      registry.clearDocument('file:///fileA.eligian');
+      expect(() => registry.clearDocument('file:///fileA.eligian')).not.toThrow();
+    });
+  });
+
+  describe('clearAll', () => {
+    it('should reset entire registry', () => {
+      const metadata1: CSSParseResult = {
+        classes: new Set(['button']),
+        ids: new Set(),
+        classLocations: new Map(),
+        idLocations: new Map(),
+        classRules: new Map(),
+        idRules: new Map(),
+        errors: [],
+      };
+
+      const metadata2: CSSParseResult = {
+        classes: new Set(['dark']),
+        ids: new Set(),
+        classLocations: new Map(),
+        idLocations: new Map(),
+        classRules: new Map(),
+        idRules: new Map(),
+        errors: [],
+      };
+
+      registry.registerImports('file:///fileA.eligian', ['file:///styles.css']);
+      registry.registerImports('file:///fileB.eligian', ['file:///theme.css']);
+      registry.updateCSSFile('file:///styles.css', metadata1);
+      registry.updateCSSFile('file:///theme.css', metadata2);
+
+      registry.clearAll();
+
+      expect(registry.getDocumentImports('file:///fileA.eligian').size).toBe(0);
+      expect(registry.getDocumentImports('file:///fileB.eligian').size).toBe(0);
+      expect(registry.getClassesForDocument('file:///fileA.eligian').size).toBe(0);
+    });
+
+    it('should be idempotent', () => {
+      // Clear empty registry (should not throw)
+      expect(() => registry.clearAll()).not.toThrow();
+
+      // Clear twice (should not throw)
+      registry.clearAll();
+      expect(() => registry.clearAll()).not.toThrow();
+    });
+  });
 });

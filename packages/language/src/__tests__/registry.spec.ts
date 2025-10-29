@@ -195,11 +195,11 @@ describe('Operation Registry', () => {
       expect(count).toBe(getAllOperations().length);
     });
 
-    it('should return 45 operations (current Eligius 1.3.0)', () => {
+    it('should return 76 operations (current Eligius 1.4.1)', () => {
       const count = getOperationCount();
 
-      // This is the expected count for Eligius 1.3.0 (45 operations, 5 filtered)
-      expect(count).toBe(45);
+      // This is the expected count for Eligius 1.4.1 (76 operations)
+      expect(count).toBe(76);
     });
   });
 });

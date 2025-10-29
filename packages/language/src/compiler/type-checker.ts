@@ -12,8 +12,8 @@
  */
 
 import { Effect } from 'effect';
+import type { TypeError } from '../errors/index.js';
 import type { EligiusIR } from './types/eligius-ir.js';
-import type { TypeError } from './types/errors.js';
 
 /**
  * T283: Simplified type-checking function for new EligiusIR structure

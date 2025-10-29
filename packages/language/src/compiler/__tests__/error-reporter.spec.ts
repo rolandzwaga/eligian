@@ -6,6 +6,12 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  createParseError,
+  createTransformError,
+  createTypeError,
+  createValidationError,
+} from '../../errors/index.js';
+import {
   formatError,
   formatErrors,
   formatParseError,
@@ -14,12 +20,6 @@ import {
   formatValidationError,
 } from '../error-reporter.js';
 import { createSourceLocation } from '../types/common.js';
-import {
-  createParseError,
-  createTransformError,
-  createTypeError,
-  createValidationError,
-} from '../types/errors.js';
 
 describe('T102: Error Reporter Tests', () => {
   const sourceCode = `timeline "test" using raf {

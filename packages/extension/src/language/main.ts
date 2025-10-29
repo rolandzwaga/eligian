@@ -70,8 +70,11 @@ connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) => {
   });
 });
 
-// Listen for document updates to parse CSS files BEFORE validation
-// This runs after parsing but BEFORE validation, so we can load CSS into registry
+// CRITICAL: CSS files MUST be loaded BEFORE validation phase
+// This handler runs during DocumentState.Parsed phase (after parsing, BEFORE validation)
+// Synchronization mechanism: Langium awaits this handler completion before proceeding to validation
+// Why: Validators (e.g., CSS class validation) require CSS registry to be populated
+// This synchronous ordering ensures IDE and compiler validation produce identical results
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async documents => {
   const cssRegistry = Eligian.css.CSSRegistry;
 
