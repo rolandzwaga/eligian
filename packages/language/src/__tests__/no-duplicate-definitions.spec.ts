@@ -13,19 +13,12 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('No Duplicate Error Definitions (Feature 018 - US3)', () => {
-  describe('T030-A: Verify deprecated files have re-exports only', () => {
-    it('compiler/types/errors.ts should have @deprecated warnings and re-exports', () => {
+  describe('T030-A: Verify deprecated files are removed (Feature 019 - US4)', () => {
+    it('compiler/types/errors.ts should be removed (deprecated file deleted)', () => {
       const filePath = resolve(__dirname, '../compiler/types/errors.ts');
-      const content = readFileSync(filePath, 'utf-8');
 
-      // Should have deprecation warnings
-      expect(content).toContain('@deprecated');
-
-      // After migration: We kept original definitions with deprecation warnings
-      // to avoid circular bundling issues. Re-exports would cause esbuild errors.
-      // The deprecation warnings guide users to the unified namespace.
-      expect(content).toContain('@deprecated This file is deprecated');
-      expect(content).toContain("'@eligian/language/errors'");
+      // Feature 019 US4 completes the migration by removing deprecated files
+      expect(() => readFileSync(filePath, 'utf-8')).toThrow();
     });
 
     it('asset-loading/types.ts should have @deprecated warnings for AssetError', () => {
@@ -58,16 +51,9 @@ describe('No Duplicate Error Definitions (Feature 018 - US3)', () => {
       // Primary definition exists
       expect(unifiedContent).toContain('export type CompilerError');
 
-      // Old location should have deprecation warnings (kept original definitions to avoid bundling issues)
+      // Feature 019 US4: Old deprecated file has been removed
       const oldPath = resolve(__dirname, '../compiler/types/errors.ts');
-      const oldContent = readFileSync(oldPath, 'utf-8');
-
-      if (!oldContent.includes('MIGRATION_TODO')) {
-        // Should have deprecation warnings on the type
-        expect(oldContent).toContain('@deprecated');
-        // CompileError is the old name, new name is CompilerError in unified namespace
-        expect(oldContent).toContain('export type CompileError');
-      }
+      expect(() => readFileSync(oldPath, 'utf-8')).toThrow();
     });
 
     it('AssetError types should only be defined in errors/asset-errors.ts', () => {
@@ -91,25 +77,15 @@ describe('No Duplicate Error Definitions (Feature 018 - US3)', () => {
 
   describe('T030-C: Verify no conflicting type definitions', () => {
     it('should not find multiple definitions of CompilerError', () => {
-      // This test uses grep-like logic to find type definitions
-      // After migration, only the unified namespace should define types
+      // Feature 019 US4: Only check unified namespace (deprecated file removed)
 
-      const searchPaths = [
-        resolve(__dirname, '../errors/compiler-errors.ts'),
-        resolve(__dirname, '../compiler/types/errors.ts'),
-      ];
+      const unifiedPath = resolve(__dirname, '../errors/compiler-errors.ts');
+      const content = readFileSync(unifiedPath, 'utf-8');
 
-      let definitionCount = 0;
-      for (const path of searchPaths) {
-        const content = readFileSync(path, 'utf-8');
-        // Count primary definitions (not re-exports)
-        if (content.match(/export type CompilerError\s*=/)) {
-          definitionCount++;
-        }
-      }
-
-      // Should only have one primary definition
-      expect(definitionCount).toBeLessThanOrEqual(1);
+      // Should have exactly one primary definition
+      const matches = content.match(/export type CompilerError\s*=/g);
+      expect(matches).toBeDefined();
+      expect(matches?.length).toBe(1);
     });
 
     it('should not find multiple definitions of AssetError', () => {
@@ -137,30 +113,13 @@ describe('No Duplicate Error Definitions (Feature 018 - US3)', () => {
     });
   });
 
-  describe('T030-D: Verify re-exports maintain compatibility', () => {
-    it('old imports should still work via re-exports', () => {
-      // This test verifies that code using old import paths still compiles
-      // after we add re-exports with @deprecated warnings
-
-      // Example: Old code using compiler/types/errors
-      // import type { CompilerError } from '../compiler/types/errors.js'
-
-      // After migration, this should still work because errors.ts re-exports
-      // from the unified namespace
-
-      // We can't directly test imports in a test file, but we can verify
-      // the re-export syntax is correct by checking file contents
+  describe('T030-D: Verify deprecated file is removed (Feature 019 US4)', () => {
+    it('old deprecated file should no longer exist', () => {
+      // Feature 019 US4 completes the migration by removing deprecated files
+      // All imports should now use the unified namespace directly
 
       const oldErrorsPath = resolve(__dirname, '../compiler/types/errors.ts');
-      const content = readFileSync(oldErrorsPath, 'utf-8');
-
-      // After migration, should have @deprecated warnings
-      if (!content.includes('MIGRATION_TODO')) {
-        // Should have deprecation warning
-        expect(content).toContain('@deprecated');
-        // Should still have exports (either re-exports or original definitions)
-        expect(content).toMatch(/export\s+(type|const)/);
-      }
+      expect(() => readFileSync(oldErrorsPath, 'utf-8')).toThrow();
     });
   });
 

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "35c4b92f-f825-4754-b8ad-eca0f3d57d5d",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div class=\"eligius-container\"></div>",
+  "cssFiles": [
+    "./test-preview.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "fd054722-3577-496f-95fd-6171ec646ae4",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "a93206a8-da16-434f-98e3-3ea5e5157e3b",
+      "uri": "Test Preview",
+      "type": "animation",
+      "duration": 5,
+      "loop": false,
+      "selector": ".eligius-container",
+      "timelineActions": [
+        {
+          "id": "3d4489ae-5aad-4b04-bdc9-b11e8214321c",
+          "name": "timeline-action-0-5",
+          "startOperations": [
+            {
+              "id": "0f627fb1-234e-4b64-9f13-e21c2052d082",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": ".eligius"
+              }
+            },
+            {
+              "id": "f798266e-a709-4cbc-8299-fd13f5d1b70c",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "eligius2"
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 5
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "id": "2e7a54f9-b4b5-438d-854a-b24f567b22ca",
+      "vendor": "",
+      "systemName": "RequestAnimationFrameTimelineProvider"
+    }
+  }
+}

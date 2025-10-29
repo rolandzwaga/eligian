@@ -275,6 +275,45 @@ See detailed design documentation:
 - Document all stateful components in Langium service
 - Consider fresh service instance if performance allows
 
+## Implementation Notes: Functional Requirement Coverage
+
+### FR-004: CSS Hot-Reload Re-validation
+
+CSS hot-reload re-validation is **already implemented** in Feature 011 (Preview CSS Support with Live Reload). The `CSSWatcherManager` in `packages/extension/src/extension/css-watcher.ts` triggers re-validation when CSS files change.
+
+This feature (019) ensures that re-validation produces **identical results** in both environments, but does not implement the re-validation trigger itself.
+
+**No additional tasks needed** - FR-004 is satisfied by existing Feature 011 infrastructure.
+
+### FR-005: Shared Validation Logic
+
+Shared Langium validation logic is **verified implicitly** by US3 parity tests (T028-T035). If IDE and compiler produce identical validation results (which the parity tests verify), they MUST be using the same validation code path.
+
+Both paths use `EligianValidator` class from `packages/language/src/eligian-validator.ts`. The compiler imports this via Langium services, the IDE uses it via language server.
+
+**No additional tasks needed** - FR-005 is verified by parity test passing.
+
+### FR-006: Error Formatting Parity
+
+Error formatting parity is **already implemented** via Feature 018 (Error Type Unification). Both IDE and compiler use formatters from `packages/language/src/errors/formatters.ts`:
+- `formatError()` - Standard error formatting
+- `formatErrorWithSnippet()` - Error with code snippet
+- `formatForVSCode()` - VS Code diagnostic formatting
+
+**No additional tasks needed** - FR-006 is satisfied by Feature 018 infrastructure.
+
+### FR-009: CSS Error Handling
+
+CSS file loading error handling is **already implemented** in Feature 017 (CSS Consolidation) and Feature 013 (CSS Class Validation). Error types are defined in `packages/language/src/errors/asset-errors.ts`:
+- `FileNotFoundError` - CSS file not found
+- `PermissionError` - Permission denied reading CSS
+- `ReadError` - Generic read error
+- `CssParseError` - CSS syntax errors
+
+Both IDE and compiler use `loadFileAsync()`/`loadFileSync()` from `@eligian/shared-utils` which throws these typed errors.
+
+**No additional tasks needed** - FR-009 is satisfied by Features 016, 017, and 013.
+
 ## Success Metrics
 
 - **SC-001**: 100% validation parity (verified by parity tests) ✅

@@ -327,16 +327,55 @@ export class CSSRegistryService {
    * Clear all metadata for a document.
    *
    * Called when:
-   * - Document is closed
-   * - Workspace is cleaned up
+   * - Document is closed or re-compiled
+   * - Ensuring state isolation between compilations
    *
    * Behavior:
    * - Removes import tracking for the document
-   * - Does NOT remove CSS file metadata (other documents may still import it)
+   * - Removes CSS file metadata if no other documents reference it (reference counting)
+   * - Keeps CSS file metadata if other documents still import it (shared files)
+   * - Operation is idempotent (clearing non-existent document is no-op)
    *
    * @param documentUri - Absolute Eligian document URI
    */
   clearDocument(documentUri: string): void {
+    const imports = this.importsByDocument.get(documentUri);
+
+    // Remove document's import registration
     this.importsByDocument.delete(documentUri);
+
+    if (!imports) {
+      return; // Document not registered, nothing to do
+    }
+
+    // Check each imported CSS file for lingering references
+    for (const cssFileUri of imports) {
+      const stillReferenced = Array.from(this.importsByDocument.values()).some(importSet =>
+        importSet.has(cssFileUri)
+      );
+
+      // If no other documents reference this CSS file, remove it
+      if (!stillReferenced) {
+        this.metadataByFile.delete(cssFileUri);
+      }
+    }
+  }
+
+  /**
+   * Reset entire CSS registry state.
+   *
+   * Called when:
+   * - IDE workspace is closed
+   * - Compiler process restarts
+   * - Test suite needs clean state
+   *
+   * Behavior:
+   * - Clears all document import registrations
+   * - Clears all CSS file metadata
+   * - Operation is idempotent (clearing empty registry is no-op)
+   */
+  clearAll(): void {
+    this.importsByDocument.clear();
+    this.metadataByFile.clear();
   }
 }

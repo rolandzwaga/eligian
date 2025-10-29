@@ -9,7 +9,7 @@
 
 import { Context, type Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
-import type { CompileError, EligiusIR } from '../types/index.js';
+import type { CompilerError, EligiusIR } from '../types/index.js';
 
 /**
  * Compilation options
@@ -52,7 +52,7 @@ export class CompilerService extends Context.Tag('Compiler')<
     readonly compile: (
       source: string,
       options?: CompileOptions
-    ) => Effect.Effect<IEngineConfiguration, CompileError>;
+    ) => Effect.Effect<IEngineConfiguration, CompilerError>;
 
     /**
      * Optimize Eligius IR (dead code elimination, constant folding, etc.)
@@ -64,6 +64,6 @@ export class CompilerService extends Context.Tag('Compiler')<
     /**
      * Validate IR structure (type checking, constraint validation)
      */
-    readonly validate: (ir: EligiusIR) => Effect.Effect<EligiusIR, CompileError>;
+    readonly validate: (ir: EligiusIR) => Effect.Effect<EligiusIR, CompilerError>;
   }
 >() {}

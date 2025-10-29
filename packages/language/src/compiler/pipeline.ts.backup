@@ -173,39 +173,26 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             }
 
             // Parse each CSS file and load into registry
-            // Parse each CSS file and load into registry
             const docPath = documentUri.fsPath;
             const docDir = docPath.substring(
               0,
               docPath.lastIndexOf('\\') || docPath.lastIndexOf('/')
             );
-            const cssFileUris: string[] = [];
-            for (const cssRelativePath of cssFiles) {
+            for (const cssFileUri of cssFiles) {
               try {
                 // Convert relative path to absolute
-                const cssFilePath = cssRelativePath.startsWith('./')
-                  ? `${docDir}${cssRelativePath.substring(1)}`
-                  : cssRelativePath;
+                const cssFilePath = cssFileUri.startsWith('./')
+                  ? `${docDir}${cssFileUri.substring(1)}`
+                  : cssFileUri;
 
                 // Read and parse CSS file
                 const cssContent = readFileSync(cssFilePath, 'utf-8');
                 const parseResult = parseCSS(cssContent, cssFilePath);
 
-                // Convert to absolute URI (must match validator format)
-                const cssFileUri = URI.file(cssFilePath).toString();
-                cssFileUris.push(cssFileUri);
-
                 // Update registry with parsed CSS
                 cssRegistry.updateCSSFile(cssFileUri, parseResult);
               } catch (error) {
-                console.error(`Failed to parse CSS file ${cssRelativePath}:`, error);
-                // Convert to absolute URI for error registration
-                const cssFilePath = cssRelativePath.startsWith('./')
-                  ? `${docDir}${cssRelativePath.substring(1)}`
-                  : cssRelativePath;
-                const cssFileUri = URI.file(cssFilePath).toString();
-                cssFileUris.push(cssFileUri);
-
+                console.error(`Failed to parse CSS file ${cssFileUri}:`, error);
                 // Register error in registry
                 cssRegistry.updateCSSFile(cssFileUri, {
                   classes: new Set(),
@@ -225,11 +212,10 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
                 });
               }
             }
-
-            // CRITICAL FIX: Register document→CSS mapping (enables validation!)
-            // Without this, cssRegistry.getClassesForDocument() returns empty set
-            cssRegistry.registerImports(uriString, cssFileUris);
             // DEBUG: Check CSS registry state
+            console.log(`[DEBUG] CSS files registered for document:`, Array.from(cssRegistry.getDocumentImports(uriString)));
+            console.log(`[DEBUG] Available classes:`, Array.from(cssRegistry.getClassesForDocument(uriString)));
+            console.log(`[DEBUG] Available IDs:`, Array.from(cssRegistry.getIDsForDocument(uriString)));
           }
 
           // Now run validation with CSS loaded
@@ -237,7 +223,9 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             await services.Eligian.validation.DocumentValidator.validateDocument(document);
 
           // DEBUG: Log diagnostics count
+          console.log(`[DEBUG] Validation complete. Diagnostics count: ${document.diagnostics?.length ?? 0}`);
           if (document.diagnostics && document.diagnostics.length > 0) {
+            console.log('[DEBUG] First diagnostic:', JSON.stringify(document.diagnostics[0], null, 2));
           }
 
           return document;

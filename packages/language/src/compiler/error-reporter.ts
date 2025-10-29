@@ -7,15 +7,15 @@
  * @module error-reporter
  */
 
-import { formatSourceLocation, type SourceLocation } from './types/common.js';
 import type {
-  CompileError,
+  CompilerError,
   FormattedError,
   ParseError,
   TransformError,
   TypeError,
   ValidationError,
-} from './types/errors.js';
+} from '../errors/index.js';
+import { formatSourceLocation, type SourceLocation } from './types/common.js';
 
 /**
  * Format a parse error with helpful context.
@@ -154,7 +154,7 @@ export function formatTransformError(error: TransformError, sourceCode?: string)
  * const formatted = formatError(error, sourceCode);
  * console.error(formatted.message);
  */
-export function formatError(error: CompileError, sourceCode?: string): FormattedError {
+export function formatError(error: CompilerError, sourceCode?: string): FormattedError {
   switch (error._tag) {
     case 'ParseError':
       return formatParseError(error, sourceCode);
@@ -198,7 +198,7 @@ export function formatError(error: CompileError, sourceCode?: string): Formatted
  * @param sourceCode - Optional source code for context snippets
  * @returns Array of formatted error messages
  */
-export function formatErrors(errors: CompileError[], sourceCode?: string): FormattedError[] {
+export function formatErrors(errors: CompilerError[], sourceCode?: string): FormattedError[] {
   return errors.map(error => formatError(error, sourceCode));
 }
 

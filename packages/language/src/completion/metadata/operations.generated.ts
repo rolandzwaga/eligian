@@ -25,7 +25,7 @@ export interface ParameterMetadata {
 
 /**
  * All Eligius operations (alphabetically sorted, filtered)
- * Total operations: 45
+ * Total operations: 76
  */
 export const OPERATIONS: OperationMetadata[] = [
   {
@@ -109,6 +109,31 @@ export const OPERATIONS: OperationMetadata[] = [
     "dependencies": [
       "selectedElement"
     ],
+    "outputs": []
+  },
+  {
+    "name": "announceToScreenReader",
+    "description": "Announces a message to screen readers using an ARIA live region.",
+    "parameters": [
+      {
+        "name": "message",
+        "type": "ParameterType:string",
+        "required": true
+      },
+      {
+        "name": "priority",
+        "type": [
+          {
+            "value": "polite"
+          },
+          {
+            "value": "assertive"
+          }
+        ],
+        "required": false
+      }
+    ],
+    "dependencies": [],
     "outputs": []
   },
   {
@@ -201,6 +226,94 @@ export const OPERATIONS: OperationMetadata[] = [
     "outputs": []
   },
   {
+    "name": "clearStorage",
+    "description": "Clears data from browser storage (localStorage or sessionStorage).\n\nIf `key` is provided, removes only that key. If `key` is omitted, clears all storage.",
+    "parameters": [
+      {
+        "name": "key",
+        "type": "ParameterType:string",
+        "required": false
+      },
+      {
+        "name": "storageType",
+        "type": [
+          {
+            "value": "local"
+          },
+          {
+            "value": "session"
+          }
+        ],
+        "required": true
+      }
+    ],
+    "dependencies": [],
+    "outputs": []
+  },
+  {
+    "name": "compareDate",
+    "description": "Compares two dates.\ncomparison: -1 (before), 0 (equal), 1 (after)",
+    "parameters": [
+      {
+        "name": "date1",
+        "type": [
+          {
+            "value": "string"
+          },
+          {
+            "value": "number"
+          },
+          {
+            "value": "Date"
+          }
+        ],
+        "required": true
+      },
+      {
+        "name": "date2",
+        "type": [
+          {
+            "value": "string"
+          },
+          {
+            "value": "number"
+          },
+          {
+            "value": "Date"
+          }
+        ],
+        "required": true
+      }
+    ],
+    "dependencies": [],
+    "outputs": [
+      "comparison",
+      "isEqual",
+      "isBefore",
+      "isAfter"
+    ]
+  },
+  {
+    "name": "concatenateStrings",
+    "description": "Concatenates multiple strings with an optional separator.",
+    "parameters": [
+      {
+        "name": "strings",
+        "type": "ParameterType:array",
+        "required": true
+      },
+      {
+        "name": "separator",
+        "type": "ParameterType:string",
+        "required": false
+      }
+    ],
+    "dependencies": [],
+    "outputs": [
+      "result"
+    ]
+  },
+  {
     "name": "createElement",
     "description": "This operation creates the DOM element described by the given elementName and attributes and assigns\nthe instance to the `template` property on the current operation data.",
     "parameters": [
@@ -283,6 +396,111 @@ export const OPERATIONS: OperationMetadata[] = [
     "outputs": []
   },
   {
+    "name": "filterArray",
+    "description": "Filters an array based on property equality or custom predicate function.\n\nOperates on arrayData passed from previous operations.\nSupports two filtering modes:\n1. Property equality: `filterProperty` and `filterValue` to filter by property match\n2. Custom predicate: `filterPredicate` function for complex filtering logic",
+    "parameters": [
+      {
+        "name": "filterProperty",
+        "type": "ParameterType:string",
+        "required": false
+      },
+      {
+        "name": "filterValue",
+        "type": "ParameterType:object",
+        "required": false
+      },
+      {
+        "name": "filterPredicate",
+        "type": "ParameterType:function",
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "arrayData"
+    ],
+    "outputs": [
+      "filteredArray"
+    ]
+  },
+  {
+    "name": "findInArray",
+    "description": "Finds the first element in an array matching criteria.\n\nOperates on arrayData passed from previous operations.\nSupports two search modes:\n1. Property equality: `findProperty` and `findValue` to find by property match\n2. Custom predicate: `findPredicate` function for complex search logic\n\nReturns `undefined` for `foundItem` and `-1` for `foundIndex` if no match found.",
+    "parameters": [
+      {
+        "name": "findProperty",
+        "type": "ParameterType:string",
+        "required": false
+      },
+      {
+        "name": "findValue",
+        "type": "ParameterType:object",
+        "required": false
+      },
+      {
+        "name": "findPredicate",
+        "type": "ParameterType:function",
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "arrayData"
+    ],
+    "outputs": [
+      "foundItem",
+      "foundIndex"
+    ]
+  },
+  {
+    "name": "formatDate",
+    "description": "Formats a date using Intl.DateTimeFormat or simple patterns.",
+    "parameters": [
+      {
+        "name": "format",
+        "type": "ParameterType:string",
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "date"
+    ],
+    "outputs": [
+      "formattedDate"
+    ]
+  },
+  {
+    "name": "formatText",
+    "description": "Transforms text using format operations: uppercase, lowercase, capitalize, titlecase, or trim.\n\nOperates on textContent passed from previous operations (e.g., getTextContent).\n\nTransformations:\n- `uppercase`: Convert all characters to uppercase\n- `lowercase`: Convert all characters to lowercase\n- `capitalize`: Capitalize only the first letter\n- `titlecase`: Capitalize first letter of each word\n- `trim`: Remove leading and trailing whitespace",
+    "parameters": [
+      {
+        "name": "transformation",
+        "type": [
+          {
+            "value": "uppercase"
+          },
+          {
+            "value": "lowercase"
+          },
+          {
+            "value": "capitalize"
+          },
+          {
+            "value": "titlecase"
+          },
+          {
+            "value": "trim"
+          }
+        ],
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "textContent"
+    ],
+    "outputs": [
+      "formattedText"
+    ]
+  },
+  {
     "name": "getAttributesFromElement",
     "description": "This operation retrieves the values for the specified attribute names from the given selected element.",
     "parameters": [
@@ -324,7 +542,7 @@ export const OPERATIONS: OperationMetadata[] = [
         "name": "systemName",
         "type": [
           {
-            "value": "EventListenerController"
+            "value": "DOMEventListenerController"
           },
           {
             "value": "LabelController"
@@ -354,6 +572,16 @@ export const OPERATIONS: OperationMetadata[] = [
     ]
   },
   {
+    "name": "getCurrentTime",
+    "description": "Gets the current time as timestamp and Date object.",
+    "parameters": [],
+    "dependencies": [],
+    "outputs": [
+      "timestamp",
+      "date"
+    ]
+  },
+  {
     "name": "getElementDimensions",
     "description": "This operation calculates the width and height of the given selected element.\nIt assigns this struct to the dimensions property on the current operation data.\nOptionally the width and height can be modified using the given modifier string.\n\nThe modifier string is formatted in the following way:\n\n<operator><amount><optional-side><optional-precentage>|<ratio-definition>\n\nWhere the ratio modifier is formatted in the following way:\n<side>[ar=<ratio-left>-<ratio-right>]\n\nFor example, this modifier '+100h|w[ar=8-1]' will modifiy the dimensions like this:\nit will add a value of 100 to the height and modify the width by a ratio of 8 to 1 relative to the height.",
     "parameters": [
@@ -368,6 +596,26 @@ export const OPERATIONS: OperationMetadata[] = [
     ],
     "outputs": [
       "dimensions"
+    ]
+  },
+  {
+    "name": "getFocusedElement",
+    "description": "Gets the currently focused element.",
+    "parameters": [],
+    "dependencies": [],
+    "outputs": [
+      "focusedElement"
+    ]
+  },
+  {
+    "name": "getFormData",
+    "description": "Extracts all input, select, and textarea values from form element into operation data.\n\nThis operation reads form field values and returns them as an object with field names as keys.\nOnly processes form elements that are enabled and not hidden. Handles checkboxes, radio buttons,\nselect elements, textareas, and text inputs.",
+    "parameters": [],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": [
+      "formData"
     ]
   },
   {
@@ -401,6 +649,100 @@ export const OPERATIONS: OperationMetadata[] = [
     ]
   },
   {
+    "name": "getScrollPosition",
+    "description": "Gets the current scroll position of the viewport.\n\nReturns x (horizontal) and y (vertical) scroll positions in pixels.\nUses cross-browser compatible methods to retrieve scroll position.",
+    "parameters": [],
+    "dependencies": [],
+    "outputs": [
+      "scrollX",
+      "scrollY"
+    ]
+  },
+  {
+    "name": "getTextContent",
+    "description": "Extracts text content from element, stripping all HTML markup.\n\nUses jQuery's `.text()` method which is XSS-safe and returns only the text content\nwithout any HTML tags. Preserves whitespace and text from nested elements.",
+    "parameters": [],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": [
+      "textContent"
+    ]
+  },
+  {
+    "name": "httpDelete",
+    "description": "Performs an HTTP DELETE request to the specified URL.",
+    "parameters": [
+      {
+        "name": "url",
+        "type": "ParameterType:string",
+        "required": true
+      },
+      {
+        "name": "headers",
+        "type": "ParameterType:object",
+        "required": false
+      }
+    ],
+    "dependencies": [],
+    "outputs": [
+      "response",
+      "status"
+    ]
+  },
+  {
+    "name": "httpPost",
+    "description": "Performs an HTTP POST request to the specified URL.",
+    "parameters": [
+      {
+        "name": "url",
+        "type": "ParameterType:string",
+        "required": true
+      },
+      {
+        "name": "body",
+        "type": "ParameterType:object",
+        "required": false
+      },
+      {
+        "name": "headers",
+        "type": "ParameterType:object",
+        "required": false
+      }
+    ],
+    "dependencies": [],
+    "outputs": [
+      "response",
+      "status"
+    ]
+  },
+  {
+    "name": "httpPut",
+    "description": "Performs an HTTP PUT request to the specified URL.",
+    "parameters": [
+      {
+        "name": "url",
+        "type": "ParameterType:string",
+        "required": true
+      },
+      {
+        "name": "body",
+        "type": "ParameterType:object",
+        "required": false
+      },
+      {
+        "name": "headers",
+        "type": "ParameterType:object",
+        "required": false
+      }
+    ],
+    "dependencies": [],
+    "outputs": [
+      "response",
+      "status"
+    ]
+  },
+  {
     "name": "invokeObjectMethod",
     "description": "This operation invokes the specified method on the given object with the given optional arguments\nand assigns the result to the `methodResult` operationdata property.",
     "parameters": [
@@ -420,6 +762,44 @@ export const OPERATIONS: OperationMetadata[] = [
     ],
     "outputs": [
       "methodResult"
+    ]
+  },
+  {
+    "name": "isElementInViewport",
+    "description": "Checks if an element is currently visible within the viewport.\n\nUses `getBoundingClientRect()` to determine if the element is within the viewport boundaries.",
+    "parameters": [],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": [
+      "isInViewport"
+    ]
+  },
+  {
+    "name": "loadFromStorage",
+    "description": "Loads data from browser storage (localStorage or sessionStorage).\n\nDeserializes the stored JSON value. Returns `null` if key doesn't exist.",
+    "parameters": [
+      {
+        "name": "key",
+        "type": "ParameterType:string",
+        "required": true
+      },
+      {
+        "name": "storageType",
+        "type": [
+          {
+            "value": "local"
+          },
+          {
+            "value": "session"
+          }
+        ],
+        "required": true
+      }
+    ],
+    "dependencies": [],
+    "outputs": [
+      "loadedValue"
     ]
   },
   {
@@ -459,6 +839,23 @@ export const OPERATIONS: OperationMetadata[] = [
     ],
     "dependencies": [],
     "outputs": []
+  },
+  {
+    "name": "mapArray",
+    "description": "Transforms each element of an array using a mapping function.\n\nOperates on arrayData passed from previous operations.\nThe mapFunction receives each item and optionally its index.",
+    "parameters": [
+      {
+        "name": "mapFunction",
+        "type": "ParameterType:function",
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "arrayData"
+    ],
+    "outputs": [
+      "mappedArray"
+    ]
   },
   {
     "name": "math",
@@ -555,6 +952,64 @@ export const OPERATIONS: OperationMetadata[] = [
     "outputs": []
   },
   {
+    "name": "replaceString",
+    "description": "Replaces occurrences of a pattern in a string (alias for replaceText for string context).",
+    "parameters": [
+      {
+        "name": "pattern",
+        "type": [
+          {
+            "value": "string"
+          },
+          {
+            "value": "RegExp"
+          }
+        ],
+        "required": true
+      },
+      {
+        "name": "replacement",
+        "type": "ParameterType:string",
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "textContent"
+    ],
+    "outputs": [
+      "result"
+    ]
+  },
+  {
+    "name": "replaceText",
+    "description": "Finds and replaces text using literal string or regex pattern.\n\nOperates on textContent passed from previous operations (e.g., getTextContent).\nSupports regex patterns with global flag for multiple replacements.\nUpdates textContent with replaced text and sets replacementCount.",
+    "parameters": [
+      {
+        "name": "searchPattern",
+        "type": [
+          {
+            "value": "string"
+          },
+          {
+            "value": "RegExp"
+          }
+        ],
+        "required": true
+      },
+      {
+        "name": "replacement",
+        "type": "ParameterType:string",
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "textContent"
+    ],
+    "outputs": [
+      "replacementCount"
+    ]
+  },
+  {
     "name": "requestAction",
     "description": "This operation requests an action instance with the specified name and assigns it\nto the `actionInstance` property on the current operation data.",
     "parameters": [
@@ -568,6 +1023,124 @@ export const OPERATIONS: OperationMetadata[] = [
     "outputs": [
       "actionInstance"
     ]
+  },
+  {
+    "name": "saveToStorage",
+    "description": "Saves data to browser storage (localStorage or sessionStorage).\n\nSerializes the value as JSON before storing. Supports any JSON-serializable data type.",
+    "parameters": [
+      {
+        "name": "key",
+        "type": "ParameterType:string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "ParameterType:object",
+        "required": true
+      },
+      {
+        "name": "storageType",
+        "type": [
+          {
+            "value": "local"
+          },
+          {
+            "value": "session"
+          }
+        ],
+        "required": true
+      }
+    ],
+    "dependencies": [],
+    "outputs": []
+  },
+  {
+    "name": "scrollToElement",
+    "description": "Scrolls the viewport to bring the selected element into view.\n\nUses the browser's `scrollIntoView` API with configurable behavior.",
+    "parameters": [
+      {
+        "name": "behavior",
+        "type": [
+          {
+            "value": "auto"
+          },
+          {
+            "value": "smooth"
+          }
+        ],
+        "required": false
+      },
+      {
+        "name": "block",
+        "type": [
+          {
+            "value": "start"
+          },
+          {
+            "value": "center"
+          },
+          {
+            "value": "end"
+          },
+          {
+            "value": "nearest"
+          }
+        ],
+        "required": false
+      },
+      {
+        "name": "inline",
+        "type": [
+          {
+            "value": "start"
+          },
+          {
+            "value": "center"
+          },
+          {
+            "value": "end"
+          },
+          {
+            "value": "nearest"
+          }
+        ],
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": []
+  },
+  {
+    "name": "scrollToPosition",
+    "description": "Scrolls the viewport to a specific x,y coordinate position.\n\nUses the browser's `window.scrollTo` API with configurable behavior.",
+    "parameters": [
+      {
+        "name": "x",
+        "type": "ParameterType:number",
+        "required": true
+      },
+      {
+        "name": "y",
+        "type": "ParameterType:number",
+        "required": true
+      },
+      {
+        "name": "behavior",
+        "type": [
+          {
+            "value": "auto"
+          },
+          {
+            "value": "smooth"
+          }
+        ],
+        "required": false
+      }
+    ],
+    "dependencies": [],
+    "outputs": []
   },
   {
     "name": "selectElement",
@@ -667,6 +1240,43 @@ export const OPERATIONS: OperationMetadata[] = [
     "outputs": []
   },
   {
+    "name": "setFocus",
+    "description": "Sets focus to the selected element.",
+    "parameters": [],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": []
+  },
+  {
+    "name": "setFormValue",
+    "description": "Sets the value of an input, select, or textarea element.\n\nHandles different input types appropriately:\n- Text inputs, textareas, selects: sets value directly\n- Checkboxes: sets checked property for boolean values\n- Radio buttons: sets checked property for boolean values\n- Number inputs: converts to string",
+    "parameters": [
+      {
+        "name": "value",
+        "type": [
+          {
+            "value": "string"
+          },
+          {
+            "value": "number"
+          },
+          {
+            "value": "false"
+          },
+          {
+            "value": "true"
+          }
+        ],
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": []
+  },
+  {
     "name": "setGlobalData",
     "description": "This operation copies the specified properties from the operationData to the global data.",
     "parameters": [
@@ -731,6 +1341,69 @@ export const OPERATIONS: OperationMetadata[] = [
     "outputs": []
   },
   {
+    "name": "sortArray",
+    "description": "Sorts an array by property, natural order, or custom comparator function.\n\nOperates on arrayData passed from previous operations.\nSupports three sorting modes:\n1. Property sort: `sortProperty` and `sortOrder` to sort objects by property\n2. Natural sort: `sortOrder` alone for primitive arrays\n3. Custom comparator: `sortComparator` function for complex sorting logic",
+    "parameters": [
+      {
+        "name": "sortProperty",
+        "type": "ParameterType:string",
+        "required": false
+      },
+      {
+        "name": "sortOrder",
+        "type": [
+          {
+            "value": "asc"
+          },
+          {
+            "value": "desc"
+          }
+        ],
+        "required": false
+      },
+      {
+        "name": "sortComparator",
+        "type": "ParameterType:function",
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "arrayData"
+    ],
+    "outputs": [
+      "sortedArray"
+    ]
+  },
+  {
+    "name": "splitString",
+    "description": "Splits a string into an array by delimiter (string or regex).",
+    "parameters": [
+      {
+        "name": "delimiter",
+        "type": [
+          {
+            "value": "string"
+          },
+          {
+            "value": "RegExp"
+          }
+        ],
+        "required": true
+      },
+      {
+        "name": "limit",
+        "type": "ParameterType:number",
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "textContent"
+    ],
+    "outputs": [
+      "resultArray"
+    ]
+  },
+  {
     "name": "startAction",
     "description": "This operation starts the specified action instance using the given action operation data.\n\nThe action operation data is first merged with the current operation data before it is\npassed on to the action. After the action has completed the action operation data properties\nare removed from the current operation data.",
     "parameters": [
@@ -744,6 +1417,28 @@ export const OPERATIONS: OperationMetadata[] = [
       "actionInstance"
     ],
     "outputs": []
+  },
+  {
+    "name": "substringText",
+    "description": "Extracts a substring from text between start and end indices.",
+    "parameters": [
+      {
+        "name": "start",
+        "type": "ParameterType:number",
+        "required": true
+      },
+      {
+        "name": "end",
+        "type": "ParameterType:number",
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "textContent"
+    ],
+    "outputs": [
+      "substring"
+    ]
   },
   {
     "name": "toggleClass",
@@ -768,6 +1463,39 @@ export const OPERATIONS: OperationMetadata[] = [
       "selectedElement"
     ],
     "outputs": []
+  },
+  {
+    "name": "toggleFormElement",
+    "description": "Enables or disables form input elements (inputs, selects, textareas, buttons).\n\nSets the `disabled` property on the element. When `enabled` is true, removes the disabled\nattribute; when false, adds the disabled attribute.",
+    "parameters": [
+      {
+        "name": "enabled",
+        "type": "ParameterType:boolean",
+        "required": true
+      }
+    ],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": []
+  },
+  {
+    "name": "validateForm",
+    "description": "Validates form fields against HTML5 validation and custom rules.\n\nUses HTML5 validation API (checkValidity()) for native validation, and supports\ncustom validation rules for: required, minLength, maxLength, pattern (regex), and email format.",
+    "parameters": [
+      {
+        "name": "validationRules",
+        "type": "ParameterType:object",
+        "required": false
+      }
+    ],
+    "dependencies": [
+      "selectedElement"
+    ],
+    "outputs": [
+      "validationErrors",
+      "isValid"
+    ]
   },
   {
     "name": "wait",

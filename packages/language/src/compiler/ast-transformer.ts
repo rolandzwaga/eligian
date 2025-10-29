@@ -16,6 +16,7 @@
  */
 
 import { Effect } from 'effect';
+import type { TransformError } from '../errors/index.js';
 import type {
   TimeExpression as AstTimeExpression,
   BreakStatement,
@@ -67,7 +68,6 @@ import type {
   TOperationData,
   TTimelineProviderSettings,
 } from './types/eligius-ir.js';
-import type { TransformError } from './types/errors.js';
 
 /**
  * Scope Context - Track transformation context for reference resolution

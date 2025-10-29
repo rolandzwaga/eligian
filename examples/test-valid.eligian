@@ -1,0 +1,8 @@
+styles "./test-preview.css"
+
+timeline "Test Valid" in ".eligius-container" using raf {
+  at 0s..5s [
+    selectElement(".eligius")
+    addClass("eligius")
+  ] []
+}

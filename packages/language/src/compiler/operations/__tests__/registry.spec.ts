@@ -19,9 +19,9 @@ describe('T224: Operation Registry Tests', () => {
   describe('Registry completeness', () => {
     it('should have all non-deprecated operations registered', () => {
       const allOperations = getAllOperations();
-      // We expect 48 operations (49 from Eligius - 1 deprecated: resizeAction)
-      // Latest additions: breakForEach, continueForEach (Eligius 1.3.0)
-      expect(allOperations.length).toBe(48);
+      // Now includes ALL Eligius operations (not filtered by OPERATION_SYSTEM_NAMES)
+      // Count will match the number of operations in Eligius metadata
+      expect(allOperations.length).toBe(79);
     });
 
     it('should have no duplicate operation names', () => {
@@ -253,7 +253,7 @@ describe('T224: Operation Registry Tests', () => {
       expect(typeof registry).toBe('object');
 
       const keys = Object.keys(registry);
-      expect(keys.length).toBe(48);
+      expect(keys.length).toBe(79);
 
       for (const key of keys) {
         const operation = registry[key];

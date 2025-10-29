@@ -11,8 +11,8 @@
 import { Effect } from 'effect';
 // Import Eligius types (we installed eligius@1.1.4 in compiler package)
 import type { IEngineConfiguration } from 'eligius';
+import type { EmitError } from '../errors/index.js';
 import type { EligiusIR } from './types/eligius-ir.js';
-import type { EmitError } from './types/errors.js';
 
 /**
  * T282: Simplified emission function - EligiusIR → IEngineConfiguration (JSON)
