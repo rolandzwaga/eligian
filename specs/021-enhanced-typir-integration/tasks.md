@@ -106,11 +106,11 @@
   - Call registerImportInference(this)
   - Call registerImportValidation(this.typirServices)
 
-- [ ] **T021** **[US1]** Run integration test T013 - should now PASS (GREEN phase)
-- [ ] **T022** **[US1]** Run all US1 unit tests - should now PASS
-- [ ] **T023** **[US1]** Build and test in VS Code extension (manual verification: hover, validation)
-- [ ] **T024** **[US1]** Run `pnpm run check && pnpm run typecheck` (Biome + TypeScript per Constitution)
-- [ ] **T025** **[US1]** Verify 80%+ coverage for US1 modules: `pnpm run test:coverage -- import`
+- [X] **T021** **[US1]** Run integration test T013 - should now PASS (GREEN phase)
+- [X] **T022** **[US1]** Run all US1 unit tests - should now PASS
+- [X] **T023** **[US1]** Build and test in VS Code extension (manual verification: hover, validation)
+- [X] **T024** **[US1]** Run `pnpm run check && pnpm run typecheck` (Biome + TypeScript per Constitution)
+- [X] **T025** **[US1]** Verify 80%+ coverage for US1 modules: `pnpm run test:coverage -- import`
 
 **Checkpoint**: US1 complete - Import type checking fully functional and independently testable
 
