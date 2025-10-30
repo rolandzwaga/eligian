@@ -21,9 +21,12 @@ import type {
 import { isEndableActionDefinition, isRegularActionDefinition } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
+import { registerEventInference } from './inference/event-inference.js';
 import { registerImportInference } from './inference/import-inference.js';
 import { createImportTypeFactory } from './types/import-type.js';
+import { createEventTypeFactory } from './types/timeline-event-type.js';
 import { registerConstantValidation } from './validation/constant-validation.js';
+import { registerEventValidation } from './validation/event-validation.js';
 import { registerImportValidation } from './validation/import-validation.js';
 
 /**
@@ -51,6 +54,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   private unknownType: any;
   // Custom type factories
   private _importFactory: any; // Initialized in onInitialize() for US1
+  private _eventFactory: any; // Initialized in onInitialize() for US3
 
   /**
    * Initialize constant types (primitives, operation function types).
@@ -120,6 +124,15 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     // Register constant validation rules (reserved keyword detection)
     registerConstantValidation(typir);
+
+    // Create TimelineEventType factory (US3)
+    this._eventFactory = createEventTypeFactory(typir);
+
+    // Register timeline event inference rules (TimedEvent, SequenceBlock, StaggerBlock)
+    registerEventInference(typir, this._eventFactory);
+
+    // Register timeline event validation rules (time range checks, duration validation)
+    registerEventValidation(typir);
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 2: Helper - Map ParameterType to Typir Type (T019)

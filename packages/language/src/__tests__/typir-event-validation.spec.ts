@@ -12,7 +12,7 @@
 
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { describe, expect, test, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
 
@@ -45,14 +45,18 @@ describe('US3: Timeline Event Validation (Integration)', () => {
   // T036-1: Error on negative start time
   test('should error on negative start time in timed event', async () => {
     const code = `
+      action testAction() [
+        selectElement("#test")
+      ]
+
       timeline "Test" in "#app" using raf {
-        at -1s..5s selectElement("#box")
+        at 0s - 1s..5s testAction()
       }
     `;
     const { validationErrors } = await parseAndValidate(code);
 
-    const timeErrors = validationErrors.filter(e =>
-      e.message.includes('negative') || e.message.includes('start time')
+    const timeErrors = validationErrors.filter(
+      e => e.message.includes('negative') || e.message.includes('start time')
     );
     expect(timeErrors.length).toBeGreaterThan(0);
   });
@@ -60,14 +64,18 @@ describe('US3: Timeline Event Validation (Integration)', () => {
   // T036-2: Error on end < start
   test('should error when end time is before start time', async () => {
     const code = `
+      action testAction() [
+        selectElement("#test")
+      ]
+
       timeline "Test" in "#app" using raf {
-        at 5s..2s selectElement("#box")
+        at 5s..2s testAction()
       }
     `;
     const { validationErrors } = await parseAndValidate(code);
 
-    const timeErrors = validationErrors.filter(e =>
-      e.message.includes('end time') || e.message.includes('greater than')
+    const timeErrors = validationErrors.filter(
+      e => e.message.includes('end time') || e.message.includes('greater than')
     );
     expect(timeErrors.length).toBeGreaterThan(0);
   });
@@ -76,13 +84,15 @@ describe('US3: Timeline Event Validation (Integration)', () => {
   test('should error on negative sequence duration', async () => {
     const code = `
       timeline "Test" in "#app" using raf {
-        at 0s selectElement("#box") for -2s
+        sequence {
+          selectElement("#box") for 0s - 2s
+        }
       }
     `;
     const { validationErrors } = await parseAndValidate(code);
 
-    const durationErrors = validationErrors.filter(e =>
-      e.message.includes('duration') || e.message.includes('positive')
+    const durationErrors = validationErrors.filter(
+      e => e.message.includes('duration') || e.message.includes('positive')
     );
     expect(durationErrors.length).toBeGreaterThan(0);
   });
@@ -98,8 +108,8 @@ describe('US3: Timeline Event Validation (Integration)', () => {
     `;
     const { validationErrors } = await parseAndValidate(code);
 
-    const delayErrors = validationErrors.filter(e =>
-      e.message.includes('delay') || e.message.includes('greater than')
+    const delayErrors = validationErrors.filter(
+      e => e.message.includes('delay') || e.message.includes('greater than')
     );
     expect(delayErrors.length).toBeGreaterThan(0);
   });
@@ -107,14 +117,18 @@ describe('US3: Timeline Event Validation (Integration)', () => {
   // T036-5: Hover shows event timing
   test('should show timing information on hover for timed event', async () => {
     const code = `
+      action fadeIn(selector: string) [
+        selectElement(selector)
+      ]
+
       timeline "Test" in "#app" using raf {
-        at 0s..5s selectElement("#box")
+        at 0s..5s fadeIn("#box")
       }
     `;
     const { document, program } = await parseAndValidate(code);
 
-    // Find the TimedEvent node
-    const timeline = program.elements?.find(e => e.$type === 'Timeline');
+    // Find the Timeline node
+    const timeline = program.statements?.find(e => e.$type === 'Timeline');
     expect(timeline).toBeDefined();
 
     // Note: Full hover testing requires HoverProvider integration

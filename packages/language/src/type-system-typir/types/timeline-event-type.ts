@@ -28,34 +28,30 @@ export interface TimelineEventTypeProperties {
   eventKind: 'timed' | 'sequence' | 'stagger';
 
   /**
-   * Start time in seconds (TimedEvent only)
-   * Optional: undefined for sequence/stagger events
+   * Start time in seconds (TimedEvent only, 0 for others)
    */
-  startTime?: number;
+  startTime: number;
 
   /**
-   * End time in seconds (TimedEvent only)
-   * Optional: undefined for sequence/stagger events
+   * End time in seconds (TimedEvent only, 0 for others)
    */
-  endTime?: number;
+  endTime: number;
 
   /**
-   * Duration in seconds (SequenceBlock, StaggerBlock)
-   * Optional: undefined for timed events
+   * Duration in seconds (SequenceBlock/StaggerBlock, 0 for timed events)
    */
-  duration?: number;
+  duration: number;
 
   /**
-   * Stagger delay in seconds (StaggerBlock only)
-   * Optional: undefined for timed/sequence events
+   * Delay in seconds (StaggerBlock only, 0 for others)
    */
-  delay?: number;
+  delay: number;
 
   /**
    * Index signature required by Typir CustomTypeProperties
    * Must be: string | number | boolean | bigint | symbol | Type | arrays/maps/sets of these
    */
-  [key: string]: string | number | undefined;
+  [key: string]: string | number;
 }
 
 /**

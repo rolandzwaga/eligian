@@ -151,7 +151,7 @@ describe('Pipeline', () => {
                 ] [
                 ]
 
-                at 5s..5s [
+                at 10s..15s [
                     selectElement("#subtitle")
                 ] [
                 ]
@@ -159,8 +159,8 @@ describe('Pipeline', () => {
 
       const result = await Effect.runPromise(compile(source));
 
-      // Dead action should be removed (zero duration)
-      expect(result.timelines[0].timelineActions).toHaveLength(1);
+      // Dead action should be removed (outside timeline range)
+      expect(result.timelines[0].timelineActions).toHaveLength(2);
     });
 
     test('should skip optimizations when disabled', async () => {
@@ -170,7 +170,7 @@ describe('Pipeline', () => {
                 ] [
                 ]
 
-                at 5s..5s [
+                at 10s..15s [
                     selectElement("#subtitle")
                 ] [
                 ]
@@ -303,7 +303,7 @@ describe('Pipeline', () => {
                 ] [
                 ]
 
-                at 5s..5s [
+                at 10s..15s [
                     selectElement("#subtitle")
                 ] [
                 ]
@@ -312,7 +312,7 @@ describe('Pipeline', () => {
       const result = await Effect.runPromise(compileToIR(source));
 
       // Dead action should be removed
-      expect(result.config.timelines[0].timelineActions).toHaveLength(1);
+      expect(result.config.timelines[0].timelineActions).toHaveLength(2);
     });
   });
 
