@@ -4,6 +4,7 @@
  * Provides rich hover information for:
  * - Operations (showing their descriptions from the operation registry)
  * - CSS classes and IDs (showing definitions and rules from imported CSS)
+ * - Import statements (showing inferred Typir types)
  */
 
 import { type AstNode, AstUtils, CstUtils, type LangiumDocument } from 'langium';
@@ -14,7 +15,13 @@ import type { OperationSignature } from './compiler/operations/types.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
-import { isActionDefinition, isOperationCall } from './generated/ast.js';
+import type { DefaultImport, NamedImport } from './generated/ast.js';
+import {
+  isActionDefinition,
+  isDefaultImport,
+  isNamedImport,
+  isOperationCall,
+} from './generated/ast.js';
 import { extractJSDoc } from './jsdoc/jsdoc-extractor.js';
 import { formatJSDocAsMarkdown } from './jsdoc/jsdoc-formatter.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
@@ -80,7 +87,20 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       }
     }
 
-    // 2. Check if we're hovering over an operation call (traverse up the AST tree)
+    // 2. Check if we're hovering over an import statement
+    const defaultImport = AstUtils.getContainerOfType(cstNode.astNode, isDefaultImport);
+    if (defaultImport) {
+      const hover = this.buildImportHover(defaultImport);
+      if (hover) return hover;
+    }
+
+    const namedImport = AstUtils.getContainerOfType(cstNode.astNode, isNamedImport);
+    if (namedImport) {
+      const hover = this.buildImportHover(namedImport);
+      if (hover) return hover;
+    }
+
+    // 3. Check if we're hovering over an operation call (traverse up the AST tree)
     const operationCall = AstUtils.getContainerOfType(cstNode.astNode, isOperationCall);
     if (operationCall) {
       const opName = getOperationCallName(operationCall);
@@ -239,5 +259,61 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       return type.map(t => `\`${t}\``).join(' | ');
     }
     return `\`${type}\``;
+  }
+
+  /**
+   * Build hover content for import statements
+   *
+   * Note: We don't use Typir.inferType() here because hover is called outside
+   * the validation cycle and the AST nodes may not have $document links yet.
+   * Instead, we replicate the same logic as the Typir inference rules.
+   */
+  private buildImportHover(importNode: DefaultImport | NamedImport): Hover | undefined {
+    // Get the file path from the import
+    const path = importNode.path;
+
+    // Get asset type from the import node
+    let assetType: string;
+    if (isDefaultImport(importNode)) {
+      // Default imports: layout→html, styles→css, provider→media
+      assetType =
+        importNode.type === 'layout' ? 'html' : importNode.type === 'styles' ? 'css' : 'media';
+    } else {
+      // Named imports: use explicit type or infer from extension
+      if (importNode.assetType) {
+        assetType = importNode.assetType;
+      } else {
+        // Infer from file extension
+        const ext = path.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+        if (ext === 'html' || ext === 'htm') {
+          assetType = 'html';
+        } else if (ext === 'css') {
+          assetType = 'css';
+        } else if (
+          ext === 'mp4' ||
+          ext === 'webm' ||
+          ext === 'mp3' ||
+          ext === 'wav' ||
+          ext === 'ogg'
+        ) {
+          assetType = 'media';
+        } else {
+          assetType = 'unknown';
+        }
+      }
+    }
+
+    // Build type name
+    const typeName = `Import<${assetType}>`;
+
+    // Build markdown content
+    const markdown = `### ${typeName}\n\nFile: \`${path}\``;
+
+    return {
+      contents: {
+        kind: 'markdown',
+        value: markdown,
+      },
+    };
   }
 }
