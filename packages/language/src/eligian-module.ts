@@ -16,6 +16,7 @@ import { CSSRegistryService } from './css/css-registry.js';
 import { EligianCodeActionProvider } from './eligian-code-action-provider.js';
 import { EligianCompletionProvider } from './eligian-completion-provider.js';
 import { EligianDocumentValidator } from './eligian-document-validator.js';
+import { EligianFormatter } from './eligian-formatter.js';
 import { EligianHoverProvider } from './eligian-hover-provider.js';
 import { EligianScopeProvider } from './eligian-scope-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
@@ -65,6 +66,7 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       HoverProvider: services => new EligianHoverProvider(services.css.CSSRegistry, services),
       CompletionProvider: services => new EligianCompletionProvider(services),
       CodeActionProvider: services => new EligianCodeActionProvider(services),
+      Formatter: services => new EligianFormatter(services),
     },
     css: {
       CSSRegistry: () => new CSSRegistryService(),

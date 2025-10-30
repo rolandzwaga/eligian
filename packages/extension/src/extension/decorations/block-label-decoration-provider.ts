@@ -137,7 +137,7 @@ export class BlockLabelDecorationProvider {
     const markdown = new vscode.MarkdownString();
     markdown.isTrusted = true;
 
-    markdown.appendMarkdown('### Start Operations\n\n');
+    markdown.appendMarkdown('### Start Operations Block\n\n');
 
     if (label.type === 'action') {
       markdown.appendMarkdown('These operations are executed when the endable action **begins**.');
@@ -160,7 +160,7 @@ export class BlockLabelDecorationProvider {
     const markdown = new vscode.MarkdownString();
     markdown.isTrusted = true;
 
-    markdown.appendMarkdown('### End Operations\n\n');
+    markdown.appendMarkdown('### End Operations Block\n\n');
 
     if (label.type === 'action') {
       markdown.appendMarkdown('These operations are executed when the endable action **ends**.');

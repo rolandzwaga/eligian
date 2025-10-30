@@ -6,7 +6,7 @@
  * - CSS classes and IDs (showing definitions and rules from imported CSS)
  */
 
-import { type AstNode, CstUtils, type LangiumDocument } from 'langium';
+import { type AstNode, AstUtils, CstUtils, type LangiumDocument } from 'langium';
 import { AstNodeHoverProvider } from 'langium/lsp';
 import type { Hover, HoverParams } from 'vscode-languageserver';
 import { getOperationSignature } from './compiler/operations/index.js';
@@ -14,11 +14,14 @@ import type { OperationSignature } from './compiler/operations/types.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
-import { isOperationCall } from './generated/ast.js';
+import { isActionDefinition, isOperationCall } from './generated/ast.js';
+import { extractJSDoc } from './jsdoc/jsdoc-extractor.js';
+import { formatJSDocAsMarkdown } from './jsdoc/jsdoc-formatter.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   private cssHoverProvider = new CSSHoverProvider();
+  private services: any;
 
   constructor(
     private cssRegistry: CSSRegistryService,
@@ -27,6 +30,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     // AstNodeHoverProvider requires services parameter
     // If services provided (for testing), use them; otherwise create minimal mock
     super(services || ({ References: {} } as any));
+    this.services = services || ({ References: {} } as any);
   }
   /**
    * Override the main hover method to handle:
@@ -46,42 +50,83 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     const offset = document.textDocument.offsetAt(params.position);
     const cstNode = CstUtils.findLeafNodeAtOffset(rootNode, offset);
 
-    // 1. Check if we're hovering over a CSS class or ID
-    if (cstNode?.astNode) {
-      const cssTarget = detectHoverTarget(cstNode.astNode, params);
-      if (cssTarget) {
-        // Get imported CSS files for this document
-        const documentUri = document.uri.toString();
-        const importsSet = this.cssRegistry.getDocumentImports(documentUri);
-        const imports = Array.from(importsSet);
+    // Early return if no AST node found
+    if (!cstNode?.astNode) {
+      return super.getHoverContent(document, params);
+    }
 
-        if (imports.length > 0) {
-          if (cssTarget.type === 'class') {
-            const classInfo = buildCSSClassInfo(cssTarget.name, imports, uri =>
-              this.cssRegistry.getMetadata(uri)
-            );
-            const hover = this.cssHoverProvider.provideCSSClassHover(classInfo);
-            if (hover) return hover;
-          } else if (cssTarget.type === 'id') {
-            const idInfo = buildCSSIDInfo(cssTarget.name, imports, uri =>
-              this.cssRegistry.getMetadata(uri)
-            );
-            const hover = this.cssHoverProvider.provideCSSIDHover(idInfo);
-            if (hover) return hover;
-          }
+    // 1. Check if we're hovering over a CSS class or ID
+    const cssTarget = detectHoverTarget(cstNode.astNode, params);
+    if (cssTarget) {
+      // Get imported CSS files for this document
+      const documentUri = document.uri.toString();
+      const importsSet = this.cssRegistry.getDocumentImports(documentUri);
+      const imports = Array.from(importsSet);
+
+      if (imports.length > 0) {
+        if (cssTarget.type === 'class') {
+          const classInfo = buildCSSClassInfo(cssTarget.name, imports, uri =>
+            this.cssRegistry.getMetadata(uri)
+          );
+          const hover = this.cssHoverProvider.provideCSSClassHover(classInfo);
+          if (hover) return hover;
+        } else if (cssTarget.type === 'id') {
+          const idInfo = buildCSSIDInfo(cssTarget.name, imports, uri =>
+            this.cssRegistry.getMetadata(uri)
+          );
+          const hover = this.cssHoverProvider.provideCSSIDHover(idInfo);
+          if (hover) return hover;
         }
       }
     }
 
-    // 2. Check if we're hovering over an operation call
-    if (cstNode?.astNode && isOperationCall(cstNode.astNode)) {
-      const operationCall = cstNode.astNode;
+    // 2. Check if we're hovering over an operation call (traverse up the AST tree)
+    const operationCall = AstUtils.getContainerOfType(cstNode.astNode, isOperationCall);
+    if (operationCall) {
       const opName = getOperationCallName(operationCall);
 
       if (opName) {
+        // First, check if this is a built-in operation
         const signature = getOperationSignature(opName);
         if (signature) {
           const markdown = this.buildOperationHoverMarkdown(signature);
+          return {
+            contents: {
+              kind: 'markdown',
+              value: markdown,
+            },
+          };
+        }
+
+        // Not a built-in operation, check if it's a custom action with JSDoc
+        const actionRef = operationCall.operationName;
+        if (actionRef?.ref && isActionDefinition(actionRef.ref)) {
+          const actionDef = actionRef.ref;
+          const commentProvider = this.services.documentation?.CommentProvider;
+
+          if (commentProvider) {
+            const jsdoc = extractJSDoc(actionDef, commentProvider);
+
+            if (jsdoc) {
+              // Format JSDoc as markdown for hover display
+              const markdown = formatJSDocAsMarkdown(jsdoc, actionDef.name);
+              return {
+                contents: {
+                  kind: 'markdown',
+                  value: markdown,
+                },
+              };
+            }
+          }
+
+          // No JSDoc found, show basic action signature
+          const params = actionDef.parameters
+            .map(p => {
+              const type = p.type ? `: ${p.type}` : '';
+              return `${p.name}${type}`;
+            })
+            .join(', ');
+          const markdown = `### ${actionDef.name}\n\n\`${actionDef.name}(${params})\``;
           return {
             contents: {
               kind: 'markdown',
