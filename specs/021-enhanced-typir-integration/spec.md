@@ -47,20 +47,21 @@ As a DSL developer, I want to be warned when I declare constants with reserved k
 
 ### User Story 3 - Timeline Event Validation (Priority: P2)
 
-As a DSL developer, I want to see validation errors for timeline events with invalid time ranges, overlapping events, or incorrect durations so I can create correct timelines before testing them.
+As a DSL developer, I want to see validation errors for timeline events with invalid time ranges or incorrect durations so I can create correct timelines before testing them.
 
-**Why this priority**: Timeline events are complex and error-prone. Validating time ranges, durations, and overlaps prevents runtime issues and improves the authoring experience. This is medium-complexity but high-value.
+**Why this priority**: Timeline events are complex and error-prone. Validating time ranges and durations prevents runtime issues and improves the authoring experience. This is medium-complexity but high-value.
 
-**Independent Test**: Can be fully tested by creating timelines with various event configurations (overlapping, invalid ranges, negative times) and verifying validation works correctly.
+**Independent Test**: Can be fully tested by creating timelines with various event configurations (invalid ranges, negative times, negative durations) and verifying validation works correctly.
 
 **Acceptance Scenarios**:
 
 1. **Given** a user writes `at -1s..5s fadeIn()`, **When** the document is validated, **Then** they see an error "Start time cannot be negative"
 2. **Given** a user writes `at 5s..2s fadeIn()`, **When** the document is validated, **Then** they see an error "End time must be greater than start time"
-3. **Given** a user writes two events `at 0s..5s action1()` and `at 3s..7s action2()`, **When** the document is validated, **Then** they see a warning "Events overlap: [0s→5s] and [3s→7s]"
-4. **Given** a user writes `sequence [...] for -2s`, **When** the document is validated, **Then** they see an error "Sequence duration must be positive"
-5. **Given** a user writes `stagger 0s items with action() for 1s`, **When** the document is validated, **Then** they see an error "Stagger delay must be positive"
-6. **Given** a user hovers over a timed event, **When** the hover appears, **Then** they see "TimedEvent: 0s → 5s" with timing details
+3. **Given** a user writes `sequence [...] for -2s`, **When** the document is validated, **Then** they see an error "Sequence duration must be positive"
+4. **Given** a user writes `stagger 0s items with action() for 1s`, **When** the document is validated, **Then** they see an error "Stagger delay must be positive"
+5. **Given** a user hovers over a timed event, **When** the hover appears, **Then** they see "TimedEvent: 0s → 5s" with timing details
+
+**Note**: Overlapping timeline events are intentionally **allowed** and **essential** for proper timeline composition. For example, a header may be shown from 10s-50s while text is shown from 10s-30s and other text from 30s-50s. Overlap detection is NOT included in this feature.
 
 ---
 
@@ -141,7 +142,7 @@ As a DSL developer, I want validation errors when my timeline configuration is i
 - **FR-013**: System MUST create custom Typir type `TimelineEventType` with properties: eventKind ('timed' | 'sequence' | 'stagger'), startTime (number), endTime (optional number), duration (optional number)
 - **FR-014**: System MUST validate that timed event start times are non-negative (≥ 0s)
 - **FR-015**: System MUST validate that timed event end times are greater than start times
-- **FR-016**: System MUST detect overlapping timed events within the same timeline and display warnings. Events overlap if their time ranges intersect (start1 < end2 AND start2 < end1). Adjacent events (end1 == start2) do NOT overlap and should NOT trigger warnings.
+- **FR-016**: ~~System MUST detect overlapping timed events within the same timeline and display warnings.~~ **REMOVED**: Overlapping events are intentionally allowed and essential for timeline composition (e.g., header 10s-50s + text 10s-30s).
 - **FR-017**: System MUST validate that sequence durations are positive (> 0s)
 - **FR-018**: System MUST validate that stagger delays are positive (> 0s)
 - **FR-019**: System MUST display event timing details on hover (e.g., "TimedEvent: 0s → 5s")
@@ -179,7 +180,7 @@ As a DSL developer, I want validation errors when my timeline configuration is i
 ### Key Entities
 
 - **ImportType**: Represents an imported asset with asset type (html/css/media), file path, and default/named flag. Used for import statement validation and hover information.
-- **TimelineEventType**: Represents a timeline event with event kind (timed/sequence/stagger), timing information (start, end, duration), and validation state. Used for time range validation and overlap detection.
+- **TimelineEventType**: Represents a timeline event with event kind (timed/sequence/stagger), timing information (start, end, duration), and validation state. Used for time range and duration validation.
 - **TimelineType**: Represents a timeline configuration with provider type, container selector, optional source file, and list of events. Used for configuration validation.
 - **ConstantDeclaration**: Represents a program or action-scoped constant with inferred type from initial value. Used for reserved keyword validation and type inference.
 - **ControlFlowNode**: Represents if statements and for loops with condition/collection type validation requirements.
@@ -205,10 +206,10 @@ As a DSL developer, I want validation errors when my timeline configuration is i
 
 - **SC-008**: 100% of negative start times are caught with errors
 - **SC-009**: 100% of invalid time ranges (end < start) are caught with errors
-- **SC-010**: 90% of overlapping events are detected and warned within the same timeline
+- **SC-010**: ~~90% of overlapping events are detected and warned within the same timeline~~ **REMOVED**: Overlap detection not included
 - **SC-011**: Developers see event timing details on hover 100% of the time for timed events
 - **SC-012**: Timeline event validation adds less than 20ms overhead to document validation time
-- **SC-013**: Overlapping event detection completes in under 50ms for timelines with up to 100 events
+- **SC-013**: ~~Overlapping event detection completes in under 50ms for timelines with up to 100 events~~ **REMOVED**: Overlap detection not included
 
 #### Control Flow Type Checking (US4)
 
@@ -329,7 +330,7 @@ As a DSL developer, I want validation errors when my timeline configuration is i
 ### Deferred Features
 
 1. **Timeline Visualization**: Graphical timeline view showing events (separate feature)
-2. **Event Conflict Resolution**: Automatic fixes for overlapping events (AI-assisted feature)
+2. **~~Event Conflict Resolution~~**: ~~Automatic fixes for overlapping events~~ **REMOVED**: Overlapping events are intentionally allowed
 3. **Import Auto-Discovery**: Suggesting imports based on usage (language service enhancement)
 4. **Type Documentation**: Generating type documentation from Typir types (tooling feature)
 
@@ -427,24 +428,19 @@ As a DSL developer, I want validation errors when my timeline configuration is i
 
 **Rollout Steps**:
 
-1. **Week 3: Timeline Event Custom Types (US3)**
+1. **Week 3-4: Timeline Event Custom Types (US3)**
    - Define `TimelineEventType` hierarchy
    - Create factory and inference rules
-   - Add basic validation (time ranges, durations)
-   - Write 20 test cases
-
-2. **Week 4: Cross-Event Validation (US3)**
-   - Implement overlap detection algorithm
-   - Add warning for conflicting events
-   - Write 10 edge case tests
-   - **Rollback Plan**: Disable cross-event validation, keep basic validation
+   - Add validation (time ranges, durations, non-negative times)
+   - Write 20+ test cases
 
 **Success Criteria for Phase 2**:
 - Event types inferred correctly (100% accuracy)
-- Overlap detection catches all conflicts
-- 30+ new test cases pass
+- Time range validation catches invalid ranges (100% accuracy)
+- Duration validation catches negative/zero durations (100% accuracy)
+- 20+ new test cases pass
 - IDE shows event timing on hover
-- Validation overhead remains under 50ms
+- Validation overhead remains under 20ms
 
 **Go/No-Go Decision**: If complexity too high or performance issues, defer Phase 3
 
@@ -500,7 +496,7 @@ As a DSL developer, I want validation errors when my timeline configuration is i
 
 **Release Notes**:
 - Phase 1: "Enhanced validation for imports and constants"
-- Phase 2: "Timeline event validation with overlap detection"
+- Phase 2: "Timeline event validation for time ranges and durations"
 - Phase 3: "Complete type checking for all DSL constructs"
 
 **Breaking Changes**: None (all changes are enhancements, not breaking changes)

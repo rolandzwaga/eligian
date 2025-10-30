@@ -10,6 +10,7 @@ import {
 import {
   createTypirLangiumServices,
   initializeLangiumTypirServices,
+  registerTypirValidationChecks,
   type TypirLangiumServices,
 } from 'typir-langium';
 import { CSSRegistryService } from './css/css-registry.js';
@@ -107,6 +108,7 @@ export function createEligianServices(context: DefaultSharedModuleContext): {
   initializeLangiumTypirServices(Eligian, Eligian.typir);
 
   registerValidationChecks(Eligian);
+  registerTypirValidationChecks(Eligian, Eligian.typir);
   if (!context.connection) {
     // We don't run inside a language server
     // Therefore, initialize the configuration provider instantly

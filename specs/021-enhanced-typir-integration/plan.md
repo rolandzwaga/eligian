@@ -38,7 +38,7 @@ packages/language/src/type-system-typir/
 ├── types/               # NEW: Custom types (ImportType, EventType, TimelineType)
 ├── inference/           # NEW: Inference rules per construct
 ├── validation/          # NEW: Validation rules per construct
-├── utils/               # NEW: time-parser, overlap-detector, asset-inferrer
+├── utils/               # NEW: time-parser, asset-inferrer
 └── eligian-type-system.ts  # UPDATED: Register new types/rules
 ```
 

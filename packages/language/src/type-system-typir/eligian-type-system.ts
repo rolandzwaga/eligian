@@ -21,6 +21,9 @@ import type {
 import { isEndableActionDefinition, isRegularActionDefinition } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
+import { registerImportInference } from './inference/import-inference.js';
+import { createImportTypeFactory } from './types/import-type.js';
+import { registerImportValidation } from './validation/import-validation.js';
 
 /**
  * Type system definition for the Eligian DSL.
@@ -45,12 +48,8 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   private objectType: any;
   private arrayType: any;
   private unknownType: any;
-  // Custom type factories (stubs - will be initialized when implementing user stories)
-  // @ts-expect-error - Stub properties will be used in future user story implementations
-  private _importFactory: any;
-  private _eventFactory: any;
-  private _timelineFactory: any;
-
+  // Custom type factories
+  private _importFactory: any; // Initialized in onInitialize() for US1
 
   /**
    * Initialize constant types (primitives, operation function types).
@@ -104,6 +103,19 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     // Unknown type (top type - compatible with everything)
     this.unknownType = typir.factory.Top.create({}).finish();
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STEP 1.5: User Story 1 - Import Type Checking (T020)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Create ImportType factory
+    this._importFactory = createImportTypeFactory(typir);
+
+    // Register import inference rules (DefaultImport, NamedImport)
+    registerImportInference(typir, this._importFactory);
+
+    // Register import validation rules (duplicate detection, type mismatch warnings)
+    registerImportValidation(typir);
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 2: Helper - Map ParameterType to Typir Type (T019)

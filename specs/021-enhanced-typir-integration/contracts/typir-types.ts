@@ -251,46 +251,7 @@ export function inferAssetTypeFromExtension(path: string): 'html' | 'css' | 'med
   }
 }
 
-/**
- * Check if two timeline events overlap in time.
- *
- * Events overlap if their time ranges intersect:
- * - [0s → 5s] and [3s → 7s] overlap (from 3s to 5s)
- * - [0s → 5s] and [5s → 10s] do NOT overlap (adjacent, not overlapping)
- *
- * Algorithm: !(end1 <= start2 OR end2 <= start1)
- *
- * @param event1 - First timeline event (must be timed event with endTime)
- * @param event2 - Second timeline event (must be timed event with endTime)
- * @returns true if events overlap, false if adjacent or separate
- *
- * @example
- * ```typescript
- * const e1 = { eventKind: 'timed', startTime: 0, endTime: 5 };
- * const e2 = { eventKind: 'timed', startTime: 3, endTime: 7 };
- * eventsOverlap(e1, e2)  // Returns: true (overlap from 3s to 5s)
- *
- * const e3 = { eventKind: 'timed', startTime: 0, endTime: 5 };
- * const e4 = { eventKind: 'timed', startTime: 5, endTime: 10 };
- * eventsOverlap(e3, e4)  // Returns: false (adjacent, NOT overlapping)
- * ```
- */
-export function eventsOverlap(
-  event1: TimelineEventType,
-  event2: TimelineEventType
-): boolean {
-  if (event1.eventKind !== 'timed' || event2.eventKind !== 'timed') {
-    return false;
-  }
-  if (event1.endTime === undefined || event2.endTime === undefined) {
-    return false;
-  }
-
-  // Check if intervals overlap: [start1, end1] and [start2, end2]
-  // No overlap if: end1 <= start2 OR end2 <= start1
-  // Overlap if: NOT (end1 <= start2 OR end2 <= start1)
-  return !(event1.endTime <= event2.startTime || event2.endTime <= event1.startTime);
-}
+// NOTE: eventsOverlap() removed - overlapping events are intentionally allowed and essential for timeline composition
 
 /**
  * Parse time expression to seconds

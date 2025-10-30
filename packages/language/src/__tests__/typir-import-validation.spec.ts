@@ -7,11 +7,11 @@
  * - Asset type mismatch warnings
  */
 
+import { EmptyFileSystem } from 'langium';
+import { parseHelper } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
-import { parseHelper } from 'langium/test';
 import type { Program } from '../generated/ast.js';
-import { EmptyFileSystem } from 'langium';
 
 describe('US1: Import Statement Type Checking (Integration)', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;

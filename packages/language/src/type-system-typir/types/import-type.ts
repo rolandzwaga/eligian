@@ -15,6 +15,8 @@ import type { EligianSpecifics } from '../eligian-specifics.js';
 
 /**
  * Properties for ImportType CustomKind
+ *
+ * Note: The index signature is required by Typir's CustomTypeProperties constraint.
  */
 export interface ImportTypeProperties {
   /**
@@ -37,6 +39,12 @@ export interface ImportTypeProperties {
    * - false: Named import (multiple allowed)
    */
   isDefault: boolean;
+
+  /**
+   * Index signature required by Typir CustomTypeProperties
+   * Must be: string | number | boolean | bigint | symbol | Type | arrays/maps/sets of these
+   */
+  [key: string]: string | boolean;
 }
 
 /**

@@ -9,9 +9,8 @@
 
 import type { TypirLangiumServices } from 'typir-langium';
 import type { DefaultImport, NamedImport } from '../../generated/ast.js';
-import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
-import type { ImportTypeProperties } from '../types/import-type.js';
+import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
 
 /**
  * Infer asset type from default import keyword
@@ -52,15 +51,18 @@ export function inferAssetTypeFromKeyword(
  * 2. NamedImport: Infers asset type from file extension or explicit 'as' clause
  *
  * @param typir - Typir services for inference rule registration
+ * @param importFactory - CustomKind factory for creating ImportType instances
  *
  * @example
  * ```typescript
  * // In EligianTypeSystem.onInitialize():
- * registerImportInference(this.typirServices);
+ * const importFactory = createImportTypeFactory(typir);
+ * registerImportInference(typir, importFactory);
  * ```
  */
 export function registerImportInference(
-  typir: TypirLangiumServices<EligianSpecifics>
+  typir: TypirLangiumServices<EligianSpecifics>,
+  importFactory: any // CustomKind<ImportTypeProperties, EligianSpecifics>
 ): void {
   // Register inference rules using the helper method
   typir.Inference.addInferenceRulesForAstNodes({
@@ -77,15 +79,13 @@ export function registerImportInference(
      */
     DefaultImport: (node: DefaultImport) => {
       const assetType = inferAssetTypeFromKeyword(node.type);
-      const properties: ImportTypeProperties = {
+
+      // Create ImportType using the factory
+      return importFactory.create({
         assetType,
         path: node.path,
         isDefault: true,
-      };
-
-      // Return the inferred type properties
-      // Typir will create the CustomKind type instance using these properties
-      return properties;
+      });
     },
 
     /**
@@ -112,13 +112,12 @@ export function registerImportInference(
         ? node.assetType // Explicit type from 'as' clause
         : inferAssetTypeFromExtension(node.path); // Infer from extension
 
-      const properties: ImportTypeProperties = {
+      // Create ImportType using the factory
+      return importFactory.create({
         assetType,
         path: node.path,
         isDefault: false,
-      };
-
-      return properties;
+      });
     },
   });
 }

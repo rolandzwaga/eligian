@@ -178,7 +178,12 @@ describe('IDE-Compiler Validation Parity', () => {
   describe('Valid code produces no errors in both environments', () => {
     it('should produce no errors for valid code', async () => {
       const source = `
-        timeline "Test" in "#container" using raf {}
+        action testAction [
+          selectElement("#test")
+        ]
+        timeline "Test" in "#container" using raf {
+          at 0s..5s testAction()
+        }
       `;
 
       const ideErrors = await getIDEValidationErrors(source);

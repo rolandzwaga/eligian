@@ -91,7 +91,7 @@
 
 - [X] **T017** [P] **[US1]** Write failing unit tests for import inference in `packages/language/src/type-system-typir/inference/__tests__/import-inference.spec.ts` (8 tests: each import type, edge cases)
 
-- [ ] **T018** [P] **[US1]** Implement import validation rules in `packages/language/src/type-system-typir/validation/import-validation.ts`:
+- [X] **T018** [P] **[US1]** Implement import validation rules in `packages/language/src/type-system-typir/validation/import-validation.ts`:
   - DefaultImport: Check duplicate default imports (traverse program)
   - NamedImport: Warn on asset type mismatch (FR-005):
     - Infer asset type from file extension using `inferAssetTypeFromExtension()` utility
@@ -99,9 +99,9 @@
     - If mismatch: Warning "Asset type '<explicit>' conflicts with inferred type '<inferred>' from file extension (path: '<path>')"
     - Example: `import video from './intro.mp4' as html` → Warning: "Asset type 'html' conflicts with inferred type 'media' from file extension (path: './intro.mp4')"
 
-- [ ] **T019** [P] **[US1]** Write failing unit tests for import validation in `packages/language/src/type-system-typir/validation/__tests__/import-validation.spec.ts` (5 tests: duplicate detection, type mismatch warning)
+- [X] **T019** [P] **[US1]** Write failing unit tests for import validation in `packages/language/src/type-system-typir/validation/__tests__/import-validation.spec.ts` (5 tests: duplicate detection, type mismatch warning)
 
-- [ ] **T020** **[US1]** Register ImportType factory and rules in `eligian-type-system.ts`:
+- [X] **T020** **[US1]** Register ImportType factory and rules in `eligian-type-system.ts`:
   - Call createImportTypeFactory in onInitialize()
   - Call registerImportInference(this)
   - Call registerImportValidation(this.typirServices)
