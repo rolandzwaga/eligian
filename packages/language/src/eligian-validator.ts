@@ -30,6 +30,7 @@ import type {
   TimedEvent,
   Timeline,
   TimelineEvent,
+  VariableDeclaration,
 } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
