@@ -23,6 +23,7 @@ import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
 import { registerImportInference } from './inference/import-inference.js';
 import { createImportTypeFactory } from './types/import-type.js';
+import { registerConstantValidation } from './validation/constant-validation.js';
 import { registerImportValidation } from './validation/import-validation.js';
 
 /**
@@ -116,6 +117,9 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     // Register import validation rules (duplicate detection, type mismatch warnings)
     registerImportValidation(typir);
+
+    // Register constant validation rules (reserved keyword detection)
+    registerConstantValidation(typir);
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 2: Helper - Map ParameterType to Typir Type (T019)

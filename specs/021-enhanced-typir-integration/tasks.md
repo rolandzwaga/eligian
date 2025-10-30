@@ -126,7 +126,7 @@
 
 ### Tests for US2 (Write FIRST, ensure FAIL)
 
-- [ ] **T026** [P] **[US2]** Write failing integration test in `packages/language/src/__tests__/typir-constant-validation.spec.ts`:
+- [x] **T026** [P] **[US2]** Write failing integration test in `packages/language/src/__tests__/typir-constant-validation.spec.ts`:
   - Test 1: Error on `const if = 5` ('if' is reserved keyword)
   - Test 2: Error on `const timeline = "test"` ('timeline' is reserved keyword)
   - Test 3: Error on `const action = 42` ('action' is reserved keyword)
@@ -135,7 +135,7 @@
   - **NOTE**: File MUST be isolated (one integration test per file)
   - **NOTE**: Tests 3-5 from original spec are REMOVED (hover already works, no new tests needed)
 
-- [ ] **T027** [P] **[US2]** Write failing unit tests for reserved keyword validation in `packages/language/src/type-system-typir/validation/__tests__/constant-validation.spec.ts`:
+- [x] **T027** [P] **[US2]** Write failing unit tests for reserved keyword validation in `packages/language/src/type-system-typir/validation/__tests__/constant-validation.spec.ts`:
   - Test 1: Each reserved keyword detected ('if', 'else', 'for', 'in', 'break', 'continue', 'const', 'action', 'endable', 'timeline', 'at', 'sequence', 'stagger' - 13 keywords = 13 tests)
   - Test 2: Valid names pass ('duration', 'myVar', 'count', 'selector', 'items' - 5 tests)
   - Test 3: Edge cases (keywords as part of name: 'ifCondition' is valid - 2 tests)
@@ -143,17 +143,17 @@
 
 ### Implementation for US2
 
-- [ ] **T028** [P] **[US2]** Implement constant validation rules in `packages/language/src/type-system-typir/validation/constant-validation.ts`:
+- [x] **T028** [P] **[US2]** Implement constant validation rules in `packages/language/src/type-system-typir/validation/constant-validation.ts`:
   - Check `VariableDeclaration.name` against RESERVED_KEYWORDS set (from `contracts/typir-types.ts`)
   - Validation rule for VariableDeclaration AST node
   - Error message: "'<keyword>' is a reserved keyword and cannot be used as a constant name"
 
-- [ ] **T029** **[US2]** Register constant validation in `eligian-type-system.ts`:
+- [x] **T029** **[US2]** Register constant validation in `eligian-type-system.ts`:
   - Add import: `import { registerConstantValidation } from './validation/constant-validation.js';`
   - Call `registerConstantValidation(this.typirServices)` in `onInitialize()` after primitive types created
 
-- [ ] **T030** **[US2]** Run integration test T026 - should now PASS (GREEN phase)
-- [ ] **T031** **[US2]** Run unit test T027 - should now PASS
+- [x] **T030** **[US2]** Run integration test T026 - should now PASS (GREEN phase)
+- [x] **T031** **[US2]** Run unit test T027 - should now PASS
 - [ ] **T032** **[US2]** Build and test in VS Code extension (manual verification: reserved keyword errors only)
 - [ ] **T033** **[US2]** Run `pnpm run check && pnpm run typecheck`
 - [ ] **T034** **[US2]** Verify 80%+ coverage for US2 modules: `pnpm run test:coverage -- constant-validation`
