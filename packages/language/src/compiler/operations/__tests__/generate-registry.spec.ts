@@ -32,13 +32,13 @@ describe('Registry Generation from Eligius Metadata', () => {
     });
 
     it('should have systemName matching the Eligius function name for addClass', () => {
-      const sig = OPERATION_REGISTRY['addClass'];
+      const sig = OPERATION_REGISTRY.addClass;
       expect(sig).toBeDefined();
       expect(sig.systemName).toBe('addClass'); // Direct from Eligius, not custom mapped
     });
 
     it('should have systemName matching the Eligius function name for selectElement', () => {
-      const sig = OPERATION_REGISTRY['selectElement'];
+      const sig = OPERATION_REGISTRY.selectElement;
       expect(sig).toBeDefined();
       expect(sig.systemName).toBe('selectElement'); // Direct from Eligius, not custom mapped
     });
@@ -51,7 +51,7 @@ describe('Registry Generation from Eligius Metadata', () => {
       const eligiusCategory = addClassMetadata.category;
 
       // Registry should use the same category
-      const sig = OPERATION_REGISTRY['addClass'];
+      const sig = OPERATION_REGISTRY.addClass;
       expect(sig.category).toBe(eligiusCategory);
       expect(sig.category).toBe('DOM'); // Verify it's using Eligius value
     });
@@ -73,8 +73,8 @@ describe('Registry Generation from Eligius Metadata', () => {
       const whenMetadata = metadata.when();
       const otherwiseMetadata = metadata.otherwise();
 
-      expect(OPERATION_REGISTRY['when'].category).toBe(whenMetadata.category);
-      expect(OPERATION_REGISTRY['otherwise'].category).toBe(otherwiseMetadata.category);
+      expect(OPERATION_REGISTRY.when.category).toBe(whenMetadata.category);
+      expect(OPERATION_REGISTRY.otherwise.category).toBe(otherwiseMetadata.category);
     });
 
     it('should use Eligius category for CSS operations', () => {
@@ -82,9 +82,9 @@ describe('Registry Generation from Eligius Metadata', () => {
       const removeClassMetadata = metadata.removeClass();
       const toggleClassMetadata = metadata.toggleClass();
 
-      expect(OPERATION_REGISTRY['addClass'].category).toBe(addClassMetadata.category);
-      expect(OPERATION_REGISTRY['removeClass'].category).toBe(removeClassMetadata.category);
-      expect(OPERATION_REGISTRY['toggleClass'].category).toBe(toggleClassMetadata.category);
+      expect(OPERATION_REGISTRY.addClass.category).toBe(addClassMetadata.category);
+      expect(OPERATION_REGISTRY.removeClass.category).toBe(removeClassMetadata.category);
+      expect(OPERATION_REGISTRY.toggleClass.category).toBe(toggleClassMetadata.category);
     });
   });
 

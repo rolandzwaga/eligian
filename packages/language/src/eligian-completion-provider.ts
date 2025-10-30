@@ -103,7 +103,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
 
           // Insert the template starting at current cursor position
           // The /** is already typed, so we just add newline + template content
-          const insertText = '\n' + snippetText;
+          const insertText = `\n${snippetText}`;
 
           // Create completion item that inserts at current position
           const completionItem: CompletionItem = {
