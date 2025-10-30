@@ -710,6 +710,65 @@ describe('Eligian Grammar - Validation', () => {
     });
   });
 
+  // Duplicate constant validation
+  describe('Duplicate constant validation', () => {
+    test('should error when duplicate constant declarations exist', async () => {
+      const code = `
+        const bleep = "hello"
+        const bleep = "world"
+        const bleep = "again"
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement("#box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - duplicate constant declarations
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBeGreaterThan(0);
+      expect(duplicateErrors.length).toBe(2); // Two duplicates (second and third declarations)
+    });
+
+    test('should error on two duplicate constants with same name', async () => {
+      const code = `
+        const myValue = 100
+        const myValue = 200
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement("#box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBe(1); // One duplicate (second declaration)
+    });
+
+    test('should allow constants with different names', async () => {
+      const code = `
+        const value1 = "hello"
+        const value2 = "world"
+        const value3 = "test"
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement("#box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - all names are unique
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBe(0);
+    });
+  });
+
   // T049: US3 - Control flow with action calls validation
   describe('Control flow with action calls validation (US3)', () => {
     test('should validate action calls within for loops', async () => {

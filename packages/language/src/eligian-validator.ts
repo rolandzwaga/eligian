@@ -51,6 +51,7 @@ export function registerValidationChecks(services: EligianServices) {
     Program: [
       validator.checkTimelineRequired,
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
+      validator.checkDuplicateConstants, // Duplicate constant detection
       // validator.checkDefaultImports, // DISABLED: Now handled by Typir validation (US1)
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
@@ -161,6 +162,34 @@ export class EligianValidator {
           );
         } else {
           actionNames.set(element.name, element);
+        }
+      }
+    }
+  }
+
+  /**
+   * Check for duplicate constant declarations
+   * Emit error if constant name is declared more than once
+   */
+  checkDuplicateConstants(program: Program, accept: ValidationAcceptor): void {
+    const constantNames = new Map<string, VariableDeclaration>();
+
+    for (const element of getElements(program)) {
+      if (element.$type === 'VariableDeclaration') {
+        const existing = constantNames.get(element.name);
+        if (existing) {
+          // Found duplicate - report error on the second definition
+          accept(
+            'error',
+            `Duplicate constant declaration '${element.name}'. Constant already defined.`,
+            {
+              node: element,
+              property: 'name',
+              code: 'duplicate_constant',
+            }
+          );
+        } else {
+          constantNames.set(element.name, element);
         }
       }
     }
