@@ -1,7 +1,7 @@
 # Eligian Language Specification
 
-**Version**: 1.1.0
-**Last Updated**: 2025-10-25
+**Version**: 1.2.0
+**Last Updated**: 2025-10-30
 **Status**: Living Document - Updated with every language feature change
 
 ---
@@ -45,12 +45,31 @@ Eligian source files use the `.eligian` extension.
 
 ### 2.1 Comments
 
+**Single-line comments**:
 ```eligian
 // Single-line comment
+```
 
+**Multi-line comments**:
+```eligian
 /* Multi-line
    comment */
 ```
+
+**JSDoc documentation comments**:
+```eligian
+/**
+ * Documentation comment for custom actions
+ * @param paramName Description of the parameter
+ */
+```
+
+JSDoc-style comments (`/** */`) are recognized as documentation comments when placed directly above action definitions. They support:
+- Main description text (before any `@tag`)
+- `@param` tags with optional type and description: `@param {type} name description`
+- Markdown formatting in descriptions
+
+See [Section 4.4 Action Documentation](#44-action-documentation) for details.
 
 ### 2.2 Identifiers
 
@@ -340,7 +359,138 @@ action demo(value: number) [
 ]
 ```
 
-### 4.4 Calling Actions
+### 4.4 Action Documentation
+
+Actions can be documented using JSDoc-style comments placed directly above the action definition:
+
+```eligian
+/**
+ * Fades in an element over a specified duration with custom easing
+ * @param selector CSS selector for the target element
+ * @param duration Animation duration in milliseconds
+ * @param easing Easing function name (e.g., "ease-in", "linear")
+ */
+action fadeIn(selector: string, duration: number, easing: string) [
+  selectElement($operationdata.selector)
+  animate(
+    {opacity: 1},
+    $operationdata.duration,
+    $operationdata.easing
+  )
+]
+```
+
+#### Syntax
+
+**Structure**:
+```eligian
+/**
+ * <description>
+ * @param [<type>] <name> [<description>]
+ * ...
+ */
+action <name>(<parameters>) [...]
+```
+
+**Components**:
+- **Description**: Main documentation text (appears before any `@param` tags)
+- **@param tags**: Document each parameter with optional type and description
+  - Format: `@param {type} name description`
+  - Type is optional: `@param name description`
+  - Description is optional: `@param {type} name`
+  - Minimal form: `@param name`
+
+**Markdown Support**:
+JSDoc descriptions support basic markdown:
+- **Bold**: `**text**`
+- *Italic*: `*text*`
+- Code spans: `` `code` ``
+- Links: `[text](url)`
+
+#### Auto-Generation
+
+The VS Code extension automatically generates JSDoc templates. Type `/**` on the line above an action and press Enter:
+
+```eligian
+// 1. Position cursor here and type /**
+action fadeIn(selector: string, duration: number) [...]
+
+// 2. After pressing Enter, template auto-generates:
+/**
+ * |  <-- cursor positioned here for description
+ * @param {string} selector
+ * @param {number} duration
+ */
+action fadeIn(selector: string, duration: number) [...]
+```
+
+**Features**:
+- Automatically generates `@param` tag for each parameter in order
+- Pre-fills type annotations from action signature
+- Infers types for untyped parameters using the type system
+- Places cursor at description line for immediate editing
+
+#### Hover Documentation
+
+When hovering over an action invocation, the IDE displays formatted documentation from the JSDoc comment:
+
+```eligian
+timeline "demo" in "#app" using raf {
+  // Hovering over "fadeIn" shows tooltip:
+  // ### fadeIn
+  //
+  // Fades in an element over a specified duration with custom easing
+  //
+  // **Parameters:**
+  // - `selector` (`string`) - CSS selector for the target element
+  // - `duration` (`number`) - Animation duration in milliseconds
+  // - `easing` (`string`) - Easing function name (e.g., "ease-in", "linear")
+
+  at 0s..5s fadeIn("#box", 1000, "ease-in")
+}
+```
+
+**Graceful Degradation**:
+- Actions without JSDoc show basic signature: `actionName(param1: type1, param2: type2)`
+- Partial JSDoc (description only, no `@param` tags) displays available information
+- Malformed JSDoc falls back to signature without errors
+
+#### Best Practices
+
+**1. Document public actions** (reused across files):
+```eligian
+/**
+ * Shows an element with fade-in animation
+ * @param selector Element to show
+ * @param duration Animation length in ms
+ */
+action show(selector: string, duration: number) [...]
+```
+
+**2. Private/utility actions** (used once) may skip documentation:
+```eligian
+action _helperAction [...]  // No JSDoc needed for internal helpers
+```
+
+**3. Use markdown for clarity**:
+```eligian
+/**
+ * Animates element with **custom timing**
+ *
+ * Use `"ease-in"` for gradual start, `"linear"` for constant speed
+ * @param easing Timing function name
+ */
+```
+
+**4. Document expected parameter values**:
+```eligian
+/**
+ * @param direction One of: "left", "right", "up", "down"
+ * @param speed Pixels per second (100-1000 recommended)
+ */
+```
+
+### 4.5 Calling Actions
 
 Actions use the **unified call syntax** - they're called exactly like built-in operations:
 

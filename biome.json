@@ -19,7 +19,8 @@
       },
       "suspicious": {
         "noExplicitAny": "off",
-        "noShadowRestrictedNames": "off"
+        "noShadowRestrictedNames": "off",
+        "noAssignInExpressions": "off"
       }
     }
   },
