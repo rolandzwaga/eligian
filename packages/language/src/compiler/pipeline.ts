@@ -167,6 +167,9 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             const cssFiles: string[] = [];
             for (const statement of root.statements) {
               if (isDefaultImport(statement) && statement.type === 'styles') {
+                if (!statement.path) {
+                  continue;
+                }
                 const cssPath = statement.path.replace(/^["']|["']$/g, '');
                 cssFiles.push(cssPath);
               }

@@ -1192,6 +1192,9 @@ export class EligianValidator {
     const docDir = path.dirname(docPath);
 
     for (const cssImport of cssImports) {
+      if (!cssImport.path) {
+        continue;
+      }
       const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
       // Resolve relative path to absolute URI
       const cleanPath = cssPath.startsWith('./') ? cssPath.substring(2) : cssPath;
@@ -1255,6 +1258,9 @@ export class EligianValidator {
     const docDir = path.dirname(docPath);
 
     for (const cssImport of cssImports) {
+      if (!cssImport.path) {
+        continue;
+      }
       const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
 
       // Resolve to absolute URI to match registry keys
