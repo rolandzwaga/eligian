@@ -154,9 +154,12 @@
 
 - [x] **T030** **[US2]** Run integration test T026 - should now PASS (GREEN phase)
 - [x] **T031** **[US2]** Run unit test T027 - should now PASS
-- [ ] **T032** **[US2]** Build and test in VS Code extension (manual verification: reserved keyword errors only)
+- [x] **T032** **[US2]** Build and test in VS Code extension (manual verification: reserved keyword errors only)
 - [x] **T033** **[US2]** Run `pnpm run check && pnpm run typecheck`
-- [ ] **T034** **[US2]** Verify 80%+ coverage for US2 modules: `pnpm run test:coverage -- constant-validation`
+- [ ] **T034** **[US2]** Verify 80%+ coverage for US2 modules
+  - **NOTE**: Coverage command is broken (`pnpm run test:coverage` fails with exit code 1)
+  - **NOTE**: Correct command: `cd packages/language && pnpm run test:coverage:ci`
+  - **STATUS**: User reports tests FAIL - needs investigation and fix before marking complete
 
 **Checkpoint**: Phase 4 (US2) complete - Reserved keyword validation fully functional
 
