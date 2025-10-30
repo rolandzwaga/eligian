@@ -30,6 +30,9 @@ import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
  * ```
  */
 export function registerImportValidation(typir: TypirLangiumServices<EligianSpecifics>): void {
+  // Track which documents have already been validated to prevent duplicate validation
+  const validatedDocuments = new WeakSet<Program>();
+
   typir.validation.Collector.addValidationRulesForAstNodes({
     /**
      * Validate Program for duplicate default imports
@@ -47,6 +50,12 @@ export function registerImportValidation(typir: TypirLangiumServices<EligianSpec
      * ```
      */
     Program: (node: Program, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
+      // Guard: Skip if this document has already been validated
+      if (validatedDocuments.has(node)) {
+        return;
+      }
+      validatedDocuments.add(node);
+
       // Track seen default imports by type
       const seenDefaultImports = new Map<string, DefaultImport>();
 

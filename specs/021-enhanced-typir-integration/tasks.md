@@ -63,7 +63,7 @@
 
 ### Tests for US1 (Write FIRST, ensure FAIL)
 
-- [ ] **T013** [P] **[US1]** Write failing integration test in `packages/language/src/__tests__/typir-import-validation.spec.ts`:
+- [X] **T013** [P] **[US1]** Write failing integration test in `packages/language/src/__tests__/typir-import-validation.spec.ts`:
   - Test 1: Hover shows "Import<css>" for `styles './main.css'`
   - Test 2: Error on duplicate `layout` imports
   - Test 3: Warning on type mismatch (`import video from './intro.mp4' as html`)

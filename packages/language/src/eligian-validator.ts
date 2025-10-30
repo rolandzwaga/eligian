@@ -51,7 +51,7 @@ export function registerValidationChecks(services: EligianServices) {
     Program: [
       validator.checkTimelineRequired,
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
-      validator.checkDefaultImports, // T027-T028: US1 - Duplicate default import detection
+      // validator.checkDefaultImports, // DISABLED: Now handled by Typir validation (US1)
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
       validator.checkCSSImports, // Feature 013 T016: Extract and register CSS imports
@@ -59,7 +59,7 @@ export function registerValidationChecks(services: EligianServices) {
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: [
       validator.checkImportPath, // T017: US5 - Path validation for named imports
-      validator.checkAssetType, // T067-T068: US4 - Type inference validation
+      validator.checkAssetType, // US4: Validates unknown/ambiguous extensions (NOT US1)
     ],
     Timeline: [validator.checkValidProvider, validator.checkSourceRequired],
     TimelineEvent: [validator.checkValidTimeRange, validator.checkNonNegativeTimes],
