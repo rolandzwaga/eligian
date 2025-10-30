@@ -45,6 +45,12 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   private objectType: any;
   private arrayType: any;
   private unknownType: any;
+  // Custom type factories (stubs - will be initialized when implementing user stories)
+  // @ts-expect-error - Stub properties will be used in future user story implementations
+  private _importFactory: any;
+  private _eventFactory: any;
+  private _timelineFactory: any;
+
 
   /**
    * Initialize constant types (primitives, operation function types).

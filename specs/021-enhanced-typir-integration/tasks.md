@@ -71,7 +71,7 @@
   - Test 5: Named import inference from extension
   - **NOTE**: File MUST be isolated (one integration test per file per Constitution)
 
-- [ ] **T014** [P] **[US1]** Write failing unit tests for ImportType factory in `packages/language/src/type-system-typir/types/__tests__/import-type.spec.ts`:
+- [X] **T014** [P] **[US1]** Write failing unit tests for ImportType factory in `packages/language/src/type-system-typir/types/__tests__/import-type.spec.ts`:
   - Test 1: Factory creates ImportType with correct properties
   - Test 2: calculateTypeName returns "Import<assetType>"
   - Test 3: Default imports have isDefault=true
@@ -79,17 +79,17 @@
 
 ### Implementation for US1
 
-- [ ] **T015** [P] **[US1]** Create ImportType factory in `packages/language/src/type-system-typir/types/import-type.ts`:
+- [X] **T015** [P] **[US1]** Create ImportType factory in `packages/language/src/type-system-typir/types/import-type.ts`:
   - Define ImportType type (assetType, path, isDefault)
   - Create CustomKind factory with calculateTypeName
   - Export createImportTypeFactory function
 
-- [ ] **T016** [P] **[US1]** Implement import inference rules in `packages/language/src/type-system-typir/inference/import-inference.ts`:
+- [X] **T016** [P] **[US1]** Implement import inference rules in `packages/language/src/type-system-typir/inference/import-inference.ts`:
   - Register DefaultImport inference rule (infer from keyword)
   - Register NamedImport inference rule (infer from extension or `as` clause)
   - Helper: inferAssetTypeFromKeyword (layout→html, styles→css, provider→media)
 
-- [ ] **T017** [P] **[US1]** Write failing unit tests for import inference in `packages/language/src/type-system-typir/inference/__tests__/import-inference.spec.ts` (8 tests: each import type, edge cases)
+- [X] **T017** [P] **[US1]** Write failing unit tests for import inference in `packages/language/src/type-system-typir/inference/__tests__/import-inference.spec.ts` (8 tests: each import type, edge cases)
 
 - [ ] **T018** [P] **[US1]** Implement import validation rules in `packages/language/src/type-system-typir/validation/import-validation.ts`:
   - DefaultImport: Check duplicate default imports (traverse program)

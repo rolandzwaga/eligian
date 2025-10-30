@@ -10,3 +10,15 @@ import type { EligianAstType } from '../generated/ast.js';
 export interface EligianSpecifics extends TypirLangiumSpecifics {
   AstTypes: EligianAstType;
 }
+
+// Re-export enhanced type definitions
+export type {
+  AssetType,
+  ImportType,
+  TimelineEventType,
+  TimelineType,
+} from './types/typir-types.js';
+
+// Re-export utility functions
+export { inferAssetTypeFromExtension } from './utils/asset-type-inferrer.js';
+export { parseTimeExpression } from './utils/time-parser.js';
