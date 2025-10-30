@@ -23,12 +23,12 @@
 
 **Purpose**: Project structure and directory organization
 
-- [ ] **T001** Create directory structure: `mkdir -p packages/language/src/type-system-typir/{types,inference,validation,utils}`
-- [ ] **T002** Create `__tests__` directories for each module: `mkdir -p packages/language/src/type-system-typir/{types,inference,validation,utils}/__tests__`
-- [ ] **T003** [P] Copy type contracts from spec: `cp specs/021-enhanced-typir-integration/contracts/typir-types.ts packages/language/src/type-system-typir/types/`
-- [ ] **T004** [P] Verify Typir dependencies in `packages/language/package.json` (typir@1.0+, typir-langium@1.0+)
+- [X] **T001** Create directory structure: `mkdir -p packages/language/src/type-system-typir/{types,inference,validation,utils}`
+- [X] **T002** Create `__tests__` directories for each module: `mkdir -p packages/language/src/type-system-typir/{types,inference,validation,utils}/__tests__`
+- [X] **T003** [P] Copy type contracts from spec: `cp specs/021-enhanced-typir-integration/contracts/typir-types.ts packages/language/src/type-system-typir/types/`
+- [X] **T004** [P] Verify Typir dependencies in `packages/language/package.json` (typir@1.0+, typir-langium@1.0+)
 
-**Checkpoint**: Directory structure ready
+**Checkpoint**: Directory structure ready ✅
 
 ---
 
@@ -40,19 +40,18 @@
 
 ### Utility Functions (Shared by Multiple Stories)
 
-- [ ] **T005** [P] **[Util]** Write failing tests for time parser in `packages/language/src/type-system-typir/utils/__tests__/time-parser.spec.ts` (5 tests: valid 's', valid 'ms', invalid format, edge cases)
-- [ ] **T006** **[Util]** Implement time parser in `packages/language/src/type-system-typir/utils/time-parser.ts` (make tests pass)
-- [ ] **T007** [P] **[Util]** Write failing tests for asset type inferrer in `packages/language/src/type-system-typir/utils/__tests__/asset-type-inferrer.spec.ts` (8 tests: html, css, media extensions, unknown)
-- [ ] **T008** **[Util]** Implement asset type inferrer in `packages/language/src/type-system-typir/utils/asset-type-inferrer.ts` (make tests pass)
-- [ ] **T009** [P] **[Util]** Write failing tests for overlap detector in `packages/language/src/type-system-typir/utils/__tests__/overlap-detector.spec.ts` (6 tests: no overlap, partial overlap, full overlap, edge cases)
-- [ ] **T010** **[Util]** Implement overlap detector in `packages/language/src/type-system-typir/utils/overlap-detector.ts` (make tests pass)
+- [X] **T005** [P] **[Util]** Write failing tests for time parser in `packages/language/src/type-system-typir/utils/__tests__/time-parser.spec.ts` (5 tests: valid 's', valid 'ms', invalid format, edge cases)
+- [X] **T006** **[Util]** Implement time parser in `packages/language/src/type-system-typir/utils/time-parser.ts` (make tests pass)
+- [X] **T007** [P] **[Util]** Write failing tests for asset type inferrer in `packages/language/src/type-system-typir/utils/__tests__/asset-type-inferrer.spec.ts` (8 tests: html, css, media extensions, unknown)
+- [X] **T008** **[Util]** Implement asset type inferrer in `packages/language/src/type-system-typir/utils/asset-type-inferrer.ts` (make tests pass)
+- **~~T009-T010~~** **[REMOVED]** Overlap detector not needed (overlapping events are intentionally allowed per spec.md)
 
 ### Core Type System Integration Points
 
-- [ ] **T011** **[Util]** Update `eligian-specifics.ts` to export new type definitions (ImportType, TimelineEventType, TimelineType)
-- [ ] **T012** **[Util]** Add factory properties to `EligianTypeSystem` class in `eligian-type-system.ts` (importFactory, eventFactory, timelineFactory - stubs only)
+- [X] **T009** **[Util]** Update `eligian-specifics.ts` to export new type definitions (ImportType, TimelineEventType, TimelineType)
+- [X] **T010** **[Util]** Add factory properties to `EligianTypeSystem` class in `eligian-type-system.ts` (importFactory, eventFactory, timelineFactory - stubs only)
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Foundation ready ✅ - user story implementation can now begin in parallel
 
 ---
 
@@ -167,7 +166,7 @@
 
 ## Phase 5: User Story 3 - Timeline Event Validation (Priority: P2)
 
-**Goal**: Validate time ranges, detect overlapping events, show timing on hover
+**Goal**: Validate time ranges, durations, and show timing on hover
 
 **Independent Test**: Create timelines with various event configurations, verify validation works
 
@@ -176,11 +175,11 @@
 - [ ] **T036** [P] **[US3]** Write failing integration test in `packages/language/src/__tests__/typir-event-validation.spec.ts`:
   - Test 1: Error on negative start time (`at -1s..5s`)
   - Test 2: Error on end < start (`at 5s..2s`)
-  - Test 3: Warning on overlapping events ([0s..5s] and [3s..7s])
-  - Test 4: Error on negative sequence duration (`for -2s`)
-  - Test 5: Error on zero stagger delay (`stagger 0s`)
-  - Test 6: Hover shows "TimedEvent: 0s → 5s"
+  - Test 3: Error on negative sequence duration (`for -2s`)
+  - Test 4: Error on zero stagger delay (`stagger 0s`)
+  - Test 5: Hover shows "TimedEvent: 0s → 5s"
   - **NOTE**: File MUST be isolated
+  - **NOTE**: Overlapping events validation REMOVED per spec (overlaps are intentionally allowed)
 
 - [ ] **T037** [P] **[US3]** Write failing unit tests for TimelineEventType factory in `packages/language/src/type-system-typir/types/__tests__/timeline-event-type.spec.ts`:
   - Test 1: Factory creates TimedEvent type
@@ -207,9 +206,9 @@
   - TimedEvent: Validate startTime ≥ 0, endTime > startTime
   - SequenceEvent: Validate duration > 0
   - StaggerEvent: Validate delay > 0, items is array type
-  - Timeline: Detect overlapping timed events (use overlap detector from T010)
+  - **NOTE**: Overlap detection REMOVED per spec (overlaps are intentionally allowed)
 
-- [ ] **T042** [P] **[US3]** Write failing unit tests for event validation in `packages/language/src/type-system-typir/validation/__tests__/event-validation.spec.ts` (15 tests: each validation rule, overlap detection)
+- [ ] **T042** [P] **[US3]** Write failing unit tests for event validation in `packages/language/src/type-system-typir/validation/__tests__/event-validation.spec.ts` (12 tests: each validation rule, no overlap detection)
 
 - [ ] **T043** **[US3]** Register TimelineEventType factory and rules in `eligian-type-system.ts`:
   - Call createEventTypeFactory in onInitialize()
@@ -218,7 +217,7 @@
 
 - [ ] **T044** **[US3]** Run integration test T036 - should now PASS (GREEN phase)
 - [ ] **T045** **[US3]** Run all US3 unit tests - should now PASS
-- [ ] **T046** **[US3]** Build and test in VS Code extension (manual verification: time validation, overlap warnings, hover)
+- [ ] **T046** **[US3]** Build and test in VS Code extension (manual verification: time validation, hover)
 - [ ] **T047** **[US3]** Run `pnpm run check && pnpm run typecheck`
 - [ ] **T048** **[US3]** Verify 80%+ coverage for US3 modules: `pnpm run test:coverage -- event`
 
@@ -441,13 +440,13 @@ Phase 8 (Polish & Integration)
 # All utility tests can be written in parallel
 pnpm test:watch utils/__tests__/time-parser.spec.ts &          # T005
 pnpm test:watch utils/__tests__/asset-type-inferrer.spec.ts &  # T007
-pnpm test:watch utils/__tests__/overlap-detector.spec.ts &     # T009
 
 # After tests fail, implementations can be done in parallel
 # (Different files, no dependencies)
 vim utils/time-parser.ts &           # T006
 vim utils/asset-type-inferrer.ts &   # T008
-vim utils/overlap-detector.ts &      # T010
+
+# NOTE: Overlap detector (T009-T010) REMOVED - not needed per spec
 ```
 
 ### Phase 3 (US1) - Parallel Implementation After Tests
