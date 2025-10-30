@@ -21,7 +21,9 @@ import type { Position, TextDocument } from 'vscode-languageserver-protocol';
 
 export interface BlockLabel {
   startBracketPosition: Position;
+  startBracketClosingPosition: Position;
   endBracketPosition: Position;
+  endBracketClosingPosition: Position;
   type: 'action' | 'timeline';
 }
 
@@ -56,7 +58,9 @@ export async function findBlockLabels(document: TextDocument): Promise<BlockLabe
       if (bracketPositions) {
         labels.push({
           startBracketPosition: bracketPositions.start,
+          startBracketClosingPosition: bracketPositions.startClose,
           endBracketPosition: bracketPositions.end,
+          endBracketClosingPosition: bracketPositions.endClose,
           type: 'action',
         });
       }
@@ -66,7 +70,9 @@ export async function findBlockLabels(document: TextDocument): Promise<BlockLabe
       if (bracketPositions) {
         labels.push({
           startBracketPosition: bracketPositions.start,
+          startBracketClosingPosition: bracketPositions.startClose,
           endBracketPosition: bracketPositions.end,
+          endBracketClosingPosition: bracketPositions.endClose,
           type: 'timeline',
         });
       }
@@ -77,24 +83,26 @@ export async function findBlockLabels(document: TextDocument): Promise<BlockLabe
 }
 
 /**
- * Extract the positions of the opening '[' brackets for start and end blocks
+ * Extract the positions of all '[' and ']' brackets for start and end blocks
  *
  * Grammar structure:
  * - EndableActionDefinition: '[' startOperations ']' '[' endOperations ']'
  * - InlineEndableAction: '[' startOperations ']' '[' endOperations ']'
  *
- * We need the positions of the first and third '[' characters.
+ * We need the positions of: [ (start), ] (start close), [ (end), ] (end close)
  */
-function extractBracketPositions(
-  node: EndableActionDefinition | InlineEndableAction
-): { start: Position; end: Position } | null {
+function extractBracketPositions(node: EndableActionDefinition | InlineEndableAction): {
+  start: Position;
+  startClose: Position;
+  end: Position;
+  endClose: Position;
+} | null {
   const cstNode = node.$cstNode;
   if (!cstNode) {
     return null;
   }
 
-  // Find all '[' bracket tokens in the CST by checking text content
-  const bracketTokens: Position[] = [];
+  // Find all bracket tokens in the CST by checking text content
   const allBrackets: { text: string; pos: Position }[] = [];
 
   for (const child of CstUtils.streamCst(cstNode)) {
@@ -114,21 +122,14 @@ function extractBracketPositions(
     }
   }
 
-  // Extract only the opening brackets for start and end blocks
   // Pattern: [ ... ] [ ... ]
-  // We want the positions of the 1st and 2nd opening brackets
-  const openingBrackets = allBrackets.filter(b => b.text === '[');
-
-  if (openingBrackets.length >= 2) {
-    bracketTokens.push(openingBrackets[0].pos); // First [
-    bracketTokens.push(openingBrackets[1].pos); // Second [
-  }
-
-  // We need at least 2 opening brackets: one for start block, one for end block
-  if (bracketTokens.length >= 2) {
+  // We expect exactly 4 brackets in order: [, ], [, ]
+  if (allBrackets.length >= 4) {
     return {
-      start: bracketTokens[0], // First '[' opens start block
-      end: bracketTokens[1], // Second '[' opens end block
+      start: allBrackets[0].pos, // First '['
+      startClose: allBrackets[1].pos, // First ']'
+      end: allBrackets[2].pos, // Second '['
+      endClose: allBrackets[3].pos, // Second ']'
     };
   }
 

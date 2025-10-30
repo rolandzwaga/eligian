@@ -88,29 +88,30 @@ export class BlockLabelDecorationProvider {
       const endDecorations: vscode.DecorationOptions[] = [];
 
       for (const label of labels) {
-        // Create hover message based on label type
-        const hoverMessage = this.createHoverMessage(label);
+        // Create separate hover messages for start and end blocks
+        const startHoverMessage = this.createStartBlockHoverMessage(label);
+        const endHoverMessage = this.createEndBlockHoverMessage(label);
 
-        // Start bracket decoration
+        // Start block decoration - range covers entire block from [ to ]
         startDecorations.push({
           range: new vscode.Range(
             label.startBracketPosition.line,
             label.startBracketPosition.character,
-            label.startBracketPosition.line,
-            label.startBracketPosition.character
+            label.startBracketClosingPosition.line,
+            label.startBracketClosingPosition.character + 1
           ),
-          hoverMessage,
+          hoverMessage: startHoverMessage,
         });
 
-        // End bracket decoration
+        // End block decoration - range covers entire block from [ to ]
         endDecorations.push({
           range: new vscode.Range(
             label.endBracketPosition.line,
             label.endBracketPosition.character,
-            label.endBracketPosition.line,
-            label.endBracketPosition.character
+            label.endBracketClosingPosition.line,
+            label.endBracketClosingPosition.character + 1
           ),
-          hoverMessage,
+          hoverMessage: endHoverMessage,
         });
       }
 
@@ -128,25 +129,46 @@ export class BlockLabelDecorationProvider {
   }
 
   /**
-   * Create hover message for a block label
+   * Create hover message for start operation block
    * @param label - Block label information
    * @returns Markdown hover message
    */
-  private createHoverMessage(label: BlockLabel): vscode.MarkdownString {
+  private createStartBlockHoverMessage(label: BlockLabel): vscode.MarkdownString {
     const markdown = new vscode.MarkdownString();
     markdown.isTrusted = true;
 
+    markdown.appendMarkdown('### Start Operations\n\n');
+
     if (label.type === 'action') {
-      markdown.appendMarkdown('**Start operations** executed when:\n');
-      markdown.appendMarkdown('- Endable action begins\n\n');
-      markdown.appendMarkdown('**End operations** executed when:\n');
-      markdown.appendMarkdown('- Endable action ends');
+      markdown.appendMarkdown('These operations are executed when the endable action **begins**.');
     } else {
       // Timeline event
-      markdown.appendMarkdown('**Start operations** executed when:\n');
-      markdown.appendMarkdown('- Timeline reaches this point\n\n');
-      markdown.appendMarkdown('**End operations** executed when:\n');
-      markdown.appendMarkdown('- Timeline exits this time range');
+      markdown.appendMarkdown(
+        'These operations are executed when the timeline **reaches this point**.'
+      );
+    }
+
+    return markdown;
+  }
+
+  /**
+   * Create hover message for end operation block
+   * @param label - Block label information
+   * @returns Markdown hover message
+   */
+  private createEndBlockHoverMessage(label: BlockLabel): vscode.MarkdownString {
+    const markdown = new vscode.MarkdownString();
+    markdown.isTrusted = true;
+
+    markdown.appendMarkdown('### End Operations\n\n');
+
+    if (label.type === 'action') {
+      markdown.appendMarkdown('These operations are executed when the endable action **ends**.');
+    } else {
+      // Timeline event
+      markdown.appendMarkdown(
+        'These operations are executed when the timeline **exits this time range**.'
+      );
     }
 
     return markdown;
