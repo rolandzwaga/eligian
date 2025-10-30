@@ -157,9 +157,9 @@
 - [x] **T032** **[US2]** Build and test in VS Code extension (manual verification: reserved keyword errors only)
 - [x] **T033** **[US2]** Run `pnpm run check && pnpm run typecheck`
 - [ ] **T034** **[US2]** Verify 80%+ coverage for US2 modules
-  - **NOTE**: Coverage command is broken (`pnpm run test:coverage` fails with exit code 1)
-  - **NOTE**: Correct command: `cd packages/language && pnpm run test:coverage:ci`
-  - **STATUS**: User reports tests FAIL - needs investigation and fix before marking complete
+  - **NOTE**: Coverage command format: `cd packages/language && pnpm run test:coverage:ci`
+  - **STATUS**: Cannot verify until Phase 5 tests are complete (4 Phase 5 tests are failing in RED phase)
+  - **ACTION**: Will verify coverage after Phase 5 is complete and all tests pass
 
 **Checkpoint**: Phase 4 (US2) complete - Reserved keyword validation fully functional
 
