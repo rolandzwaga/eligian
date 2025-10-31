@@ -23,12 +23,15 @@ import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
 import { registerEventInference } from './inference/event-inference.js';
 import { registerImportInference } from './inference/import-inference.js';
+import { registerTimelineInference } from './inference/timeline-inference.js';
 import { createImportTypeFactory } from './types/import-type.js';
 import { createEventTypeFactory } from './types/timeline-event-type.js';
+import { createTimelineTypeFactory } from './types/timeline-type.js';
 import { registerConstantValidation } from './validation/constant-validation.js';
 import { registerControlFlowValidation } from './validation/control-flow-validation.js';
 import { registerEventValidation } from './validation/event-validation.js';
 import { registerImportValidation } from './validation/import-validation.js';
+import { registerTimelineValidation } from './validation/timeline-validation.js';
 
 /**
  * Type system definition for the Eligian DSL.
@@ -44,7 +47,7 @@ import { registerImportValidation } from './validation/import-validation.js';
  */
 export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpecifics> {
   // Store Typir services reference for use in onNewAstNode()
-  private typirServices!: TypirLangiumServices<EligianSpecifics>;
+  private _typirServices!: TypirLangiumServices<EligianSpecifics>;
 
   // Store primitive type references for use in action function type creation
   private stringType: any;
@@ -56,6 +59,26 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   // Custom type factories
   private _importFactory: any; // Initialized in onInitialize() for US1
   private _eventFactory: any; // Initialized in onInitialize() for US3
+  private _timelineFactory: any; // Initialized in onInitialize() for US5
+
+  /**
+   * Public getters for factories and services (used by inference/validation modules)
+   */
+  get typirServices(): TypirLangiumServices<EligianSpecifics> {
+    return this._typirServices;
+  }
+
+  get importFactory(): any {
+    return this._importFactory;
+  }
+
+  get eventFactory(): any {
+    return this._eventFactory;
+  }
+
+  get timelineFactory(): any {
+    return this._timelineFactory;
+  }
 
   /**
    * Initialize constant types (primitives, operation function types).
@@ -67,7 +90,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
    */
   onInitialize(typir: TypirLangiumServices<EligianSpecifics>): void {
     // Store reference for later use
-    this.typirServices = typir;
+    this._typirServices = typir;
     // ═══════════════════════════════════════════════════════════════════
     // STEP 1: Create Primitive Types (T013-T018)
     // ═══════════════════════════════════════════════════════════════════
@@ -137,6 +160,15 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     // Register control flow validation rules (if/for statement type checking) - US4
     registerControlFlowValidation(typir);
+
+    // Create TimelineType factory (US5)
+    this._timelineFactory = createTimelineTypeFactory(typir);
+
+    // Register timeline inference rules (Timeline AST node)
+    registerTimelineInference(this);
+
+    // Register timeline validation rules (provider-source consistency, CSS selector, empty timeline)
+    registerTimelineValidation(typir);
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 2: Helper - Map ParameterType to Typir Type (T019)

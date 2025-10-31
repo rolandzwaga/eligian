@@ -22,8 +22,8 @@ describe('CSS Selector Validation - Valid Selectors', () => {
 
   test('should not error when selector classes exist in CSS', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
-      classes: new Set(['button', 'primary', 'large']),
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set(['button', 'primary', 'large', 'container']),
       ids: new Set(['header', 'footer']),
       classLocations: new Map(),
       idLocations: new Map(),
@@ -53,8 +53,8 @@ describe('CSS Selector Validation - Valid Selectors', () => {
 
   test('should not error when selector IDs exist in CSS', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
-      classes: new Set(['active']),
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set(['active', 'container']),
       ids: new Set(['header', 'nav']),
       classLocations: new Map(),
       idLocations: new Map(),
@@ -87,8 +87,8 @@ describe('CSS Selector Validation - Valid Selectors', () => {
 
   test('should ignore pseudo-classes and validate only classes', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
-      classes: new Set(['button']),
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set(['button', 'container']),
       ids: new Set(),
       classLocations: new Map(),
       idLocations: new Map(),
@@ -118,8 +118,8 @@ describe('CSS Selector Validation - Valid Selectors', () => {
 
   test('should validate all classes in combinator selectors', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
-      classes: new Set(['parent', 'child', 'sibling']),
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set(['parent', 'child', 'sibling', 'container']),
       ids: new Set(),
       classLocations: new Map(),
       idLocations: new Map(),
@@ -147,7 +147,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
     expect(selectorErrors.length).toBe(0);
   });
 
-  test('should not error when no CSS files imported (opt-in validation)', async () => {
+  test('should error when no CSS files imported (all classes/IDs are invalid)', async () => {
     const code = `
       action selectAnything() [
         selectElement(".any-class-name")
@@ -162,13 +162,14 @@ describe('CSS Selector Validation - Valid Selectors', () => {
     const selectorErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('selector') || e.message.toLowerCase().includes('class')
     );
-    expect(selectorErrors.length).toBe(0);
+    // Should have at least 2 errors: selectElement(".any-class-name") and timeline container ".container"
+    expect(selectorErrors.length).toBeGreaterThanOrEqual(2);
   });
 
   test('should handle attribute selectors (attributes ignored)', async () => {
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
-      classes: new Set(['input']),
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set(['input', 'container']),
       ids: new Set(),
       classLocations: new Map(),
       idLocations: new Map(),

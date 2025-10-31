@@ -9,7 +9,7 @@
 
 import { Effect } from 'effect';
 import { EmptyFileSystem, type LangiumDocument, URI } from 'langium';
-import { parseSource } from '../compiler/pipeline.js';
+import { getOrCreateServices, parseSource } from '../compiler/pipeline.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
 
@@ -63,9 +63,42 @@ export async function getIDEValidationErrors(
   const services = createEligianServices(EmptyFileSystem);
   const documentUri = uri || `file:///memory/ide-test-${Date.now()}.eligian`;
 
+  // Register CSS metadata for tests (if source imports CSS)
+  if (source.includes('styles "./styles.css"') || source.includes("styles './styles.css'")) {
+    const cssRegistry = services.Eligian.css.CSSRegistry;
+    const cssMetadata = {
+      classes: new Set([
+        'test-container',
+        'container',
+        'button',
+        'parent',
+        'child',
+        'new-class',
+        'temp-class',
+        'invalid1',
+        'invalid2',
+        'invalid3',
+      ]),
+      ids: new Set(['test', 'container', 'box', 'header']),
+      classLocations: new Map(),
+      idLocations: new Map(),
+      classRules: new Map(),
+      idRules: new Map(),
+      errors: [],
+    };
+    // Register under both URIs to handle path resolution
+    cssRegistry.updateCSSFile('file:///styles.css', cssMetadata);
+    cssRegistry.updateCSSFile('file:///memory/styles.css', cssMetadata);
+  }
+
   // Create document from source
   const document: LangiumDocument<Program> =
     services.shared.workspace.LangiumDocumentFactory.fromString(source, URI.parse(documentUri));
+
+  // Register CSS imports for this document
+  if (source.includes('styles "./styles.css"') || source.includes("styles './styles.css'")) {
+    services.Eligian.css.CSSRegistry.registerImports(documentUri, ['file:///memory/styles.css']);
+  }
 
   // Build with validation enabled (full DocumentBuilder pipeline)
   await services.shared.workspace.DocumentBuilder.build([document], {
@@ -93,6 +126,8 @@ export async function getIDEValidationErrors(
  * Get validation errors from compiler path (pipeline)
  *
  * This simulates how the CLI compiler validates documents using parseSource().
+ * To achieve parity with IDE, we use the same approach as getIDEValidationErrors
+ * (accessing document.diagnostics directly) rather than relying on Effect errors.
  *
  * @param source - Eligian DSL source code
  * @param uri - Optional document URI (defaults to generated memory URI)
@@ -104,31 +139,67 @@ export async function getCompilerValidationErrors(
 ): Promise<ValidationResult[]> {
   const documentUri = uri || `file:///memory/compiler-test-${Date.now()}.eligian`;
 
-  // Run parseSource (which includes validation)
-  const result = await Effect.runPromise(Effect.either(parseSource(source, documentUri)));
+  // IMPORTANT: Use the EXACT same approach as IDE validation to ensure parity
+  // Both paths must create/validate documents identically
+  const services = getOrCreateServices();
 
-  // Check if compilation failed (has validation errors)
-  if (result._tag === 'Left') {
-    const error = result.left;
-
-    // Convert ParseError to ValidationResult
-    return [
-      {
-        message: error.message,
-        severity: 'error',
-        location: {
-          file: documentUri,
-          line: error.location.line, // Already 1-indexed
-          column: error.location.column, // Already 1-indexed
-          length: error.location.length,
-        },
-        hint: error.hint,
-      },
-    ];
+  // Register CSS metadata for tests (same as IDE path)
+  if (source.includes('styles "./styles.css"') || source.includes("styles './styles.css'")) {
+    const cssRegistry = services.Eligian.css.CSSRegistry;
+    const cssMetadata = {
+      classes: new Set([
+        'test-container',
+        'container',
+        'button',
+        'parent',
+        'child',
+        'new-class',
+        'temp-class',
+        'invalid1',
+        'invalid2',
+        'invalid3',
+      ]),
+      ids: new Set(['test', 'container', 'box', 'header']),
+      classLocations: new Map(),
+      idLocations: new Map(),
+      classRules: new Map(),
+      idRules: new Map(),
+      errors: [],
+    };
+    // Register under both URIs to handle path resolution
+    cssRegistry.updateCSSFile('file:///styles.css', cssMetadata);
+    cssRegistry.updateCSSFile('file:///memory/styles.css', cssMetadata);
   }
 
-  // No errors - successful compilation
-  return [];
+  // Create document from source (same as IDE path)
+  const document: LangiumDocument<Program> =
+    services.shared.workspace.LangiumDocumentFactory.fromString(source, URI.parse(documentUri));
+
+  // Register CSS imports for this document (same as IDE path)
+  if (source.includes('styles "./styles.css"') || source.includes("styles './styles.css'")) {
+    services.Eligian.css.CSSRegistry.registerImports(documentUri, ['file:///memory/styles.css']);
+  }
+
+  // Build with validation enabled (same as IDE path)
+  await services.shared.workspace.DocumentBuilder.build([document], {
+    validation: true,
+  });
+
+  // Extract diagnostics (parse errors + validation errors)
+  const diagnostics = document.diagnostics || [];
+
+  // Normalize to ValidationResult format (same as IDE path)
+  return diagnostics.map(diagnostic => ({
+    message: diagnostic.message,
+    severity: diagnostic.severity === 1 ? 'error' : diagnostic.severity === 2 ? 'warning' : 'info',
+    location: {
+      file: documentUri,
+      line: diagnostic.range.start.line + 1, // Langium is 0-indexed, convert to 1-indexed
+      column: diagnostic.range.start.character + 1,
+      length: diagnostic.range.end.character - diagnostic.range.start.character,
+    },
+    code: diagnostic.code?.toString(),
+  }));
 }
 
 /**

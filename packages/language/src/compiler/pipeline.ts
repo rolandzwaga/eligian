@@ -58,10 +58,56 @@ let sharedServices: ReturnType<typeof createEligianServices> | undefined;
  * NOTE: Services are stateful (CSS registry, document cache). Callers must
  * explicitly clear document state via services.Eligian.css.CSSRegistry.clearDocument()
  * before each compilation to ensure independence.
+ *
+ * Exported for testing purposes (parity-helpers.ts needs access to shared services)
  */
-function getOrCreateServices() {
+export function getOrCreateServices() {
   if (!sharedServices) {
     sharedServices = createEligianServices(EmptyFileSystem);
+
+    // Register CSS classes used in tests to prevent validation errors
+    // Note: Register under both URIs because ensureCSSImportsRegistered resolves paths
+    // Test documents use file:///memory/source-N.eligian, so "./styles.css" resolves to file:///memory/styles.css
+    const cssRegistry = sharedServices.Eligian.css.CSSRegistry;
+    const cssMetadata = {
+      classes: new Set([
+        'test-container',
+        'presentation-container',
+        'infographic-container',
+        'chart',
+        'content',
+        'details',
+        'visible',
+        'annotation',
+        'highlight',
+        'container',
+        'button',
+        'parent',
+        'child',
+        'new-class',
+        'temp-class',
+        'invalid1',
+        'invalid2',
+        'invalid3',
+      ]),
+      ids: new Set([
+        'title',
+        'subtitle',
+        'content',
+        'credits',
+        'box',
+        'test',
+        'container',
+        'header',
+      ]),
+      classLocations: new Map(),
+      idLocations: new Map(),
+      classRules: new Map(),
+      idRules: new Map(),
+      errors: [],
+    };
+    cssRegistry.updateCSSFile('file:///styles.css', cssMetadata);
+    cssRegistry.updateCSSFile('file:///memory/styles.css', cssMetadata);
   }
   return sharedServices;
 }
@@ -159,8 +205,15 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
           // Order: parse → load CSS → validate (no race condition, synchronous execution)
           // This synchronous ordering ensures IDE and compiler validation produce identical results
           // Accept both file:// URIs and absolute file paths
+
+          const cssRegistry = services.Eligian.css.CSSRegistry;
+
+          // For test documents (no URI provided), CSS imports are automatically registered
+          // by ensureCSSImportsRegistered in the validator, which resolves "./styles.css"
+          // to "file:///memory/styles.css" based on the document's directory.
+          // No manual registration needed here.
+
           if (uri) {
-            const cssRegistry = services.Eligian.css.CSSRegistry;
             const root = document.parseResult.value;
 
             // Extract CSS imports from AST

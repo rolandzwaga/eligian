@@ -178,6 +178,8 @@ describe('IDE-Compiler Validation Parity', () => {
   describe('Valid code produces no errors in both environments', () => {
     it('should produce no errors for valid code', async () => {
       const source = `
+        styles "./styles.css"
+
         action testAction [
           selectElement("#test")
         ]
@@ -197,6 +199,8 @@ describe('IDE-Compiler Validation Parity', () => {
 
     it('should produce no errors for complex valid code', async () => {
       const source = `
+        styles "./styles.css"
+
         action fadeIn() [
           selectElement("#test")
         ]
