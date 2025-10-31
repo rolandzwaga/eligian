@@ -2,8 +2,11 @@
  * Unit Tests: Control Flow Validation Rules (US4)
  *
  * Tests the control flow validation rules in isolation:
- * - IfStatement validation (boolean condition, empty branch)
+ * - IfStatement validation (boolean condition, empty then branch)
  * - ForStatement validation (array collection, empty body)
+ *
+ * Note: Empty else branch validation is not tested because we cannot reliably
+ * detect if the 'else' keyword was present in source code.
  */
 
 import { EmptyFileSystem } from 'langium';
@@ -93,19 +96,10 @@ describe('Control Flow Validation (Unit Tests)', () => {
       expect(emptyWarnings.length).toBeGreaterThan(0);
     });
 
-    test('should warn on empty else branch', async () => {
-      const code = `
-        action test() [
-          if (true) {
-            selectElement("#box")
-          } else {
-          }
-        ]
-      `;
-      const { warnings } = await parseAndValidate(code);
-      const emptyWarnings = warnings.filter(w => w.message.includes('empty'));
-      expect(emptyWarnings.length).toBeGreaterThan(0);
-    });
+    // Note: Empty else branch test removed because we cannot reliably detect
+    // if the 'else' keyword was present in the source (Langium AST always
+    // includes elseOps array even when no else clause exists).
+    // This would cause false positives for valid `if (x) { ... }` statements.
   });
 
   describe('ForStatement Validation', () => {

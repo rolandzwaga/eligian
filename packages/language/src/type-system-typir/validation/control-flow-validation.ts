@@ -3,9 +3,13 @@
  *
  * Registers validation rules for control flow statements:
  * - IfStatement: Validates condition is boolean (warning if not)
- * - IfStatement: Warns on empty branches
+ * - IfStatement: Warns on empty then branch
  * - ForStatement: Validates collection is array (error if not)
  * - ForStatement: Warns on empty body
+ *
+ * Note: Empty else branch validation is not implemented because the Langium AST
+ * always includes the elseOps array even when no else clause exists, making it
+ * impossible to distinguish between `if (x) {}` and `if (x) {} else {}`.
  *
  * @module type-system-typir/validation/control-flow-validation
  */
@@ -41,14 +45,17 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
      * Rules:
      * - Condition should be boolean type (warning if not)
      * - Then branch should not be empty (warning if empty)
-     * - Else branch should not be empty (warning if empty)
+     *
+     * Note: Empty else branch validation is disabled because we cannot reliably
+     * detect if the 'else' keyword was present in the source (Langium AST always
+     * includes elseOps array even when no else clause exists).
      *
      * @example
      * ```eligian
      * if ("string") { ... }     // WARNING: condition should be boolean
      * if (count > 5) { ... }    // OK: comparison expression is boolean
      * if (true) { }             // WARNING: empty then branch
-     * if (true) { ... } else {} // WARNING: empty else branch
+     * if (true) { ... }         // OK: no else clause
      * ```
      */
     IfStatement: (node: IfStatement, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
@@ -77,15 +84,21 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
         });
       }
 
-      // Check for empty else branch (if else exists)
-      if (node.elseOps !== undefined && (!node.elseOps || node.elseOps.length === 0)) {
-        accept({
-          severity: 'warning',
-          message: 'If statement has empty else branch',
-          languageNode: node,
-          languageProperty: 'elseOps',
-        });
-      }
+      // Check for empty else branch (only if else keyword was present)
+      // Note: We only warn if elseOps exists AND is non-empty but then becomes empty,
+      // or if we can detect the else keyword. For now, we check if elseOps has length > 0
+      // which means the else clause was parsed. If it's empty and was parsed, that's intentional.
+      // Actually, the grammar makes elseOps always present as an array, so we need to check
+      // if it was explicitly written. For now, disable this check to avoid false positives.
+      // TODO: Use CST to detect if 'else' keyword was actually present in source
+      // if (node.elseOps.length === 0 && hasElseKeyword(node)) {
+      //   accept({
+      //     severity: 'warning',
+      //     message: 'If statement has empty else branch',
+      //     languageNode: node,
+      //     languageProperty: 'elseOps',
+      //   });
+      // }
     },
 
     /**
