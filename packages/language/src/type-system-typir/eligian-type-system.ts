@@ -26,6 +26,7 @@ import { registerImportInference } from './inference/import-inference.js';
 import { createImportTypeFactory } from './types/import-type.js';
 import { createEventTypeFactory } from './types/timeline-event-type.js';
 import { registerConstantValidation } from './validation/constant-validation.js';
+import { registerControlFlowValidation } from './validation/control-flow-validation.js';
 import { registerEventValidation } from './validation/event-validation.js';
 import { registerImportValidation } from './validation/import-validation.js';
 
@@ -133,6 +134,9 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     // Register timeline event validation rules (time range checks, duration validation)
     registerEventValidation(typir);
+
+    // Register control flow validation rules (if/for statement type checking) - US4
+    registerControlFlowValidation(typir);
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 2: Helper - Map ParameterType to Typir Type (T019)
