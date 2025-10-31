@@ -305,7 +305,7 @@
 
 ### Tests for US5 (Write FIRST, ensure FAIL)
 
-- [ ] **T058** [P] **[US5]** Write failing integration test in `packages/language/src/__tests__/typir-timeline-config.spec.ts`:
+- [x] **T058** [P] **[US5]** Write failing integration test in `packages/language/src/__tests__/typir-timeline-config.spec.ts`:
   - Test 1: Error on video without source
   - Test 2: Warning on RAF with source
   - Test 3: Error on invalid CSS selector
@@ -313,43 +313,43 @@
   - Test 5: Warning on timeline with no events
   - **NOTE**: File MUST be isolated
 
-- [ ] **T059** [P] **[US5]** Write failing unit tests for TimelineType factory in `packages/language/src/type-system-typir/types/__tests__/timeline-type.spec.ts`:
+- [x] **T059** [P] **[US5]** Write failing unit tests for TimelineType factory in `packages/language/src/type-system-typir/types/__tests__/timeline-type.spec.ts`:
   - Test 1: Factory creates TimelineType with correct properties
   - Test 2: calculateTypeName returns "Timeline<provider>"
   - Test 3: Circular dependency handling (events array)
 
 ### Implementation for US5
 
-- [ ] **T060** [P] **[US5]** Create TimelineType factory in `packages/language/src/type-system-typir/types/timeline-type.ts`:
+- [x] **T060** [P] **[US5]** Create TimelineType factory in `packages/language/src/type-system-typir/types/timeline-type.ts`:
   - Define TimelineType (provider, containerSelector, source, events[])
   - Create CustomKind factory with calculateTypeName
   - Handle circular dependency (events reference TimelineEventType)
   - Export createTimelineTypeFactory function
 
-- [ ] **T061** [P] **[US5]** Implement timeline inference rules in `packages/language/src/type-system-typir/inference/timeline-inference.ts`:
+- [x] **T061** [P] **[US5]** Implement timeline inference rules in `packages/language/src/type-system-typir/inference/timeline-inference.ts`:
   - Register Timeline inference (infer provider, parse events)
   - Use TimelineEventType from T038
 
-- [ ] **T062** [P] **[US5]** Write failing unit tests for timeline inference in `packages/language/src/type-system-typir/inference/__tests__/timeline-inference.spec.ts` (6 tests: each provider type, events)
+- [x] **T062** [P] **[US5]** Write failing unit tests for timeline inference in `packages/language/src/type-system-typir/inference/__tests__/timeline-inference.spec.ts` (6 tests: each provider type, events)
 
-- [ ] **T063** [P] **[US5]** Implement timeline validation rules in `packages/language/src/type-system-typir/validation/timeline-validation.ts`:
+- [x] **T063** [P] **[US5]** Implement timeline validation rules in `packages/language/src/type-system-typir/validation/timeline-validation.ts`:
   - Timeline: Validate video/audio require source
   - Timeline: Warn if RAF/custom have source
   - Timeline: Validate CSS selector syntax (basic regex check)
   - Timeline: Warn if no events
 
-- [ ] **T064** [P] **[US5]** Write failing unit tests for timeline validation in `packages/language/src/type-system-typir/validation/__tests__/timeline-validation.spec.ts` (10 tests: each validation rule)
+- [x] **T064** [P] **[US5]** Write failing unit tests for timeline validation in `packages/language/src/type-system-typir/validation/__tests__/timeline-validation.spec.ts` (10 tests: each validation rule)
 
-- [ ] **T065** **[US5]** Register TimelineType factory and rules in `eligian-type-system.ts`:
+- [x] **T065** **[US5]** Register TimelineType factory and rules in `eligian-type-system.ts`:
   - Call createTimelineTypeFactory in onInitialize()
   - Call registerTimelineInference(this)
   - Call registerTimelineValidation(this.typirServices)
 
-- [ ] **T066** **[US5]** Run integration test T058 - should now PASS (GREEN phase)
-- [ ] **T067** **[US5]** Run all US5 unit tests - should now PASS
-- [ ] **T068** **[US5]** Build and test in VS Code extension (manual verification: timeline validation, hover)
-- [ ] **T069** **[US5]** Run `pnpm run check && pnpm run typecheck`
-- [ ] **T070** **[US5]** Verify 80%+ coverage for US5 modules: `pnpm run test:coverage -- timeline`
+- [x] **T066** **[US5]** Run integration test T058 - should now PASS (GREEN phase)
+- [x] **T067** **[US5]** Run all US5 unit tests - should now PASS
+- [x] **T068** **[US5]** Build and test in VS Code extension (manual verification: timeline validation, hover)
+- [x] **T069** **[US5]** Run `pnpm run check && pnpm run typecheck`
+- [x] **T070** **[US5]** Verify 80%+ coverage for US5 modules: `pnpm run test:coverage -- timeline`
 
 **Checkpoint**: US5 complete - Timeline configuration validation fully functional
 

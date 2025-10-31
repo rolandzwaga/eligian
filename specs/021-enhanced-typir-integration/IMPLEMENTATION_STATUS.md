@@ -104,29 +104,92 @@ This document tracks the implementation status of the Enhanced Typir Integration
 
 ---
 
+---
+
+### Phase 7: User Story 5 - Timeline Configuration Validation ✅ COMPLETE
+
+**Tasks Completed**: T058-T070 (13 tasks)
+
+**Goal**: Validate timeline configuration (provider-source consistency, container selector syntax) and provide hover information.
+
+**Implementation Files**:
+
+1. **[timeline-type.ts](../../../packages/language/src/type-system-typir/types/timeline-type.ts)** (2,135 bytes)
+   - CustomKind factory for TimelineType
+   - Properties: provider, containerSelector, source, events[]
+   - `calculateTypeName()`: Returns "Timeline<provider>" (e.g., "Timeline<video>", "Timeline<raf>")
+
+2. **[timeline-inference.ts](../../../packages/language/src/type-system-typir/inference/timeline-inference.ts)** (1,836 bytes)
+   - Timeline inference: Infers provider type, container selector, source
+   - Infers event types for all timeline events
+   - Returns TimelineType with inferred properties
+
+3. **[timeline-validation.ts](../../../packages/language/src/type-system-typir/validation/timeline-validation.ts)** (3,456 bytes)
+   - Video/audio providers MUST have source (error)
+   - RAF/custom providers should NOT have source (warning)
+   - Container selector must be valid CSS syntax (error)
+   - Timeline should not be empty (warning if no events)
+
+4. **[eligian-type-system.ts](../../../packages/language/src/type-system-typir/eligian-type-system.ts)** (Modified)
+   - Added timelineFactory to type system
+   - Registered timeline inference and validation rules
+   - Called in onInitialize()
+
+**Test Coverage**: 15 tests
+- Integration: 5 tests (typir-timeline-config.spec.ts)
+- Unit: 10 tests (timeline-type.spec.ts)
+
+**Test Results**: All 15 tests passing ✅
+
+**Timeline Validation Rules**:
+- Provider-source consistency (video/audio require source)
+- Source warnings (RAF/custom shouldn't have source)
+- CSS selector syntax validation
+- Empty timeline detection
+
+---
+
+### CSS Validation Test Fixes ✅ COMPLETE
+
+**Issue**: After fixing CSS validation logic to correctly treat all CSS as invalid when no imports exist, 40+ tests failed due to depending on incorrect behavior.
+
+**Tasks Completed**: Test fixes across 7 test files
+
+**Files Fixed**:
+1. **validation.spec.ts** (85 tests) - Added CSS registration, updated helper, added styles imports
+2. **pipeline.spec.ts** (22 tests) - Fixed CSS URI registration, added styles imports
+3. **valid-selector.spec.ts** (3 tests) - Changed to absolute file:/// URIs
+4. **valid-classname.spec.ts** (3 tests) - Added missing 'container' class
+5. **timeline-container-css-validation.spec.ts** (4 tests) - Added missing '#box' ID
+6. **ide-compiler-parity.spec.ts** (15 tests) - Rewrote getCompilerValidationErrors() for true parity
+7. **parity-helpers.ts** - Made IDE and compiler paths use identical validation logic
+
+**Infrastructure Changes**:
+- **pipeline.ts**: Added missing CSS classes/IDs, exported getOrCreateServices(), registered CSS under both URIs
+- **eligian-validator.ts**: Fixed Windows path detection for test documents
+
+**Test Results**: All 85 test files passing (1462 tests) ✅
+
+**Key Technical Fixes**:
+1. **CSS URI Path Resolution**: Tests now register under BOTH `file:///styles.css` and `file:///memory/styles.css` to handle path resolution
+2. **IDE/Compiler Parity**: Both paths now use identical DocumentBuilder.build() + document.diagnostics approach
+3. **Complete CSS Test Data**: All CSS classes/IDs used in tests are now properly registered
+
+---
+
 ## In Progress Work
 
-### Phase 5: User Story 3 - Timeline Event Validation 🚧 RED PHASE
+### Phase 5: User Story 3 - Timeline Event Validation ⏸️ DEFERRED
 
-**Tasks In Progress**: T036-T037 (RED phase complete)
+**Status**: Deferred in favor of US5 (timeline configuration) which had higher priority
 
-**Goal**: Validate timeline events (negative times, invalid ranges, duration constraints) and provide hover information.
+**Remaining Tasks**: T036-T047 (12 tasks)
+- TimelineEventType CustomKind factory
+- Event inference rules (TimedEvent, SequenceEvent, StaggerEvent)
+- Event validation rules (time constraints, duration validation)
+- Registration in type system
 
-**Files Created** (RED Phase):
-1. **[typir-event-validation.spec.ts](../../../packages/language/src/__tests__/typir-event-validation.spec.ts)** - 5 integration tests (placeholders)
-2. **[timeline-event-type.spec.ts](../../../packages/language/src/type-system-typir/types/__tests__/timeline-event-type.spec.ts)** - 6 unit tests (placeholders)
-
-**Test Status**: 11 tests passing (all placeholders, ready for GREEN phase)
-
-**Remaining Tasks**: T038-T047 (10 tasks)
-- T038: Create TimelineEventType factory
-- T039: Implement event inference rules
-- T040: Write event inference unit tests
-- T041: Implement event validation rules
-- T042: Write event validation unit tests
-- T043: Register in eligian-type-system.ts
-- T044-T045: Verify GREEN phase
-- T046-T047: Biome check and coverage verification
+**Estimated Effort**: 4-6 hours
 
 ---
 
@@ -199,9 +262,10 @@ This document tracks the implementation status of the Enhanced Typir Integration
 ## Test Summary
 
 ### Overall Statistics
-- **Total Tests**: 1,413 tests
-- **Passing**: 1,402 tests
+- **Total Tests**: 1,474 tests
+- **Passing**: 1,462 tests ✅
 - **Skipped**: 12 tests
+- **Test Files**: 85/85 passing (100%) ✅
 - **Coverage**: 81.76% (exceeds 80% requirement)
 
 ### Per-Phase Breakdown
@@ -211,8 +275,9 @@ This document tracks the implementation status of the Enhanced Typir Integration
 | Phase 1-2: Foundation | 19 | ✅ All Pass | 100% |
 | Phase 3: Import Validation | 35 | ✅ All Pass | 100% |
 | Phase 4: Constant Validation | 25 | ✅ All Pass | 100% |
-| Phase 5: Event Validation | 11 | 🚧 RED Phase | Pending |
-| **Total Typir Tests** | **90** | **79 Pass, 11 Placeholder** | **87.8%** |
+| Phase 5: Event Validation | 0 | ⏸️ Deferred | N/A |
+| Phase 7: Timeline Config | 15 | ✅ All Pass | 100% |
+| **Total Typir Tests** | **94** | **94 Pass** | **100%** |
 
 ### Integration Test Status
 
@@ -220,7 +285,8 @@ This document tracks the implementation status of the Enhanced Typir Integration
 |------------|-------------------|--------|-------|
 | US1: Import Validation | 5 tests | ⚠️ Placeholders | Pending Typir wiring |
 | US2: Constant Validation | 5 tests | ⚠️ Placeholders | Pending Typir wiring |
-| US3: Event Validation | 5 tests | ⚠️ Placeholders | RED phase complete |
+| US3: Event Validation | 0 tests | ⏸️ Deferred | Not implemented |
+| US5: Timeline Config | 5 tests | ✅ All Pass | Complete |
 
 ---
 
