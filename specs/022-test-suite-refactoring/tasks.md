@@ -79,20 +79,20 @@
   - Verify all tests pass: `pnpm test validation.spec.ts`
   - Verify test output is identical to baseline
 
-- [ ] **T006** [US1] Refactor `packages/language/src/__tests__/parsing.spec.ts` to use test-helpers.ts
+- [X] **T006** [US1] Refactor `packages/language/src/__tests__/parsing.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation with ctx = createTestContext()
   - Replace local parse() calls with ctx.parse() where appropriate
   - Add parse error checks using getErrors(document) per Langium best practices
   - Verify all tests pass: `pnpm test parsing.spec.ts`
 
-- [ ] **T007** [P] [US1] Refactor `packages/language/src/__tests__/typir-import-validation.spec.ts` to use test-helpers.ts
+- [X] **T007** [P] [US1] Refactor `packages/language/src/__tests__/typir-import-validation.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation
   - Update parseAndValidate() calls
   - Verify all tests pass
 
-- [ ] **T008** [P] [US1] Refactor `packages/language/src/__tests__/typir-constant-validation.spec.ts` to use test-helpers.ts
+- [X] **T008** [P] [US1] Refactor `packages/language/src/__tests__/typir-constant-validation.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation
   - Update parseAndValidate() calls

@@ -7,10 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { EmptyFileSystem } from 'langium';
-import { parseDocument } from 'langium/test';
-import { describe, expect, test } from 'vitest';
-import { createEligianServices } from '../eligian-module.js';
+import { beforeAll, describe, expect, test } from 'vitest';
 import {
   type DefaultImport,
   type EndableActionDefinition,
@@ -22,8 +19,13 @@ import {
   type Timeline,
 } from '../generated/ast.js';
 import { getElements, getImports } from '../utils/program-helpers.js';
+import { createTestContext, getErrors, type TestContext } from './test-helpers.js';
 
-const services = createEligianServices(EmptyFileSystem).Eligian;
+let ctx: TestContext;
+
+beforeAll(() => {
+  ctx = createTestContext();
+});
 
 function loadFixture(filename: string): string {
   const path = join(__dirname, '__fixtures__', filename);
@@ -31,7 +33,7 @@ function loadFixture(filename: string): string {
 }
 
 async function parseEligian(text: string): Promise<Program> {
-  const document = await parseDocument(services, text);
+  const document = await ctx.parse(text);
   return document.parseResult.value as Program;
 }
 
@@ -804,7 +806,7 @@ describe('Eligian Grammar - Parsing', () => {
   describe('Error recovery', () => {
     test('should handle syntax errors gracefully', async () => {
       const source = loadFixture('invalid/syntax-errors.eligian');
-      const document = await parseDocument(services, source);
+      const document = await ctx.parse( source);
 
       // Should have parse errors
       expect(
@@ -1119,7 +1121,7 @@ describe('Eligian Grammar - Parsing', () => {
       expect(action.$type).toBe('RegularActionDefinition');
 
       // Use CommentProvider to get the comment
-      const commentProvider = services.documentation.CommentProvider;
+      const commentProvider = ctx.services.Eligian.documentation.CommentProvider;
       const comment = commentProvider.getComment(action);
 
       expect(comment).toBeDefined();
@@ -1138,7 +1140,7 @@ describe('Eligian Grammar - Parsing', () => {
       const action = getElements(program)[0] as RegularActionDefinition;
 
       // Use CommentProvider to get the comment
-      const commentProvider = services.documentation.CommentProvider;
+      const commentProvider = ctx.services.Eligian.documentation.CommentProvider;
       const comment = commentProvider.getComment(action);
 
       expect(comment).toBeUndefined();
@@ -1160,7 +1162,7 @@ describe('Eligian Grammar - Parsing', () => {
       const action = getElements(program)[0] as RegularActionDefinition;
 
       // Use CommentProvider to get the comment
-      const commentProvider = services.documentation.CommentProvider;
+      const commentProvider = ctx.services.Eligian.documentation.CommentProvider;
       const comment = commentProvider.getComment(action);
 
       expect(comment).toBeDefined();
@@ -1181,7 +1183,7 @@ describe('Eligian Grammar - Parsing', () => {
       const action = getElements(program)[0] as RegularActionDefinition;
 
       // Use CommentProvider to get the comment
-      const commentProvider = services.documentation.CommentProvider;
+      const commentProvider = ctx.services.Eligian.documentation.CommentProvider;
       const comment = commentProvider.getComment(action);
 
       // Note: Langium's default CommentProvider DOES capture comments even with blank lines
@@ -1201,7 +1203,7 @@ describe('Eligian Grammar - Parsing', () => {
       const action = getElements(program)[0] as RegularActionDefinition;
 
       // Use CommentProvider to get the comment
-      const commentProvider = services.documentation.CommentProvider;
+      const commentProvider = ctx.services.Eligian.documentation.CommentProvider;
       const comment = commentProvider.getComment(action);
 
       // Langium's CommentProvider captures ALL comments (including /* */)
