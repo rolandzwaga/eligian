@@ -7,21 +7,19 @@
  * - Asset type mismatch warnings
  */
 
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { Hover, HoverParams } from 'vscode-languageserver';
 import { EligianHoverProvider } from '../eligian-hover-provider.js';
-import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('US1: Import Statement Type Checking (Integration)', () => {
-  const services = createEligianServices(EmptyFileSystem).Eligian;
-  const parse = parseHelper<Program>(services);
+  let ctx: TestContext;
   let provider: EligianHoverProvider;
 
+  // Expensive setup - runs once per suite
   beforeAll(() => {
-    provider = new EligianHoverProvider(services.css.CSSRegistry, services);
+    ctx = createTestContext();
+    provider = new EligianHoverProvider(ctx.services.Eligian.css.CSSRegistry, ctx.services.Eligian);
   });
 
   /**
@@ -34,10 +32,10 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
     }
 
     const cleanCode = code.replace('|', '');
-    const document = await parse(cleanCode);
+    const document = await ctx.parse(cleanCode);
 
     // Build the document with validation to ensure Typir types are inferred
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     const position = document.textDocument.positionAt(cursorIndex);
 
@@ -79,12 +77,13 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
       timeline "test" in "#app" using raf {}
     `;
 
-    const document = await parse(code);
+    const document = await ctx.parse(code);
 
     // Manually trigger validation
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
-    const validationErrors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
+    const validationErrors =
+      document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [];
 
     expect(validationErrors.length).toBeGreaterThan(0);
     expect(
@@ -99,12 +98,13 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
       timeline "test" in "#app" using raf {}
     `;
 
-    const document = await parse(code);
+    const document = await ctx.parse(code);
 
     // Manually trigger validation
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
-    const validationWarnings = document.diagnostics?.filter(d => d.severity === 2) ?? []; // 2 = Warning
+    const validationWarnings =
+      document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [];
 
     expect(validationWarnings.length).toBeGreaterThan(0);
     expect(

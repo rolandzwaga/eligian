@@ -6,30 +6,31 @@
  * - Valid constant names that don't conflict with keywords
  */
 
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
-import { describe, expect, test } from 'vitest';
-import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { beforeAll, describe, expect, test } from 'vitest';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('US2: Reserved Keyword Validation (Integration)', () => {
-  const services = createEligianServices(EmptyFileSystem).Eligian;
-  const parse = parseHelper<Program>(services);
+  let ctx: TestContext;
+
+  beforeAll(() => {
+    ctx = createTestContext();
+  });
 
   /**
    * Helper: Parse DSL code and return validation diagnostics
    */
   async function parseAndValidate(code: string) {
-    const document = await parse(code);
+    const document = await ctx.parse(code);
 
     // Manually trigger validation
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     return {
       document,
-      program: document.parseResult.value as Program,
+      program: document.parseResult.value,
       diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
+      validationErrors:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [],
     };
   }
 

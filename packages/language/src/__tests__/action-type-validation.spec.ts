@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
 import { getElements } from '../utils/program-helpers.js';
+import { DiagnosticSeverity } from './test-helpers.js';
 
 describe('Action Call Type Validation', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;
@@ -143,7 +144,7 @@ describe('Action Call Type Validation', () => {
     const diagnostics = await services.validation.DocumentValidator.validateDocument(document);
     //console.log('Diagnostics:', diagnostics);
 
-    const _typeErrors = diagnostics.filter(d => d.severity === 1); // Error severity
+    const _typeErrors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
     //console.log('Errors:', _typeErrors);
   });
 });

@@ -16,6 +16,7 @@ describe('Unified Action Syntax Integration (US1)', () => {
   let services: ReturnType<typeof createEligianServices>;
   let parse: ReturnType<typeof parseHelper<Program>>;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
     services = createEligianServices(EmptyFileSystem);
     parse = parseHelper<Program>(services.Eligian);

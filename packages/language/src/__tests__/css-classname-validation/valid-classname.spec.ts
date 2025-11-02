@@ -1,40 +1,19 @@
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
+import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
 describe('CSS className validation - Valid className parameters', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
+    ctx = createTestContext();
   });
-
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    return {
-      document,
-      program: document.parseResult.value as Program,
-      diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [],
-    };
-  }
 
   test('should not error when className exists in imported CSS', async () => {
     // Populate CSS registry with test data
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['button', 'primary', 'secondary', 'container']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button', 'primary', 'secondary', 'container'],
+      ids: [],
     });
 
     const code = `
@@ -48,7 +27,7 @@ describe('CSS className validation - Valid className parameters', () => {
         at 0s addButton()
       }
     `;
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should have no className-related errors
     const classNameErrors = validationErrors.filter(
@@ -68,7 +47,7 @@ describe('CSS className validation - Valid className parameters', () => {
         at 0s testAction()
       }
     `;
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     // No CSS imports = all classes invalid = errors expected
     const classNameErrors = validationErrors.filter(
@@ -80,24 +59,13 @@ describe('CSS className validation - Valid className parameters', () => {
 
   test('should not error for className in multiple CSS files', async () => {
     // Populate CSS registry with test data for both files
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['container', 'header']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['container', 'header'],
+      ids: [],
     });
-    cssRegistry.updateCSSFile('file:///theme.css', {
-      classes: new Set(['button', 'primary']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///theme.css', {
+      classes: ['button', 'primary'],
+      ids: [],
     });
 
     const code = `
@@ -112,7 +80,7 @@ describe('CSS className validation - Valid className parameters', () => {
         at 0s testAction()
       }
     `;
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     const classNameErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('class') && e.message.toLowerCase().includes('unknown')

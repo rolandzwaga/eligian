@@ -1,36 +1,18 @@
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
+import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
 describe('CSS Selector Validation - Unknown Classes and IDs', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
+    ctx = createTestContext();
   });
 
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    const validationErrors = document.diagnostics ?? [];
-    return { document, validationErrors };
-  }
-
   test('should error when selector contains unknown class', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['button']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button'],
+      ids: [],
     });
 
     const code = `
@@ -45,7 +27,7 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
       e.message.includes('Unknown CSS class in selector')
     );
@@ -54,16 +36,9 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
   });
 
   test('should error when selector contains unknown ID', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(),
-      ids: new Set(['header']),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: [],
+      ids: ['header'],
     });
 
     const code = `
@@ -78,7 +53,7 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
       e.message.includes('Unknown CSS ID in selector')
     );
@@ -87,16 +62,9 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
   });
 
   test('should error for multiple unknown classes in selector', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['button']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button'],
+      ids: [],
     });
 
     const code = `
@@ -111,7 +79,7 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
       e.message.includes('Unknown CSS class in selector')
     );
@@ -127,16 +95,9 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
   });
 
   test('should provide suggestions for similar class names', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['primary', 'secondary', 'button']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['primary', 'secondary', 'button'],
+      ids: [],
     });
 
     const code = `
@@ -151,7 +112,7 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e => e.message.includes('Unknown CSS class in selector') && e.message.includes('Did you mean')
     );
@@ -161,16 +122,9 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
   });
 
   test('should validate unknown classes in combinator selectors', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['parent']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['parent'],
+      ids: [],
     });
 
     const code = `
@@ -185,7 +139,7 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
       e.message.includes('Unknown CSS class in selector')
     );

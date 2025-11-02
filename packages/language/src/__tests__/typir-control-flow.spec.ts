@@ -8,26 +8,28 @@
  * Per Constitution Principle II: Integration tests MUST be isolated in separate files.
  */
 
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
-import { describe, expect, test } from 'vitest';
-import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { beforeAll, describe, expect, test } from 'vitest';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('US4: Control Flow Type Checking (Integration)', () => {
-  const services = createEligianServices(EmptyFileSystem).Eligian;
-  const parse = parseHelper<Program>(services);
+  let ctx: TestContext;
+
+  beforeAll(() => {
+    ctx = createTestContext();
+  });
 
   async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const document = await ctx.parse(code);
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     return {
       document,
       program: document.parseResult.value,
       diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
-      validationWarnings: document.diagnostics?.filter(d => d.severity === 2) ?? [], // 2 = Warning
+      validationErrors:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [],
+      validationWarnings:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [],
     };
   }
 

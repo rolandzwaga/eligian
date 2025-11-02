@@ -1,44 +1,21 @@
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
+import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
 describe('CSS className validation - Unknown className with suggestions', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
+    ctx = createTestContext();
   });
-
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    // DON'T manually register imports - the validator will do it automatically
-    // and resolve the CSS file paths correctly based on the document URI
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    return {
-      document,
-      program: document.parseResult.value as Program,
-      diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [],
-    };
-  }
 
   test('should error when className does not exist with suggestion', async () => {
     // Populate CSS registry with class similar to "primry"
     // NOTE: Document URI is file:///1.eligian, so "./styles.css" resolves to "file:///styles.css"
-    const cssRegistry = services.Eligian.css.CSSRegistry;
     const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['primary', 'secondary', 'button']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, cssFileUri, {
+      classes: ['primary', 'secondary', 'button'],
+      ids: [],
     });
 
     const code = `
@@ -52,7 +29,7 @@ describe('CSS className validation - Unknown className with suggestions', () => 
         at 0s testAction()
       }
     `;
-    const { validationErrors } = await parseAndValidate(code, cssFileUri);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code, cssFileUri);
 
     const classNameErrors = validationErrors.filter(
       e => e.message.includes('Unknown CSS class') && e.message.includes('Did you mean')
@@ -62,16 +39,10 @@ describe('CSS className validation - Unknown className with suggestions', () => 
 
   test('should suggest multiple similar class names', async () => {
     // Populate CSS registry with classes similar to "buton"
-    const cssRegistry = services.Eligian.css.CSSRegistry;
     const cssFileUri = 'file:///test/styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['button', 'buttons', 'bottom']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, cssFileUri, {
+      classes: ['button', 'buttons', 'bottom'],
+      ids: [],
     });
 
     const code = `
@@ -85,7 +56,7 @@ describe('CSS className validation - Unknown className with suggestions', () => 
         at 0s testAction()
       }
     `;
-    const { validationErrors } = await parseAndValidate(code, cssFileUri);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code, cssFileUri);
 
     const classNameErrors = validationErrors.filter(e => e.message.includes('Unknown CSS class'));
     expect(classNameErrors.length).toBeGreaterThan(0);
@@ -97,16 +68,10 @@ describe('CSS className validation - Unknown className with suggestions', () => 
 
   test('should error without suggestion when no similar classes exist', async () => {
     // Populate CSS registry with classes that are very different
-    const cssRegistry = services.Eligian.css.CSSRegistry;
     const cssFileUri = 'file:///test/styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['button', 'primary', 'secondary']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, cssFileUri, {
+      classes: ['button', 'primary', 'secondary'],
+      ids: [],
     });
 
     const code = `
@@ -120,7 +85,7 @@ describe('CSS className validation - Unknown className with suggestions', () => 
         at 0s testAction()
       }
     `;
-    const { validationErrors } = await parseAndValidate(code, cssFileUri);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code, cssFileUri);
 
     const classNameErrors = validationErrors.filter(e => e.message.includes('Unknown CSS class'));
     expect(classNameErrors.length).toBeGreaterThan(0);

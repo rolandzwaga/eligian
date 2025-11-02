@@ -25,18 +25,17 @@ describe('Parameter Types from Eligius', () => {
     expect(param.type[0]).toBe('ParameterType:string');
   });
 
-  it('should handle all standard Eligius parameter types', () => {
-    const standardTypes: metadata.TParameterTypes[] = [
-      'ParameterType:string',
-      'ParameterType:number',
-      'ParameterType:boolean',
-      'ParameterType:object',
-      'ParameterType:array',
-      'ParameterType:className',
-      'ParameterType:selector',
-    ];
-
-    for (const eligiusType of standardTypes) {
+  it.each([
+    { type: 'ParameterType:string' as const, description: 'string type' },
+    { type: 'ParameterType:number' as const, description: 'number type' },
+    { type: 'ParameterType:boolean' as const, description: 'boolean type' },
+    { type: 'ParameterType:object' as const, description: 'object type' },
+    { type: 'ParameterType:array' as const, description: 'array type' },
+    { type: 'ParameterType:className' as const, description: 'className type' },
+    { type: 'ParameterType:selector' as const, description: 'selector type' },
+  ])(
+    'should handle standard Eligius parameter type $type ($description)',
+    ({ type: eligiusType }) => {
       const param: OperationParameter = {
         name: 'test',
         type: [eligiusType],
@@ -45,13 +44,14 @@ describe('Parameter Types from Eligius', () => {
 
       expect(param.type[0]).toBe(eligiusType);
     }
-  });
+  );
 
-  it('should handle newly added Eligius types without code changes', () => {
-    // Eligius recently added these types
-    const newTypes: metadata.TParameterTypes[] = ['ParameterType:function', 'ParameterType:Date'];
-
-    for (const eligiusType of newTypes) {
+  it.each([
+    { type: 'ParameterType:function' as const, description: 'function type (recently added)' },
+    { type: 'ParameterType:Date' as const, description: 'Date type (recently added)' },
+  ])(
+    'should handle newly added Eligius type $type without code changes ($description)',
+    ({ type: eligiusType }) => {
       const param: OperationParameter = {
         name: 'test',
         type: [eligiusType],
@@ -60,5 +60,5 @@ describe('Parameter Types from Eligius', () => {
 
       expect(param.type[0]).toBe(eligiusType);
     }
-  });
+  );
 });
