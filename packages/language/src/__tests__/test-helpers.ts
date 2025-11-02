@@ -116,6 +116,46 @@ export enum DiagnosticSeverity {
 }
 
 // ============================================================================
+// CSS Test Fixtures
+// ============================================================================
+
+/**
+ * CSS_FIXTURES: Predefined CSS test data
+ *
+ * Pre-defined CSS class and ID fixtures for common test scenarios.
+ * Use these to eliminate CSS registry boilerplate in tests.
+ *
+ * @example
+ * ```typescript
+ * // Use common fixture
+ * setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+ *
+ * // Use timeline fixture
+ * setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.timeline);
+ *
+ * // Merge fixtures for tests needing both
+ * const merged: CSSFixture = {
+ *   classes: [...(CSS_FIXTURES.common.classes ?? []), ...(CSS_FIXTURES.timeline.classes ?? [])],
+ *   ids: [...(CSS_FIXTURES.common.ids ?? []), ...(CSS_FIXTURES.timeline.ids ?? [])],
+ * };
+ * setupCSSRegistry(ctx, 'file:///styles.css', merged);
+ * ```
+ */
+export const CSS_FIXTURES = {
+  /** Common CSS classes and IDs used across most tests */
+  common: {
+    classes: ['button', 'primary', 'secondary', 'active', 'hidden', 'visible'],
+    ids: ['app', 'container', 'box', 'element'],
+  } as CSSFixture,
+
+  /** Timeline-specific CSS classes and IDs */
+  timeline: {
+    classes: ['test-container', 'container', 'presentation-container'],
+    ids: ['test', 'title', 'credits'],
+  } as CSSFixture,
+} as const;
+
+// ============================================================================
 // Factory Functions
 // ============================================================================
 
@@ -236,4 +276,56 @@ export function getErrors(document: LangiumDocument): Diagnostic[] {
  */
 export function getWarnings(document: LangiumDocument): Diagnostic[] {
   return document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [];
+}
+
+/**
+ * Setup CSS registry with test fixture data
+ *
+ * Populates the CSS registry with predefined CSS classes and IDs for testing.
+ * This eliminates the need to manually call updateCSSFile() with boilerplate
+ * metadata in every CSS-related test.
+ *
+ * @param ctx Test context from createTestContext()
+ * @param cssFileUri CSS file URI (default: 'file:///styles.css')
+ * @param fixture CSS fixture with classes and IDs (default: CSS_FIXTURES.common)
+ *
+ * @example
+ * ```typescript
+ * import { createTestContext, setupCSSRegistry, CSS_FIXTURES } from './test-helpers.js';
+ *
+ * describe('CSS Tests', () => {
+ *   let ctx: TestContext;
+ *
+ *   beforeAll(() => {
+ *     ctx = createTestContext();
+ *     setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+ *   });
+ *
+ *   test('validates CSS class', async () => {
+ *     const { errors } = await ctx.parseAndValidate(`
+ *       action test [ addClass("button") ]
+ *     `);
+ *     expect(errors).toHaveLength(0);
+ *   });
+ * });
+ * ```
+ */
+export function setupCSSRegistry(
+  ctx: TestContext,
+  cssFileUri = 'file:///styles.css',
+  fixture: CSSFixture = CSS_FIXTURES.common
+): void {
+  // Get CSS registry from services
+  const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
+
+  // Update CSS file with fixture data
+  cssRegistry.updateCSSFile(cssFileUri, {
+    classes: new Set(fixture.classes ?? []),
+    ids: new Set(fixture.ids ?? []),
+    classLocations: new Map(),
+    idLocations: new Map(),
+    classRules: new Map(),
+    idRules: new Map(),
+    errors: [],
+  });
 }

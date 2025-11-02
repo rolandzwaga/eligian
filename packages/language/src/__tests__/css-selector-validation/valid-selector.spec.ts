@@ -1,35 +1,17 @@
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
+import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
 describe('CSS Selector Validation - Valid Selectors', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
 
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
-  });
-
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    const validationErrors = document.diagnostics ?? [];
-    return { document, validationErrors };
-  }
+    ctx = createTestContext();
+  })
 
   test('should not error when selector classes exist in CSS', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['button', 'primary', 'large', 'container']),
-      ids: new Set(['header', 'footer']),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button', 'primary', 'large', 'container'],
+      ids: ['header', 'footer'],
     });
 
     const code = `
@@ -44,7 +26,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('selector') || e.message.toLowerCase().includes('class')
     );
@@ -52,15 +34,9 @@ describe('CSS Selector Validation - Valid Selectors', () => {
   });
 
   test('should not error when selector IDs exist in CSS', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['active', 'container']),
-      ids: new Set(['header', 'nav']),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['active', 'container'],
+      ids: ['header', 'nav'],
     });
 
     const code = `
@@ -75,7 +51,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e =>
         e.message.toLowerCase().includes('selector') ||
@@ -86,15 +62,9 @@ describe('CSS Selector Validation - Valid Selectors', () => {
   });
 
   test('should ignore pseudo-classes and validate only classes', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['button', 'container']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button', 'container'],
+      ids: [],
     });
 
     const code = `
@@ -109,7 +79,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('selector') || e.message.toLowerCase().includes('class')
     );
@@ -117,15 +87,9 @@ describe('CSS Selector Validation - Valid Selectors', () => {
   });
 
   test('should validate all classes in combinator selectors', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['parent', 'child', 'sibling', 'container']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['parent', 'child', 'sibling', 'container'],
+      ids: [],
     });
 
     const code = `
@@ -140,7 +104,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('selector') || e.message.toLowerCase().includes('class')
     );
@@ -158,7 +122,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('selector') || e.message.toLowerCase().includes('class')
     );
@@ -167,15 +131,9 @@ describe('CSS Selector Validation - Valid Selectors', () => {
   });
 
   test('should handle attribute selectors (attributes ignored)', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('file:///styles.css', {
-      classes: new Set(['input', 'container']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['input', 'container'],
+      ids: [],
     });
 
     const code = `
@@ -190,7 +148,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('selector') || e.message.toLowerCase().includes('class')
     );
