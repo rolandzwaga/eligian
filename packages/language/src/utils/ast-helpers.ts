@@ -11,6 +11,7 @@ import type {
   ActionDefinition,
   DefaultImport,
   ImportStatement,
+  LibraryImport,
   NamedImport,
   ProgramElement,
 } from '../generated/ast.js';
@@ -100,4 +101,21 @@ export function isProgramElement(node: AstNode | undefined): node is ProgramElem
  */
 export function isActionDefinition(node: AstNode | undefined): node is ActionDefinition {
   return node?.$type === 'RegularActionDefinition' || node?.$type === 'EndableActionDefinition';
+}
+
+/**
+ * Type guard for LibraryImport AST nodes
+ *
+ * @param node - AST node to check
+ * @returns true if node is a LibraryImport, false otherwise
+ *
+ * @example
+ * ```typescript
+ * if (isLibraryImport(node)) {
+ *   // node is a library import statement
+ * }
+ * ```
+ */
+export function isLibraryImport(node: AstNode | undefined): node is LibraryImport {
+  return node?.$type === 'LibraryImport';
 }

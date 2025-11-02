@@ -18,6 +18,7 @@
 import { Effect } from 'effect';
 import type { TransformError } from '../errors/index.js';
 import type {
+  ActionDefinition,
   TimeExpression as AstTimeExpression,
   BreakStatement,
   ContinueStatement,
@@ -36,7 +37,12 @@ import type {
   VariableDeclaration,
 } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
-import { getActions, getTimelines, getVariables } from '../utils/program-helpers.js';
+import {
+  getActions,
+  getLibraryImports,
+  getTimelines,
+  getVariables,
+} from '../utils/program-helpers.js';
 import { buildConstantMap } from './constant-folder.js';
 import { evaluateExpression } from './expression-evaluator.js';
 import { findActionByName } from './name-resolver.js';
@@ -109,6 +115,57 @@ function createEmptyScope(): ScopeContext {
     loopVariableName: undefined,
     scopedConstants: new Map(),
   };
+}
+
+/**
+ * T044: Resolve library imports and collect imported actions (Feature 023 - User Story 2)
+ *
+ * This function processes all LibraryImport statements in a program and collects the imported actions.
+ * It handles aliasing - if an action is imported with an alias, it returns the action with the alias name
+ * applied so that downstream compilation uses the alias.
+ *
+ * Note: This relies on Langium's cross-reference resolution to already have resolved ActionImport.action
+ * references to actual ActionDefinition nodes from library files. If references are unresolved,
+ * those imports will be skipped (validation should have caught these errors).
+ *
+ * @param program - Program AST node with potential library imports
+ * @returns Array of ActionDefinition nodes (with aliases applied where necessary)
+ */
+function resolveImports(
+  program: Program
+): Effect.Effect<ActionDefinition[], TransformError, never> {
+  return Effect.gen(function* (_) {
+    const libraryImports = getLibraryImports(program);
+    const importedActions: ActionDefinition[] = [];
+
+    for (const libraryImport of libraryImports) {
+      for (const actionImport of libraryImport.actions) {
+        // Get the resolved ActionDefinition from the reference
+        // If the reference is unresolved (undefined), skip it - validation should have caught this
+        const actionDef = actionImport.action.ref;
+        if (!actionDef) {
+          // Reference not resolved - skip (validation error should exist)
+          continue;
+        }
+
+        // T045: Handle aliasing - if action has alias, create a modified action with alias name
+        if (actionImport.alias) {
+          // Create a new action object with the alias name
+          // We need to preserve all other properties but change the name
+          const aliasedAction: ActionDefinition = {
+            ...actionDef,
+            name: actionImport.alias,
+          };
+          importedActions.push(aliasedAction);
+        } else {
+          // No alias - use original action
+          importedActions.push(actionDef);
+        }
+      }
+    }
+
+    return importedActions;
+  });
 }
 
 /**
@@ -187,8 +244,16 @@ export const transformAST = (
       });
     }
 
-    // Extract action definitions (both regular and endable)
-    const actionDefinitions = getActions(program);
+    // T046: Extract local action definitions (both regular and endable)
+    const localActions = getActions(program);
+
+    // T044/T045: Resolve library imports and collect imported actions (with aliases applied)
+    const importedActions = yield* _(resolveImports(program));
+
+    // Merge imported and local actions - imported actions come first, then local actions
+    // This ensures local actions can override imported ones if there are name conflicts
+    // (though validation should prevent this)
+    const actionDefinitions = [...importedActions, ...localActions];
 
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
