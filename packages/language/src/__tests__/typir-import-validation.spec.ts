@@ -16,6 +16,7 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
   let ctx: TestContext;
   let provider: EligianHoverProvider;
 
+  // Expensive setup - runs once per suite
   beforeAll(() => {
     ctx = createTestContext();
     provider = new EligianHoverProvider(ctx.services.Eligian.css.CSSRegistry, ctx.services.Eligian);

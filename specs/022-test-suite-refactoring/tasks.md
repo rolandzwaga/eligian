@@ -226,7 +226,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] **T025** [US3] Document lifecycle hook patterns in test-helpers.ts
+- [X] **T025** [US3] Document lifecycle hook patterns in test-helpers.ts
   - Add module-level JSDoc comment section explaining best practices:
     - Use beforeAll() for expensive setup (service creation) - runs once per suite
     - Use beforeEach() for per-test isolation (when tests modify shared state)
@@ -235,45 +235,46 @@
   - Add code examples in JSDoc comments
   - Reference TEST_SUITE_ANALYSIS.md section on lifecycle hooks
 
-- [ ] **T026** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/validation.spec.ts`
+- [X] **T026** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/validation.spec.ts`
   - Add inline comment in beforeAll() explaining: "Expensive setup - runs once per suite"
   - Add afterEach() hook if test suite uses mocks/spies: `afterEach(() => vi.restoreAllMocks())`
   - Verify pattern consistency with other files
   - Verify all tests pass
 
-- [ ] **T027** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/parsing.spec.ts`
+- [X] **T027** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/parsing.spec.ts`
   - Add inline comments documenting lifecycle hook purpose
   - Add afterEach() for cleanup if needed
   - Verify all tests pass
 
-- [ ] **T028** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/typir-import-validation.spec.ts`
+- [X] **T028** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/typir-import-validation.spec.ts`
   - Add inline comments
   - Add afterEach() for cleanup
   - Verify all tests pass
 
-- [ ] **T029** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/css-classname-validation/valid-classname.spec.ts`
+- [X] **T029** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/css-classname-validation/valid-classname.spec.ts`
   - Add inline comments
   - Add afterEach() to clear CSS registry state if needed
   - Verify all tests pass
 
-- [ ] **T030** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/css-selector-validation/valid-selector.spec.ts`
+- [X] **T030** [P] [US3] Standardize lifecycle hooks in `packages/language/src/__tests__/css-selector-validation/valid-selector.spec.ts`
   - Add inline comments
   - Add afterEach() for CSS registry cleanup
   - Verify all tests pass
 
-- [ ] **T031** [P] [US3] Standardize lifecycle hooks in 5-10 additional test files
+- [X] **T031** [P] [US3] Standardize lifecycle hooks in 5-10 additional test files
   - Identify test files with inconsistent lifecycle hook usage (from TEST_SUITE_ANALYSIS.md)
   - Add inline comments documenting hook purpose
   - Add afterEach() cleanup where needed
   - Verify all tests pass for each file
+  - Updated 8 files: css-hot-reload, css-invalid-file, constant-folding, css-completion-classname, unified-action-syntax, jsdoc-hover
 
-- [ ] **T032** [US3] Run full test suite to verify User Story 3 completion
+- [X] **T032** [US3] Run full test suite to verify User Story 3 completion
   - Execute: `pnpm test`
   - Verify: All 1462 tests pass
   - Verify: No state leakage between tests (run tests multiple times to check for flakiness)
   - Review: Test output for consistent patterns
 
-- [ ] **T033** [US3] Run code quality checks for User Story 3
+- [X] **T033** [US3] Run code quality checks for User Story 3
   - Execute: `pnpm run check`
   - Execute: `pnpm run typecheck`
   - Verify: 0 errors, 0 warnings

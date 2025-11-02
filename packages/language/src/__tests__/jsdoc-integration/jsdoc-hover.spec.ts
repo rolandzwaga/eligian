@@ -21,6 +21,7 @@ describe('JSDoc Hover (T021 - US3)', () => {
   const parse = parseHelper<Program>(services);
   let provider: EligianHoverProvider;
 
+  // Expensive setup - runs once per suite
   beforeAll(() => {
     provider = new EligianHoverProvider(services.css.CSSRegistry, services);
   });

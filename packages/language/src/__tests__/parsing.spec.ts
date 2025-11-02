@@ -23,6 +23,7 @@ import { createTestContext, type TestContext } from './test-helpers.js';
 
 let ctx: TestContext;
 
+// Expensive setup - runs once per suite
 beforeAll(() => {
   ctx = createTestContext();
 });

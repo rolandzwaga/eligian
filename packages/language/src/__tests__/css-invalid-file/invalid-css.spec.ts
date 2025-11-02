@@ -14,6 +14,7 @@ import { createTestContext, type TestContext } from '../test-helpers.js';
 describe('Invalid CSS File Handling (T025)', () => {
   let ctx: TestContext;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
     ctx = createTestContext();
   });

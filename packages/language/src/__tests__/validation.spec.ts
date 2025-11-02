@@ -6,6 +6,7 @@ import { createTestContext, type TestContext } from './test-helpers.js';
 describe('Eligian Grammar - Validation', () => {
   let ctx: TestContext;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
     ctx = createTestContext();
 

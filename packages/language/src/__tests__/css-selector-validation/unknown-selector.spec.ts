@@ -4,6 +4,7 @@ import { createTestContext, setupCSSRegistry, type TestContext } from '../test-h
 describe('CSS Selector Validation - Unknown Classes and IDs', () => {
   let ctx: TestContext;
 
+  // Expensive setup - runs once per suite
   beforeAll(async () => {
     ctx = createTestContext();
   });

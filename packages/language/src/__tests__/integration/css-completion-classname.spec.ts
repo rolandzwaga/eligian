@@ -26,6 +26,7 @@ describe('CSS Completion Integration: className Parameters', () => {
   let completion: ReturnType<typeof expectCompletion>;
   let _parse: ReturnType<typeof parseHelper<Program>>;
 
+  // Expensive setup - runs once per suite
   beforeAll(() => {
     // Create services
     services = createEligianServices(EmptyFileSystem);

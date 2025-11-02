@@ -9,7 +9,145 @@
  * - DiagnosticSeverity: Enum for diagnostic severity levels
  * - getErrors() / getWarnings(): Filter diagnostics by severity
  *
+ * ## Lifecycle Hook Best Practices
+ *
+ * When writing tests, follow these patterns for lifecycle hooks:
+ *
+ * ### beforeAll() - Expensive Setup (Once Per Suite)
+ *
+ * Use `beforeAll()` for expensive operations that can be shared across all tests
+ * in a suite. This hook runs ONCE before any tests execute.
+ *
+ * **Best for:**
+ * - Creating test context (service initialization)
+ * - Loading large fixture files
+ * - Setting up expensive resources
+ *
+ * **Example:**
+ * ```typescript
+ * let ctx: TestContext;
+ *
+ * beforeAll(() => {
+ *   // Expensive: Initialize language services (Langium, Typir, CSS registry)
+ *   ctx = createTestContext();
+ * });
+ *
+ * test('test 1', async () => {
+ *   // Use shared ctx - no re-initialization needed
+ *   const { errors } = await ctx.parseAndValidate('...');
+ * });
+ * ```
+ *
+ * ### beforeEach() - Per-Test Isolation
+ *
+ * Use `beforeEach()` when tests modify shared state and need isolation.
+ * This hook runs BEFORE EACH test.
+ *
+ * **Best for:**
+ * - Resetting mock state between tests
+ * - Creating fresh test data for each test
+ * - Isolating tests that modify global state
+ *
+ * **Example:**
+ * ```typescript
+ * let ctx: TestContext;
+ * let testData: SomeData;
+ *
+ * beforeAll(() => {
+ *   ctx = createTestContext(); // Expensive setup - once
+ * });
+ *
+ * beforeEach(() => {
+ *   testData = createFreshData(); // Cheap isolation - each test
+ * });
+ * ```
+ *
+ * ### afterEach() - Cleanup and State Reset
+ *
+ * Use `afterEach()` to clean up after each test and prevent state leakage.
+ * This hook runs AFTER EACH test.
+ *
+ * **Best for:**
+ * - Restoring mocked functions (vi.restoreAllMocks())
+ * - Clearing CSS registry state between tests
+ * - Releasing resources created during tests
+ *
+ * **Example:**
+ * ```typescript
+ * let ctx: TestContext;
+ *
+ * beforeAll(() => {
+ *   ctx = createTestContext();
+ * });
+ *
+ * afterEach(() => {
+ *   // Restore all mocked functions to original implementations
+ *   vi.restoreAllMocks();
+ *
+ *   // Clear CSS registry to prevent cross-test contamination
+ *   const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
+ *   // Note: CSSRegistry doesn't expose clearAll(), so clear per-file if needed
+ * });
+ * ```
+ *
+ * ### Common Anti-Patterns to Avoid
+ *
+ * ❌ **Creating test context in beforeEach()** - Wastes time re-initializing services
+ * ```typescript
+ * beforeEach(() => {
+ *   ctx = createTestContext(); // TOO SLOW - runs for EVERY test
+ * });
+ * ```
+ *
+ * ❌ **Not cleaning up mocks** - Can cause test interference
+ * ```typescript
+ * test('test with mock', () => {
+ *   vi.spyOn(someModule, 'someFunction').mockReturnValue('value');
+ *   // Missing afterEach cleanup - mock persists to next test!
+ * });
+ * ```
+ *
+ * ❌ **Sharing mutable state without beforeEach()** - Tests become order-dependent
+ * ```typescript
+ * let counter = 0; // Shared across tests
+ *
+ * test('test 1', () => {
+ *   counter++; // Modifies shared state
+ * });
+ *
+ * test('test 2', () => {
+ *   expect(counter).toBe(0); // FAILS if test 1 runs first!
+ * });
+ * ```
+ *
+ * ### CSS Registry Lifecycle Pattern
+ *
+ * For tests using CSS validation, follow this pattern:
+ *
+ * ```typescript
+ * let ctx: TestContext;
+ *
+ * beforeAll(() => {
+ *   ctx = createTestContext(); // Initialize services once
+ * });
+ *
+ * // Option 1: Setup CSS once (for tests that don't modify CSS registry)
+ * beforeAll(() => {
+ *   setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+ * });
+ *
+ * // Option 2: Setup CSS per-test (for tests that modify CSS registry)
+ * beforeEach(() => {
+ *   setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+ * });
+ * ```
+ *
+ * **When to use each approach:**
+ * - **beforeAll()** for CSS setup: Tests only READ from CSS registry (most tests)
+ * - **beforeEach()** for CSS setup: Tests MODIFY CSS registry (hot-reload tests)
+ *
  * @see {@link file://./../../specs/022-test-suite-refactoring/quickstart.md} for usage guide
+ * @see {@link file://./../../specs/022-test-suite-refactoring/TEST_SUITE_ANALYSIS.md} for detailed analysis
  */
 
 import type { LangiumDocument } from 'langium';
