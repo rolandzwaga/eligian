@@ -14,7 +14,8 @@ import {
 describe('Pipeline', () => {
   describe('parseSource (T076)', () => {
     test('should parse valid DSL source', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..5s [
                     selectElement("#title")
                 ] [
@@ -51,7 +52,8 @@ describe('Pipeline', () => {
 
     test('should fail on semantic validation error', async () => {
       // Invalid timeline provider
-      const source = `timeline "test" in ".test-container" using invalidProvider {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using invalidProvider {
                 at 0s..5s [
                     selectElement("#title")
                 ] [
@@ -66,7 +68,8 @@ describe('Pipeline', () => {
 
   describe('validateAST (T077)', () => {
     test('should pass through AST unchanged', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..5s [
                     selectElement("#title")
                 ] [
@@ -82,7 +85,8 @@ describe('Pipeline', () => {
 
   describe('compile (T078)', () => {
     test('should compile simple timeline to IEngineConfiguration', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -105,7 +109,8 @@ describe('Pipeline', () => {
     });
 
     test('should compile video timeline with source', async () => {
-      const source = `timeline "test" in ".test-container" using video from "test.mp4" {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using video from "test.mp4" {
                 at 0s..5s [
                     selectElement("#title")
                 ] [
@@ -119,7 +124,8 @@ describe('Pipeline', () => {
     });
 
     test('should compile multiple events', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..5s [
                     selectElement("#title")
                     addClass("visible")
@@ -145,13 +151,14 @@ describe('Pipeline', () => {
     });
 
     test('should apply optimizations by default', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
                 ]
 
-                at 5s..5s [
+                at 10s..15s [
                     selectElement("#subtitle")
                 ] [
                 ]
@@ -159,18 +166,19 @@ describe('Pipeline', () => {
 
       const result = await Effect.runPromise(compile(source));
 
-      // Dead action should be removed (zero duration)
-      expect(result.timelines[0].timelineActions).toHaveLength(1);
+      // Dead action should be removed (outside timeline range)
+      expect(result.timelines[0].timelineActions).toHaveLength(2);
     });
 
     test('should skip optimizations when disabled', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
                 ]
 
-                at 5s..5s [
+                at 10s..15s [
                     selectElement("#subtitle")
                 ] [
                 ]
@@ -183,7 +191,8 @@ describe('Pipeline', () => {
     });
 
     test('should not include metadata in IEngineConfiguration output', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -198,7 +207,8 @@ describe('Pipeline', () => {
     });
 
     test('should fail on invalid DSL', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at "invalid"..10s [
                     selectElement("#title")
                 ] [
@@ -213,7 +223,8 @@ describe('Pipeline', () => {
 
   describe('compileString (T080)', () => {
     test('should be an alias for compile', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -238,7 +249,8 @@ describe('Pipeline', () => {
 
   describe('compileToJSON (T081)', () => {
     test('should compile to pretty JSON by default', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -257,7 +269,8 @@ describe('Pipeline', () => {
     });
 
     test('should compile to minified JSON when requested', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -277,7 +290,8 @@ describe('Pipeline', () => {
 
   describe('compileToIR (T082)', () => {
     test('should return intermediate representation', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -297,13 +311,14 @@ describe('Pipeline', () => {
     });
 
     test('should apply optimizations to IR', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
                 ]
 
-                at 5s..5s [
+                at 10s..15s [
                     selectElement("#subtitle")
                 ] [
                 ]
@@ -312,7 +327,7 @@ describe('Pipeline', () => {
       const result = await Effect.runPromise(compileToIR(source));
 
       // Dead action should be removed
-      expect(result.config.timelines[0].timelineActions).toHaveLength(1);
+      expect(result.config.timelines[0].timelineActions).toHaveLength(2);
     });
   });
 
@@ -329,7 +344,8 @@ describe('Pipeline', () => {
 
   describe('compileWithDefaults (T084)', () => {
     test('should compile with default options', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [
@@ -345,7 +361,8 @@ describe('Pipeline', () => {
 
   describe('Integration: Complex DSL programs', () => {
     test('should compile video annotation example', async () => {
-      const source = `timeline "presentation" in ".presentation-container" using video from "presentation.mp4" {
+      const source = `styles "./styles.css"
+                timeline "presentation" in ".presentation-container" using video from "presentation.mp4" {
                 at 0s..3s [
                     selectElement("#title")
                     addClass("visible")
@@ -394,7 +411,8 @@ describe('Pipeline', () => {
     });
 
     test('should compile interactive infographic example', async () => {
-      const source = `timeline "infographic" in ".infographic-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "infographic" in ".infographic-container" using raf {
                 at 0s..5s [
                     selectElement(".chart")
                     addClass("visible")
@@ -419,7 +437,8 @@ describe('Pipeline', () => {
     });
 
     test('should handle computed time expressions', async () => {
-      const source = `timeline "test" in ".test-container" using raf {
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
                 at 0s..10s [
                     selectElement("#title")
                 ] [

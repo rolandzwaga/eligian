@@ -7,9 +7,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { Position } from 'vscode-languageserver-protocol';
 import { createTestDocument } from '../../../language/test-helpers.js';
-import { type BlockLabel, findBlockLabels } from '../block-label-detector.js';
+import { findBlockLabels } from '../block-label-detector.js';
 
 describe('Block Label Detection', () => {
   describe('EndableActionDefinition', () => {

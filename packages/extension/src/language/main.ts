@@ -89,6 +89,9 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
       if (isProgram(root)) {
         for (const statement of root.statements) {
           if (isDefaultImport(statement) && statement.type === 'styles') {
+            if (!statement.path) {
+              continue;
+            }
             const cssPath = statement.path.replace(/^["']|["']$/g, ''); // Remove quotes
             cssFiles.push(cssPath);
           }

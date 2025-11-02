@@ -13,6 +13,37 @@ describe('Eligian Grammar - Validation', () => {
   beforeAll(async () => {
     services = createEligianServices(EmptyFileSystem);
     parse = parseHelper<Program>(services.Eligian);
+
+    // Register CSS classes and IDs used throughout tests to prevent validation errors
+    const cssRegistry = services.Eligian.css.CSSRegistry;
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set([
+        // Timeline container classes
+        'test-container',
+        'container',
+        'presentation-container',
+        'c',
+        'bleep',
+        // Classes used in operations
+        'active',
+        'few',
+        'hidden',
+        'highlight',
+        'many',
+        'selected',
+        'test',
+        'visible',
+        'inactive',
+        'box',
+        'target',
+      ]),
+      ids: new Set(['box', 'credits', 'el', 'el1', 'el2', 'el3', 'element', 'test', 'title']),
+      classLocations: new Map(),
+      idLocations: new Map(),
+      classRules: new Map(),
+      idRules: new Map(),
+      errors: [],
+    });
   });
 
   /**
@@ -20,6 +51,13 @@ describe('Eligian Grammar - Validation', () => {
    */
   async function parseAndValidate(code: string) {
     const document = await parse(code);
+
+    // Register CSS imports for this document (tests don't actually import CSS files)
+    const cssRegistry = services.Eligian.css.CSSRegistry;
+    const documentUri = document.uri?.toString();
+    if (documentUri) {
+      cssRegistry.registerImports(documentUri, ['file:///styles.css']);
+    }
 
     // Manually trigger validation
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
@@ -226,6 +264,7 @@ describe('Eligian Grammar - Validation', () => {
   describe('Operation call validation', () => {
     test('should accept operation calls with no arguments', async () => {
       const code = `
+                styles "./styles.css"
                 action test [
                     log()
                 ]
@@ -240,6 +279,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should accept operation calls with arguments', async () => {
       const code = `
+                styles "./styles.css"
                 action test [
                     selectElement("#title")
                     addClass("visible")
@@ -256,6 +296,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should accept property chain references', async () => {
       const code = `
+                styles "./styles.css"
                 action test [
                     setData({ "operationdata.name": $scope.currentItem })
                 ]
@@ -272,6 +313,7 @@ describe('Eligian Grammar - Validation', () => {
   describe('Comprehensive validation', () => {
     test('should validate complex valid program', async () => {
       const code = `
+                styles "./styles.css"
                 endable action fadeIn [
                     selectElement(".target")
                     setStyle({ opacity: 0 })
@@ -613,6 +655,7 @@ describe('Eligian Grammar - Validation', () => {
   describe('Unified action call syntax validation (US1)', () => {
     test('should validate that action call resolves to defined action', async () => {
       const code = `
+                styles "./styles.css"
         action fadeIn(selector, duration) [
           selectElement(selector)
         ]
@@ -694,6 +737,7 @@ describe('Eligian Grammar - Validation', () => {
     // T033: Allow action with similar (but not identical) name
     test('should allow action with similar name that does not collide', async () => {
       const code = `
+                styles "./styles.css"
         action mySelectElement(selector) [
           selectElement(selector)
           addClass("selected")
@@ -710,10 +754,70 @@ describe('Eligian Grammar - Validation', () => {
     });
   });
 
+  // Duplicate constant validation
+  describe('Duplicate constant validation', () => {
+    test('should error when duplicate constant declarations exist', async () => {
+      const code = `
+        const bleep = "hello"
+        const bleep = "world"
+        const bleep = "again"
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement("#box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should error - duplicate constant declarations
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBeGreaterThan(0);
+      expect(duplicateErrors.length).toBe(2); // Two duplicates (second and third declarations)
+    });
+
+    test('should error on two duplicate constants with same name', async () => {
+      const code = `
+        const myValue = 100
+        const myValue = 200
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement("#box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBe(1); // One duplicate (second declaration)
+    });
+
+    test('should allow constants with different names', async () => {
+      const code = `
+        const value1 = "hello"
+        const value2 = "world"
+        const value3 = "test"
+
+        timeline "test" in ".container" using raf {
+          at 0s..5s selectElement("#box")
+        }
+      `;
+      const { validationErrors } = await parseAndValidate(code);
+
+      // Should have no errors - all names are unique
+      const duplicateErrors = validationErrors.filter(
+        e => e.message.includes('duplicate') || e.message.includes('already defined')
+      );
+      expect(duplicateErrors.length).toBe(0);
+    });
+  });
+
   // T049: US3 - Control flow with action calls validation
   describe('Control flow with action calls validation (US3)', () => {
     test('should validate action calls within for loops', async () => {
       const code = `
+                styles "./styles.css"
         action highlight(selector) [
           selectElement(selector)
           addClass("highlight")
@@ -733,6 +837,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should validate action calls within if/else statements', async () => {
       const code = `
+                styles "./styles.css"
         action show(selector) [
           selectElement(selector)
           addClass("visible")
@@ -810,6 +915,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should allow operations in inline endable action blocks', async () => {
       const code = `
+                styles "./styles.css"
         timeline "demo" in "bleep" using raf {
           at 0s..3s [
             selectElement("#box")

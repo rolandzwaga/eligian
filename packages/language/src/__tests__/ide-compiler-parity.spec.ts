@@ -23,7 +23,7 @@ describe('IDE-Compiler Validation Parity', () => {
 
   describe('Basic CSS validation parity - smoke test', () => {
     it('should detect invalid CSS class in both IDE and compiler', async () => {
-      const source = `
+      const _source = `
         styles "./test.css"
         timeline "Test" at 0s {
           at 0s selectElement("#header") {
@@ -45,7 +45,7 @@ describe('IDE-Compiler Validation Parity', () => {
     });
 
     it('should show identical error messages', async () => {
-      const source = `
+      const _source = `
         styles "./test.css"
         timeline "Test" at 0s {
           at 0s selectElement(".button") {
@@ -61,7 +61,7 @@ describe('IDE-Compiler Validation Parity', () => {
     });
 
     it('should report identical error locations', async () => {
-      const source = `
+      const _source = `
         timeline "Test" at 0s {
           at 0s selectElement("#header") {
             addClass("missing")
@@ -77,7 +77,7 @@ describe('IDE-Compiler Validation Parity', () => {
 
   describe('CSS changes reflect immediately in both environments', () => {
     it('should validate against updated CSS in both environments', async () => {
-      const source = `
+      const _source = `
         styles "./dynamic.css"
         timeline "Test" at 0s {
           at 0s selectElement(".new-class")
@@ -91,12 +91,12 @@ describe('IDE-Compiler Validation Parity', () => {
     });
 
     it('should clear stale CSS metadata after removal', async () => {
-      const source1 = `
+      const _source1 = `
         styles "./temp.css"
         timeline "Test" at 0s {}
       `;
 
-      const source2 = `
+      const _source2 = `
         timeline "Test" at 0s {
           at 0s selectElement(".temp-class")
         }
@@ -178,7 +178,14 @@ describe('IDE-Compiler Validation Parity', () => {
   describe('Valid code produces no errors in both environments', () => {
     it('should produce no errors for valid code', async () => {
       const source = `
-        timeline "Test" in "#container" using raf {}
+        styles "./styles.css"
+
+        action testAction [
+          selectElement("#test")
+        ]
+        timeline "Test" in "#container" using raf {
+          at 0s..5s testAction()
+        }
       `;
 
       const ideErrors = await getIDEValidationErrors(source);
@@ -192,6 +199,8 @@ describe('IDE-Compiler Validation Parity', () => {
 
     it('should produce no errors for complex valid code', async () => {
       const source = `
+        styles "./styles.css"
+
         action fadeIn() [
           selectElement("#test")
         ]

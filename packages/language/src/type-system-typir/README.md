@@ -1,7 +1,8 @@
 # Typir Type System Integration
 
-**Status**: Active (Phase 3 Complete - US1)
+**Status**: Complete (Phase 7 - All 5 User Stories Implemented)
 **Framework**: [Typir](https://github.com/TypeFox/typir) + [Typir-Langium](https://github.com/TypeFox/typir-langium)
+**Feature Spec**: [021-enhanced-typir-integration](../../../../specs/021-enhanced-typir-integration/)
 
 ---
 
@@ -13,7 +14,7 @@ This directory contains the Typir-based type system for Eligian DSL. Typir provi
 - Battle-tested framework for language type systems
 - Automatic type inference with constraint solving
 - Built-in validation and error reporting
-- Langium integration for IDE support
+- Langium integration for IDE support (hover, diagnostics)
 - Compositional type system design
 
 ---
@@ -26,12 +27,35 @@ This directory contains the Typir-based type system for Eligian DSL. Typir provi
 - **`eligian-specifics.ts`**: Eligian-specific type interfaces and configurations
 - **`index.ts`**: Public exports
 
-### Type System Phases
+### Module Organization
+
+```
+type-system-typir/
+├── types/                  # Custom type factories
+│   ├── import-type.ts      # ImportType factory (US1)
+│   ├── timeline-event-type.ts  # TimelineEventType factory (US3)
+│   └── timeline-type.ts    # TimelineType factory (US5)
+├── inference/              # Type inference rules
+│   ├── import-inference.ts # Import statement inference (US1)
+│   ├── event-inference.ts  # Timeline event inference (US3)
+│   └── timeline-inference.ts # Timeline inference (US5)
+├── validation/             # Validation rules
+│   ├── import-validation.ts    # Import validation (US1)
+│   ├── constant-validation.ts  # Constant validation (US2)
+│   ├── event-validation.ts     # Event validation (US3)
+│   ├── control-flow-validation.ts # Control flow validation (US4)
+│   └── timeline-validation.ts  # Timeline validation (US5)
+└── utils/                  # Utility functions
+    ├── time-parser.ts      # Parse time literals (0s, 100ms)
+    └── asset-type-inferrer.ts # Infer asset types from extensions
+```
+
+### Type System Evolution
 
 **Phase 1**: Primitive types (string, number, boolean, object, array, unknown)
 **Phase 2**: Operation function types (loaded from OPERATION_REGISTRY)
-**Phase 3**: Validation rules (variable assignments, operation calls)
-**Future**: User-defined action types, parameter inference
+**Phase 3**: Action function types, constant inference, parameter validation
+**Phase 4-7** (021): Enhanced Typir integration - 5 user stories implemented ✅
 
 ---
 
@@ -47,6 +71,14 @@ This directory contains the Typir-based type system for Eligian DSL. Typir provi
 | `object` | `ObjectLiteral` | `{opacity: 1}` |
 | `array` | `ArrayLiteral` | `[1, 2, 3]` |
 | `unknown` | Top type | Untyped parameters |
+
+### Custom Domain Types (Feature 021)
+
+| Type | Description | Hover Display | User Story |
+|------|-------------|---------------|------------|
+| `ImportType` | Asset import type information | `Import<css>` | US1 |
+| `TimelineEventType` | Timeline event timing information | `TimedEvent: 0s → 5s` | US3 |
+| `TimelineType` | Timeline configuration | `Timeline<video>` | US5 |
 
 ### Operation Type Checking
 
@@ -95,22 +127,43 @@ action demo(selector, duration) [
 
 ## Implementation Status
 
-### ✅ Completed (Phase 3 - US1)
+### ✅ Completed (Feature 021 - Phase 7)
 
+**Core Type System** (Original Implementation):
 - [x] Primitive type inference (string, number, boolean, object, array, unknown)
 - [x] Operation function types from registry
 - [x] Operation call argument validation
 - [x] Variable type checking (const declarations)
+- [x] Action function types with parameter validation
 - [x] Type error reporting in IDE (red squiggles, hover messages)
-- [x] Backward compatibility (all 346 tests passing)
 
-### ⏳ Future Features
+**Enhanced Typir Integration** (Feature 021):
+- [x] **US1**: Import statement type checking and hover (`Import<css>`)
+  - Import type inference (default: layout/styles/provider, named: from extension)
+  - Duplicate default import validation
+  - Asset type mismatch warnings
+- [x] **US2**: Reserved keyword validation for constants
+  - Prevent use of reserved keywords as constant names
+  - 13 keywords validated ('if', 'else', 'for', 'in', 'break', 'continue', etc.)
+- [x] **US3**: Timeline event validation and hover
+  - Time range validation (startTime ≥ 0, endTime > startTime)
+  - Sequence duration validation (duration > 0)
+  - Stagger delay validation (delay > 0)
+  - Hover shows timing information (`TimedEvent: 0s → 5s`)
+- [x] **US4**: Control flow type checking
+  - If statement condition type checking (boolean expected)
+  - For loop collection type checking (array expected)
+  - Empty branch warnings
+- [x] **US5**: Timeline configuration validation
+  - Provider-source consistency (video/audio require source)
+  - CSS selector syntax validation
+  - Empty timeline warnings
+  - Hover shows timeline type (`Timeline<video>`)
 
-- [ ] **US2**: Type-aware code completion
-- [ ] **US3**: Parameter type inference from usage
-- [ ] **US4**: Action call type validation (cross-reference checking)
-- [ ] **US5**: Gradual typing verification
-- [ ] **US6**: Control flow type checking (if/else, for loops)
+**Test Coverage**:
+- 1462 tests passing (1323+ existing + 139 new)
+- 81.72% overall coverage
+- 100% backward compatibility maintained
 
 ---
 

@@ -27,8 +27,8 @@ describe('CSS className validation - Valid className parameters', () => {
   test('should not error when className exists in imported CSS', async () => {
     // Populate CSS registry with test data
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
-      classes: new Set(['button', 'primary', 'secondary']),
+    cssRegistry.updateCSSFile('file:///styles.css', {
+      classes: new Set(['button', 'primary', 'secondary', 'container']),
       ids: new Set(),
       classLocations: new Map(),
       idLocations: new Map(),
@@ -57,8 +57,8 @@ describe('CSS className validation - Valid className parameters', () => {
     expect(classNameErrors.length).toBe(0);
   });
 
-  test('should not error when no CSS files are imported', async () => {
-    // Without CSS imports, className validation is skipped
+  test('should error when no CSS files are imported (all classes are invalid)', async () => {
+    // Without CSS imports, ALL CSS classes/IDs are invalid (no external CSS in Eligian)
     const code = `
       action testAction() [
         addClass("any-class-name")
@@ -70,17 +70,18 @@ describe('CSS className validation - Valid className parameters', () => {
     `;
     const { validationErrors } = await parseAndValidate(code);
 
-    // No CSS imports = no validation = no errors
+    // No CSS imports = all classes invalid = errors expected
     const classNameErrors = validationErrors.filter(
       e => e.message.toLowerCase().includes('class') && e.message.toLowerCase().includes('unknown')
     );
-    expect(classNameErrors.length).toBe(0);
+    // Should have at least 2 errors: addClass("any-class-name") and timeline container ".container"
+    expect(classNameErrors.length).toBeGreaterThanOrEqual(2);
   });
 
   test('should not error for className in multiple CSS files', async () => {
     // Populate CSS registry with test data for both files
     const cssRegistry = services.Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile('./styles.css', {
+    cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(['container', 'header']),
       ids: new Set(),
       classLocations: new Map(),
@@ -89,7 +90,7 @@ describe('CSS className validation - Valid className parameters', () => {
       idRules: new Map(),
       errors: [],
     });
-    cssRegistry.updateCSSFile('./theme.css', {
+    cssRegistry.updateCSSFile('file:///theme.css', {
       classes: new Set(['button', 'primary']),
       ids: new Set(),
       classLocations: new Map(),

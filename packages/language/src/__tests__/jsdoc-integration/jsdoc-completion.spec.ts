@@ -18,7 +18,7 @@ async function getCompletions(
     throw new Error('No cursor position marked with | in test text');
   }
 
-  const textWithoutCursor = text.replace('|', '');
+  const _textWithoutCursor = text.replace('|', '');
   const position = document.textDocument.positionAt(cursorIndex);
 
   const context = triggerCharacter ? { triggerCharacter } : undefined;

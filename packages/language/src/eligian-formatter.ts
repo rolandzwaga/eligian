@@ -16,7 +16,7 @@ import { generateJSDocTemplate } from './jsdoc/jsdoc-template-generator.js';
 import { findActionBelow } from './utils/ast-navigation.js';
 
 export class EligianFormatter extends AbstractFormatter {
-  constructor(services: EligianServices) {
+  constructor(_services: EligianServices) {
     super();
   }
 
@@ -78,7 +78,7 @@ export class EligianFormatter extends AbstractFormatter {
             insertLines.push(cleanLine);
           }
 
-          const insertText = '\n' + insertLines.join('\n');
+          const insertText = `\n${insertLines.join('\n')}`;
 
           // Create text edit to insert at current cursor position
           const edit: TextEdit = {

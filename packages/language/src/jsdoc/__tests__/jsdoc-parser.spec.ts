@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type JSDocComment, type JSDocParam, parseJSDoc } from '../jsdoc-parser.js';
+import { parseJSDoc } from '../jsdoc-parser.js';
 
 describe('JSDoc Parser', () => {
   describe('description only (no params)', () => {

@@ -211,17 +211,30 @@ sed -i '91s/.*/const hint = generateHint();/' file.ts  # Will corrupt random lin
 - TypeScript compilation without overhead
 - Simple configuration
 
-### Type System Migration
+### Type System (Typir Integration)
 
-**Previous**: Custom type system in `packages/language/src/type-system/`
-**Current**: Typir-based system in `packages/language/src/type-system-typir/`
+**Implementation**: Typir-based system in `packages/language/src/type-system-typir/`
+**Framework**: [Typir](https://github.com/TypeFox/typir) + [Typir-Langium](https://github.com/TypeFox/typir-langium)
 
-The project migrated from a custom constraint-based type system to Typir (TypeFox's type system framework) for better inference, validation, and IDE integration.
+The Eligian DSL uses Typir (TypeFox's type system framework) for type inference, validation, and IDE support (hover, diagnostics).
 
-**Migration Status**: Phase 3 Complete (User Story 1)
-- ✅ Primitive types and operation validation
-- ✅ Real-time type error detection in IDE
-- ⏳ Action call validation (US4), type inference (US3), code completion (US2) pending
+**Implementation Status**: Feature 021 Complete (Phase 7 - All 5 User Stories)
+- ✅ **US1**: Import statement type checking (`Import<css>` hover, duplicate validation, type mismatch warnings)
+- ✅ **US2**: Reserved keyword validation for constants (13 keywords: 'if', 'else', 'for', 'in', 'break', 'continue', etc.)
+- ✅ **US3**: Timeline event validation (`TimedEvent: 0s → 5s` hover, time range validation, duration/delay checks)
+- ✅ **US4**: Control flow type checking (boolean conditions, array collections, empty branch warnings)
+- ✅ **US5**: Timeline configuration validation (provider-source consistency, CSS selector syntax, empty timeline warnings)
+
+**Architecture**:
+```
+type-system-typir/
+├── types/          # Custom type factories (ImportType, TimelineEventType, TimelineType)
+├── inference/      # Type inference rules per construct
+├── validation/     # Validation rules per construct
+└── utils/          # Shared utilities (time parsing, asset type inference)
+```
+
+**Test Coverage**: 1462 tests passing (1323+ existing + 139 new), 81.72% overall coverage
 
 **Documentation**: See `packages/language/src/type-system-typir/README.md`
 
