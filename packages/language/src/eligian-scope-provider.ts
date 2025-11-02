@@ -19,14 +19,16 @@ import {
   type Scope,
 } from 'langium';
 import {
+  type ActionDefinition,
   isActionDefinition,
+  isLibrary,
   isNamedImport,
   isOperationCall,
   isParameterReference,
+  isProgram,
   isVariableDeclaration,
   isVariableReference,
   type NamedImport,
-  type Program,
   type VariableDeclaration,
 } from './generated/ast.js';
 import { getElements } from './utils/program-helpers.js';
@@ -53,7 +55,7 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   }
 
   /**
-   * Get scope for action references in OperationCall nodes (Feature 007).
+   * Get scope for action references in OperationCall nodes (Feature 007 + Feature 023).
    *
    * Returns all ActionDefinition nodes from the document. The reference will:
    * - Resolve to an ActionDefinition if an action with that name exists
@@ -61,15 +63,24 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    *
    * This enables "Go to Definition" for custom action calls while allowing
    * built-in operation calls to work normally.
+   *
+   * Feature 023: Now handles both Program and Library files.
    */
   private getScopeForActionReference(context: ReferenceInfo): Scope {
     // Get the document containing this OperationCall
     const document = AstUtils.getDocument(context.container);
-    const model = document.parseResult.value as Program;
+    const model = document.parseResult.value;
 
-    // Get all ActionDefinition nodes from the program
-    // Simple O(n) scan through program elements
-    const actionDefinitions = getElements(model).filter(isActionDefinition);
+    // Get all ActionDefinition nodes - works for both Program and Library
+    let actionDefinitions: ActionDefinition[] = [];
+
+    if (isProgram(model)) {
+      // Program: get actions from program elements
+      actionDefinitions = getElements(model).filter(isActionDefinition);
+    } else if (isLibrary(model)) {
+      // Library: get actions directly from library.actions array
+      actionDefinitions = model.actions || [];
+    }
 
     if (actionDefinitions.length === 0) {
       // No actions defined in document
@@ -146,23 +157,35 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    * - Have .html file extension
    *
    * These are treated like constants and can be referenced with @variableName.
+   *
+   * Feature 023: Library files don't have imports, so return empty array.
    */
   private getHTMLImports(node: AstNode): NamedImport[] {
-    const program = AstUtils.getDocument(node).parseResult.value as Program;
+    const model = AstUtils.getDocument(node).parseResult.value;
 
-    // Get all statements (includes both imports and program elements)
-    const allStatements = program.statements || [];
+    // Library files cannot have imports (validated elsewhere)
+    if (isLibrary(model)) {
+      return [];
+    }
 
-    // Filter to only NamedImport nodes
-    // TypeScript doesn't understand that isNamedImport narrows the type, so we use type assertion
-    const imports = allStatements.filter(isNamedImport) as unknown as NamedImport[];
+    // For Program files, get all statements
+    if (isProgram(model)) {
+      // Get all statements (includes both imports and program elements)
+      const allStatements = model.statements || [];
 
-    // Filter to only HTML imports (explicit type or .html extension)
-    return imports.filter(imp => {
-      const explicitType = imp.assetType === 'html';
-      const htmlExtension = imp.path.endsWith('.html');
-      return explicitType || htmlExtension;
-    });
+      // Filter to only NamedImport nodes
+      // TypeScript doesn't understand that isNamedImport narrows the type, so we use type assertion
+      const imports = allStatements.filter(isNamedImport) as unknown as NamedImport[];
+
+      // Filter to only HTML imports (explicit type or .html extension)
+      return imports.filter(imp => {
+        const explicitType = imp.assetType === 'html';
+        const htmlExtension = imp.path.endsWith('.html');
+        return explicitType || htmlExtension;
+      });
+    }
+
+    return [];
   }
 
   /**

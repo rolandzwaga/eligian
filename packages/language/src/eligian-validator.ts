@@ -22,6 +22,7 @@ import type {
   EligianAstType,
   EndableActionDefinition,
   InlineEndableAction,
+  Library,
   NamedImport,
   OperationCall,
   OperationStatement,
@@ -57,6 +58,10 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
       validator.checkCSSImports, // Feature 013 T016: Extract and register CSS imports
+    ],
+    Library: [
+      validator.checkLibraryContent, // T021-T024: US1 - Validate library content constraints
+      validator.checkLibraryDuplicateActions, // T025: US1 - Duplicate action detection
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: [
@@ -1620,6 +1625,75 @@ export class EligianValidator {
             },
           });
         }
+      }
+    }
+  }
+
+  // ============================================================================
+  // Feature 023: Library File Validation (User Story 1)
+  // ============================================================================
+
+  /**
+   * T021-T024: US1 - Validate library content constraints
+   *
+   * Libraries can ONLY contain action definitions. They cannot contain:
+   * - Timelines (library files are for reusable actions, not timeline execution)
+   * - Imports (libraries cannot import from other libraries or assets)
+   * - Constants (libraries only define actions)
+   *
+   * This validator checks the library's actions array for non-action elements.
+   * Since the grammar already prevents most invalid content, this validator
+   * catches edge cases where elements might be added programmatically.
+   */
+  checkLibraryContent(library: Library, accept: ValidationAcceptor): void {
+    // Note: The grammar already restricts libraries to only contain actions,
+    // so this validator is primarily defensive and for future-proofing.
+    // If we later allow other constructs in the grammar, this will catch them.
+
+    // Verify library only has actions (grammar enforces this, but double-check)
+    if (!library.actions) {
+      return; // Empty library is valid
+    }
+
+    // All items in library.actions array should be ActionDefinition nodes
+    // (either RegularActionDefinition or EndableActionDefinition)
+    for (const action of library.actions) {
+      if (
+        action.$type !== 'RegularActionDefinition' &&
+        action.$type !== 'EndableActionDefinition'
+      ) {
+        accept('error', `Library files can only contain action definitions.`, {
+          node: action,
+          code: 'library_invalid_content',
+        });
+      }
+    }
+  }
+
+  /**
+   * T025: US1 - Validate unique action names within library
+   *
+   * Each library must have unique action names. Duplicate names would cause
+   * ambiguity when importing actions.
+   */
+  checkLibraryDuplicateActions(library: Library, accept: ValidationAcceptor): void {
+    const actionNames = new Map<string, RegularActionDefinition | EndableActionDefinition>();
+
+    for (const action of library.actions || []) {
+      const existing = actionNames.get(action.name);
+      if (existing) {
+        // Found duplicate - report error on the second definition
+        accept(
+          'error',
+          `Duplicate action definition '${action.name}'. Action already defined in this library.`,
+          {
+            node: action,
+            property: 'name',
+            code: 'library_duplicate_action',
+          }
+        );
+      } else {
+        actionNames.set(action.name, action);
       }
     }
   }

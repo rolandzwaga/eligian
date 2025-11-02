@@ -59,25 +59,25 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T013 [P] [US1] Write parsing test in `packages/language/src/__tests__/library-parsing.spec.ts`: Test library with single action
-- [ ] T014 [P] [US1] Write parsing test in `packages/language/src/__tests__/library-parsing.spec.ts`: Test library with multiple actions
-- [ ] T015 [P] [US1] Write parsing test in `packages/language/src/__tests__/library-parsing.spec.ts`: Test library name extraction
-- [ ] T016 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library contains timeline (MUST FAIL initially)
-- [ ] T017 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library contains styles import (MUST FAIL initially)
-- [ ] T018 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library contains constants (MUST FAIL initially)
-- [ ] T019 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library has duplicate action names (MUST FAIL initially)
-- [ ] T020 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test valid library with 5 actions passes (MUST FAIL initially)
+- [x] T013 [P] [US1] Write parsing test in `packages/language/src/__tests__/library-parsing.spec.ts`: Test library with single action
+- [x] T014 [P] [US1] Write parsing test in `packages/language/src/__tests__/library-parsing.spec.ts`: Test library with multiple actions
+- [x] T015 [P] [US1] Write parsing test in `packages/language/src/__tests__/library-parsing.spec.ts`: Test library name extraction
+- [x] T016 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library contains timeline (MUST FAIL initially)
+- [x] T017 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library contains styles import (MUST FAIL initially)
+- [x] T018 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library contains constants (MUST FAIL initially)
+- [x] T019 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library has duplicate action names (MUST FAIL initially)
+- [x] T020 [P] [US1] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test valid library with 5 actions passes (MUST FAIL initially)
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain timelines (error code `library_invalid_content`)
-- [ ] T022 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain styles imports (error code `library_invalid_content`)
-- [ ] T023 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain constants (error code `library_invalid_content`)
-- [ ] T024 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain imports (error code `library_invalid_content`)
-- [ ] T025 [US1] Implement `checkLibraryDuplicateActions` validator in `packages/language/src/eligian-validator.ts`: Validate unique action names within library (error code `library_duplicate_action`)
-- [ ] T026 [US1] Register new validators in `packages/language/src/eligian-validator.ts` class (if not auto-discovered)
-- [ ] T027 [US1] Run `pnpm run check && pnpm run typecheck` and fix any issues
-- [ ] T028 [US1] Verify all US1 tests pass: `pnpm --filter @eligian/language test library-parsing library-validation`
+- [x] T021 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain timelines (error code `library_invalid_content`)
+- [x] T022 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain styles imports (error code `library_invalid_content`)
+- [x] T023 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain constants (error code `library_invalid_content`)
+- [x] T024 [US1] Implement `checkLibraryContent` validator in `packages/language/src/eligian-validator.ts`: Validate library cannot contain imports (error code `library_invalid_content`)
+- [x] T025 [US1] Implement `checkLibraryDuplicateActions` validator in `packages/language/src/eligian-validator.ts`: Validate unique action names within library (error code `library_duplicate_action`)
+- [x] T026 [US1] Register new validators in `packages/language/src/eligian-validator.ts` class (if not auto-discovered)
+- [x] T027 [US1] Run `pnpm run check && pnpm run typecheck` and fix any issues
+- [x] T028 [US1] Verify all US1 tests pass: `pnpm --filter @eligian/language test library-parsing library-validation`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - developers can create library files and get validation errors for invalid content
 
