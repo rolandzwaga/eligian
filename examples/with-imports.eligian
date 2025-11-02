@@ -1,0 +1,25 @@
+// Example program demonstrating library imports
+import { fadeIn, fadeOut, slideIn } from "./libraries/animations.eligian"
+import { safeSelect, safeAddClass } from "./libraries/utils.eligian"
+
+// Custom action that uses imported actions
+action showIntro(selector: string) [
+  safeSelect(selector)
+  fadeIn(selector, 1000)
+  safeAddClass(selector, "visible")
+]
+
+// Timeline using both imported and local actions
+timeline "Demo with Imports" at 0s {
+  at 0s..2s fadeIn("#header", 1000)
+
+  at 2s..4s slideIn("#content", 800)
+
+  at 4s..6s {
+    safeAddClass("#content", "highlighted")
+  }
+
+  at 6s..8s showIntro("#footer")
+
+  at 8s..10s fadeOut("#header", 1000)
+}

@@ -1,0 +1,51 @@
+// Animation library - Reusable animation actions
+library animations
+
+/**
+ * Fades in an element over a specified duration
+ * @param selector CSS selector for target element
+ * @param duration Animation duration in milliseconds
+ */
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  animate({opacity: 1}, duration)
+]
+
+/**
+ * Fades out an element over a specified duration
+ * @param selector CSS selector for target element
+ * @param duration Animation duration in milliseconds
+ */
+action fadeOut(selector: string, duration: number) [
+  selectElement(selector)
+  animate({opacity: 0}, duration)
+]
+
+/**
+ * Slides in an element from the left
+ * @param selector CSS selector for target element
+ * @param duration Animation duration in milliseconds
+ */
+action slideIn(selector: string, duration: number) [
+  selectElement(selector)
+  animate({transform: 'translateX(0)'}, duration)
+]
+
+/**
+ * Slides out an element to the right
+ * @param selector CSS selector for target element
+ * @param duration Animation duration in milliseconds
+ */
+action slideOut(selector: string, duration: number) [
+  selectElement(selector)
+  animate({transform: 'translateX(100%)'}, duration)
+]
+
+/**
+ * Private helper to reset opacity (internal use only)
+ * @param selector CSS selector for target element
+ */
+private action resetOpacity(selector: string) [
+  selectElement(selector)
+  setStyle('opacity', '0')
+]
