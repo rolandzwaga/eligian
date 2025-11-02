@@ -6,7 +6,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
 
   beforeAll(async () => {
     ctx = createTestContext();
-  })
+  });
 
   test('should not error when selector classes exist in CSS', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {

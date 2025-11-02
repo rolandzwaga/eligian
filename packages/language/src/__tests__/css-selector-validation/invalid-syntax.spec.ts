@@ -1,36 +1,17 @@
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
+import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
 describe('CSS Selector Validation - Invalid Syntax', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
 
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
+    ctx = createTestContext();
   });
 
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    const validationErrors = document.diagnostics ?? [];
-    return { document, validationErrors };
-  }
-
   test('should error for unclosed attribute selector', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['button']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button'],
+      ids: [],
     });
 
     const code = `
@@ -45,24 +26,17 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const syntaxErrors = validationErrors.filter(e =>
       e.message.includes('Invalid CSS selector syntax')
     );
     expect(syntaxErrors.length).toBeGreaterThan(0);
   });
 
-  test('should error for unclosed pseudo-class', () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['button']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+  test('should error for unclosed pseudo-class', async () => {
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['button'],
+      ids: [],
     });
 
     const code = `
@@ -77,25 +51,17 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
       }
     `;
 
-    parseAndValidate(code).then(({ validationErrors }) => {
-      const syntaxErrors = validationErrors.filter(e =>
-        e.message.includes('Invalid CSS selector syntax')
-      );
-      expect(syntaxErrors.length).toBeGreaterThan(0);
-    });
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
+    const syntaxErrors = validationErrors.filter(e =>
+      e.message.includes('Invalid CSS selector syntax')
+    );
+    expect(syntaxErrors.length).toBeGreaterThan(0);
   });
 
   test('should error for unclosed string in attribute', async () => {
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const cssFileUri = 'file:///styles.css';
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(['input']),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [],
+    setupCSSRegistry(ctx, 'file:///styles.css', {
+      classes: ['input'],
+      ids: [],
     });
 
     const code = `
@@ -110,7 +76,7 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const syntaxErrors = validationErrors.filter(e =>
       e.message.includes('Invalid CSS selector syntax')
     );

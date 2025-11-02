@@ -8,32 +8,19 @@
  * - Multiple CSS files where one is invalid (valid files still work)
  */
 
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
-import { describe, expect, it } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
-
-const services = createEligianServices(EmptyFileSystem).Eligian;
-const parse = parseHelper<Program>(services);
-
-/**
- * Helper to parse and validate an Eligian document.
- * CRITICAL: Must trigger validation phase explicitly.
- */
-async function parseAndValidate(code: string) {
-  const document = await parse(code);
-  // CRITICAL: Trigger validation phase
-  await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-  const validationErrors = document.diagnostics ?? [];
-  return { document, validationErrors };
-}
+import { beforeAll, describe, expect, it } from 'vitest';
+import { createTestContext, type TestContext } from '../test-helpers.js';
 
 describe('Invalid CSS File Handling (T025)', () => {
+  let ctx: TestContext;
+
+  beforeAll(async () => {
+    ctx = createTestContext();
+  });
   it('should show error when importing CSS file with syntax errors', async () => {
     // Register invalid CSS file in registry
     // NOTE: CSS files are stored with the same path as used in import statements
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(),
       ids: new Set(),
@@ -59,7 +46,7 @@ describe('Invalid CSS File Handling (T025)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should have error at CSS import statement
     const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
@@ -71,7 +58,7 @@ describe('Invalid CSS File Handling (T025)', () => {
 
   it('should indicate CSS file is invalid rather than "unknown class"', async () => {
     // Register invalid CSS file
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     cssRegistry.updateCSSFile('file:///broken.css', {
       classes: new Set(), // No classes available due to syntax error
       ids: new Set(),
@@ -99,7 +86,7 @@ describe('Invalid CSS File Handling (T025)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should show CSS file error, not unknown class error
     const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
@@ -107,7 +94,7 @@ describe('Invalid CSS File Handling (T025)', () => {
   });
 
   it('should make classes available after CSS file is fixed', async () => {
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
 
     // Initial state: CSS file has errors
     cssRegistry.updateCSSFile('file:///styles.css', {
@@ -137,7 +124,7 @@ describe('Invalid CSS File Handling (T025)', () => {
       }
     `;
 
-    const { document, validationErrors: errors1 } = await parseAndValidate(code);
+    const { document, diagnostics: errors1 } = await ctx.parseAndValidate(code);
 
     // Should have CSS file error
     const cssFileErrors1 = errors1.filter(e => e.data?.code === 'invalid_css_file');
@@ -166,7 +153,7 @@ describe('Invalid CSS File Handling (T025)', () => {
     });
 
     // Re-validate document
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const errors2 = document.diagnostics ?? [];
 
     // CSS file error should disappear
@@ -179,7 +166,7 @@ describe('Invalid CSS File Handling (T025)', () => {
   });
 
   it('should handle multiple CSS files where one is invalid', async () => {
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
 
     // Valid CSS file
     cssRegistry.updateCSSFile('file:///valid.css', {
@@ -232,7 +219,7 @@ describe('Invalid CSS File Handling (T025)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should have error for invalid CSS file
     const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
@@ -247,7 +234,7 @@ describe('Invalid CSS File Handling (T025)', () => {
   });
 
   it('should handle multiple invalid CSS files', async () => {
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
 
     // First invalid CSS file
     cssRegistry.updateCSSFile('file:///broken1.css', {
@@ -294,7 +281,7 @@ describe('Invalid CSS File Handling (T025)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should have errors for both CSS files
     const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
@@ -308,7 +295,7 @@ describe('Invalid CSS File Handling (T025)', () => {
   });
 
   it('should include error details from CSS parser in message', async () => {
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
 
     cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set(),
@@ -335,7 +322,7 @@ describe('Invalid CSS File Handling (T025)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
 
     const cssFileErrors = validationErrors.filter(e => e.data?.code === 'invalid_css_file');
     expect(cssFileErrors.length).toBe(1);

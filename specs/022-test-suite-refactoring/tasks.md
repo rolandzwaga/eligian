@@ -143,13 +143,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] **T014** [P] [US2] Define `CSS_FIXTURES` constant in test-helpers.ts
+- [X] **T014** [P] [US2] Define `CSS_FIXTURES` constant in test-helpers.ts
   - Create CSS_FIXTURES.common with classes: ['button', 'primary', 'secondary', 'active', 'hidden', 'visible'] and ids: ['app', 'container', 'box', 'element']
   - Create CSS_FIXTURES.timeline with classes: ['test-container', 'container', 'presentation-container'] and ids: ['test', 'title', 'credits']
   - Export CSS_FIXTURES constant
   - Add JSDoc comment explaining usage and how to merge fixtures
 
-- [ ] **T015** [US2] Implement `setupCSSRegistry()` function in test-helpers.ts
+- [X] **T015** [US2] Implement `setupCSSRegistry()` function in test-helpers.ts
   - Accept parameters: (ctx: TestContext, cssFileUri: string = 'file:///styles.css', fixture: CSSFixture = CSS_FIXTURES.common)
   - Get CSS registry from ctx.services.Eligian.css.CSSRegistry
   - Call updateCSSFile() with cssFileUri and metadata:
@@ -163,51 +163,51 @@
   - Add JSDoc comment with usage examples
   - Note: This function has dependencies on T014 (CSS_FIXTURES) so cannot be parallel
 
-- [ ] **T016** [US2] Refactor `packages/language/src/__tests__/css-classname-validation/valid-classname.spec.ts`
+- [X] **T016** [US2] Refactor `packages/language/src/__tests__/css-classname-validation/valid-classname.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES from test-helpers.ts (use '../test-helpers.js' path)
   - Replace manual cssRegistry.updateCSSFile() with setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common)
   - Simplify CSS setup in beforeAll() hook
   - Verify all tests pass
   - Measure: Count lines reduced in this file
 
-- [ ] **T017** [P] [US2] Refactor `packages/language/src/__tests__/css-classname-validation/unknown-classname.spec.ts`
+- [X] **T017** [P] [US2] Refactor `packages/language/src/__tests__/css-classname-validation/unknown-classname.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES
   - Replace CSS registry boilerplate with setupCSSRegistry()
   - Verify all tests pass
 
-- [ ] **T018** [P] [US2] Refactor `packages/language/src/__tests__/css-selector-validation/valid-selector.spec.ts`
+- [X] **T018** [P] [US2] Refactor `packages/language/src/__tests__/css-selector-validation/valid-selector.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES
   - Replace CSS registry boilerplate
   - Verify all tests pass
 
-- [ ] **T019** [P] [US2] Refactor `packages/language/src/__tests__/css-selector-validation/unknown-selector.spec.ts`
+- [X] **T019** [P] [US2] Refactor `packages/language/src/__tests__/css-selector-validation/unknown-selector.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES
   - Replace CSS registry boilerplate
   - Verify all tests pass
 
-- [ ] **T020** [P] [US2] Refactor `packages/language/src/__tests__/css-selector-validation/invalid-syntax.spec.ts`
+- [X] **T020** [P] [US2] Refactor `packages/language/src/__tests__/css-selector-validation/invalid-syntax.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES
   - Replace CSS registry boilerplate
   - Verify all tests pass
 
-- [ ] **T021** [P] [US2] Refactor `packages/language/src/__tests__/css-hot-reload/css-registry-update.spec.ts`
+- [X] **T021** [P] [US2] Refactor `packages/language/src/__tests__/css-hot-reload/css-registry-update.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES
   - Replace CSS registry boilerplate
   - Verify all tests pass
 
-- [ ] **T022** [P] [US2] Refactor `packages/language/src/__tests__/css-invalid-file/invalid-css.spec.ts`
+- [X] **T022** [P] [US2] Refactor `packages/language/src/__tests__/css-invalid-file/invalid-css.spec.ts`
   - Import setupCSSRegistry and CSS_FIXTURES
   - Replace CSS registry boilerplate
   - Verify all tests pass
 
-- [ ] **T023** [US2] Run full test suite to verify User Story 2 completion
+- [X] **T023** [US2] Run full test suite to verify User Story 2 completion
   - Execute: `pnpm test`
   - Verify: All 1462 tests pass
   - Measure: Count lines of code reduced in CSS test files (target: ~150 lines)
   - Execute: `grep -r "cssRegistry.updateCSSFile" packages/language/src/__tests__/ | wc -l`
   - Verify: Significant reduction in updateCSSFile() boilerplate
 
-- [ ] **T024** [US2] Run code quality checks for User Story 2
+- [X] **T024** [US2] Run code quality checks for User Story 2
   - Execute: `pnpm run check`
   - Fix any linting errors
   - Execute: `pnpm run typecheck`

@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { CSS_FIXTURES, createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
+import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
 describe('CSS className validation - Valid className parameters', () => {
   let ctx: TestContext;
 
   beforeAll(async () => {
     ctx = createTestContext();
-  })
+  });
 
   test('should not error when className exists in imported CSS', async () => {
     // Populate CSS registry with test data

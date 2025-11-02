@@ -6,7 +6,7 @@ describe('CSS className validation - Unknown className with suggestions', () => 
 
   beforeAll(async () => {
     ctx = createTestContext();
-  })
+  });
 
   test('should error when className does not exist with suggestion', async () => {
     // Populate CSS registry with class similar to "primry"
