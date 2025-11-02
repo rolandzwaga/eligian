@@ -125,7 +125,7 @@ describe('US3: Timeline Event Validation (Integration)', () => {
         at 0s..5s fadeIn("#box")
       }
     `;
-    const { document, program } = await parseAndValidate(code);
+    const { program } = await parseAndValidate(code);
 
     // Find the Timeline node
     const timeline = program.statements?.find(e => e.$type === 'Timeline');

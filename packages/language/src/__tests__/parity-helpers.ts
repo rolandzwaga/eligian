@@ -7,9 +7,8 @@
  * Feature: Phase 4 - Validation Pipeline Unification (019)
  */
 
-import { Effect } from 'effect';
 import { EmptyFileSystem, type LangiumDocument, URI } from 'langium';
-import { getOrCreateServices, parseSource } from '../compiler/pipeline.js';
+import { getOrCreateServices } from '../compiler/pipeline.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
 
