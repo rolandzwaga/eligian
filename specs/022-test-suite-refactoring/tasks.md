@@ -50,7 +50,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] **T002** [P] [US1] Implement `createTestContext()` function in test-helpers.ts
+- [X] **T002** [P] [US1] Implement `createTestContext()` function in test-helpers.ts
   - Call `createEligianServices(EmptyFileSystem)` to create services
   - Call `parseHelper<Program>(services.Eligian)` to create parse helper
   - Implement `parseAndValidate(code, cssFileUri)` async function:
@@ -61,17 +61,17 @@
   - Return TestContext object { services, parse, parseAndValidate }
   - Add JSDoc comments explaining usage
 
-- [ ] **T003** [P] [US1] Implement `getErrors(document)` helper function in test-helpers.ts
+- [X] **T003** [P] [US1] Implement `getErrors(document)` helper function in test-helpers.ts
   - Filter diagnostics by severity === DiagnosticSeverity.Error
   - Return empty array if no diagnostics
   - Add JSDoc comment
 
-- [ ] **T004** [P] [US1] Implement `getWarnings(document)` helper function in test-helpers.ts
+- [X] **T004** [P] [US1] Implement `getWarnings(document)` helper function in test-helpers.ts
   - Filter diagnostics by severity === DiagnosticSeverity.Warning
   - Return empty array if no diagnostics
   - Add JSDoc comment
 
-- [ ] **T005** [US1] Refactor `packages/language/src/__tests__/validation.spec.ts` to use test-helpers.ts
+- [X] **T005** [US1] Refactor `packages/language/src/__tests__/validation.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation with `ctx = createTestContext()` in beforeAll()
   - Replace local parseAndValidate() with ctx.parseAndValidate()

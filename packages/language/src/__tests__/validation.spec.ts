@@ -1,21 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { createTestContext, type TestContext } from './test-helpers.js';
 
 describe('Eligian Grammar - Validation', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
 
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
+    ctx = createTestContext();
 
     // Register CSS classes and IDs used throughout tests to prevent validation errors
-    const cssRegistry = services.Eligian.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     cssRegistry.updateCSSFile('file:///styles.css', {
       classes: new Set([
         // Timeline container classes
@@ -47,30 +42,6 @@ describe('Eligian Grammar - Validation', () => {
   });
 
   /**
-   * Helper: Parse DSL code and return validation diagnostics
-   */
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-
-    // Register CSS imports for this document (tests don't actually import CSS files)
-    const cssRegistry = services.Eligian.css.CSSRegistry;
-    const documentUri = document.uri?.toString();
-    if (documentUri) {
-      cssRegistry.registerImports(documentUri, ['file:///styles.css']);
-    }
-
-    // Manually trigger validation
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-
-    return {
-      document,
-      program: document.parseResult.value as Program,
-      diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
-    };
-  }
-
-  /**
    * Helper: Load fixture file
    */
   function loadFixture(filename: string): string {
@@ -86,20 +57,20 @@ describe('Eligian Grammar - Validation', () => {
                 ] [
                 ]
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(e => e.message.includes('timeline declaration is required'))
+        errors.some(e => e.message.includes('timeline declaration is required'))
       ).toBe(true);
     });
 
     test('should accept multiple timeline declarations', async () => {
       const code = loadFixture('multiple-timelines.eligian');
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Multiple timelines are now allowed for complex scenarios (e.g., synchronized video+audio)
-      const multiTimelineErrors = validationErrors.filter(e =>
+      const multiTimelineErrors = errors.filter(e =>
         e.message.includes('Only one timeline declaration is allowed')
       );
       expect(multiTimelineErrors.length).toBe(0);
@@ -114,10 +85,10 @@ describe('Eligian Grammar - Validation', () => {
             ? `timeline "test" in ".test-container" using ${provider} from "test.mp4" {}`
             : `timeline "test" in ".test-container" using ${provider} {}`;
 
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should not have provider-related errors
-        const providerErrors = validationErrors.filter(e =>
+        const providerErrors = errors.filter(e =>
           e.message.includes('Invalid timeline provider')
         );
         expect(providerErrors.length).toBe(0);
@@ -126,40 +97,40 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should reject invalid timeline provider', async () => {
       const code = loadFixture('invalid-provider.eligian');
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
-      expect(validationErrors.some(e => e.message.includes('Invalid timeline provider'))).toBe(
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some(e => e.message.includes('Invalid timeline provider'))).toBe(
         true
       );
     });
 
     test('should require source for video provider', async () => {
       const code = loadFixture('missing-source.eligian');
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
-      expect(validationErrors.some(e => e.message.includes('requires a source file'))).toBe(true);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some(e => e.message.includes('requires a source file'))).toBe(true);
     });
 
     test('should require source for audio provider', async () => {
       const code = `
                 timeline "test" in ".test-container" using audio {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
-      expect(validationErrors.some(e => e.message.includes('requires a source file'))).toBe(true);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some(e => e.message.includes('requires a source file'))).toBe(true);
     });
 
     test('should not require source for raf provider', async () => {
       const code = `
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should not have source-related errors
-      const sourceErrors = validationErrors.filter(e => e.message.includes('requires a source'));
+      const sourceErrors = errors.filter(e => e.message.includes('requires a source'));
       expect(sourceErrors.length).toBe(0);
     });
   });
@@ -182,20 +153,20 @@ describe('Eligian Grammar - Validation', () => {
                     ]
                 }
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Timeline events don't have IDs in new grammar, so no duplicate ID errors
-      const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+      const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));
       expect(duplicateErrors.length).toBe(0);
     });
 
     test('should reject invalid time range (start > end)', async () => {
       const code = loadFixture('invalid-time-range.eligian');
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(
+        errors.some(
           e =>
             e.message.includes('start time') && e.message.includes('must be less than or equal to')
         )
@@ -215,10 +186,10 @@ describe('Eligian Grammar - Validation', () => {
                     ]
                 }
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should not have time range errors
-      const timeRangeErrors = validationErrors.filter(
+      const timeRangeErrors = errors.filter(
         e => e.message.includes('start time') && e.message.includes('must be less than')
       );
       expect(timeRangeErrors.length).toBe(0);
@@ -226,7 +197,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should reject negative start time', async () => {
       const code = loadFixture('negative-times.eligian');
-      const { document } = await parseAndValidate(code);
+      const { document } = await ctx.parseAndValidate(code);
 
       // Negative numbers are parse errors (unary minus operator on number literal)
       expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
@@ -234,7 +205,7 @@ describe('Eligian Grammar - Validation', () => {
 
     test('should reject negative end time', async () => {
       const code = loadFixture('negative-times.eligian');
-      const { document } = await parseAndValidate(code);
+      const { document } = await ctx.parseAndValidate(code);
 
       // Negative numbers are parse errors
       expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
@@ -253,10 +224,10 @@ describe('Eligian Grammar - Validation', () => {
                     ]
                 }
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should not have negative time errors
-      const negativeErrors = validationErrors.filter(e => e.message.includes('cannot be negative'));
+      const negativeErrors = errors.filter(e => e.message.includes('cannot be negative'));
       expect(negativeErrors.length).toBe(0);
     });
   });
@@ -270,11 +241,11 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { document, validationErrors } = await parseAndValidate(code);
+      const { document, errors } = await ctx.parseAndValidate(code);
 
       expect(document.parseResult.lexerErrors.length).toBe(0);
       expect(document.parseResult.parserErrors.length).toBe(0);
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should accept operation calls with arguments', async () => {
@@ -287,11 +258,11 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { document, validationErrors } = await parseAndValidate(code);
+      const { document, errors } = await ctx.parseAndValidate(code);
 
       expect(document.parseResult.lexerErrors.length).toBe(0);
       expect(document.parseResult.parserErrors.length).toBe(0);
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should accept property chain references', async () => {
@@ -302,11 +273,11 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { document, validationErrors } = await parseAndValidate(code);
+      const { document, errors } = await ctx.parseAndValidate(code);
 
       expect(document.parseResult.lexerErrors.length).toBe(0);
       expect(document.parseResult.parserErrors.length).toBe(0);
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
   });
 
@@ -345,11 +316,11 @@ describe('Eligian Grammar - Validation', () => {
                     ]
                 }
             `;
-      const { validationErrors, document } = await parseAndValidate(code);
+      const { errors, document } = await ctx.parseAndValidate(code);
 
       expect(document.parseResult.lexerErrors.length).toBe(0);
       expect(document.parseResult.parserErrors.length).toBe(0);
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should accumulate multiple validation errors', async () => {
@@ -362,11 +333,11 @@ describe('Eligian Grammar - Validation', () => {
 
                 // No timeline declaration
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have timeline missing error
-      expect(validationErrors.length).toBeGreaterThan(0);
-      expect(validationErrors.some(e => e.message.includes('timeline'))).toBe(true);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some(e => e.message.includes('timeline'))).toBe(true);
     });
   });
 
@@ -379,10 +350,10 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should not have erased property errors
-      const erasedErrors = validationErrors.filter(
+      const erasedErrors = errors.filter(
         e => e.message.includes('not available') || e.message.includes('erased')
       );
       expect(erasedErrors.length).toBe(0);
@@ -397,11 +368,11 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // selectElement outputs 'selectedElement' which is used by addClass and removeClass
       // Should not have missing dependency errors
-      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      const depErrors = errors.filter(e => e.message.includes('not available'));
       expect(depErrors.length).toBe(0);
     });
 
@@ -412,12 +383,12 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // addClass requires 'selectedElement' which was never created
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(
+        errors.some(
           e =>
             e.message.includes('selectedElement') &&
             e.message.includes('not available') &&
@@ -436,10 +407,10 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // All operations use selectedElement which is available after selectElement
-      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      const depErrors = errors.filter(e => e.message.includes('not available'));
       expect(depErrors.length).toBe(0);
     });
 
@@ -455,10 +426,10 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // selectedElement should be available in both branches
-      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      const depErrors = errors.filter(e => e.message.includes('not available'));
       expect(depErrors.length).toBe(0);
     });
 
@@ -472,10 +443,10 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Each iteration creates selectedElement before addClass uses it
-      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      const depErrors = errors.filter(e => e.message.includes('not available'));
       expect(depErrors.length).toBe(0);
     });
 
@@ -488,11 +459,11 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Start ops: selectedElement available for addClass
       // End ops: empty, so no validation errors
-      const depErrors = validationErrors.filter(e => e.message.includes('not available'));
+      const depErrors = errors.filter(e => e.message.includes('not available'));
       expect(depErrors.length).toBe(0);
     });
 
@@ -505,13 +476,13 @@ describe('Eligian Grammar - Validation', () => {
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // End ops should validate independently - addClass needs selectedElement
       // but it's not available in end ops (separate sequence)
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(
+        errors.some(
           e => e.message.includes('selectedElement') && e.message.includes('not available')
         )
       ).toBe(true);
@@ -528,13 +499,13 @@ describe('Eligian Grammar - Validation', () => {
                     ]
                 }
             `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Start ops: selectedElement available for addClass
       // End ops: removeClass needs selectedElement but it's a separate sequence
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(
+        errors.some(
           e => e.message.includes('selectedElement') && e.message.includes('not available')
         )
       ).toBe(true);
@@ -549,11 +520,11 @@ describe('Eligian Grammar - Validation', () => {
         ]
         timeline "test" in ".test-container" using raf {}
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(e => e.message.includes("'break' can only be used inside a loop"))
+        errors.some(e => e.message.includes("'break' can only be used inside a loop"))
       ).toBe(true);
     });
 
@@ -564,11 +535,11 @@ describe('Eligian Grammar - Validation', () => {
         ]
         timeline "test" in ".test-container" using raf {}
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      expect(validationErrors.length).toBeGreaterThan(0);
+      expect(errors.length).toBeGreaterThan(0);
       expect(
-        validationErrors.some(e => e.message.includes("'continue' can only be used inside a loop"))
+        errors.some(e => e.message.includes("'continue' can only be used inside a loop"))
       ).toBe(true);
     });
 
@@ -581,9 +552,9 @@ describe('Eligian Grammar - Validation', () => {
         ]
         timeline "test" in ".test-container" using raf {}
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      const breakErrors = validationErrors.filter(e =>
+      const breakErrors = errors.filter(e =>
         e.message.includes("'break' can only be used inside a loop")
       );
       expect(breakErrors.length).toBe(0);
@@ -598,9 +569,9 @@ describe('Eligian Grammar - Validation', () => {
         ]
         timeline "test" in ".test-container" using raf {}
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      const continueErrors = validationErrors.filter(e =>
+      const continueErrors = errors.filter(e =>
         e.message.includes("'continue' can only be used inside a loop")
       );
       expect(continueErrors.length).toBe(0);
@@ -620,9 +591,9 @@ describe('Eligian Grammar - Validation', () => {
         ]
         timeline "test" in ".test-container" using raf {}
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      const loopErrors = validationErrors.filter(
+      const loopErrors = errors.filter(
         e =>
           e.message.includes("'break' can only be used inside a loop") ||
           e.message.includes("'continue' can only be used inside a loop")
@@ -640,9 +611,9 @@ describe('Eligian Grammar - Validation', () => {
         ]
         timeline "test" in ".test-container" using raf {}
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      const loopErrors = validationErrors.filter(
+      const loopErrors = errors.filter(
         e =>
           e.message.includes("'break' can only be used inside a loop") ||
           e.message.includes("'continue' can only be used inside a loop")
@@ -664,10 +635,10 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s fadeIn(".box", 1000)
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have no errors - action is defined
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should error when action call references undefined action', async () => {
@@ -676,11 +647,11 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s undefinedAction(".box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should error - action not defined
       // Note: This test will fail until validation logic is implemented
-      const undefinedErrors = validationErrors.filter(
+      const undefinedErrors = errors.filter(
         e => e.message.includes('Unknown action') || e.message.includes('undefined')
       );
       expect(undefinedErrors.length).toBeGreaterThan(0);
@@ -700,10 +671,10 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s selectElement(".box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should error - action name collides with operation
-      const collisionErrors = validationErrors.filter(
+      const collisionErrors = errors.filter(
         e => e.message.includes('conflicts') || e.message.includes('collision')
       );
       expect(collisionErrors.length).toBeGreaterThan(0);
@@ -725,10 +696,10 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s fadeIn(".box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should error - duplicate action definition
-      const duplicateErrors = validationErrors.filter(
+      const duplicateErrors = errors.filter(
         e => e.message.includes('duplicate') || e.message.includes('already defined')
       );
       expect(duplicateErrors.length).toBeGreaterThan(0);
@@ -747,10 +718,10 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s mySelectElement(".box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have no errors - name is different
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
   });
 
@@ -766,10 +737,10 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s selectElement("#box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should error - duplicate constant declarations
-      const duplicateErrors = validationErrors.filter(
+      const duplicateErrors = errors.filter(
         e => e.message.includes('duplicate') || e.message.includes('already defined')
       );
       expect(duplicateErrors.length).toBeGreaterThan(0);
@@ -785,9 +756,9 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s selectElement("#box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
-      const duplicateErrors = validationErrors.filter(
+      const duplicateErrors = errors.filter(
         e => e.message.includes('duplicate') || e.message.includes('already defined')
       );
       expect(duplicateErrors.length).toBe(1); // One duplicate (second declaration)
@@ -803,10 +774,10 @@ describe('Eligian Grammar - Validation', () => {
           at 0s..5s selectElement("#box")
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have no errors - all names are unique
-      const duplicateErrors = validationErrors.filter(
+      const duplicateErrors = errors.filter(
         e => e.message.includes('duplicate') || e.message.includes('already defined')
       );
       expect(duplicateErrors.length).toBe(0);
@@ -829,10 +800,10 @@ describe('Eligian Grammar - Validation', () => {
           }
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have no errors - action is defined and used correctly
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should validate action calls within if/else statements', async () => {
@@ -856,10 +827,10 @@ describe('Eligian Grammar - Validation', () => {
           }
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have no errors - both actions are defined
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should error when undefined action called in control flow', async () => {
@@ -870,10 +841,10 @@ describe('Eligian Grammar - Validation', () => {
           }
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should error - action not defined
-      const undefinedErrors = validationErrors.filter(
+      const undefinedErrors = errors.filter(
         e => e.message.includes('Unknown action') || e.message.includes('undefined')
       );
       expect(undefinedErrors.length).toBeGreaterThan(0);
@@ -899,18 +870,18 @@ describe('Eligian Grammar - Validation', () => {
           ] []
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Debug: print errors
-      if (validationErrors.length > 0) {
+      if (errors.length > 0) {
         console.log(
           'Validation errors:',
-          validationErrors.map(e => e.message)
+          errors.map(e => e.message)
         );
       }
 
       // Should have no errors - fadeIn is a defined action and can be called in inline blocks
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should allow operations in inline endable action blocks', async () => {
@@ -926,10 +897,10 @@ describe('Eligian Grammar - Validation', () => {
           ]
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should have no errors - operations are allowed in inline endable action blocks
-      expect(validationErrors.length).toBe(0);
+      expect(errors.length).toBe(0);
     });
 
     test('should error when undefined action called in inline endable action blocks', async () => {
@@ -940,10 +911,10 @@ describe('Eligian Grammar - Validation', () => {
           ] []
         }
       `;
-      const { validationErrors } = await parseAndValidate(code);
+      const { errors } = await ctx.parseAndValidate(code);
 
       // Should error - undefinedAction is neither a defined action nor an operation
-      const undefinedErrors = validationErrors.filter(
+      const undefinedErrors = errors.filter(
         e => e.message.includes('Unknown') || e.message.includes('not found')
       );
       expect(undefinedErrors.length).toBeGreaterThan(0);
@@ -960,10 +931,10 @@ describe('Eligian Grammar - Validation', () => {
           ]
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should have error about recursive call
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -980,9 +951,9 @@ describe('Eligian Grammar - Validation', () => {
           ]
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -997,9 +968,9 @@ describe('Eligian Grammar - Validation', () => {
           ]
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -1014,9 +985,9 @@ describe('Eligian Grammar - Validation', () => {
           ]
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -1031,9 +1002,9 @@ describe('Eligian Grammar - Validation', () => {
           ]
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -1053,10 +1024,10 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should detect cycle in both actions
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -1078,9 +1049,9 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -1103,9 +1074,9 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBeGreaterThan(0);
@@ -1125,10 +1096,10 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should have NO recursion errors
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBe(0);
@@ -1150,9 +1121,9 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBe(0);
@@ -1166,9 +1137,9 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBe(0);
@@ -1190,9 +1161,9 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBe(0);
@@ -1206,10 +1177,10 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should have no recursion errors (empty action can't be recursive)
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBe(0);
@@ -1224,9 +1195,9 @@ describe('Eligian Grammar - Validation', () => {
 
           timeline "test" in ".container" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const recursionErrors = validationErrors.filter(
+        const recursionErrors = errors.filter(
           e => e.message.includes('Recursive') || e.message.includes('infinite loop')
         );
         expect(recursionErrors.length).toBe(0);
@@ -1242,11 +1213,11 @@ describe('Eligian Grammar - Validation', () => {
     describe('US5 - Path validation', () => {
       test('T012: should reject Unix absolute path (/file)', async () => {
         const code = "layout '/absolute/path/layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('relative') && e.message.includes('portable')
           )
         ).toBe(true);
@@ -1254,11 +1225,11 @@ describe('Eligian Grammar - Validation', () => {
 
       test('T013: should reject Windows absolute path (C:\\file)', async () => {
         const code = "layout 'C:\\\\absolute\\\\layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('relative') && e.message.includes('portable')
           )
         ).toBe(true);
@@ -1266,11 +1237,11 @@ describe('Eligian Grammar - Validation', () => {
 
       test('T014: should reject URL paths (https://file)', async () => {
         const code = "layout 'https://example.com/layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('relative') && e.message.includes('portable')
           )
         ).toBe(true);
@@ -1278,27 +1249,27 @@ describe('Eligian Grammar - Validation', () => {
 
       test('should accept relative path with ./', async () => {
         const code = "layout './layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const pathErrors = validationErrors.filter(e => e.message.includes('relative'));
+        const pathErrors = errors.filter(e => e.message.includes('relative'));
         expect(pathErrors.length).toBe(0);
       });
 
       test('should accept relative path with ../', async () => {
         const code = "layout '../shared/layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const pathErrors = validationErrors.filter(e => e.message.includes('relative'));
+        const pathErrors = errors.filter(e => e.message.includes('relative'));
         expect(pathErrors.length).toBe(0);
       });
 
       test('should reject file:// protocol', async () => {
         const code = "layout 'file:///path/to/layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('relative') && e.message.includes('portable')
           )
         ).toBe(true);
@@ -1311,11 +1282,11 @@ describe('Eligian Grammar - Validation', () => {
           layout './layout1.html'
           layout './layout2.html'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('Duplicate') && e.message.includes('layout')
           )
         ).toBe(true);
@@ -1323,9 +1294,9 @@ describe('Eligian Grammar - Validation', () => {
 
       test('should accept single layout import', async () => {
         const code = "layout './layout.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));
         expect(duplicateErrors.length).toBe(0);
       });
 
@@ -1335,9 +1306,9 @@ describe('Eligian Grammar - Validation', () => {
           action test [ selectElement("#box") ]
           timeline "t" in ".c" using raf {}
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));
         expect(duplicateErrors.length).toBe(0);
       });
     });
@@ -1348,11 +1319,11 @@ describe('Eligian Grammar - Validation', () => {
           styles './main.css'
           styles './theme.css'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('Duplicate') && e.message.includes('styles')
           )
         ).toBe(true);
@@ -1363,11 +1334,11 @@ describe('Eligian Grammar - Validation', () => {
           provider './video1.mp4'
           provider './video2.mp4'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('Duplicate') && e.message.includes('provider')
           )
         ).toBe(true);
@@ -1379,9 +1350,9 @@ describe('Eligian Grammar - Validation', () => {
           styles './main.css'
           provider './video.mp4'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));
         expect(duplicateErrors.length).toBe(0);
       });
 
@@ -1394,9 +1365,9 @@ describe('Eligian Grammar - Validation', () => {
           provider './video1.mp4'
           provider './video2.mp4'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const duplicateErrors = validationErrors.filter(e => e.message.includes('Duplicate'));
+        const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));
         expect(duplicateErrors.length).toBe(3); // One error for each type
       });
     });
@@ -1407,11 +1378,11 @@ describe('Eligian Grammar - Validation', () => {
           import tooltip from './tooltip1.html'
           import tooltip from './tooltip2.html'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('Duplicate') && e.message.includes('tooltip')
           )
         ).toBe(true);
@@ -1435,11 +1406,11 @@ describe('Eligian Grammar - Validation', () => {
 
       test('T045: should reject operation name conflict', async () => {
         const code = "import selectElement from './select.html'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(
+          errors.some(
             e => e.message.includes('operation') && e.message.includes('selectElement')
           )
         ).toBe(true);
@@ -1451,9 +1422,9 @@ describe('Eligian Grammar - Validation', () => {
           import modal from './modal.html'
           import sidebar from './sidebar.html'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const nameErrors = validationErrors.filter(
+        const nameErrors = errors.filter(
           e => e.message.includes('Duplicate') || e.message.includes('reserved')
         );
         expect(nameErrors.length).toBe(0);
@@ -1471,26 +1442,26 @@ describe('Eligian Grammar - Validation', () => {
     describe('US4 - Type inference validation', () => {
       test('T060: should reject unknown extension without explicit type', async () => {
         const code = "import template from './page.tmpl'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(e => e.message.includes('Unknown') && e.message.includes('.tmpl'))
+          errors.some(e => e.message.includes('Unknown') && e.message.includes('.tmpl'))
         ).toBe(true);
         expect(
-          validationErrors.some(e => e.message.includes('as html') || e.message.includes('as css'))
+          errors.some(e => e.message.includes('as html') || e.message.includes('as css'))
         ).toBe(true);
       });
 
       test('T061: should reject ambiguous .ogg extension without explicit type', async () => {
         const code = "import bgMusic from './audio.ogg'";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        expect(validationErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
         expect(
-          validationErrors.some(e => e.message.includes('Ambiguous') && e.message.includes('.ogg'))
+          errors.some(e => e.message.includes('Ambiguous') && e.message.includes('.ogg'))
         ).toBe(true);
-        expect(validationErrors.some(e => e.message.includes('as media'))).toBe(true);
+        expect(errors.some(e => e.message.includes('as media'))).toBe(true);
       });
 
       test('T062: should accept unknown extension with explicit as type', async () => {
@@ -1499,10 +1470,10 @@ describe('Eligian Grammar - Validation', () => {
           import themeStyles from './theme.scss' as css
           import soundFile from './sound.ogg' as media
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should have no type inference errors
-        const typeErrors = validationErrors.filter(
+        const typeErrors = errors.filter(
           e => e.message.includes('Unknown') || e.message.includes('Ambiguous')
         );
         expect(typeErrors.length).toBe(0);
@@ -1515,10 +1486,10 @@ describe('Eligian Grammar - Validation', () => {
           import introVideo from './intro.mp4'
           import musicFile from './music.mp3'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
         // Should have no type inference errors
-        const typeErrors = validationErrors.filter(
+        const typeErrors = errors.filter(
           e => e.message.includes('Unknown') || e.message.includes('Ambiguous')
         );
         expect(typeErrors.length).toBe(0);
@@ -1527,9 +1498,9 @@ describe('Eligian Grammar - Validation', () => {
       test('should allow explicit type override for inferrable extensions', async () => {
         // Even though .html is inferrable, user can explicitly specify type
         const code = "import template from './page.html' as html";
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const typeErrors = validationErrors.filter(
+        const typeErrors = errors.filter(
           e => e.message.includes('Unknown') || e.message.includes('Ambiguous')
         );
         expect(typeErrors.length).toBe(0);
@@ -1541,9 +1512,9 @@ describe('Eligian Grammar - Validation', () => {
           import config from './settings.json'
           import bgMusic from './sound.ogg'
         `;
-        const { validationErrors } = await parseAndValidate(code);
+        const { errors } = await ctx.parseAndValidate(code);
 
-        const typeErrors = validationErrors.filter(
+        const typeErrors = errors.filter(
           e =>
             e.message.includes('Unknown') ||
             e.message.includes('Ambiguous') ||
