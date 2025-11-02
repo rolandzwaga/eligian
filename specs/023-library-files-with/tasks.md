@@ -36,14 +36,14 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Extend Langium grammar in `packages/language/src/eligian.langium` with entry rule `entry EligianFile: Program | Library;`
-- [ ] T006 [P] Add Library grammar rule in `packages/language/src/eligian.langium`: `Library: 'library' name=ID (actions+=ActionDeclaration)+;`
-- [ ] T007 [P] Add ImportStatement grammar rule in `packages/language/src/eligian.langium`: `ImportStatement: 'import' '{' actions+=ActionImport (',' actions+=ActionImport)* '}' 'from' path=STRING;`
-- [ ] T008 [P] Add ActionImport grammar rule in `packages/language/src/eligian.langium`: `ActionImport: name=ID ('as' alias=ID)?;`
-- [ ] T009 [P] Add visibility modifier to ActionDeclaration in `packages/language/src/eligian.langium`: `(visibility='private')?`
-- [ ] T010 [P] Enhance Program grammar rule in `packages/language/src/eligian.langium` to include `(imports+=ImportStatement)*` before actions
-- [ ] T011 Regenerate Langium parser by running `pnpm run langium:generate` from `packages/language/`
-- [ ] T012 Run `pnpm run check && pnpm run typecheck` to verify grammar changes compile
+- [x] T005 Extend Langium grammar in `packages/language/src/eligian.langium` with entry rule `entry EligianFile: Program | Library;`
+- [x] T006 [P] Add Library grammar rule in `packages/language/src/eligian.langium`: `Library: 'library' name=ID (actions+=ActionDeclaration)*;`
+- [x] T007 [P] Add LibraryImport grammar rule in `packages/language/src/eligian.langium`: `LibraryImport: 'import' '{' actions+=ActionImport (',' actions+=ActionImport)* '}' 'from' path=STRING;`
+- [x] T008 [P] Add ActionImport grammar rule in `packages/language/src/eligian.langium`: `ActionImport: action=[ActionDefinition:ID] ('as' alias=ID)?;`
+- [x] T009 [P] Add visibility modifier to ActionDeclaration in `packages/language/src/eligian.langium`: `(visibility='private')?`
+- [x] T010 [P] Updated ImportStatement to include LibraryImport union variant (already had imports support from Feature 009)
+- [x] T011 Regenerate Langium parser by running `pnpm run langium:generate` from `packages/language/`
+- [x] T012 Run `pnpm run check && pnpm run typecheck` to verify grammar changes compile
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
