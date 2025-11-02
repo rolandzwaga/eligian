@@ -98,25 +98,25 @@
   - Update parseAndValidate() calls
   - Verify all tests pass
 
-- [ ] **T009** [P] [US1] Refactor `packages/language/src/__tests__/typir-event-validation.spec.ts` to use test-helpers.ts
+- [X] **T009** [P] [US1] Refactor `packages/language/src/__tests__/typir-event-validation.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation
   - Update parseAndValidate() calls
   - Verify all tests pass
 
-- [ ] **T010** [P] [US1] Refactor `packages/language/src/__tests__/typir-control-flow-validation.spec.ts` to use test-helpers.ts
+- [X] **T010** [P] [US1] Refactor `packages/language/src/__tests__/typir-control-flow.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation
   - Update parseAndValidate() calls
   - Verify all tests pass
 
-- [ ] **T011** [P] [US1] Refactor `packages/language/src/__tests__/typir-timeline-validation.spec.ts` to use test-helpers.ts
+- [X] **T011** [P] [US1] Refactor `packages/language/src/__tests__/typir-timeline-config.spec.ts` to use test-helpers.ts
   - Import createTestContext from test-helpers.ts
   - Replace manual service creation
   - Update parseAndValidate() calls
   - Verify all tests pass
 
-- [ ] **T012** [US1] Run full test suite to verify User Story 1 completion
+- [X] **T012** [US1] Run full test suite to verify User Story 1 completion
   - Execute: `pnpm test`
   - Verify: All 1462 tests pass
   - Verify: No test behavior changes (output identical to baseline)
@@ -124,7 +124,7 @@
   - Execute: `grep -r "createEligianServices" packages/language/src/__tests__/ | wc -l`
   - Verify: Significant reduction in createEligianServices() usage
 
-- [ ] **T013** [US1] Run code quality checks for User Story 1
+- [X] **T013** [US1] Run code quality checks for User Story 1
   - Execute: `pnpm run check` (Biome formatting and linting)
   - Fix any linting errors in test-helpers.ts and refactored files
   - Execute: `pnpm run typecheck` (TypeScript type checking)

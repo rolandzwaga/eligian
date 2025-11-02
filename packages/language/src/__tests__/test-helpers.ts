@@ -12,8 +12,8 @@
  * @see {@link file://./../../specs/022-test-suite-refactoring/quickstart.md} for usage guide
  */
 
-import { EmptyFileSystem } from 'langium';
 import type { LangiumDocument } from 'langium';
+import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import type { Diagnostic } from 'vscode-languageserver-types';
 import { createEligianServices } from '../eligian-module.js';
@@ -163,7 +163,7 @@ export function createTestContext(): TestContext {
   // Create parseAndValidate helper
   const parseAndValidate = async (
     code: string,
-    cssFileUri = 'file:///styles.css',
+    cssFileUri = 'file:///styles.css'
   ): Promise<ValidationResult> => {
     // Parse code
     const document = await parse(code);
@@ -218,9 +218,7 @@ export function createTestContext(): TestContext {
  * ```
  */
 export function getErrors(document: LangiumDocument): Diagnostic[] {
-  return (
-    document.diagnostics?.filter((d) => d.severity === DiagnosticSeverity.Error) ?? []
-  );
+  return document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [];
 }
 
 /**
@@ -237,7 +235,5 @@ export function getErrors(document: LangiumDocument): Diagnostic[] {
  * ```
  */
 export function getWarnings(document: LangiumDocument): Diagnostic[] {
-  return (
-    document.diagnostics?.filter((d) => d.severity === DiagnosticSeverity.Warning) ?? []
-  );
+  return document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [];
 }

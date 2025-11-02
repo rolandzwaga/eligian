@@ -19,7 +19,7 @@ import {
   type Timeline,
 } from '../generated/ast.js';
 import { getElements, getImports } from '../utils/program-helpers.js';
-import { createTestContext, getErrors, type TestContext } from './test-helpers.js';
+import { createTestContext, type TestContext } from './test-helpers.js';
 
 let ctx: TestContext;
 
@@ -806,7 +806,7 @@ describe('Eligian Grammar - Parsing', () => {
   describe('Error recovery', () => {
     test('should handle syntax errors gracefully', async () => {
       const source = loadFixture('invalid/syntax-errors.eligian');
-      const document = await ctx.parse( source);
+      const document = await ctx.parse(source);
 
       // Should have parse errors
       expect(

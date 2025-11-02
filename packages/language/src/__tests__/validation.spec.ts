@@ -60,9 +60,7 @@ describe('Eligian Grammar - Validation', () => {
       const { errors } = await ctx.parseAndValidate(code);
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(
-        errors.some(e => e.message.includes('timeline declaration is required'))
-      ).toBe(true);
+      expect(errors.some(e => e.message.includes('timeline declaration is required'))).toBe(true);
     });
 
     test('should accept multiple timeline declarations', async () => {
@@ -88,9 +86,7 @@ describe('Eligian Grammar - Validation', () => {
         const { errors } = await ctx.parseAndValidate(code);
 
         // Should not have provider-related errors
-        const providerErrors = errors.filter(e =>
-          e.message.includes('Invalid timeline provider')
-        );
+        const providerErrors = errors.filter(e => e.message.includes('Invalid timeline provider'));
         expect(providerErrors.length).toBe(0);
       }
     });
@@ -100,9 +96,7 @@ describe('Eligian Grammar - Validation', () => {
       const { errors } = await ctx.parseAndValidate(code);
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors.some(e => e.message.includes('Invalid timeline provider'))).toBe(
-        true
-      );
+      expect(errors.some(e => e.message.includes('Invalid timeline provider'))).toBe(true);
     });
 
     test('should require source for video provider', async () => {
@@ -523,9 +517,9 @@ describe('Eligian Grammar - Validation', () => {
       const { errors } = await ctx.parseAndValidate(code);
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(
-        errors.some(e => e.message.includes("'break' can only be used inside a loop"))
-      ).toBe(true);
+      expect(errors.some(e => e.message.includes("'break' can only be used inside a loop"))).toBe(
+        true
+      );
     });
 
     test('should error when continue is outside a loop', async () => {
@@ -1217,9 +1211,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('relative') && e.message.includes('portable')
-          )
+          errors.some(e => e.message.includes('relative') && e.message.includes('portable'))
         ).toBe(true);
       });
 
@@ -1229,9 +1221,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('relative') && e.message.includes('portable')
-          )
+          errors.some(e => e.message.includes('relative') && e.message.includes('portable'))
         ).toBe(true);
       });
 
@@ -1241,9 +1231,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('relative') && e.message.includes('portable')
-          )
+          errors.some(e => e.message.includes('relative') && e.message.includes('portable'))
         ).toBe(true);
       });
 
@@ -1269,9 +1257,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('relative') && e.message.includes('portable')
-          )
+          errors.some(e => e.message.includes('relative') && e.message.includes('portable'))
         ).toBe(true);
       });
     });
@@ -1286,9 +1272,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('Duplicate') && e.message.includes('layout')
-          )
+          errors.some(e => e.message.includes('Duplicate') && e.message.includes('layout'))
         ).toBe(true);
       });
 
@@ -1323,9 +1307,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('Duplicate') && e.message.includes('styles')
-          )
+          errors.some(e => e.message.includes('Duplicate') && e.message.includes('styles'))
         ).toBe(true);
       });
 
@@ -1338,9 +1320,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('Duplicate') && e.message.includes('provider')
-          )
+          errors.some(e => e.message.includes('Duplicate') && e.message.includes('provider'))
         ).toBe(true);
       });
 
@@ -1382,9 +1362,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('Duplicate') && e.message.includes('tooltip')
-          )
+          errors.some(e => e.message.includes('Duplicate') && e.message.includes('tooltip'))
         ).toBe(true);
       });
 
@@ -1410,9 +1388,7 @@ describe('Eligian Grammar - Validation', () => {
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(
-            e => e.message.includes('operation') && e.message.includes('selectElement')
-          )
+          errors.some(e => e.message.includes('operation') && e.message.includes('selectElement'))
         ).toBe(true);
       });
 
@@ -1445,9 +1421,9 @@ describe('Eligian Grammar - Validation', () => {
         const { errors } = await ctx.parseAndValidate(code);
 
         expect(errors.length).toBeGreaterThan(0);
-        expect(
-          errors.some(e => e.message.includes('Unknown') && e.message.includes('.tmpl'))
-        ).toBe(true);
+        expect(errors.some(e => e.message.includes('Unknown') && e.message.includes('.tmpl'))).toBe(
+          true
+        );
         expect(
           errors.some(e => e.message.includes('as html') || e.message.includes('as css'))
         ).toBe(true);
