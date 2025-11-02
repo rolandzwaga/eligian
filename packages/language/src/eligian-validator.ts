@@ -23,6 +23,7 @@ import type {
   EndableActionDefinition,
   InlineEndableAction,
   Library,
+  LibraryImport,
   NamedImport,
   OperationCall,
   OperationStatement,
@@ -62,6 +63,11 @@ export function registerValidationChecks(services: EligianServices) {
     Library: [
       validator.checkLibraryContent, // T021-T024: US1 - Validate library content constraints
       validator.checkLibraryDuplicateActions, // T025: US1 - Duplicate action detection
+    ],
+    LibraryImport: [
+      validator.checkImportFileExists, // T041: US2 - Validate library file exists
+      validator.checkImportedActionsExist, // T042 + T042a: US2 - Validate imported actions exist
+      validator.checkImportNameCollisions, // T043: US2 - Validate no name conflicts
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: [
@@ -1694,6 +1700,164 @@ export class EligianValidator {
         );
       } else {
         actionNames.set(action.name, action);
+      }
+    }
+  }
+
+  /**
+   * T041: US2 - Validate library file exists
+   *
+   * Library imports must reference valid .eligian files. This validator checks that
+   * the imported library file exists and can be loaded by Langium's document loader.
+   */
+  checkImportFileExists(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
+    if (!this.services) {
+      return; // Cannot validate without services
+    }
+
+    const documentUri = libraryImport.$document?.uri;
+    if (!documentUri) {
+      return; // Cannot resolve relative paths without document URI
+    }
+
+    // Resolve the library path relative to the importing document
+    const importPath = libraryImport.path;
+    const documentPath = URI.parse(documentUri.toString()).fsPath;
+    const documentDir = path.dirname(documentPath);
+    const resolvedPath = path.resolve(documentDir, importPath);
+    const resolvedUri = URI.file(resolvedPath);
+
+    // Try to load the library document
+    const documents = this.services.shared.workspace.LangiumDocuments;
+    const libraryDocument = documents.getDocument(resolvedUri);
+
+    if (!libraryDocument) {
+      accept('error', `Library file not found: '${importPath}'`, {
+        node: libraryImport,
+        property: 'path',
+        code: 'import_file_not_found',
+      });
+    }
+  }
+
+  /**
+   * T042 + T042a: US2 - Validate imported actions exist in library
+   *
+   * All imported actions must exist in the target library. This validator checks each
+   * action import and provides "Did you mean?" suggestions for typos using Levenshtein distance.
+   */
+  checkImportedActionsExist(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
+    if (!this.services) {
+      return; // Cannot validate without services
+    }
+
+    const documentUri = libraryImport.$document?.uri;
+    if (!documentUri) {
+      return;
+    }
+
+    // Resolve library document
+    const importPath = libraryImport.path;
+    const documentPath = URI.parse(documentUri.toString()).fsPath;
+    const documentDir = path.dirname(documentPath);
+    const resolvedPath = path.resolve(documentDir, importPath);
+    const resolvedUri = URI.file(resolvedPath);
+
+    const documents = this.services.shared.workspace.LangiumDocuments;
+    const libraryDocument = documents.getDocument(resolvedUri);
+
+    if (!libraryDocument) {
+      return; // File not found - already reported by checkImportFileExists
+    }
+
+    const library = libraryDocument.parseResult.value;
+    if (library.$type !== 'Library') {
+      return; // Not a library file - skip validation
+    }
+
+    // Get all action names from library (cast to Library type for TypeScript)
+    const libraryNode = library as Library;
+    const availableActions = libraryNode.actions?.map(a => a.name) || [];
+
+    // Check each imported action
+    for (const actionImport of libraryImport.actions) {
+      const actionName = actionImport.action.$refText || '';
+
+      if (!availableActions.includes(actionName)) {
+        // Action not found - suggest similar names using Levenshtein distance
+        const suggestions = findSimilarClasses(actionName, new Set(availableActions));
+        const suggestionText =
+          suggestions.length > 0 ? ` (Did you mean: ${suggestions.join(', ')}?)` : '';
+
+        accept(
+          'error',
+          `Action '${actionName}' does not exist in library '${importPath}'${suggestionText}`,
+          {
+            node: actionImport,
+            property: 'action',
+            code: 'import_action_not_found',
+          }
+        );
+      }
+    }
+  }
+
+  /**
+   * T043: US2 - Validate no name collisions
+   *
+   * Imported actions (with or without aliases) must not conflict with:
+   * - Locally-defined actions
+   * - Other imported actions from the same or different libraries
+   * - Built-in operations (handled by checkActionNameCollision)
+   */
+  checkImportNameCollisions(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
+    const program = libraryImport.$container;
+    if (program.$type !== 'Program') {
+      return; // Library imports only valid in programs
+    }
+
+    // Collect all imported action names (with aliases applied)
+    const importedNames = new Map<string, LibraryImport>();
+
+    for (const stmt of program.statements) {
+      if (stmt.$type === 'LibraryImport') {
+        for (const actionImport of stmt.actions) {
+          // Use alias if provided, otherwise use original action name
+          const finalName = actionImport.alias || actionImport.action.$refText || '';
+
+          // Check for duplicate imports
+          if (importedNames.has(finalName)) {
+            accept('error', `Duplicate import: action '${finalName}' is already imported`, {
+              node: actionImport,
+              property: actionImport.alias ? 'alias' : 'action',
+              code: 'import_name_collision',
+            });
+          } else {
+            importedNames.set(finalName, stmt);
+          }
+        }
+      }
+    }
+
+    // Check for conflicts with locally-defined actions
+    const localActions = getElements(program).filter(
+      el => el.$type === 'RegularActionDefinition' || el.$type === 'EndableActionDefinition'
+    );
+
+    for (const actionImport of libraryImport.actions) {
+      const finalName = actionImport.alias || actionImport.action.$refText || '';
+
+      const conflict = localActions.find(action => action.name === finalName);
+      if (conflict) {
+        accept(
+          'error',
+          `Import name collision: action '${finalName}' conflicts with locally-defined action`,
+          {
+            node: actionImport,
+            property: actionImport.alias ? 'alias' : 'action',
+            code: 'import_name_collision',
+          }
+        );
       }
     }
   }

@@ -93,25 +93,25 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T029 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test single action import syntax
-- [ ] T030 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test multiple action imports from same library
-- [ ] T031 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test import with alias syntax
-- [ ] T032 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test import path extraction
-- [ ] T033 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when library file not found (MUST FAIL initially)
-- [ ] T034 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when imported action doesn't exist (MUST FAIL initially)
-- [ ] T035 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when import conflicts with local action (MUST FAIL initially)
-- [ ] T036 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when duplicate imports from multiple libraries (MUST FAIL initially)
-- [ ] T037 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test alias resolves name conflicts (MUST FAIL initially)
+- [x] T029 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test single action import syntax
+- [x] T030 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test multiple action imports from same library
+- [x] T031 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test import with alias syntax
+- [x] T032 [P] [US2] Write parsing test in `packages/language/src/__tests__/import-parsing.spec.ts`: Test import path extraction
+- [x] T033 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when library file not found (MUST FAIL initially)
+- [x] T034 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when imported action doesn't exist (MUST FAIL initially)
+- [x] T035 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when import conflicts with local action (MUST FAIL initially)
+- [x] T036 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when duplicate imports from multiple libraries (MUST FAIL initially)
+- [x] T037 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test alias resolves name conflicts (MUST FAIL initially)
 - [ ] T038 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-compilation.spec.ts`: Test imported action compiles identically to local action (MUST FAIL initially)
 - [ ] T039 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-merging.spec.ts`: Test imported actions are merged into program AST (MUST FAIL initially)
 - [ ] T040 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-merging.spec.ts`: Test aliased actions use alias name in compilation (MUST FAIL initially)
 
 ### Implementation for User Story 2
 
-- [ ] T041 [P] [US2] Implement `checkImportFileExists` validator in `packages/language/src/eligian-validator.ts`: Validate library file exists using Langium document loader (error code `import_file_not_found`)
-- [ ] T042 [P] [US2] Implement `checkImportedActionsExist` validator in `packages/language/src/eligian-validator.ts`: Validate imported actions exist in library (error code `import_action_not_found`)
-- [ ] T042a [P] [US2] Implement fuzzy name matching for error suggestions in `packages/language/src/eligian-validator.ts`: Use Levenshtein distance (similar to CSS validation) to suggest similar action names when import fails (addresses FR-021)
-- [ ] T043 [US2] Implement `checkImportNameCollisions` validator in `packages/language/src/eligian-validator.ts`: Validate imports don't conflict with local actions or other imports (error code `import_name_collision`)
+- [x] T041 [P] [US2] Implement `checkImportFileExists` validator in `packages/language/src/eligian-validator.ts`: Validate library file exists using Langium document loader (error code `import_file_not_found`)
+- [x] T042 [P] [US2] Implement `checkImportedActionsExist` validator in `packages/language/src/eligian-validator.ts`: Validate imported actions exist in library (error code `import_action_not_found`)
+- [x] T042a [P] [US2] Implement fuzzy name matching for error suggestions in `packages/language/src/eligian-validator.ts`: Use Levenshtein distance (similar to CSS validation) to suggest similar action names when import fails (addresses FR-021)
+- [x] T043 [US2] Implement `checkImportNameCollisions` validator in `packages/language/src/eligian-validator.ts`: Validate imports don't conflict with local actions or other imports (error code `import_name_collision`)
 - [ ] T044 [US2] Implement import resolution in `packages/compiler/src/ast-transformer.ts`: Add `resolveImports()` function to load and collect imported actions
 - [ ] T045 [US2] Implement action merging in `packages/compiler/src/ast-transformer.ts`: Merge imported actions into program's action array with alias handling
 - [ ] T046 [US2] Update `transformProgram()` in `packages/compiler/src/ast-transformer.ts` to call `resolveImports()` before building action registry
