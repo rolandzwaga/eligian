@@ -467,3 +467,56 @@ export function setupCSSRegistry(
     errors: [],
   });
 }
+
+/**
+ * Create a library document in the test workspace
+ *
+ * Parses library code and adds the document to the workspace's LangiumDocuments
+ * collection. This allows validators to resolve library imports using
+ * LangiumDocuments.getDocument().
+ *
+ * @param ctx Test context from createTestContext()
+ * @param libraryCode Library source code to parse
+ * @param libraryUri URI for the library file (e.g., 'file:///test/animations.eligian')
+ * @returns Langium document for the library
+ *
+ * @example
+ * ```typescript
+ * beforeAll(async () => {
+ *   ctx = createTestContext();
+ *
+ *   // Create library document with actions
+ *   await createLibraryDocument(ctx, `
+ *     library animations
+ *
+ *     action fadeIn(selector: string, duration: number) [
+ *       selectElement(selector)
+ *       animate({opacity: 1}, duration)
+ *     ]
+ *   `, 'file:///test/animations.eligian');
+ * });
+ *
+ * test('imports from library', async () => {
+ *   const { errors } = await ctx.parseAndValidate(`
+ *     import { fadeIn } from "./animations.eligian"
+ *   `);
+ *   expect(errors).toHaveLength(0);
+ * });
+ * ```
+ */
+export async function createLibraryDocument(
+  ctx: TestContext,
+  libraryCode: string,
+  libraryUri: string
+): Promise<LangiumDocument> {
+  // Parse library code using the parse helper (which handles URI conversion AND adds to workspace)
+  const libraryDoc = await ctx.parse(libraryCode, { documentUri: libraryUri });
+
+  // Build document (triggers validation)
+  await ctx.services.shared.workspace.DocumentBuilder.build([libraryDoc], {
+    validation: true,
+  });
+
+  // Document is already added to workspace by parseHelper, so just return it
+  return libraryDoc;
+}

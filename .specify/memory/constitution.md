@@ -3,13 +3,23 @@
 SYNC IMPACT REPORT - Constitution Update
 ===================================================================================
 
-VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1
+VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1 → 2.1.0
 Rationale: MAJOR version bump (2.0.0) - Enhanced Principle II (Test-First Development) with
 strict enforcement workflow that redefines testing requirements, making "tests later"
 a constitutional violation (backward incompatible with prior "encouraged" TDD stance).
 Added 5 new principles that significantly expand governance scope.
 
 PATCH version bump (2.0.1) - Added integration test isolation requirement to Principle II.
+
+MINOR version bump (2.1.0) - Added Principle XXIII (Incremental Feature Commits) for speckit workflow.
+
+AMENDMENTS (v2.1.0):
++ Added Principle XXIII: Incremental Feature Commits (NON-NEGOTIABLE)
+  - Mandates commits after each phase completion in speckit workflow
+  - Prohibits pushing to remote until feature is complete
+  - Requires conventional commit message format
+  - Documents commit workflow and examples
+  - This is FORWARD COMPATIBLE - codifies existing best practice
 
 AMENDMENTS (v2.0.1):
 * Enhanced Principle II: Comprehensive Testing (PATCH UPDATE)
@@ -87,6 +97,7 @@ XIX. Dependency Management (NON-NEGOTIABLE) - NEW
 XX. Debugging Attempt Limit (NON-NEGOTIABLE) - NEW
 XXI. Token Efficiency (NON-NEGOTIABLE) - NEW
 XXII. Accessibility Standards (NON-NEGOTIABLE) - NEW
+XXIII. Incremental Feature Commits (NON-NEGOTIABLE) - NEW (v2.1.0)
 
 TEMPLATE CONSISTENCY CHECK:
 ✅ plan-template.md - Constitution Check section aligns with new principles
@@ -842,6 +853,83 @@ effectively using the Eligian DSL.
 - Extension commands MUST have descriptive labels
 - Webviews (if any) MUST follow WCAG 2.1 AA standards
 
+### XXIII. Incremental Feature Commits (NON-NEGOTIABLE)
+
+When implementing features using the speckit workflow (specification → planning → implementation),
+each completed phase MUST be committed to the feature branch immediately after completion.
+Commits MUST NOT be pushed to remote until the entire feature is complete and ready for review.
+
+**Rationale**: Incremental commits provide granular git history that enables easy rollback to
+specific implementation stages, creates clear checkpoints for debugging and code review, allows
+resuming work from well-defined states after breaks, and maintains logical separation of concerns
+(design artifacts vs implementation vs tests). However, pushing incomplete work creates noise in
+the remote repository and may trigger unnecessary CI/CD runs or confuse other developers.
+
+**Requirements**:
+- MUST commit after each major phase completes:
+  - Phase 0: Research artifacts (research.md)
+  - Phase 1: Design artifacts (data-model.md, quickstart.md, contracts/)
+  - Phase 2: Grammar and parsing implementation
+  - Phase 3: Validation implementation
+  - Phase 4: Compiler/transformation implementation
+  - Phase 5: IDE integration (completion, hover, definition)
+  - Phase 6: Tests and documentation
+  - Phase 7: Final review and cleanup
+- MUST use descriptive commit messages following conventional commits format:
+  - `docs(spec-023): Add research artifacts for library files feature`
+  - `docs(spec-023): Add design artifacts (data model, quickstart)`
+  - `feat(spec-023): Implement library file grammar and parsing`
+  - `feat(spec-023): Add library validation rules`
+  - `feat(spec-023): Implement import resolution and compilation`
+  - `feat(spec-023): Add IDE integration for library imports`
+  - `test(spec-023): Add comprehensive test coverage`
+  - `docs(spec-023): Update LANGUAGE_SPEC.md with library syntax`
+- MUST NOT push to remote until feature is complete and ready for PR
+- MUST verify all tests pass and code quality checks pass before each commit
+- MAY amend the most recent commit if immediate fixes are needed (before pushing)
+- MUST squash or organize commits into logical units before pushing (if needed for clarity)
+
+**Commit Message Format**:
+```
+<type>(spec-XXX): <description>
+
+[optional body explaining what was done and why]
+
+[optional footer with breaking changes or issue references]
+```
+
+**Workflow Example**:
+```bash
+# After completing Phase 0: Research
+git add specs/023-library-files-with/research.md
+git commit -m "docs(spec-023): Add research artifacts for library files feature"
+
+# After completing Phase 1: Design
+git add specs/023-library-files-with/data-model.md specs/023-library-files-with/quickstart.md
+git commit -m "docs(spec-023): Add design artifacts (data model, quickstart)"
+
+# After completing Phase 2: Grammar
+git add packages/language/src/eligian.langium packages/language/src/__tests__/library-parsing.spec.ts
+git commit -m "feat(spec-023): Implement library file grammar and parsing
+
+- Add Library AST node with library keyword
+- Add ImportStatement and ActionImport nodes
+- Add private visibility modifier to ActionDeclaration
+- Add parsing tests for all new grammar rules"
+
+# ... continue for each phase ...
+
+# After ALL phases complete and tests pass:
+git push origin 023-library-files-with
+# Now create PR for review
+```
+
+**DO NOT**:
+- Push incomplete phases to remote (keep work local until feature complete)
+- Skip commits between phases (each phase MUST have a commit)
+- Create massive commits that combine multiple phases
+- Push feature branches before they are ready for review
+
 ## Development Workflow
 
 ### Pull Request Process
@@ -915,6 +1003,7 @@ All pull requests MUST verify compliance with this constitution:
 - Did debugging exceed 5 attempts without user consultation? (constitutional violation if yes)
 - Was context7 consulted for library research?
 - Are error messages accessible (WCAG 2.1 AA)?
+- Were phases committed incrementally (for speckit features)?
 - Has code review been completed?
 
 Complexity MUST be justified. If a feature violates a principle (e.g., adds significant
@@ -926,4 +1015,4 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 2.0.1 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-10-26
+**Version**: 2.1.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-11-02
