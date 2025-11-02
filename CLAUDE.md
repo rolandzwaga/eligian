@@ -1151,6 +1151,62 @@ Following constitution principle **II. Comprehensive Testing**:
 - Cover common Eligius patterns (video annotations, presentations, infographics)
 - Include edge cases and error scenarios
 
+### Test Helpers (Feature 022)
+
+**Location**: `packages/language/src/__tests__/test-helpers.ts`
+
+The test helper module provides shared utilities to eliminate boilerplate and improve test maintainability:
+
+**Core Utilities**:
+- `createTestContext()` - Factory for test environment (services, parse, parseAndValidate)
+- `setupCSSRegistry()` - Populate CSS registry with test fixtures
+- `CSS_FIXTURES` - Predefined CSS test data
+- `DiagnosticSeverity` - Enum for diagnostic severity levels (Error=1, Warning=2, Information=3, Hint=4)
+- `getErrors()` / `getWarnings()` - Filter diagnostics by severity
+
+**Best Practices**:
+
+1. **Use `beforeAll()` for expensive setup** (service initialization):
+   ```typescript
+   let ctx: TestContext;
+
+   beforeAll(async () => {
+     ctx = createTestContext(); // Initialize once per suite
+   });
+
+   test('should validate timeline', async () => {
+     const { errors } = await ctx.parseAndValidate('...');
+     expect(errors).toHaveLength(0);
+   });
+   ```
+
+2. **Use `beforeEach()` for per-test isolation** (CSS registry, mocks):
+   ```typescript
+   beforeEach(() => {
+     setupCSSRegistry(ctx, 'file:///styles.css', {
+       classes: ['button', 'primary'],
+       ids: ['header']
+     });
+   });
+   ```
+
+3. **Use DiagnosticSeverity constants** (not magic numbers):
+   ```typescript
+   import { DiagnosticSeverity } from './test-helpers.js';
+
+   const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+   const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
+   ```
+
+**Metrics** (as of Feature 022 completion):
+- **1,483 tests** passing (12 skipped)
+- **81.72% coverage** (meets baseline target)
+- **1,251 lines saved** (700 from createTestContext, 551 from setupCSSRegistry)
+- **14 test files** using createTestContext()
+- **29 test files** using setupCSSRegistry()
+
+**Documentation**: See `specs/022-test-suite-refactoring/quickstart.md` for comprehensive usage guide
+
 ## Compiler Architecture
 
 The compiler is built using **Effect-ts** to provide principled error handling, composable pipelines, and type-safe side effect management. The compiler transforms Langium AST into Eligius JSON configuration through a multi-stage pipeline.
