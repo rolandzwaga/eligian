@@ -344,24 +344,27 @@
 
 **Note**: DiagnosticSeverity enum was already implemented in T001 (Phase 2). This phase focuses on adoption.
 
-- [ ] **T039** [P] [US5] Update test files to use DiagnosticSeverity enum
+- [X] **T039** [P] [US5] Update test files to use DiagnosticSeverity enum
   - Files already refactored in previous phases automatically use the enum via getErrors()/getWarnings() helpers
   - Identify any remaining test files using magic numbers (severity === 1, severity === 2)
   - Replace with DiagnosticSeverity.Error and DiagnosticSeverity.Warning
   - Update 5-10 test files total
   - Verify all tests pass
+  - ✅ COMPLETE: Updated 7 test files, all magic numbers (severity === 1/2) replaced with DiagnosticSeverity constants
 
-- [ ] **T040** [US5] Run full test suite to verify User Story 5 completion
+- [X] **T040** [US5] Run full test suite to verify User Story 5 completion
   - Execute: `pnpm test`
   - Verify: All 1462 tests pass
   - Execute: `grep -r "severity === 1" packages/language/src/__tests__/ | wc -l`
   - Execute: `grep -r "severity === 2" packages/language/src/__tests__/ | wc -l`
   - Verify: Significant reduction in magic number usage
+  - ✅ COMPLETE: 1483 tests passed (12 skipped), 0 magic numbers remain
 
-- [ ] **T041** [US5] Run code quality checks for User Story 5
+- [X] **T041** [US5] Run code quality checks for User Story 5
   - Execute: `pnpm run check`
   - Execute: `pnpm run typecheck`
   - Verify: 0 errors, 0 warnings
+  - ✅ COMPLETE: Biome check passed (fixed 7 files), TypeScript check passed with 0 errors
 
 **Checkpoint**: User Story 5 complete - Magic numbers replaced with DiagnosticSeverity constants, improved code readability
 

@@ -10,7 +10,7 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { Hover, HoverParams } from 'vscode-languageserver';
 import { EligianHoverProvider } from '../eligian-hover-provider.js';
-import { createTestContext, type TestContext } from './test-helpers.js';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('US1: Import Statement Type Checking (Integration)', () => {
   let ctx: TestContext;
@@ -82,7 +82,8 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
     // Manually trigger validation
     await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
-    const validationErrors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
+    const validationErrors =
+      document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [];
 
     expect(validationErrors.length).toBeGreaterThan(0);
     expect(
@@ -102,7 +103,8 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
     // Manually trigger validation
     await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
-    const validationWarnings = document.diagnostics?.filter(d => d.severity === 2) ?? []; // 2 = Warning
+    const validationWarnings =
+      document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [];
 
     expect(validationWarnings.length).toBeGreaterThan(0);
     expect(

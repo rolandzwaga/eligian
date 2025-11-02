@@ -25,23 +25,22 @@ describe('Operation Validator', () => {
         expect(error).toBeUndefined();
       });
 
-      it('should return undefined for all registered operations', () => {
-        const validOperations = [
-          'addClass',
-          'removeClass',
-          'toggleClass',
-          'selectElement',
-          'animate',
-          'setStyle',
-          'when',
-          'forEach',
-        ];
-
-        for (const op of validOperations) {
-          const error = validateOperationExists(op);
+      it.each([
+        { operation: 'addClass', description: 'CSS class manipulation' },
+        { operation: 'removeClass', description: 'CSS class manipulation' },
+        { operation: 'toggleClass', description: 'CSS class manipulation' },
+        { operation: 'selectElement', description: 'DOM element selection' },
+        { operation: 'animate', description: 'Animation control' },
+        { operation: 'setStyle', description: 'Style manipulation' },
+        { operation: 'when', description: 'Conditional operation' },
+        { operation: 'forEach', description: 'Loop operation' },
+      ])(
+        'should return undefined for registered operation $operation ($description)',
+        ({ operation }) => {
+          const error = validateOperationExists(operation);
           expect(error).toBeUndefined();
         }
-      });
+      );
 
       it('should return error for unknown operation', () => {
         const error = validateOperationExists('unknownOperation');

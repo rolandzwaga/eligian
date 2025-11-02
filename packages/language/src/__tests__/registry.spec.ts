@@ -70,22 +70,16 @@ describe('Operation Registry', () => {
       }
     });
 
-    it('should not include filtered operations', () => {
+    it.each([
+      { operation: 'breakForEach', description: 'break keyword (DSL sugar)' },
+      { operation: 'continueForEach', description: 'continue keyword (DSL sugar)' },
+      { operation: 'ifCondition', description: 'if statement (DSL syntax)' },
+      { operation: 'elseCondition', description: 'else statement (DSL syntax)' },
+      { operation: 'forEach', description: 'for loop (DSL syntax)' },
+    ])('should not include $operation ($description)', ({ operation }) => {
       const operations = getAllOperations();
-
-      // Filtered operations (handled by DSL keywords)
-      const filteredOps = [
-        'breakForEach',
-        'continueForEach',
-        'ifCondition',
-        'elseCondition',
-        'forEach',
-      ];
-
-      for (const filteredOp of filteredOps) {
-        const found = operations.find(op => op.name === filteredOp);
-        expect(found).toBeUndefined();
-      }
+      const found = operations.find(op => op.name === operation);
+      expect(found).toBeUndefined();
     });
 
     it('should include common operations like selectElement', () => {

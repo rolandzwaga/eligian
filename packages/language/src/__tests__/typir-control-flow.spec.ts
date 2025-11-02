@@ -9,7 +9,7 @@
  */
 
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, type TestContext } from './test-helpers.js';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('US4: Control Flow Type Checking (Integration)', () => {
   let ctx: TestContext;
@@ -26,8 +26,10 @@ describe('US4: Control Flow Type Checking (Integration)', () => {
       document,
       program: document.parseResult.value,
       diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
-      validationWarnings: document.diagnostics?.filter(d => d.severity === 2) ?? [], // 2 = Warning
+      validationErrors:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [],
+      validationWarnings:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [],
     };
   }
 

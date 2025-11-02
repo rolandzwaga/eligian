@@ -11,7 +11,7 @@
  */
 
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, type TestContext } from './test-helpers.js';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('US3: Timeline Event Validation (Integration)', () => {
   let ctx: TestContext;
@@ -33,7 +33,8 @@ describe('US3: Timeline Event Validation (Integration)', () => {
       document,
       program: document.parseResult.value,
       diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
+      validationErrors:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [],
     };
   }
 

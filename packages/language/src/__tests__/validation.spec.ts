@@ -75,21 +75,21 @@ describe('Eligian Grammar - Validation', () => {
       expect(multiTimelineErrors.length).toBe(0);
     });
 
-    test('should accept valid timeline providers', async () => {
-      const validProviders = ['video', 'audio', 'raf', 'custom'];
+    test.each([
+      { provider: 'video', needsSource: true, description: 'video provider with source' },
+      { provider: 'audio', needsSource: true, description: 'audio provider with source' },
+      { provider: 'raf', needsSource: false, description: 'raf provider without source' },
+      { provider: 'custom', needsSource: false, description: 'custom provider without source' },
+    ])('should accept $provider provider ($description)', async ({ provider, needsSource }) => {
+      const code = needsSource
+        ? `timeline "test" in ".test-container" using ${provider} from "test.mp4" {}`
+        : `timeline "test" in ".test-container" using ${provider} {}`;
 
-      for (const provider of validProviders) {
-        const code =
-          provider === 'video' || provider === 'audio'
-            ? `timeline "test" in ".test-container" using ${provider} from "test.mp4" {}`
-            : `timeline "test" in ".test-container" using ${provider} {}`;
+      const { errors } = await ctx.parseAndValidate(code);
 
-        const { errors } = await ctx.parseAndValidate(code);
-
-        // Should not have provider-related errors
-        const providerErrors = errors.filter(e => e.message.includes('Invalid timeline provider'));
-        expect(providerErrors.length).toBe(0);
-      }
+      // Should not have provider-related errors
+      const providerErrors = errors.filter(e => e.message.includes('Invalid timeline provider'));
+      expect(providerErrors.length).toBe(0);
     });
 
     test('should reject invalid timeline provider', async () => {

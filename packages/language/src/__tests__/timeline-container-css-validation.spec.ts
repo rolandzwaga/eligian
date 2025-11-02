@@ -15,6 +15,7 @@ import { parseHelper } from 'langium/test';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
+import { DiagnosticSeverity } from './test-helpers.js';
 
 describe('Timeline Container CSS Validation (Integration)', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;
@@ -29,8 +30,10 @@ describe('Timeline Container CSS Validation (Integration)', () => {
       document,
       program: document.parseResult.value,
       diagnostics: document.diagnostics ?? [],
-      validationErrors: document.diagnostics?.filter(d => d.severity === 1) ?? [], // 1 = Error
-      validationWarnings: document.diagnostics?.filter(d => d.severity === 2) ?? [], // 2 = Warning
+      validationErrors:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [],
+      validationWarnings:
+        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [],
     };
   }
 
