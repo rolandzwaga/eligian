@@ -19,13 +19,6 @@ import type * as vscode from 'vscode';
 import { VSCodeWebviewUriConverter } from './webview-uri-converter.js';
 
 /**
- * Extended Eligius configuration with cssFiles support (Feature 010)
- */
-export interface IEngineConfigurationWithCSS extends IEngineConfiguration {
-  cssFiles?: string[];
-}
-
-/**
  * Re-export error types from language package for backwards compatibility
  */
 export type { FileNotFoundError, PermissionError, ReadError };
@@ -98,7 +91,7 @@ export async function loadCSSFile(filePath: string): Promise<string> {
  * const cssFiles = extractCSSFiles(config);
  * // ['./styles/main.css', './styles/theme.css']
  */
-export function extractCSSFiles(config: IEngineConfigurationWithCSS): string[] {
+export function extractCSSFiles(config: IEngineConfiguration): string[] {
   console.log('[css-loader] extractCSSFiles called with config:', {
     hasCssFiles: 'cssFiles' in config,
     cssFilesValue: config.cssFiles,

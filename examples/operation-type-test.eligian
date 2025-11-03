@@ -1,9 +1,0 @@
-// Test operation type checking
-timeline "test" in "#c" using raf {
-  at 0s..1s [
-    selectElement("#box")     // ✅ Correct: string
-    selectElement(123)         // ❌ ERROR: number, expects string
-  ] [
-    selectElement("#box")
-  ]
-}

@@ -1,8 +1,0 @@
-styles "./test-preview.css"
-
-timeline "Test Preview" in ".eligius-container" using raf {
-  at 0s..5s [
-    selectElement(".eligius")
-    addClass("eligius2")
-  ] []
-}

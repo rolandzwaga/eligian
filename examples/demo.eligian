@@ -1,0 +1,243 @@
+/**
+ * Comprehensive Eligian Language Demo
+ *
+ * Demonstrates ALL language features:
+ * - Asset imports (CSS, HTML, libraries)
+ * - Constants (all types)
+ * - Custom actions with JSDoc and type annotations  
+ * - Control flow (if/else, for loops, break/continue)
+ * - Timeline events with inline endable actions
+ * - Type system (annotations and inference)
+ * - Library imports
+ * - Stagger blocks
+ * - Sequence blocks
+ * - Private actions
+ */
+
+// ============================================================================
+// ASSET IMPORTS
+// ============================================================================
+
+styles "./demo-styles.css"
+layout "./demo-layout.html"
+
+import { fadeIn, fadeOut, slideInLeft } from "./libraries/animations.eligian"
+import { safeRemoveClass } from "./libraries/utils.eligian"
+
+// ============================================================================
+// CONSTANTS - All Eligius Types
+// ============================================================================
+
+const title = "Eligian Language Demo"
+const slideCount = 5
+const duration = 3000
+const autoPlay = true
+const slides = ["intro", "features", "demo", "code", "end"]
+const config = {
+  loop: true,
+  speed: 1.5
+}
+
+// ============================================================================
+// CUSTOM ACTIONS with JSDoc and Type Annotations
+// ============================================================================
+
+/**
+ * Shows a slide with fade animation
+ * @param slideId Slide element ID
+ * @param duration Animation duration in milliseconds
+ */
+action showSlide(slideId: string, duration: number) [
+  fadeIn("#" + slideId, duration)
+  selectElement("#" + slideId)
+  addClass("active")
+]
+
+/**
+ * Hides a slide
+ * @param slideId Slide element ID  
+ * @param duration Animation duration in milliseconds
+ */
+action hideSlide(slideId: string, duration: number) [
+  fadeOut("#" + slideId, duration)
+  selectElement("#" + slideId)
+  removeClass("active")
+]
+
+/**
+ * Shows items in a list with for loop
+ * @param items Array of item IDs
+ */
+action showItems(items: array) [
+  for (item in items) {
+    selectElement("#" + @@item)
+    removeClass("hidden")
+    slideInLeft("#" + @@item, 500)
+    wait(200)
+  }
+]
+
+/**
+ * Validates input with if/else
+ * @param input User input string
+ */
+action validateInput(input: string) [
+  if (input == "") {
+    log("Error: Empty input")
+    selectElement("#error-message")
+    addClass("visible")
+  } else {
+    log("Input valid")
+    selectElement("#success-message")
+    addClass("visible")
+  }
+]
+
+/**
+ * Searches items with break/continue
+ * @param items Array to search
+ * @param target Target to find
+ */
+action searchItems(items: array, target: string) [
+  for (item in items) {
+    if (@@item == "") {
+      log("Skipping empty")
+      continue
+    }
+
+    if (@@item == target) {
+      log("Found: " + target)
+      break
+    }
+
+    log("Checking: " + @@item)
+  }
+]
+
+/**
+ * Demonstrates nested if/else
+ * @param value Number to check
+ */
+action checkValue(value: number) [
+  if (value > 100) {
+    log("Value is large")
+  } else {
+    if (value > 50) {
+      log("Value is medium")
+    } else {
+      log("Value is small")
+    }
+  }
+]
+
+/**
+ * Private helper action (not exported from library)
+ */
+private action resetAll() [
+  safeRemoveClass(".slide", "active")
+  safeRemoveClass(".item", "visible")
+]
+
+// ============================================================================
+// TIMELINE - All Timeline Features
+// ============================================================================
+
+timeline "Eligian Demo" in "#container" using raf {
+
+  // === Inline Endable Action with start and end blocks ===
+  at 0s..5s [
+    selectElement("#intro")
+    setElementContent({template: title})
+    addClass("fade-in")
+    animate({opacity: 1}, 1000)
+  ] [
+    selectElement("#intro")
+    animate({opacity: 0}, 500)
+    removeClass("fade-in")
+  ]
+
+  // === Call custom action (operation call) ===
+  at 1s..1s showSlide("title", 1000)
+
+  // === For loop in timeline ===
+  at 3s..3s for (slide in slides) {
+    log("Processing slide: " + @@slide)
+  }
+
+  // === If statement in timeline ===
+  at 4s..4s if (autoPlay) {
+    log("Auto-play is enabled")
+  }
+
+  // === Feature showcase ===
+  at 5s..15s [
+    hideSlide("intro", 500)
+    wait(500)
+    selectElement("#features")
+    addClass("visible")
+  ] [
+    selectElement("#features")
+    removeClass("visible")
+  ]
+
+  // === Stagger block with action call ===
+  stagger 200ms ["feat1", "feat2", "feat3", "feat4", "feat5"] with fadeIn(@@staggerItem, 400) for 0.5s
+
+  // === Action call without time range (uses stagger/sequence context) ===
+  at 6s..6s showItems(["feat1", "feat2", "feat3", "feat4", "feat5"])
+
+  // === Interactive demo section ===
+  at 15s..25s [
+    selectElement("#demo-section")
+    addClass("active")
+    animate({opacity: 1}, 500)
+  ] [
+    selectElement("#demo-section")
+    removeClass("active")
+  ]
+
+  // === Multiple action calls in sequence ===
+  at 17s..17s [
+    validateInput("")
+    wait(500)
+    validateInput("Valid input")
+    wait(500)
+    checkValue(75)
+  ] []
+
+  // === Code examples ===
+  at 25s..35s [
+    hideSlide("demo-section", 500)
+    showSlide("code-section", 1000)
+  ] []
+
+  // === Action with break/continue ===
+  at 27s..27s searchItems(["apple", "banana", "", "cherry", "date"], "cherry")
+
+  // === Nested for with if ===
+  at 30s..30s for (item in slides) {
+    if (@@item == "demo") {
+      log("Found demo slide")
+      break
+    }
+  }
+
+  // === Closing slide ===
+  at 35s..40s [
+    resetAll()
+    showSlide("outro", 1500)
+    selectElement("#outro")
+    addClass("closing")
+    animate({opacity: 1, transform: "scale(1.2)"}, 2000)
+  ] [
+    selectElement("#outro")
+    removeClass("closing")
+  ]
+
+  // === Final if/else check ===
+  at 40s..40s if (autoPlay) {
+    log("Looping presentation...")
+  } else {
+    log("Presentation complete")
+  }
+}

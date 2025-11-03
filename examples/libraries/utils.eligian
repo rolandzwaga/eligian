@@ -1,52 +1,77 @@
-// Utility library - Safe operations and helper actions
+/**
+ * Utility Library
+ *
+ * Reusable utility actions for common DOM operations.
+ * Demonstrates: Library exports, action composition, JSDoc documentation.
+ */
 library utils
 
 /**
- * Safely selects an element with error handling
- * @param selector CSS selector for target element
- */
-action safeSelect(selector: string) [
-  if (hasElement(selector)) {
-    selectElement(selector)
-  } else {
-    log("Element not found: " + selector)
-  }
-]
-
-/**
- * Safely adds a CSS class with existence check
- * @param selector CSS selector for target element
- * @param className CSS class name to add
- */
-action safeAddClass(selector: string, className: string) [
-  if (hasElement(selector)) {
-    selectElement(selector)
-    addClass(className)
-  } else {
-    log("Cannot add class - element not found: " + selector)
-  }
-]
-
-/**
- * Safely removes a CSS class with existence check
+ * Safely removes a CSS class from an element
  * @param selector CSS selector for target element
  * @param className CSS class name to remove
  */
 action safeRemoveClass(selector: string, className: string) [
-  if (hasElement(selector)) {
-    selectElement(selector)
-    removeClass(className)
-  } else {
-    log("Cannot remove class - element not found: " + selector)
+  selectElement(selector)
+  removeClass(className)
+]
+
+/**
+ * Safely adds a CSS class to an element
+ * @param selector CSS selector for target element
+ * @param className CSS class name to add
+ */
+action safeAddClass(selector: string, className: string) [
+  selectElement(selector)
+  addClass(className)
+]
+
+/**
+ * Safely toggles a CSS class on an element
+ * @param selector CSS selector for target element
+ * @param className CSS class name to toggle
+ */
+action safeToggleClass(selector: string, className: string) [
+  selectElement(selector)
+  toggleClass(className)
+]
+
+/**
+ * Sets element content with template
+ * @param selector CSS selector for target element
+ * @param content Content to set
+ */
+action safeSetContent(selector: string, content: string) [
+  selectElement(selector)
+  setElementContent({template: content})
+]
+
+/**
+ * Batch operation - add class to multiple elements
+ * @param selectors Array of CSS selectors
+ * @param className Class to add to all elements
+ */
+action batchAddClass(selectors: array, className: string) [
+  for (selector in selectors) {
+    safeAddClass(@@selector, className)
   }
 ]
 
 /**
- * Private helper to validate selector format
- * @param selector CSS selector to validate
+ * Batch operation - remove class from multiple elements
+ * @param selectors Array of CSS selectors
+ * @param className Class to remove from all elements
  */
-private action validateSelector(selector: string) [
-  if (selector == "") {
-    log("Warning: Empty selector provided")
+action batchRemoveClass(selectors: array, className: string) [
+  for (selector in selectors) {
+    safeRemoveClass(@@selector, className)
   }
+]
+
+/**
+ * Private helper to log debug information
+ * @param message Debug message to log
+ */
+private action debugLog(message: string) [
+  log("DEBUG: " + message)
 ]

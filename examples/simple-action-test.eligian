@@ -1,9 +1,0 @@
-// Simple test
-action test(name: string) [
-  selectElement(name)
-]
-
-timeline "t" in "#c" using raf {
-  at 0s..1s { test("hello") }
-  at 1s..2s { test(123) }
-}
