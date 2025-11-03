@@ -24,18 +24,39 @@ export function findActionBelow(
   document: LangiumDocument,
   position: Position
 ): ActionDefinition | undefined {
-  const cursorOffset = document.textDocument.offsetAt(position);
-  const root = document.parseResult.value;
+  // Find the start of the NEXT line after the cursor
+  const nextLineStart = document.textDocument.offsetAt({
+    line: position.line + 1,
+    character: 0,
+  });
 
-  // Search through AST to find first action definition AFTER cursor position
-  if ('statements' in root) {
-    for (const statement of root.statements as any[]) {
-      if (isActionDefinition(statement)) {
-        // Check if this action starts after the cursor position
-        const actionOffset = statement.$cstNode?.offset;
-        if (actionOffset !== undefined && actionOffset > cursorOffset) {
-          return statement;
-        }
+  const root: any = document.parseResult.value;
+
+  // Handle the EligianFile union entry rule (Feature 023)
+  // The root can be: Program ($type = 'Program'), Library ($type = 'Library'),
+  // or neither (parse failed). We need to extract the appropriate list of items.
+  let items: any[] = [];
+
+  if (root.$type === 'Program') {
+    // Program has statements (which can include ActionDefinitions)
+    items = root.statements || [];
+  } else if (root.$type === 'Library') {
+    // Library has actions (which are ActionDefinitions)
+    items = root.actions || [];
+  } else {
+    // Parse failed or unexpected root type
+    return undefined;
+  }
+
+  // Search through items to find first action definition on or after the next line
+  for (const item of items) {
+    // For Program, statements can be ActionDefinition or other types
+    // For Library, actions are always ActionDefinitions
+    if (isActionDefinition(item)) {
+      // Check if this action starts on or after the next line
+      const actionOffset = item.$cstNode?.offset;
+      if (actionOffset !== undefined && actionOffset >= nextLineStart) {
+        return item;
       }
     }
   }

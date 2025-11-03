@@ -6,11 +6,10 @@
  * completion modules for operations, actions, keywords, etc.
  */
 
-import type { LangiumDocument, MaybePromise } from 'langium';
+import type { MaybePromise } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
-import type { CompletionItem, CompletionItemKind, CompletionParams } from 'vscode-languageserver';
-import { CompletionList, InsertTextFormat } from 'vscode-languageserver';
+import type { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
 import { getOperationCompletions } from './completion/operations.js';
@@ -21,8 +20,6 @@ import {
 } from './css/context-detection.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
-import { generateJSDocTemplate } from './jsdoc/jsdoc-template-generator.js';
-import { findActionBelow } from './utils/ast-navigation.js';
 
 /**
  * Eligian-specific completion provider
@@ -34,212 +31,10 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
   private readonly cssCompletionProvider: CSSCompletionProvider;
   private readonly services: EligianServices;
 
-  /**
-   * Completion options for Eligian
-   *
-   * Registers '*' as a trigger character to enable JSDoc auto-completion.
-   * When the user types '/**', the second '*' triggers completion and
-   * auto-generates the JSDoc template.
-   */
-  override readonly completionOptions = {
-    triggerCharacters: ['*'],
-  };
-
   constructor(services: EligianServices) {
     super(services);
     this.services = services;
     this.cssCompletionProvider = new CSSCompletionProvider();
-  }
-
-  /**
-   * Override getCompletion to intercept JSDoc template requests
-   *
-   * This is the top-level completion handler that receives the full CompletionParams,
-   * including the triggerCharacter. We check if completion was triggered by '*' and
-   * the cursor is positioned after '/**', then generate the JSDoc template.
-   */
-  override async getCompletion(
-    document: LangiumDocument,
-    params: CompletionParams
-  ): Promise<CompletionList | undefined> {
-    // Check if this is a JSDoc template trigger: typing * after /**
-    if (params.context?.triggerCharacter === '*') {
-      const text = document.textDocument.getText();
-      const offset = document.textDocument.offsetAt(params.position);
-
-      // Get the line text up to cursor
-      const position = params.position;
-      const lineStart = document.textDocument.offsetAt({ line: position.line, character: 0 });
-      const lineTextUpToCursor = text.substring(lineStart, offset);
-
-      // Check if line ends with /** (we just typed the second *)
-      const trimmed = lineTextUpToCursor.trimEnd();
-
-      if (trimmed.endsWith('/**')) {
-        // Find the action definition on the line below
-        const actionBelow = findActionBelow(document, position);
-
-        if (actionBelow) {
-          // Generate JSDoc template
-          const template = generateJSDocTemplate(actionBelow);
-
-          // Split template into lines and build snippet
-          const lines = template.split('\n');
-          const snippetLines: string[] = [];
-
-          for (let i = 0; i < lines.length; i++) {
-            if (i === 0) {
-              // Skip first line (already typed /**)
-            } else if (i === 1) {
-              // Second line - add placeholder for description
-              snippetLines.push(' * ${1:description}');
-            } else {
-              // Param lines and closing */ - keep as-is
-              snippetLines.push(lines[i]);
-            }
-          }
-
-          const snippetText = snippetLines.join('\n');
-
-          // Insert the template starting at current cursor position
-          // The /** is already typed, so we just add newline + template content
-          const insertText = `\n${snippetText}`;
-
-          // Create completion item that inserts at current position
-          const completionItem: CompletionItem = {
-            label: '/** JSDoc comment */',
-            kind: 15, // CompletionItemKind.Snippet
-            insertText: insertText,
-            insertTextFormat: InsertTextFormat.Snippet,
-            detail: `Generate JSDoc for ${actionBelow.name}`,
-            documentation: {
-              kind: 'markdown',
-              value: `Generates JSDoc documentation template for action \`${actionBelow.name}\``,
-            },
-            sortText: '!0', // ! prefix ensures it sorts first
-            filterText: '/**', // Match against what user typed
-            preselect: true, // Auto-select this item (VS Code will highlight it first)
-            // Empty commitCharacters means it won't auto-commit, but being preselected helps
-          };
-
-          // Return ONLY this completion as a complete list
-          // Return with isIncomplete: false and only one item - this should show only our item
-          return CompletionList.create([completionItem], false);
-        }
-      }
-    }
-
-    // Not a JSDoc trigger, delegate to default implementation
-    return super.getCompletion(document, params);
-  }
-
-  /**
-   * Check if cursor is immediately after /** on a line
-   *
-   * This method is used as a fallback when context.triggerCharacter is not available
-   * (e.g., in testing or if LSP doesn't support trigger characters).
-   *
-   * @param context - Completion context
-   * @returns True if the cursor is right after /** on the current line
-   */
-  private isCursorAfterJSDocStart(context: CompletionContext): boolean {
-    const document = context.document;
-    const text = document.textDocument.getText();
-    const position = document.textDocument.positionAt(context.offset);
-
-    // Get the current line text up to cursor
-    const lineStart = document.textDocument.offsetAt({ line: position.line, character: 0 });
-    const lineTextUpToCursor = text.substring(lineStart, context.offset);
-
-    // Check if line ends with /**<cursor> or /** *<cursor> (after typing *)
-    const trimmed = lineTextUpToCursor.trimEnd();
-    return trimmed.endsWith('/**') || trimmed.endsWith('/** *');
-  }
-
-  /**
-   * Try to generate a JSDoc template for an action below the cursor
-   *
-   * This method is triggered when the user types `*` after `/**`. It:
-   * 1. Checks if the line ends with `/**`
-   * 2. Finds the action definition on the next line
-   * 3. Generates a JSDoc template with parameter types
-   * 4. Adds it as a snippet completion
-   *
-   * @param context - Completion context
-   * @param acceptor - Completion acceptor
-   * @returns True if JSDoc template was generated, false otherwise
-   */
-  private tryGenerateJSDocTemplate(
-    context: CompletionContext,
-    acceptor: CompletionAcceptor
-  ): boolean {
-    const document = context.document;
-    const text = document.textDocument.getText();
-    const position = document.textDocument.positionAt(context.offset);
-
-    // Get the current line text
-    const lineStart = document.textDocument.offsetAt({ line: position.line, character: 0 });
-    const lineEnd = document.textDocument.offsetAt({
-      line: position.line + 1,
-      character: 0,
-    });
-    const lineText = text.substring(lineStart, lineEnd);
-
-    // Check if the line ends with /** (ignoring whitespace)
-    // Note: Remove | cursor marker if present (from test fixtures)
-    const trimmedLine = lineText.trimEnd().replace('|', '');
-    if (!trimmedLine.endsWith('/**')) {
-      return false;
-    }
-
-    // Find the action definition on the line below
-    const actionBelow = findActionBelow(document, position);
-    if (!actionBelow) {
-      return false; // No action found below
-    }
-
-    // Generate JSDoc template
-    const template = generateJSDocTemplate(actionBelow);
-
-    // Split template into lines and add proper indentation
-    const lines = template.split('\n');
-
-    // Build snippet with placeholders:
-    // Line 0: /** (already typed)
-    // Line 1: * ${1:description}
-    // Lines 2+: * @param ... (keep as-is)
-    // Last line: */
-    const snippetLines: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      if (i === 0) {
-      } else if (i === 1) {
-        // Second line - add placeholder for description
-        snippetLines.push(' * ${1:description}');
-      } else {
-        // Param lines and closing */ - keep as-is
-        snippetLines.push(line);
-      }
-    }
-
-    // Join lines with newline
-    const snippetText = snippetLines.join('\n');
-
-    // Create completion item
-    const completionItem: CompletionItem = {
-      label: 'Generate JSDoc',
-      kind: 22, // CompletionItemKind.Snippet
-      insertText: snippetText,
-      insertTextFormat: InsertTextFormat.Snippet,
-      detail: 'JSDoc comment template',
-      documentation: `Generate JSDoc template for action '${actionBelow.name}'`,
-      sortText: '0_jsdoc', // Sort to top
-    };
-
-    acceptor(context, completionItem);
-    return true;
   }
 
   /**
@@ -285,14 +80,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Get document and position from context
       const document = context.document;
 
-      // Check for JSDoc template completion (triggered by * after /**)
-      // Manually detect from document text (triggerCharacter is not available in Langium)
-      if (this.isCursorAfterJSDocStart(context)) {
-        const jsdocCompletion = this.tryGenerateJSDocTemplate(context, acceptor);
-        if (jsdocCompletion) {
-          return; // JSDoc template generated, don't show other completions
-        }
-      }
+      // NOTE: JSDoc completion is now handled in getCompletion() above
 
       // Use tokenOffset to detect context, as this points to the start of the token being completed
       // For @@loop<cursor>, tokenOffset points to 'l' in 'loop', which is inside SystemPropertyReference

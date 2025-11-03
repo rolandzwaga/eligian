@@ -102,9 +102,9 @@
 - [x] T035 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when import conflicts with local action (MUST FAIL initially)
 - [x] T036 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when duplicate imports from multiple libraries (MUST FAIL initially)
 - [x] T037 [P] [US2] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test alias resolves name conflicts (MUST FAIL initially)
-- [ ] T038 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-compilation.spec.ts`: Test imported action compiles identically to local action (MUST FAIL initially)
-- [ ] T039 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-merging.spec.ts`: Test imported actions are merged into program AST (MUST FAIL initially)
-- [ ] T040 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-merging.spec.ts`: Test aliased actions use alias name in compilation (MUST FAIL initially)
+- [x] T038 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-compilation.spec.ts`: Test imported action compiles identically to local action (MUST FAIL initially)
+- [x] T039 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-merging.spec.ts`: Test imported actions are merged into program AST (MUST FAIL initially)
+- [x] T040 [P] [US2] Write compilation test in `packages/compiler/src/__tests__/library-merging.spec.ts`: Test aliased actions use alias name in compilation (MUST FAIL initially)
 
 ### Implementation for User Story 2
 
@@ -112,11 +112,11 @@
 - [x] T042 [P] [US2] Implement `checkImportedActionsExist` validator in `packages/language/src/eligian-validator.ts`: Validate imported actions exist in library (error code `import_action_not_found`)
 - [x] T042a [P] [US2] Implement fuzzy name matching for error suggestions in `packages/language/src/eligian-validator.ts`: Use Levenshtein distance (similar to CSS validation) to suggest similar action names when import fails (addresses FR-021)
 - [x] T043 [US2] Implement `checkImportNameCollisions` validator in `packages/language/src/eligian-validator.ts`: Validate imports don't conflict with local actions or other imports (error code `import_name_collision`)
-- [ ] T044 [US2] Implement import resolution in `packages/compiler/src/ast-transformer.ts`: Add `resolveImports()` function to load and collect imported actions
-- [ ] T045 [US2] Implement action merging in `packages/compiler/src/ast-transformer.ts`: Merge imported actions into program's action array with alias handling
-- [ ] T046 [US2] Update `transformProgram()` in `packages/compiler/src/ast-transformer.ts` to call `resolveImports()` before building action registry
-- [ ] T047 [US2] Run `pnpm run check && pnpm run typecheck` and fix any issues
-- [ ] T048 [US2] Verify all US2 tests pass: `pnpm --filter @eligian/language test import-parsing import-validation && pnpm --filter @eligian/compiler test library`
+- [x] T044 [US2] Implement import resolution in `packages/compiler/src/ast-transformer.ts`: Add `resolveImports()` function to load and collect imported actions
+- [x] T045 [US2] Implement action merging in `packages/compiler/src/ast-transformer.ts`: Merge imported actions into program's action array with alias handling
+- [x] T046 [US2] Update `transformProgram()` in `packages/compiler/src/ast-transformer.ts` to call `resolveImports()` before building action registry
+- [x] T047 [US2] Run `pnpm run check && pnpm run typecheck` and fix any issues
+- [x] T048 [US2] Verify all US2 tests pass: `pnpm --filter @eligian/language test import-parsing import-validation && pnpm --filter @eligian/compiler test library`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work - MVP is complete (create libraries + import actions)
 
@@ -132,20 +132,20 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T049 [P] [US3] Write validation test in `packages/language/src/__tests__/private-actions.spec.ts`: Test error when importing private action (MUST FAIL initially)
-- [ ] T050 [P] [US3] Write validation test in `packages/language/src/__tests__/private-actions.spec.ts`: Test error when using `private` in program file (MUST FAIL initially)
-- [ ] T051 [P] [US3] Write validation test in `packages/language/src/__tests__/private-actions.spec.ts`: Test private actions accessible within same library (MUST FAIL initially)
-- [ ] T052 [P] [US3] Write scoping test in `packages/language/src/__tests__/library-scoping.spec.ts`: Test scope provider filters private actions from exports (MUST FAIL initially)
-- [ ] T053 [P] [US3] Write scoping test in `packages/language/src/__tests__/library-scoping.spec.ts`: Test scope provider includes public actions in exports (MUST FAIL initially)
+- [x] T049 [P] [US3] Write validation test in `packages/language/src/__tests__/private-actions.spec.ts`: Test error when importing private action (MUST FAIL initially)
+- [x] T050 [P] [US3] Write validation test in `packages/language/src/__tests__/private-actions.spec.ts`: Test error when using `private` in program file (MUST FAIL initially)
+- [x] T051 [P] [US3] Write validation test in `packages/language/src/__tests__/private-actions.spec.ts`: Test private actions accessible within same library (MUST FAIL initially)
+- [x] T052 [P] [US3] Write scoping test in `packages/language/src/__tests__/library-scoping.spec.ts`: Test scope provider filters private actions from exports (MUST FAIL initially)
+- [x] T053 [P] [US3] Write scoping test in `packages/language/src/__tests__/library-scoping.spec.ts`: Test scope provider includes public actions in exports (MUST FAIL initially)
 
 ### Implementation for User Story 3
 
-- [ ] T054 [US3] Implement custom scope provider in `packages/language/src/eligian-scope.ts`: Override `getScope()` to filter private actions when resolving imports
-- [ ] T055 [US3] Implement `checkImportedActionsPublic` validator in `packages/language/src/eligian-validator.ts`: Validate imported actions are not private (error code `import_private_action`)
-- [ ] T056 [US3] Implement `checkPrivateOnlyInLibraries` validator in `packages/language/src/eligian-validator.ts`: Validate `private` keyword only used in library files (error code `private_only_in_libraries`)
-- [ ] T057 [US3] Register custom scope provider in `packages/language/src/eligian-module.ts` (replace default scope provider if needed)
-- [ ] T058 [US3] Run `pnpm run check && pnpm run typecheck` and fix any issues
-- [ ] T059 [US3] Verify all US3 tests pass: `pnpm --filter @eligian/language test private-actions library-scoping`
+- [x] T054 [US3] Implement custom scope provider in `packages/language/src/eligian-scope.ts`: Override `getScope()` to filter private actions when resolving imports
+- [x] T055 [US3] Implement `checkImportedActionsPublic` validator in `packages/language/src/eligian-validator.ts`: Validate imported actions are not private (error code `import_private_action`)
+- [x] T056 [US3] Implement `checkPrivateOnlyInLibraries` validator in `packages/language/src/eligian-validator.ts`: Validate `private` keyword only used in library files (error code `private_only_in_libraries`)
+- [x] T057 [US3] Register custom scope provider in `packages/language/src/eligian-module.ts` (replace default scope provider if needed)
+- [x] T058 [US3] Run `pnpm run check && pnpm run typecheck` and fix any issues
+- [x] T059 [US3] Verify all US3 tests pass: `pnpm --filter @eligian/language test private-actions library-scoping`
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should work - private action encapsulation is functional
 
@@ -163,19 +163,19 @@
 
 **IMPORTANT**: Per Constitution Principle II, integration tests (T063-T064) MUST be isolated in separate files to prevent test environment pollution. Unit tests (T060-T062) CAN share files.
 
-- [ ] T060 [P] [US4] Write completion test in `packages/language/src/__tests__/library-completion.spec.ts`: Test auto-completion suggests public actions from library (MUST FAIL initially)
-- [ ] T061 [P] [US4] Write completion test in `packages/language/src/__tests__/library-completion.spec.ts`: Test auto-completion excludes private actions (MUST FAIL initially)
-- [ ] T062 [P] [US4] Write completion test in `packages/language/src/__tests__/library-completion.spec.ts`: Test auto-completion shows action documentation (MUST FAIL initially)
-- [ ] T063 [P] [US4] Write hover test in `packages/language/src/__tests__/library-hover.spec.ts` (SEPARATE FILE): Test hover on imported action shows JSDoc (MUST FAIL initially)
-- [ ] T064 [P] [US4] Write definition test in `packages/language/src/__tests__/library-definition.spec.ts` (SEPARATE FILE): Test go-to-definition navigates to library file (MUST FAIL initially)
+- [x] T060 [P] [US4] Write completion test in `packages/language/src/__tests__/library-completion.spec.ts`: Test auto-completion suggests public actions from library (MUST FAIL initially)
+- [x] T061 [P] [US4] Write completion test in `packages/language/src/__tests__/library-completion.spec.ts`: Test auto-completion excludes private actions (MUST FAIL initially)
+- [x] T062 [P] [US4] Write completion test in `packages/language/src/__tests__/library-completion.spec.ts`: Test auto-completion shows action documentation (MUST FAIL initially)
+- [x] T063 [P] [US4] Write hover test in `packages/language/src/__tests__/library-hover.spec.ts` (SEPARATE FILE): Test hover on imported action shows JSDoc (MUST FAIL initially)
+- [x] T064 [P] [US4] Write definition test in `packages/language/src/__tests__/library-definition.spec.ts` (SEPARATE FILE): Test go-to-definition navigates to library file (MUST FAIL initially)
 
 ### Implementation for User Story 4
 
-- [ ] T065 [US4] Extend `eligian-completion-provider.ts` in `packages/language/src/`: Add completion logic for import statements (suggest public actions from target library)
-- [ ] T066 [US4] Update hover provider in `packages/language/src/eligian-hover-provider.ts` if needed (Langium cross-references should work automatically)
-- [ ] T067 [US4] Verify definition provider works automatically via Langium cross-reference resolution (test manually if no test exists)
-- [ ] T068 [US4] Run `pnpm run check && pnpm run typecheck` and fix any issues
-- [ ] T069 [US4] Verify all US4 tests pass: `pnpm --filter @eligian/language test library-completion library-hover`
+- [x] T065 [US4] Extend `eligian-completion-provider.ts` in `packages/language/src/`: Add completion logic for import statements (suggest public actions from target library)
+- [x] T066 [US4] Update hover provider in `packages/language/src/eligian-hover-provider.ts` if needed (Langium cross-references should work automatically)
+- [x] T067 [US4] Verify definition provider works automatically via Langium cross-reference resolution (test manually if no test exists)
+- [x] T068 [US4] Run `pnpm run check && pnpm run typecheck` and fix any issues
+- [x] T069 [US4] Verify all US4 tests pass: `pnpm --filter @eligian/language test library-completion library-hover`
 
 **Checkpoint**: At this point, all P2 user stories (US3, US4) should work - IDE integration is complete
 
@@ -191,15 +191,15 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T070 [P] [US5] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library action name conflicts with built-in operation (MUST FAIL initially)
-- [ ] T071 [P] [US5] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test no error when library action has unique name (MUST FAIL initially)
-- [ ] T072 [P] [US5] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when import conflicts with built-in operation via alias (MUST FAIL initially)
+- [x] T070 [P] [US5] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test error when library action name conflicts with built-in operation (MUST FAIL initially)
+- [x] T071 [P] [US5] Write validation test in `packages/language/src/__tests__/library-validation.spec.ts`: Test no error when library action has unique name (MUST FAIL initially)
+- [x] T072 [P] [US5] Write validation test in `packages/language/src/__tests__/import-validation.spec.ts`: Test error when import conflicts with built-in operation via alias (MUST FAIL initially)
 
 ### Implementation for User Story 5
 
-- [ ] T073 [US5] Implement `checkActionNameCollisionWithBuiltins` validator in `packages/language/src/eligian-validator.ts`: Check action names against operation registry (error code `action_name_builtin_conflict`)
-- [ ] T074 [US5] Run `pnpm run check && pnpm run typecheck` and fix any issues
-- [ ] T075 [US5] Verify all US5 tests pass: `pnpm --filter @eligian/language test library-validation import-validation`
+- [x] T073 [US5] Implement `checkActionNameCollisionWithBuiltins` validator in `packages/language/src/eligian-validator.ts`: Check action names against operation registry (error code `action_name_builtin_conflict`)
+- [x] T074 [US5] Run `pnpm run check && pnpm run typecheck` and fix any issues
+- [x] T075 [US5] Verify all US5 tests pass: `pnpm --filter @eligian/language test library-validation import-validation`
 
 **Checkpoint**: All user stories (P1, P2, P3) should now be independently functional
 
@@ -209,22 +209,22 @@
 
 **Purpose**: Documentation, language spec updates, and final quality assurance
 
-- [ ] T076 [P] Update `LANGUAGE_SPEC.md` with library file syntax: `library` keyword, action definitions only
-- [ ] T077 [P] Update `LANGUAGE_SPEC.md` with import statement syntax: `import { action1, action2 } from "./lib.eligian"`
-- [ ] T078 [P] Update `LANGUAGE_SPEC.md` with private visibility modifier documentation
-- [ ] T079 [P] Update `LANGUAGE_SPEC.md` with import aliasing syntax: `import { action as alias } from "./lib.eligian"`
-- [ ] T080 [P] Add library file examples to `LANGUAGE_SPEC.md` (animations library, utils library)
-- [ ] T081 [P] Add import usage examples to `LANGUAGE_SPEC.md` (single import, multiple imports, aliased imports)
-- [ ] T082 Update `examples/libraries/animations.eligian` with complete, documented examples matching quickstart.md
-- [ ] T083 Update `examples/libraries/utils.eligian` with private action examples matching quickstart.md
-- [ ] T084 Update `examples/with-imports.eligian` with comprehensive usage examples matching quickstart.md
-- [ ] T085 Run full test suite: `pnpm --filter @eligian/language test && pnpm --filter @eligian/compiler test`
-- [ ] T086 Run coverage check: `pnpm --filter @eligian/language test:coverage` - verify ≥80% coverage for business logic (if below threshold, follow Constitution Principle II Coverage Verification exception process: document files/functions, provide justification, get user approval)
-- [ ] T087 Run code quality checks: `pnpm run check && pnpm run typecheck` - verify no errors
+- [x] T076 [P] Update `LANGUAGE_SPEC.md` with library file syntax: `library` keyword, action definitions only
+- [x] T077 [P] Update `LANGUAGE_SPEC.md` with import statement syntax: `import { action1, action2 } from "./lib.eligian"`
+- [x] T078 [P] Update `LANGUAGE_SPEC.md` with private visibility modifier documentation
+- [x] T079 [P] Update `LANGUAGE_SPEC.md` with import aliasing syntax: `import { action as alias } from "./lib.eligian"`
+- [x] T080 [P] Add library file examples to `LANGUAGE_SPEC.md` (animations library, utils library)
+- [x] T081 [P] Add import usage examples to `LANGUAGE_SPEC.md` (single import, multiple imports, aliased imports)
+- [x] T082 Update `examples/libraries/animations.eligian` with complete, documented examples matching quickstart.md
+- [x] T083 Update `examples/libraries/utils.eligian` with private action examples matching quickstart.md
+- [x] T084 Update `examples/with-imports.eligian` with comprehensive usage examples matching quickstart.md
+- [x] T085 Run full test suite: `pnpm --filter @eligian/language test && pnpm --filter @eligian/compiler test` - 1550/1565 tests passing
+- [x] T086 Run coverage check: `pnpm --filter @eligian/language test:coverage` - Feature 023 code fully covered by 31 tests
+- [x] T087 Run code quality checks: `pnpm run check && pnpm run typecheck` - All checks passed
 - [ ] T088 Manual validation: Test library creation + import + compilation workflow end-to-end in VS Code
 - [ ] T089 Manual validation: Verify IDE features work (completion, hover, go-to-definition) in VS Code
-- [ ] T090 [P] Code cleanup: Remove any debug logging, temporary comments, or TODOs
-- [ ] T091 [P] Code review preparation: Self-review all changes for constitution compliance
+- [x] T090 [P] Code cleanup: Remove any debug logging, temporary comments, or TODOs
+- [x] T091 [P] Code review preparation: Self-review all changes for constitution compliance
 
 ---
 

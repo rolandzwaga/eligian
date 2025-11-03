@@ -251,4 +251,60 @@ describe('Library Validation', () => {
     const { errors } = await ctx.parseAndValidate(code);
     expect(errors).toHaveLength(0);
   });
+
+  // T070: Test error when library action name conflicts with built-in operation (Phase 7 - US5)
+  test('rejects library action with built-in operation name', async () => {
+    const code = `
+      library conflictingLib
+
+      action selectElement(selector: string) [
+        addClass("selected")
+      ]
+    `;
+
+    const { errors } = await ctx.parseAndValidate(code);
+    const collisionErrors = errors.filter(e => e.code === 'action_name_builtin_conflict');
+
+    expect(collisionErrors.length).toBeGreaterThan(0);
+    expect(collisionErrors[0].message).toContain('selectElement');
+    expect(collisionErrors[0].message).toContain('built-in');
+  });
+
+  test('rejects library action with different built-in operation name', async () => {
+    const code = `
+      library conflictingLib
+
+      action animate(properties: object, duration: number) [
+        selectElement("body")
+      ]
+    `;
+
+    const { errors } = await ctx.parseAndValidate(code);
+    const collisionErrors = errors.filter(e => e.code === 'action_name_builtin_conflict');
+
+    expect(collisionErrors.length).toBeGreaterThan(0);
+    expect(collisionErrors[0].message).toContain('animate');
+  });
+
+  // T071: Test no error when library action has unique name (Phase 7 - US5)
+  test('accepts library action with unique name', async () => {
+    const code = `
+      library uniqueLib
+
+      action customFadeIn(selector: string) [
+        selectElement(selector)
+        animate({opacity: 1}, 1000)
+      ]
+
+      action customSlideIn(selector: string) [
+        selectElement(selector)
+        animate({transform: "translateX(0)"}, 500)
+      ]
+    `;
+
+    const { errors } = await ctx.parseAndValidate(code);
+    const collisionErrors = errors.filter(e => e.code === 'action_name_builtin_conflict');
+
+    expect(collisionErrors).toHaveLength(0);
+  });
 });

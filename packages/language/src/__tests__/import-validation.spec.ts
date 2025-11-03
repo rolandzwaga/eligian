@@ -10,13 +10,18 @@
  */
 
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createLibraryDocument, createTestContext, type TestContext } from './test-helpers.js';
+import {
+  createLibraryDocument,
+  createTestContextWithMockFS,
+  type TestContext,
+} from './test-helpers.js';
 
 describe('Import Validation', () => {
   let ctx: TestContext;
 
   beforeAll(async () => {
-    ctx = createTestContext();
+    // Use mock file system to enable file existence checks
+    ctx = createTestContextWithMockFS();
 
     // Create library documents for tests
     // animations.eligian - library with fadeIn, fadeOut, slideIn actions
@@ -72,10 +77,7 @@ describe('Import Validation', () => {
   });
 
   // T033: Test error when library file not found
-  // TODO: These tests require library file resolution via LangiumDocuments.getDocument()
-  // which depends on actual file I/O not supported by EmptyFileSystem.
-  // Skip for now - will be covered by E2E tests or when we have a mock file system.
-  test.skip('rejects import from non-existent library file', async () => {
+  test('rejects import from non-existent library file', async () => {
     const code = `
       import { fadeIn } from "./non-existent.eligian"
 
@@ -84,14 +86,20 @@ describe('Import Validation', () => {
       }
     `;
 
-    const { errors } = await ctx.parseAndValidate(code);
+    // Parse with unique document URI in same directory as library files
+    const document = await ctx.parse(code, { documentUri: 'file:///test/test1.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
     expect(errors.length).toBeGreaterThan(0);
     const importError = errors.find(e => e.code === 'import_file_not_found');
     expect(importError).toBeDefined();
     expect(importError?.message).toContain('./non-existent.eligian');
   });
 
-  test.skip('rejects import with invalid file path', async () => {
+  test('rejects import with invalid file path', async () => {
     const code = `
       import { fadeIn } from "not-a-relative-path.eligian"
 
@@ -100,14 +108,20 @@ describe('Import Validation', () => {
       }
     `;
 
-    const { errors } = await ctx.parseAndValidate(code);
+    // Parse with unique document URI
+    const document = await ctx.parse(code, { documentUri: 'file:///test/test2.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
     expect(errors.length).toBeGreaterThan(0);
     const importError = errors.find(e => e.code === 'import_file_not_found');
     expect(importError).toBeDefined();
   });
 
   // T034: Test error when imported action doesn't exist
-  test.skip('rejects import of non-existent action from library', async () => {
+  test('rejects import of non-existent action from library', async () => {
     const code = `
       import { nonExistentAction } from "./animations.eligian"
 
@@ -116,14 +130,19 @@ describe('Import Validation', () => {
       }
     `;
 
-    const { errors } = await ctx.parseAndValidate(code);
+    const document = await ctx.parse(code, { documentUri: 'file:///test/test3.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
     expect(errors.length).toBeGreaterThan(0);
     const importError = errors.find(e => e.code === 'import_action_not_found');
     expect(importError).toBeDefined();
     expect(importError?.message).toContain('nonExistentAction');
   });
 
-  test.skip('suggests similar action names when import fails', async () => {
+  test('suggests similar action names when import fails', async () => {
     const code = `
       import { fadIn } from "./animations.eligian"
 
@@ -132,7 +151,12 @@ describe('Import Validation', () => {
       }
     `;
 
-    const { errors } = await ctx.parseAndValidate(code);
+    const document = await ctx.parse(code, { documentUri: 'file:///test/test4.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
     expect(errors.length).toBeGreaterThan(0);
     const importError = errors.find(e => e.code === 'import_action_not_found');
     expect(importError).toBeDefined();
@@ -141,7 +165,7 @@ describe('Import Validation', () => {
     expect(importError?.message.toLowerCase()).toContain('did you mean');
   });
 
-  test.skip('rejects import when multiple actions do not exist', async () => {
+  test('rejects import when multiple actions do not exist', async () => {
     const code = `
       import { validAction, invalidAction1, invalidAction2 } from "./animations.eligian"
 
@@ -150,7 +174,12 @@ describe('Import Validation', () => {
       }
     `;
 
-    const { errors } = await ctx.parseAndValidate(code);
+    const document = await ctx.parse(code, { documentUri: 'file:///test/test5.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
     const importErrors = errors.filter(e => e.code === 'import_action_not_found');
     expect(importErrors.length).toBeGreaterThanOrEqual(2);
   });
@@ -315,7 +344,12 @@ describe('Import Validation', () => {
       }
     `;
 
-    const { errors } = await ctx.parseAndValidate(code);
+    const document = await ctx.parse(code, { documentUri: 'file:///test/main.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
     const importErrors = errors.filter(
       e =>
         e.code === 'import_file_not_found' ||
@@ -323,5 +357,50 @@ describe('Import Validation', () => {
         e.code === 'import_name_collision'
     );
     expect(importErrors).toHaveLength(0);
+  });
+
+  // T072: Test error when import alias conflicts with built-in operation (Phase 7 - US5)
+  test('rejects import with alias that conflicts with built-in operation', async () => {
+    const code = `
+      import { fadeIn as animate } from "./animations.eligian"
+
+      timeline "Test" in ".container" using raf {
+        at 0s..5s animate("#box")
+      }
+    `;
+
+    const document = await ctx.parse(code, { documentUri: 'file:///test/alias-conflict.eligian' });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
+    const collisionErrors = errors.filter(e => e.code === 'action_name_builtin_conflict');
+
+    expect(collisionErrors.length).toBeGreaterThan(0);
+    expect(collisionErrors[0].message).toContain('animate');
+    expect(collisionErrors[0].message).toContain('built-in');
+  });
+
+  test('accepts import with alias that does not conflict', async () => {
+    const code = `
+      import { fadeIn as customFade } from "./animations.eligian"
+
+      timeline "Test" in ".container" using raf {
+        at 0s..5s customFade("#box")
+      }
+    `;
+
+    const document = await ctx.parse(code, {
+      documentUri: 'file:///test/alias-no-conflict.eligian',
+    });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
+    const collisionErrors = errors.filter(e => e.code === 'action_name_builtin_conflict');
+
+    expect(collisionErrors).toHaveLength(0);
   });
 });

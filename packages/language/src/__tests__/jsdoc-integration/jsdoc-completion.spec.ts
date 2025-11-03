@@ -31,7 +31,7 @@ async function getCompletions(
 }
 
 describe('JSDoc Completion (T014 - US2)', () => {
-  test('should provide JSDoc template when typing /** above action with typed params', async () => {
+  test('should generate JSDoc template with typed params when typing /**', async () => {
     const text = `
       /**|
       action fadeIn(selector: string, duration: number) [
@@ -45,12 +45,13 @@ describe('JSDoc Completion (T014 - US2)', () => {
     expect(completions?.items).toHaveLength(1);
 
     const jsdocCompletion = completions!.items[0];
-    expect(jsdocCompletion.insertText).toContain('*');
+    expect(jsdocCompletion.label).toContain('JSDoc for fadeIn');
     expect(jsdocCompletion.insertText).toContain('@param {string} selector');
     expect(jsdocCompletion.insertText).toContain('@param {number} duration');
+    expect(jsdocCompletion.insertText).toContain('*/');
   });
 
-  test('should provide JSDoc template for action with untyped params', async () => {
+  test('should generate JSDoc template with untyped params', async () => {
     const text = `
       /**|
       action test(foo, bar) [
@@ -64,13 +65,12 @@ describe('JSDoc Completion (T014 - US2)', () => {
     expect(completions?.items).toHaveLength(1);
 
     const jsdocCompletion = completions!.items[0];
-    // Type inference would happen here in real implementation
     expect(jsdocCompletion.insertText).toContain('@param');
     expect(jsdocCompletion.insertText).toContain('foo');
     expect(jsdocCompletion.insertText).toContain('bar');
   });
 
-  test('should provide JSDoc template for action with no params', async () => {
+  test('should generate JSDoc template with no params', async () => {
     const text = `
       /**|
       action test() [
@@ -84,7 +84,6 @@ describe('JSDoc Completion (T014 - US2)', () => {
     expect(completions?.items).toHaveLength(1);
 
     const jsdocCompletion = completions!.items[0];
-    expect(jsdocCompletion.insertText).toContain('*');
     expect(jsdocCompletion.insertText).not.toContain('@param'); // No parameters
   });
 
@@ -99,11 +98,14 @@ describe('JSDoc Completion (T014 - US2)', () => {
 
     const completions = await getCompletions(text, '*');
 
-    // Should either return undefined or standard completions (not JSDoc template)
-    if (completions) {
-      const jsdocItems = completions.items.filter(item => item.insertText?.includes('@param'));
-      expect(jsdocItems).toHaveLength(0);
-    }
+    expect(completions).toBeDefined();
+    expect(completions?.items).toHaveLength(1);
+
+    // Should be generic /** */ completion, not JSDoc template
+    const completion = completions!.items[0];
+    expect(completion.label).toBe('/** */');
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing snippet syntax literal
+    expect(completion.insertText).toBe(' ${1} */');
   });
 
   test('should trigger on * character', async () => {
@@ -116,6 +118,21 @@ describe('JSDoc Completion (T014 - US2)', () => {
     const completions = await getCompletions(text, '*');
 
     expect(completions).toBeDefined();
-    expect(completions?.items.length).toBeGreaterThan(0);
+    expect(completions?.items).toHaveLength(1);
+    expect(completions?.items[0].insertText).toContain('@param {string} foo');
+  });
+
+  test('should trigger on manual completion (Ctrl+Space)', async () => {
+    const text = `
+      /**|
+      action test(name: string) [ selectElement(name) ]
+    `;
+
+    // Manual trigger (no trigger character)
+    const completions = await getCompletions(text);
+
+    expect(completions).toBeDefined();
+    expect(completions?.items).toHaveLength(1);
+    expect(completions?.items[0].insertText).toContain('@param {string} name');
   });
 });

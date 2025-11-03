@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { ValidationAcceptor, ValidationChecks } from 'langium';
+import { AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
 import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 import {
@@ -16,6 +16,7 @@ import { findSimilarClasses } from './css/levenshtein.js';
 import { parseSelector } from './css/selector-parser.js';
 import type { EligianServices } from './eligian-module.js';
 import type {
+  ActionDefinition,
   BreakStatement,
   ContinueStatement,
   DefaultImport,
@@ -68,6 +69,8 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkImportFileExists, // T041: US2 - Validate library file exists
       validator.checkImportedActionsExist, // T042 + T042a: US2 - Validate imported actions exist
       validator.checkImportNameCollisions, // T043: US2 - Validate no name conflicts
+      validator.checkImportedActionsPublic, // T055: US3 - Validate imported actions are public
+      validator.checkImportAliasCollision, // T073: US5 - Validate aliases don't conflict with built-ins
     ],
     DefaultImport: validator.checkImportPath, // T017: US5 - Path validation for default imports
     NamedImport: [
@@ -97,6 +100,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkRecursiveActionCalls, // Detect infinite recursion
       validator.checkControlFlowPairing,
       validator.checkErasedPropertiesInAction, // T254-T255: Erased property validation
+      validator.checkPrivateOnlyInLibraries, // T056: US3 - Validate 'private' only in libraries
     ],
     EndableActionDefinition: [
       validator.checkActionNameCollision, // T039: US2 - Name collision detection
@@ -105,6 +109,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkControlFlowPairingInEndOps,
       validator.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
       validator.checkErasedPropertiesInEndOps, // T254-T255: Erased property validation
+      validator.checkPrivateOnlyInLibraries, // T056: US3 - Validate 'private' only in libraries
     ],
     InlineEndableAction: [
       validator.checkControlFlowPairingInInlineStart,
@@ -222,15 +227,39 @@ export class EligianValidator {
     // T040: Check if action.name exists in operation registry
     if (hasOperation(action.name)) {
       // T041: Emit error with code and message
+      // Feature 023 US5: Use consistent error code
       accept(
         'error',
         `Cannot define action '${action.name}': name conflicts with built-in operation`,
         {
           node: action,
           property: 'name',
-          code: 'action_operation_collision',
+          code: 'action_name_builtin_conflict',
         }
       );
+    }
+  }
+
+  /**
+   * T073: US5 - Check for import alias collision with built-in operations (Feature 023 - Phase 7)
+   *
+   * Validates that imported action aliases don't conflict with built-in operation names.
+   * This prevents confusing situations where an alias shadows a built-in operation.
+   */
+  checkImportAliasCollision(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
+    for (const actionImport of libraryImport.actions) {
+      // Check if alias conflicts with built-in operation
+      if (actionImport.alias && hasOperation(actionImport.alias)) {
+        accept(
+          'error',
+          `Cannot use alias '${actionImport.alias}': name conflicts with built-in operation`,
+          {
+            node: actionImport,
+            property: 'alias',
+            code: 'action_name_builtin_conflict',
+          }
+        );
+      }
     }
   }
 
@@ -438,11 +467,23 @@ export class EligianValidator {
     // T020: Skip operation validation if this is an action call
     // (Action calls are validated by checkTimelineOperationCall for direct timeline calls,
     //  or allowed in InlineEndableAction blocks)
+    //
+    // Feature 023: Also check for Library files
     const program = this.getProgram(operation);
     if (program) {
       const action = findActionByName(opName, program);
       if (action) {
         // This is a valid action call - skip operation validation
+        return;
+      }
+    }
+
+    // Feature 023: Check if operation is in a Library file
+    const library = this.getLibrary(operation);
+    if (library) {
+      const action = library.actions?.find(a => a.name === opName);
+      if (action) {
+        // This is a valid action call within the library - skip operation validation
         return;
       }
     }
@@ -996,6 +1037,21 @@ export class EligianValidator {
     while (current) {
       if (current.$type === 'Program') {
         return current as Program;
+      }
+      current = current.$container;
+    }
+    return undefined;
+  }
+
+  /**
+   * Get the containing Library node for a given AST node (Feature 023).
+   * Walks up the AST tree until a Library node is found.
+   */
+  private getLibrary(node: any): Library | undefined {
+    let current = node;
+    while (current) {
+      if (current.$type === 'Library') {
+        return current as Library;
       }
       current = current.$container;
     }
@@ -1715,24 +1771,30 @@ export class EligianValidator {
       return; // Cannot validate without services
     }
 
-    const documentUri = libraryImport.$document?.uri;
+    const document = AstUtils.getDocument(libraryImport);
+    const documentUri = document.uri;
     if (!documentUri) {
       return; // Cannot resolve relative paths without document URI
     }
 
     // Resolve the library path relative to the importing document
-    const importPath = libraryImport.path;
-    const documentPath = URI.parse(documentUri.toString()).fsPath;
-    const documentDir = path.dirname(documentPath);
-    const resolvedPath = path.resolve(documentDir, importPath);
-    const resolvedUri = URI.file(resolvedPath);
+    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
+    const originalPath = libraryImport.path;
+    let importPath = originalPath;
+    // Normalize ./ prefix for URI resolution
+    if (importPath.startsWith('./')) {
+      importPath = importPath.substring(2);
+    }
+    const documentUriStr = documentUri.toString();
+    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
+    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
 
     // Try to load the library document
     const documents = this.services.shared.workspace.LangiumDocuments;
     const libraryDocument = documents.getDocument(resolvedUri);
 
     if (!libraryDocument) {
-      accept('error', `Library file not found: '${importPath}'`, {
+      accept('error', `Library file not found: '${originalPath}'`, {
         node: libraryImport,
         property: 'path',
         code: 'import_file_not_found',
@@ -1751,17 +1813,23 @@ export class EligianValidator {
       return; // Cannot validate without services
     }
 
-    const documentUri = libraryImport.$document?.uri;
+    const document = AstUtils.getDocument(libraryImport);
+    const documentUri = document.uri;
     if (!documentUri) {
       return;
     }
 
     // Resolve library document
-    const importPath = libraryImport.path;
-    const documentPath = URI.parse(documentUri.toString()).fsPath;
-    const documentDir = path.dirname(documentPath);
-    const resolvedPath = path.resolve(documentDir, importPath);
-    const resolvedUri = URI.file(resolvedPath);
+    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
+    const originalPath = libraryImport.path;
+    let importPath = originalPath;
+    // Normalize ./ prefix for URI resolution
+    if (importPath.startsWith('./')) {
+      importPath = importPath.substring(2);
+    }
+    const documentUriStr = documentUri.toString();
+    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
+    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
 
     const documents = this.services.shared.workspace.LangiumDocuments;
     const libraryDocument = documents.getDocument(resolvedUri);
@@ -1791,7 +1859,7 @@ export class EligianValidator {
 
         accept(
           'error',
-          `Action '${actionName}' does not exist in library '${importPath}'${suggestionText}`,
+          `Action '${actionName}' does not exist in library '${originalPath}'${suggestionText}`,
           {
             node: actionImport,
             property: 'action',
@@ -1859,6 +1927,109 @@ export class EligianValidator {
           }
         );
       }
+    }
+  }
+
+  // Feature 023: Private Action Validation (User Story 3)
+  // ============================================================================
+
+  /**
+   * T055: US3 - Validate imported actions are public (not private)
+   *
+   * Private actions in library files cannot be imported. This enforces encapsulation
+   * and allows library authors to hide implementation details from consumers.
+   *
+   * This validator checks each imported action and ensures it's not marked as private
+   * in the library file.
+   */
+  checkImportedActionsPublic(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
+    if (!this.services) {
+      return; // Cannot validate without services
+    }
+
+    const document = AstUtils.getDocument(libraryImport);
+    const documentUri = document.uri;
+    if (!documentUri) {
+      return;
+    }
+
+    // Resolve library document
+    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
+    const originalPath = libraryImport.path;
+    let importPath = originalPath;
+    // Normalize ./ prefix for URI resolution
+    if (importPath.startsWith('./')) {
+      importPath = importPath.substring(2);
+    }
+    const documentUriStr = documentUri.toString();
+    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
+    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
+
+    const documents = this.services.shared.workspace.LangiumDocuments;
+    const libraryDocument = documents.getDocument(resolvedUri);
+
+    if (!libraryDocument) {
+      return; // File not found - already reported by checkImportFileExists
+    }
+
+    const library = libraryDocument.parseResult.value;
+    if (library.$type !== 'Library') {
+      return; // Not a library file - skip validation
+    }
+
+    // Get all actions from library (cast to Library type for TypeScript)
+    const libraryNode = library as Library;
+    const libraryActions = libraryNode.actions || [];
+
+    // Check each imported action for private visibility
+    for (const actionImport of libraryImport.actions) {
+      const actionName = actionImport.action.$refText || '';
+
+      // Find the action in the library
+      const action = libraryActions.find(a => a.name === actionName);
+
+      if (action && action.visibility === 'private') {
+        // Attempting to import a private action - report error
+        accept(
+          'error',
+          `Cannot import private action '${actionName}' from library '${originalPath}'`,
+          {
+            node: actionImport,
+            property: 'action',
+            code: 'import_private_action',
+          }
+        );
+      }
+    }
+  }
+
+  /**
+   * T056: US3 - Validate 'private' keyword only used in libraries
+   *
+   * The 'private' visibility modifier can only be used in library files, not in program files.
+   * This validator checks action definitions and ensures private actions are only in libraries.
+   */
+  checkPrivateOnlyInLibraries(action: ActionDefinition, accept: ValidationAcceptor): void {
+    // Check if action has 'private' visibility
+    if (action.visibility !== 'private') {
+      return; // Action is not private - no validation needed
+    }
+
+    // Get the containing file (either Program or Library)
+    const document = AstUtils.getDocument(action);
+    const model = document.parseResult.value;
+
+    // If the file is not a Library, private is not allowed
+    if (model.$type !== 'Library') {
+      accept(
+        'error',
+        `Visibility modifier 'private' can only be used in library files. Program files cannot contain private actions.`,
+        {
+          node: action,
+          property: 'visibility',
+          code: 'private_only_in_libraries',
+        }
+      );
     }
   }
 }

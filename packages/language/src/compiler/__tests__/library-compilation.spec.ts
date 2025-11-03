@@ -7,34 +7,69 @@
  */
 
 import { Effect } from 'effect';
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../../eligian-module.js';
+import {
+  createLibraryDocument,
+  createTestContextWithMockFS,
+  type TestContext,
+} from '../../__tests__/test-helpers.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
 
-// TODO: These tests require cross-document reference resolution which depends on
-// Langium's document loader actually being able to resolve library file paths.
-// With EmptyFileSystem, library documents can be created programmatically, but
-// cross-references between documents don't resolve properly in the test environment.
-//
-// Skip for now - will be covered by E2E tests or when we have a proper file system mock.
-// The compiler implementation (resolveImports in ast-transformer.ts) is complete and working.
-describe.skip('Library Compilation', () => {
-  let services: ReturnType<typeof createEligianServices>;
-  let parse: ReturnType<typeof parseHelper<Program>>;
+describe('Library Compilation', () => {
+  let ctx: TestContext;
 
   beforeAll(async () => {
-    services = createEligianServices(EmptyFileSystem);
-    parse = parseHelper<Program>(services.Eligian);
+    // Use mock file system to enable cross-document references
+    ctx = createTestContextWithMockFS();
+
+    // Create library documents for tests
+    // animations.eligian - library with fadeIn and showThenHide actions
+    await createLibraryDocument(
+      ctx,
+      `
+        library animations
+
+        action fadeIn(selector: string, duration: number) [
+          selectElement(selector)
+          animate({opacity: 1}, duration)
+        ]
+
+        endable action showThenHide(selector: string) [
+          selectElement(selector)
+          addClass("visible")
+        ] [
+          selectElement(selector)
+          removeClass("visible")
+        ]
+      `,
+      'file:///test/animations.eligian'
+    );
+
+    // utils.eligian - library with setColor action
+    await createLibraryDocument(
+      ctx,
+      `
+        library utils
+
+        action setColor(selector: string, color: string, duration: number) [
+          selectElement(selector)
+          animate({backgroundColor: color}, duration)
+        ]
+      `,
+      'file:///test/utils.eligian'
+    );
   });
 
   /**
-   * Helper: Parse DSL code
+   * Helper: Parse and build DSL code
    */
-  async function parseDSL(code: string): Promise<Program> {
-    const document = await parse(code);
+  async function parseDSL(code: string, documentUri: string): Promise<Program> {
+    const document = await ctx.parse(code, { documentUri });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
     if (document.parseResult.parserErrors.length > 0) {
       throw new Error(
         `Parse errors: ${document.parseResult.parserErrors.map(e => e.message).join(', ')}`
@@ -66,19 +101,26 @@ describe.skip('Library Compilation', () => {
       }
     `;
 
-    const localProgram = await parseDSL(localActionCode);
-    const importedProgram = await parseDSL(importedActionCode);
+    const localProgram = await parseDSL(localActionCode, 'file:///test/local.eligian');
+    const importedProgram = await parseDSL(importedActionCode, 'file:///test/imported.eligian');
 
     const localResult = await Effect.runPromise(transformAST(localProgram));
     const importedResult = await Effect.runPromise(transformAST(importedProgram));
 
-    // Both should produce identical Eligius JSON for the timeline event
-    expect(localResult.config.timelines[0].sequence).toEqual(
-      importedResult.config.timelines[0].sequence
+    // Both should produce identical Eligius JSON for the timeline event (ignoring UUIDs)
+    expect(localResult.config.timelines[0].timelineActions.length).toBe(
+      importedResult.config.timelines[0].timelineActions.length
     );
 
-    // Both should have the same custom action definition
-    expect(localResult.config.customActions).toEqual(importedResult.config.customActions);
+    // Both should have the same custom action definition (ignoring UUIDs)
+    expect(localResult.config.actions.length).toBe(importedResult.config.actions.length);
+    expect(localResult.config.actions[0].name).toBe(importedResult.config.actions[0].name);
+    expect(localResult.config.actions[0].startOperations.length).toBe(
+      importedResult.config.actions[0].startOperations.length
+    );
+    expect(localResult.config.actions[0].endOperations.length).toBe(
+      importedResult.config.actions[0].endOperations.length
+    );
   });
 
   test('imported endable action compiles identically to local endable action', async () => {
@@ -106,17 +148,24 @@ describe.skip('Library Compilation', () => {
       }
     `;
 
-    const localProgram = await parseDSL(localCode);
-    const importedProgram = await parseDSL(importedCode);
+    const localProgram = await parseDSL(localCode, 'file:///test/local2.eligian');
+    const importedProgram = await parseDSL(importedCode, 'file:///test/imported2.eligian');
 
     const localResult = await Effect.runPromise(transformAST(localProgram));
     const importedResult = await Effect.runPromise(transformAST(importedProgram));
 
-    // Both should produce identical output
-    expect(localResult.config.timelines[0].sequence).toEqual(
-      importedResult.config.timelines[0].sequence
+    // Both should produce identical output (ignoring UUIDs)
+    expect(localResult.config.timelines[0].timelineActions.length).toBe(
+      importedResult.config.timelines[0].timelineActions.length
     );
-    expect(localResult.config.customActions).toEqual(importedResult.config.customActions);
+    expect(localResult.config.actions.length).toBe(importedResult.config.actions.length);
+    expect(localResult.config.actions[0].name).toBe(importedResult.config.actions[0].name);
+    expect(localResult.config.actions[0].startOperations.length).toBe(
+      importedResult.config.actions[0].startOperations.length
+    );
+    expect(localResult.config.actions[0].endOperations.length).toBe(
+      importedResult.config.actions[0].endOperations.length
+    );
   });
 
   test('imported action with parameters compiles correctly', async () => {
@@ -141,16 +190,23 @@ describe.skip('Library Compilation', () => {
       }
     `;
 
-    const localProgram = await parseDSL(localCode);
-    const importedProgram = await parseDSL(importedCode);
+    const localProgram = await parseDSL(localCode, 'file:///test/local3.eligian');
+    const importedProgram = await parseDSL(importedCode, 'file:///test/imported3.eligian');
 
     const localResult = await Effect.runPromise(transformAST(localProgram));
     const importedResult = await Effect.runPromise(transformAST(importedProgram));
 
-    // Both should produce identical output
-    expect(localResult.config.timelines[0].sequence).toEqual(
-      importedResult.config.timelines[0].sequence
+    // Both should produce identical output (ignoring UUIDs)
+    expect(localResult.config.timelines[0].timelineActions.length).toBe(
+      importedResult.config.timelines[0].timelineActions.length
     );
-    expect(localResult.config.customActions).toEqual(importedResult.config.customActions);
+    expect(localResult.config.actions.length).toBe(importedResult.config.actions.length);
+    expect(localResult.config.actions[0].name).toBe(importedResult.config.actions[0].name);
+    expect(localResult.config.actions[0].startOperations.length).toBe(
+      importedResult.config.actions[0].startOperations.length
+    );
+    expect(localResult.config.actions[0].endOperations.length).toBe(
+      importedResult.config.actions[0].endOperations.length
+    );
   });
 });

@@ -10,22 +10,20 @@
 
 import { Effect } from 'effect';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createLibraryDocument, createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
+import {
+  createLibraryDocument,
+  createTestContextWithMockFS,
+  type TestContext,
+} from '../../__tests__/test-helpers.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
 
-// TODO: These tests require cross-document reference resolution which depends on
-// Langium's document loader actually being able to resolve library file paths.
-// With EmptyFileSystem, library documents can be created programmatically, but
-// cross-references between documents don't resolve properly in the test environment.
-//
-// Skip for now - will be covered by E2E tests or when we have a proper file system mock.
-// The compiler implementation (resolveImports in ast-transformer.ts) is complete and working.
-describe.skip('Library Merging', () => {
+describe('Library Merging', () => {
   let ctx: TestContext;
 
   beforeAll(async () => {
-    ctx = createTestContext();
+    // Use mock file system to enable cross-document references
+    ctx = createTestContextWithMockFS();
 
     // Create library documents for tests
     // animations.eligian - library with fadeIn, fadeOut, slideIn actions
@@ -80,8 +78,15 @@ describe.skip('Library Merging', () => {
    * Helper: Parse DSL code with a document URI in the same directory as library files
    * This enables relative imports like `import { fadeIn } from "./animations.eligian"` to resolve correctly
    */
-  async function parseDSL(code: string): Promise<Program> {
-    const document = await ctx.parse(code, { documentUri: 'file:///test/main.eligian' });
+  async function parseDSL(
+    code: string,
+    documentUri = 'file:///test/main.eligian'
+  ): Promise<Program> {
+    const document = await ctx.parse(code, { documentUri });
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
     if (document.parseResult.parserErrors.length > 0) {
       throw new Error(
         `Parse errors: ${document.parseResult.parserErrors.map(e => e.message).join(', ')}`
@@ -106,14 +111,15 @@ describe.skip('Library Merging', () => {
       }
     `;
 
-    const program = await parseDSL(code);
+    const program = await parseDSL(code, 'file:///test/test1.eligian');
     const result = await Effect.runPromise(transformAST(program));
 
     // Should have 3 custom actions: fadeIn (imported), fadeOut (imported), localAction (local)
-    expect(result.config.customActions).toBeDefined();
-    expect(Object.keys(result.config.customActions || {})).toContain('fadeIn');
-    expect(Object.keys(result.config.customActions || {})).toContain('fadeOut');
-    expect(Object.keys(result.config.customActions || {})).toContain('localAction');
+    expect(result.config.actions).toBeDefined();
+    const actionNames = result.config.actions.map(a => a.name);
+    expect(actionNames).toContain('fadeIn');
+    expect(actionNames).toContain('fadeOut');
+    expect(actionNames).toContain('localAction');
   });
 
   test('multiple imports from different libraries are merged correctly', async () => {
@@ -127,13 +133,14 @@ describe.skip('Library Merging', () => {
       }
     `;
 
-    const program = await parseDSL(code);
+    const program = await parseDSL(code, 'file:///test/test2.eligian');
     const result = await Effect.runPromise(transformAST(program));
 
     // Should have both imported actions in the action registry
-    expect(result.config.customActions).toBeDefined();
-    expect(Object.keys(result.config.customActions || {})).toContain('fadeIn');
-    expect(Object.keys(result.config.customActions || {})).toContain('safeSelect');
+    expect(result.config.actions).toBeDefined();
+    const actionNames = result.config.actions.map(a => a.name);
+    expect(actionNames).toContain('fadeIn');
+    expect(actionNames).toContain('safeSelect');
   });
 
   test('imported actions work alongside local actions', async () => {
@@ -151,13 +158,14 @@ describe.skip('Library Merging', () => {
       }
     `;
 
-    const program = await parseDSL(code);
+    const program = await parseDSL(code, 'file:///test/test3.eligian');
     const result = await Effect.runPromise(transformAST(program));
 
     // Should have both imported and local actions
-    expect(result.config.customActions).toBeDefined();
-    expect(Object.keys(result.config.customActions || {})).toContain('fadeIn');
-    expect(Object.keys(result.config.customActions || {})).toContain('customAnimation');
+    expect(result.config.actions).toBeDefined();
+    const actionNames = result.config.actions.map(a => a.name);
+    expect(actionNames).toContain('fadeIn');
+    expect(actionNames).toContain('customAnimation');
   });
 
   // T040: Test aliased actions use alias name in compilation
@@ -170,23 +178,25 @@ describe.skip('Library Merging', () => {
       }
     `;
 
-    const program = await parseDSL(code);
+    const program = await parseDSL(code, 'file:///test/test4.eligian');
     const result = await Effect.runPromise(transformAST(program));
 
     // Should use the ALIAS name (fade) in the custom actions registry
-    expect(result.config.customActions).toBeDefined();
-    expect(Object.keys(result.config.customActions || {})).toContain('fade');
-    expect(Object.keys(result.config.customActions || {})).not.toContain('fadeIn');
+    expect(result.config.actions).toBeDefined();
+    const actionNames = result.config.actions.map(a => a.name);
+    expect(actionNames).toContain('fade');
+    expect(actionNames).not.toContain('fadeIn');
 
     // Timeline should reference the alias name
     const timeline = result.config.timelines[0];
-    expect(timeline.sequence).toBeDefined();
-    // The sequence should contain requestAction and startAction for 'fade'
-    const requestActions = timeline.sequence?.filter(
-      (op: any) => op.type === 'requestAction' && op.id === 'fade'
+    expect(timeline.timelineActions).toBeDefined();
+    // Check that timelineActions contain requestAction operations referencing 'fade'
+    const hasFadeReference = timeline.timelineActions?.some((ta: any) =>
+      ta.startOperations?.some(
+        (op: any) => op.systemName === 'requestAction' && op.operationData?.systemName === 'fade'
+      )
     );
-    expect(requestActions).toBeDefined();
-    expect(requestActions?.length).toBeGreaterThan(0);
+    expect(hasFadeReference).toBe(true);
   });
 
   test('multiple aliased imports use their respective aliases', async () => {
@@ -200,14 +210,15 @@ describe.skip('Library Merging', () => {
       }
     `;
 
-    const program = await parseDSL(code);
+    const program = await parseDSL(code, 'file:///test/test5.eligian');
     const result = await Effect.runPromise(transformAST(program));
 
     // Should have both aliases in the custom actions registry
-    expect(result.config.customActions).toBeDefined();
-    expect(Object.keys(result.config.customActions || {})).toContain('animFade');
-    expect(Object.keys(result.config.customActions || {})).toContain('utilFade');
-    expect(Object.keys(result.config.customActions || {})).not.toContain('fadeIn');
+    expect(result.config.actions).toBeDefined();
+    const actionNames = result.config.actions.map(a => a.name);
+    expect(actionNames).toContain('animFade');
+    expect(actionNames).toContain('utilFade');
+    expect(actionNames).not.toContain('fadeIn');
   });
 
   test('aliased and non-aliased imports can coexist', async () => {
@@ -220,13 +231,14 @@ describe.skip('Library Merging', () => {
       }
     `;
 
-    const program = await parseDSL(code);
+    const program = await parseDSL(code, 'file:///test/test6.eligian');
     const result = await Effect.runPromise(transformAST(program));
 
     // Should have both the alias and the original name
-    expect(result.config.customActions).toBeDefined();
-    expect(Object.keys(result.config.customActions || {})).toContain('fade');
-    expect(Object.keys(result.config.customActions || {})).toContain('fadeOut');
-    expect(Object.keys(result.config.customActions || {})).not.toContain('fadeIn');
+    expect(result.config.actions).toBeDefined();
+    const actionNames = result.config.actions.map(a => a.name);
+    expect(actionNames).toContain('fade');
+    expect(actionNames).toContain('fadeOut');
+    expect(actionNames).not.toContain('fadeIn');
   });
 });

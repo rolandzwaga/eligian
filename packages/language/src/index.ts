@@ -44,10 +44,14 @@ export {
   isProgram,
   type Program,
 } from './generated/ast.js';
+// JSDoc exports (for template generation)
+export { generateJSDocContent } from './jsdoc/jsdoc-template-generator.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // AST helper exports (for language server)
 export { isDefaultImport } from './utils/ast-helpers.js';
+// AST navigation exports (for JSDoc generation)
+export { findActionBelow } from './utils/ast-navigation.js';
 
 // Re-export everything from AST except TimeExpression to avoid conflict
 // Export AstTimeExpression explicitly to avoid conflict with compiler's TimeExpression

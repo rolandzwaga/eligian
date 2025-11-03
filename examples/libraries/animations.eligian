@@ -26,7 +26,7 @@ action fadeOut(selector: string, duration: number) [
  * @param selector CSS selector for target element
  * @param duration Animation duration in milliseconds
  */
-action slideIn(selector: string, duration: number) [
+action slideInLeft(selector: string, duration: number) [
   selectElement(selector)
   animate({transform: 'translateX(0)'}, duration)
 ]
