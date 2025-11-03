@@ -2,8 +2,8 @@ import { EmptyFileSystem } from 'langium';
 import { parseDocument } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createEligianServices } from '../../eligian-module.js';
-import { findActionBelow } from '../../utils/ast-navigation.js';
 import { generateJSDocContent } from '../../jsdoc/jsdoc-template-generator.js';
+import { findActionBelow } from '../../utils/ast-navigation.js';
 
 const services = createEligianServices(EmptyFileSystem).Eligian;
 

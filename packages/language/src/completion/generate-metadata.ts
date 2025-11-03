@@ -7,7 +7,7 @@
  * Usage: tsx src/completion/generate-metadata.ts
  */
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { metadata, TimelineEventNames } from 'eligius';
@@ -17,6 +17,9 @@ const __dirname = dirname(__filename);
 
 // Output directory (same directory as this script)
 const OUTPUT_DIR = join(__dirname, 'metadata');
+
+// Ensure output directory exists (required for CI builds where directory may not exist)
+mkdirSync(OUTPUT_DIR, { recursive: true });
 
 // Filtered operations (handled by DSL keywords)
 const FILTERED_OPERATIONS = new Set([

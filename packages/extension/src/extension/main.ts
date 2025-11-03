@@ -234,7 +234,6 @@ function registerCompileCommand(): any {
  * This command is called AFTER the JSDoc completion is inserted
  */
 function registerGenerateJSDocCommand(client: LanguageClient): any {
-
   return vscode.commands.registerCommand('eligian.generateJSDoc', async () => {
     console.log('eligian.generateJSDoc command triggered');
     const editor = vscode.window.activeTextEditor;
@@ -318,8 +317,8 @@ function registerJSDocAutoCompletion(_client: LanguageClient): any {
 
     // Check if user just typed the second *
     if (text === '*') {
-      const position = new vscode.Position(change.range.end.line, change.range.end.character+1);
-      
+      const position = new vscode.Position(change.range.end.line, change.range.end.character + 1);
+
       const document = event.document;
 
       // Get text before cursor (including the just-typed *)
