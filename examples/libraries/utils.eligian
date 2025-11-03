@@ -1,0 +1,52 @@
+// Utility library - Safe operations and helper actions
+library utils
+
+/**
+ * Safely selects an element with error handling
+ * @param selector CSS selector for target element
+ */
+action safeSelect(selector: string) [
+  if (hasElement(selector)) {
+    selectElement(selector)
+  } else {
+    log("Element not found: " + selector)
+  }
+]
+
+/**
+ * Safely adds a CSS class with existence check
+ * @param selector CSS selector for target element
+ * @param className CSS class name to add
+ */
+action safeAddClass(selector: string, className: string) [
+  if (hasElement(selector)) {
+    selectElement(selector)
+    addClass(className)
+  } else {
+    log("Cannot add class - element not found: " + selector)
+  }
+]
+
+/**
+ * Safely removes a CSS class with existence check
+ * @param selector CSS selector for target element
+ * @param className CSS class name to remove
+ */
+action safeRemoveClass(selector: string, className: string) [
+  if (hasElement(selector)) {
+    selectElement(selector)
+    removeClass(className)
+  } else {
+    log("Cannot remove class - element not found: " + selector)
+  }
+]
+
+/**
+ * Private helper to validate selector format
+ * @param selector CSS selector to validate
+ */
+private action validateSelector(selector: string) [
+  if (selector == "") {
+    log("Warning: Empty selector provided")
+  }
+]

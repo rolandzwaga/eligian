@@ -156,6 +156,7 @@ import { parseHelper } from 'langium/test';
 import type { Diagnostic } from 'vscode-languageserver-types';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
+import { createMockFileSystem, type MockFileSystemProvider } from './mock-file-system.js';
 
 /**
  * TestContext: Container for test infrastructure
@@ -186,6 +187,8 @@ export interface TestContext {
   parse: ReturnType<typeof import('langium/test').parseHelper<Program>>;
   /** Combined parse + validate helper (convenience method) */
   parseAndValidate: (code: string, cssFileUri?: string) => Promise<ValidationResult>;
+  /** Mock file system instance (only present if created with createTestContextWithMockFS) */
+  mockFs?: MockFileSystemProvider;
 }
 
 /**
@@ -383,6 +386,101 @@ export function createTestContext(): TestContext {
 }
 
 /**
+ * Create test context with mock file system for cross-document testing
+ *
+ * This factory creates a test environment with an in-memory file system that
+ * enables cross-document reference resolution (e.g., library imports).
+ * Use this when tests need to:
+ * - Import actions from library files
+ * - Validate file existence checks
+ * - Test cross-document references
+ *
+ * The mock file system stores files in memory as a Map<string, string>.
+ * Files must be added explicitly using `ctx.mockFs.writeFile()`.
+ *
+ * @returns TestContext with services, parse, parseAndValidate, and mockFs
+ *
+ * @example
+ * ```typescript
+ * import { createTestContextWithMockFS, type TestContext } from './test-helpers.js';
+ *
+ * describe('Import Tests', () => {
+ *   let ctx: TestContext;
+ *
+ *   beforeAll(() => {
+ *     ctx = createTestContextWithMockFS();
+ *
+ *     // Add library file to mock FS
+ *     ctx.mockFs!.writeFile('file:///test/animations.eligian', `
+ *       library animations
+ *       action fadeIn(selector: string) [
+ *         selectElement(selector)
+ *       ]
+ *     `);
+ *   });
+ *
+ *   test('imports action from library', async () => {
+ *     const { errors } = await ctx.parseAndValidate(`
+ *       import { fadeIn } from "./animations.eligian"
+ *     `, { documentUri: 'file:///test/main.eligian' });
+ *     expect(errors).toHaveLength(0);
+ *   });
+ * });
+ * ```
+ */
+export function createTestContextWithMockFS(): TestContext {
+  // Create mock file system
+  const { fileSystemProvider, fs } = createMockFileSystem();
+
+  // Create services with mock file system
+  const services = createEligianServices({ fileSystemProvider });
+
+  // Create parse helper
+  const parse = parseHelper<Program>(services.Eligian);
+
+  // Create parseAndValidate helper
+  const parseAndValidate = async (
+    code: string,
+    cssFileUri = 'file:///styles.css'
+  ): Promise<ValidationResult> => {
+    // Parse code
+    const document = await parse(code);
+
+    // Register CSS imports if provided
+    const cssRegistry = services.Eligian.css.CSSRegistry;
+    if (cssRegistry && cssFileUri) {
+      const documentUri = document.uri.toString();
+      cssRegistry.registerImports(documentUri, [cssFileUri]);
+    }
+
+    // Build and validate
+    await services.shared.workspace.DocumentBuilder.build([document], {
+      validation: true,
+    });
+
+    // Extract diagnostics
+    const diagnostics = document.diagnostics ?? [];
+    const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+    const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
+
+    return {
+      document,
+      program: document.parseResult.value,
+      diagnostics,
+      errors,
+      warnings,
+    };
+  };
+
+  return {
+    services,
+    parse,
+    parseAndValidate,
+    mockFs: fs,
+  };
+}
+
+/**
  * Filter diagnostics to errors only (severity === DiagnosticSeverity.Error)
  *
  * @param document Langium document with diagnostics
@@ -466,4 +564,66 @@ export function setupCSSRegistry(
     idRules: new Map(),
     errors: [],
   });
+}
+
+/**
+ * Create a library document in the test workspace
+ *
+ * Parses library code and adds the document to the workspace's LangiumDocuments
+ * collection. This allows validators to resolve library imports using
+ * LangiumDocuments.getDocument().
+ *
+ * If the test context has a mock file system (created with createTestContextWithMockFS),
+ * the library code is also written to the mock FS to enable file existence checks.
+ *
+ * @param ctx Test context from createTestContext() or createTestContextWithMockFS()
+ * @param libraryCode Library source code to parse
+ * @param libraryUri URI for the library file (e.g., 'file:///test/animations.eligian')
+ * @returns Langium document for the library
+ *
+ * @example
+ * ```typescript
+ * beforeAll(async () => {
+ *   ctx = createTestContextWithMockFS(); // Use mock FS for cross-document refs
+ *
+ *   // Create library document with actions
+ *   await createLibraryDocument(ctx, `
+ *     library animations
+ *
+ *     action fadeIn(selector: string, duration: number) [
+ *       selectElement(selector)
+ *       animate({opacity: 1}, duration)
+ *     ]
+ *   `, 'file:///test/animations.eligian');
+ * });
+ *
+ * test('imports from library', async () => {
+ *   const { errors } = await ctx.parseAndValidate(`
+ *     import { fadeIn } from "./animations.eligian"
+ *   `, { documentUri: 'file:///test/main.eligian' });
+ *   expect(errors).toHaveLength(0);
+ * });
+ * ```
+ */
+export async function createLibraryDocument(
+  ctx: TestContext,
+  libraryCode: string,
+  libraryUri: string
+): Promise<LangiumDocument> {
+  // If mock FS is available, write the library file to it
+  // This enables validators that check file existence (checkImportFileExists)
+  if (ctx.mockFs) {
+    ctx.mockFs.writeFile(libraryUri, libraryCode);
+  }
+
+  // Parse library code using the parse helper (which handles URI conversion AND adds to workspace)
+  const libraryDoc = await ctx.parse(libraryCode, { documentUri: libraryUri });
+
+  // Build document (triggers validation)
+  await ctx.services.shared.workspace.DocumentBuilder.build([libraryDoc], {
+    validation: true,
+  });
+
+  // Document is already added to workspace by parseHelper, so just return it
+  return libraryDoc;
 }

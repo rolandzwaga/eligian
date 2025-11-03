@@ -7,7 +7,7 @@ import {
   formatErrors,
 } from '@eligian/language';
 import { Effect } from 'effect';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
@@ -55,6 +55,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register compile command
   context.subscriptions.push(registerCompileCommand());
 
+  // Register JSDoc generation command
+  context.subscriptions.push(registerGenerateJSDocCommand(client));
+
+  // Register JSDoc auto-completion on /** typing
+  context.subscriptions.push(registerJSDocAutoCompletion(client));
+
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
 
@@ -63,7 +69,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(blockLabelProvider);
 
   // Update decorations for active editor
-  const vscode = await import('vscode');
   if (vscode.window.activeTextEditor) {
     blockLabelProvider.updateDecorations(vscode.window.activeTextEditor);
   }
@@ -136,9 +141,6 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
  * Register the compile command
  */
 function registerCompileCommand(): any {
-  // Dynamic import vscode to avoid TypeScript issues
-  const vscode = require('vscode');
-
   return vscode.commands.registerCommand('eligian.compile', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -224,5 +226,125 @@ function registerCompileCommand(): any {
         }
       }
     );
+  });
+}
+
+/**
+ * Register the JSDoc generation command
+ * This command is called AFTER the JSDoc completion is inserted
+ */
+function registerGenerateJSDocCommand(client: LanguageClient): any {
+  return vscode.commands.registerCommand('eligian.generateJSDoc', async () => {
+    console.log('eligian.generateJSDoc command triggered');
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      console.log('No active editor');
+      return;
+    }
+
+    const document = editor.document;
+    if (document.languageId !== 'eligian') {
+      console.log('Not an eligian document:', document.languageId);
+      return;
+    }
+
+    // Get current cursor position (should be inside /** */ after Step 1)
+    const position = editor.selection.active;
+    console.log('Cursor position:', position);
+
+    // Request JSDoc generation from language server
+    const params = {
+      textDocument: { uri: document.uri.toString() },
+      position: { line: position.line, character: position.character },
+    };
+
+    try {
+      console.log('Sending request to language server:', params);
+      const jsdocContent = await client.sendRequest('eligian/generateJSDoc', params);
+      console.log('Received JSDoc content:', jsdocContent);
+
+      if (jsdocContent && typeof jsdocContent === 'string') {
+        // Replace the placeholder ${1} with the JSDoc content
+        await editor.edit((editBuilder: any) => {
+          // Find the /** */ block and replace the content between
+          const line = document.lineAt(position.line);
+          const lineText = line.text;
+
+          // Find /** and */ positions
+          const jsdocStart = lineText.indexOf('/**');
+          const jsdocEnd = lineText.indexOf('*/');
+
+          if (jsdocStart !== -1 && jsdocEnd !== -1) {
+            // Replace the content between /** and */
+            const startPos = new vscode.Position(position.line, jsdocStart + 3);
+            const endPos = new vscode.Position(position.line, jsdocEnd);
+            editBuilder.replace(new vscode.Range(startPos, endPos), `\n${jsdocContent}\n `);
+          }
+        });
+      } else {
+        console.log('No JSDoc content to insert');
+      }
+    } catch (error) {
+      // Silently fail - no JSDoc generation available
+      console.log('No JSDoc generation available:', error);
+    }
+  });
+}
+
+/**
+ * Register JSDoc auto-completion on slash-star-star typing
+ * Automatically inserts closing and triggers JSDoc generation
+ */
+function registerJSDocAutoCompletion(_client: LanguageClient): any {
+  return vscode.workspace.onDidChangeTextDocument(async (event: vscode.TextDocumentChangeEvent) => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || event.document !== editor.document) {
+      return;
+    }
+
+    // Only process eligian files
+    if (event.document.languageId !== 'eligian') {
+      return;
+    }
+
+    // Only process single character changes (user typing)
+    if (event.contentChanges.length !== 1) {
+      return;
+    }
+
+    const change = event.contentChanges[0];
+    const text = change.text;
+
+    // Check if user just typed the second *
+    if (text === '*') {
+      const position = new vscode.Position(change.range.end.line, change.range.end.character + 1);
+
+      const document = event.document;
+
+      // Get text before cursor (including the just-typed *)
+      const textBeforeCursor = document.getText(
+        new vscode.Range(new vscode.Position(0, 0), position)
+      );
+
+      // Check if it ends with /**
+      if (textBeforeCursor.trimEnd().endsWith('/**')) {
+        console.log('Auto-completing JSDoc comment');
+
+        // Insert the closing */ and position cursor
+        await editor.edit(
+          (editBuilder: any) => {
+            editBuilder.insert(position, ' */');
+          },
+          { undoStopBefore: false, undoStopAfter: false }
+        );
+
+        // Move cursor to between /** and */
+        const newPosition = position.translate(0, 1);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+
+        // Trigger JSDoc generation command
+        await vscode.commands.executeCommand('eligian.generateJSDoc');
+      }
+    }
   });
 }

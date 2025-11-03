@@ -8,6 +8,8 @@ import {
   type CSSImportsDiscoveredParams,
   type CSSUpdatedParams,
   createEligianServices,
+  findActionBelow,
+  generateJSDocContent,
   isDefaultImport,
   isProgram,
   parseCSS,
@@ -161,6 +163,35 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
       connection.sendNotification(CSS_IMPORTS_DISCOVERED_NOTIFICATION, params);
     }
   }
+});
+
+// Register JSDoc generation request handler (Step 2 of JSDoc completion)
+// This handler runs AFTER Step 1 inserts /** */ and triggers the command
+connection.onRequest('eligian/generateJSDoc', async params => {
+  console.log('Language server received eligian/generateJSDoc request:', params);
+  const { textDocument, position } = params;
+
+  // Get the document from the workspace
+  const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(textDocument.uri));
+  if (!document) {
+    console.log('Document not found:', textDocument.uri);
+    return null;
+  }
+
+  // Find action definition on the line below the current position
+  const actionDef = findActionBelow(document, position);
+  console.log('Action found:', actionDef ? actionDef.name : 'none');
+
+  // If action found, generate JSDoc content (without delimiters)
+  if (actionDef) {
+    const content = generateJSDocContent(actionDef);
+    console.log('Generated JSDoc content:', content);
+    return content;
+  }
+
+  // No action found, return null (no JSDoc generation)
+  console.log('No action found below cursor, returning null');
+  return null;
 });
 
 // Start the language server with the shared services

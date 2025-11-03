@@ -18,6 +18,7 @@
 import { Effect } from 'effect';
 import type { TransformError } from '../errors/index.js';
 import type {
+  ActionDefinition,
   TimeExpression as AstTimeExpression,
   BreakStatement,
   ContinueStatement,
@@ -36,7 +37,12 @@ import type {
   VariableDeclaration,
 } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
-import { getActions, getTimelines, getVariables } from '../utils/program-helpers.js';
+import {
+  getActions,
+  getLibraryImports,
+  getTimelines,
+  getVariables,
+} from '../utils/program-helpers.js';
 import { buildConstantMap } from './constant-folder.js';
 import { evaluateExpression } from './expression-evaluator.js';
 import { findActionByName } from './name-resolver.js';
@@ -109,6 +115,57 @@ function createEmptyScope(): ScopeContext {
     loopVariableName: undefined,
     scopedConstants: new Map(),
   };
+}
+
+/**
+ * T044: Resolve library imports and collect imported actions (Feature 023 - User Story 2)
+ *
+ * This function processes all LibraryImport statements in a program and collects the imported actions.
+ * It handles aliasing - if an action is imported with an alias, it returns the action with the alias name
+ * applied so that downstream compilation uses the alias.
+ *
+ * Note: This relies on Langium's cross-reference resolution to already have resolved ActionImport.action
+ * references to actual ActionDefinition nodes from library files. If references are unresolved,
+ * those imports will be skipped (validation should have caught these errors).
+ *
+ * @param program - Program AST node with potential library imports
+ * @returns Array of ActionDefinition nodes (with aliases applied where necessary)
+ */
+function resolveImports(
+  program: Program
+): Effect.Effect<ActionDefinition[], TransformError, never> {
+  return Effect.gen(function* (_) {
+    const libraryImports = getLibraryImports(program);
+    const importedActions: ActionDefinition[] = [];
+
+    for (const libraryImport of libraryImports) {
+      for (const actionImport of libraryImport.actions) {
+        // Get the resolved ActionDefinition from the reference
+        // If the reference is unresolved (undefined), skip it - validation should have caught this
+        const actionDef = actionImport.action.ref;
+        if (!actionDef) {
+          // Reference not resolved - skip (validation error should exist)
+          continue;
+        }
+
+        // T045: Handle aliasing - if action has alias, create a modified action with alias name
+        if (actionImport.alias) {
+          // Create a new action object with the alias name
+          // We need to preserve all other properties but change the name
+          const aliasedAction: ActionDefinition = {
+            ...actionDef,
+            name: actionImport.alias,
+          };
+          importedActions.push(aliasedAction);
+        } else {
+          // No alias - use original action
+          importedActions.push(actionDef);
+        }
+      }
+    }
+
+    return importedActions;
+  });
 }
 
 /**
@@ -187,20 +244,30 @@ export const transformAST = (
       });
     }
 
-    // Extract action definitions (both regular and endable)
-    const actionDefinitions = getActions(program);
+    // T046: Extract local action definitions (both regular and endable)
+    const localActions = getActions(program);
+
+    // T044/T045: Resolve library imports and collect imported actions (with aliases applied)
+    const importedActions = yield* _(resolveImports(program));
+
+    // Merge imported and local actions - imported actions come first, then local actions
+    // This ensures local actions can override imported ones if there are name conflicts
+    // (though validation should prevent this)
+    const actionDefinitions = [...importedActions, ...localActions];
 
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
     for (const actionDef of actionDefinitions) {
-      const action = yield* _(transformActionDefinition(actionDef));
+      const action = yield* _(transformActionDefinition(actionDef, program, actionDefinitions));
       actions.push(action);
     }
 
     // Build TimelineConfigIR from all timeline nodes
     const timelines: TimelineConfigIR[] = [];
     for (const timelineNode of timelineNodes) {
-      const timelineConfig = yield* _(buildTimelineConfig(timelineNode));
+      const timelineConfig = yield* _(
+        buildTimelineConfig(timelineNode, program, actionDefinitions)
+      );
       timelines.push(timelineConfig);
     }
 
@@ -539,7 +606,11 @@ function generateTimelineProviderSettings(
  * Constitution VII: Generates UUID for timeline ID to ensure global uniqueness
  * when configs are merged or multiple timelines exist.
  */
-const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR, TransformError> =>
+const buildTimelineConfig = (
+  timeline: Timeline,
+  program: Program,
+  allActions: ActionDefinition[]
+): Effect.Effect<TimelineConfigIR, TransformError> =>
   Effect.gen(function* (_) {
     // T189/T190: Transform timeline events to TimelineActionIR with relative time support
     // Track previous event end time for relative time expressions and sequence blocks
@@ -550,7 +621,9 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
       // T190/T192: Check event type (sequence, stagger, or timed)
       if (event.$type === 'SequenceBlock') {
         // Transform sequence block into multiple timeline actions
-        const sequenceActions = yield* _(transformSequenceBlock(event, previousEventEndTime));
+        const sequenceActions = yield* _(
+          transformSequenceBlock(event, previousEventEndTime, program, allActions)
+        );
         timelineActions.push(...sequenceActions);
 
         // Update previousEventEndTime to the end of the last sequence item
@@ -563,7 +636,9 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
         }
       } else if (event.$type === 'StaggerBlock') {
         // T192: Transform stagger block into multiple timeline actions with incremental delays
-        const staggerActions = yield* _(transformStaggerBlock(event, previousEventEndTime));
+        const staggerActions = yield* _(
+          transformStaggerBlock(event, previousEventEndTime, program, allActions)
+        );
         timelineActions.push(...staggerActions);
 
         // Update previousEventEndTime to the end of the last stagger item
@@ -576,7 +651,9 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
         }
       } else {
         // TimedEvent: regular "at start..end { ... }" event
-        const timelineAction = yield* _(transformTimedEvent(event, previousEventEndTime));
+        const timelineAction = yield* _(
+          transformTimedEvent(event, previousEventEndTime, program, allActions)
+        );
         timelineActions.push(timelineAction);
 
         // Update previous event end time for next event
@@ -633,7 +710,9 @@ const buildTimelineConfig = (timeline: Timeline): Effect.Effect<TimelineConfigIR
  */
 const transformSequenceBlock = (
   sequence: SequenceBlock,
-  previousEventEndTime: number
+  previousEventEndTime: number,
+  _program: Program,
+  allActions: ActionDefinition[]
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* (_) {
     const actions: TimelineActionIR[] = [];
@@ -651,8 +730,7 @@ const transformSequenceBlock = (
       // Get action name and arguments
       const actionCall = item.actionCall;
       const actionName = getOperationCallName(actionCall);
-      const program = yield* _(getProgram(actionCall));
-      const actionRef = findActionByName(actionName, program);
+      const actionRef = findActionByName(actionName, allActions);
 
       // Check if this is an endable action or regular action
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
@@ -749,7 +827,9 @@ const transformSequenceBlock = (
  */
 const transformStaggerBlock = (
   stagger: StaggerBlock,
-  previousEventEndTime: number
+  previousEventEndTime: number,
+  program: Program,
+  allActions: ActionDefinition[]
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* (_) {
     const actions: TimelineActionIR[] = [];
@@ -784,8 +864,7 @@ const transformStaggerBlock = (
       // Form 1: stagger delay items with actionCall for duration
       const actionCall = stagger.actionCall!;
       const actionName = getOperationCallName(actionCall);
-      const program = yield* _(getProgram(actionCall));
-      const actionRef = findActionByName(actionName, program);
+      const actionRef = findActionByName(actionName, allActions);
 
       // Check if this is an endable action or regular action
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
@@ -881,12 +960,16 @@ const transformStaggerBlock = (
         const endOperations: OperationConfigIR[] = [];
 
         for (const opStmt of stagger.startOps || []) {
-          const ops = yield* _(transformOperationStatement(opStmt, staggerScope));
+          const ops = yield* _(
+            transformOperationStatement(opStmt, staggerScope, false, program, allActions)
+          );
           startOperations.push(...ops);
         }
 
         for (const opStmt of stagger.endOps || []) {
-          const ops = yield* _(transformOperationStatement(opStmt, staggerScope));
+          const ops = yield* _(
+            transformOperationStatement(opStmt, staggerScope, true, program, allActions)
+          );
           endOperations.push(...ops);
         }
 
@@ -918,7 +1001,9 @@ const transformStaggerBlock = (
  */
 const transformTimedEvent = (
   event: TimedEvent,
-  previousEventEndTime: number
+  previousEventEndTime: number,
+  program: Program,
+  allActions: ActionDefinition[]
 ): Effect.Effect<TimelineActionIR, TransformError> =>
   Effect.gen(function* (_) {
     const timeRange = event.timeRange;
@@ -948,11 +1033,15 @@ const transformTimedEvent = (
     if (action.$type === 'InlineEndableAction') {
       // Inline endable action: [ ... ] [ ... ]
       for (const opStmt of action.startOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt, createEmptyScope(), false));
+        const ops = yield* _(
+          transformOperationStatement(opStmt, createEmptyScope(), false, program, allActions)
+        );
         startOperations.push(...ops);
       }
       for (const opStmt of action.endOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt, createEmptyScope(), true));
+        const ops = yield* _(
+          transformOperationStatement(opStmt, createEmptyScope(), true, program, allActions)
+        );
         endOperations.push(...ops);
       }
     } else if (action.$type === 'OperationCall') {
@@ -962,9 +1051,8 @@ const transformTimedEvent = (
 
       const callName = getOperationCallName(action);
 
-      // Find the action definition in the program
-      const program = yield* _(getProgram(event));
-      const actionDef = findActionByName(callName, program);
+      // Find the action definition in all actions (includes imported ones)
+      const actionDef = findActionByName(callName, allActions);
 
       if (!actionDef) {
         // Validation should have caught this, but handle defensively
@@ -1043,12 +1131,14 @@ const transformTimedEvent = (
     } else if (action.$type === 'ForStatement') {
       // T056: US3 - ForStatement in timeline context
       // Transform the for loop body and add to startOperations
-      const forOps = yield* _(transformForStatement(action));
+      const forOps = yield* _(
+        transformForStatement(action, createEmptyScope(), program, allActions)
+      );
       startOperations.push(...forOps);
     } else if (action.$type === 'IfStatement') {
       // T057: US3 - IfStatement in timeline context
       // Transform the if/else branches and add to startOperations
-      const ifOps = yield* _(transformIfStatement(action));
+      const ifOps = yield* _(transformIfStatement(action, createEmptyScope(), program, allActions));
       startOperations.push(...ifOps);
     }
 
@@ -1138,7 +1228,9 @@ const validateOperationSequence = (
  * T173: Validates operation dependencies
  */
 const transformActionDefinition = (
-  actionDef: EndableActionDefinition | RegularActionDefinition
+  actionDef: EndableActionDefinition | RegularActionDefinition,
+  program: Program,
+  allActions: ActionDefinition[]
 ): Effect.Effect<EndableActionIR, TransformError> =>
   Effect.gen(function* (_) {
     const startOperations: OperationConfigIR[] = [];
@@ -1155,17 +1247,23 @@ const transformActionDefinition = (
     if (actionDef.$type === 'EndableActionDefinition') {
       // Endable action: has start and end operations
       for (const opStmt of actionDef.startOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt, actionScope));
+        const ops = yield* _(
+          transformOperationStatement(opStmt, actionScope, false, program, allActions)
+        );
         startOperations.push(...ops);
       }
       for (const opStmt of actionDef.endOperations) {
-        const ops = yield* _(transformOperationStatement(opStmt, actionScope));
+        const ops = yield* _(
+          transformOperationStatement(opStmt, actionScope, false, program, allActions)
+        );
         endOperations.push(...ops);
       }
     } else {
       // Regular action: only has operations (treated as start operations)
       for (const opStmt of actionDef.operations) {
-        const ops = yield* _(transformOperationStatement(opStmt, actionScope));
+        const ops = yield* _(
+          transformOperationStatement(opStmt, actionScope, false, program, allActions)
+        );
         startOperations.push(...ops);
       }
     }
@@ -1290,15 +1388,20 @@ const transformOperationCall = (
 const transformOperationStatement = (
   stmt: OperationStatement,
   scope: ScopeContext = createEmptyScope(),
-  isEndOperation: boolean = false
+  isEndOperation: boolean = false,
+  program?: Program,
+  allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     switch (stmt.$type) {
       case 'OperationCall': {
         // T058: US3 - Check if this is an action call (for control flow in timelines)
         const operationName = getOperationCallName(stmt);
-        const program = yield* _(getProgram(stmt));
-        const actionDef = findActionByName(operationName, program);
+        // If allActions is provided, search there (includes imported actions)
+        // Otherwise, if program is passed, use it; otherwise walk up container chain
+        const actionDef = allActions
+          ? findActionByName(operationName, allActions)
+          : findActionByName(operationName, program ?? (yield* _(getProgram(stmt))));
 
         if (actionDef) {
           // This is an action call - expand to requestAction + startAction/endAction
@@ -1347,11 +1450,11 @@ const transformOperationStatement = (
 
       case 'IfStatement':
         // If/else → when/otherwise/endWhen sequence
-        return yield* _(transformIfStatement(stmt, scope));
+        return yield* _(transformIfStatement(stmt, scope, program, allActions));
 
       case 'ForStatement':
         // For loop → forEach/endForEach sequence
-        return yield* _(transformForStatement(stmt, scope));
+        return yield* _(transformForStatement(stmt, scope, program, allActions));
 
       case 'VariableDeclaration':
         // Action-scoped variable → setVariable operation
@@ -1398,7 +1501,9 @@ const transformOperationStatement = (
  */
 const transformIfStatement = (
   stmt: IfStatement,
-  scope: ScopeContext = createEmptyScope()
+  scope: ScopeContext = createEmptyScope(),
+  program?: Program,
+  allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     const operations: OperationConfigIR[] = [];
@@ -1423,7 +1528,9 @@ const transformIfStatement = (
       scopedConstants: new Map(scope.scopedConstants), // Clone the map
     };
     for (const thenOp of stmt.thenOps) {
-      const ops = yield* _(transformOperationStatement(thenOp, thenScope));
+      const ops = yield* _(
+        transformOperationStatement(thenOp, thenScope, false, program, allActions)
+      );
       operations.push(...ops);
     }
 
@@ -1442,7 +1549,9 @@ const transformIfStatement = (
         scopedConstants: new Map(scope.scopedConstants), // Clone the map
       };
       for (const elseOp of stmt.elseOps) {
-        const ops = yield* _(transformOperationStatement(elseOp, elseScope));
+        const ops = yield* _(
+          transformOperationStatement(elseOp, elseScope, false, program, allActions)
+        );
         operations.push(...ops);
       }
     }
@@ -1475,7 +1584,9 @@ const transformIfStatement = (
  */
 const transformForStatement = (
   stmt: ForStatement,
-  scope: ScopeContext = createEmptyScope()
+  scope: ScopeContext = createEmptyScope(),
+  program?: Program,
+  allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* (_) {
     const operations: OperationConfigIR[] = [];
@@ -1505,7 +1616,9 @@ const transformForStatement = (
     };
 
     for (const bodyOp of stmt.body) {
-      const ops = yield* _(transformOperationStatement(bodyOp, loopScope));
+      const ops = yield* _(
+        transformOperationStatement(bodyOp, loopScope, false, program, allActions)
+      );
       operations.push(...ops);
     }
 

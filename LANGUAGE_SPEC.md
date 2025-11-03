@@ -1,8 +1,14 @@
 # Eligian Language Specification
 
-**Version**: 1.2.0
-**Last Updated**: 2025-10-30
+**Version**: 1.3.0
+**Last Updated**: 2025-11-02
 **Status**: Living Document - Updated with every language feature change
+
+**Recent Changes** (v1.3.0):
+- Added library file support (Feature 023)
+- Added library import statements
+- Added `private` visibility modifier for actions
+- Added library-specific validation rules
 
 ---
 
@@ -140,22 +146,33 @@ h           // Hours
 
 ## 3. Program Structure
 
-### 3.1 Program Elements
+### 3.1 File Types
+
+Eligian supports two types of source files:
+
+1. **Program Files** - Complete applications with timelines and resources
+2. **Library Files** - Reusable action collections (Feature 023)
+
+#### 3.1.1 Program Files
 
 An Eligian program consists of zero or more program statements in any order:
 
 ```eligian
-Program := (ImportStatement | ActionDefinition | Timeline | VariableDeclaration)*
+Program := (ImportStatement | LibraryImport | ActionDefinition | Timeline | VariableDeclaration)*
 ```
 
 **Key Points**:
 - **Flexible Ordering**: Imports, constants, actions, and timelines can appear in any order
 - **No Strict Grouping**: You can mix imports with other declarations as needed
+- **Can import from libraries**: Programs can import actions from library files
 
 **Example**:
 
 ```eligian
-// Import can come first
+// Import action from library
+import { fadeIn } from "./animations.eligian"
+
+// Import assets
 import layout from "./layout.html"
 
 // Global variable
@@ -164,17 +181,78 @@ const duration = 1000
 // Another import - flexible ordering
 import styles from "./styles.css"
 
-// Action definition
-action fadeIn(selector: string) [
-  selectElement($operationdata.selector)
+// Local action definition
+action customAnimation(selector: string) [
+  selectElement(selector)
   animate({opacity: 1}, duration)
 ]
 
 // Timeline
 timeline "main" in "#app" using raf {
   at 0s..2s fadeIn("#title")
+  at 2s..4s customAnimation("#content")
 }
 ```
+
+#### 3.1.2 Library Files
+
+Library files contain reusable action definitions that can be imported by programs:
+
+```eligian
+Library := 'library' ID ActionDefinition*
+```
+
+**Syntax**:
+```eligian
+library <libraryName>
+
+[visibility] action <actionName>(<parameters>) [
+  // Action body
+]
+```
+
+**Key Points**:
+- **Must start with `library` keyword**: Identifies file as a library
+- **Contains only actions**: No timelines, imports, or constants allowed
+- **Visibility modifiers**: Actions can be `private` (internal only) or public (default)
+- **File extension**: Library files use the `.eligian` extension like programs
+
+**Example**:
+
+```eligian
+library animations
+
+/**
+ * Fades in an element over a specified duration
+ * @param selector CSS selector for target element
+ * @param duration Animation duration in milliseconds
+ */
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  animate({opacity: 1}, duration)
+]
+
+/**
+ * Internal helper for resetting opacity
+ */
+private action resetOpacity(selector: string) [
+  selectElement(selector)
+  animate({opacity: 0}, 0)
+]
+
+action fadeOut(selector: string, duration: number) [
+  resetOpacity(selector)  // Private actions accessible within library
+  animate({opacity: 0}, duration)
+]
+```
+
+**Library Restrictions**:
+- ❌ Cannot contain timeline definitions
+- ❌ Cannot contain import statements (assets or other libraries)
+- ❌ Cannot contain constant declarations
+- ✅ Can contain regular and endable actions
+- ✅ Can use `private` visibility modifier
+- ✅ Private actions can call other actions within same library
 
 ### 3.2 Import Statements
 
@@ -246,7 +324,129 @@ Import paths must be **relative paths** only:
 
 **Reserved Names**: Import names cannot be reserved keywords (`action`, `timeline`, `const`, `for`, `if`, etc.)
 
-### 3.3 Execution Model
+### 3.3 Library Import Statements (Feature 023)
+
+Library import statements allow you to import reusable actions from library files.
+
+**Syntax**:
+```eligian
+import { <action1>, <action2>, ... } from "<library-path>"
+import { <action> as <alias> } from "<library-path>"
+```
+
+**Key Points**:
+- **Curly braces required**: Even for single action imports
+- **File extension required**: Must include `.eligian` extension
+- **Relative paths only**: Same path restrictions as asset imports
+- **Only public actions**: Private actions cannot be imported
+
+#### 3.3.1 Single Action Import
+
+```eligian
+import { fadeIn } from "./animations.eligian"
+
+timeline "Demo" at 0s {
+  at 0s fadeIn("#box", 1000)
+}
+```
+
+#### 3.3.2 Multiple Action Imports
+
+```eligian
+import { fadeIn, fadeOut, slideIn } from "./animations.eligian"
+
+timeline "Demo" at 0s {
+  at 0s fadeIn("#box", 1000)
+  at 2s slideIn("#title", 800)
+  at 5s fadeOut("#box", 500)
+}
+```
+
+#### 3.3.3 Import with Aliases
+
+Use aliases to resolve naming conflicts between imported actions or with local actions:
+
+```eligian
+// Resolve conflict between two libraries
+import { fadeIn as animFadeIn } from "./animations.eligian"
+import { fadeIn as transFadeIn } from "./transitions.eligian"
+
+// Resolve conflict with local action
+import { fadeIn as libFadeIn } from "./animations.eligian"
+
+action fadeIn(selector: string) [
+  // Local implementation
+]
+
+timeline "Demo" at 0s {
+  at 0s animFadeIn("#box1", 1000)
+  at 1s transFadeIn("#box2", 800)
+  at 2s fadeIn("#box3", 500)       // Uses local action
+  at 3s libFadeIn("#box4", 1000)   // Uses imported action
+}
+```
+
+#### 3.3.4 Import from Multiple Libraries
+
+```eligian
+import { fadeIn, fadeOut } from "./animations.eligian"
+import { debounce, throttle } from "./utils.eligian"
+import { validateEmail } from "./validation.eligian"
+
+// All imported actions available for use
+timeline "Demo" at 0s {
+  at 0s fadeIn("#form", 500)
+  at 1s validateEmail("user@example.com")
+  at 2s fadeOut("#form", 300)
+}
+```
+
+#### 3.3.5 Validation Rules
+
+**Private Action Import**:
+```eligian
+// lib.eligian
+library lib
+private action privateHelper() [...]
+
+// main.eligian
+import { privateHelper } from "./lib.eligian"
+// ❌ ERROR: Cannot import private action 'privateHelper' from library
+```
+
+**Missing Library File**:
+```eligian
+import { fadeIn } from "./missing.eligian"
+// ❌ ERROR: Library file not found: ./missing.eligian
+```
+
+**Action Not Found**:
+```eligian
+import { nonExistent } from "./animations.eligian"
+// ❌ ERROR: Action 'nonExistent' not found in library './animations.eligian'
+```
+
+**Name Collision - Local Action**:
+```eligian
+import { fadeIn } from "./animations.eligian"
+action fadeIn() [...]  // ❌ ERROR: Action 'fadeIn' already defined
+```
+
+**Name Collision - Built-in Operation**:
+```eligian
+// In library file
+library bad
+action selectElement() [...]
+// ❌ ERROR: Action name 'selectElement' conflicts with built-in operation
+```
+
+**Alias Collision**:
+```eligian
+import { fadeIn as animate } from "./animations.eligian"
+// ❌ ERROR: Alias 'animate' conflicts with built-in operation
+```
+
+### 3.4 Execution Model
 
 1. **Imports** are resolved and assets are loaded
 2. **Global variables** are evaluated and added to `$globaldata` scope
@@ -316,7 +516,80 @@ endable action showThenHide [
 
 **Compilation**: Start operations execute at event start time, end operations at event end time.
 
-### 4.3 Parameters
+### 4.3 Visibility Modifiers (Feature 023 - Library Files)
+
+Actions in library files can have visibility modifiers to control whether they can be imported:
+
+```eligian
+[visibility] action <name>(<parameters>) [
+  <operations>*
+]
+
+[visibility] endable action <name>(<parameters>) [
+  <start-operations>*
+] [
+  <end-operations>*
+]
+```
+
+#### 4.3.1 Public Actions (Default)
+
+Actions without a visibility modifier are **public** and can be imported by other files:
+
+```eligian
+library animations
+
+// Public action - can be imported
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  animate({opacity: 1}, duration)
+]
+```
+
+**Usage**:
+```eligian
+import { fadeIn } from "./animations.eligian"  // ✅ OK
+```
+
+#### 4.3.2 Private Actions
+
+Actions marked with `private` keyword are **private** and can only be used within the same library:
+
+```eligian
+library utils
+
+// Private helper - internal only
+private action validateSelector(selector: string) [
+  // Validation logic
+]
+
+// Public action using private helper
+action safeSelect(selector: string) [
+  validateSelector(selector)  // ✅ OK - same library
+  selectElement(selector)
+]
+```
+
+**Import Restriction**:
+```eligian
+import { validateSelector } from "./utils.eligian"
+// ❌ ERROR: Cannot import private action 'validateSelector' from library
+```
+
+**Key Points**:
+- **Library-only**: `private` keyword can only be used in library files
+- **Same-library access**: Private actions can call other actions in the same library
+- **Not importable**: Private actions cannot be imported by other files
+- **Encapsulation**: Use private actions to hide implementation details
+
+**Error in Program File**:
+```eligian
+// main.eligian (program file)
+private action myAction() [...]
+// ❌ ERROR: Visibility modifier 'private' can only be used in library files
+```
+
+### 4.4 Parameters
 
 #### Syntax
 
@@ -359,7 +632,7 @@ action demo(value: number) [
 ]
 ```
 
-### 4.4 Action Documentation
+### 4.5 Action Documentation
 
 Actions can be documented using JSDoc-style comments placed directly above the action definition:
 
@@ -490,7 +763,7 @@ action _helperAction [...]  // No JSDoc needed for internal helpers
  */
 ```
 
-### 4.5 Calling Actions
+### 4.6 Calling Actions
 
 Actions use the **unified call syntax** - they're called exactly like built-in operations:
 
@@ -513,6 +786,7 @@ timeline "demo" in "#app" using raf {
 - The compiler automatically distinguishes between them by name resolution
 - Action names **cannot** conflict with built-in operation names (compile error)
 - This unified syntax works in all contexts: timeline events, control flow, sequence/stagger blocks
+- **Imported actions** work identically to locally-defined actions (Feature 023)
 
 **Name Collision Prevention**:
 
@@ -526,6 +800,28 @@ action selectElement() [  // Compile error: name conflicts with built-in operati
 action mySelectElement() [
   ...
 ]
+```
+
+**Using Imported Actions** (Feature 023):
+
+Imported actions work identically to local actions:
+
+```eligian
+// Import from library
+import { fadeIn, slideIn } from "./animations.eligian"
+
+// Define local action
+action customAnimation(selector: string) [
+  selectElement(selector)
+  addClass("animated")
+]
+
+timeline "demo" in "#app" using raf {
+  at 0s..2s fadeIn("#title")           // Imported action
+  at 2s..4s slideIn("#content")        // Imported action
+  at 4s..6s customAnimation("#footer") // Local action
+  at 6s..8s selectElement("#box")      // Built-in operation
+}
 ```
 
 ---

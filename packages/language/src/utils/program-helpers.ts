@@ -11,6 +11,7 @@
 import type {
   ActionDefinition,
   ImportStatement,
+  LibraryImport,
   NamedImport,
   Program,
   ProgramElement,
@@ -20,6 +21,7 @@ import type {
 import {
   isActionDefinition,
   isImportStatement,
+  isLibraryImport,
   isNamedImport,
   isProgramElement,
 } from './ast-helpers.js';
@@ -91,4 +93,14 @@ export function getHTMLImports(program: Program): NamedImport[] {
       const htmlExtension = imp.path.endsWith('.html');
       return explicitType || htmlExtension;
     });
+}
+
+/**
+ * Get all library imports from a program (Feature 023 - User Story 2)
+ *
+ * @param program - Program AST node
+ * @returns Array of LibraryImport nodes
+ */
+export function getLibraryImports(program: Program): LibraryImport[] {
+  return program.statements.filter(isLibraryImport);
 }

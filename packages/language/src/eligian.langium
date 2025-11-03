@@ -17,10 +17,51 @@ grammar Eligian
  */
 
 // ============================================================================
+// File Structure (Feature 023)
+// ============================================================================
+
+/**
+ * EligianFile - Union entry point for both program and library files
+ *
+ * - Program: Regular .eligian files with timelines, actions, and imports
+ * - Library: Library files with 'library' keyword, containing only actions
+ *
+ * Disambiguation: Presence of 'library' keyword determines file type.
+ */
+entry EligianFile:
+    Program | Library;
+
+/**
+ * Library - Reusable action library file (Feature 023)
+ *
+ * Syntax: library <name>
+ *
+ * Example:
+ *   library animations
+ *
+ *   action fadeIn(selector: string, duration: number) [
+ *     selectElement(selector)
+ *     animate({opacity: 1}, duration)
+ *   ]
+ *
+ *   private action resetOpacity(selector: string) [
+ *     selectElement(selector)
+ *     setStyle('opacity', '0')
+ *   ]
+ *
+ * Constraints (validated in eligian-validator.ts):
+ * - Library files MUST only contain action definitions
+ * - Library files MUST NOT contain timelines, constants, or imports
+ * - Action names within library MUST be unique
+ */
+Library:
+    'library' name=ID (actions += ActionDefinition)*;
+
+// ============================================================================
 // Program Structure
 // ============================================================================
 
-entry Program:
+Program:
     (statements += ProgramStatement)*;
 
 ProgramStatement:
@@ -30,18 +71,19 @@ ProgramElement:
     ActionDefinition | Timeline | VariableDeclaration;
 
 // ============================================================================
-// Import Statements (Feature 009)
+// Import Statements (Feature 009 + Feature 023)
 // ============================================================================
 
 /**
- * Import Statement - Asset imports for HTML, CSS, and media files
+ * Import Statement - Asset imports and library action imports
  *
- * Union type for default imports (auto-assignment) and named imports (reusable):
- * - DefaultImport: layout './file', styles './file', provider './file'
- * - NamedImport: import name from './file' as type?
+ * Union type for:
+ * - DefaultImport: layout './file', styles './file', provider './file' (Feature 009)
+ * - NamedImport: import name from './file' as type? (Feature 009)
+ * - LibraryImport: import { action1, action2 } from './library.eligian' (Feature 023)
  */
 ImportStatement:
-    DefaultImport | NamedImport;
+    DefaultImport | NamedImport | LibraryImport;
 
 /**
  * Default Import - Auto-assignment to configuration properties
@@ -89,12 +131,48 @@ NamedImport:
 AssetType returns string:
     'html' | 'css' | 'media';
 
+/**
+ * Library Import - Import actions from library files (Feature 023)
+ *
+ * Syntax: import { action1, action2 } from './library.eligian'
+ * With aliasing: import { action1 as alias1 } from './library.eligian'
+ *
+ * Examples:
+ *   import { fadeIn, fadeOut } from './animations.eligian'
+ *   import { fadeIn as fade } from './animations.eligian'
+ *   import { safeSelect, safeAddClass } from './utils.eligian'
+ *
+ * Constraints (validated in eligian-validator.ts):
+ * - Path must be relative and point to a valid .eligian library file
+ * - Imported actions must exist in the library and be public (not private)
+ * - Imported action names must not conflict with locally-defined actions
+ * - Aliased names must not conflict with existing actions or imports
+ */
+LibraryImport:
+    'import' '{' actions += ActionImport (',' actions += ActionImport)* '}' 'from' path=STRING;
+
+/**
+ * Action Import - Single action import with optional aliasing (Feature 023)
+ *
+ * Syntax:
+ *   action1          - import action1 with its original name
+ *   action1 as alias - import action1 and rename it to alias
+ *
+ * The cross-reference [ActionDefinition:ID] enables:
+ * - Validation that the action exists in the target library
+ * - Hover documentation from the library action's JSDoc
+ * - "Go to Definition" navigation to the library file
+ * - Type checking for imported action parameters
+ */
+ActionImport:
+    action=[ActionDefinition:ID] ('as' alias=ID)?;
+
 // ============================================================================
 // Action Definitions
 // ============================================================================
 
 /**
- * Action Definition - Reusable action with operation list
+ * Action Definition - Reusable action with operation list (Feature 023: added visibility)
  *
  * Regular action:
  *   action fadeIn [
@@ -108,6 +186,12 @@ AssetType returns string:
  *     animate({ opacity: 1 }, $operationdata.duration)
  *   ]
  *
+ * Private action (library-only, Feature 023):
+ *   private action resetOpacity(selector: string) [
+ *     selectElement(selector)
+ *     setStyle('opacity', '0')
+ *   ]
+ *
  * Endable action (with start and end operations):
  *   endable action showThenHide [
  *     selectElement(".box")
@@ -115,16 +199,21 @@ AssetType returns string:
  *   ] [
  *     removeClass("visible")
  *   ]
+ *
+ * Visibility (Feature 023):
+ * - private: Only usable within the same library file, cannot be imported
+ * - public (default): Can be imported by other files
+ * - Validation: 'private' keyword only allowed in library files (not programs)
  */
 ActionDefinition:
     EndableActionDefinition | RegularActionDefinition;
 
 RegularActionDefinition:
-    'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
+    (visibility='private')? 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (operations += OperationStatement)* ']';
 
 EndableActionDefinition:
-    'endable' 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
+    (visibility='private')? 'endable' 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (startOperations += OperationStatement)* ']'
     '[' (endOperations += OperationStatement)* ']';
 

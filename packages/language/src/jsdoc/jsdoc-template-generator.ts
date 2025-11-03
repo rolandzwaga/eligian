@@ -46,6 +46,34 @@ export function generateJSDocTemplate(action: ActionDefinition): string {
 }
 
 /**
+ * Generate JSDoc content (without delimiters) for insertion inside existing comment block
+ *
+ * @param action The action definition to generate documentation for
+ * @returns JSDoc content lines (without delimiters)
+ *
+ * Used when the delimiters are already present and we just need to
+ * fill in the content between them.
+ */
+export function generateJSDocContent(action: ActionDefinition): string {
+  const lines: string[] = [];
+
+  // Blank description line with placeholder (FR-011)
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: This is a snippet template string literal, not a template literal
+  lines.push('${1:Description}');
+
+  // Generate @param lines for each parameter
+  if (action.parameters && action.parameters.length > 0) {
+    for (const param of action.parameters) {
+      const type = extractTypeFromParameter(param);
+      lines.push(`@param {${type}} ${param.name}`);
+    }
+  }
+
+  // Join with newlines and add ' * ' prefix to each line
+  return lines.map(line => ` * ${line}`).join('\n');
+}
+
+/**
  * Extract type string from parameter
  *
  * @param param Parameter AST node

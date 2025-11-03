@@ -52,10 +52,24 @@ export function buildNameRegistry(program: Program): NameRegistry {
 }
 
 /**
- * Find action by name in a program
+ * Find action by name in a program or action list
  * T018: Helper function for action lookup
+ *
+ * @param name Action name to find
+ * @param programOrActions Either a Program AST node or an array of ActionDefinitions
+ * @returns ActionDefinition if found, undefined otherwise
  */
-export function findActionByName(name: string, program: Program): ActionDefinition | undefined {
+export function findActionByName(
+  name: string,
+  programOrActions: Program | ActionDefinition[]
+): ActionDefinition | undefined {
+  // Check if we got an array of action definitions
+  if (Array.isArray(programOrActions)) {
+    return programOrActions.find(action => action.name === name);
+  }
+
+  // Otherwise, search in Program's elements
+  const program = programOrActions;
   for (const element of getElements(program)) {
     if (
       (element.$type === 'RegularActionDefinition' ||
