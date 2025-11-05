@@ -190,10 +190,21 @@ describe('Operation Validation', () => {
     // KNOWN ISSUE: Tests skip due to:
     // 1. Import resolution fails in multi-file scenarios (fadeIn not found from library)
     // 2. CSS validation runs even without CSS imports, `.container` not in default registry
-    // TODO (separate issue): Fix import resolution and CSS validation in multi-context tests
-    test.skip('should NOT error on valid imported action call', async () => {
+    // Feature 026: Fixed - checkTimelineOperationCall now checks imported actions
+    test('should NOT error on valid imported action call', async () => {
       // Use the NEW setupDocuments() helper instead
       const testCtx = createTestContextWithMockFS();
+
+      // Write CSS file to mock FS to avoid "file not found" errors
+      if (testCtx.mockFs) {
+        testCtx.mockFs.writeFile('file:///test/test.css', '.container { } #box { }');
+      }
+
+      // Setup CSS registry to avoid CSS validation errors
+      setupCSSRegistry(testCtx, 'file:///test/test.css', {
+        classes: ['container'],
+        ids: ['box'],
+      });
 
       const docs = await setupDocuments(testCtx, [
         {
@@ -209,6 +220,7 @@ describe('Operation Validation', () => {
         {
           uri: 'file:///test/main.eligian',
           content: `
+            styles "./test.css"
             import { fadeIn } from "./animations.eligian"
 
             timeline "Test" in ".container" using raf {
@@ -219,7 +231,13 @@ describe('Operation Validation', () => {
       ]);
 
       const mainDoc = docs.get('file:///test/main.eligian')!;
-      const errors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+      const allErrors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+
+      // Filter out asset validation errors - we're testing action resolution, not asset validation
+      const errors = allErrors.filter(err =>
+        !err.message.includes('Asset file not found') &&
+        !err.message.includes('Unknown CSS')
+      );
 
       // Debug: show all errors
       if (errors.length !== 0) {
@@ -232,8 +250,16 @@ describe('Operation Validation', () => {
       expect(errors).toHaveLength(0);
     });
 
-    test.skip('should validate multiple imported actions', async () => {
+    test('should validate multiple imported actions', async () => {
       const testCtx = createTestContextWithMockFS();
+
+      // Write CSS file to mock FS to avoid "file not found" errors
+      testCtx.mockFs?.writeFile('file:///test/test.css', '#app { }');
+
+      // Setup CSS registry to avoid CSS validation errors
+      setupCSSRegistry(testCtx, 'file:///test/test.css', {
+        ids: ['app'],
+      });
 
       const docs = await setupDocuments(testCtx, [
         {
@@ -253,23 +279,51 @@ describe('Operation Validation', () => {
         {
           uri: 'file:///test/main.eligian',
           content: `
-            library main
+            styles "./test.css"
             import { fadeIn, fadeOut } from "./animations.eligian"
-            action sequence() [
+
+            action mySequence() [
               fadeIn("#app", 1000)
               fadeOut("#app", 500)
             ]
+
+            timeline "Test" in "#app" using raf {
+              at 0s..1s mySequence()
+            }
           `,
         },
       ]);
 
       const mainDoc = docs.get('file:///test/main.eligian')!;
-      const errors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+      const allErrors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+
+      // Debug: show all errors
+      if (allErrors.length !== 0) {
+        console.log(`Found ${allErrors.length} errors:`);
+        for (const err of allErrors) {
+          console.log(`  - ${err.message} (code: ${err.code})`);
+        }
+      }
+
+      // Filter out asset validation errors - we're testing action resolution, not asset validation
+      const errors = allErrors.filter(err =>
+        !err.message.includes('Asset file not found') &&
+        !err.message.includes('Unknown CSS')
+      );
+
       expect(errors).toHaveLength(0);
     });
 
-    test.skip('should validate mix of imported actions and builtin operations', async () => {
+    test('should validate mix of imported actions and builtin operations', async () => {
       const testCtx = createTestContextWithMockFS();
+
+      // Write CSS file to mock FS to avoid "file not found" errors
+      testCtx.mockFs?.writeFile('file:///test/test.css', '#app { }');
+
+      // Setup CSS registry to avoid CSS validation errors
+      setupCSSRegistry(testCtx, 'file:///test/test.css', {
+        ids: ['app'],
+      });
 
       const docs = await setupDocuments(testCtx, [
         {
@@ -285,19 +339,39 @@ describe('Operation Validation', () => {
         {
           uri: 'file:///test/main.eligian',
           content: `
-            library main
+            styles "./test.css"
             import { fadeIn } from "./animations.eligian"
+
             action enhanced() [
               fadeIn("#app", 1000)
               selectElement("#app")
               animate({opacity: 1}, 500)
             ]
+
+            timeline "Test" in "#app" using raf {
+              at 0s..1s enhanced()
+            }
           `,
         },
       ]);
 
       const mainDoc = docs.get('file:///test/main.eligian')!;
-      const errors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+      const allErrors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+
+      // Debug: show all errors
+      if (allErrors.length !== 0) {
+        console.log(`Found ${allErrors.length} errors:`);
+        for (const err of allErrors) {
+          console.log(`  - ${err.message} (code: ${err.code})`);
+        }
+      }
+
+      // Filter out asset validation errors - we're testing action resolution, not asset validation
+      const errors = allErrors.filter(err =>
+        !err.message.includes('Asset file not found') &&
+        !err.message.includes('Unknown CSS')
+      );
+
       expect(errors).toHaveLength(0);
     });
 

@@ -937,11 +937,22 @@ export class EligianValidator {
       return; // Can't validate without program context
     }
 
-    // Check if it's a defined action
+    // Check if it's a defined action (local)
     const action = findActionByName(callName, program);
     if (action) {
-      // Valid action call - success
+      // Valid local action call - success
       return;
+    }
+
+    // Feature 024: Check if it's an IMPORTED action
+    if (this.services) {
+      const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
+      const importedActions = scopeProvider.getImportedActions(program);
+      const importedAction = findActionByName(callName, importedActions);
+      if (importedAction) {
+        // Valid imported action call - success
+        return;
+      }
     }
 
     // Check if it's an operation (ERROR - operations not allowed as direct timeline actions)
