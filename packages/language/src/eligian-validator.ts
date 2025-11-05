@@ -15,6 +15,7 @@ import { findActionByName } from './compiler/name-resolver.js';
 import { findSimilarClasses } from './css/levenshtein.js';
 import { parseSelector } from './css/selector-parser.js';
 import type { EligianServices } from './eligian-module.js';
+import type { EligianScopeProvider } from './eligian-scope-provider.js';
 import type {
   ActionDefinition,
   BreakStatement,
@@ -484,6 +485,17 @@ export class EligianValidator {
       const action = library.actions?.find(a => a.name === opName);
       if (action) {
         // This is a valid action call within the library - skip operation validation
+        return;
+      }
+    }
+
+    // Feature 024: Check if operation is an IMPORTED action
+    if (program && this.services) {
+      const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
+      const importedActions = scopeProvider.getImportedActions(program);
+      const importedAction = findActionByName(opName, importedActions);
+      if (importedAction) {
+        // This is a valid imported action call - skip operation validation
         return;
       }
     }
