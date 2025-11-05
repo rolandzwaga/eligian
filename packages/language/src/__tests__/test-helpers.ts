@@ -627,3 +627,73 @@ export async function createLibraryDocument(
   // Document is already added to workspace by parseHelper, so just return it
   return libraryDoc;
 }
+
+/**
+ * Setup multiple documents in the test workspace with automatic building
+ *
+ * Documents are parsed and added to the workspace, then built together to
+ * resolve cross-references (e.g., imports). All documents are validated.
+ *
+ * @param ctx Test context with Langium services
+ * @param documents Array of {uri, content} pairs
+ * @returns Map of URI → LangiumDocument for easy lookup
+ *
+ * @example
+ * ```typescript
+ * const docs = await setupDocuments(ctx, [
+ *   { uri: 'file:///test/lib.eligian', content: 'library lib ...' },
+ *   { uri: 'file:///test/main.eligian', content: 'import { x } from "./lib.eligian"' },
+ * ]);
+ * const mainDoc = docs.get('file:///test/main.eligian')!;
+ * ```
+ */
+export async function setupDocuments(
+  ctx: TestContext,
+  documents: Array<{ uri: string; content: string }>
+): Promise<Map<string, LangiumDocument>> {
+  const docs = new Map<string, LangiumDocument>();
+
+  // Parse all documents first
+  for (const { uri, content } of documents) {
+    if (ctx.mockFs) {
+      ctx.mockFs.writeFile(uri, content);
+    }
+    const doc = await ctx.parse(content, { documentUri: uri });
+    docs.set(uri, doc);
+  }
+
+  // Build all documents together (resolves cross-references)
+  await ctx.services.shared.workspace.DocumentBuilder.build(Array.from(docs.values()), {
+    validation: true,
+  });
+
+  return docs;
+}
+
+/**
+ * Create multiple library documents (convenience wrapper around setupDocuments)
+ *
+ * This is a semantic wrapper that makes the intent explicit when creating libraries
+ * in test setup (especially in beforeAll hooks for shared libraries).
+ *
+ * @param ctx Test context with Langium services
+ * @param libraries Array of {uri, content} pairs for library files
+ * @returns Map of URI → LangiumDocument for easy lookup
+ *
+ * @example
+ * ```typescript
+ * beforeAll(async () => {
+ *   ctx = createTestContextWithMockFS();
+ *   await createLibraryDocuments(ctx, [
+ *     { uri: 'file:///test/animations.eligian', content: 'library animations ...' },
+ *     { uri: 'file:///test/utils.eligian', content: 'library utils ...' },
+ *   ]);
+ * });
+ * ```
+ */
+export async function createLibraryDocuments(
+  ctx: TestContext,
+  libraries: Array<{ uri: string; content: string }>
+): Promise<Map<string, LangiumDocument>> {
+  return setupDocuments(ctx, libraries);
+}
