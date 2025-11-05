@@ -234,9 +234,8 @@ describe('Operation Validation', () => {
       const allErrors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
 
       // Filter out asset validation errors - we're testing action resolution, not asset validation
-      const errors = allErrors.filter(err =>
-        !err.message.includes('Asset file not found') &&
-        !err.message.includes('Unknown CSS')
+      const errors = allErrors.filter(
+        err => !err.message.includes('Asset file not found') && !err.message.includes('Unknown CSS')
       );
 
       // Debug: show all errors
@@ -306,9 +305,8 @@ describe('Operation Validation', () => {
       }
 
       // Filter out asset validation errors - we're testing action resolution, not asset validation
-      const errors = allErrors.filter(err =>
-        !err.message.includes('Asset file not found') &&
-        !err.message.includes('Unknown CSS')
+      const errors = allErrors.filter(
+        err => !err.message.includes('Asset file not found') && !err.message.includes('Unknown CSS')
       );
 
       expect(errors).toHaveLength(0);
@@ -367,9 +365,8 @@ describe('Operation Validation', () => {
       }
 
       // Filter out asset validation errors - we're testing action resolution, not asset validation
-      const errors = allErrors.filter(err =>
-        !err.message.includes('Asset file not found') &&
-        !err.message.includes('Unknown CSS')
+      const errors = allErrors.filter(
+        err => !err.message.includes('Asset file not found') && !err.message.includes('Unknown CSS')
       );
 
       expect(errors).toHaveLength(0);

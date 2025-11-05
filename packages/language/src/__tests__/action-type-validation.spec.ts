@@ -10,9 +10,7 @@ describe('Action Call Type Validation', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;
   const parse = parseHelper<Program>(services);
 
-  // TODO: Fix type validation for unified action call syntax (OperationCall)
-  // These tests need to be updated to work with the new OperationCall-based action calls
-  test.skip('should validate action call argument types', async () => {
+  test('should validate action call argument types', async () => {
     const document = await parse(`
       action test(name: string) [
         selectElement(name)
@@ -34,22 +32,21 @@ describe('Action Call Type Validation', () => {
     // Get validation diagnostics
     const diagnostics = await services.validation.DocumentValidator.validateDocument(document);
 
-    //console.log('All diagnostics:', diagnostics);
-    //console.log('Number of diagnostics:', diagnostics.length);
-
-    // Filter for type-related errors
+    // Filter for type-related errors (excluding CSS validation errors)
     const typeErrors = diagnostics.filter(
       d =>
-        d.message.includes('type') ||
-        d.message.includes('number') ||
-        d.message.includes('string') ||
-        d.message.includes('match')
+        (d.message.includes('type') ||
+          d.message.includes('number') ||
+          d.message.includes('string') ||
+          d.message.includes('match')) &&
+        !d.message.includes('CSS')
     );
 
-    //console.log('Type-related diagnostics:', typeErrors);
-
-    // We expect at least one type error for test(123)
+    // We expect at least one type error for test(123) - parameter type mismatch
+    // The Typir type system (Feature 021) catches this: number is not assignable to string
     expect(typeErrors.length).toBeGreaterThan(0);
+    expect(typeErrors[0].message).toContain('number');
+    expect(typeErrors[0].message).toContain('string');
   });
 
   test('should create function type for action with typed parameter', async () => {
