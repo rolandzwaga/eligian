@@ -404,32 +404,3 @@ describe('Import Validation', () => {
     expect(collisionErrors).toHaveLength(0);
   });
 });
-
-// TEMPORARY DEBUG TEST
-test('CSS VALIDATION DEBUG - should this produce CSS error?', async () => {
-  const code = `
-    timeline "Test" in ".container" using raf {
-      at 0s..5s selectElement("#box")
-    }
-  `;
-
-  const document = await ctx.parse(code, { documentUri: 'file:///test/css-debug.eligian' });
-  await ctx.services.shared.workspace.DocumentBuilder.build([document], {
-    validation: true,
-  });
-
-  const allDiagnostics = document.diagnostics ?? [];
-  const errors = allDiagnostics.filter(d => d.severity === 1);
-  
-  console.log(`\n=== CSS VALIDATION DEBUG ===`);
-  console.log(`Total diagnostics: ${allDiagnostics.length}`);
-  console.log(`Errors: ${errors.length}`);
-  for (const err of errors) {
-    console.log(`  - [${err.code}] ${err.message}`);
-  }
-  console.log(`=== END DEBUG ===\n`);
-  
-  // Expect NO CSS errors since import-validation tests work this way
-  const cssErrors = errors.filter(e => e.code?.includes('css'));
-  expect(cssErrors).toHaveLength(0);
-});
