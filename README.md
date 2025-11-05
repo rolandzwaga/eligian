@@ -21,7 +21,7 @@ For a full current spec of the language check [this](./LANGUAGE_SPEC.md)
 - **Interactive infographics**: Build data visualizations that unfold over time
 - **Audio-driven experiences**: Synchronize visuals with audio narration or music
 
-Eligius is **not** a game or animation engine—it's a **Story Telling Engine** focused on time-based narrative experiences.
+Eligius is **not** a game or animation engine—it's a **Story Telling Engine** focused on narratives structured around time.
 
 ## 🚨 The Problem: JSON Verbosity
 
