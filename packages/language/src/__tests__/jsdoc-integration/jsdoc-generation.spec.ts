@@ -42,6 +42,7 @@ describe('JSDoc Generation (Language Server Handler)', () => {
 
     const content = generateJSDocContent(actionDef!);
 
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing VS Code snippet syntax
     expect(content).toContain('${1:Description}');
     expect(content).toContain('@param {string} selector');
     expect(content).toContain('@param {number} duration');
@@ -62,6 +63,7 @@ describe('JSDoc Generation (Language Server Handler)', () => {
 
     const content = generateJSDocContent(actionDef!);
 
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing VS Code snippet syntax
     expect(content).toContain('${1:Description}');
     expect(content).toContain('@param {unknown} foo');
     expect(content).toContain('@param {unknown} bar');
@@ -82,6 +84,7 @@ describe('JSDoc Generation (Language Server Handler)', () => {
 
     const content = generateJSDocContent(actionDef!);
 
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing VS Code snippet syntax
     expect(content).toContain('${1:Description}');
     expect(content).not.toContain('@param'); // No parameters
   });

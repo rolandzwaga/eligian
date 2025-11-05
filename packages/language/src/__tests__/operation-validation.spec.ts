@@ -1,6 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import type { TestContext } from './test-helpers.js';
-import { createTestContext, setupCSSRegistry } from './test-helpers.js';
+import {
+  createTestContext,
+  createTestContextWithMockFS,
+  setupCSSRegistry,
+  setupDocuments,
+} from './test-helpers.js';
 
 describe('Operation Validation', () => {
   let ctx: TestContext;
@@ -12,7 +17,7 @@ describe('Operation Validation', () => {
   beforeEach(() => {
     // Setup CSS registry with all classes/IDs used in tests to avoid CSS validation errors
     setupCSSRegistry(ctx, 'file:///test.css', {
-      classes: ['active', 'test'],
+      classes: ['active', 'test', 'container'],
       ids: ['app', 'test'],
     });
   });
@@ -181,73 +186,118 @@ describe('Operation Validation', () => {
   });
 
   describe('Imported action validation', () => {
-    // NOTE: These tests require multi-file test infrastructure (library files must exist)
-    // See quickstart.md "Common Issues - Issue 1" for details
-    // Marking as .skip until multi-file test infrastructure is implemented
-    // The validator fix (Feature 024) is correct - it checks getImportedActions()
-    // Manual testing in VS Code confirms imported actions validate correctly
-
+    // NOTE: These tests demonstrate using setupDocuments() for multi-file scenarios
+    // KNOWN ISSUE: Tests skip due to:
+    // 1. Import resolution fails in multi-file scenarios (fadeIn not found from library)
+    // 2. CSS validation runs even without CSS imports, `.container` not in default registry
+    // TODO (separate issue): Fix import resolution and CSS validation in multi-context tests
     test.skip('should NOT error on valid imported action call', async () => {
-      // TODO: Requires test infrastructure to create library files
-      // This test would pass if ./animations.eligian existed with fadeIn action
-      const { diagnostics } = await ctx.parseAndValidate(`
-        styles "./test.css"
+      // Use the NEW setupDocuments() helper instead
+      const testCtx = createTestContextWithMockFS();
 
-        import { fadeIn } from "./animations.eligian"
+      const docs = await setupDocuments(testCtx, [
+        {
+          uri: 'file:///test/animations.eligian',
+          content: `
+            library animations
+            action fadeIn(selector: string, duration: number) [
+              selectElement(selector)
+              animate({opacity: 1}, duration)
+            ]
+          `,
+        },
+        {
+          uri: 'file:///test/main.eligian',
+          content: `
+            import { fadeIn } from "./animations.eligian"
 
-        action test() [
-          fadeIn("#app", 1000)
-        ]
+            timeline "Test" in ".container" using raf {
+              at 0s..5s fadeIn("#box", 1000)
+            }
+          `,
+        },
+      ]);
 
-        timeline "Demo" in "#app" using raf {
-          at 0s..1s test()
+      const mainDoc = docs.get('file:///test/main.eligian')!;
+      const errors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
+
+      // Debug: show all errors
+      if (errors.length !== 0) {
+        console.log(`Found ${errors.length} errors:`);
+        for (const err of errors) {
+          console.log(`  - ${err.message} (code: ${err.code})`);
         }
-      `);
+      }
 
-      const errors = diagnostics.filter(d => d.severity === 1);
       expect(errors).toHaveLength(0);
     });
 
     test.skip('should validate multiple imported actions', async () => {
-      // TODO: Requires test infrastructure to create library files
-      const { diagnostics } = await ctx.parseAndValidate(`
-        styles "./test.css"
+      const testCtx = createTestContextWithMockFS();
 
-        import { fadeIn, fadeOut } from "./animations.eligian"
+      const docs = await setupDocuments(testCtx, [
+        {
+          uri: 'file:///test/animations.eligian',
+          content: `
+            library animations
+            action fadeIn(selector: string, duration: number) [
+              selectElement(selector)
+              animate({opacity: 1}, duration)
+            ]
+            action fadeOut(selector: string, duration: number) [
+              selectElement(selector)
+              animate({opacity: 0}, duration)
+            ]
+          `,
+        },
+        {
+          uri: 'file:///test/main.eligian',
+          content: `
+            library main
+            import { fadeIn, fadeOut } from "./animations.eligian"
+            action sequence() [
+              fadeIn("#app", 1000)
+              fadeOut("#app", 500)
+            ]
+          `,
+        },
+      ]);
 
-        action sequence() [
-          fadeIn("#app", 1000)
-          fadeOut("#app", 500)
-        ]
-
-        timeline "Demo" in "#app" using raf {
-          at 0s..1s sequence()
-        }
-      `);
-
-      const errors = diagnostics.filter(d => d.severity === 1);
+      const mainDoc = docs.get('file:///test/main.eligian')!;
+      const errors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
       expect(errors).toHaveLength(0);
     });
 
     test.skip('should validate mix of imported actions and builtin operations', async () => {
-      // TODO: Requires test infrastructure to create library files
-      const { diagnostics } = await ctx.parseAndValidate(`
-        styles "./test.css"
+      const testCtx = createTestContextWithMockFS();
 
-        import { fadeIn } from "./animations.eligian"
+      const docs = await setupDocuments(testCtx, [
+        {
+          uri: 'file:///test/animations.eligian',
+          content: `
+            library animations
+            action fadeIn(selector: string, duration: number) [
+              selectElement(selector)
+              animate({opacity: 1}, duration)
+            ]
+          `,
+        },
+        {
+          uri: 'file:///test/main.eligian',
+          content: `
+            library main
+            import { fadeIn } from "./animations.eligian"
+            action enhanced() [
+              fadeIn("#app", 1000)
+              selectElement("#app")
+              animate({opacity: 1}, 500)
+            ]
+          `,
+        },
+      ]);
 
-        action enhanced() [
-          fadeIn("#app", 1000)
-          selectElement("#app")
-          addClass("visible")
-        ]
-
-        timeline "Demo" in "#app" using raf {
-          at 0s..1s enhanced()
-        }
-      `);
-
-      const errors = diagnostics.filter(d => d.severity === 1);
+      const mainDoc = docs.get('file:///test/main.eligian')!;
+      const errors = mainDoc.diagnostics?.filter(d => d.severity === 1) ?? [];
       expect(errors).toHaveLength(0);
     });
 
