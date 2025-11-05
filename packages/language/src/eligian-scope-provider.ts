@@ -121,12 +121,13 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   }
 
   /**
-   * Get all actions imported from library files (Feature 023 - User Story 4).
+   * Get all actions imported from library files (Feature 024).
+   * Used for validation and code completion.
    *
    * Collects actions from all LibraryImport statements in the program,
    * resolving the library file and retrieving the action definitions.
    */
-  private getImportedActions(program: any): ActionDefinition[] {
+  public getImportedActions(program: any): ActionDefinition[] {
     const importedActions: ActionDefinition[] = [];
 
     // Get all LibraryImport statements
