@@ -1,14 +1,14 @@
 # Eligian Language Specification
 
-**Version**: 1.3.0
-**Last Updated**: 2025-11-02
+**Version**: 1.3.1
+**Last Updated**: 2025-11-06
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.3.0):
-- Added library file support (Feature 023)
-- Added library import statements
-- Added `private` visibility modifier for actions
-- Added library-specific validation rules
+**Recent Changes** (v1.3.1):
+- Corrected parameter reference syntax documentation (prefer direct references over `$operationdata` prefix)
+- Updated reserved keywords list to match implementation
+- Fixed grammar summary to include imports and library files
+- Fixed all code examples to use preferred parameter syntax
 
 ---
 
@@ -125,10 +125,10 @@ null
 Reserved keywords that cannot be used as identifiers:
 
 ```
-action      endable     timeline    using       from
-at          sequence    stagger     for         if
-else        break       continue    const       in
-true        false       null        with
+action      at          timeline    for         if
+else        break       continue    from        as
+import      layout      styles      provider    true
+false
 ```
 
 ### 2.5 Time Units
@@ -158,7 +158,13 @@ Eligian supports two types of source files:
 An Eligian program consists of zero or more program statements in any order:
 
 ```eligian
-Program := (ImportStatement | LibraryImport | ActionDefinition | Timeline | VariableDeclaration)*
+Program := ProgramStatement*
+
+ProgramStatement := ImportStatement | ProgramElement
+
+ProgramElement := ActionDefinition | Timeline | VariableDeclaration
+
+ImportStatement := DefaultImport | NamedImport | LibraryImport
 ```
 
 **Key Points**:
@@ -256,17 +262,54 @@ action fadeOut(selector: string, duration: number) [
 
 ### 3.2 Import Statements
 
-Import statements allow you to reference external HTML, CSS, and media assets.
+Eligian supports three types of import statements for referencing external assets:
+
+1. **DefaultImport** - Auto-assignment to configuration properties
+2. **NamedImport** - Reusable asset references with identifiers
+3. **LibraryImport** - Import actions from library files (see section 3.3)
 
 #### 3.2.1 Default Import Syntax
 
+Default imports automatically assign assets to specific configuration properties without requiring a name.
+
+**Syntax**:
+```eligian
+layout "<path>"
+styles "<path>"
+provider "<path>"
+```
+
+**Import Types**:
+- `layout` - HTML layout file (auto-assigned to `layoutTemplate`)
+- `styles` - CSS stylesheet file (registered for CSS validation/completion)
+- `provider` - Media file (auto-assigned to timeline provider source)
+
+**Examples**:
+
+```eligian
+// Default imports - no 'import' or 'from' keywords
+layout "./layout.html"      // Assigns to layoutTemplate property
+styles "./main.css"         // Registers CSS for completions
+provider "./video.mp4"      // Assigns to timelineProvider.source
+```
+
+**Restrictions**:
+- Only ONE of each type allowed per document
+- Type is inferred from file extension
+- Path must be relative
+
+#### 3.2.2 Named Import Syntax
+
+Named imports create reusable asset references with explicit identifiers.
+
+**Syntax**:
 ```eligian
 import <name> from "<path>"
 import <name> from "<path>" as <type>
 ```
 
 **Import Types**:
-- `html` - HTML layout files
+- `html` - HTML content files
 - `css` - CSS stylesheet files
 - `media` - Media files (images, audio, video)
 
@@ -279,8 +322,8 @@ import <name> from "<path>" as <type>
 
 ```eligian
 // Type inferred from extension
-import layout from "./layout.html"         // Inferred as 'html'
-import styles from "./styles.css"          // Inferred as 'css'
+import tooltip from "./tooltip.html"       // Inferred as 'html'
+import theme from "./theme.css"            // Inferred as 'css'
 import logo from "./logo.png"              // Inferred as 'media'
 
 // Explicit type override (for unknown extensions)
@@ -288,25 +331,9 @@ import template from "./template.tpl" as html
 import custom from "./custom.unknown" as media
 ```
 
-#### 3.2.2 Named Import Syntax
-
-```eligian
-import { <name1>, <name2>, ... } from "<path>"
-import { <name1>, <name2> } from "<path>" as <type>
-```
-
-**Examples**:
-
-```eligian
-// Import multiple HTML fragments
-import { header, footer, sidebar } from "./components.html"
-
-// Import multiple stylesheets
-import { base, theme } from "./styles.css"
-
-// Import multiple media files with explicit type
-import { icon1, icon2 } from "./icons.svg" as media
-```
+**Restrictions**:
+- Name must be unique within document
+- Names cannot be reserved keywords
 
 #### 3.2.3 Path Validation
 
@@ -480,8 +507,8 @@ action showElement [
 ]
 
 action fadeIn(selector: string, duration: number) [
-  selectElement($operationdata.selector)
-  animate({opacity: 1}, $operationdata.duration)
+  selectElement(selector)
+  animate({opacity: 1}, duration)
 ]
 ```
 
@@ -613,24 +640,23 @@ action animateElement(
   duration: number,
   easing: string
 ) [
-  selectElement($operationdata.selector)
-  animate({opacity: 1}, $operationdata.duration, $operationdata.easing)
+  selectElement(selector)
+  animate({opacity: 1}, duration, easing)
 ]
 ```
 
 #### Parameter Access
 
-Inside action bodies, parameters are accessed via `$operationdata.<paramName>`:
+Inside action bodies, parameters are accessed directly by name:
 
 ```eligian
 action demo(value: number) [
-  // ✅ Correct
-  wait($operationdata.value)
-
-  // ❌ Wrong - bare identifier is cross-reference
-  wait(value)  // Tries to reference parameter named 'value'
+  // ✅ Correct - direct parameter reference
+  wait(value)
 ]
 ```
+
+**Note**: The compiler automatically expands direct parameter references to `$operationdata.<paramName>` in the compiled output. You should always use the direct syntax for cleaner, more readable code.
 
 ### 4.5 Action Documentation
 
@@ -644,12 +670,8 @@ Actions can be documented using JSDoc-style comments placed directly above the a
  * @param easing Easing function name (e.g., "ease-in", "linear")
  */
 action fadeIn(selector: string, duration: number, easing: string) [
-  selectElement($operationdata.selector)
-  animate(
-    {opacity: 1},
-    $operationdata.duration,
-    $operationdata.easing
-  )
+  selectElement(selector)
+  animate({opacity: 1}, duration, easing)
 ]
 ```
 
@@ -770,7 +792,7 @@ Actions use the **unified call syntax** - they're called exactly like built-in o
 ```eligian
 // Define an action
 action fadeIn(selector: string) [
-  selectElement($operationdata.selector)
+  selectElement(selector)
   addClass("visible")
 ]
 
@@ -1052,9 +1074,11 @@ Keys can be identifiers or strings:
 **Example**:
 
 ```eligian
-if ($operationdata.count > 5 && $operationdata.enabled) {
-  addClass("active")
-}
+action checkAndActivate(count: number, enabled: boolean) [
+  if (count > 5 && enabled) {
+    addClass("active")
+  }
+]
 ```
 
 ### 6.5 Unary Expressions
@@ -1125,11 +1149,13 @@ if (<condition>) {
 **Example**:
 
 ```eligian
-if ($operationdata.enabled) {
-  addClass("active")
-} else {
-  removeClass("active")
-}
+action toggle(enabled: boolean) [
+  if (enabled) {
+    addClass("active")
+  } else {
+    removeClass("active")
+  }
+]
 ```
 
 **Compilation**: Compiles to `when()` / `otherwise()` / `endWhen()` operations.
@@ -1145,10 +1171,12 @@ for (<itemName> in <collection>) {
 **Example**:
 
 ```eligian
-for (item in $operationdata.items) {
-  selectElement(".template")
-  setElementContent(@@currentItem)
-}
+action processItems(items: array) [
+  for (item in items) {
+    selectElement(".template")
+    setElementContent(@@currentItem)
+  }
+]
 ```
 
 **Compilation**: Compiles to `forEach()` / `endForEach()` operations.
@@ -1190,8 +1218,8 @@ Type annotations are **optional** and used for compile-time type checking:
 
 ```eligian
 action demo(selector: string, duration: number) [
-  selectElement($operationdata.selector)
-  animate({opacity: 1}, $operationdata.duration)
+  selectElement(selector)
+  animate({opacity: 1}, duration)
 ]
 ```
 
@@ -1217,8 +1245,8 @@ Type checking occurs at:
 
 ```eligian
 action fadeIn(selector: string, duration: number) [
-  selectElement($operationdata.selector)
-  animate({opacity: 1}, $operationdata.duration)
+  selectElement(selector)
+  animate({opacity: 1}, duration)
 ]
 
 timeline "test" in "#app" using raf {
@@ -1236,8 +1264,8 @@ timeline "test" in "#app" using raf {
 
 ```eligian
 action autoInfer(selector, duration) [
-  selectElement($operationdata.selector)  // selector inferred as string
-  animate({opacity: 1}, $operationdata.duration)  // duration inferred as number
+  selectElement(selector)  // selector inferred as string
+  animate({opacity: 1}, duration)  // duration inferred as number
 ]
 ```
 
@@ -1248,14 +1276,14 @@ Type checking is **opt-in**. Untyped code works unchanged:
 ```eligian
 // ✅ No type annotations - no type checking
 action oldStyle(selector, duration) [
-  selectElement($operationdata.selector)
-  animate({opacity: 1}, $operationdata.duration)
+  selectElement(selector)
+  animate({opacity: 1}, duration)
 ]
 
 // ✅ Mixed typed/untyped parameters
 action mixed(selector: string, duration) [
-  selectElement($operationdata.selector)  // selector type-checked
-  animate({opacity: 1}, $operationdata.duration)  // duration not checked
+  selectElement(selector)  // selector type-checked
+  animate({opacity: 1}, duration)  // duration not checked
 ]
 ```
 
@@ -1314,16 +1342,16 @@ action demo() [
 
 ### 9.5 Parameter References
 
-**Inside action bodies**: Parameters are accessed via `$operationdata.<name>`:
+**Inside action bodies**: Parameters are accessed directly by name:
 
 ```eligian
 action fadeIn(selector: string, duration: number) [
-  selectElement($operationdata.selector)
-  animate({opacity: 1}, $operationdata.duration)
+  selectElement(selector)
+  animate({opacity: 1}, duration)
 ]
 ```
 
-**NOT** as bare identifiers (bare identifiers are cross-references to parameter declarations).
+**Compilation**: The compiler automatically expands direct parameter references to `$operationdata.<name>` in the compiled output.
 
 ---
 
@@ -1346,12 +1374,12 @@ Eligian compiles to Eligius JSON configuration:
 
 ```eligian
 action fadeIn(selector: string) [
-  selectElement($operationdata.selector)
+  selectElement(selector)
   animate({opacity: 1}, 1000)
 ]
 
 timeline "main" in "#app" using raf {
-  at 0s..2s { fadeIn("#title") }
+  at 0s..2s fadeIn("#title")
 }
 ```
 
@@ -1406,11 +1434,24 @@ timeline "main" in "#app" using raf {
 ## Appendix A: Grammar Summary
 
 ```
-Program         := (ActionDefinition | Timeline | VariableDeclaration)*
+EligianFile     := Program | Library
+
+Program         := ProgramStatement*
+ProgramStatement := ImportStatement | ProgramElement
+ProgramElement  := ActionDefinition | Timeline | VariableDeclaration
+
+Library         := 'library' ID ActionDefinition*
+
+ImportStatement := DefaultImport | NamedImport | LibraryImport
+DefaultImport   := ('layout' | 'styles' | 'provider') STRING
+NamedImport     := 'import' ID 'from' STRING ('as' AssetType)?
+LibraryImport   := 'import' '{' ActionImport (',' ActionImport)* '}' 'from' STRING
+ActionImport    := ID ('as' ID)?
+AssetType       := 'html' | 'css' | 'media'
 
 ActionDefinition := RegularActionDefinition | EndableActionDefinition
-RegularActionDefinition := 'action' ID '(' Parameters? ')' '[' Operations ']'
-EndableActionDefinition := 'endable' 'action' ID '(' Parameters? ')'
+RegularActionDefinition := ('private')? 'action' ID '(' Parameters? ')' '[' Operations ']'
+EndableActionDefinition := ('private')? 'endable' 'action' ID '(' Parameters? ')'
                           '[' Operations ']' '[' Operations ']'
 
 Parameter       := ID (':' TypeAnnotation)?
@@ -1478,6 +1519,8 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3.1 | 2025-11-06 | Documentation fixes: corrected parameter reference syntax throughout (prefer direct references over `$operationdata` prefix), updated reserved keywords list, fixed grammar summary to include imports and library files |
+| 1.3.0 | 2025-11-02 | Added library file support (Feature 023), library import statements, `private` visibility modifier for actions, library-specific validation rules |
 | 1.0.0 | 2025-10-21 | Initial specification based on current grammar |
 
 ---
