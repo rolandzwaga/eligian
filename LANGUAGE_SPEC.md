@@ -1394,7 +1394,7 @@ timeline "main" in "#app" using raf {
       "operations": [
         {
           "type": "selectElement",
-          "parameters": ["$operationdata.selector"]
+          "parameters": [] // at runtime the selector argument will be set by the calling site
         },
         {
           "type": "animate",
