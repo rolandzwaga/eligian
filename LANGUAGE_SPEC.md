@@ -179,13 +179,15 @@ ImportStatement := DefaultImport | NamedImport | LibraryImport
 import { fadeIn } from "./animations.eligian"
 
 // Import assets
-import layout from "./layout.html"
+layout "./layout.html"
+import header from "./header.html"
 
 // Global variable
 const duration = 1000
 
 // Another import - flexible ordering
-import styles from "./styles.css"
+styles "./styles.css"
+import customStyles from "./custom-styles.css"
 
 // Local action definition
 action customAnimation(selector: string) [
