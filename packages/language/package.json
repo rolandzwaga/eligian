@@ -49,14 +49,14 @@
   },
   "dependencies": {
     "@eligian/shared-utils": "workspace:*",
-    "css-tree": "2.3.1",
+    "css-tree": "3.1.0",
     "domhandler": "5.0.3",
     "domutils": "3.2.2",
     "fast-check": "4.3.0",
-    "htmlparser2": "9.1.0",
+    "htmlparser2": "10.0.0",
     "langium": "4.0.3",
     "postcss": "8.5.6",
-    "postcss-selector-parser": "6.1.2",
+    "postcss-selector-parser": "7.1.0",
     "typir": "0.3.0",
     "typir-langium": "0.3.0"
   },
