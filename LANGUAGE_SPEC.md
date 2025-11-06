@@ -192,7 +192,7 @@ import customStyles from "./custom-styles.css"
 // Local action definition
 action customAnimation(selector: string) [
   selectElement(selector)
-  animate({opacity: 1}, duration)
+  animate({opacity: 1}, @duration)
 ]
 
 // Timeline
