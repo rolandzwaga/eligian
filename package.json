@@ -21,7 +21,7 @@
         "typecheck": "tsc -b tsconfig.build.json"
     },
     "dependencies": {
-        "effect": "3.19.0",
+        "effect": "3.19.2",
         "eligius": "1.4.1"
     },
     "devDependencies": {
