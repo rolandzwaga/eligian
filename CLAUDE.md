@@ -239,6 +239,7 @@ type-system-typir/
 **Documentation**: See `packages/language/src/type-system-typir/README.md`
 
 **Local Typir Reference**: The Typir library is cloned at `f:/projects/typir/` for documentation and API reference.
+  - ⚠️ **CRITICAL**: This directory is for understanding Typir internals and API reference ONLY. NEVER import types or code directly from `f:/projects/typir/`. Always import from the installed npm packages: `import { ... } from 'typir';` or `import { ... } from 'typir-langium';`
 
 ### Development Approach
 - Always plan thoroughly before implementing code changes
@@ -255,7 +256,8 @@ type-system-typir/
 
 Key documentation files:
 - `ELIGIUS_UNDERSTANDING.md`: Complete technical analysis of the Eligius library
-- `../eligius/`: The Eligius library source repository (sibling directory)
+- `../eligius/`: The Eligius library source repository (sibling directory) - **FOR RESEARCH ONLY**
+  - ⚠️ **CRITICAL**: This directory is for understanding Eligius internals ONLY. NEVER import types or code directly from `../eligius/src/`. Always import from the installed `eligius` npm package: `import type { ... } from 'eligius';`
   - **Overview**: Start with `../eligius/README.md` (global functionality overview)
   - **JSON Schema**: Start with `../eligius/jsonschema/eligius-configuration.json` (entry point for config structure)
   - **API Documentation**: Explore `../eligius/docs/` (API reference documentation)
