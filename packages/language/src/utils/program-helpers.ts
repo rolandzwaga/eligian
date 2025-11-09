@@ -10,6 +10,7 @@
 
 import type {
   ActionDefinition,
+  EventActionDefinition,
   ImportStatement,
   LibraryImport,
   NamedImport,
@@ -20,6 +21,7 @@ import type {
 } from '../generated/ast.js';
 import {
   isActionDefinition,
+  isEventActionDefinition,
   isImportStatement,
   isLibraryImport,
   isNamedImport,
@@ -103,4 +105,13 @@ export function getHTMLImports(program: Program): NamedImport[] {
  */
 export function getLibraryImports(program: Program): LibraryImport[] {
   return program.statements.filter(isLibraryImport);
+}
+/**
+ * Get all event action definitions from a program (Feature 028)
+ *
+ * @param program - Program AST node
+ * @returns Array of event action definition nodes
+ */
+export function getEventActions(program: Program): EventActionDefinition[] {
+  return getElements(program).filter(isEventActionDefinition);
 }
