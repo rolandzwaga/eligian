@@ -263,6 +263,13 @@ export const transformAST = (
       const action = yield* _(transformActionDefinition(actionDef, program, actionDefinitions));
       actions.push(action);
     }
+    // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
+    const eventActionNodes = getEventActions(program);
+    const eventActions: IEventActionConfiguration[] = [];
+    for (const eventActionDef of eventActionNodes) {
+      const eventAction = transformEventAction(eventActionDef);
+      eventActions.push(eventAction);
+    }
 
     // Build TimelineConfigIR from all timeline nodes
     const timelines: TimelineConfigIR[] = [];
@@ -286,7 +293,7 @@ export const transformAST = (
     // Convert IR types to Eligius types (strip sourceLocation)
     const eligiusInitActions: IEndableActionConfiguration[] = initActions.map(stripSourceLocation);
     const eligiusActions: IEndableActionConfiguration[] = actions.map(stripSourceLocation);
-    const eligiusEventActions: IEventActionConfiguration[] = []; // DSL doesn't support event actions yet
+    const eligiusEventActions: IEventActionConfiguration[] = eventActions; // T011: Use transformed event actions
     const eligiusTimelines: ITimelineConfiguration[] = timelines.map(
       convertTimelineConfigToEligius
     );
