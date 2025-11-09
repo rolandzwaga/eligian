@@ -132,3 +132,86 @@ describe('Parameter Context Creation (T016)', () => {
     expect(context.parameters.get('c')).toBe(2);
   });
 });
+
+describe('Parameter Reference Resolution (T018)', () => {
+  let ctx: TestContext;
+
+  beforeAll(async () => {
+    ctx = createTestContext();
+  });
+
+  test('should resolve first parameter reference to eventArgs[0]', async () => {
+    const code = `
+      on event "update" action handleUpdate(className) [
+        addClass(className)
+      ]
+    `;
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+    const eventAction = program.statements[0] as EventActionDefinition;
+
+    const result: IEventActionConfiguration = transformEventAction(eventAction);
+
+    // Verify the parameter reference is resolved to eventArgs[0]
+    expect(result.startOperations).toHaveLength(1);
+    const operation = result.startOperations[0];
+    expect(operation.operationName).toBe('addClass');
+    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[0]');
+  });
+
+  test('should resolve second parameter reference to eventArgs[1]', async () => {
+    const code = `
+      on event "update" action handleUpdate(first, second) [
+        addClass(second)
+      ]
+    `;
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+    const eventAction = program.statements[0] as EventActionDefinition;
+
+    const result: IEventActionConfiguration = transformEventAction(eventAction);
+
+    // Verify the second parameter reference is resolved to eventArgs[1]
+    expect(result.startOperations).toHaveLength(1);
+    const operation = result.startOperations[0];
+    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[1]');
+  });
+
+  test('should resolve third parameter reference to eventArgs[2]', async () => {
+    const code = `
+      on event "update" action handleUpdate(a, b, c) [
+        addClass(c)
+      ]
+    `;
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+    const eventAction = program.statements[0] as EventActionDefinition;
+
+    const result: IEventActionConfiguration = transformEventAction(eventAction);
+
+    // Verify the third parameter reference is resolved to eventArgs[2]
+    expect(result.startOperations).toHaveLength(1);
+    const operation = result.startOperations[0];
+    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[2]');
+  });
+
+  test('should leave non-parameter references unchanged', async () => {
+    const code = `
+      const MY_CLASS = "active"
+
+      on event "update" action handleUpdate(param) [
+        addClass(MY_CLASS)
+      ]
+    `;
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+    const eventAction = program.statements[1] as EventActionDefinition;
+
+    const result: IEventActionConfiguration = transformEventAction(eventAction);
+
+    // Verify constant reference is inlined (not treated as parameter)
+    expect(result.startOperations).toHaveLength(1);
+    const operation = result.startOperations[0];
+    expect(operation.operationData).toHaveProperty('className', 'active');
+  });
+});

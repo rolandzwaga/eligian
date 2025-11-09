@@ -96,6 +96,8 @@ interface ScopeContext {
   loopVariableName?: string;
   /** Action-scoped constants (for inlining within the current scope) */
   scopedConstants: ConstantMap;
+  /** Event action parameter indices (Feature 028 - T019) */
+  eventActionParameters?: Map<string, number>;
 }
 
 /**
@@ -1853,7 +1855,7 @@ const transformExpression = (
 
       case 'ParameterReference': {
         // Parameter reference: bare identifier (T231)
-        // Compiles to $operationdata.paramName
+        // Compiles to $operationdata.paramName OR $operationdata.eventArgs[n] (Feature 028 - T020)
         // Now uses cross-reference to Parameter
         if (!expr.parameter?.ref) {
           return yield* _(
@@ -1879,7 +1881,16 @@ const transformExpression = (
           );
         }
 
-        return `$operationdata.${expr.parameter.ref.name}`;
+        const paramName = expr.parameter.ref.name;
+
+        // T020: Check if this is an event action parameter (use index instead of name)
+        if (scope.eventActionParameters?.has(paramName)) {
+          const index = scope.eventActionParameters.get(paramName)!;
+          return `$operationData.eventArgs[${index}]`;
+        }
+
+        // Regular action parameter (use name)
+        return `$operationdata.${paramName}`;
       }
 
       case 'BinaryExpression': {
@@ -1991,10 +2002,13 @@ export function createParameterContext(params: string[]): EventActionContext {
 }
 
 /**
- * Transform Event Action Definition → IEventActionConfiguration (Feature 028 - T010)
+ * Transform Event Action Definition → IEventActionConfiguration (Feature 028 - T010, T021)
  *
  * Transforms an EventActionDefinition AST node into an Eligius IEventActionConfiguration.
  * This is a public API function used by tests and is synchronous (not wrapped in Effect).
+ *
+ * T021: Uses full transformation pipeline with event action parameter context.
+ * Event action parameters are mapped to $operationData.eventArgs[n] by index.
  *
  * Event actions have:
  * - name: Action name
@@ -2010,22 +2024,34 @@ export function createParameterContext(params: string[]): EventActionContext {
 export function transformEventAction(
   eventAction: EventActionDefinition
 ): IEventActionConfiguration {
-  const startOperations: IOperationConfiguration[] = [];
+  // T021: Create parameter context for this event action
+  const parameterNames = eventAction.parameters.map(p => p.name);
+  const parameterContext = createParameterContext(parameterNames);
 
-  // Transform each operation in the event action
-  // Note: For now, we use a simplified transformation that doesn't handle all operation types
-  // Full transformation with Effect and proper error handling will be added in T011
+  // Create scope with event action parameter indices
+  const eventActionScope: ScopeContext = {
+    inActionBody: true,
+    actionParameters: parameterNames,
+    loopVariableName: undefined,
+    scopedConstants: new Map(),
+    eventActionParameters: parameterContext.parameters, // T021: Pass parameter indices
+  };
+
+  // Transform each operation using the full pipeline
+  const startOperations: IOperationConfiguration[] = [];
   for (const opStmt of eventAction.operations) {
-    if (opStmt.$type === 'OperationCall') {
-      const operationName = getOperationCallName(opStmt);
-      const operationConfig: IOperationConfiguration = {
-        id: crypto.randomUUID(),
-        operationName,
-        operationData: {}, // Simplified - full transformation in T011
-      };
-      startOperations.push(operationConfig);
+    const operationIRs = Effect.runSync(
+      transformOperationStatement(opStmt, eventActionScope, false, undefined, undefined)
+    );
+
+    // Convert OperationConfigIR[] to IOperationConfiguration[]
+    for (const opIR of operationIRs) {
+      startOperations.push({
+        id: opIR.id,
+        operationName: opIR.operationName,
+        operationData: opIR.operationData,
+      });
     }
-    // Other operation types (if/else, for loops, etc.) will be handled in full transformation
   }
 
   // Build IEventActionConfiguration
