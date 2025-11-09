@@ -1,0 +1,22 @@
+// Multiple Parameters Fixture (T015)
+// Feature 028 - User Story 1: Event action with multiple parameters
+
+// Define helper action
+action init() [
+  selectElement("#app")
+]
+
+// Event action with multiple parameters
+on event "user-updated" action UpdateUserDisplay(userId, userName, userRole) [
+  selectElement(".user-id")
+  setText(userId)
+  selectElement(".user-name")
+  setText(userName)
+  selectElement(".user-role")
+  setText(userRole)
+]
+
+// Timeline required by compiler
+timeline "demo" in "#app" using raf {
+  at 0s..1s init()
+}

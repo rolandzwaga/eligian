@@ -1,0 +1,32 @@
+// Multiple Event Actions Fixture (T014)
+// Feature 028 - User Story 1: FR-014 - Multiple event actions preserved in order
+
+// Define helper action
+action init() [
+  selectElement("#app")
+]
+
+// First event action
+on event "user-login" action HandleLogin(userId) [
+  selectElement(".user-panel")
+  addClass("logged-in")
+  setText(userId)
+]
+
+// Second event action
+on event "user-logout" action HandleLogout() [
+  selectElement(".user-panel")
+  removeClass("logged-in")
+  setText("")
+]
+
+// Third event action
+on event "data-sync" action SyncData(data) [
+  selectElement(".sync-indicator")
+  addClass("syncing")
+]
+
+// Timeline required by compiler
+timeline "demo" in "#app" using raf {
+  at 0s..1s init()
+}

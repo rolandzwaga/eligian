@@ -61,4 +61,81 @@ describe('Event Action Integration Tests (T012)', () => {
     // Verify no endOperations property
     expect(eventAction).not.toHaveProperty('endOperations');
   });
+
+  test('should compile DSL file with multiple event actions and preserve order (FR-014)', async () => {
+    const filePath = join(fixturesDir, 'multiple-event-actions.eligian');
+    const source = readFileSync(filePath, 'utf-8');
+
+    const document = await ctx.parse(source);
+    const program = document.parseResult.value;
+
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
+
+    // Verify 3 event actions in correct order (FR-014)
+    expect(config.eventActions).toHaveLength(3);
+
+    // First event action: HandleLogin
+    expect(config.eventActions[0].name).toBe('HandleLogin');
+    expect(config.eventActions[0].eventName).toBe('user-login');
+    expect(config.eventActions[0].eventTopic).toBeUndefined();
+    expect(config.eventActions[0].startOperations).toHaveLength(3);
+
+    // Second event action: HandleLogout
+    expect(config.eventActions[1].name).toBe('HandleLogout');
+    expect(config.eventActions[1].eventName).toBe('user-logout');
+    expect(config.eventActions[1].eventTopic).toBeUndefined();
+    expect(config.eventActions[1].startOperations).toHaveLength(3);
+
+    // Third event action: SyncData
+    expect(config.eventActions[2].name).toBe('SyncData');
+    expect(config.eventActions[2].eventName).toBe('data-sync');
+    expect(config.eventActions[2].eventTopic).toBeUndefined();
+    expect(config.eventActions[2].startOperations).toHaveLength(2);
+  });
+
+  test('should compile DSL file with zero-parameter event action', async () => {
+    const filePath = join(fixturesDir, 'zero-parameters.eligian');
+    const source = readFileSync(filePath, 'utf-8');
+
+    const document = await ctx.parse(source);
+    const program = document.parseResult.value;
+
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
+
+    // Verify event action with zero parameters
+    expect(config.eventActions).toHaveLength(1);
+    expect(config.eventActions[0].name).toBe('Initialize');
+    expect(config.eventActions[0].eventName).toBe('app-ready');
+    expect(config.eventActions[0].eventTopic).toBeUndefined();
+    expect(config.eventActions[0].startOperations).toHaveLength(2);
+  });
+
+  test('should compile DSL file with multiple-parameter event action', async () => {
+    const filePath = join(fixturesDir, 'multiple-parameters.eligian');
+    const source = readFileSync(filePath, 'utf-8');
+
+    const document = await ctx.parse(source);
+    const program = document.parseResult.value;
+
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
+
+    // Verify event action with multiple parameters
+    expect(config.eventActions).toHaveLength(1);
+    expect(config.eventActions[0].name).toBe('UpdateUserDisplay');
+    expect(config.eventActions[0].eventName).toBe('user-updated');
+    expect(config.eventActions[0].eventTopic).toBeUndefined();
+    expect(config.eventActions[0].startOperations).toHaveLength(6);
+  });
 });
