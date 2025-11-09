@@ -23,6 +23,7 @@ import type {
   BreakStatement,
   ContinueStatement,
   EndableActionDefinition,
+  EventActionDefinition,
   Expression,
   ForStatement,
   IfStatement,
@@ -39,6 +40,7 @@ import type {
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import {
   getActions,
+  getEventActions,
   getLibraryImports,
   getTimelines,
   getVariables,
@@ -1954,6 +1956,55 @@ const transformExpression = (
  *
  * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
  */
+/**
+ * Transform Event Action Definition → IEventActionConfiguration (Feature 028 - T010)
+ *
+ * Transforms an EventActionDefinition AST node into an Eligius IEventActionConfiguration.
+ * This is a public API function used by tests and is synchronous (not wrapped in Effect).
+ *
+ * Event actions have:
+ * - name: Action name
+ * - id: UUID v4 (Constitution Principle VII)
+ * - eventName: Event to listen for
+ * - eventTopic: Optional topic namespace (undefined if not present)
+ * - startOperations: Transformed operations array
+ * - NO endOperations (event actions don't have end operations)
+ *
+ * @param eventAction - EventActionDefinition AST node
+ * @returns IEventActionConfiguration JSON
+ */
+export function transformEventAction(
+  eventAction: EventActionDefinition
+): IEventActionConfiguration {
+  const startOperations: IOperationConfiguration[] = [];
+
+  // Transform each operation in the event action
+  // Note: For now, we use a simplified transformation that doesn't handle all operation types
+  // Full transformation with Effect and proper error handling will be added in T011
+  for (const opStmt of eventAction.operations) {
+    if (opStmt.$type === 'OperationCall') {
+      const operationName = getOperationCallName(opStmt);
+      const operationConfig: IOperationConfiguration = {
+        id: crypto.randomUUID(),
+        operationName,
+        operationData: {}, // Simplified - full transformation in T011
+      };
+      startOperations.push(operationConfig);
+    }
+    // Other operation types (if/else, for loops, etc.) will be handled in full transformation
+  }
+
+  // Build IEventActionConfiguration
+  return {
+    id: crypto.randomUUID(), // UUID v4 per Constitution Principle VII
+    name: eventAction.name,
+    eventName: eventAction.eventName,
+    eventTopic: eventAction.eventTopic, // undefined if not present
+    startOperations,
+    // Note: No endOperations property - event actions don't have end operations
+  };
+}
+
 export const transformTimeExpression = (
   expr: AstTimeExpression,
   previousEventEndTime: number = 0
