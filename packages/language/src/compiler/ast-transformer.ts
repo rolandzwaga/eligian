@@ -1964,6 +1964,33 @@ const transformExpression = (
  * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
  */
 /**
+ * Event Action Parameter Context (Feature 028 - T017)
+ *
+ * Maps parameter names to their indices in the eventArgs array.
+ * Used during event action transformation to resolve parameter references.
+ */
+export interface EventActionContext {
+  parameters: Map<string, number>;
+}
+
+/**
+ * Create Parameter Context (Feature 028 - T017)
+ *
+ * Builds a parameter index map from an array of parameter names.
+ * Each parameter is assigned its zero-based index in the array.
+ *
+ * @param params - Array of parameter names
+ * @returns EventActionContext with parameter→index mapping
+ */
+export function createParameterContext(params: string[]): EventActionContext {
+  const parameters = new Map<string, number>();
+  params.forEach((name, index) => {
+    parameters.set(name, index);
+  });
+  return { parameters };
+}
+
+/**
  * Transform Event Action Definition → IEventActionConfiguration (Feature 028 - T010)
  *
  * Transforms an EventActionDefinition AST node into an Eligius IEventActionConfiguration.

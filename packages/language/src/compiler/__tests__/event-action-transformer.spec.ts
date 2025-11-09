@@ -15,7 +15,7 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
 import type { EventActionDefinition } from '../../generated/ast.js';
-import { transformEventAction } from '../ast-transformer.js';
+import { createParameterContext, transformEventAction } from '../ast-transformer.js';
 import type { IEventActionConfiguration } from '../operations/types.js';
 
 describe('Event Action Transformation (T009)', () => {
@@ -104,5 +104,31 @@ describe('Event Action Transformation (T009)', () => {
 
     // Event actions should NOT have endOperations
     expect(result).not.toHaveProperty('endOperations');
+  });
+});
+
+describe('Parameter Context Creation (T016)', () => {
+  test('should create empty parameter map for zero parameters', () => {
+    const context = createParameterContext([]);
+
+    expect(context.parameters).toBeDefined();
+    expect(context.parameters instanceof Map).toBe(true);
+    expect(context.parameters.size).toBe(0);
+  });
+
+  test('should create parameter map with single parameter at index 0', () => {
+    const context = createParameterContext(['param']);
+
+    expect(context.parameters.size).toBe(1);
+    expect(context.parameters.get('param')).toBe(0);
+  });
+
+  test('should create parameter map with three parameters at correct indices', () => {
+    const context = createParameterContext(['a', 'b', 'c']);
+
+    expect(context.parameters.size).toBe(3);
+    expect(context.parameters.get('a')).toBe(0);
+    expect(context.parameters.get('b')).toBe(1);
+    expect(context.parameters.get('c')).toBe(2);
   });
 });
