@@ -19,6 +19,7 @@ import type { DefaultImport, NamedImport } from './generated/ast.js';
 import {
   isActionDefinition,
   isDefaultImport,
+  isEventActionDefinition,
   isNamedImport,
   isOperationCall,
 } from './generated/ast.js';
@@ -157,6 +158,18 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       }
     }
 
+    // T045: Check if we're hovering over an event action definition
+    const eventAction = AstUtils.getContainerOfType(cstNode.astNode, isEventActionDefinition);
+    if (eventAction) {
+      const markdown = this.buildEventActionHoverMarkdown(eventAction);
+      return {
+        contents: {
+          kind: 'markdown',
+          value: markdown,
+        },
+      };
+    }
+
     // Fall back to default behavior (e.g., for variables, comments)
     return super.getHoverContent(document, params);
   }
@@ -227,6 +240,44 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         lines.push(`- \`${output.name}\` (${outputType})${erased}`);
       }
       lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Build markdown documentation for an event action definition (T045)
+   *
+   * Shows event action information including:
+   * - Event name and optional topic
+   * - Parameters with their indices for eventArgs mapping
+   */
+  private buildEventActionHoverMarkdown(
+    eventAction: import('./generated/ast.js').EventActionDefinition
+  ): string {
+    const lines: string[] = [];
+
+    // Event Action header
+    lines.push(`### Event Action: ${eventAction.name}`);
+    lines.push('');
+
+    // Event information
+    const topic = eventAction.eventTopic ? ` (topic: "${eventAction.eventTopic}")` : '';
+    lines.push(`**Listens to:** \`"${eventAction.eventName}"\`${topic}`);
+    lines.push('');
+
+    // Parameters section
+    if (eventAction.parameters.length > 0) {
+      lines.push('**Parameters:**');
+      for (let i = 0; i < eventAction.parameters.length; i++) {
+        const param = eventAction.parameters[i];
+        const type = param.type ? ` (\`${param.type}\`)` : '';
+        lines.push(`- \`${param.name}\`${type} - index ${i} in \`eventArgs\``);
+      }
+      lines.push('');
+      lines.push('*Parameters are accessed as `eventArgs[index]` when the event fires.*');
+    } else {
+      lines.push('**Parameters:** *none*');
     }
 
     return lines.join('\n');

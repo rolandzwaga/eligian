@@ -23,6 +23,7 @@ import type {
   DefaultImport,
   EligianAstType,
   EndableActionDefinition,
+  EventActionDefinition,
   InlineEndableAction,
   Library,
   LibraryImport,
@@ -57,6 +58,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkTimelineRequired,
       validator.checkDuplicateActions, // T042: US2 - Duplicate action detection
       validator.checkDuplicateConstants, // Duplicate constant detection
+      validator.checkDuplicateEventActions, // T033: Duplicate event/topic combinations
       // validator.checkDefaultImports, // DISABLED: Now handled by Typir validation (US1)
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
@@ -117,6 +119,10 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkControlFlowPairingInInlineEnd,
       validator.checkErasedPropertiesInInlineStart, // T254-T255: Erased property validation
       validator.checkErasedPropertiesInInlineEnd, // T254-T255: Erased property validation
+    ],
+    EventActionDefinition: [
+      validator.checkEventActionDefinition, // T031: Event name and empty body validation
+      validator.checkEventActionParameters, // T032: Reserved keywords and duplicate parameters
     ],
   };
   registry.register(checks, validator);
@@ -2053,6 +2059,143 @@ export class EligianValidator {
           code: 'private_only_in_libraries',
         }
       );
+    }
+  }
+
+  /**
+   * T031: Validate event action definition
+   *
+   * Validates:
+   * - Event name must be a string literal (not a variable reference)
+   * - Event name must not exceed 100 characters
+   * - Action body must contain at least one operation
+   */
+  checkEventActionDefinition(eventAction: EventActionDefinition, accept: ValidationAcceptor): void {
+    // T026: Event name must be string literal and ≤100 chars
+    if (!eventAction.eventName) {
+      accept('error', 'Event name must be a string literal (not a variable reference)', {
+        node: eventAction,
+        property: 'eventName',
+        code: 'event_name_must_be_literal',
+      });
+    } else if (eventAction.eventName.length > 100) {
+      accept(
+        'error',
+        `Event name exceeds 100 character limit (current: ${eventAction.eventName.length} characters)`,
+        {
+          node: eventAction,
+          property: 'eventName',
+          code: 'event_name_too_long',
+        }
+      );
+    }
+
+    // T042: Event topic must not be empty string (if provided)
+    if (eventAction.eventTopic !== undefined && eventAction.eventTopic.length === 0) {
+      accept(
+        'error',
+        'Event topic cannot be an empty string. Either provide a topic name or omit the topic clause entirely.',
+        {
+          node: eventAction,
+          property: 'eventTopic',
+          code: 'event_topic_empty',
+        }
+      );
+    }
+
+    // T027: Action body must have at least one operation
+    if (eventAction.operations.length === 0) {
+      accept('error', 'Event action body must contain at least one operation', {
+        node: eventAction,
+        property: 'operations',
+        code: 'event_action_empty_body',
+      });
+    }
+  }
+
+  /**
+   * T032: Validate event action parameters
+   *
+   * Validates:
+   * - Parameters must not use reserved keywords
+   * - No duplicate parameter names
+   */
+  checkEventActionParameters(eventAction: EventActionDefinition, accept: ValidationAcceptor): void {
+    const parameters = eventAction.parameters;
+    if (!parameters || parameters.length === 0) {
+      return; // No parameters to validate
+    }
+
+    // T028: Check for reserved keywords
+    for (const param of parameters) {
+      if (RESERVED_KEYWORDS.has(param.name)) {
+        accept('error', `Parameter name '${param.name}' is a reserved keyword and cannot be used`, {
+          node: param,
+          property: 'name',
+          code: 'reserved_keyword_parameter',
+        });
+      }
+    }
+
+    // T029: Check for duplicate parameter names
+    const seenParams = new Set<string>();
+    for (const param of parameters) {
+      if (seenParams.has(param.name)) {
+        accept('error', `Duplicate parameter name '${param.name}'`, {
+          node: param,
+          property: 'name',
+          code: 'duplicate_parameter',
+        });
+      }
+      seenParams.add(param.name);
+    }
+  }
+
+  /**
+   * T033: Validate duplicate event/topic combinations
+   *
+   * Warns about duplicate event names or event+topic combinations.
+   * Multiple handlers for the same event may indicate unintended behavior.
+   */
+  checkDuplicateEventActions(program: Program, accept: ValidationAcceptor): void {
+    // Build a map of event signatures to event actions
+    const eventSignatures = new Map<string, EventActionDefinition[]>();
+
+    for (const stmt of program.statements) {
+      if (stmt.$type === 'EventActionDefinition') {
+        const eventAction = stmt as EventActionDefinition;
+
+        // Create signature: "eventName" or "eventName|topic"
+        const signature = eventAction.eventTopic
+          ? `${eventAction.eventName}|${eventAction.eventTopic}`
+          : eventAction.eventName;
+
+        if (!eventSignatures.has(signature)) {
+          eventSignatures.set(signature, []);
+        }
+        eventSignatures.get(signature)!.push(eventAction);
+      }
+    }
+
+    // T030: Warn about duplicates
+    for (const [signature, actions] of eventSignatures) {
+      if (actions.length > 1) {
+        // Multiple handlers for the same event/topic combination
+        const hasTopic = signature.includes('|');
+        const [eventName, topic] = hasTopic ? signature.split('|') : [signature, undefined];
+
+        for (const action of actions) {
+          const message = hasTopic
+            ? `Multiple handlers defined for event '${eventName}' with topic '${topic}'. This may cause unexpected behavior.`
+            : `Multiple handlers defined for event '${eventName}'. This may cause unexpected behavior.`;
+
+          accept('warning', message, {
+            node: action,
+            property: 'eventName',
+            code: 'duplicate_event_handler',
+          });
+        }
+      }
     }
   }
 }

@@ -10,6 +10,7 @@ import type { AstNode } from 'langium';
 import type {
   ActionDefinition,
   DefaultImport,
+  EventActionDefinition,
   ImportStatement,
   LibraryImport,
   NamedImport,
@@ -83,6 +84,7 @@ export function isProgramElement(node: AstNode | undefined): node is ProgramElem
     node?.$type === 'RegularActionDefinition' ||
     node?.$type === 'EndableActionDefinition' ||
     node?.$type === 'Timeline' ||
+    node?.$type === 'EventActionDefinition' ||
     node?.$type === 'VariableDeclaration'
   );
 }
@@ -118,4 +120,20 @@ export function isActionDefinition(node: AstNode | undefined): node is ActionDef
  */
 export function isLibraryImport(node: AstNode | undefined): node is LibraryImport {
   return node?.$type === 'LibraryImport';
+}
+/**
+ * Type guard for EventActionDefinition AST nodes
+ *
+ * @param node - AST node to check
+ * @returns true if node is an EventActionDefinition, false otherwise
+ *
+ * @example
+ * ```typescript
+ * if (isEventActionDefinition(node)) {
+ *   // node is an event-triggered action
+ * }
+ * ```
+ */
+export function isEventActionDefinition(node: AstNode | undefined): node is EventActionDefinition {
+  return node?.$type === 'EventActionDefinition';
 }

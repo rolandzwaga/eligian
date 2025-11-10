@@ -24,6 +24,7 @@ import {
   type ActionDefinition,
   isActionDefinition,
   isActionImport,
+  isEventActionDefinition,
   isLibrary,
   isLibraryImport,
   isNamedImport,
@@ -203,19 +204,23 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   /**
    * Get scope for parameter references (bare identifiers in action bodies).
    *
-   * Parameters are only visible within their containing action.
+   * Parameters are only visible within their containing action (Feature 028 - T018).
+   * Handles both regular actions and event actions.
    */
   private getScopeForParameterReference(context: ReferenceInfo): Scope {
-    // Find the containing action definition
+    // Find the containing action definition (regular or event action)
     const actionDef = AstUtils.getContainerOfType(context.container, isActionDefinition);
+    const eventActionDef = AstUtils.getContainerOfType(context.container, isEventActionDefinition);
 
-    if (!actionDef) {
+    const container = actionDef || eventActionDef;
+
+    if (!container) {
       // Parameter references are only valid inside actions
       return this.getGlobalScope('Parameter', context);
     }
 
-    // Get all parameters from the action
-    const parameters = actionDef.parameters || [];
+    // Get all parameters from the action (regular or event action)
+    const parameters = container.parameters || [];
 
     // Create scope from parameters
     return this.createScopeForNodes(parameters);

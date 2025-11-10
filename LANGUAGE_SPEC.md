@@ -1,14 +1,14 @@
 # Eligian Language Specification
 
-**Version**: 1.3.1
-**Last Updated**: 2025-11-06
+**Version**: 1.4.0
+**Last Updated**: 2025-11-10
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.3.1):
-- Corrected parameter reference syntax documentation (prefer direct references over `$operationdata` prefix)
-- Updated reserved keywords list to match implementation
-- Fixed grammar summary to include imports and library files
-- Fixed all code examples to use preferred parameter syntax
+**Recent Changes** (v1.4.0):
+- Added event action support (Feature 028): event action definitions, event topic namespacing, runtime event handling
+- Event actions can handle runtime events with optional topic namespacing
+- Updated grammar summary to include EventActionDefinition
+- Added event action examples and validation rules
 
 ---
 
@@ -18,12 +18,13 @@
 2. [Lexical Structure](#2-lexical-structure)
 3. [Program Structure](#3-program-structure)
 4. [Actions](#4-actions)
-5. [Timelines](#5-timelines)
-6. [Expressions](#6-expressions)
-7. [Statements](#7-statements)
-8. [Type System](#8-type-system)
-9. [Scoping and References](#9-scoping-and-references)
-10. [Compilation Model](#10-compilation-model)
+5. [Event Actions](#5-event-actions)
+6. [Timelines](#6-timelines)
+7. [Expressions](#7-expressions)
+8. [Statements](#8-statements)
+9. [Type System](#9-type-system)
+10. [Scoping and References](#10-scoping-and-references)
+11. [Compilation Model](#11-compilation-model)
 
 ---
 
@@ -128,7 +129,7 @@ Reserved keywords that cannot be used as identifiers:
 action      at          timeline    for         if
 else        break       continue    from        as
 import      layout      styles      provider    true
-false
+false       on          event       topic
 ```
 
 ### 2.5 Time Units
@@ -850,9 +851,306 @@ timeline "demo" in "#app" using raf {
 
 ---
 
-## 5. Timelines
+## 5. Event Actions
 
-### 5.1 Timeline Declaration
+Event actions are special action definitions that execute in response to runtime events fired by the application or the Eligius timeline engine. Unlike regular actions that are explicitly invoked in timelines, event actions are triggered automatically when their associated event occurs.
+
+### 5.1 Event Action Definition
+
+**Syntax**:
+```eligian
+on event "<eventName>" [topic "<topicName>"] action <ActionName>(<parameters>) [
+  <operations>*
+]
+```
+
+**Components**:
+- **eventName**: String literal - the event name to listen for (e.g., "click", "language-change", "timeline-complete")
+- **topicName**: Optional string literal - namespace for the event (allows multiple handlers for same event name in different contexts)
+- **ActionName**: Identifier - name of the event action (must start with uppercase letter per convention)
+- **parameters**: Parameter list - receives data from `eventArgs` array at runtime
+- **operations**: Operation sequence - executes when event fires
+
+**Example**:
+```eligian
+/**
+ * Handle language change events
+ * @param languageCode The new language code (e.g., "en", "fr", "de")
+ */
+on event "language-change" action HandleLanguageChange(languageCode: string) [
+  selectElement("#language-display")
+  setElementContent(languageCode)
+  addClass("highlight")
+  log("Language changed to: " + languageCode)
+]
+```
+
+### 5.2 Event Topics (Namespacing)
+
+Event topics allow multiple event actions to handle the same event name in different contexts. This is useful when you want different behaviors for the same event in different parts of your application.
+
+**Syntax**:
+```eligian
+on event "<eventName>" topic "<topicName>" action <ActionName>(<parameters>) [
+  <operations>*
+]
+```
+
+**Example**:
+```eligian
+// Handle click events in navigation context
+on event "click" topic "navigation" action HandleNavClick(targetId: string) [
+  selectAll(".nav-item")
+  removeClass("active")
+  selectElement(targetId)
+  addClass("active")
+]
+
+// Handle click events in form context - same event, different topic
+on event "click" topic "form" action HandleFormClick(formId: string, buttonType: string) [
+  selectElement(formId)
+  if (buttonType == "submit") {
+    addClass("submitting")
+    selectElement("#form-status")
+    setElementContent("Submitting...")
+  } else if (buttonType == "cancel") {
+    removeClass("editing")
+    selectElement("#form-status")
+    setElementContent("Cancelled")
+  }
+]
+```
+
+**Key Points**:
+- **Optional**: Topics are optional - omit the `topic "<name>"` clause for global event handlers
+- **Same event, multiple handlers**: Multiple event actions can listen to the same event name if they use different topics
+- **Topic collision**: Two event actions with the same event name AND same topic (or both no topic) is an error
+- **Dispatching**: At runtime, events can be fired with or without a topic - only matching handlers execute
+
+### 5.3 Parameter Mapping
+
+Event action parameters map to the `eventArgs` array passed when the event is fired at runtime:
+
+**Parameter Position Mapping**:
+```eligian
+// Event action definition
+on event "user-login" action HandleUserLogin(userId: string, userName: string, userRole: string) [
+  // userId = eventArgs[0]
+  // userName = eventArgs[1]
+  // userRole = eventArgs[2]
+  selectElement("#user-id")
+  setElementContent(userId)
+  selectElement("#user-name")
+  setElementContent(userName)
+  selectElement("#user-role")
+  setElementContent(userRole)
+]
+```
+
+**Runtime Dispatch**:
+```javascript
+// JavaScript code that fires the event
+eventbus.broadcast("user-login", ["user123", "John Doe", "admin"]);
+```
+
+**Zero-Parameter Events**:
+Event actions can have zero parameters for events that carry no data:
+
+```eligian
+/**
+ * Handle timeline completion (no parameters needed)
+ */
+on event "timeline-complete" action HandleTimelineComplete() [
+  selectElement("#status")
+  setElementContent("Timeline complete!")
+  addClass("complete")
+]
+```
+
+### 5.4 Event Action Naming Convention
+
+**Convention**: Event action names should start with an uppercase letter (PascalCase) to distinguish them from regular actions:
+
+```eligian
+// ✅ Good - PascalCase for event actions
+on event "click" action HandleClick() [...]
+on event "data-sync" action HandleDataSync() [...]
+
+// ⚠️ Discouraged - lowercase (but not an error)
+on event "click" action handleClick() [...]
+```
+
+**Rationale**: This convention makes it clear at a glance which actions are event-driven vs. explicitly called in timelines.
+
+### 5.5 Common Event Names
+
+The following events are commonly used with Eligius:
+
+**Timeline Events** (fired by Eligius engine):
+- `timeline-play` - Timeline starts playing
+- `timeline-pause` - Timeline is paused
+- `timeline-stop` - Timeline is stopped
+- `timeline-complete` - Timeline completes playback
+- `timeline-seek` - Timeline position changes
+
+**Application Events** (fired by application code):
+- `language-change` - Application language changes
+- `user-login` / `user-logout` - User authentication
+- `data-sync` - Data synchronization completes
+- `click` - Custom click event (often used with topics)
+- `hover` - Custom hover event
+- `submit` - Custom submit event
+
+**Note**: Event names are not restricted - you can fire and handle any custom event names your application requires.
+
+### 5.6 Validation Rules
+
+**Empty Event Name**:
+```eligian
+on event "" action HandleEmpty() [...]
+// ❌ ERROR: Event name cannot be an empty string
+```
+
+**Empty Topic String**:
+```eligian
+on event "click" topic "" action HandleClick() [...]
+// ❌ ERROR: Event topic cannot be an empty string. Either provide a topic name or omit the topic clause entirely.
+```
+
+**Duplicate Event Action**:
+```eligian
+on event "click" action HandleClick() [...]
+on event "click" action HandleClickAgain() [...]
+// ❌ ERROR: Event action for event 'click' (no topic) already defined
+```
+
+**Topic Collision**:
+```eligian
+on event "click" topic "nav" action HandleNavClick() [...]
+on event "click" topic "nav" action AnotherNavClick() [...]
+// ❌ ERROR: Event action for event 'click' topic 'nav' already defined
+```
+
+**Name Collision with Built-in Operations**:
+Event actions cannot have names that conflict with built-in operations:
+```eligian
+on event "click" action selectElement() [...]
+// ❌ ERROR: Event action name 'selectElement' conflicts with built-in operation
+```
+
+### 5.7 Control Flow in Event Actions
+
+Event actions support the full set of control flow statements:
+
+**If/Else**:
+```eligian
+on event "data-sync" action HandleDataSync(syncStatus: string, itemCount: number) [
+  selectElement("#sync-status")
+  setElementContent(syncStatus)
+  if (syncStatus == "success") {
+    selectElement("#sync-indicator")
+    addClass("success")
+    removeClass("error")
+    selectElement("#sync-count")
+    setElementContent(itemCount)
+  } else {
+    selectElement("#sync-indicator")
+    addClass("error")
+    removeClass("success")
+  }
+]
+```
+
+**For Loops**:
+```eligian
+on event "items-loaded" action HandleItemsLoaded(items: array) [
+  for (item in items) {
+    selectElement(".template")
+    clone()
+    setElementContent(@@currentItem.name)
+    addClass("loaded")
+  }
+]
+```
+
+**Break/Continue**:
+```eligian
+on event "batch-process" action HandleBatchProcess(items: array) [
+  for (item in items) {
+    if (@@currentItem.skip) {
+      continue
+    }
+    if (@@currentItem.error) {
+      log("Error encountered, stopping batch")
+      break
+    }
+    processItem(@@currentItem)
+  }
+]
+```
+
+### 5.8 Event Actions vs. Regular Actions
+
+| Feature | Regular Actions | Event Actions |
+|---------|----------------|---------------|
+| **Invocation** | Explicitly called in timelines | Automatically triggered by events |
+| **Timing** | Scheduled at specific times | Executes when event fires |
+| **Parameters** | Passed at call site | Received from `eventArgs` array |
+| **Naming** | lowercase or camelCase | PascalCase (convention) |
+| **Syntax** | `action name() [...]` | `on event "name" action Name() [...]` |
+| **Endable** | Can be endable actions | Cannot be endable (runtime events have no duration) |
+
+### 5.9 Compilation Model
+
+Event actions compile to `IEventActionConfiguration` objects in the Eligius JSON:
+
+**Input** (Eligian):
+```eligian
+on event "language-change" topic "settings" action HandleLanguageChange(languageCode: string) [
+  selectElement("#language-display")
+  setElementContent(languageCode)
+]
+```
+
+**Output** (Eligius JSON):
+```json
+{
+  "eventActions": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "HandleLanguageChange",
+      "eventName": "language-change",
+      "eventTopic": "settings",
+      "operations": [
+        {
+          "systemName": "selectElement",
+          "parameters": [
+            "$operationdata.languageCode"
+          ]
+        },
+        {
+          "systemName": "setElementContent",
+          "parameters": [
+            "$operationdata.languageCode"
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Key Compilation Details**:
+- Each event action gets a unique UUID v4 identifier
+- Parameters map to `$operationdata.<paramName>` references
+- Optional `eventTopic` field is only present if topic clause was specified
+- Operations are compiled identically to regular action operations
+
+---
+
+## 6. Timelines
+
+### 6.1 Timeline Declaration
 
 ```eligian
 timeline <name> in <containerSelector> using <provider> [from <source>] {
@@ -885,7 +1183,7 @@ timeline "animation" in "#canvas" using raf {
 }
 ```
 
-### 5.2 Timeline Events
+### 6.2 Timeline Events
 
 #### Timed Events
 
@@ -974,7 +1272,7 @@ stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
 // at 0.4s..2.4s { fadeIn(".item-3") }
 ```
 
-### 5.3 Time Expressions
+### 6.3 Time Expressions
 
 #### Time Literals
 
@@ -1013,9 +1311,9 @@ at +0s..+2s      // Relative timing
 
 ---
 
-## 6. Expressions
+## 7. Expressions
 
-### 6.1 Literals
+### 7.1 Literals
 
 ```eligian
 42                          // Number
@@ -1026,7 +1324,7 @@ null                        // Null
 [1, 2, 3]                   // Array
 ```
 
-### 6.2 Object Literals
+### 7.2 Object Literals
 
 ```eligian
 { <key>: <value>, ... }
@@ -1039,7 +1337,7 @@ Keys can be identifiers or strings:
 {"font-size": "16px", margin: 10}
 ```
 
-### 6.3 Array Literals
+### 7.3 Array Literals
 
 ```eligian
 [ <value>, <value>, ... ]
@@ -1053,7 +1351,7 @@ Keys can be identifiers or strings:
 [$scope.item1, $scope.item2]
 ```
 
-### 6.4 Binary Expressions
+### 7.4 Binary Expressions
 
 #### Arithmetic
 
@@ -1083,7 +1381,7 @@ action checkAndActivate(count: number, enabled: boolean) [
 ]
 ```
 
-### 6.5 Unary Expressions
+### 7.5 Unary Expressions
 
 ```eligian
 -<expr>     // Negation
@@ -1092,9 +1390,9 @@ action checkAndActivate(count: number, enabled: boolean) [
 
 ---
 
-## 7. Statements
+## 8. Statements
 
-### 7.1 Operation Calls
+### 8.1 Operation Calls
 
 ```eligian
 <operationName>(<arg1>, <arg2>, ...)
@@ -1111,7 +1409,7 @@ setStyle({color: "red", fontSize: "16px"})
 
 **Note**: The grammar is operation-agnostic. Valid operations are defined by the Eligius operation registry.
 
-### 7.2 Variable Declarations
+### 8.2 Variable Declarations
 
 ```eligian
 const <name> = <expression>
@@ -1134,7 +1432,7 @@ action demo() [
 ]
 ```
 
-### 7.3 If/Else Statements
+### 8.3 If/Else Statements
 
 ```eligian
 if (<condition>) {
@@ -1162,7 +1460,7 @@ action toggle(enabled: boolean) [
 
 **Compilation**: Compiles to `when()` / `otherwise()` / `endWhen()` operations.
 
-### 7.4 For Loops
+### 8.4 For Loops
 
 ```eligian
 for (<itemName> in <collection>) {
@@ -1185,7 +1483,7 @@ action processItems(items: array) [
 
 **Iterator Access**: Inside loop, use `@@currentItem`, `@@loopIndex`, `@@loopLength` system properties.
 
-### 7.5 Break/Continue Statements
+### 8.5 Break/Continue Statements
 
 ```eligian
 break       // Exit loop immediately
@@ -1212,9 +1510,9 @@ for (item in items) {
 
 ---
 
-## 8. Type System
+## 9. Type System
 
-### 8.1 Type Annotations
+### 9.1 Type Annotations
 
 Type annotations are **optional** and used for compile-time type checking:
 
@@ -1225,7 +1523,7 @@ action demo(selector: string, duration: number) [
 ]
 ```
 
-### 8.2 Supported Types
+### 9.2 Supported Types
 
 | Type | Description | Examples |
 |------|-------------|----------|
@@ -1235,7 +1533,7 @@ action demo(selector: string, duration: number) [
 | `object` | Object literals | `{opacity: 1}` |
 | `array` | Array literals | `[1, 2, 3]` |
 
-### 8.3 Type Checking
+### 9.3 Type Checking
 
 Type checking occurs at:
 
@@ -1258,7 +1556,7 @@ timeline "test" in "#app" using raf {
 }
 ```
 
-### 8.4 Type Inference
+### 9.4 Type Inference
 
 **Current**: Parameters without type annotations remain untyped (no validation).
 
@@ -1271,7 +1569,7 @@ action autoInfer(selector, duration) [
 ]
 ```
 
-### 8.5 Gradual Typing
+### 9.5 Gradual Typing
 
 Type checking is **opt-in**. Untyped code works unchanged:
 
@@ -1291,9 +1589,9 @@ action mixed(selector: string, duration) [
 
 ---
 
-## 9. Scoping and References
+## 10. Scoping and References
 
-### 9.1 Scopes
+### 10.1 Scopes
 
 Eligian has three runtime scopes (mapped to Eligius scopes):
 
@@ -1303,7 +1601,7 @@ Eligian has three runtime scopes (mapped to Eligius scopes):
 | `$operationdata.<name>` | `operationdata` | Action parameters |
 | `$scope.<property>` | `scope` | Runtime state (loop iterators, etc.) |
 
-### 9.2 Property Chain References
+### 10.2 Property Chain References
 
 Access runtime data with `$` prefix:
 
@@ -1316,7 +1614,7 @@ $scope.currentItem.name
 
 **Compilation**: Compiles to property chain strings for Eligius runtime.
 
-### 9.3 System Property References
+### 10.3 System Property References
 
 Access system scope properties with `@@` prefix:
 
@@ -1328,7 +1626,7 @@ Access system scope properties with `@@` prefix:
 
 **Available in**: `for` loops
 
-### 9.4 Variable References
+### 10.4 Variable References
 
 Access action-scoped variables with `@` prefix:
 
@@ -1342,7 +1640,7 @@ action demo() [
 
 **Compilation**: `@name` → `$scope.variables.name`
 
-### 9.5 Parameter References
+### 10.5 Parameter References
 
 **Inside action bodies**: Parameters are accessed directly by name:
 
@@ -1357,9 +1655,9 @@ action fadeIn(selector: string, duration: number) [
 
 ---
 
-## 10. Compilation Model
+## 11. Compilation Model
 
-### 10.1 Compilation Pipeline
+### 11.1 Compilation Pipeline
 
 1. **Parse**: Langium parses `.eligian` source to AST
 2. **Validate**: Semantic validation (scoping, name resolution)
@@ -1368,7 +1666,7 @@ action fadeIn(selector: string, duration: number) [
 5. **Optimize**: Dead code elimination, constant folding
 6. **Emit**: Output JSON file
 
-### 10.2 Output Format
+### 11.2 Output Format
 
 Eligian compiles to Eligius JSON configuration:
 
@@ -1419,7 +1717,7 @@ timeline "main" in "#app" using raf {
 }
 ```
 
-### 10.3 Syntactic Sugar Transformations
+### 11.3 Syntactic Sugar Transformations
 
 | Eligian Syntax | Compiles To |
 |----------------|-------------|
@@ -1440,7 +1738,7 @@ EligianFile     := Program | Library
 
 Program         := ProgramStatement*
 ProgramStatement := ImportStatement | ProgramElement
-ProgramElement  := ActionDefinition | Timeline | VariableDeclaration
+ProgramElement  := ActionDefinition | EventActionDefinition | Timeline | VariableDeclaration
 
 Library         := 'library' ID ActionDefinition*
 
@@ -1455,6 +1753,8 @@ ActionDefinition := RegularActionDefinition | EndableActionDefinition
 RegularActionDefinition := ('private')? 'action' ID '(' Parameters? ')' '[' Operations ']'
 EndableActionDefinition := ('private')? 'endable' 'action' ID '(' Parameters? ')'
                           '[' Operations ']' '[' Operations ']'
+
+EventActionDefinition := 'on' 'event' STRING ('topic' STRING)? 'action' ID '(' Parameters? ')' '[' Operations ']'
 
 Parameter       := ID (':' TypeAnnotation)?
 TypeAnnotation  := 'string' | 'number' | 'boolean' | 'object' | 'array'
@@ -1521,6 +1821,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.4.0 | 2025-11-10 | Added event action support (Feature 028): event action definitions, event topic namespacing, runtime event handling |
 | 1.3.1 | 2025-11-06 | Documentation fixes: corrected parameter reference syntax throughout (prefer direct references over `$operationdata` prefix), updated reserved keywords list, fixed grammar summary to include imports and library files |
 | 1.3.0 | 2025-11-02 | Added library file support (Feature 023), library import statements, `private` visibility modifier for actions, library-specific validation rules |
 | 1.0.0 | 2025-10-21 | Initial specification based on current grammar |

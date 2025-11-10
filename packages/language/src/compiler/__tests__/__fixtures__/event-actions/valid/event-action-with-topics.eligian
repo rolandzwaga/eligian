@@ -1,0 +1,27 @@
+// Event Actions with Topics Fixture (T041)
+// Feature 028 - User Story 3: Support Event Topics for Namespacing
+//
+// This fixture demonstrates using topics to namespace event actions.
+// Two event actions with the same event name ("click") but different topics.
+
+// Define helper action
+action init() [
+  selectElement("#app")
+]
+
+// First event action: click event with "navigation" topic
+on event "click" topic "navigation" action HandleNavClick(target) [
+  selectElement(target)
+  addClass("active")
+]
+
+// Second event action: same click event but with "form" topic
+on event "click" topic "form" action HandleFormClick(formId) [
+  selectElement(formId)
+  addClass("submitted")
+]
+
+// Timeline required by compiler
+timeline "demo" in "#app" using raf {
+  at 0s..1s init()
+}

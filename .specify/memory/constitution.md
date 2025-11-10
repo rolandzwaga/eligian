@@ -3,7 +3,7 @@
 SYNC IMPACT REPORT - Constitution Update
 ===================================================================================
 
-VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1 → 2.1.0
+VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1 → 2.1.0 → 2.1.1
 Rationale: MAJOR version bump (2.0.0) - Enhanced Principle II (Test-First Development) with
 strict enforcement workflow that redefines testing requirements, making "tests later"
 a constitutional violation (backward incompatible with prior "encouraged" TDD stance).
@@ -12,6 +12,7 @@ Added 5 new principles that significantly expand governance scope.
 PATCH version bump (2.0.1) - Added integration test isolation requirement to Principle II.
 
 MINOR version bump (2.1.0) - Added Principle XXIII (Incremental Feature Commits) for speckit workflow.
+nPATCH version bump (2.1.1) - Added Principle XXIV (Unified Example File) requirement.
 
 AMENDMENTS (v2.1.0):
 + Added Principle XXIII: Incremental Feature Commits (NON-NEGOTIABLE)
@@ -98,6 +99,7 @@ XX. Debugging Attempt Limit (NON-NEGOTIABLE) - NEW
 XXI. Token Efficiency (NON-NEGOTIABLE) - NEW
 XXII. Accessibility Standards (NON-NEGOTIABLE) - NEW
 XXIII. Incremental Feature Commits (NON-NEGOTIABLE) - NEW (v2.1.0)
+XXIV. Unified Example File (NON-NEGOTIABLE) - NEW (v2.1.1)
 
 TEMPLATE CONSISTENCY CHECK:
 ✅ plan-template.md - Constitution Check section aligns with new principles
@@ -1015,4 +1017,62 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 2.1.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-11-02
+**Version**: 2.1.1 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-11-02
+
+### XXIV. Unified Example File (NON-NEGOTIABLE)
+
+All language feature examples MUST be consolidated in a single comprehensive example file
+(`examples/demo.eligian`) rather than scattered across multiple separate files. This ensures
+every feature is demonstrated in one canonical location that users and developers can reference.
+
+**Rationale**: Having a single comprehensive example file that demonstrates ALL language features
+provides several critical benefits: (1) Users have one authoritative reference showing every
+language capability in context, (2) Developers can verify all features work together without
+conflicts, (3) New features are immediately visible in the canonical example, preventing feature
+blindness where capabilities exist but nobody knows about them, (4) Testing can verify the
+comprehensive example compiles successfully, ensuring all features remain compatible as the
+language evolves. Multiple separate example files fragment knowledge and make it harder to
+understand the full scope of language capabilities.
+
+**Requirements**:
+- ALL new language features MUST be added to `examples/demo.eligian` as part of feature implementation
+- Feature examples MUST include clear comments explaining the feature and its syntax
+- Feature examples MUST demonstrate typical usage patterns, not just minimal syntax
+- Feature examples MUST include JSDoc comments where applicable (for action definitions)
+- Separate feature-specific example files are PROHIBITED (use `demo.eligian` only)
+- When adding a feature example, update the file header to list the new feature
+- Feature examples MUST be grouped by category (Asset Imports, Constants, Actions, Control Flow, etc.)
+- The demo.eligian file MUST compile successfully with the CLI compiler after any feature additions
+- Run `node packages/cli/bin/cli.js examples/demo.eligian` to verify demo compiles after changes
+
+**Example Addition Pattern**:
+```eligian
+// When adding event actions feature (Feature 028):
+
+// 1. Update file header to list "Event actions (runtime event handling)"
+// 2. Add new section with clear delimiter:
+// ============================================================================
+// EVENT ACTIONS - Runtime Event Handling (Feature 028)
+// ============================================================================
+
+// 3. Add feature examples with comments:
+/**
+ * Handle language change events
+ * @param languageCode The new language code
+ */
+on event "language-change" action HandleLanguageChange(languageCode: string) [
+  selectElement("#language-display")
+  setElementContent(languageCode)
+]
+
+// 4. Demonstrate feature variations (parameters, topics, etc.)
+// 5. Verify demo.eligian compiles: node packages/cli/bin/cli.js examples/demo.eligian
+```
+
+**Prohibited Practices**:
+- ❌ Creating separate example files like `event-actions-demo.eligian`, `library-imports-demo.eligian`
+- ❌ Having feature examples only in test fixtures without user-facing examples
+- ❌ Adding features without updating `examples/demo.eligian`
+- ❌ Leaving the demo file outdated after feature implementation
+- ❌ Creating "specialized" examples that fragment the canonical reference
+

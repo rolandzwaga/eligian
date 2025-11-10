@@ -18,7 +18,6 @@ import {
   type IEngineConfiguration,
   type IEventbus,
   type IEventbusListener,
-  TimelineEventNames,
 } from 'eligius';
 import 'jquery';
 import lottie from 'lottie-web';
@@ -500,35 +499,35 @@ function setupTimelineEventListeners(): void {
   console.log('[Webview] Setting up timeline event listeners');
 
   // Listen for PLAY event - timeline has started
-  eventbus.on(TimelineEventNames.PLAY, () => {
+  eventbus.on('timeline-play', () => {
     console.log('[Webview] Timeline PLAY event received');
     updateControlStates(true);
     vscode.postMessage({ type: 'playbackStarted' });
   });
 
   // Listen for PAUSE event - timeline has paused
-  eventbus.on(TimelineEventNames.PAUSE, () => {
+  eventbus.on('timeline-pause', () => {
     console.log('[Webview] Timeline PAUSE event received');
     updateControlStates(false);
     vscode.postMessage({ type: 'playbackPaused' });
   });
 
   // Listen for STOP event - timeline has stopped
-  eventbus.on(TimelineEventNames.STOP, () => {
+  eventbus.on('timeline-stop', () => {
     console.log('[Webview] Timeline STOP event received');
     updateControlStates(false);
     vscode.postMessage({ type: 'playbackStopped' });
   });
 
   // Listen for COMPLETE event - timeline has finished
-  eventbus.on(TimelineEventNames.COMPLETE, () => {
+  eventbus.on('timeline-complete', () => {
     console.log('[Webview] Timeline COMPLETE event received');
     updateControlStates(false);
     vscode.postMessage({ type: 'playbackStopped' });
   });
 
   // Listen for RESTART event - timeline has restarted
-  eventbus.on(TimelineEventNames.RESTART, () => {
+  eventbus.on('timeline-restart', () => {
     console.log('[Webview] Timeline RESTART event received');
     updateControlStates(true);
     vscode.postMessage({ type: 'playbackStarted' });
@@ -549,26 +548,26 @@ window.addEventListener('DOMContentLoaded', () => {
   // Wire up button click handlers to broadcast timeline control events
   playBtn.addEventListener('click', () => {
     console.log('[Webview] Play button clicked - broadcasting PLAY_REQUEST');
-    eventbus.broadcast(TimelineEventNames.PLAY_REQUEST, []);
+    eventbus.broadcast('timeline-play-request', []);
   });
 
   pauseBtn.addEventListener('click', () => {
     console.log('[Webview] Pause button clicked - broadcasting PAUSE_REQUEST');
-    eventbus.broadcast(TimelineEventNames.PAUSE_REQUEST, []);
+    eventbus.broadcast('timeline-pause-request', []);
   });
 
   stopBtn.addEventListener('click', () => {
     console.log('[Webview] Stop button clicked - broadcasting STOP_REQUEST');
-    eventbus.broadcast(TimelineEventNames.STOP_REQUEST, []);
+    eventbus.broadcast('timeline-stop-request', []);
   });
 
   restartBtn.addEventListener('click', () => {
     console.log('[Webview] Restart button clicked - broadcasting STOP then PLAY');
     // Restart = stop then play
-    eventbus.broadcast(TimelineEventNames.STOP_REQUEST, []);
+    eventbus.broadcast('timeline-stop-request', []);
     // Small delay to ensure stop completes before play
     setTimeout(() => {
-      eventbus.broadcast(TimelineEventNames.PLAY_REQUEST, []);
+      eventbus.broadcast('timeline-play-request', []);
     }, 50);
   });
 

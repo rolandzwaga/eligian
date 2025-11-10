@@ -12,7 +12,12 @@
  * - Support for required/optional parameters with defaults
  */
 
-import type { metadata } from 'eligius';
+import type {
+  IEngineConfiguration,
+  IEventActionConfiguration,
+  IOperationConfiguration,
+  metadata,
+} from 'eligius';
 
 /**
  * Rich parameter types from Eligius metadata.
@@ -178,3 +183,14 @@ export function getDefaultConstantValue(constants: ConstantValue[]): string | un
   const defaultValue = constants.find(c => c.isDefault);
   return defaultValue?.value ?? constants[0]?.value;
 }
+
+/**
+ * Eligius Type Exports
+ *
+ * Re-exported from Eligius for compiler use.
+ *
+ * - IEngineConfiguration: Top-level Eligius configuration object
+ * - IEventActionConfiguration: Event actions triggered by eventbus
+ * - IOperationConfiguration: Individual operation configuration
+ */
+export type { IEngineConfiguration, IEventActionConfiguration, IOperationConfiguration };

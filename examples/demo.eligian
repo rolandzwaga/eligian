@@ -12,6 +12,8 @@
  * - Stagger blocks
  * - Sequence blocks
  * - Private actions
+ * - Event actions (runtime event handling)
+ * - Event topics (namespacing)
  */
 
 // ============================================================================
@@ -241,3 +243,102 @@ timeline "Eligian Demo" in "#container" using raf {
     log("Presentation complete")
   }
 }
+
+// ============================================================================
+// EVENT ACTIONS - Runtime Event Handling (Feature 028)
+// ============================================================================
+// NOTE: Event actions are defined alongside custom actions but execute
+// independently when events fire at runtime.
+
+/**
+ * Handle language change events
+ * @param languageCode The new language code (e.g., "en", "fr", "de")
+ */
+on event "language-change" action HandleLanguageChange(languageCode: string) [
+  selectElement("#language-display")
+  setElementContent(languageCode)
+  addClass("highlight")
+  log("Language changed to: " + languageCode)
+]
+
+/**
+ * Handle timeline completion (zero-parameter event action)
+ */
+on event "timeline-complete" action HandleTimelineComplete() [
+  selectElement("#status")
+  setElementContent("Timeline complete!")
+  addClass("complete")
+]
+
+/**
+ * Handle user login with multiple parameters
+ * @param userId Unique user identifier
+ * @param userName Display name
+ * @param userRole User role (admin, user, guest)
+ */
+on event "user-login" action HandleUserLogin(userId: string, userName: string, userRole: string) [
+  selectElement("#user-id")
+  setElementContent(userId)
+  selectElement("#user-name")
+  setElementContent(userName)
+  selectElement("#user-role")
+  setElementContent(userRole)
+  selectElement("#user-panel")
+  addClass(userRole)
+  selectElement("#welcome")
+  setElementContent("Welcome!")
+  addClass("visible")
+]
+
+/**
+ * Handle navigation clicks
+ * Topic: "navigation" - Demonstrates topic namespacing
+ */
+on event "click" topic "navigation" action HandleNavClick(targetId: string) [
+  selectAll(".nav-item")
+  removeClass("active")
+  selectElement(targetId)
+  addClass("active")
+  selectElement("#nav-state")
+  setElementContent(targetId)
+]
+
+/**
+ * Handle form clicks
+ * Topic: "form" - Same event, different topic
+ */
+on event "click" topic "form" action HandleFormClick(formId: string, buttonType: string) [
+  selectElement(formId)
+  if (buttonType == "submit") {
+    addClass("submitting")
+    selectElement("#form-status")
+    setElementContent("Submitting...")
+  } else {
+    if (buttonType == "cancel") {
+      removeClass("editing")
+      selectElement("#form-status")
+      setElementContent("Cancelled")
+    }
+  }
+]
+
+/**
+ * Handle data sync with conditional logic
+ * @param syncStatus Sync status (success, error, pending)
+ * @param itemCount Number of items synced
+ */
+on event "data-sync" action HandleDataSync(syncStatus: string, itemCount: number) [
+  selectElement("#sync-status")
+  setElementContent(syncStatus)
+  if (syncStatus == "success") {
+    selectElement("#sync-indicator")
+    addClass("success")
+    removeClass("error")
+    selectElement("#sync-count")
+    setElementContent(itemCount)
+  } else {
+    selectElement("#sync-indicator")
+    addClass("error")
+    removeClass("success")
+  }
+]

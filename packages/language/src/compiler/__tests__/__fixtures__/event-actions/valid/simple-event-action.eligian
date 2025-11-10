@@ -1,0 +1,18 @@
+// Simple Event Action Fixture (T013)
+// Feature 028 - User Story 1: Define Event-Triggered Actions
+
+// Define a simple action for the timeline to use
+action init() [
+  selectElement("#app")
+]
+
+// Event action (the main thing being tested)
+on event "language-change" action HandleLanguageChange(languageCode) [
+  selectElement(".lang-display")
+  setElementContent(languageCode)
+]
+
+// Timeline required by compiler (FR-015: event actions work alongside regular actions/timelines)
+timeline "demo" in "#app" using raf {
+  at 0s..1s init()
+}

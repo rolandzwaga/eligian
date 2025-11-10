@@ -68,7 +68,7 @@ ProgramStatement:
     ImportStatement | ProgramElement;
 
 ProgramElement:
-    ActionDefinition | Timeline | VariableDeclaration;
+    EventActionDefinition | ActionDefinition | Timeline | VariableDeclaration;
 
 // ============================================================================
 // Import Statements (Feature 009 + Feature 023)
@@ -170,6 +170,47 @@ ActionImport:
 // ============================================================================
 // Action Definitions
 // ============================================================================
+// ============================================================================
+// Event Actions (Feature 028)
+// ============================================================================
+
+/**
+ * Event Action Definition - Actions triggered by eventbus events
+ *
+ * Syntax: on event "<eventName>" topic "<eventTopic>"? action <name>(<parameters>) [<operations>]
+ *
+ * Examples:
+ *   Simple event action:
+ *     on event "language-change" action UpdateLanguageDisplay(languageCode) [
+ *       selectElement(".language-display")
+ *       setTextContent(languageCode)
+ *     ]
+ *
+ *   With topic namespace:
+ *     on event "click" topic "navigation" action HandleNavClick(target) [
+ *       selectElement(target)
+ *       addClass("active")
+ *     ]
+ *
+ *   Zero parameters:
+ *     on event "timeline-complete" action ShowCompletionMessage [
+ *       selectElement("#completion-overlay")
+ *       removeClass("hidden")
+ *     ]
+ *
+ * Parameters:
+ * - Parameters map to $operationData.eventArgs[n] by index
+ * - First parameter → eventArgs[0], second → eventArgs[1], etc.
+ * - Event name and topic must be string literals (not variables)
+ * - At least one operation required (no empty bodies)
+ */
+EventActionDefinition:
+    'on' 'event' eventName=STRING
+    ('topic' eventTopic=STRING)?
+    'action' name=ID
+    '(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')'
+    '[' operations+=OperationStatement* ']';
+
 
 /**
  * Action Definition - Reusable action with operation list (Feature 023: added visibility)

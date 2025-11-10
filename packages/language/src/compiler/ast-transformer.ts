@@ -23,6 +23,7 @@ import type {
   BreakStatement,
   ContinueStatement,
   EndableActionDefinition,
+  EventActionDefinition,
   Expression,
   ForStatement,
   IfStatement,
@@ -39,6 +40,7 @@ import type {
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import {
   getActions,
+  getEventActions,
   getLibraryImports,
   getTimelines,
   getVariables,
@@ -94,6 +96,8 @@ interface ScopeContext {
   loopVariableName?: string;
   /** Action-scoped constants (for inlining within the current scope) */
   scopedConstants: ConstantMap;
+  /** Event action parameter indices (Feature 028 - T019) */
+  eventActionParameters?: Map<string, number>;
 }
 
 /**
@@ -261,6 +265,13 @@ export const transformAST = (
       const action = yield* _(transformActionDefinition(actionDef, program, actionDefinitions));
       actions.push(action);
     }
+    // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
+    const eventActionNodes = getEventActions(program);
+    const eventActions: IEventActionConfiguration[] = [];
+    for (const eventActionDef of eventActionNodes) {
+      const eventAction = transformEventAction(eventActionDef);
+      eventActions.push(eventAction);
+    }
 
     // Build TimelineConfigIR from all timeline nodes
     const timelines: TimelineConfigIR[] = [];
@@ -284,7 +295,7 @@ export const transformAST = (
     // Convert IR types to Eligius types (strip sourceLocation)
     const eligiusInitActions: IEndableActionConfiguration[] = initActions.map(stripSourceLocation);
     const eligiusActions: IEndableActionConfiguration[] = actions.map(stripSourceLocation);
-    const eligiusEventActions: IEventActionConfiguration[] = []; // DSL doesn't support event actions yet
+    const eligiusEventActions: IEventActionConfiguration[] = eventActions; // T011: Use transformed event actions
     const eligiusTimelines: ITimelineConfiguration[] = timelines.map(
       convertTimelineConfigToEligius
     );
@@ -1844,7 +1855,7 @@ const transformExpression = (
 
       case 'ParameterReference': {
         // Parameter reference: bare identifier (T231)
-        // Compiles to $operationdata.paramName
+        // Compiles to $operationdata.paramName OR $operationdata.eventArgs[n] (Feature 028 - T020)
         // Now uses cross-reference to Parameter
         if (!expr.parameter?.ref) {
           return yield* _(
@@ -1870,7 +1881,16 @@ const transformExpression = (
           );
         }
 
-        return `$operationdata.${expr.parameter.ref.name}`;
+        const paramName = expr.parameter.ref.name;
+
+        // T020: Check if this is an event action parameter (use index instead of name)
+        if (scope.eventActionParameters?.has(paramName)) {
+          const index = scope.eventActionParameters.get(paramName)!;
+          return `$operationData.eventArgs[${index}]`;
+        }
+
+        // Regular action parameter (use name)
+        return `$operationdata.${paramName}`;
       }
 
       case 'BinaryExpression': {
@@ -1954,6 +1974,97 @@ const transformExpression = (
  *
  * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
  */
+/**
+ * Event Action Parameter Context (Feature 028 - T017)
+ *
+ * Maps parameter names to their indices in the eventArgs array.
+ * Used during event action transformation to resolve parameter references.
+ */
+export interface EventActionContext {
+  parameters: Map<string, number>;
+}
+
+/**
+ * Create Parameter Context (Feature 028 - T017)
+ *
+ * Builds a parameter index map from an array of parameter names.
+ * Each parameter is assigned its zero-based index in the array.
+ *
+ * @param params - Array of parameter names
+ * @returns EventActionContext with parameter→index mapping
+ */
+export function createParameterContext(params: string[]): EventActionContext {
+  const parameters = new Map<string, number>();
+  params.forEach((name, index) => {
+    parameters.set(name, index);
+  });
+  return { parameters };
+}
+
+/**
+ * Transform Event Action Definition → IEventActionConfiguration (Feature 028 - T010, T021)
+ *
+ * Transforms an EventActionDefinition AST node into an Eligius IEventActionConfiguration.
+ * This is a public API function used by tests and is synchronous (not wrapped in Effect).
+ *
+ * T021: Uses full transformation pipeline with event action parameter context.
+ * Event action parameters are mapped to $operationData.eventArgs[n] by index.
+ *
+ * Event actions have:
+ * - name: Action name
+ * - id: UUID v4 (Constitution Principle VII)
+ * - eventName: Event to listen for
+ * - eventTopic: Optional topic namespace (undefined if not present)
+ * - startOperations: Transformed operations array
+ * - NO endOperations (event actions don't have end operations)
+ *
+ * @param eventAction - EventActionDefinition AST node
+ * @returns IEventActionConfiguration JSON
+ */
+export function transformEventAction(
+  eventAction: EventActionDefinition
+): IEventActionConfiguration {
+  // T021: Create parameter context for this event action
+  const parameterNames = eventAction.parameters.map(p => p.name);
+  const parameterContext = createParameterContext(parameterNames);
+
+  // Create scope with event action parameter indices
+  const eventActionScope: ScopeContext = {
+    inActionBody: true,
+    actionParameters: parameterNames,
+    loopVariableName: undefined,
+    scopedConstants: new Map(),
+    eventActionParameters: parameterContext.parameters, // T021: Pass parameter indices
+  };
+
+  // Transform each operation using the full pipeline
+  const startOperations: IOperationConfiguration<TOperationData>[] = [];
+  for (const opStmt of eventAction.operations) {
+    const operationIRs = Effect.runSync(
+      transformOperationStatement(opStmt, eventActionScope, false, undefined, undefined)
+    );
+
+    // Convert OperationConfigIR[] to IOperationConfiguration[]
+    for (const opIR of operationIRs) {
+      startOperations.push({
+        id: opIR.id,
+        systemName: opIR.systemName,
+        operationData: opIR.operationData,
+      });
+    }
+  }
+
+  // Build IEventActionConfiguration
+  return {
+    id: crypto.randomUUID(), // UUID v4 per Constitution Principle VII
+    name: eventAction.name,
+    eventName: eventAction.eventName,
+    eventTopic: eventAction.eventTopic, // undefined if not present
+    startOperations,
+    // Note: No endOperations property - event actions don't have end operations
+  };
+}
+
 export const transformTimeExpression = (
   expr: AstTimeExpression,
   previousEventEndTime: number = 0
