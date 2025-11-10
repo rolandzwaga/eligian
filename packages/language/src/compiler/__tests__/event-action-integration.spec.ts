@@ -55,8 +55,8 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(eventAction.id).toMatch(uuidV4Regex);
 
     // Verify operations have correct names
-    expect(eventAction.startOperations[0].operationName).toBe('selectElement');
-    expect(eventAction.startOperations[1].operationName).toBe('setElementContent');
+    expect(eventAction.startOperations[0].systemName).toBe('selectElement');
+    expect(eventAction.startOperations[1].systemName).toBe('setElementContent');
 
     // Verify no endOperations property
     expect(eventAction).not.toHaveProperty('endOperations');
@@ -144,15 +144,15 @@ describe('Event Action Integration Tests (T012)', () => {
     const ops = config.eventActions[0].startOperations;
 
     // First param (userId) → eventArgs[0]
-    expect(ops[1].operationName).toBe('setElementContent');
+    expect(ops[1].systemName).toBe('setElementContent');
     expect(ops[1].operationData).toHaveProperty('template', '$operationData.eventArgs[0]');
 
     // Second param (userName) → eventArgs[1]
-    expect(ops[3].operationName).toBe('setElementContent');
+    expect(ops[3].systemName).toBe('setElementContent');
     expect(ops[3].operationData).toHaveProperty('template', '$operationData.eventArgs[1]');
 
     // Third param (userRole) → eventArgs[2]
-    expect(ops[5].operationName).toBe('setElementContent');
+    expect(ops[5].systemName).toBe('setElementContent');
     expect(ops[5].operationData).toHaveProperty('template', '$operationData.eventArgs[2]');
   });
 

@@ -81,12 +81,12 @@ describe('Event Action Transformation (T009)', () => {
 
     // Check first operation
     expect(result.startOperations[0]).toHaveProperty('id');
-    expect(result.startOperations[0]).toHaveProperty('operationName', 'selectElement');
+    expect(result.startOperations[0]).toHaveProperty('systemName', 'selectElement');
     expect(result.startOperations[0]).toHaveProperty('operationData');
 
     // Check second operation
     expect(result.startOperations[1]).toHaveProperty('id');
-    expect(result.startOperations[1]).toHaveProperty('operationName', 'addClass');
+    expect(result.startOperations[1]).toHaveProperty('systemName', 'addClass');
     expect(result.startOperations[1]).toHaveProperty('operationData');
   });
 
@@ -193,7 +193,7 @@ describe('Parameter Reference Resolution (T018)', () => {
     const eventAction = config.eventActions[0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
-    expect(operation.operationName).toBe('addClass');
+    expect(operation.systemName).toBe('addClass');
     expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[0]');
   });
 
