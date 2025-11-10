@@ -2038,7 +2038,7 @@ export function transformEventAction(
   };
 
   // Transform each operation using the full pipeline
-  const startOperations: IOperationConfiguration[] = [];
+  const startOperations: IOperationConfiguration<TOperationData>[] = [];
   for (const opStmt of eventAction.operations) {
     const operationIRs = Effect.runSync(
       transformOperationStatement(opStmt, eventActionScope, false, undefined, undefined)
@@ -2048,7 +2048,7 @@ export function transformEventAction(
     for (const opIR of operationIRs) {
       startOperations.push({
         id: opIR.id,
-        operationName: opIR.operationName,
+        systemName: opIR.systemName,
         operationData: opIR.operationData,
       });
     }

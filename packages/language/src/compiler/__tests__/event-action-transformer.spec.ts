@@ -12,11 +12,12 @@
  * - No `endOperations` in output (event actions don't have end operations)
  */
 
+import { Effect } from 'effect';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
 import type { EventActionDefinition } from '../../generated/ast.js';
-import { createParameterContext, transformEventAction } from '../ast-transformer.js';
-import type { IEventActionConfiguration } from '../operations/types.js';
+import { createParameterContext, transformAST, transformEventAction } from '../ast-transformer.js';
+import type { IEngineConfiguration, IEventActionConfiguration } from '../operations/types.js';
 
 describe('Event Action Transformation (T009)', () => {
   let ctx: TestContext;
@@ -105,6 +106,30 @@ describe('Event Action Transformation (T009)', () => {
     // Event actions should NOT have endOperations
     expect(result).not.toHaveProperty('endOperations');
   });
+
+  test('should transform event action with topic to eventTopic field (T038)', async () => {
+    const code = 'on event "click" topic "navigation" action handleNavClick() []';
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+    const eventAction = program.statements[0] as EventActionDefinition;
+
+    const result: IEventActionConfiguration = transformEventAction(eventAction);
+
+    expect(result.eventName).toBe('click');
+    expect(result.eventTopic).toBe('navigation');
+  });
+
+  test('should transform event action without topic to undefined eventTopic (T038)', async () => {
+    const code = 'on event "click" action handleClick() []';
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+    const eventAction = program.statements[0] as EventActionDefinition;
+
+    const result: IEventActionConfiguration = transformEventAction(eventAction);
+
+    expect(result.eventName).toBe('click');
+    expect(result.eventTopic).toBeUndefined();
+  });
 });
 
 describe('Parameter Context Creation (T016)', () => {
@@ -142,56 +167,95 @@ describe('Parameter Reference Resolution (T018)', () => {
 
   test('should resolve first parameter reference to eventArgs[0]', async () => {
     const code = `
+      action init() [
+        selectElement("#app")
+      ]
+
       on event "update" action handleUpdate(className) [
         addClass(className)
       ]
+
+      timeline "test" in "#app" using raf {
+        at 0s..1s init()
+      }
     `;
     const document = await ctx.parse(code);
     const program = document.parseResult.value;
-    const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = transformEventAction(eventAction);
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
 
     // Verify the parameter reference is resolved to eventArgs[0]
-    expect(result.startOperations).toHaveLength(1);
-    const operation = result.startOperations[0];
+    expect(config.eventActions).toHaveLength(1);
+    const eventAction = config.eventActions[0];
+    expect(eventAction.startOperations).toHaveLength(1);
+    const operation = eventAction.startOperations[0];
     expect(operation.operationName).toBe('addClass');
     expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[0]');
   });
 
   test('should resolve second parameter reference to eventArgs[1]', async () => {
     const code = `
+      action init() [
+        selectElement("#app")
+      ]
+
       on event "update" action handleUpdate(first, second) [
         addClass(second)
       ]
+
+      timeline "test" in "#app" using raf {
+        at 0s..1s init()
+      }
     `;
     const document = await ctx.parse(code);
     const program = document.parseResult.value;
-    const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = transformEventAction(eventAction);
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
 
     // Verify the second parameter reference is resolved to eventArgs[1]
-    expect(result.startOperations).toHaveLength(1);
-    const operation = result.startOperations[0];
+    expect(config.eventActions).toHaveLength(1);
+    const eventAction = config.eventActions[0];
+    expect(eventAction.startOperations).toHaveLength(1);
+    const operation = eventAction.startOperations[0];
     expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[1]');
   });
 
   test('should resolve third parameter reference to eventArgs[2]', async () => {
     const code = `
+      action init() [
+        selectElement("#app")
+      ]
+
       on event "update" action handleUpdate(a, b, c) [
         addClass(c)
       ]
+
+      timeline "test" in "#app" using raf {
+        at 0s..1s init()
+      }
     `;
     const document = await ctx.parse(code);
     const program = document.parseResult.value;
-    const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = transformEventAction(eventAction);
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
 
     // Verify the third parameter reference is resolved to eventArgs[2]
-    expect(result.startOperations).toHaveLength(1);
-    const operation = result.startOperations[0];
+    expect(config.eventActions).toHaveLength(1);
+    const eventAction = config.eventActions[0];
+    expect(eventAction.startOperations).toHaveLength(1);
+    const operation = eventAction.startOperations[0];
     expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[2]');
   });
 
@@ -199,19 +263,31 @@ describe('Parameter Reference Resolution (T018)', () => {
     const code = `
       const MY_CLASS = "active"
 
-      on event "update" action handleUpdate(param) [
-        addClass(MY_CLASS)
+      action init() [
+        selectElement("#app")
       ]
-    `;
-    const document = await ctx.parse(code);
-    const program = document.parseResult.value;
-    const eventAction = program.statements[1] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = transformEventAction(eventAction);
+      on event "update" action handleUpdate(param) [
+        addClass(@MY_CLASS)
+      ]
+
+      timeline "test" in "#app" using raf {
+        at 0s..1s init()
+      }
+    `;
+    const { program } = await ctx.parseAndValidate(code);
+
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
 
     // Verify constant reference is inlined (not treated as parameter)
-    expect(result.startOperations).toHaveLength(1);
-    const operation = result.startOperations[0];
+    expect(config.eventActions).toHaveLength(1);
+    const eventAction = config.eventActions[0];
+    expect(eventAction.startOperations).toHaveLength(1);
+    const operation = eventAction.startOperations[0];
     expect(operation.operationData).toHaveProperty('className', 'active');
   });
 });

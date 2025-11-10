@@ -9,7 +9,7 @@ action init() [
 // Event action (the main thing being tested)
 on event "language-change" action HandleLanguageChange(languageCode) [
   selectElement(".lang-display")
-  setText(languageCode)
+  setElementContent(languageCode)
 ]
 
 // Timeline required by compiler (FR-015: event actions work alongside regular actions/timelines)

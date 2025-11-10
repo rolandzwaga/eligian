@@ -44,7 +44,7 @@
     "build:clean": "pnpm run clean && pnpm run build",
     "langium:generate": "langium generate",
     "langium:watch": "langium generate --watch",
-    "test": "vitest run",
+    "test": "vitest run --reporter=dot --hideSkippedTests",
     "test:coverage:ci": "vitest run --coverage"
   },
   "dependencies": {

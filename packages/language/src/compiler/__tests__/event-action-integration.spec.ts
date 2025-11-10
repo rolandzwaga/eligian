@@ -56,7 +56,7 @@ describe('Event Action Integration Tests (T012)', () => {
 
     // Verify operations have correct names
     expect(eventAction.startOperations[0].operationName).toBe('selectElement');
-    expect(eventAction.startOperations[1].operationName).toBe('setText');
+    expect(eventAction.startOperations[1].operationName).toBe('setElementContent');
 
     // Verify no endOperations property
     expect(eventAction).not.toHaveProperty('endOperations');
@@ -137,5 +137,80 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions[0].eventName).toBe('user-updated');
     expect(config.eventActions[0].eventTopic).toBeUndefined();
     expect(config.eventActions[0].startOperations).toHaveLength(6);
+
+    // T022: Verify parameter mapping to eventArgs indices
+    // Fixture has: UpdateUserDisplay(userId, userName, userRole)
+    // Operations: selectElement(".user-id"), setElementContent(userId), selectElement(".user-name"), setElementContent(userName), ...
+    const ops = config.eventActions[0].startOperations;
+
+    // First param (userId) → eventArgs[0]
+    expect(ops[1].operationName).toBe('setElementContent');
+    expect(ops[1].operationData).toHaveProperty('template', '$operationData.eventArgs[0]');
+
+    // Second param (userName) → eventArgs[1]
+    expect(ops[3].operationName).toBe('setElementContent');
+    expect(ops[3].operationData).toHaveProperty('template', '$operationData.eventArgs[1]');
+
+    // Third param (userRole) → eventArgs[2]
+    expect(ops[5].operationName).toBe('setElementContent');
+    expect(ops[5].operationData).toHaveProperty('template', '$operationData.eventArgs[2]');
+  });
+
+  test('should compile DSL file with event actions using topics (T040)', async () => {
+    const filePath = join(fixturesDir, 'event-action-with-topics.eligian');
+    const source = readFileSync(filePath, 'utf-8');
+
+    const document = await ctx.parse(source);
+    const program = document.parseResult.value;
+
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
+
+    // Verify both event actions exist (same eventName, different topics)
+    expect(config.eventActions).toHaveLength(2);
+
+    // First event action: HandleNavClick with topic "navigation"
+    expect(config.eventActions[0].name).toBe('HandleNavClick');
+    expect(config.eventActions[0].eventName).toBe('click');
+    expect(config.eventActions[0].eventTopic).toBe('navigation');
+    expect(config.eventActions[0].startOperations).toHaveLength(2);
+
+    // Second event action: HandleFormClick with topic "form"
+    expect(config.eventActions[1].name).toBe('HandleFormClick');
+    expect(config.eventActions[1].eventName).toBe('click');
+    expect(config.eventActions[1].eventTopic).toBe('form');
+    expect(config.eventActions[1].startOperations).toHaveLength(2);
+  });
+
+  test('should compile event action with topic and include eventTopic in JSON (T040)', async () => {
+    const code = `
+      action init() [ selectElement("#app") ]
+
+      on event "click" topic "navigation" action HandleNavClick(target) [
+        selectElement(target)
+        addClass("active")
+      ]
+
+      timeline "test" in "#app" using raf {
+        at 0s..1s init()
+      }
+    `;
+
+    const document = await ctx.parse(code);
+    const program = document.parseResult.value;
+
+    // Transform AST to Eligius configuration
+    const result = await Effect.runPromise(transformAST(program));
+
+    // Extract config from result
+    const config: IEngineConfiguration = result.config;
+
+    // Verify event action has correct eventName and eventTopic
+    expect(config.eventActions).toHaveLength(1);
+    expect(config.eventActions[0].eventName).toBe('click');
+    expect(config.eventActions[0].eventTopic).toBe('navigation');
   });
 });

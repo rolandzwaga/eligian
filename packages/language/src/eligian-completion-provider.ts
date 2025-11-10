@@ -12,6 +12,7 @@ import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } 
 import type { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
+import { getEventNameCompletions, getEventTopicCompletions } from './completion/events.js';
 import { getOperationCompletions } from './completion/operations.js';
 import { getVariableCompletions } from './completion/variables.js';
 import {
@@ -216,6 +217,28 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
           };
           return super.completionFor(context, next, noOpAcceptor);
         }
+      }
+
+      // T044: Check if we're completing an event name in EventActionDefinition
+      // Trigger: on event "|<cursor>" or on event "cl|<cursor>"
+      if (next.type === 'EventActionDefinition' && next.property === 'eventName') {
+        const eventNameCompletions = getEventNameCompletions(context);
+        for (const item of eventNameCompletions) {
+          acceptor(context, item);
+        }
+        // Return early - we've provided all event name completions
+        return;
+      }
+
+      // T044: Check if we're completing an event topic in EventActionDefinition
+      // Trigger: topic "|<cursor>" or topic "na|<cursor>"
+      if (next.type === 'EventActionDefinition' && next.property === 'eventTopic') {
+        const topicCompletions = getEventTopicCompletions(context);
+        for (const item of topicCompletions) {
+          acceptor(context, item);
+        }
+        // Return early - we've provided all topic completions
+        return;
       }
 
       if (cursorContext.isInsideAction && !isInsideArguments) {

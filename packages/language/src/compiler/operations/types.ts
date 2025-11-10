@@ -12,7 +12,12 @@
  * - Support for required/optional parameters with defaults
  */
 
-import type { IEventActionConfiguration, metadata } from 'eligius';
+import type {
+  IEngineConfiguration,
+  IEventActionConfiguration,
+  IOperationConfiguration,
+  metadata,
+} from 'eligius';
 
 /**
  * Rich parameter types from Eligius metadata.
@@ -180,16 +185,12 @@ export function getDefaultConstantValue(constants: ConstantValue[]): string | un
 }
 
 /**
- * Eligius Event Action Configuration
+ * Eligius Type Exports
  *
  * Re-exported from Eligius for compiler use.
- * Event actions are triggered automatically when events are broadcast through the Eligius eventbus.
  *
- * Key fields:
- * - eventName: Name of the event to listen for
- * - eventTopic: Optional topic for namespacing
- * - startOperations: Operations to execute when event fires
- *
- * Note: Unlike regular actions, event actions have NO endOperations.
+ * - IEngineConfiguration: Top-level Eligius configuration object
+ * - IEventActionConfiguration: Event actions triggered by eventbus
+ * - IOperationConfiguration: Individual operation configuration
  */
-export type { IEventActionConfiguration };
+export type { IEngineConfiguration, IEventActionConfiguration, IOperationConfiguration };

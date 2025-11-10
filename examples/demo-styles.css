@@ -14,6 +14,12 @@ body {
   padding: 40px;
 }
 
+#container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px;
+}
+
 .slide {
   opacity: 0;
   display: none;
@@ -100,4 +106,51 @@ h1, h2, h3 {
 
 .secondary {
   background: #51cf66;
+}
+
+/* IDs used in event actions demo */
+#language-display,
+#status,
+#user-id,
+#user-name,
+#user-role,
+#user-panel,
+#welcome,
+#nav-state,
+#form-status,
+#sync-status,
+#sync-indicator,
+#sync-count,
+#intro,
+#title {
+  /* Placeholder styles for event action targets */
+}
+
+.complete {
+  color: #51cf66;
+}
+
+.submitting {
+  opacity: 0.5;
+}
+
+.editing {
+  border: 2px solid #4c6ef5;
+}
+
+.success {
+  color: #51cf66;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.nav-item {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.nav-item.active {
+  background: #4c6ef5;
 }

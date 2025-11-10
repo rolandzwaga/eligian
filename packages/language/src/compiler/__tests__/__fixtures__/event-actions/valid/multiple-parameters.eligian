@@ -9,11 +9,11 @@ action init() [
 // Event action with multiple parameters
 on event "user-updated" action UpdateUserDisplay(userId, userName, userRole) [
   selectElement(".user-id")
-  setText(userId)
+  setElementContent(userId)
   selectElement(".user-name")
-  setText(userName)
+  setElementContent(userName)
   selectElement(".user-role")
-  setText(userRole)
+  setElementContent(userRole)
 ]
 
 // Timeline required by compiler

@@ -193,3 +193,78 @@ describe('Event Action Parsing - Parameter List Variations (T007)', () => {
     expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
   });
 });
+
+describe('Event Action Parsing - Topic Clause (T036)', () => {
+  let ctx: TestContext;
+
+  beforeAll(async () => {
+    ctx = createTestContext();
+  });
+
+  test('should parse event action with topic', async () => {
+    const code = `
+      on event "click" topic "nav" action handleNavClick(target) [
+        selectElement(target)
+        addClass("active")
+      ]
+    `;
+
+    const document = await ctx.parse(code);
+    expect(document.parseResult.lexerErrors).toHaveLength(0);
+    expect(document.parseResult.parserErrors).toHaveLength(0);
+
+    const program = document.parseResult.value;
+    expect(program.statements).toHaveLength(1);
+
+    const eventAction = program.statements[0] as EventActionDefinition;
+    expect(eventAction.$type).toBe('EventActionDefinition');
+    expect(eventAction.eventName).toBe('click');
+    expect(eventAction.eventTopic).toBe('nav');
+    expect(eventAction.name).toBe('handleNavClick');
+    expect(eventAction.parameters).toHaveLength(1);
+    expect(eventAction.operations).toHaveLength(2);
+  });
+
+  test('should parse event action without topic', async () => {
+    const code = `
+      on event "click" action handleClick(target) [
+        selectElement(target)
+      ]
+    `;
+
+    const document = await ctx.parse(code);
+    expect(document.parseResult.lexerErrors).toHaveLength(0);
+    expect(document.parseResult.parserErrors).toHaveLength(0);
+
+    const program = document.parseResult.value;
+    expect(program.statements).toHaveLength(1);
+
+    const eventAction = program.statements[0] as EventActionDefinition;
+    expect(eventAction.$type).toBe('EventActionDefinition');
+    expect(eventAction.eventName).toBe('click');
+    expect(eventAction.eventTopic).toBeUndefined();
+    expect(eventAction.name).toBe('handleClick');
+  });
+
+  test('should parse event action with empty topic string', async () => {
+    const code = `
+      on event "click" topic "" action handleClick(target) [
+        selectElement(target)
+      ]
+    `;
+
+    const document = await ctx.parse(code);
+    expect(document.parseResult.lexerErrors).toHaveLength(0);
+    expect(document.parseResult.parserErrors).toHaveLength(0);
+
+    const program = document.parseResult.value;
+    expect(program.statements).toHaveLength(1);
+
+    const eventAction = program.statements[0] as EventActionDefinition;
+    expect(eventAction.$type).toBe('EventActionDefinition');
+    expect(eventAction.eventName).toBe('click');
+    expect(eventAction.eventTopic).toBe(''); // Empty string parses successfully
+    expect(eventAction.name).toBe('handleClick');
+    // Note: Validation will reject this in T042
+  });
+});
