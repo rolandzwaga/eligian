@@ -60,7 +60,7 @@ describe('Event Action Validation - Event Name (T026)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "click" action HandleClick() [
+      on event "dom-mutation" action HandleClick() [
         selectElement("#app")
       ]
 
@@ -120,7 +120,7 @@ describe('Event Action Validation - Empty Body (T027)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "test" action Empty() []
+      on event "dom-mutation" action Empty() []
 
       timeline "test" in "#app" using raf {
         at 0s..1s init()
@@ -161,7 +161,7 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "test" action Foo(if) [
+      on event "dom-mutation" action Foo(if) [
         selectElement("#app")
       ]
 
@@ -186,7 +186,7 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "test" action Foo(for) [
+      on event "dom-mutation" action Foo(for) [
         selectElement("#app")
       ]
 
@@ -211,7 +211,7 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "test" action Foo(break) [
+      on event "dom-mutation" action Foo(break) [
         selectElement("#app")
       ]
 
@@ -236,7 +236,7 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "test" action Foo(validName) [
+      on event "dom-mutation" action Foo(validName) [
         selectElement("#app")
       ]
 
@@ -272,7 +272,7 @@ describe('Event Action Validation - Duplicate Parameters (T029)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "test" action Foo(a, a) [
+      on event "dom-mutation" action Foo(a, a) [
         selectElement("#app")
       ]
 
@@ -309,11 +309,11 @@ describe('Event Action Validation - Duplicate Event/Topic Combinations (T030)', 
 
       action init() [ selectElement("#app") ]
 
-      on event "click" action First() [
+      on event "dom-mutation" action First() [
         selectElement("#app")
       ]
 
-      on event "click" action Second() [
+      on event "dom-mutation" action Second() [
         selectElement("#app")
       ]
 
@@ -335,11 +335,11 @@ describe('Event Action Validation - Duplicate Event/Topic Combinations (T030)', 
 
       action init() [ selectElement("#app") ]
 
-      on event "click" topic "nav" action First() [
+      on event "dom-mutation" topic "nav" action First() [
         selectElement("#app")
       ]
 
-      on event "click" topic "nav" action Second() [
+      on event "dom-mutation" topic "nav" action Second() [
         selectElement("#app")
       ]
 
@@ -361,7 +361,7 @@ describe('Event Action Validation - Duplicate Event/Topic Combinations (T030)', 
 
       action init() [ selectElement("#app") ]
 
-      on event "click" action First() [
+      on event "dom-mutation" action First() [
         selectElement("#app")
       ]
 
@@ -405,7 +405,7 @@ describe('Event Action Validation - Empty Topic Strings (T042)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "click" topic "" action HandleClick() [
+      on event "dom-mutation" topic "" action HandleClick() [
         selectElement("#app")
       ]
 
@@ -429,7 +429,7 @@ describe('Event Action Validation - Empty Topic Strings (T042)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "click" topic "navigation" action HandleClick() [
+      on event "dom-mutation" topic "navigation" action HandleClick() [
         selectElement("#app")
       ]
 
@@ -450,7 +450,7 @@ describe('Event Action Validation - Empty Topic Strings (T042)', () => {
 
       action init() [ selectElement("#app") ]
 
-      on event "click" action HandleClick() [
+      on event "dom-mutation" action HandleClick() [
         selectElement("#app")
       ]
 

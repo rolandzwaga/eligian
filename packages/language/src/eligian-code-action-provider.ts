@@ -5,12 +5,12 @@
  * Currently delegates to CSS code action provider for CSS-related quick fixes.
  */
 
+import fs from 'node:fs/promises';
 import type { LangiumDocument } from 'langium';
 import type { CodeActionProvider } from 'langium/lsp';
 import type { CodeAction, CodeActionParams, Command } from 'vscode-languageserver-protocol';
 import { CSSCodeActionProvider } from './css/css-code-actions.js';
 import type { EligianServices } from './eligian-module.js';
-
 /**
  * Eligian-specific code action provider
  *
@@ -48,7 +48,6 @@ export class EligianCodeActionProvider implements CodeActionProvider {
       // Handle both encoded (file:///c%3A/...) and unencoded (file:///c:/...) URIs
       let path = uri.replace('file:///', '');
       path = decodeURIComponent(path); // Decode URL-encoded characters
-      const fs = await import('node:fs/promises');
       return await fs.readFile(path, 'utf-8');
     };
 

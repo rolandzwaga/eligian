@@ -342,3 +342,84 @@ on event "data-sync" action HandleDataSync(syncStatus: string, itemCount: number
     removeClass("success")
   }
 ]
+
+// ============================================================================
+// EVENT VALIDATION - Event Name and Argument Validation (Feature 029)
+// ============================================================================
+// Demonstrates compile-time validation of event names, argument counts, and types.
+// Invalid event names, mismatched argument counts, or type mismatches are caught
+// at compile time with helpful error messages and "Did you mean?" suggestions.
+
+// US1: Valid event names - these compile successfully
+/**
+ * Handle DOM mutations with valid event name
+ * @param payload Mutation payload data (type annotation omitted - any type)
+ */
+on event "dom-mutation" action HandleDOMMutation(payload) [
+  selectElement("#mutation-log")
+  log("DOM changed")
+  addClass("mutation-detected")
+]
+
+/**
+ * Handle timeline complete with valid zero-parameter event
+ */
+on event "timeline-complete" action HandleCompletion() [
+  selectElement("#completion-status")
+  setElementContent("Done!")
+  addClass("complete")
+]
+
+// US2: Correct argument counts - these match event metadata
+/**
+ * Handle video URL requests with correct 3-parameter count
+ * @param index Video index
+ * @param position Playback position
+ * @param isHistory Whether this is a history request
+ */
+on event "before-request-video-url" action HandleVideoURL(index: number, position: number, isHistory: boolean) [
+  selectElement("#video-info")
+  setElementContent("Loading video " + index)
+  if (isHistory) {
+    addClass("history-request")
+  }
+  log("Position: " + position)
+]
+
+// US3: Type annotations match event arg types
+/**
+ * Handle data sync with type-safe parameters
+ * @param syncStatus Sync status string (success, error, pending)
+ * @param itemCount Number of items synced
+ */
+on event "data-sync" action HandleDataSyncTyped(syncStatus: string, itemCount: number) [
+  selectElement("#sync-display")
+  setElementContent(syncStatus + ": " + itemCount + " items")
+  if (syncStatus == "success") {
+    addClass("sync-success")
+  }
+]
+
+/**
+ * Handle navigation with type validation
+ * @param currentSlideIndex Current slide number
+ * @param targetSlideIndex Target slide number
+ * @param direction Navigation direction (forward or backward)
+ */
+on event "slide-navigation" action HandleNavigation(
+  currentSlideIndex: number,
+  targetSlideIndex: number,
+  direction: string
+) [
+  selectElement("#current-slide")
+  setElementContent(currentSlideIndex)
+  selectElement("#target-slide")
+  setElementContent(targetSlideIndex)
+  selectElement("#nav-direction")
+  setElementContent(direction)
+  if (direction == "forward") {
+    addClass("nav-forward")
+  } else {
+    addClass("nav-back")
+  }
+]
