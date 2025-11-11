@@ -16,6 +16,7 @@ import {
   type NamedImport,
   type Program,
   type RegularActionDefinition,
+  type TimedEvent,
   type Timeline,
 } from '../generated/ast.js';
 import { getElements, getImports } from '../utils/program-helpers.js';
