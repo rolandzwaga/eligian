@@ -3,7 +3,7 @@
 SYNC IMPACT REPORT - Constitution Update
 ===================================================================================
 
-VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1 → 2.1.0 → 2.1.1
+VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1 → 2.1.0 → 2.1.1 → 2.2.0
 Rationale: MAJOR version bump (2.0.0) - Enhanced Principle II (Test-First Development) with
 strict enforcement workflow that redefines testing requirements, making "tests later"
 a constitutional violation (backward incompatible with prior "encouraged" TDD stance).
@@ -12,7 +12,24 @@ Added 5 new principles that significantly expand governance scope.
 PATCH version bump (2.0.1) - Added integration test isolation requirement to Principle II.
 
 MINOR version bump (2.1.0) - Added Principle XXIII (Incremental Feature Commits) for speckit workflow.
-nPATCH version bump (2.1.1) - Added Principle XXIV (Unified Example File) requirement.
+
+PATCH version bump (2.1.1) - Added Principle XXIV (Unified Example File) requirement.
+
+MINOR version bump (2.2.0) - Added Principle XXV (Test System Documentation) requirement.
+
+AMENDMENTS (v2.2.0):
++ Added Principle XXV: Test System Documentation (NON-NEGOTIABLE)
+  - Mandates consulting TESTING_GUIDE.md when creating test tasks
+  - Requires enriching task descriptions with specific test patterns and examples
+  - Prevents common test mistakes through guided task creation
+  - Documents test helper usage, CSS registry setup, and error code validation
+  - This is FORWARD COMPATIBLE - codifies best practice to reduce test iteration cycles
+
+AMENDMENTS (v2.1.1):
++ Added Principle XXIV: Unified Example File (NON-NEGOTIABLE)
+  - Mandates all language features be demonstrated in examples/demo.eligian
+  - Prohibits separate scattered example files
+  - This is FORWARD COMPATIBLE - codifies existing best practice
 
 AMENDMENTS (v2.1.0):
 + Added Principle XXIII: Incremental Feature Commits (NON-NEGOTIABLE)
@@ -1017,7 +1034,7 @@ For detailed development guidance, workflow specifics, and tool usage, refer to 
 That file provides practical guidance for working with this codebase, while this
 constitution defines the non-negotiable principles that govern the project.
 
-**Version**: 2.1.1 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-11-02
+**Version**: 2.2.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-01-12
 
 ### XXIV. Unified Example File (NON-NEGOTIABLE)
 
@@ -1075,4 +1092,97 @@ on event "language-change" action HandleLanguageChange(languageCode: string) [
 - ❌ Adding features without updating `examples/demo.eligian`
 - ❌ Leaving the demo file outdated after feature implementation
 - ❌ Creating "specialized" examples that fragment the canonical reference
+
+### XXV. Test System Documentation (NON-NEGOTIABLE)
+
+When creating specifications, plans, and tasks for new features, MUST consult and reference the
+comprehensive testing guide (`TESTING_GUIDE.md`) to enrich task descriptions with specific
+guidance on writing tests correctly the first time.
+
+**Rationale**: The test system analysis revealed that developers were taking 3-4 passes to create
+valid Eligian program syntax in tests, repeatedly making the same mistakes (missing timelines,
+invalid type annotations, incorrect CSS registry setup, missing provider sources, etc.). This
+inefficiency stems from not having clear, accessible guidance on test infrastructure at the point
+of task creation. By consulting the testing guide during spec/plan/tasks creation, task
+descriptions can include specific examples and patterns that prevent common errors, saving
+significant development time and reducing frustration.
+
+**Requirements**:
+- MUST read `TESTING_GUIDE.md` when creating tasks that involve writing new tests
+- Task descriptions for test implementation MUST include:
+  - Specific test template to use (`minimalProgram()`, `eventActionProgram()`, etc.)
+  - Required CSS registry setup (which fixture to use)
+  - Expected error codes to validate against
+  - Common mistakes to avoid for that specific test type
+  - Example test code snippet showing correct pattern
+- Test tasks MUST reference specific sections of the testing guide
+- Tasks MUST warn about known pain points relevant to the test being written
+- When adding new test helpers or patterns, MUST update `TESTING_GUIDE.md` first
+
+**Example Task Enhancement** (from Feature 029 - Event Validation):
+
+Before (vague guidance):
+```markdown
+- [ ] T038 Create test file for type compatibility validation
+- [ ] T039 Write test for matching types
+- [ ] T042 Write test for type mismatch
+```
+
+After (enriched with testing guide):
+```markdown
+- [ ] T038 Create `argument-type-validation.spec.ts` using standard test template
+  - Use `beforeAll()` for createTestContext() (See TESTING_GUIDE.md § Lifecycle Hooks)
+  - Use `beforeEach()` for setupCSSRegistry() with CSS_FIXTURES.common
+  - Use `eventActionProgram()` helper for test code (See § Program Template Builders)
+  - Filter errors with DiagnosticSeverity.Error (NOT magic number 1)
+  - Target error code: 'event_type_mismatch'
+
+- [ ] T039 Test matching types - event metadata types match parameter annotations
+  - Use eventActionProgram('data-sync', 'HandleSync', [{name: 'status', type: 'string'}, ...])
+  - Event metadata has: status:string, count:number (see timeline-events.generated.ts)
+  - Expect: ZERO errors with code 'event_type_mismatch'
+  - Common mistake: Using capitalized types (String vs string) - use lowercase only!
+
+- [ ] T042 Test type mismatch - parameter type differs from event metadata
+  - Use eventActionProgram('data-sync', 'HandleSync', [{name: 'status', type: 'number'}])
+  - Event expects string, test declares number - should produce error
+  - Expect: error.data?.code === 'event_type_mismatch'
+  - Common mistake: Using 'any' type (not in grammar) - omit type annotation instead
+```
+
+**Spec/Plan Integration**:
+
+When writing feature specifications and implementation plans:
+
+1. **Identify Test Complexity**: Note whether tests involve:
+   - Simple validation (use minimalProgram)
+   - Event actions (use eventActionProgram)
+   - Endable actions (use endableActionProgram)
+   - Multi-file imports (use createTestContextWithMockFS)
+   - CSS validation (note specific registry setup)
+
+2. **Document Test Requirements** in plan.md:
+   ```markdown
+   ## Testing Strategy
+
+   This feature requires event action validation tests:
+   - Template: eventActionProgram() (TESTING_GUIDE.md § Event Action Tests)
+   - CSS Setup: CSS_FIXTURES.common in beforeEach() (prevents state leakage)
+   - Error Codes: 'unknown_event_name', 'event_type_mismatch', 'event_argument_count_mismatch'
+   - Common Pitfalls: Missing timeline, invalid type annotations (use lowercase)
+   ```
+
+3. **Reference in Tasks**: Each test task MUST link to relevant testing guide sections
+
+**Prohibited Practices**:
+- ❌ Creating test tasks without consulting TESTING_GUIDE.md
+- ❌ Vague task descriptions like "write test for X" without specific guidance
+- ❌ Letting developers discover test helpers through trial-and-error
+- ❌ Repeating test infrastructure mistakes that are documented in the guide
+- ❌ Adding new test patterns without updating TESTING_GUIDE.md first
+
+**Enforcement**:
+- Pull requests adding features MUST show evidence of testing guide consultation
+- Test tasks lacking specific guidance will be rejected during code review
+- Repeated test infrastructure mistakes indicate testing guide was not consulted
 

@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
+import {
+  createTestContext,
+  minimalProgram,
+  setupCSSRegistry,
+  type TestContext,
+} from '../test-helpers.js';
 
 describe('CSS Selector Validation - Invalid Syntax', () => {
   let ctx: TestContext;
@@ -11,21 +16,14 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
 
   test('should error for unclosed attribute selector', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['button'],
+      classes: ['button', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectInvalid() [
-        selectElement(".button[")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectInvalid()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectInvalid',
+      actionBody: 'selectElement(".button[")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const syntaxErrors = validationErrors.filter(e =>
@@ -36,21 +34,14 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
 
   test('should error for unclosed pseudo-class', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['button'],
+      classes: ['button', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectInvalid() [
-        selectElement(".button:not(")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectInvalid()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectInvalid',
+      actionBody: 'selectElement(".button:not(")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const syntaxErrors = validationErrors.filter(e =>
@@ -61,21 +52,14 @@ describe('CSS Selector Validation - Invalid Syntax', () => {
 
   test('should error for unclosed string in attribute', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['input'],
+      classes: ['input', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectInvalid() [
-        selectElement(".input[type='text]")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectInvalid()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectInvalid',
+      actionBody: 'selectElement(".input[type=\'text]")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const syntaxErrors = validationErrors.filter(e =>

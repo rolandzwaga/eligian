@@ -1,17 +1,16 @@
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
-import { describe, expect, test } from 'vitest';
-import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { getElements } from '../utils/program-helpers.js';
-import { DiagnosticSeverity } from './test-helpers.js';
+import { createTestContext, DiagnosticSeverity, type TestContext } from './test-helpers.js';
 
 describe('Action Call Type Validation', () => {
-  const services = createEligianServices(EmptyFileSystem).Eligian;
-  const parse = parseHelper<Program>(services);
+  let ctx: TestContext;
+
+  beforeAll(() => {
+    ctx = createTestContext();
+  });
 
   test('should validate action call argument types', async () => {
-    const document = await parse(`
+    const document = await ctx.parse(`
       action test(name: string) [
         selectElement(name)
       ]
@@ -27,10 +26,11 @@ describe('Action Call Type Validation', () => {
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
     // Build the document (this triggers validation)
-    await services.shared.workspace.DocumentBuilder.build([document]);
+    await ctx.services.shared.workspace.DocumentBuilder.build([document]);
 
     // Get validation diagnostics
-    const diagnostics = await services.validation.DocumentValidator.validateDocument(document);
+    const diagnostics =
+      await ctx.services.Eligian.validation.DocumentValidator.validateDocument(document);
 
     // Filter for type-related errors (excluding CSS validation errors)
     const typeErrors = diagnostics.filter(
@@ -50,7 +50,7 @@ describe('Action Call Type Validation', () => {
   });
 
   test('should create function type for action with typed parameter', async () => {
-    const document = await parse(`
+    const document = await ctx.parse(`
       action test(name: string) [
         selectElement(name)
       ]
@@ -64,10 +64,10 @@ describe('Action Call Type Validation', () => {
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
     // Build the document
-    await services.shared.workspace.DocumentBuilder.build([document]);
+    await ctx.services.shared.workspace.DocumentBuilder.build([document]);
 
     // Access Typir services to check if function type was created
-    const typirServices = services.typir;
+    const typirServices = ctx.services.Eligian.typir;
 
     //console.log('Typir services:', typirServices);
     //console.log('Typir Functions:', typirServices?.Functions);
@@ -89,7 +89,7 @@ describe('Action Call Type Validation', () => {
   });
 
   test('should match action calls to function types', async () => {
-    const document = await parse(`
+    const document = await ctx.parse(`
       action fadeIn(selector: string) [
         selectElement(selector)
       ]
@@ -103,10 +103,10 @@ describe('Action Call Type Validation', () => {
     expect(document.parseResult.lexerErrors).toHaveLength(0);
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
-    await services.shared.workspace.DocumentBuilder.build([document]);
+    await ctx.services.shared.workspace.DocumentBuilder.build([document]);
 
     // Check Typir inference
-    const typirServices = services.typir;
+    const typirServices = ctx.services.Eligian.typir;
     if (typirServices?.Inference) {
       const program = document.parseResult.value;
 
@@ -138,7 +138,8 @@ describe('Action Call Type Validation', () => {
       }
     }
 
-    const diagnostics = await services.validation.DocumentValidator.validateDocument(document);
+    const diagnostics =
+      await ctx.services.Eligian.validation.DocumentValidator.validateDocument(document);
     //console.log('Diagnostics:', diagnostics);
 
     const _typeErrors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);

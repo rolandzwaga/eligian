@@ -697,3 +697,237 @@ export async function createLibraryDocuments(
 ): Promise<Map<string, LangiumDocument>> {
   return setupDocuments(ctx, libraries);
 }
+
+// ============================================================================
+// PROGRAM TEMPLATE BUILDERS
+// ============================================================================
+// These helpers eliminate 600+ repetitions of minimum valid program boilerplate
+// across 20+ test files. Use these instead of writing inline code blocks.
+
+/**
+ * Options for building a minimal valid Eligian program
+ */
+export interface ProgramOptions {
+  /** Include CSS import statement (default: true) */
+  cssImport?: boolean;
+  /** CSS file path for import (default: "./styles.css") */
+  cssPath?: string;
+  /** Action name to define (default: "testAction") */
+  actionName?: string;
+  /** Action parameters with optional types (default: []) */
+  actionParams?: Array<{ name: string; type?: string }>;
+  /** Action body operations (default: [ selectElement("#element") ]) */
+  actionBody?: string;
+  /** Timeline name (default: "test") */
+  timelineName?: string;
+  /** Timeline container selector (default: ".container") */
+  containerSelector?: string;
+  /** Timeline provider type (default: "raf") */
+  provider?: 'raf' | 'video' | 'audio' | 'custom';
+  /** Source for video/audio providers (default: "test.mp4") */
+  providerSource?: string;
+  /** Timeline body - operations/events (default: calls action) */
+  timelineBody?: string;
+}
+
+/**
+ * Build a minimal valid Eligian program for testing
+ *
+ * This eliminates the most common duplication pattern in tests (880+ occurrences).
+ * Every test needs a valid program with CSS import, action, and timeline.
+ *
+ * @param options Program configuration options
+ * @returns Valid Eligian program string
+ *
+ * @example Basic usage
+ * ```typescript
+ * const code = minimalProgram();
+ * // Generates:
+ * // styles "./styles.css"
+ * // action testAction() [ selectElement("#element") ]
+ * // timeline "test" in ".container" using raf {
+ * //   at 0s testAction()
+ * // }
+ * ```
+ *
+ * @example Custom action with parameters
+ * ```typescript
+ * const code = minimalProgram({
+ *   actionName: 'fadeIn',
+ *   actionParams: [
+ *     { name: 'selector', type: 'string' },
+ *     { name: 'duration', type: 'number' }
+ *   ],
+ *   actionBody: `
+ *     selectElement(selector)
+ *     animate({opacity: 1}, duration)
+ *   `
+ * });
+ * ```
+ *
+ * @example Video timeline
+ * ```typescript
+ * const code = minimalProgram({
+ *   provider: 'video',
+ *   providerSource: 'demo.mp4',
+ *   timelineBody: 'at 0s..5s testAction()'
+ * });
+ * ```
+ *
+ * @example No CSS import
+ * ```typescript
+ * const code = minimalProgram({
+ *   cssImport: false,
+ *   actionBody: 'log("test")'
+ * });
+ * ```
+ */
+export function minimalProgram(options: ProgramOptions = {}): string {
+  const opts = {
+    cssImport: true,
+    cssPath: './styles.css',
+    actionName: 'testAction',
+    actionParams: [],
+    actionBody: 'selectElement("#element")',
+    timelineName: 'test',
+    containerSelector: '.container',
+    provider: 'raf' as const,
+    providerSource: 'test.mp4',
+    timelineBody: '',
+    ...options,
+  };
+
+  let code = '';
+
+  // CSS import
+  if (opts.cssImport) {
+    code += `styles "${opts.cssPath}"\n\n`;
+  }
+
+  // Action definition
+  const params =
+    opts.actionParams.length > 0
+      ? opts.actionParams.map(p => (p.type ? `${p.name}: ${p.type}` : p.name)).join(', ')
+      : '';
+  code += `action ${opts.actionName}(${params}) [\n`;
+  code += `  ${opts.actionBody}\n`;
+  code += ']\n\n';
+
+  // Timeline declaration
+  code += `timeline "${opts.timelineName}" in "${opts.containerSelector}" using ${opts.provider}`;
+  if (opts.provider === 'video' || opts.provider === 'audio') {
+    code += ` from "${opts.providerSource}"`;
+  }
+  code += ' {\n';
+
+  // Timeline body
+  const body = opts.timelineBody || `at 0s ${opts.actionName}()`;
+  code += `  ${body}\n`;
+  code += '}\n';
+
+  return code;
+}
+
+/**
+ * Build an event action program for event validation testing
+ *
+ * This pattern appears 10+ times across event validation tests.
+ * Provides a minimal valid program with event action definition.
+ *
+ * @param eventName Event name to handle (e.g., "dom-mutation")
+ * @param actionName Action name to define (e.g., "HandleMutation")
+ * @param params Optional parameters with types
+ * @param actionBody Optional custom action body
+ * @returns Valid Eligian program string
+ *
+ * @example
+ * ```typescript
+ * const code = eventActionProgram('dom-mutation', 'HandleMutation');
+ * // Generates:
+ * // styles "./test.css"
+ * // action init() [ selectElement("#app") ]
+ * // on event "dom-mutation" action HandleMutation() [
+ * //   selectElement("#app")
+ * // ]
+ * // timeline "test" in "#app" using raf {
+ * //   at 0s..1s init()
+ * // }
+ * ```
+ *
+ * @example With parameters
+ * ```typescript
+ * const code = eventActionProgram(
+ *   'data-sync',
+ *   'HandleSync',
+ *   [
+ *     { name: 'status', type: 'string' },
+ *     { name: 'count', type: 'number' }
+ *   ]
+ * );
+ * ```
+ */
+export function eventActionProgram(
+  eventName: string,
+  actionName: string,
+  params: Array<{ name: string; type?: string }> = [],
+  actionBody = 'selectElement("#app")'
+): string {
+  const paramStr =
+    params.length > 0 ? params.map(p => (p.type ? `${p.name}: ${p.type}` : p.name)).join(', ') : '';
+
+  return `
+styles "./test.css"
+
+action init() [ selectElement("#app") ]
+
+on event "${eventName}" action ${actionName}(${paramStr}) [
+  ${actionBody}
+]
+
+timeline "test" in "#app" using raf {
+  at 0s..1s init()
+}
+`;
+}
+
+/**
+ * Build an endable action program for timeline testing
+ *
+ * Creates a program with an endable action (start/end blocks).
+ * Useful for timeline event tests.
+ *
+ * @param actionName Endable action name
+ * @param startBody Start block operations
+ * @param endBody End block operations
+ * @param timeRange Time range for timeline event (default: "0s..5s")
+ * @returns Valid Eligian program string
+ *
+ * @example
+ * ```typescript
+ * const code = endableActionProgram(
+ *   'showTitle',
+ *   'selectElement("#title")\naddClass("visible")',
+ *   'removeClass("visible")'
+ * );
+ * ```
+ */
+export function endableActionProgram(
+  actionName: string,
+  startBody: string,
+  endBody: string,
+  timeRange = '0s..5s'
+): string {
+  return `
+styles "./styles.css"
+
+endable action ${actionName} [
+  ${startBody}
+] [
+  ${endBody}
+]
+
+timeline "test" in ".container" using raf {
+  at ${timeRange} ${actionName}()
+}
+`;
+}

@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
+import {
+  createTestContext,
+  minimalProgram,
+  setupCSSRegistry,
+  type TestContext,
+} from '../test-helpers.js';
 
 describe('CSS Selector Validation - Unknown Classes and IDs', () => {
   let ctx: TestContext;
@@ -11,21 +16,14 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should error when selector contains unknown class', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['button'],
+      classes: ['button', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectPrimary() [
-        selectElement(".button.primary")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectPrimary()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectPrimary',
+      actionBody: 'selectElement(".button.primary")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
@@ -37,21 +35,14 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should error when selector contains unknown ID', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: [],
+      classes: ['container'],
       ids: ['header'],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectFooter() [
-        selectElement("#footer")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectFooter()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectFooter',
+      actionBody: 'selectElement("#footer")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
@@ -63,21 +54,14 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should error for multiple unknown classes in selector', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['button'],
+      classes: ['button', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectMultiple() [
-        selectElement(".button.primary.large")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectMultiple()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectMultiple',
+      actionBody: 'selectElement(".button.primary.large")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>
@@ -96,21 +80,14 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should provide suggestions for similar class names', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['primary', 'secondary', 'button'],
+      classes: ['primary', 'secondary', 'button', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectTypo() [
-        selectElement(".primry")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectTypo()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectTypo',
+      actionBody: 'selectElement(".primry")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
@@ -123,21 +100,14 @@ describe('CSS Selector Validation - Unknown Classes and IDs', () => {
 
   test('should validate unknown classes in combinator selectors', async () => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
-      classes: ['parent'],
+      classes: ['parent', 'container'],
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectNested() [
-        selectElement(".parent > .child")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectNested()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectNested',
+      actionBody: 'selectElement(".parent > .child")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(e =>

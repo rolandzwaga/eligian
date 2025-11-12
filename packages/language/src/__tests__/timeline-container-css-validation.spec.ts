@@ -10,36 +10,19 @@
  * Per Constitution Principle II: Integration tests MUST be isolated in separate files.
  */
 
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
-import { beforeEach, describe, expect, test } from 'vitest';
-import { createEligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
-import { DiagnosticSeverity } from './test-helpers.js';
+import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { createTestContext, type TestContext } from './test-helpers.js';
 
 describe('Timeline Container CSS Validation (Integration)', () => {
-  const services = createEligianServices(EmptyFileSystem).Eligian;
-  const parse = parseHelper<Program>(services);
+  let ctx: TestContext;
 
-  // Helper to parse and validate DSL code
-  async function parseAndValidate(code: string) {
-    const document = await parse(code);
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-
-    return {
-      document,
-      program: document.parseResult.value,
-      diagnostics: document.diagnostics ?? [],
-      validationErrors:
-        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [],
-      validationWarnings:
-        document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? [],
-    };
-  }
+  beforeAll(() => {
+    ctx = createTestContext();
+  });
 
   beforeEach(() => {
     // Clear CSS registry before each test (per isolation requirement)
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     cssRegistry.clearAll();
   });
 
@@ -49,7 +32,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
   // Test 1: Timeline container with valid CSS class
   test('should NOT error on timeline container with valid CSS class', async () => {
     // Register CSS metadata manually
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     const cssFileUri = 'file:///__fixtures__/css/test.css';
     cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['app-container']),
@@ -80,7 +63,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     const cssErrors = validationErrors.filter(
       e =>
@@ -93,7 +76,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
   // Test 2: Timeline container with valid CSS ID
   test('should NOT error on timeline container with valid CSS ID', async () => {
     // Register CSS metadata manually
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     const cssFileUri = 'file:///__fixtures__/css/test.css';
     cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(),
@@ -123,7 +106,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     const cssErrors = validationErrors.filter(
       e =>
@@ -136,7 +119,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
   // Test 3: Timeline container with complex selector (multiple classes)
   test('should validate complex timeline container selector with multiple classes', async () => {
     // Register CSS metadata manually
-    const cssRegistry = services.css.CSSRegistry;
+    const cssRegistry = ctx.services.Eligian.css.CSSRegistry;
     const cssFileUri = 'file:///__fixtures__/css/test.css';
     cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(['container', 'primary']),
@@ -174,7 +157,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     const cssErrors = validationErrors.filter(
       e =>
@@ -196,7 +179,7 @@ describe('Timeline Container CSS Validation (Integration)', () => {
       }
     `;
 
-    const { validationErrors } = await parseAndValidate(code);
+    const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should error on both timeline container selector AND operation selector
     const cssErrors = validationErrors.filter(

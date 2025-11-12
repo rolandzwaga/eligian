@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
+import {
+  createTestContext,
+  minimalProgram,
+  setupCSSRegistry,
+  type TestContext,
+} from '../test-helpers.js';
 
 describe('CSS Selector Validation - Valid Selectors', () => {
   let ctx: TestContext;
@@ -15,17 +20,10 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       ids: ['header', 'footer'],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectButton() [
-        selectElement(".button.primary")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectButton()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectButton',
+      actionBody: 'selectElement(".button.primary")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
@@ -40,6 +38,7 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       ids: ['header', 'nav'],
     });
 
+    // Keep original inline code - complex ID validation scenario
     const code = `
       styles "./styles.css"
 
@@ -68,17 +67,10 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectHoveredButton() [
-        selectElement(".button:hover:active")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectHoveredButton()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectHoveredButton',
+      actionBody: 'selectElement(".button:hover:active")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
@@ -93,17 +85,10 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectNested() [
-        selectElement(".parent > .child + .sibling")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectNested()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectNested',
+      actionBody: 'selectElement(".parent > .child + .sibling")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
@@ -113,15 +98,11 @@ describe('CSS Selector Validation - Valid Selectors', () => {
   });
 
   test('should error when no CSS files imported (all classes/IDs are invalid)', async () => {
-    const code = `
-      action selectAnything() [
-        selectElement(".any-class-name")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectAnything()
-      }
-    `;
+    const code = minimalProgram({
+      cssImport: false,
+      actionName: 'selectAnything',
+      actionBody: 'selectElement(".any-class-name")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(
@@ -137,17 +118,10 @@ describe('CSS Selector Validation - Valid Selectors', () => {
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action selectInput() [
-        selectElement(".input[type='text'][required]")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s..1s selectInput()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'selectInput',
+      actionBody: 'selectElement(".input[type=\'text\'][required]")',
+    });
 
     const { diagnostics: validationErrors } = await ctx.parseAndValidate(code);
     const selectorErrors = validationErrors.filter(

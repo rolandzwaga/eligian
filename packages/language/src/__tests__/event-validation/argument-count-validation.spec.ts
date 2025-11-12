@@ -9,6 +9,7 @@ import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import {
   createTestContext,
   DiagnosticSeverity,
+  eventActionProgram,
   setupCSSRegistry,
   type TestContext,
 } from '../test-helpers.js';
@@ -29,19 +30,11 @@ describe('Argument Count Validation (US2)', () => {
 
   // T022: Event "before-request-video-url" (3 args) with 3 params produces no warnings
   test('should accept event with matching parameter count (3 args, 3 params)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "before-request-video-url" action HandleVideo(index, position, isHistory) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('before-request-video-url', 'HandleVideo', [
+      { name: 'index' },
+      { name: 'position' },
+      { name: 'isHistory' },
+    ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -52,19 +45,7 @@ describe('Argument Count Validation (US2)', () => {
 
   // T023: Event "timeline-complete" (0 args) with 0 params produces no warnings
   test('should accept event with zero args and zero params', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "timeline-complete" action HandleComplete() [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('timeline-complete', 'HandleComplete');
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -75,19 +56,7 @@ describe('Argument Count Validation (US2)', () => {
 
   // T024: Event "dom-mutation" (1 arg: payload) with 1 param produces no warnings
   test('should accept event with matching parameter count (1 arg, 1 param)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "dom-mutation" action HandleMutation(payload) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('dom-mutation', 'HandleMutation', [{ name: 'payload' }]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -98,19 +67,10 @@ describe('Argument Count Validation (US2)', () => {
 
   // T025: Event "before-request-video-url" (3 args) with 2 params produces warning
   test('should warn when too few parameters (3 args, 2 params)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "before-request-video-url" action HandleVideo(index, position) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('before-request-video-url', 'HandleVideo', [
+      { name: 'index' },
+      { name: 'position' },
+    ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -128,19 +88,7 @@ describe('Argument Count Validation (US2)', () => {
 
   // T026: Event "before-request-video-url" (3 args) with 1 param produces warning
   test('should warn when too few parameters (3 args, 1 param)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "before-request-video-url" action HandleVideo(index) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('before-request-video-url', 'HandleVideo', [{ name: 'index' }]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -157,19 +105,9 @@ describe('Argument Count Validation (US2)', () => {
 
   // T027: Event "timeline-complete" (0 args) with 1 param produces warning
   test('should warn when too many parameters (0 args, 1 param)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "timeline-complete" action HandleComplete(extraParam) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('timeline-complete', 'HandleComplete', [
+      { name: 'extraParam' },
+    ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -188,19 +126,11 @@ describe('Argument Count Validation (US2)', () => {
 
   // T028: Event "timeline-complete" (0 args) with 3 params produces warning
   test('should warn when too many parameters (0 args, 3 params)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "timeline-complete" action HandleComplete(a, b, c) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('timeline-complete', 'HandleComplete', [
+      { name: 'a' },
+      { name: 'b' },
+      { name: 'c' },
+    ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
@@ -217,19 +147,11 @@ describe('Argument Count Validation (US2)', () => {
 
   // T029: Unknown event name skips argument count validation (handled by US1)
   test('should skip argument count validation for unknown events', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "unknown-event-name" action HandleUnknown(a, b, c) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('unknown-event-name', 'HandleUnknown', [
+      { name: 'a' },
+      { name: 'b' },
+      { name: 'c' },
+    ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
@@ -248,19 +170,11 @@ describe('Argument Count Validation (US2)', () => {
 
   // T030: Parameter names can be arbitrary (validation only checks count, not names)
   test('should allow arbitrary parameter names (only count matters)', async () => {
-    const code = `
-      styles "./test.css"
-
-      action init() [ selectElement("#app") ]
-
-      on event "before-request-video-url" action HandleVideo(foo, bar, baz) [
-        selectElement("#app")
-      ]
-
-      timeline "test" in "#app" using raf {
-        at 0s..1s init()
-      }
-    `;
+    const code = eventActionProgram('before-request-video-url', 'HandleVideo', [
+      { name: 'foo' },
+      { name: 'bar' },
+      { name: 'baz' },
+    ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
     const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);

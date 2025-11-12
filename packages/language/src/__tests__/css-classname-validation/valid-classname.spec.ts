@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
+import {
+  createTestContext,
+  minimalProgram,
+  setupCSSRegistry,
+  type TestContext,
+} from '../test-helpers.js';
 
 describe('CSS className validation - Valid className parameters', () => {
   let ctx: TestContext;
@@ -16,17 +21,10 @@ describe('CSS className validation - Valid className parameters', () => {
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action addButton() [
-        addClass("button")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s addButton()
-      }
-    `;
+    const code = minimalProgram({
+      actionName: 'addButton',
+      actionBody: 'addClass("button")',
+    });
     const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     // Should have no className-related errors
@@ -38,15 +36,10 @@ describe('CSS className validation - Valid className parameters', () => {
 
   test('should error when no CSS files are imported (all classes are invalid)', async () => {
     // Without CSS imports, ALL CSS classes/IDs are invalid (no external CSS in Eligian)
-    const code = `
-      action testAction() [
-        addClass("any-class-name")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s testAction()
-      }
-    `;
+    const code = minimalProgram({
+      cssImport: false,
+      actionBody: 'addClass("any-class-name")',
+    });
     const { errors: validationErrors } = await ctx.parseAndValidate(code);
 
     // No CSS imports = all classes invalid = errors expected

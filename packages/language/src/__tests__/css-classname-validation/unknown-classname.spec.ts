@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
+import {
+  createTestContext,
+  minimalProgram,
+  setupCSSRegistry,
+  type TestContext,
+} from '../test-helpers.js';
 
 describe('CSS className validation - Unknown className with suggestions', () => {
   let ctx: TestContext;
@@ -18,17 +23,9 @@ describe('CSS className validation - Unknown className with suggestions', () => 
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action testAction() [
-        addClass("primry")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s testAction()
-      }
-    `;
+    const code = minimalProgram({
+      actionBody: 'addClass("primry")',
+    });
     const { errors: validationErrors } = await ctx.parseAndValidate(code, cssFileUri);
 
     const classNameErrors = validationErrors.filter(
@@ -45,17 +42,9 @@ describe('CSS className validation - Unknown className with suggestions', () => 
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action testAction() [
-        addClass("buton")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s testAction()
-      }
-    `;
+    const code = minimalProgram({
+      actionBody: 'addClass("buton")',
+    });
     const { errors: validationErrors } = await ctx.parseAndValidate(code, cssFileUri);
 
     const classNameErrors = validationErrors.filter(e => e.message.includes('Unknown CSS class'));
@@ -74,17 +63,9 @@ describe('CSS className validation - Unknown className with suggestions', () => 
       ids: [],
     });
 
-    const code = `
-      styles "./styles.css"
-
-      action testAction() [
-        addClass("xyz-nonexistent")
-      ]
-
-      timeline "test" in ".container" using raf {
-        at 0s testAction()
-      }
-    `;
+    const code = minimalProgram({
+      actionBody: 'addClass("xyz-nonexistent")',
+    });
     const { errors: validationErrors } = await ctx.parseAndValidate(code, cssFileUri);
 
     const classNameErrors = validationErrors.filter(e => e.message.includes('Unknown CSS class'));
