@@ -81,12 +81,29 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Get document and position from context
       const document = context.document;
 
+      // DEBUG: Log ALL completion requests to see if we're even being called
+      const text = document.textDocument.getText();
+      const lineText = text.split('\n')[document.textDocument.positionAt(context.offset).line];
+      console.log('[COMPLETION] Request at:', {
+        line: lineText.trim(),
+        offset: context.offset,
+        tokenOffset: context.tokenOffset,
+        nextType: next.type,
+        nextProperty: next.property
+      });
+
       // NOTE: JSDoc completion is now handled in getCompletion() above
 
       // Use tokenOffset to detect context, as this points to the start of the token being completed
       // For @@loop<cursor>, tokenOffset points to 'l' in 'loop', which is inside SystemPropertyReference
       const tokenPosition = document.textDocument.positionAt(context.tokenOffset);
       const cursorContext = detectContext(document, tokenPosition);
+
+      console.log('[COMPLETION] Context detected:', {
+        isInEventNameString: cursorContext.isInEventNameString,
+        eventAction: !!cursorContext.eventAction,
+        isInsideAction: cursorContext.isInsideAction
+      });
 
       // Check if we're completing the 'name' property of SystemPropertyReference
       // This handles @@<cursor> and @@loop<cursor> cases
@@ -220,14 +237,150 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       }
 
       // T044: Check if we're completing an event name in EventActionDefinition
+      // FEATURE 030 - Event Action Code Completion
+      //
+      // Scenario 2: Inside event name string (CHECK THIS FIRST - more specific)
       // Trigger: on event "|<cursor>" or on event "cl|<cursor>"
-      if (next.type === 'EventActionDefinition' && next.property === 'eventName') {
+      //
+      // Use context detection instead of relying on next.property, since Langium
+      // may not consistently set next.property='eventName' when cursor is inside
+      // an empty string or after deleting text.
+      if (cursorContext.isInEventNameString) {
+        console.log(
+          '[EVENT COMPLETION DEBUG] Detected cursor in event name string, providing completions'
+        );
         const eventNameCompletions = getEventNameCompletions(context);
-        for (const item of eventNameCompletions) {
-          acceptor(context, item);
+        console.log('[EVENT COMPLETION DEBUG] Generated', eventNameCompletions.length, 'completions');
+
+        // Get the EventActionDefinition to replace the entire line
+        const eventAction = cursorContext.eventAction;
+        console.log('[EVENT COMPLETION DEBUG] EventAction:', {
+          exists: !!eventAction,
+          hasCstNode: !!eventAction?.$cstNode,
+          eventName: eventAction?.eventName
+        });
+
+        if (!eventAction || !eventAction.$cstNode) {
+          console.log('[EVENT COMPLETION DEBUG] ERROR: No EventActionDefinition CST node - cannot generate skeleton');
+          // Fallback: provide just event names without skeleton generation
+          const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
+          const start = document.textDocument.positionAt(stringStartOffset);
+          const end = context.position;
+          const fallbackRange = { start, end };
+
+          for (const item of eventNameCompletions) {
+            const simpleItem: CompletionItem = {
+              label: item.label,
+              kind: item.kind,
+              detail: 'Event name only (no skeleton)',
+              documentation: item.documentation,
+              sortText: item.sortText,
+              textEdit: {
+                range: fallbackRange,
+                newText: item.label
+              }
+            };
+            acceptor(context, simpleItem);
+          }
+          return;
         }
-        // Return early - we've provided all event name completions
-        return;
+
+        // Calculate range INSIDE the string (for VS Code to show completions)
+        const text = document.textDocument.getText();
+        const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
+        const stringStart = document.textDocument.positionAt(stringStartOffset);
+        const stringEnd = context.position;
+        const stringRange = { start: stringStart, end: stringEnd };
+
+        // Calculate range for entire EventActionDefinition (to replace with skeleton)
+        const actionStart = eventAction.$cstNode.offset;
+        const actionEnd = eventAction.$cstNode.end;
+        const actionStartPos = document.textDocument.positionAt(actionStart);
+        const actionEndPos = document.textDocument.positionAt(actionEnd);
+
+        console.log('[EVENT COMPLETION DEBUG] Ranges:', {
+          stringRange,
+          stringText: text.substring(stringStartOffset, context.offset),
+          actionRange: { start: actionStartPos, end: actionEndPos },
+          actionText: text.substring(actionStart, actionEnd)
+        });
+
+        // Add completions that replace entire EventActionDefinition with skeleton
+        // Use stringRange for filtering but replace the entire action
+        for (const item of eventNameCompletions) {
+          const fullSkeleton = item.insertText || '';
+
+          const completionItem: CompletionItem = {
+            label: item.label,
+            kind: item.kind,
+            detail: item.detail,
+            documentation: item.documentation,
+            sortText: item.sortText,
+            filterText: item.label, // Match against event name only
+            insertTextFormat: item.insertTextFormat, // Snippet format
+            // Use two separate edits: delete action, insert skeleton
+            additionalTextEdits: [
+              {
+                // Delete the entire EventActionDefinition
+                range: { start: actionStartPos, end: actionEndPos },
+                newText: ''
+              },
+              {
+                // Insert skeleton at action start (without snippet - additionalTextEdits don't support it)
+                range: { start: actionStartPos, end: actionStartPos },
+                newText: fullSkeleton.replace(/\$\d+/g, '') // Strip snippet placeholders
+              }
+            ],
+            textEdit: {
+              // Delete string content - let additionalTextEdits handle everything
+              range: stringRange,
+              newText: ''
+            }
+          };
+          console.log('[EVENT COMPLETION DEBUG] Adding completion:', item.label);
+          acceptor(context, completionItem);
+        }
+
+        // Call super with a NO-OP acceptor to trigger Langium's completion finalization
+        // without adding any default completions
+        console.log('[EVENT COMPLETION DEBUG] Calling super to finalize completions');
+        const noOpAcceptor = () => {
+          /* Block all default completions */
+        };
+        return super.completionFor(context, next, noOpAcceptor);
+      }
+
+      // Scenario 1: After typing "on event" (without quotes)
+      // Trigger: on event |<cursor>
+      // Shows event names and inserts them enclosed in quotes: "event-name"
+      if (cursorContext.isAfterEventKeyword) {
+        console.log(
+          '[EVENT COMPLETION DEBUG] Detected cursor after event keyword, providing skeleton completions'
+        );
+        const eventNameCompletions = getEventNameCompletions(context);
+        console.log('[EVENT COMPLETION DEBUG] Generated', eventNameCompletions.length, 'skeleton completions');
+
+        // Strip "on event " prefix from skeleton since user already typed it
+        for (const item of eventNameCompletions) {
+          const fullSkeleton = item.insertText || '';
+          // Remove "on event " prefix (9 characters)
+          const skeletonWithoutPrefix = fullSkeleton.replace(/^on event /, '');
+
+          const modifiedItem: CompletionItem = {
+            ...item,
+            insertText: skeletonWithoutPrefix,
+            insertTextFormat: item.insertTextFormat, // Preserve snippet format for $0 placeholder
+          };
+
+          console.log('[EVENT COMPLETION DEBUG] Adding skeleton:', item.label, 'without "on event " prefix');
+          acceptor(context, modifiedItem);
+        }
+
+        // Call super with a NO-OP acceptor to trigger Langium's completion finalization
+        const noOpAcceptor = () => {
+          /* Block all default completions */
+        };
+        return super.completionFor(context, next, noOpAcceptor);
       }
 
       // T044: Check if we're completing an event topic in EventActionDefinition
@@ -345,5 +498,33 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     }
 
     return item;
+  }
+
+  /**
+   * Override fillCompletionItem to add debugging
+   */
+  protected override fillCompletionItem(context: CompletionContext, item: any): CompletionItem | undefined {
+    console.log('[FILL COMPLETION DEBUG] fillCompletionItem called with:', {
+      label: item.label,
+      hasTextEdit: !!item.textEdit,
+      insertText: item.insertText
+    });
+    const result = super.fillCompletionItem(context, item);
+    console.log('[FILL COMPLETION DEBUG] fillCompletionItem result:', result ? 'SUCCESS' : 'FILTERED OUT');
+    return result;
+  }
+
+  /**
+   * Override getCompletion to log final result
+   */
+  override async getCompletion(document: any, params: any, cancelToken?: any): Promise<any> {
+    console.log('[GET COMPLETION DEBUG] getCompletion called at position:', params.position);
+    const result = await super.getCompletion(document, params, cancelToken);
+    console.log('[GET COMPLETION DEBUG] getCompletion returning:', {
+      itemCount: result?.items?.length ?? 0,
+      isIncomplete: result?.isIncomplete,
+      firstItem: result?.items?.[0]?.label
+    });
+    return result;
   }
 }

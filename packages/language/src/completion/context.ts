@@ -9,9 +9,11 @@ import { AstUtils, type CstNode, CstUtils, type LangiumDocument } from 'langium'
 import type { Position } from 'vscode-languageserver-protocol';
 import {
   type ActionDefinition,
+  type EventActionDefinition,
   type ForStatement,
   isActionDefinition,
   isEndableActionDefinition,
+  isEventActionDefinition,
   isForStatement,
   isInlineEndableAction,
   isOperationCall,
@@ -62,6 +64,15 @@ export interface CursorContext {
 
   /** The operation call containing the cursor (if any) */
   operationCall?: OperationCall;
+
+  /** The event action definition containing the cursor (if any) */
+  eventAction?: EventActionDefinition;
+
+  /** True if cursor is in event name string of EventActionDefinition */
+  isInEventNameString: boolean;
+
+  /** True if cursor is after 'on event' keyword (before the string) */
+  isAfterEventKeyword: boolean;
 }
 
 /**
@@ -108,6 +119,8 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
     isInsideTimeline: false,
     isInsideEvent: false,
     isAfterVariablePrefix: false,
+    isInEventNameString: false,
+    isAfterEventKeyword: false,
     cstNode,
   };
 
@@ -116,12 +129,13 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
     return context;
   }
 
-  // Detect if inside an action (regular, endable, or inline)
+  // Detect if inside an action (regular, endable, inline, or event action)
   const action = AstUtils.getContainerOfType(astNode, isActionDefinition);
   const endableAction = AstUtils.getContainerOfType(astNode, isEndableActionDefinition);
   const inlineAction = AstUtils.getContainerOfType(astNode, isInlineEndableAction);
+  const eventAction = AstUtils.getContainerOfType(astNode, isEventActionDefinition);
 
-  if (action || endableAction || inlineAction) {
+  if (action || endableAction || inlineAction || eventAction) {
     context.isInsideAction = true;
     // Only store the action if it's a named action (not inline)
     if (action || endableAction) {
@@ -159,6 +173,27 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   // Detect if cursor is preceded by @@ or inside SystemPropertyReference
   context.isAfterVariablePrefix = detectVariablePrefix(document, offset, astNode);
 
+  // Detect event action context (already detected above, just store additional context)
+  if (eventAction) {
+    context.eventAction = eventAction;
+    // Check if cursor is in the eventName string (between quotes after "on event")
+    context.isInEventNameString = detectEventNameString(document, offset, cstNode, eventAction);
+
+    // Check if cursor is after "on event" keyword (before the string)
+    context.isAfterEventKeyword = detectAfterEventKeyword(document, offset, eventAction);
+
+    // DEBUG: Log event name detection details
+    console.log('[CONTEXT] Event action detection:', {
+      eventName: eventAction.eventName,
+      offset,
+      cstNodeText: cstNode?.text,
+      cstNodeOffset: cstNode?.offset,
+      cstNodeLength: cstNode?.length,
+      isInEventNameString: context.isInEventNameString,
+      isAfterEventKeyword: context.isAfterEventKeyword
+    });
+  }
+
   return context;
 }
 
@@ -191,4 +226,97 @@ function detectVariablePrefix(document: LangiumDocument, offset: number, astNode
 
   const prefix = text.substring(offset - 2, offset);
   return prefix === '@@';
+}
+
+/**
+ * Detect if cursor is in event name string of EventActionDefinition
+ *
+ * This function checks if the cursor is positioned in the string literal
+ * that contains the event name (e.g., on event "|<cursor>" or on event "cl|<cursor>").
+ *
+ * Used to trigger event name completions.
+ *
+ * @param document - The Langium document
+ * @param offset - The cursor offset
+ * @param cstNode - The CST node at the cursor position
+ * @param eventAction - The EventActionDefinition containing the cursor
+ * @returns True if cursor is in a position to complete event names
+ */
+function detectEventNameString(
+  document: LangiumDocument,
+  offset: number,
+  cstNode: CstNode | undefined,
+  eventAction: EventActionDefinition
+): boolean {
+  // If no CST node, can't determine position
+  if (!cstNode) {
+    return false;
+  }
+
+  // Get the text content of the current CST node
+  const nodeText = cstNode.text;
+
+  // Check if we're in a STRING token
+  // The CST node should contain quotes
+  if (!nodeText.includes('"') && !nodeText.includes("'")) {
+    return false;
+  }
+
+  // Check if the CST node's range contains the cursor offset
+  const nodeStart = cstNode.offset;
+  const nodeEnd = cstNode.offset + cstNode.length;
+
+  if (offset < nodeStart || offset > nodeEnd) {
+    return false;
+  }
+
+  // Simple approach: Check if we're in a STRING token that comes BEFORE the "topic" keyword
+  // or BEFORE the "action" keyword (whichever comes first).
+  // This is the eventName string.
+  const text = document.textDocument.getText();
+  const lineStart = text.lastIndexOf('\n', offset) + 1;
+  const lineEnd = text.indexOf('\n', offset);
+  const lineText = text.substring(lineStart, lineEnd === -1 ? undefined : lineEnd);
+
+  // Find positions of keywords relative to cursor
+  const cursorPosInLine = offset - lineStart;
+  const topicPos = lineText.indexOf('topic');
+  const actionPos = lineText.indexOf('action');
+
+  // If cursor is before "topic" or "action", and we're in a STRING, we're in eventName
+  const beforeTopic = topicPos === -1 || cursorPosInLine < topicPos;
+  const beforeAction = actionPos === -1 || cursorPosInLine < actionPos;
+
+  return beforeTopic && beforeAction;
+}
+
+/**
+ * Detect if cursor is after "on event" keyword (before the string)
+ *
+ * This handles the case: `on event |` (cursor after "event" keyword, before string)
+ */
+function detectAfterEventKeyword(
+  document: LangiumDocument,
+  offset: number,
+  eventAction: EventActionDefinition
+): boolean {
+  // If eventName is already set, we're not waiting for it
+  if (eventAction.eventName) {
+    return false;
+  }
+
+  // Check the text before cursor to see if it ends with "on event"
+  const text = document.textDocument.getText();
+  const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
+  const textBeforeCursor = text.substring(lineStart, offset).trim();
+
+  console.log('[DETECT AFTER EVENT] offset:', offset);
+  console.log('[DETECT AFTER EVENT] lineStart:', lineStart);
+  console.log('[DETECT AFTER EVENT] textBeforeCursor:', JSON.stringify(textBeforeCursor));
+  console.log('[DETECT AFTER EVENT] char at offset-1:', JSON.stringify(text.charAt(offset - 1)));
+  console.log('[DETECT AFTER EVENT] char at offset:', JSON.stringify(text.charAt(offset)));
+  console.log('[DETECT AFTER EVENT] regex test:', /\bon\s+event\s*$/.test(textBeforeCursor));
+
+  // Check if text ends with "on event" (possibly with whitespace)
+  return /\bon\s+event\s*$/.test(textBeforeCursor);
 }

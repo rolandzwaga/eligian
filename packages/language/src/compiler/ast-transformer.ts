@@ -2024,6 +2024,11 @@ export function createParameterContext(params: string[]): EventActionContext {
 export function transformEventAction(
   eventAction: EventActionDefinition
 ): IEventActionConfiguration {
+  // Guard: eventName is required for transformation (grammar allows optional for completion)
+  if (!eventAction.eventName) {
+    throw new Error(`Event action "${eventAction.name}" is missing event name`);
+  }
+
   // T021: Create parameter context for this event action
   const parameterNames = eventAction.parameters.map(p => p.name);
   const parameterContext = createParameterContext(parameterNames);
@@ -2058,7 +2063,7 @@ export function transformEventAction(
   return {
     id: crypto.randomUUID(), // UUID v4 per Constitution Principle VII
     name: eventAction.name,
-    eventName: eventAction.eventName,
+    eventName: eventAction.eventName, // Safe: guarded above
     eventTopic: eventAction.eventTopic, // undefined if not present
     startOperations,
     // Note: No endOperations property - event actions don't have end operations

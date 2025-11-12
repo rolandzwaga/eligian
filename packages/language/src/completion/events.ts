@@ -1,70 +1,15 @@
 /**
- * Event Name Completions (Feature 028 - T044)
+ * Event Name Completions (Feature 028 - T044, Feature 030)
  *
  * Provides autocomplete suggestions for Eligius event names when typing `on event "`.
- * Suggests common built-in Eligius events that can be handled by event actions.
+ * Generates complete event action skeletons with camelCase naming and typed parameters.
  */
 
 import type { CompletionContext } from 'langium/lsp';
 import type { CompletionItem } from 'vscode-languageserver';
 import { CompletionItemKind } from 'vscode-languageserver';
-
-/**
- * Common Eligius event names that can be handled by event actions
- *
- * These are the standard events emitted by the Eligius timeline engine.
- * Event actions can listen for these events and execute operations in response.
- */
-const ELIGIUS_EVENT_NAMES: Array<{ name: string; description: string }> = [
-  {
-    name: 'timeline-play',
-    description: 'Fired when timeline starts playing',
-  },
-  {
-    name: 'timeline-pause',
-    description: 'Fired when timeline is paused',
-  },
-  {
-    name: 'timeline-complete',
-    description: 'Fired when timeline completes playback',
-  },
-  {
-    name: 'timeline-stop',
-    description: 'Fired when timeline is stopped',
-  },
-  {
-    name: 'timeline-seek',
-    description: 'Fired when timeline position changes',
-  },
-  {
-    name: 'language-change',
-    description: 'Fired when application language changes',
-  },
-  {
-    name: 'user-login',
-    description: 'Fired when user logs in',
-  },
-  {
-    name: 'user-logout',
-    description: 'Fired when user logs out',
-  },
-  {
-    name: 'data-sync',
-    description: 'Fired when data synchronization completes',
-  },
-  {
-    name: 'click',
-    description: 'Custom click event (emitted by application)',
-  },
-  {
-    name: 'hover',
-    description: 'Custom hover event (emitted by application)',
-  },
-  {
-    name: 'submit',
-    description: 'Custom submit event (emitted by application)',
-  },
-];
+import { createSkeletonCompletionItem } from './event-action-skeleton.js';
+import { TIMELINE_EVENTS } from './metadata/timeline-events.generated.js';
 
 /**
  * Common event topic names for namespacing events
@@ -100,23 +45,25 @@ const COMMON_EVENT_TOPICS: Array<{ name: string; description: string }> = [
 ];
 
 /**
- * Get event name completions for "on event" context
+ * Get event name completions for "on event" context (Feature 030)
  *
- * Returns completion items for common Eligius event names with documentation.
- * These completions appear when the user types `on event "`.
+ * Returns completion items that generate complete event action skeletons.
+ * Uses actual Eligius event metadata (43 events) from timeline-events.generated.ts.
+ * Each completion item inserts a complete action definition with:
+ * - Event name in string literal
+ * - camelCase action name with "handle" prefix
+ * - Typed parameters from event metadata
+ * - Empty action body with cursor positioned inside
+ *
+ * Examples:
+ * - "language-change" → on event "language-change" action handleLanguageChange(language: TLanguageCode) [ ... ]
+ * - "timeline-play" → on event "timeline-play" action handleTimelinePlay() [ ... ]
  *
  * @param context - Langium completion context
- * @returns Array of completion items for event names
+ * @returns Array of completion items with skeleton generation
  */
 export function getEventNameCompletions(_context: CompletionContext): CompletionItem[] {
-  return ELIGIUS_EVENT_NAMES.map(event => ({
-    label: event.name,
-    kind: CompletionItemKind.Event,
-    detail: 'Eligius event',
-    documentation: event.description,
-    insertText: event.name,
-    sortText: `0_${event.name}`, // Sort by name, with 0_ prefix to prioritize
-  }));
+  return TIMELINE_EVENTS.map(event => createSkeletonCompletionItem(event));
 }
 
 /**
