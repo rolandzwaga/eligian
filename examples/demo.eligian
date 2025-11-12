@@ -245,16 +245,23 @@ timeline "Eligian Demo" in "#container" using raf {
 }
 
 // ============================================================================
-// EVENT ACTIONS - Runtime Event Handling (Feature 028)
+// EVENT ACTIONS - Runtime Event Handling (Feature 028 + 030)
 // ============================================================================
 // NOTE: Event actions are defined alongside custom actions but execute
 // independently when events fire at runtime.
+//
+// FEATURE 030: Event action code completion generates skeletons with camelCase naming.
+// Type "on event " and press Ctrl+Space to see all 43 Eligius events.
+// Selecting an event generates a complete action skeleton with handleEventName naming.
 
 /**
  * Handle language change events
  * @param languageCode The new language code (e.g., "en", "fr", "de")
+ *
+ * Example: Type "on event " + Ctrl+Space, select "language-change"
+ * Auto-generates: on event "language-change" action handleLanguageChange(languageCode: TLanguageCode) [ ... ]
  */
-on event "language-change" action HandleLanguageChange(languageCode: string) [
+on event "language-change" action handleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
@@ -263,38 +270,38 @@ on event "language-change" action HandleLanguageChange(languageCode: string) [
 
 /**
  * Handle timeline completion (zero-parameter event action)
+ *
+ * Example: Type "on event " + Ctrl+Space, select "timeline-complete"
+ * Auto-generates: on event "timeline-complete" action handleTimelineComplete() [ ... ]
  */
-on event "timeline-complete" action HandleTimelineComplete() [
+on event "timeline-complete" action handleTimelineComplete() [
   selectElement("#status")
   setElementContent("Timeline complete!")
   addClass("complete")
 ]
 
 /**
- * Handle user login with multiple parameters
- * @param userId Unique user identifier
- * @param userName Display name
- * @param userRole User role (admin, user, guest)
+ * Handle before video URL request with multiple parameters
+ * @param index Video URL index
+ * @param requestedVideoPosition Requested video position
+ * @param isHistoryRequest Whether this is a history navigation request
+ *
+ * Example: Type "on event " + Ctrl+Space, select "before-request-video-url"
+ * Auto-generates: on event "before-request-video-url" action handleBeforeRequestVideoUrl(index: number, requestedVideoPosition: number, isHistoryRequest: boolean) [ ... ]
  */
-on event "user-login" action HandleUserLogin(userId: string, userName: string, userRole: string) [
-  selectElement("#user-id")
-  setElementContent(userId)
-  selectElement("#user-name")
-  setElementContent(userName)
-  selectElement("#user-role")
-  setElementContent(userRole)
-  selectElement("#user-panel")
-  addClass(userRole)
-  selectElement("#welcome")
-  setElementContent("Welcome!")
-  addClass("visible")
+on event "before-request-video-url" action handleBeforeRequestVideoUrl(index: number, requestedVideoPosition: number, isHistoryRequest: boolean) [
+  log("Requesting video URL at index: " + index)
+  log("Position: " + requestedVideoPosition)
+  if (isHistoryRequest) {
+    log("History navigation detected")
+  }
 ]
 
 /**
  * Handle navigation clicks
  * Topic: "navigation" - Demonstrates topic namespacing
  */
-on event "click" topic "navigation" action HandleNavClick(targetId: string) [
+on event "click" topic "navigation" action handleNavClick(targetId: string) [
   selectAll(".nav-item")
   removeClass("active")
   selectElement(targetId)

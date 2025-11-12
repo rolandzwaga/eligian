@@ -205,7 +205,7 @@ ActionImport:
  * - At least one operation required (no empty bodies)
  */
 EventActionDefinition:
-    'on' 'event' eventName=STRING
+    'on' 'event' eventName=STRING?
     ('topic' eventTopic=STRING)?
     'action' name=ID
     '(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')'

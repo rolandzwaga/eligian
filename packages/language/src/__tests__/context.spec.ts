@@ -358,6 +358,113 @@ describe('Context Detection', () => {
       expect(context.operationCall).toBeDefined();
     });
   });
+
+  describe('Event Action Detection', () => {
+    describe('isAfterEventKeyword', () => {
+      it('should detect cursor after "on event" keywords', async () => {
+        const text = s`
+          on event <|>
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isAfterEventKeyword).toBe(true);
+        expect(context.eventAction).toBeDefined();
+      });
+
+      it('should detect cursor after "on event" with extra whitespace', async () => {
+        const text = s`
+          on event    <|>
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isAfterEventKeyword).toBe(true);
+      });
+
+      it('should NOT detect when eventName is already set', async () => {
+        const text = s`
+          on event "timeline-play" <|>
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isAfterEventKeyword).toBe(false);
+      });
+
+      it('should NOT detect cursor before "event" keyword', async () => {
+        const text = s`
+          on <|>event
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isAfterEventKeyword).toBe(false);
+      });
+    });
+
+    describe('isInEventNameString', () => {
+      it('should detect cursor inside empty event name string', async () => {
+        const text = s`
+          on event "<|>"
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isInEventNameString).toBe(true);
+        expect(context.eventAction).toBeDefined();
+      });
+
+      it('should detect cursor inside partial event name string', async () => {
+        const text = s`
+          on event "time<|>"
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isInEventNameString).toBe(true);
+      });
+
+      it('should detect cursor at start of event name string', async () => {
+        const text = s`
+          on event "<|>timeline-play"
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isInEventNameString).toBe(true);
+      });
+
+      it('should NOT detect cursor after "topic" keyword', async () => {
+        const text = s`
+          on event "timeline-play" topic "<|>"
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isInEventNameString).toBe(false);
+      });
+
+      it('should NOT detect cursor after "action" keyword', async () => {
+        const text = s`
+          on event "timeline-play" action <|>
+        `;
+
+        const { document, position } = await parseWithCursor(text);
+        const context = detectContext(document, position);
+
+        expect(context.isInEventNameString).toBe(false);
+      });
+    });
+  });
 });
 
 /**

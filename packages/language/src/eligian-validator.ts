@@ -2337,6 +2337,11 @@ export class EligianValidator {
       if (stmt.$type === 'EventActionDefinition') {
         const eventAction = stmt as EventActionDefinition;
 
+        // Skip incomplete event actions (eventName optional for completion)
+        if (!eventAction.eventName) {
+          continue;
+        }
+
         // Create signature: "eventName" or "eventName|topic"
         const signature = eventAction.eventTopic
           ? `${eventAction.eventName}|${eventAction.eventTopic}`
