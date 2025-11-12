@@ -181,17 +181,6 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
 
     // Check if cursor is after "on event" keyword (before the string)
     context.isAfterEventKeyword = detectAfterEventKeyword(document, offset, eventAction);
-
-    // DEBUG: Log event name detection details
-    console.log('[CONTEXT] Event action detection:', {
-      eventName: eventAction.eventName,
-      offset,
-      cstNodeText: cstNode?.text,
-      cstNodeOffset: cstNode?.offset,
-      cstNodeLength: cstNode?.length,
-      isInEventNameString: context.isInEventNameString,
-      isAfterEventKeyword: context.isAfterEventKeyword
-    });
   }
 
   return context;
@@ -246,7 +235,7 @@ function detectEventNameString(
   document: LangiumDocument,
   offset: number,
   cstNode: CstNode | undefined,
-  eventAction: EventActionDefinition
+  _eventAction: EventActionDefinition
 ): boolean {
   // If no CST node, can't determine position
   if (!cstNode) {
@@ -309,13 +298,6 @@ function detectAfterEventKeyword(
   const text = document.textDocument.getText();
   const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
   const textBeforeCursor = text.substring(lineStart, offset).trim();
-
-  console.log('[DETECT AFTER EVENT] offset:', offset);
-  console.log('[DETECT AFTER EVENT] lineStart:', lineStart);
-  console.log('[DETECT AFTER EVENT] textBeforeCursor:', JSON.stringify(textBeforeCursor));
-  console.log('[DETECT AFTER EVENT] char at offset-1:', JSON.stringify(text.charAt(offset - 1)));
-  console.log('[DETECT AFTER EVENT] char at offset:', JSON.stringify(text.charAt(offset)));
-  console.log('[DETECT AFTER EVENT] regex test:', /\bon\s+event\s*$/.test(textBeforeCursor));
 
   // Check if text ends with "on event" (possibly with whitespace)
   return /\bon\s+event\s*$/.test(textBeforeCursor);

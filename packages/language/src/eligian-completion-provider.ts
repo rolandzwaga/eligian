@@ -89,7 +89,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         offset: context.offset,
         tokenOffset: context.tokenOffset,
         nextType: next.type,
-        nextProperty: next.property
+        nextProperty: next.property,
       });
 
       // NOTE: JSDoc completion is now handled in getCompletion() above
@@ -102,7 +102,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       console.log('[COMPLETION] Context detected:', {
         isInEventNameString: cursorContext.isInEventNameString,
         eventAction: !!cursorContext.eventAction,
-        isInsideAction: cursorContext.isInsideAction
+        isInsideAction: cursorContext.isInsideAction,
       });
 
       // Check if we're completing the 'name' property of SystemPropertyReference
@@ -246,22 +246,12 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // may not consistently set next.property='eventName' when cursor is inside
       // an empty string or after deleting text.
       if (cursorContext.isInEventNameString) {
-        console.log(
-          '[EVENT COMPLETION DEBUG] Detected cursor in event name string, providing completions'
-        );
         const eventNameCompletions = getEventNameCompletions(context);
-        console.log('[EVENT COMPLETION DEBUG] Generated', eventNameCompletions.length, 'completions');
 
         // Get the EventActionDefinition to replace the entire line
         const eventAction = cursorContext.eventAction;
-        console.log('[EVENT COMPLETION DEBUG] EventAction:', {
-          exists: !!eventAction,
-          hasCstNode: !!eventAction?.$cstNode,
-          eventName: eventAction?.eventName
-        });
 
         if (!eventAction || !eventAction.$cstNode) {
-          console.log('[EVENT COMPLETION DEBUG] ERROR: No EventActionDefinition CST node - cannot generate skeleton');
           // Fallback: provide just event names without skeleton generation
           const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
           const start = document.textDocument.positionAt(stringStartOffset);
@@ -277,8 +267,8 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
               sortText: item.sortText,
               textEdit: {
                 range: fallbackRange,
-                newText: item.label
-              }
+                newText: item.label,
+              },
             };
             acceptor(context, simpleItem);
           }
@@ -286,7 +276,6 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         }
 
         // Calculate range INSIDE the string (for VS Code to show completions)
-        const text = document.textDocument.getText();
         const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
         const stringStart = document.textDocument.positionAt(stringStartOffset);
         const stringEnd = context.position;
@@ -297,13 +286,6 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         const actionEnd = eventAction.$cstNode.end;
         const actionStartPos = document.textDocument.positionAt(actionStart);
         const actionEndPos = document.textDocument.positionAt(actionEnd);
-
-        console.log('[EVENT COMPLETION DEBUG] Ranges:', {
-          stringRange,
-          stringText: text.substring(stringStartOffset, context.offset),
-          actionRange: { start: actionStartPos, end: actionEndPos },
-          actionText: text.substring(actionStart, actionEnd)
-        });
 
         // Add completions that replace entire EventActionDefinition with skeleton
         // Use stringRange for filtering but replace the entire action
@@ -323,27 +305,25 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
               {
                 // Delete the entire EventActionDefinition
                 range: { start: actionStartPos, end: actionEndPos },
-                newText: ''
+                newText: '',
               },
               {
                 // Insert skeleton at action start (without snippet - additionalTextEdits don't support it)
                 range: { start: actionStartPos, end: actionStartPos },
-                newText: fullSkeleton.replace(/\$\d+/g, '') // Strip snippet placeholders
-              }
+                newText: fullSkeleton.replace(/\$\d+/g, ''), // Strip snippet placeholders
+              },
             ],
             textEdit: {
               // Delete string content - let additionalTextEdits handle everything
               range: stringRange,
-              newText: ''
-            }
+              newText: '',
+            },
           };
-          console.log('[EVENT COMPLETION DEBUG] Adding completion:', item.label);
           acceptor(context, completionItem);
         }
 
         // Call super with a NO-OP acceptor to trigger Langium's completion finalization
         // without adding any default completions
-        console.log('[EVENT COMPLETION DEBUG] Calling super to finalize completions');
         const noOpAcceptor = () => {
           /* Block all default completions */
         };
@@ -354,11 +334,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Trigger: on event |<cursor>
       // Shows event names and inserts them enclosed in quotes: "event-name"
       if (cursorContext.isAfterEventKeyword) {
-        console.log(
-          '[EVENT COMPLETION DEBUG] Detected cursor after event keyword, providing skeleton completions'
-        );
         const eventNameCompletions = getEventNameCompletions(context);
-        console.log('[EVENT COMPLETION DEBUG] Generated', eventNameCompletions.length, 'skeleton completions');
 
         // Strip "on event " prefix from skeleton since user already typed it
         for (const item of eventNameCompletions) {
@@ -372,7 +348,6 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
             insertTextFormat: item.insertTextFormat, // Preserve snippet format for $0 placeholder
           };
 
-          console.log('[EVENT COMPLETION DEBUG] Adding skeleton:', item.label, 'without "on event " prefix');
           acceptor(context, modifiedItem);
         }
 
@@ -503,14 +478,20 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
   /**
    * Override fillCompletionItem to add debugging
    */
-  protected override fillCompletionItem(context: CompletionContext, item: any): CompletionItem | undefined {
+  protected override fillCompletionItem(
+    context: CompletionContext,
+    item: any
+  ): CompletionItem | undefined {
     console.log('[FILL COMPLETION DEBUG] fillCompletionItem called with:', {
       label: item.label,
       hasTextEdit: !!item.textEdit,
-      insertText: item.insertText
+      insertText: item.insertText,
     });
     const result = super.fillCompletionItem(context, item);
-    console.log('[FILL COMPLETION DEBUG] fillCompletionItem result:', result ? 'SUCCESS' : 'FILTERED OUT');
+    console.log(
+      '[FILL COMPLETION DEBUG] fillCompletionItem result:',
+      result ? 'SUCCESS' : 'FILTERED OUT'
+    );
     return result;
   }
 
@@ -523,7 +504,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     console.log('[GET COMPLETION DEBUG] getCompletion returning:', {
       itemCount: result?.items?.length ?? 0,
       isIncomplete: result?.isIncomplete,
-      firstItem: result?.items?.[0]?.label
+      firstItem: result?.items?.[0]?.label,
     });
     return result;
   }
