@@ -7,7 +7,8 @@
  */
 
 import type { Hover } from 'vscode-languageserver-protocol';
-import { MarkupKind } from 'vscode-languageserver-protocol';
+import { createMarkdownHover } from '../utils/hover-utils.js';
+import { MarkdownBuilder } from '../utils/markdown-builder.js';
 import type { CSSSourceLocation } from './css-parser.js';
 
 /**
@@ -64,13 +65,7 @@ export class CSSHoverProvider {
     }
 
     const markdown = this.buildCSSClassMarkdown(classInfo);
-
-    return {
-      contents: {
-        kind: MarkupKind.Markdown,
-        value: markdown,
-      },
-    };
+    return createMarkdownHover(markdown);
   }
 
   /**
@@ -93,12 +88,7 @@ export class CSSHoverProvider {
 
     const markdown = this.buildCSSIDMarkdown(idInfo);
 
-    return {
-      contents: {
-        kind: MarkupKind.Markdown,
-        value: markdown,
-      },
-    };
+    return createMarkdownHover(markdown);
   }
 
   /**
@@ -108,20 +98,7 @@ export class CSSHoverProvider {
    * @returns Markdown string
    */
   private buildCSSClassMarkdown(classInfo: CSSClassInfo): string {
-    const parts: string[] = [];
-
-    // Header
-    parts.push(`**CSS Class**: \`${classInfo.name}\`\n`);
-
-    // For each definition
-    for (const def of classInfo.files) {
-      parts.push(`Defined in: \`${def.uri}:${def.line}\`\n`);
-      parts.push('```css');
-      parts.push(def.rule);
-      parts.push('```\n');
-    }
-
-    return parts.join('\n');
+    return this.buildCSSIdentifierMarkdown(classInfo.name, 'CSS Class', classInfo.files);
   }
 
   /**
@@ -131,21 +108,82 @@ export class CSSHoverProvider {
    * @returns Markdown string
    */
   private buildCSSIDMarkdown(idInfo: CSSIDInfo): string {
-    const parts: string[] = [];
+    return this.buildCSSIdentifierMarkdown(idInfo.name, 'CSS ID', idInfo.files);
+  }
+
+  /**
+   * Build markdown content for CSS identifier (class or ID) hover
+   *
+   * Generic function that handles both CSS classes and IDs by parameterizing the label.
+   *
+   * @param name - CSS identifier name (class or ID)
+   * @param label - Label to display ("CSS Class" or "CSS ID")
+   * @param files - Array of file definitions
+   * @returns Markdown string
+   */
+  private buildCSSIdentifierMarkdown(
+    name: string,
+    label: string,
+    files: Array<{ uri: string; line: number; rule: string }>
+  ): string {
+    const builder = new MarkdownBuilder();
 
     // Header
-    parts.push(`**CSS ID**: \`${idInfo.name}\`\n`);
+    builder.text(`**${label}**: \`${name}\``).blank();
 
     // For each definition
-    for (const def of idInfo.files) {
-      parts.push(`Defined in: \`${def.uri}:${def.line}\`\n`);
-      parts.push('```css');
-      parts.push(def.rule);
-      parts.push('```\n');
+    for (const def of files) {
+      builder.text(`Defined in: \`${def.uri}:${def.line}\``).blank();
+      builder.codeBlock(def.rule, 'css').blank();
     }
 
-    return parts.join('\n');
+    return builder.build();
   }
+}
+/**
+ * Helper to build CSS identifier info (class or ID) from registry data
+ *
+ * Generic function that handles both CSS classes and IDs by parameterizing
+ * the property getter function.
+ *
+ * @param name - CSS identifier name (class or ID) to look up
+ * @param cssFileUris - CSS file URIs imported by the document
+ * @param getMetadata - Function to get metadata for a CSS file
+ * @param propertyGetter - Function to extract locations/rules maps from metadata
+ * @returns Object with name and files array
+ */
+function buildCSSIdentifierInfo(
+  name: string,
+  cssFileUris: string[],
+  getMetadata: (uri: string) => any | undefined,
+  propertyGetter: (metadata: any) => {
+    locations: Map<string, CSSSourceLocation>;
+    rules: Map<string, string>;
+  }
+): { name: string; files: Array<{ uri: string; line: number; rule: string }> } {
+  const files: Array<{ uri: string; line: number; rule: string }> = [];
+
+  for (const uri of cssFileUris) {
+    const metadata = getMetadata(uri);
+    if (!metadata) continue;
+
+    const { locations, rules } = propertyGetter(metadata);
+    const location = locations.get(name);
+    const rule = rules.get(name);
+
+    if (location && rule) {
+      files.push({
+        uri,
+        line: location.startLine,
+        rule,
+      });
+    }
+  }
+
+  return {
+    name,
+    files,
+  };
 }
 
 /**
@@ -169,28 +207,10 @@ export function buildCSSClassInfo(
       }
     | undefined
 ): CSSClassInfo {
-  const files: Array<{ uri: string; line: number; rule: string }> = [];
-
-  for (const uri of cssFileUris) {
-    const metadata = getMetadata(uri);
-    if (!metadata) continue;
-
-    const location = metadata.classLocations.get(className);
-    const rule = metadata.classRules.get(className);
-
-    if (location && rule) {
-      files.push({
-        uri,
-        line: location.startLine,
-        rule,
-      });
-    }
-  }
-
-  return {
-    name: className,
-    files,
-  };
+  return buildCSSIdentifierInfo(className, cssFileUris, getMetadata, metadata => ({
+    locations: metadata.classLocations,
+    rules: metadata.classRules,
+  }));
 }
 
 /**
@@ -214,26 +234,8 @@ export function buildCSSIDInfo(
       }
     | undefined
 ): CSSIDInfo {
-  const files: Array<{ uri: string; line: number; rule: string }> = [];
-
-  for (const uri of cssFileUris) {
-    const metadata = getMetadata(uri);
-    if (!metadata) continue;
-
-    const location = metadata.idLocations.get(idName);
-    const rule = metadata.idRules.get(idName);
-
-    if (location && rule) {
-      files.push({
-        uri,
-        line: location.startLine,
-        rule,
-      });
-    }
-  }
-
-  return {
-    name: idName,
-    files,
-  };
+  return buildCSSIdentifierInfo(idName, cssFileUris, getMetadata, metadata => ({
+    locations: metadata.idLocations,
+    rules: metadata.idRules,
+  }));
 }

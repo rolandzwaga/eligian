@@ -14,6 +14,7 @@ import { AstUtils, CstUtils } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { isOperationCall } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
+import { isOffsetInStringLiteral } from '../utils/string-utils.js';
 
 /**
  * Types of completion contexts for CSS
@@ -124,44 +125,7 @@ export function detectCompletionContext(context: CompletionContext): CompletionC
  */
 function isCursorInStringLiteral(context: CompletionContext, offset: number): boolean {
   const text = context.document.textDocument.getText();
-
-  // Simple approach: Look for nearest quote before and after cursor
-  // Don't stop at structural characters - just find quotes
-  let openQuote = -1;
-  let closeQuote = -1;
-  let quoteChar: string | null = null;
-
-  // Search backwards for opening quote (stop at newline to avoid multi-line issues)
-  for (let i = offset - 1; i >= 0; i--) {
-    const char = text[i];
-    if (char === '\n' || char === '\r') {
-      break; // Don't search across lines
-    }
-    if (char === '"' || char === "'") {
-      openQuote = i;
-      quoteChar = char;
-      break;
-    }
-  }
-
-  if (openQuote === -1 || !quoteChar) {
-    return false;
-  }
-
-  // Search forwards for closing quote (must match opening quote, stop at newline)
-  for (let i = offset; i < text.length; i++) {
-    const char = text[i];
-    if (char === '\n' || char === '\r') {
-      break; // Don't search across lines
-    }
-    if (char === quoteChar) {
-      closeQuote = i;
-      break;
-    }
-  }
-
-  // Cursor is inside string if we found both quotes
-  return openQuote !== -1 && closeQuote !== -1;
+  return isOffsetInStringLiteral(text, offset);
 }
 
 /**

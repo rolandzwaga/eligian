@@ -11,6 +11,7 @@
 import { dirname, resolve } from 'node:path';
 import type { Program } from '../generated/ast.js';
 import { isDefaultImport, isNamedImport } from '../utils/ast-helpers.js';
+import { getFileExtension } from '../utils/path-utils.js';
 import { getImports } from '../utils/program-helpers.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
@@ -219,7 +220,7 @@ function inferImportAssetType(
     }
 
     // Infer from file extension
-    const ext = importStmt.path.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+    const ext = getFileExtension(importStmt.path);
     if (ext === 'html') return 'html';
     if (ext === 'css') return 'css';
     if (ext === 'mp4' || ext === 'webm' || ext === 'mp3' || ext === 'wav') return 'media';

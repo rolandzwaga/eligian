@@ -13,6 +13,8 @@
 
 import type { NamedImport } from '../generated/ast.js';
 import { inferAssetType } from '../utils/asset-type-inference.js';
+import { createValidationError } from '../utils/error-builder.js';
+import { getFileExtension } from '../utils/path-utils.js';
 import { AMBIGUOUS_EXTENSIONS } from './validation-constants.js';
 import { ERROR_MESSAGES, type TypeInferenceError } from './validation-errors.js';
 
@@ -54,55 +56,31 @@ export function validateAssetType(importStmt: NamedImport): TypeInferenceError |
   }
 
   // Extract extension from path
-  const extension = extractExtension(importStmt.path);
+  const extension = getFileExtension(importStmt.path);
 
   // Check if extension is ambiguous (like .ogg)
   if (extension && AMBIGUOUS_EXTENSIONS.has(extension)) {
-    const { message, hint } = ERROR_MESSAGES.AMBIGUOUS_EXTENSION(extension);
-    return {
-      code: 'AMBIGUOUS_EXTENSION',
-      message,
-      hint,
-      extension,
-    };
+    return createValidationError(
+      'AMBIGUOUS_EXTENSION',
+      ERROR_MESSAGES.AMBIGUOUS_EXTENSION,
+      [extension],
+      { extension }
+    );
   }
 
   // Try to infer type from extension
   const inferredType = inferAssetType(importStmt.path);
 
   // If inference fails, extension is unknown
+  // If inference fails, extension is unknown
   if (!inferredType) {
-    const { message, hint } = ERROR_MESSAGES.UNKNOWN_EXTENSION(extension || '');
-    return {
-      code: 'UNKNOWN_EXTENSION',
-      message,
-      hint,
-      extension: extension || '',
-    };
+    return createValidationError(
+      'UNKNOWN_EXTENSION',
+      ERROR_MESSAGES.UNKNOWN_EXTENSION,
+      [extension || ''],
+      { extension: extension || '' }
+    );
   }
-
   // Inference succeeded - valid
   return undefined;
-}
-
-/**
- * Extracts the file extension from a path (last extension, case-insensitive)
- *
- * @param path - File path
- * @returns Lowercase extension without dot, or empty string if no extension
- *
- * **Examples**:
- * ```typescript
- * extractExtension('./file.html')         // → 'html'
- * extractExtension('./file.min.css')      // → 'css' (last extension)
- * extractExtension('./file')              // → ''
- * extractExtension('./file.HTML')         // → 'html' (lowercased)
- * extractExtension('../../dir.v2/file.js') // → 'js' (ignores dots in directories)
- * ```
- */
-function extractExtension(path: string): string {
-  if (!path) return '';
-
-  const match = path.match(/\.([^.]+)$/);
-  return match ? match[1].toLowerCase() : '';
 }
