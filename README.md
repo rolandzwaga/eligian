@@ -374,7 +374,7 @@ runAction(actionName, ...args)
 delay(milliseconds)
 ```
 
-See [Eligius operation metadata](packages/language/src/completion/metadata/operations.generated.ts) for the complete list.
+See the [complete list of Eligius operations](https://github.com/rolandzwaga/eligius/tree/main/src/operation) in the Eligius repository.
 
 ### Comments
 
