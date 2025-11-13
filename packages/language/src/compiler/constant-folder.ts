@@ -14,6 +14,7 @@
  * Related: quickstart.md Step 1, data-model.md
  */
 
+import path from 'node:path';
 import type { Program, VariableDeclaration } from '../generated/ast.js';
 import { getElements, getHTMLImports } from '../utils/program-helpers.js';
 import { evaluateExpression } from './expression-evaluator.js';
@@ -57,7 +58,6 @@ export function buildConstantMap(program: Program): ConstantMap {
       const sourceUri = program.$document?.uri?.fsPath || process.cwd();
       // Use the .eligian file's directory as the project root
       // HTML imports are resolved relative to the .eligian file that contains them
-      const path = require('node:path');
       const sourceDir = path.dirname(sourceUri);
       const absolutePath = resolveHTMLPath(htmlImport.path, sourceUri, sourceDir);
 

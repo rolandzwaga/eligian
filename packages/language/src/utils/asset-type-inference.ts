@@ -7,6 +7,8 @@
  * @module asset-type-inference
  */
 
+import { getFileExtension } from './path-utils.js';
+
 /**
  * Supported asset types for Eligian imports
  */
@@ -56,7 +58,7 @@ export function inferAssetType(path: string | undefined): AssetType | undefined 
   if (!path) return undefined;
 
   // Extract final extension (after last dot)
-  const ext = path.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+  const ext = getFileExtension(path);
   if (!ext) return undefined;
 
   // Look up in extension map

@@ -21,6 +21,7 @@ import {
 } from './css/context-detection.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
+import { isOffsetInStringLiteral } from './utils/string-utils.js';
 
 /**
  * Eligian-specific completion provider
@@ -42,22 +43,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
    * Check if cursor is inside a string literal
    */
   private isCursorInString(text: string, offset: number): boolean {
-    // Search backwards for opening quote
-    for (let i = offset - 1; i >= 0; i--) {
-      const char = text[i];
-      if (char === '\n' || char === '\r') break;
-      if (char === '"' || char === "'") {
-        // Found opening quote, now search forwards for closing quote
-        const quoteChar = char;
-        for (let j = offset; j < text.length; j++) {
-          const c = text[j];
-          if (c === '\n' || c === '\r') return false;
-          if (c === quoteChar) return true; // Found matching closing quote
-        }
-        return false;
-      }
-    }
-    return false;
+    return isOffsetInStringLiteral(text, offset);
   }
 
   /**

@@ -25,7 +25,10 @@ import {
 } from './generated/ast.js';
 import { extractJSDoc } from './jsdoc/jsdoc-extractor.js';
 import { formatJSDocAsMarkdown } from './jsdoc/jsdoc-formatter.js';
+import { createMarkdownHover } from './utils/hover-utils.js';
+import { MarkdownBuilder } from './utils/markdown-builder.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import { getFileExtension } from './utils/path-utils.js';
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   private cssHoverProvider = new CSSHoverProvider();
@@ -111,12 +114,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         const signature = getOperationSignature(opName);
         if (signature) {
           const markdown = this.buildOperationHoverMarkdown(signature);
-          return {
-            contents: {
-              kind: 'markdown',
-              value: markdown,
-            },
-          };
+          return createMarkdownHover(markdown);
         }
 
         // Not a built-in operation, check if it's a custom action with JSDoc
@@ -131,12 +129,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
             if (jsdoc) {
               // Format JSDoc as markdown for hover display
               const markdown = formatJSDocAsMarkdown(jsdoc, actionDef.name);
-              return {
-                contents: {
-                  kind: 'markdown',
-                  value: markdown,
-                },
-              };
+              return createMarkdownHover(markdown);
             }
           }
 
@@ -148,12 +141,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
             })
             .join(', ');
           const markdown = `### ${actionDef.name}\n\n\`${actionDef.name}(${params})\``;
-          return {
-            contents: {
-              kind: 'markdown',
-              value: markdown,
-            },
-          };
+          return createMarkdownHover(markdown);
         }
       }
     }
@@ -162,12 +150,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     const eventAction = AstUtils.getContainerOfType(cstNode.astNode, isEventActionDefinition);
     if (eventAction) {
       const markdown = this.buildEventActionHoverMarkdown(eventAction);
-      return {
-        contents: {
-          kind: 'markdown',
-          value: markdown,
-        },
-      };
+      return createMarkdownHover(markdown);
     }
 
     // Fall back to default behavior (e.g., for variables, comments)
@@ -193,56 +176,52 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
    * Build markdown documentation for an operation signature
    */
   private buildOperationHoverMarkdown(signature: OperationSignature): string {
-    const lines: string[] = [];
+    const builder = new MarkdownBuilder();
 
     // Operation name header
-    lines.push(`### ${signature.systemName}`);
-    lines.push('');
+    builder.heading(3, signature.systemName).blank();
 
     // Description (if available)
     if (signature.description) {
-      lines.push(signature.description);
-      lines.push('');
+      builder.text(signature.description).blank();
     }
 
     // Parameters
     if (signature.parameters.length > 0) {
-      lines.push('**Parameters:**');
+      builder.text('**Parameters:**');
       for (const param of signature.parameters) {
         const required = param.required ? '*(required)*' : '*(optional)*';
         const typeDisplay = this.formatParameterType(param.type);
         const erased = param.erased ? ' ⚠️ *erased after use*' : '';
 
-        lines.push(`- \`${param.name}\`: ${typeDisplay} ${required}${erased}`);
+        builder.text(`- \`${param.name}\`: ${typeDisplay} ${required}${erased}`);
 
         if (param.description) {
-          lines.push(`  - ${param.description}`);
+          builder.text(`  - ${param.description}`);
         }
       }
-      lines.push('');
+      builder.blank();
     }
 
     // Dependencies (what this operation needs)
     if (signature.dependencies.length > 0) {
-      lines.push('**Requires:**');
-      for (const dep of signature.dependencies) {
-        lines.push(`- \`${dep.name}\` (\`${dep.type}\`)`);
-      }
-      lines.push('');
+      builder.text('**Requires:**');
+      const depItems = signature.dependencies.map(dep => `\`${dep.name}\` (\`${dep.type}\`)`);
+      builder.list(depItems).blank();
     }
 
     // Outputs (what this operation provides)
     if (signature.outputs.length > 0) {
-      lines.push('**Provides:**');
-      for (const output of signature.outputs) {
+      builder.text('**Provides:**');
+      const outputItems = signature.outputs.map(output => {
         const outputType = this.formatOutputType(output.type);
         const erased = output.erased ? ' ⚠️ *erased after use*' : '';
-        lines.push(`- \`${output.name}\` (${outputType})${erased}`);
-      }
-      lines.push('');
+        return `\`${output.name}\` (${outputType})${erased}`;
+      });
+      builder.list(outputItems).blank();
     }
 
-    return lines.join('\n');
+    return builder.build();
   }
 
   /**
@@ -255,32 +234,29 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
   private buildEventActionHoverMarkdown(
     eventAction: import('./generated/ast.js').EventActionDefinition
   ): string {
-    const lines: string[] = [];
+    const builder = new MarkdownBuilder();
 
     // Event Action header
-    lines.push(`### Event Action: ${eventAction.name}`);
-    lines.push('');
+    builder.heading(3, `Event Action: ${eventAction.name}`).blank();
 
     // Event information
     const topic = eventAction.eventTopic ? ` (topic: "${eventAction.eventTopic}")` : '';
-    lines.push(`**Listens to:** \`"${eventAction.eventName}"\`${topic}`);
-    lines.push('');
+    builder.text(`**Listens to:** \`"${eventAction.eventName}"\`${topic}`).blank();
 
     // Parameters section
     if (eventAction.parameters.length > 0) {
-      lines.push('**Parameters:**');
-      for (let i = 0; i < eventAction.parameters.length; i++) {
-        const param = eventAction.parameters[i];
+      builder.text('**Parameters:**');
+      const paramItems = eventAction.parameters.map((param, i) => {
         const type = param.type ? ` (\`${param.type}\`)` : '';
-        lines.push(`- \`${param.name}\`${type} - index ${i} in \`eventArgs\``);
-      }
-      lines.push('');
-      lines.push('*Parameters are accessed as `eventArgs[index]` when the event fires.*');
+        return `\`${param.name}\`${type} - index ${i} in \`eventArgs\``;
+      });
+      builder.list(paramItems).blank();
+      builder.text('*Parameters are accessed as `eventArgs[index]` when the event fires.*');
     } else {
-      lines.push('**Parameters:** *none*');
+      builder.text('**Parameters:** *none*');
     }
 
-    return lines.join('\n');
+    return builder.build();
   }
 
   /**
@@ -335,7 +311,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         assetType = importNode.assetType;
       } else {
         // Infer from file extension
-        const ext = path.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+        const ext = getFileExtension(path);
         if (ext === 'html' || ext === 'htm') {
           assetType = 'html';
         } else if (ext === 'css') {

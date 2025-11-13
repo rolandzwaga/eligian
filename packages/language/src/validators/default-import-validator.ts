@@ -12,6 +12,7 @@
  */
 
 import type { DefaultImport } from '../generated/ast.js';
+import { createValidationError } from '../utils/error-builder.js';
 import type { DuplicateDefaultImportError } from './validation-errors.js';
 import { ERROR_MESSAGES } from './validation-errors.js';
 
@@ -47,15 +48,15 @@ export function validateDefaultImports(
     const existing = seen.get(importStmt.type);
 
     if (existing) {
-      // Found duplicate - report error on second+ occurrence
-      const { message, hint } = ERROR_MESSAGES.DUPLICATE_DEFAULT_IMPORT(importStmt.type);
-
-      errors.set(importStmt, {
-        code: 'DUPLICATE_DEFAULT_IMPORT',
-        message,
-        hint,
-        importType: importStmt.type,
-      });
+      errors.set(
+        importStmt,
+        createValidationError(
+          'DUPLICATE_DEFAULT_IMPORT',
+          ERROR_MESSAGES.DUPLICATE_DEFAULT_IMPORT,
+          [importStmt.type],
+          { importType: importStmt.type }
+        )
+      );
     } else {
       // First occurrence - track it
       seen.set(importStmt.type, importStmt);
