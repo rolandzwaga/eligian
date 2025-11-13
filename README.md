@@ -35,25 +35,24 @@ Eligius is configured entirely through JSON, which becomes unwieldy for complex 
   "actions": [
     {
       "name": "fadeIn",
-      "parameters": ["selector", "duration"],
-      "operations": [
+      "startOperations": [
         {
-          "name": "selectElement",
-          "arguments": [{"type": "parameter", "name": "selector"}]
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "parameter:selector"
+          }
         },
         {
-          "name": "animate",
-          "arguments": [
-            {
-              "type": "object",
-              "properties": {
-                "opacity": {"type": "literal", "value": 1}
-              }
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
             },
-            {"type": "parameter", "name": "duration"}
-          ]
+            "animationDuration": "parameter:duration"
+          }
         }
-      ]
+      ],
+      "endOperations": []
     }
   ]
 }
@@ -72,11 +71,13 @@ action fadeIn(selector, duration) [
 ## ✨ Key Features
 
 ### 🎨 Concise, Readable Syntax
-- **Action definitions**: Define reusable operations with parameters
+- **Action definitions**: Define reusable operations with parameters and JSDoc documentation
 - **Timeline operations**: 45+ built-in operations from Eligius (DOM, animation, data, events, etc.)
 - **Custom actions**: Call your own defined actions alongside built-in operations
 - **Control flow**: `if/else` conditionals, `for` loops, `break/continue` statements
 - **Variable references**: Access loop variables (`@@item`), system properties (`@@currentItem`, `@@loopIndex`)
+- **Asset imports**: CSS, HTML, and library file imports with validation
+- **Event actions**: Runtime event handlers with compile-time validation
 
 ### 🔒 Type-Safe Compilation
 - **Compile-time validation**: Catch errors before runtime
@@ -89,11 +90,14 @@ action fadeIn(selector, duration) [
 - **Code completion**:
   - ✅ Operation names with descriptions and parameter info
   - ✅ Custom action names with signatures
+  - ✅ Event action skeleton generation (43 Eligius events)
   - ✅ Loop variables and system properties
+  - ✅ JSDoc template auto-generation (`/**` + Enter)
   - Context-aware filtering (only valid items at cursor position)
-- **Live preview**: Compile and preview timelines in real-time
+- **Live preview**: Compile and preview timelines in real-time with CSS hot-reload
 - **Real-time diagnostics**: Error detection as you type
-- **Break/continue** syntactic sugar for loop control
+- **CSS validation**: Class name validation with "Did you mean?" suggestions
+- **Hover documentation**: View JSDoc, CSS rule locations, and type information
 
 ### ⚡ Powerful Compiler
 - Built with **Langium** (language workbench) and **TypeScript**
@@ -103,13 +107,15 @@ action fadeIn(selector, duration) [
 - **Source maps**: Track DSL locations through to JSON output
 
 ### 🧪 Comprehensive Testing
-- **379 tests passing** (language package)
-- Grammar parsing tests (48 tests)
-- Semantic validation tests (38 tests)
-- Type system tests (28 tests)
-- Compiler pipeline tests (22 tests)
-- Code completion tests (25 tests)
-- 80%+ code coverage
+- **1,758 tests passing** across all packages
+- Grammar parsing tests
+- Semantic validation tests
+- Type system tests (Typir integration)
+- Compiler pipeline tests
+- Code completion tests
+- CSS validation tests
+- JSDoc documentation tests
+- 81.72% code coverage
 
 ## 📦 Project Structure
 
@@ -122,10 +128,12 @@ packages/
 │   │   ├── eligian.langium          # DSL grammar definition
 │   │   ├── eligian-validator.ts     # Semantic validation rules
 │   │   ├── eligian-completion-provider.ts  # Code completion
-│   │   ├── type-system/             # Type checking and inference
+│   │   ├── type-system-typir/       # Typir-based type system
 │   │   ├── compiler/                # AST → JSON transformer
 │   │   ├── completion/              # Completion modules
-│   │   └── __tests__/               # 379 tests
+│   │   ├── css/                     # CSS validation and hover
+│   │   ├── jsdoc/                   # JSDoc parsing and generation
+│   │   └── __tests__/               # Comprehensive test suites
 │   └── package.json
 │
 ├── cli/                      # Command-line compiler
@@ -213,35 +221,54 @@ pnpm test
 Create `example.eligian`:
 
 ```eligian
+// Import CSS styles
+styles "./styles.css"
+
 // Define a reusable fade-in action
-action fadeIn(selector, duration) [
+action fadeIn(selector: string, duration: number) [
   selectElement(selector)
   animate({opacity: 1}, duration)
 ]
 
-// Define an action that processes a list
-action animateItems(items) [
-  for (item in items) {
-    fadeIn(@@item, 500)
-    if (@@loopIndex > 5) {
-      break  // Stop after 6 items
-    }
-  }
-]
+// Define a timeline with events
+timeline "My First Timeline" in "#app" using raf {
 
-// Call the action
-animateItems(["#item1", "#item2", "#item3"])
+  // Event at 0 seconds: fade in the title
+  at 0s..2s [
+    fadeIn("#title", 1000)
+  ] [
+    selectElement("#title")
+    animate({opacity: 0}, 500)
+  ]
+
+  // Event at 2 seconds: show multiple items with a loop
+  at 2s..5s for (item in ["#item1", "#item2", "#item3"]) {
+    fadeIn(@@item, 500)
+    wait(200)
+  }
+
+  // Event at 5 seconds: conditional logic
+  at 5s..5s if (true) {
+    log("Timeline complete!")
+  }
+}
 ```
 
-### Compile to Eligius JSON
+### Preview in VS Code
+
+The easiest way to see your Eligian program in action:
 
 ```bash
-# Using the CLI (when implemented)
-npx eligian compile example.eligian -o output.json
-
-# Or use the VS Code extension:
 # 1. Open example.eligian in VS Code
-# 2. Press Ctrl+Shift+P → "Eligian: Compile Current File"
+# 2. Press Ctrl+Shift+P → "Eligian: Start Preview"
+# 3. Edit your file - preview updates in real-time
+```
+
+### Compile to Eligius JSON (CLI)
+
+```bash
+# CLI is in development - for now, use the VS Code extension preview
+# The compiled JSON is generated automatically when you use the preview
 ```
 
 ## 📚 DSL Syntax Overview
@@ -364,13 +391,22 @@ See [Eligius operation metadata](packages/language/src/completion/metadata/opera
 
 - ✅ **Syntax Highlighting**: Keywords, identifiers, literals
 - ✅ **Code Completion**:
-  - Operation names (45 operations) with descriptions
-  - Custom action names with parameter signatures
+  - Operation names (45+ operations) with descriptions
+  - Custom action names with parameter signatures and JSDoc
+  - Event action skeletons (43 Eligius events with auto-generated handlers)
+  - JSDoc template generation (`/**` + Enter above actions)
   - Loop variables (`@@item`, `@@currentItem`, etc.)
   - Smart sorting (most relevant items first)
-- ✅ **Live Preview**: Compile and preview timelines in real-time
-- ✅ **Real-time Validation**: Error detection as you type
-- ⏳ **Hover Information**: Documentation on hover (planned)
+- ✅ **Live Preview**: Compile and preview timelines in real-time with CSS hot-reload
+- ✅ **Real-time Validation**: Error detection as you type with helpful hints
+- ✅ **Hover Information**:
+  - JSDoc documentation on action hover
+  - CSS class/ID source locations with rule snippets
+  - Type information from Typir type system
+- ✅ **CSS Support**:
+  - Import CSS files with `styles "./file.css"`
+  - Real-time class name validation with "Did you mean?" suggestions
+  - Hot-reload CSS changes without restarting timeline
 - ⏳ **Quick Fixes**: Automatic corrections (planned)
 
 ### Installation (Development)
@@ -384,14 +420,22 @@ See [Eligius operation metadata](packages/language/src/completion/metadata/opera
 
 **Trigger Code Completion**:
 - Type operation name: `sel` → suggests `selectElement`
-- Type custom action: Start typing action name → suggests defined actions
+- Type custom action: Start typing action name → suggests defined actions with JSDoc
+- Type `on event ` → triggers event action skeleton completion (43 Eligius events)
+- Type `/**` above an action + Enter → generates JSDoc template
 - Type `@@` → suggests loop variables and system properties
 - Press `Ctrl+Space` to manually trigger
+
+**CSS Support**:
+- Add `styles "./styles.css"` to import CSS files
+- Edit CSS file → preview hot-reloads automatically (no timeline restart)
+- Typo in class name? → Get "Did you mean?" suggestions with Levenshtein distance
 
 **Compile & Preview**:
 - Press `Ctrl+Shift+P` → "Eligian: Start Preview"
 - Edit your `.eligian` file - preview updates in real-time
-- Compilation errors shown in preview panel
+- Edit imported CSS files - styles hot-reload in preview
+- Compilation errors shown in preview panel with source locations
 
 ## 🧪 Development
 
@@ -463,42 +507,50 @@ All code changes must pass Biome checks before commit (Constitution Principle XI
 
 - **[Project Constitution](.specify/memory/constitution.md)**: Core principles and guidelines
 - **[DSL Grammar](packages/language/src/eligian.langium)**: Complete grammar definition
-- **[Type System](packages/language/src/type-system/README.md)**: Type checking and inference
+- **[Language Specification](LANGUAGE_SPEC.md)**: Full language specification
+- **[Type System (Typir)](packages/language/src/type-system-typir/README.md)**: Type checking and inference
 - **[Completion System](packages/language/src/completion/)**: Code completion modules
+- **[CSS Validation](specs/013-css-class-and/)**: CSS class validation with Levenshtein suggestions
+- **[JSDoc Support](specs/020-jsdoc-style-comments/)**: JSDoc template generation and hover
 - **[Feature Specs](specs/)**: Feature specifications and implementation plans
 
 ### Recent Feature Specs
 
-- **[Code Completion](specs/002-code-completion-i/)**: Code completion MVP (User Stories 1-2 complete)
-- **[Preview System](specs/001-i-want-to/)**: Live preview and compilation (complete)
-- **[Break/Continue](specs/main/)**: Loop control syntactic sugar (complete)
+- **[JSDoc Documentation](specs/020-jsdoc-style-comments/)**: JSDoc template generation and hover (complete)
+- **[Typir Type System](specs/021-type-system-typir/)**: Typir-based type checking (complete)
+- **[CSS Validation](specs/013-css-class-and/)**: CSS class validation with hot-reload (complete)
+- **[CSS Live Reload](specs/011-preview-css-support/)**: CSS hot-reload in preview (complete)
+- **[Event Actions](specs/028-event-actions-the/)**: Runtime event handlers (complete)
 
 ## 🗺️ Project Status
 
 ### Completed Features ✅
 
-- ✅ **Core Language**: Grammar, parser, AST
-- ✅ **Validation**: Semantic validation, scope checking
-- ✅ **Type System**: Type annotations, type inference, type checking
-- ✅ **Compiler**: AST → JSON transformation with optimization
-- ✅ **Control Flow**: If/else, for loops, break/continue
-- ✅ **Code Completion (MVP)**: Operation & action completions with smart sorting
-- ✅ **Live Preview**: Real-time compilation and preview in VS Code
+- ✅ **Core Language**: Grammar, parser, AST with Langium
+- ✅ **Validation**: Semantic validation, scope checking, duplicate detection
+- ✅ **Type System (Typir)**: Type annotations, type inference, type checking with Typir
+- ✅ **Compiler**: AST → JSON transformation with constant folding optimization
+- ✅ **Control Flow**: If/else, for loops, break/continue keywords
+- ✅ **Code Completion**: Operations, actions, event skeletons, JSDoc templates
+- ✅ **Live Preview**: Real-time compilation and preview with CSS hot-reload
+- ✅ **CSS Support**: Import CSS files, class validation, hot-reload
+- ✅ **JSDoc**: Template auto-generation and hover documentation
+- ✅ **Event Actions**: Runtime event handlers with validation (43 events)
+- ✅ **Library Imports**: Import actions from `.eligian` library files
+- ✅ **Asset Loading**: CSS and HTML file imports with validation
 - ✅ **Metadata Generation**: Auto-generated operation registry from Eligius source
 
 ### In Progress 🚧
 
 - 🚧 **CLI Compiler**: Command-line interface (architecture ready, implementation pending)
-- 🚧 **Code Completion (Full)**: Keyword, event, variable, parameter completions (deferred pending type system enhancements)
 
 ### Planned ⏳
 
-- ⏳ **Timeline Events**: First-class timeline event syntax
-- ⏳ **Import System**: Module imports and code reuse
 - ⏳ **Source Maps**: Debug support with source locations
 - ⏳ **Package Publishing**: NPM package and VS Code marketplace
+- ⏳ **Performance Profiling**: Optimize compilation and validation performance
 
-**Test Coverage**: 379/387 tests passing (98% pass rate)
+**Test Coverage**: 1,758 tests passing (81.72% coverage)
 
 ## 🎯 Architecture Highlights
 
