@@ -1,0 +1,5 @@
+import { fadeIn } from "./examples/libraries/animations.eligian"
+
+timeline "Test" in ".container" using raf {
+  at 0s..1s fadeIn(".item")
+}
