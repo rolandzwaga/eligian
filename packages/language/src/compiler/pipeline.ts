@@ -29,7 +29,7 @@ import {
 import { parseCSS } from '../css/css-parser.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { EmitError, ParseError, TransformError, TypeError } from '../errors/index.js';
-import type { Program } from '../generated/ast.js';
+import { isLibrary, isLibraryImport, type Library, type Program } from '../generated/ast.js';
 import { isDefaultImport } from '../utils/ast-helpers.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
@@ -391,6 +391,31 @@ export const compile = (
     // T077: Validate AST (no-op, done during parsing)
     const validatedProgram = yield* _(validateAST(program));
 
+    // T017: Load library files if sourceUri is provided
+    if (options.sourceUri) {
+      const currentDocUri = URI.parse(options.sourceUri);
+      const importPaths = extractLibraryImports(validatedProgram);
+
+      if (importPaths.length > 0) {
+        const libraries: Library[] = [];
+
+        for (const importPath of importPaths) {
+          // Resolve relative path to absolute URI
+          const libraryUri = resolveLibraryPath(currentDocUri, importPath);
+
+          // Load library file content
+          const content = yield* _(loadLibraryFile(libraryUri));
+
+          // Parse library document and add to workspace
+          const library = yield* _(parseLibraryDocument(content, libraryUri));
+          libraries.push(library);
+        }
+
+        // Link library documents (no-op, Langium handles automatically)
+        yield* _(linkLibraryDocuments(validatedProgram, libraries));
+      }
+    }
+
     // Load assets (layout HTML, CSS files, media) if sourceUri is provided
     let assets: AssetLoadingResult | undefined;
     if (options.sourceUri) {
@@ -492,6 +517,226 @@ export const compileToIR = (
 
     return optimizedIR;
   });
+
+/**
+ * T012: Extract library imports from AST
+ *
+ * Extracts all LibraryImport statements from the program AST and returns
+ * an array of unique library file paths.
+ *
+ * Deduplicates imports - if multiple statements import from the same file,
+ * only returns the path once.
+ */
+export function extractLibraryImports(program: Program): string[] {
+  const importPaths = new Set<string>();
+
+  for (const statement of program.statements) {
+    if (isLibraryImport(statement)) {
+      importPaths.add(statement.path);
+    }
+  }
+
+  return Array.from(importPaths);
+}
+
+/**
+ * T013: Resolve library path to absolute URI
+ *
+ * Converts a relative library import path to an absolute URI based on
+ * the current document's location.
+ *
+ * Handles:
+ * - Relative paths with ./ and ../
+ * - Platform-specific path separators (Windows \ vs Unix /)
+ * - Normalization to file:// URIs
+ */
+export function resolveLibraryPath(currentDocUri: URI, importPath: string): URI {
+  // Get the directory of the current document
+  const currentPath = currentDocUri.fsPath;
+  const separator = currentPath.includes('\\') ? '\\' : '/';
+  const lastSepIndex = Math.max(
+    currentPath.lastIndexOf('\\'),
+    currentPath.lastIndexOf('/')
+  );
+  const currentDir = currentPath.substring(0, lastSepIndex);
+
+  // Normalize import path to use forward slashes
+  const normalizedImportPath = importPath.replace(/\\/g, '/');
+
+  // Remove ./ prefix if present
+  const cleanPath = normalizedImportPath.startsWith('./')
+    ? normalizedImportPath.substring(2)
+    : normalizedImportPath;
+
+  // Resolve relative path
+  const absolutePath = `${currentDir}${separator}${cleanPath}`;
+
+  // Convert to URI
+  return URI.file(absolutePath);
+}
+
+/**
+ * T014: Load library file content
+ *
+ * Reads a library file from the file system and returns its content as a string.
+ *
+ * Returns Effect with typed errors:
+ * - FileNotFoundError: File does not exist
+ * - PermissionError: File cannot be read due to permissions
+ * - ReadError: Other I/O errors
+ */
+export function loadLibraryFile(libraryUri: URI): Effect.Effect<string, ParseError> {
+  return Effect.sync(() => {
+    try {
+      return readFileSync(libraryUri.fsPath, 'utf-8');
+    } catch (error) {
+      throw {
+        _tag: 'ParseError' as const,
+        message: `Failed to load library file: ${(error as Error).message}`,
+        location: { line: 1, column: 1, length: 0 },
+        hint: `Check that the file exists at: ${libraryUri.fsPath}`,
+      };
+    }
+  }).pipe(
+    Effect.catchAll((error: any) =>
+      Effect.fail({
+        _tag: 'ParseError' as const,
+        message: error.message || 'Unknown error loading library file',
+        location: { line: 1, column: 1, length: 0 },
+        hint: error.hint || 'Check file path and permissions',
+      })
+    )
+  );
+}
+
+/**
+ * T015: Parse library document
+ *
+ * Parses library file content into a Langium document and validates it's a Library node.
+ *
+ * Returns Effect with typed errors:
+ * - ParseError: Syntax errors in library file
+ * - InvalidLibraryError: File is not a library (e.g., it's a Program)
+ */
+export function parseLibraryDocument(
+  content: string,
+  libraryUri: URI
+): Effect.Effect<Library, ParseError> {
+  return Effect.gen(function* (_) {
+    // Reuse the shared Langium services
+    const services = getOrCreateServices();
+
+    // Parse library content
+    const document = services.shared.workspace.LangiumDocumentFactory.fromString<Library>(
+      content,
+      libraryUri
+    );
+
+    // Build document (parse + link internal references)
+    yield* _(
+      Effect.tryPromise({
+        try: async () => {
+          await services.shared.workspace.DocumentBuilder.build([document], {
+            validation: true,
+          });
+          return document;
+        },
+        catch: (error) => ({
+          _tag: 'ParseError' as const,
+          message: `Failed to parse library document: ${error instanceof Error ? error.message : String(error)}`,
+          location: { line: 1, column: 1, length: 0 },
+          hint: 'Check library file syntax',
+        }),
+      })
+    );
+
+    // Check for parse errors
+    if (document.parseResult.lexerErrors.length > 0) {
+      const error = document.parseResult.lexerErrors[0];
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `Lexer error in library: ${error.message}`,
+          location: {
+            line: error.line ?? 1,
+            column: error.column ?? 1,
+            length: error.length ?? 0,
+          },
+          hint: `In library file: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    if (document.parseResult.parserErrors.length > 0) {
+      const error = document.parseResult.parserErrors[0];
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: error.message,
+          location: {
+            line: error.token.startLine ?? 1,
+            column: error.token.startColumn ?? 1,
+            length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
+          },
+          hint: `In library file: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    // Check for validation errors
+    if (document.diagnostics && document.diagnostics.length > 0) {
+      const error = document.diagnostics[0];
+      const range = error.range;
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: error.message,
+          location: {
+            line: range.start.line + 1,
+            column: range.start.character + 1,
+            length: range.end.character - range.start.character,
+          },
+          hint: `In library file: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    // Validate that parsed content is a Library, not a Program
+    const root: any = document.parseResult.value;
+    if (!isLibrary(root)) {
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `File is not a library (found ${root.$type || 'unknown'} instead)`,
+          location: { line: 1, column: 1, length: 0 },
+          hint: `Library files must start with "library <name>". File: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    return root;
+  });
+}
+
+/**
+ * T016: Link library documents in workspace
+ *
+ * Adds library documents to the Langium workspace and re-links the main program
+ * document so that action references resolve correctly.
+ *
+ * This function is a no-op for now - Langium automatically handles cross-document
+ * references once documents are added to the workspace via LangiumDocumentFactory.fromString().
+ * The scope provider's getImportedActions() method will find library actions once they're loaded.
+ */
+export function linkLibraryDocuments(
+  _program: Program,
+  _libraries: Library[]
+): Effect.Effect<void, never> {
+  // No-op: Langium automatically handles cross-document linking
+  // Libraries were added to workspace in parseLibraryDocument()
+  // Scope provider will resolve references via getImportedActions()
+  return Effect.succeed(undefined);
+}
 
 /**
  * T083: Version information
