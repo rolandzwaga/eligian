@@ -1127,6 +1127,19 @@ action processData(items: array, options) [...]
 
 ## Testing Strategy
 
+> **⚠️ REQUIRED READING BEFORE WRITING ANY TESTS**
+>
+> **MUST read `TESTING_GUIDE.md` before writing tests** (Constitution Principle XXV)
+>
+> The testing guide contains:
+> - Quick start templates (`minimalProgram()`, `eventActionProgram()`, etc.)
+> - `createTestContext()` setup in `beforeAll()`
+> - `setupCSSRegistry()` patterns in `beforeEach()`
+> - `DiagnosticSeverity` enum (NOT magic numbers!)
+> - Common mistakes and how to avoid them
+>
+> **Failure to consult the guide results in 3-4 rounds of trial-and-error fixing basic syntax issues.**
+
 Following constitution principle **II. Comprehensive Testing**:
 
 ### Test Organization
