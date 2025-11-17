@@ -1,29 +1,29 @@
 [
   {
-    "id": "welcomeMessage",
+    "id": "welcome-title",
     "labels": [
       {
-        "id": "1",
+        "id": "welcome-title-en",
         "languageCode": "en-US",
-        "label": "Welcome to our presentation!"
+        "label": "Welcome to Eligian"
       },
       {
-        "id": "2",
+        "id": "welcome-title-nl",
         "languageCode": "nl-NL",
-        "label": "Welkom bij onze presentatie!"
+        "label": "Welkom bij Eligian"
       }
     ]
   },
   {
-    "id": "continueButton",
+    "id": "continue-button",
     "labels": [
       {
-        "id": "3",
+        "id": "continue-button-en",
         "languageCode": "en-US",
         "label": "Click to continue"
       },
       {
-        "id": "4",
+        "id": "continue-button-nl",
         "languageCode": "nl-NL",
         "label": "Klik om door te gaan"
       }
