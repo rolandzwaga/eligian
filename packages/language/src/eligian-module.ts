@@ -70,7 +70,8 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       DocumentValidator: services => new EligianDocumentValidator(services),
     },
     lsp: {
-      HoverProvider: services => new EligianHoverProvider(services.css.CSSRegistry, services),
+      HoverProvider: services =>
+        new EligianHoverProvider(services.css.CSSRegistry, services.labels.LabelRegistry, services),
       CompletionProvider: services => new EligianCompletionProvider(services),
       CodeActionProvider: services => new EligianCodeActionProvider(services),
       Formatter: services => new EligianFormatter(services),
