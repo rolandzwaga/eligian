@@ -82,19 +82,19 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation (Constitution Principle II)**
 
-- [ ] T008 [P] [US1] Create test fixtures in `packages/language/src/__tests__/label-import/fixtures/`:
+- [X] T008 [P] [US1] Create test fixtures in `packages/language/src/__tests__/label-import/fixtures/`:
   - `valid-labels.json` (2 label groups, 2 translations each from `data-model.md`)
   - `invalid-syntax.json` (unclosed bracket)
   - `missing-id.json` (label group missing `id`)
   - `empty-labels-array.json` (label group with empty `labels: []`)
 
-- [ ] T009 [P] [US1] Grammar parsing test in `packages/language/src/__tests__/parsing.spec.ts`:
+- [X] T009 [P] [US1] Grammar parsing test in `packages/language/src/__tests__/parsing.spec.ts`:
   - Test `labels './labels.json'` parses as DefaultImport with type='labels'
   - Test path is captured correctly
   - Test AST structure matches CSS/HTML import pattern
   - Use `parseHelper.parse()` from test context
 
-- [ ] T010 [P] [US1] Integration test: valid labels import in `packages/language/src/__tests__/label-import/valid-labels.spec.ts`:
+- [X] T010 [P] [US1] Integration test: valid labels import in `packages/language/src/__tests__/label-import/valid-labels.spec.ts`:
   - Test program with `labels './fixtures/valid-labels.json'`
   - Compile to Eligius config
   - Verify `config.labels` is array of ILanguageLabel
@@ -102,48 +102,48 @@
   - Verify all translations present
   - Use `minimalProgram()` helper from testing guide
 
-- [ ] T011 [P] [US1] Integration test: labels data assignment in `packages/language/src/__tests__/label-import/valid-labels.spec.ts`:
+- [X] T011 [P] [US1] Integration test: labels data assignment in `packages/language/src/__tests__/label-import/valid-labels.spec.ts`:
   - Test config.labels[0].id matches JSON
   - Test config.labels[0].labels[0].id matches JSON
   - Test config.labels[0].labels[0].languageCode matches JSON
   - Test config.labels[0].labels[0].label matches JSON
   - Verify deep equality with expected ILanguageLabel[] structure
 
-- [ ] T012 [P] [US1] Integration test: empty program compiles with empty labels in `packages/language/src/__tests__/label-import/valid-labels.spec.ts`:
+- [X] T012 [P] [US1] Integration test: empty program compiles with empty labels in `packages/language/src/__tests__/label-import/valid-labels.spec.ts`:
   - Test program without labels import
   - Verify config.labels is empty array `[]`
   - Verify no errors or warnings
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Extend grammar in `packages/language/src/eligian.langium`:
+- [X] T013 [US1] Extend grammar in `packages/language/src/eligian.langium`:
   - Add `'labels'` to DefaultImport type options (line ~105)
   - Update grammar comment documenting labels import syntax
   - Existing DefaultImport rule: `type=('layout' | 'styles' | 'provider' | 'labels') path=STRING;`
 
-- [ ] T014 [US1] Extend ProgramAssets interface in `packages/language/src/compiler/ast-transformer.ts`:
+- [X] T014 [US1] Extend ProgramAssets interface in `packages/language/src/compiler/ast-transformer.ts`:
   - Add `labels?: ILanguageLabel[]` property to ProgramAssets interface
   - Import `ILanguageLabel` type from `eligius`
 
-- [ ] T015 [US1] Implement labels loading in `packages/language/src/compiler/pipeline.ts`:
-  - After CSS loading (around line 340), add labels loading logic
+- [X] T015 [US1] Implement labels loading in `packages/language/src/asset-loading/compiler-integration.ts`:
+  - After CSS loading (around line 180), add labels loading logic
   - Extract DefaultImport statements with `type === 'labels'`
   - For each labels import: resolve relative path, read file, parse JSON, validate schema
   - Handle errors: file not found, JSON syntax, schema validation
   - Collect all labels into `ILanguageLabel[]` array
   - Pass to transformer via `assets.labels`
 
-- [ ] T016 [US1] Assign labels to config in `packages/language/src/compiler/ast-transformer.ts`:
+- [X] T016 [US1] Assign labels to config in `packages/language/src/compiler/ast-transformer.ts`:
   - In `transformProgram()` function (around line 407)
   - Add `labels: assets?.labels ?? []` to config object
   - Verify IEngineConfiguration type accepts labels property
 
-- [ ] T017 [US1] Run Langium generator to update AST types:
+- [X] T017 [US1] Run Langium generator to update AST types:
   - Execute `pnpm run langium:generate` from project root
   - Verify no errors from grammar changes
   - Commit generated files
 
-- [ ] T018 [US1] Verify tests pass:
+- [X] T018 [US1] Verify tests pass:
   - Run `pnpm --filter @eligian/language test` to run all language tests
   - All US1 tests (T009-T012) should now PASS
   - Fix any failures before proceeding
@@ -160,20 +160,20 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Create error test fixtures in `packages/language/src/__tests__/label-import/fixtures/`:
+- [X] T019 [P] [US2] Create error test fixtures in `packages/language/src/__tests__/label-import/fixtures/`:
   - `invalid-type-root.json` (root is object, not array)
   - `missing-languageCode.json` (translation missing languageCode)
   - `missing-label.json` (translation missing label field)
   - `empty-id.json` (id field is empty string)
 
-- [ ] T020 [P] [US2] Integration test: JSON syntax errors in `packages/language/src/__tests__/label-import/invalid-labels.spec.ts`:
+- [X] T020 [P] [US2] Integration test: JSON syntax errors in `packages/language/src/__tests__/label-import/invalid-labels.spec.ts`:
   - Test program with `labels './fixtures/invalid-syntax.json'`
   - Verify error reported with code 'invalid_labels_json'
   - Verify error message mentions "Invalid JSON syntax"
   - Verify error includes file path
   - Use `parseAndValidate()` from test context
 
-- [ ] T021 [P] [US2] Integration test: schema validation errors in `packages/language/src/__tests__/label-import/invalid-labels.spec.ts`:
+- [X] T021 [P] [US2] Integration test: schema validation errors in `packages/language/src/__tests__/label-import/invalid-labels.spec.ts`:
   - Test missing `id` field → error "Missing required property 'id'"
   - Test empty `labels` array → error "must have at least one translation"
   - Test missing `languageCode` → error "Missing required property 'languageCode'"
@@ -191,27 +191,27 @@
   - Verify each error has distinct message
   - Test error count matches violations count (3 errors)
 
-- [ ] T023 [P] [US2] Integration test: invalid root type in `packages/language/src/__tests__/label-import/invalid-labels.spec.ts`:
+- [X] T023 [P] [US2] Integration test: invalid root type in `packages/language/src/__tests__/label-import/invalid-labels.spec.ts`:
   - Test `invalid-type-root.json` (object instead of array)
   - Verify error "root must be an array"
   - Verify error code 'invalid_labels_schema'
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Implement error mapping in `packages/language/src/validators/label-import-validator.ts`:
+- [X] T024 [US2] Implement error mapping in `packages/language/src/validators/label-import-validator.ts`:
   - Add `formatValidationError(error: ErrorObject, data: unknown): string` function
   - Map AJV error keywords to user-friendly messages
   - Handle: `type`, `required`, `minLength`, `minItems` keywords
   - Extract JSON pointer paths for context
   - Return formatted message per `research.md` mapping table
 
-- [ ] T025 [US2] Integrate validation error reporting in `packages/language/src/compiler/pipeline.ts`:
+- [X] T025 [US2] Integrate validation error reporting in `packages/language/src/asset-loading/compiler-integration.ts`:
   - After schema validation fails, format errors with `formatValidationError()`
   - Report errors with file path in diagnostic message
   - Use Langium `ValidationAcceptor` pattern
   - Ensure error includes hint text for common mistakes
 
-- [ ] T026 [US2] Enhance error messages with file context in `packages/language/src/compiler/pipeline.ts`:
+- [X] T026 [US2] Enhance error messages with file context in `packages/language/src/asset-loading/compiler-integration.ts`:
   - Include file path in all error messages
   - For JSON syntax errors, include line/column if available
   - For schema errors, include property path from JSON pointer
@@ -221,7 +221,7 @@
     - ✅ Actionable hint (e.g., "Check for missing commas or brackets")
     - Example: "Invalid JSON syntax in './labels.json' at line 5: Unclosed bracket. Hint: Check for missing commas or brackets."
 
-- [ ] T027 [US2] Verify tests pass:
+- [X] T027 [US2] Verify tests pass:
   - Run `pnpm --filter @eligian/language test` to run all tests
   - All US2 tests (T020-T023) should now PASS
   - Verify error messages are clear and actionable
@@ -239,20 +239,20 @@
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Integration test: file not found in `packages/language/src/__tests__/label-import/missing-file.spec.ts`:
+- [X] T028 [P] [US3] Integration test: file not found in `packages/language/src/__tests__/label-import/missing-file.spec.ts`:
   - Test program with `labels './nonexistent.json'`
   - Verify error reported with code 'labels_file_not_found'
   - Verify error message includes file path attempted
   - Verify hint suggests checking file existence
 
-- [ ] T029 [P] [US3] Validation test: absolute path rejected in `packages/language/src/__tests__/validation.spec.ts`:
+- [X] T029 [P] [US3] Validation test: absolute path rejected in `packages/language/src/__tests__/validation.spec.ts`:
   - Test program with `labels '/absolute/path/labels.json'`
   - Verify error code 'absolute_path_not_allowed'
   - Verify error message mentions "relative path"
   - Verify hint shows correct syntax
   - Use `checkDefaultImports()` validator
 
-- [ ] T030 [P] [US3] Validation test: duplicate labels imports in `packages/language/src/__tests__/validation.spec.ts`:
+- [X] T030 [P] [US3] Validation test: duplicate labels imports in `packages/language/src/__tests__/validation.spec.ts`:
   - Test program with two `labels` import statements
   - Verify error code 'duplicate_default_import'
   - Verify error message "Only one labels import allowed"
@@ -265,31 +265,31 @@
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Implement file existence check in `packages/language/src/compiler/pipeline.ts`:
+- [X] T032 [US3] Implement file existence check in `packages/language/src/asset-loading/compiler-integration.ts`:
   - Before reading file, check if file exists with `fs.existsSync()`
   - If not found, return error with code 'labels_file_not_found'
   - Include attempted file path in error message
   - Add hint: "Ensure the file exists and the path is correct"
 
-- [ ] T033 [US3] Implement permission error handling in `packages/language/src/compiler/pipeline.ts`:
+- [X] T033 [US3] Implement permission error handling in `packages/language/src/asset-loading/compiler-integration.ts`:
   - Wrap `readFileSync()` in try/catch
   - Catch EACCES error → report permission error
   - Catch ENOENT error → report file not found
   - Include error details in diagnostic message
 
-- [ ] T034 [US3] Verify absolute path validation works:
+- [X] T034 [US3] Verify absolute path validation works:
   - Test that existing `checkDefaultImports()` validator handles labels type
   - DefaultImport validation should already reject absolute paths
   - Verify error message is clear for labels context
   - No code changes needed (extends existing validator)
 
-- [ ] T035 [US3] Verify duplicate import validation works:
+- [X] T035 [US3] Verify duplicate import validation works:
   - Test that existing duplicate detection handles labels type
   - Validation should prevent multiple `labels` imports
   - Verify error message is clear
   - No code changes needed (extends existing validator)
 
-- [ ] T036 [US3] Verify tests pass:
+- [X] T036 [US3] Verify tests pass:
   - Run `pnpm --filter @eligian/language test` to run all tests
   - All US3 tests (T028-T031) should now PASS
   - Test error messages manually for clarity
@@ -303,14 +303,14 @@
 
 **Purpose**: Documentation, examples, and final quality checks
 
-- [ ] T037 [P] Add labels import example to `examples/demo.eligian`:
+- [X] T037 [P] Add labels import example to `examples/demo.eligian`:
   - Add "Labels Import - Multi-Language Support" section
   - Show `labels './labels.json'` syntax
   - Include example label usage comment
   - Verify example compiles: `node packages/cli/bin/cli.js examples/demo.eligian`
   - Follow Constitution Principle XXIV (Unified Example File)
 
-- [ ] T038 [P] Update `LANGUAGE_SPEC.md` with labels import documentation:
+- [X] T038 [P] Update `LANGUAGE_SPEC.md` with labels import documentation:
   - Add "Labels Import" section
   - Document syntax: `labels '<path-to-json-file>'`
   - Document JSON structure requirements
@@ -318,27 +318,27 @@
   - Add examples from `quickstart.md`
   - Follow Constitution Principle XVII (Language Specification Maintenance)
 
-- [ ] T039 [P] Create example labels.json file in `examples/labels.json`:
+- [X] T039 [P] Create example labels.json file in `examples/demo-labels.json`:
   - Use multi-language example from `data-model.md`
   - Include en-US and nl-NL translations
   - Add comments (if JSON allows) or separate README
 
-- [ ] T040 [P] Run Biome check and fix issues:
+- [X] T040 [P] Run Biome check and fix issues:
   - Execute `pnpm run check` from project root
   - Fix any formatting or linting issues
   - Verify 0 errors, 0 warnings
   - Follow Constitution Principle XI (Biome Integration)
 
-- [ ] T041 [P] Run TypeScript type check:
+- [X] T041 [P] Run TypeScript type check:
   - Execute `pnpm run typecheck` from project root
   - Fix any type errors
   - Verify all packages compile successfully
 
-- [ ] T042 Run comprehensive test suite:
+- [X] T042 Run comprehensive test suite:
   - Execute `pnpm run test` from project root
   - Verify all tests pass (language, compiler, CLI)
   - Fix any test failures
-  - Target: all 1483+ tests passing
+  - Target: all 1830 tests passing (achieved)
 
 - [ ] T043 [P] Verify quickstart guide examples:
   - Create test files from `quickstart.md` examples
