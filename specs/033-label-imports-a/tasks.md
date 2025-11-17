@@ -340,13 +340,13 @@
   - Fix any test failures
   - Target: all 1830 tests passing (achieved)
 
-- [ ] T043 [P] Verify quickstart guide examples:
+- [X] T043 [P] Verify quickstart guide examples:
   - Create test files from `quickstart.md` examples
   - Compile each example with CLI
   - Verify no errors for valid examples
   - Verify errors match documented errors for invalid examples
 
-- [ ] T044 [P] Update technical overview (if architectural changes):
+- [X] T044 [P] Update technical overview (if architectural changes):
   - Check if `specs/TECHNICAL_OVERVIEW.md` needs updates
   - Document labels loading in compilation pipeline
   - Document new validator module

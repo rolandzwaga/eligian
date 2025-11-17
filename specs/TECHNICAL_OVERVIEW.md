@@ -611,7 +611,7 @@ Event:
 ```
 
 **Key Constructs**:
-- Imports (`styles`, `layout`, `library`)
+- Imports (`styles`, `layout`, `labels`, `library`)
 - Action definitions (`action name(params) [operations]`)
 - Timelines (`timeline "name" at 0s { ... }`)
 - Events (`at 0s..5s operation`)
@@ -763,13 +763,16 @@ interface CSSRegistryService {
 - `css-file-validator.ts` - CSS file validation
 - `html-template-validator.ts` - HTML template validation
 - `library-validator.ts` - Library import validation
+- `validators/label-import-validator.ts` - Labels JSON schema validation (Feature 033)
 
-**Features** (Feature 010):
+**Features** (Features 010, 033):
 - CSS file imports (`styles "./file.css"`)
 - HTML template imports (`layout "./template.html"`)
+- Labels JSON imports (`labels "./labels.json"`) - Feature 033
 - Library imports (`import { action1, action2 } from "./library.eligian"`)
 - File existence validation
-- Syntax validation (CSS, HTML)
+- Syntax validation (CSS, HTML, JSON)
+- Schema validation (labels JSON with AJV)
 - Circular dependency detection (libraries)
 
 **Asset Types**:
@@ -777,6 +780,7 @@ interface CSSRegistryService {
 interface AssetLoadingResult {
   cssFiles: string[];            // Validated CSS files
   layoutTemplate: string | null; // Validated HTML template
+  labels: ILanguageLabel[];      // Validated multi-language labels (Feature 033)
   importMap: Record<string, Library>; // Validated libraries
   errors: AssetError[];          // Validation errors
 }
