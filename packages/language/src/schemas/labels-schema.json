@@ -26,8 +26,9 @@
             },
             "languageCode": {
               "type": "string",
-              "description": "Language code (e.g., en-US, nl-NL, fr-FR)",
-              "minLength": 2
+              "description": "Language code in format 'lowercase-UPPERCASE' (e.g., en-US, nl-NL, fr-FR). Matches Eligius TLanguageCode type.",
+              "pattern": "^[a-z]{2,3}-[A-Z]{2,3}$",
+              "minLength": 5
             },
             "label": {
               "type": "string",

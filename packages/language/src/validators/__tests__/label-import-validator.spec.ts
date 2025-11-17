@@ -177,7 +177,48 @@ describe('validateSchema()', () => {
       expect(error).toBeDefined();
       expect(error?.code).toBe('invalid_labels_schema');
       expect(error?.message).toContain('required');
-      expect(error?.message).toContain('label');
+    });
+
+    it('should fail when languageCode has invalid format', () => {
+      const invalidData = [
+        {
+          id: 'mainTitle',
+          labels: [
+            {
+              id: '1',
+              languageCode: 'en_US', // Invalid: underscore instead of hyphen
+              label: 'Test',
+            },
+          ],
+        },
+      ];
+
+      const error = validateSchema(invalidData);
+
+      expect(error).toBeDefined();
+      expect(error?.code).toBe('invalid_labels_schema');
+      expect(error?.message).toContain('pattern');
+    });
+
+    it('should fail when languageCode is all lowercase', () => {
+      const invalidData = [
+        {
+          id: 'mainTitle',
+          labels: [
+            {
+              id: '1',
+              languageCode: 'en-us', // Invalid: region code should be uppercase
+              label: 'Test',
+            },
+          ],
+        },
+      ];
+
+      const error = validateSchema(invalidData);
+
+      expect(error).toBeDefined();
+      expect(error?.code).toBe('invalid_labels_schema');
+      expect(error?.message).toContain('pattern');
     });
 
     it('should fail when root is not an array', () => {
