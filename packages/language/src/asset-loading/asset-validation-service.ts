@@ -30,14 +30,14 @@ export class AssetValidationService implements IAssetValidationService {
   /**
    * Validate an asset file
    *
-   * @param assetType - Type of asset ('html', 'css', 'media')
+   * @param assetType - Type of asset ('html', 'css', 'media', 'json')
    * @param absolutePath - Absolute path to the asset file
    * @param sourcePath - Absolute path to the source .eligian file (for error reporting)
    * @param relativePath - Relative path from import statement (for error reporting)
    * @returns Array of asset errors (empty if valid)
    */
   validateAsset(
-    assetType: 'html' | 'css' | 'media',
+    assetType: 'html' | 'css' | 'media' | 'json',
     absolutePath: string,
     sourcePath: string,
     relativePath: string
@@ -75,6 +75,11 @@ export class AssetValidationService implements IAssetValidationService {
       case 'media':
         return this.validateMedia(absolutePath, relativePath, sourceLocation);
 
+      case 'json':
+        // JSON validation is handled separately by label-import-validator
+        // Just verify file exists (already done above)
+        return errors;
+
       default:
         // Unknown asset type
         errors.push({
@@ -83,7 +88,7 @@ export class AssetValidationService implements IAssetValidationService {
           absolutePath,
           sourceLocation,
           message: `Unknown asset type: ${assetType}`,
-          hint: 'Asset type must be html, css, or media',
+          hint: 'Asset type must be html, css, media, or json',
         });
         return errors;
     }

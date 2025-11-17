@@ -102,7 +102,7 @@ ImportStatement:
  * Only ONE of each type allowed per document.
  */
 DefaultImport:
-    type=('layout' | 'styles' | 'provider') path=STRING;
+    type=('layout' | 'styles' | 'provider' | 'labels') path=STRING;
 
 /**
  * Named Import - Reusable asset reference with identifier

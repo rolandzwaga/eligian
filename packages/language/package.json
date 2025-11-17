@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@eligian/shared-utils": "workspace:*",
+    "ajv": "^8.17.1",
     "css-tree": "3.1.0",
     "domhandler": "5.0.3",
     "domutils": "3.2.2",

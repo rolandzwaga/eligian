@@ -1,10 +1,16 @@
 # Eligian Language Specification
 
-**Version**: 1.5.1
+**Version**: 1.5.2
 **Last Updated**: 2025-11-17
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.5.1):
+**Recent Changes** (v1.5.2):
+- Added labels import support (Feature 033)
+- Labels import allows internationalization with multi-language JSON files
+- Labels JSON validated against schema with compile-time error reporting
+- Labels assigned to Eligius configuration's `labels` property
+
+**Previous Changes** (v1.5.1):
 - Added library cache invalidation documentation (Feature 032 improvements)
 - Added parameter count validation for imported actions (Feature 032 fix)
 - Updated CSS path resolution to be relative to source file directory (not workspace root)
@@ -152,17 +158,17 @@ Reserved keywords that cannot be used as identifiers:
 ```
 action      at          timeline    for         if
 else        break       continue    from        as
-import      layout      styles      provider    true
-false       on          event       topic       endable
-library     private     sequence    stagger     in
-using       with        const       null
+import      layout      styles      provider    labels
+true        false       on          event       topic
+endable     library     private     sequence    stagger
+in          using       with        const       null
 ```
 
 **Note**: Keywords are organized by category:
 - **Action keywords**: `action`, `endable`, `private`
 - **Control flow**: `for`, `if`, `else`, `break`, `continue`, `in`
 - **Timeline keywords**: `timeline`, `at`, `sequence`, `stagger`, `using`, `with`
-- **Import keywords**: `import`, `layout`, `styles`, `provider`, `library`, `from`, `as`
+- **Import keywords**: `import`, `layout`, `styles`, `provider`, `labels`, `library`, `from`, `as`
 - **Event keywords**: `on`, `event`, `topic`
 - **Declaration keywords**: `const`
 - **Literals**: `true`, `false`, `null`
@@ -315,12 +321,14 @@ Default imports automatically assign assets to specific configuration properties
 layout "<path>"
 styles "<path>"
 provider "<path>"
+labels "<path>"
 ```
 
 **Import Types**:
 - `layout` - HTML layout file (auto-assigned to `layoutTemplate`)
 - `styles` - CSS stylesheet file (registered for CSS validation/completion)
 - `provider` - Media file (auto-assigned to timeline provider source)
+- `labels` - Labels JSON file (auto-assigned to `labels` property, validated against schema)
 
 **Examples**:
 
@@ -329,6 +337,7 @@ provider "<path>"
 layout "./layout.html"      // Assigns to layoutTemplate property
 styles "./main.css"         // Registers CSS for completions
 provider "./video.mp4"      // Assigns to timelineProvider.source
+labels "./labels.json"      // Assigns to labels property (internationalization)
 ```
 
 **Restrictions**:
@@ -388,6 +397,106 @@ Import paths must be **relative paths** only:
 - `"https://example.com/file.js"` - URL path
 
 **Reserved Names**: Import names cannot be reserved keywords (`action`, `timeline`, `const`, `for`, `if`, etc.)
+
+#### 3.2.4 Labels Import (Feature 033)
+
+Labels imports provide internationalization support by loading multi-language translations from JSON files.
+
+**Syntax**:
+```eligian
+labels "<path-to-json-file>"
+```
+
+**Purpose**: Import label translations for multiple languages to support internationalized presentations. The labels JSON is validated against a schema and assigned to the Eligius configuration's `labels` property.
+
+**JSON Format**: The labels file must be a JSON array of label groups, where each group contains translations in multiple languages.
+
+**Example Labels File** (`labels.json`):
+```json
+[
+  {
+    "id": "welcome-title",
+    "labels": [
+      {
+        "id": "welcome-title-en",
+        "languageCode": "en-US",
+        "label": "Welcome to Eligian Language Demo"
+      },
+      {
+        "id": "welcome-title-nl",
+        "languageCode": "nl-NL",
+        "label": "Welkom bij Eligian Taal Demo"
+      }
+    ]
+  },
+  {
+    "id": "button-text",
+    "labels": [
+      {
+        "id": "button-text-en",
+        "languageCode": "en-US",
+        "label": "Click Here"
+      },
+      {
+        "id": "button-text-de",
+        "languageCode": "de-DE",
+        "label": "Hier klicken"
+      }
+    ]
+  }
+]
+```
+
+**Example Usage**:
+```eligian
+// Import labels
+labels "./labels.json"
+
+// Import other assets
+layout "./layout.html"
+styles "./styles.css"
+
+// Timeline can use labels via Eligius runtime
+timeline "Multi-Language Demo" in "#app" using raf {
+  at 0s..5s [
+    selectElement("#title")
+    // Label selection handled by Eligius runtime based on current language
+    setElementContent($globaldata.labels["welcome-title"])
+  ]
+}
+```
+
+**Schema Validation**:
+The compiler validates the labels JSON against a JSON Schema (Draft 2020-12):
+
+**Required Fields**:
+- **Label Group**: `id` (string), `labels` (array with at least 1 item)
+- **Translation**: `id` (string), `languageCode` (string, min 2 chars), `label` (string)
+
+**Validation Errors**:
+The compiler catches and reports validation errors with actionable messages:
+
+```eligian
+// Missing required field
+labels "./invalid-labels.json"
+// ❌ ERROR: Missing required property "languageCode" at /0/labels/0
+
+// Empty label group
+labels "./empty-labels.json"
+// ❌ ERROR: Label group "welcome-title" must have at least one translation
+
+// Invalid JSON syntax
+labels "./broken-labels.json"
+// ❌ ERROR: Invalid JSON syntax in './broken-labels.json': Unexpected token } in JSON at position 45
+```
+
+**Restrictions**:
+- Only ONE labels import allowed per program
+- Path must be relative (not absolute)
+- JSON file must be valid UTF-8
+- JSON must conform to labels schema (see `packages/language/src/schemas/labels-schema.json`)
+
+**Compilation**: Labels are loaded, validated, and assigned to `config.labels` in the compiled Eligius configuration.
 
 ### 3.3 Library Import Statements (Feature 023)
 
@@ -2277,7 +2386,7 @@ ProgramElement  := ActionDefinition | EventActionDefinition | Timeline | Variabl
 Library         := 'library' ID ActionDefinition*
 
 ImportStatement := DefaultImport | NamedImport | LibraryImport
-DefaultImport   := ('layout' | 'styles' | 'provider') STRING
+DefaultImport   := ('layout' | 'styles' | 'provider' | 'labels') STRING
 NamedImport     := 'import' ID 'from' STRING ('as' AssetType)?
 LibraryImport   := 'import' '{' ActionImport (',' ActionImport)* '}' 'from' STRING
 ActionImport    := ID ('as' ID)?
@@ -2355,6 +2464,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |
 | 1.5.0 | 2025-11-13 | **Major Update**: Fixed critical syntax notation issues, added complete documentation for 10+ missing features: Event name validation (Feature 029), event action code completion (Feature 030), CSS class/selector validation (Feature 013), preview CSS support with hot-reload (Feature 011), expanded JSDoc documentation (Feature 020), Typir integration details (Feature 021), comprehensive library file validation (Feature 023). Updated keyword list to include all 11 missing keywords. Verified 1,758 tests passing, 81.72% coverage. Added new sections 5.10, 5.11, 12, 13. |
 | 1.4.0 | 2025-11-10 | Added event action support (Feature 028): event action definitions, event topic namespacing, runtime event handling |

@@ -172,61 +172,6 @@ class EventbusDebugViewer implements IEventbusListener {
   }
 
   /**
-   * Setup UI event handlers
-   */
-  private setupUI(): void {
-    // Toggle button
-    const toggleBtn = document.getElementById('debug-toggle-btn')!;
-    toggleBtn.addEventListener('click', () => this.toggle());
-
-    // Clear button
-    const clearBtn = document.getElementById('debug-clear-btn')!;
-    clearBtn.addEventListener('click', () => this.clear());
-
-    // Filter input
-    const filterInput = document.getElementById('debug-filter') as HTMLInputElement;
-    filterInput.addEventListener('input', () => {
-      this.filterText = filterInput.value.toLowerCase();
-      this.renderEvents();
-    });
-
-    // Make panel draggable
-    this.setupDraggable();
-  }
-
-  /**
-   * Setup draggable behavior for the debug panel
-   */
-  private setupDraggable(): void {
-    const panel = document.getElementById('debug-viewer')!;
-    const header = document.getElementById('debug-header')!;
-    let isDragging = false;
-    let currentX = 0;
-    let currentY = 0;
-    let initialX = 0;
-    let initialY = 0;
-
-    header.addEventListener('mousedown', (e: MouseEvent) => {
-      isDragging = true;
-      initialX = e.clientX - currentX;
-      initialY = e.clientY - currentY;
-    });
-
-    document.addEventListener('mousemove', (e: MouseEvent) => {
-      if (isDragging) {
-        e.preventDefault();
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
-        panel.style.transform = `translate(${currentX}px, ${currentY}px)`;
-      }
-    });
-
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
-  }
-
-  /**
    * Toggle debug viewer visibility
    */
   toggle(): void {

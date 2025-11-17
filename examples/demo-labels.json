@@ -1,0 +1,72 @@
+[
+  {
+    "id": "welcome-title",
+    "labels": [
+      {
+        "id": "welcome-title-en",
+        "languageCode": "en-US",
+        "label": "Welcome to Eligian Language Demo"
+      },
+      {
+        "id": "welcome-title-nl",
+        "languageCode": "nl-NL",
+        "label": "Welkom bij Eligian Taal Demo"
+      }
+    ]
+  },
+  {
+    "id": "feature-showcase",
+    "labels": [
+      {
+        "id": "feature-showcase-en",
+        "languageCode": "en-US",
+        "label": "Feature Showcase"
+      },
+      {
+        "id": "feature-showcase-nl",
+        "languageCode": "nl-NL",
+        "label": "Functie Showcase"
+      },
+      {
+        "id": "feature-showcase-fr",
+        "languageCode": "fr-FR",
+        "label": "Présentation des fonctionnalités"
+      }
+    ]
+  },
+  {
+    "id": "button-text",
+    "labels": [
+      {
+        "id": "button-text-en",
+        "languageCode": "en-US",
+        "label": "Click Here"
+      },
+      {
+        "id": "button-text-nl",
+        "languageCode": "nl-NL",
+        "label": "Klik hier"
+      },
+      {
+        "id": "button-text-de",
+        "languageCode": "de-DE",
+        "label": "Hier klicken"
+      }
+    ]
+  },
+  {
+    "id": "status-message",
+    "labels": [
+      {
+        "id": "status-message-en",
+        "languageCode": "en-US",
+        "label": "Timeline is running..."
+      },
+      {
+        "id": "status-message-nl",
+        "languageCode": "nl-NL",
+        "label": "Tijdlijn is actief..."
+      }
+    ]
+  }
+]

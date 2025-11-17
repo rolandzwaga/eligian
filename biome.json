@@ -46,12 +46,21 @@
     }
   },
   "files": {
-    "includes": ["packages/**/*.ts", "packages/**/*.json"],
+    "includes": ["packages/**/*.ts", "packages/**/*.json", "!**/fixtures"],
     "ignoreUnknown": true
   },
   "overrides": [
     {
       "includes": ["**/out/**", "**/dist/**", "**/generated/**", "**/*.generated.ts", "**/*.d.ts"],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["**/__tests__/**/fixtures/**/*.json"],
       "linter": {
         "enabled": false
       },
