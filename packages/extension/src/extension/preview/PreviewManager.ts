@@ -24,6 +24,7 @@ import { PreviewPanel } from './PreviewPanel.js';
  * manager.showPreview(document.uri);
  */
 export class PreviewManager {
+  private static instance: PreviewManager | null = null;
   private panels: Map<string, PreviewPanel> = new Map();
   private context: vscode.ExtensionContext;
   private disposables: vscode.Disposable[] = [];

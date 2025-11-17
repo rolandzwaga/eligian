@@ -28,6 +28,7 @@ import * as vscode from 'vscode';
  * watcher.dispose();
  */
 export class FileWatcher {
+  private static readonly DEBOUNCE_DELAY = 300; // milliseconds
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private callbacks: Map<string, () => void> = new Map();
   private disposables: vscode.Disposable[] = [];
