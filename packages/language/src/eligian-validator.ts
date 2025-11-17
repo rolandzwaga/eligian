@@ -39,6 +39,7 @@ import type {
   TimelineEvent,
   VariableDeclaration,
 } from './generated/ast.js';
+import { isLibraryImport } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
@@ -501,10 +502,11 @@ export class EligianValidator {
     }
 
     // Feature 024: Check if operation is an IMPORTED action
+    // Feature 032 Fix: Must check aliases as well as original action names
     if (program && this.services) {
       const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
       const importedActions = scopeProvider.getImportedActions(program);
-      const importedAction = findActionByName(opName, importedActions);
+      const importedAction = this.findImportedActionByNameOrAlias(opName, program, importedActions);
       if (importedAction) {
         // This is a valid imported action call - skip operation validation
         return;
@@ -542,29 +544,42 @@ export class EligianValidator {
         const expectedCount = localAction.parameters?.length ?? 0;
         if (argumentCount !== expectedCount) {
           const paramNames = localAction.parameters?.map(p => p.name).join(', ') ?? '';
-          accept('error', `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`, {
-            node: operation,
-            property: 'args',
-            code: 'invalid_parameter_count',
-          });
+          accept(
+            'error',
+            `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+            {
+              node: operation,
+              property: 'args',
+              code: 'invalid_parameter_count',
+            }
+          );
         }
         return;
       }
 
       // Check imported action
+      // Feature 032 Fix: Must check aliases as well as original action names
       if (this.services) {
         const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
         const importedActions = scopeProvider.getImportedActions(program);
-        const importedAction = findActionByName(opName, importedActions);
+        const importedAction = this.findImportedActionByNameOrAlias(
+          opName,
+          program,
+          importedActions
+        );
         if (importedAction) {
           const expectedCount = importedAction.parameters?.length ?? 0;
           if (argumentCount !== expectedCount) {
             const paramNames = importedAction.parameters?.map(p => p.name).join(', ') ?? '';
-            accept('error', `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`, {
-              node: operation,
-              property: 'args',
-              code: 'invalid_parameter_count',
-            });
+            accept(
+              'error',
+              `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+              {
+                node: operation,
+                property: 'args',
+                code: 'invalid_parameter_count',
+              }
+            );
           }
           return;
         }
@@ -579,11 +594,15 @@ export class EligianValidator {
         const expectedCount = libraryAction.parameters?.length ?? 0;
         if (argumentCount !== expectedCount) {
           const paramNames = libraryAction.parameters?.map(p => p.name).join(', ') ?? '';
-          accept('error', `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`, {
-            node: operation,
-            property: 'args',
-            code: 'invalid_parameter_count',
-          });
+          accept(
+            'error',
+            `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+            {
+              node: operation,
+              property: 'args',
+              code: 'invalid_parameter_count',
+            }
+          );
         }
         return;
       }
@@ -1012,10 +1031,17 @@ export class EligianValidator {
     }
 
     // Feature 024: Check if it's an IMPORTED action
+    // Feature 032 Fix: Must check aliases as well as original action names
     if (this.services) {
       const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
       const importedActions = scopeProvider.getImportedActions(program);
-      const importedAction = findActionByName(callName, importedActions);
+
+      // Check if callName matches an imported action's name OR its alias
+      const importedAction = this.findImportedActionByNameOrAlias(
+        callName,
+        program,
+        importedActions
+      );
       if (importedAction) {
         // Valid imported action call - success
         return;
@@ -1044,6 +1070,52 @@ export class EligianValidator {
         property: 'operationName',
       }
     );
+  }
+
+  /**
+   * Feature 032 Fix: Find imported action by name or alias
+   *
+   * Checks if the given name matches either:
+   * - The original action name (from library)
+   * - An alias used when importing the action
+   *
+   * @param callName - Name used in OperationCall (could be alias)
+   * @param program - Program containing import statements
+   * @param importedActions - List of imported action definitions
+   * @returns ActionDefinition if found, undefined otherwise
+   */
+  private findImportedActionByNameOrAlias(
+    callName: string,
+    program: Program,
+    importedActions: ActionDefinition[]
+  ): ActionDefinition | undefined {
+    // Build a map of all import aliases: alias → action
+    const aliasMap = new Map<string, ActionDefinition>();
+
+    // Get all library imports from the program
+    const statements = program.statements || [];
+    const libraryImports = statements.filter(isLibraryImport);
+
+    for (const libraryImport of libraryImports) {
+      for (const actionImport of libraryImport.actions) {
+        const action = actionImport.action.ref;
+        if (!action) continue;
+
+        // Register the alias if present
+        if (actionImport.alias) {
+          aliasMap.set(actionImport.alias, action);
+        }
+      }
+    }
+
+    // First, check if callName is an alias
+    const actionByAlias = aliasMap.get(callName);
+    if (actionByAlias) {
+      return actionByAlias;
+    }
+
+    // Otherwise, check if callName matches an original action name
+    return importedActions.find(action => action.name === callName);
   }
 
   /**

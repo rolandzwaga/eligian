@@ -931,7 +931,7 @@ on event "language-change" action HandleLanguageChange(languageCode: string) [
 ### XXV. Test System Documentation (NON-NEGOTIABLE)
 
 When creating specifications, plans, and tasks for new features, MUST consult and reference the
-comprehensive testing guide (`TESTING_GUIDE.md`) to enrich task descriptions with specific
+comprehensive testing guide (`specs/TESTING_GUIDE.md`) to enrich task descriptions with specific
 guidance on writing tests correctly the first time.
 
 **Rationale**: The test system analysis revealed that developers were taking 3-4 passes to create
@@ -943,7 +943,7 @@ descriptions can include specific examples and patterns that prevent common erro
 significant development time and reducing frustration.
 
 **Requirements**:
-- MUST read `TESTING_GUIDE.md` when creating tasks that involve writing new tests
+- MUST read `specs/TESTING_GUIDE.md` when creating tasks that involve writing new tests
 - Task descriptions for test implementation MUST include:
   - Specific test template to use (`minimalProgram()`, `eventActionProgram()`, etc.)
   - Required CSS registry setup (which fixture to use)
@@ -952,7 +952,7 @@ significant development time and reducing frustration.
   - Example test code snippet showing correct pattern
 - Test tasks MUST reference specific sections of the testing guide
 - Tasks MUST warn about known pain points relevant to the test being written
-- When adding new test helpers or patterns, MUST update `TESTING_GUIDE.md` first
+- When adding new test helpers or patterns, MUST update `specs/TESTING_GUIDE.md` first
 
 **Example Task Enhancement** (from Feature 029 - Event Validation):
 
@@ -966,7 +966,7 @@ Before (vague guidance):
 After (enriched with testing guide):
 ```markdown
 - [ ] T038 Create `argument-type-validation.spec.ts` using standard test template
-  - Use `beforeAll()` for createTestContext() (See TESTING_GUIDE.md § Lifecycle Hooks)
+  - Use `beforeAll()` for createTestContext() (See specs/TESTING_GUIDE.md § Lifecycle Hooks)
   - Use `beforeEach()` for setupCSSRegistry() with CSS_FIXTURES.common
   - Use `eventActionProgram()` helper for test code (See § Program Template Builders)
   - Filter errors with DiagnosticSeverity.Error (NOT magic number 1)
@@ -1001,7 +1001,7 @@ When writing feature specifications and implementation plans:
    ## Testing Strategy
 
    This feature requires event action validation tests:
-   - Template: eventActionProgram() (TESTING_GUIDE.md § Event Action Tests)
+   - Template: eventActionProgram() (specs/TESTING_GUIDE.md § Event Action Tests)
    - CSS Setup: CSS_FIXTURES.common in beforeEach() (prevents state leakage)
    - Error Codes: 'unknown_event_name', 'event_type_mismatch', 'event_argument_count_mismatch'
    - Common Pitfalls: Missing timeline, invalid type annotations (use lowercase)
@@ -1010,11 +1010,11 @@ When writing feature specifications and implementation plans:
 3. **Reference in Tasks**: Each test task MUST link to relevant testing guide sections
 
 **Prohibited Practices**:
-- ❌ Creating test tasks without consulting TESTING_GUIDE.md
+- ❌ Creating test tasks without consulting specs/TESTING_GUIDE.md
 - ❌ Vague task descriptions like "write test for X" without specific guidance
 - ❌ Letting developers discover test helpers through trial-and-error
 - ❌ Repeating test infrastructure mistakes that are documented in the guide
-- ❌ Adding new test patterns without updating TESTING_GUIDE.md first
+- ❌ Adding new test patterns without updating specs/TESTING_GUIDE.md first
 
 **Enforcement**:
 - Pull requests adding features MUST show evidence of testing guide consultation

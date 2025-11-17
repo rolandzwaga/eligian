@@ -785,25 +785,101 @@ let ctx: TestContext;
 beforeAll(async () => {
   ctx = createTestContextWithMockFS(); // Enable file system
 
-  // Create library document
+  // Create library document at specific URI
   await createLibraryDocument(
     ctx,
     `library animations
-     action fadeIn(selector: string) [
+     action fadeIn(selector: string, duration: number) [
        selectElement(selector)
-       animate({opacity: 1}, 500)
+       animate({opacity: 1}, duration)
      ]`,
-    'file:///test/animations.eligian'
+    'file:///test/animations.eligian'  // Library file location
   );
 });
 
 test('imports from library', async () => {
-  const { errors } = await ctx.parseAndValidate(`
+  const code = `
     import { fadeIn } from "./animations.eligian"
-    ${minimalProgram({ timelineBody: 'at 0s fadeIn(".box")' })}
-  `);
+    styles "./styles.css"
+
+    timeline "test" in ".container" using raf {
+      at 0s..2s fadeIn("#box", 1000)
+    }
+  `;
+
+  // ⚠️ CRITICAL: parseAndValidate() does NOT support documentUri parameter!
+  // You must use ctx.parse() directly with { documentUri } option
+  const document = await ctx.parse(code, { documentUri: 'file:///test/main.eligian' });
+
+  // Manually build and validate
+  await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+    validation: true,
+  });
+
+  // Extract errors
+  const errors = document.diagnostics?.filter(
+    d => d.severity === DiagnosticSeverity.Error
+  ) ?? [];
+
   expect(errors).toHaveLength(0);
 });
+```
+
+**Key Points for Library Import Tests**:
+
+1. **Library Location**: The library file URI (e.g., `'file:///test/animations.eligian'`) determines where the library "exists" in the mock file system
+
+2. **Document URI Required**: When testing imports, you **CANNOT** use `ctx.parseAndValidate()` because it doesn't accept a `documentUri` parameter:
+   - `parseAndValidate(code: string, cssFileUri?: string)` - second param is CSS file URI, not document URI!
+   - You MUST use `ctx.parse(code, { documentUri })` directly
+   - Then manually call `DocumentBuilder.build()` with `validation: true`
+   - Then extract errors from `document.diagnostics`
+
+3. **Correct Pattern for Library Import Tests**:
+   ```typescript
+   // Parse with documentUri
+   const document = await ctx.parse(code, {
+     documentUri: 'file:///test/main.eligian'
+   });
+
+   // Build and validate
+   await ctx.services.shared.workspace.DocumentBuilder.build([document], {
+     validation: true,
+   });
+
+   // Extract errors manually
+   const errors = document.diagnostics?.filter(
+     d => d.severity === DiagnosticSeverity.Error
+   ) ?? [];
+   ```
+
+4. **Path Resolution**: Import paths are resolved relative to the document's directory:
+   ```typescript
+   // Library at: file:///test/lib/utils.eligian
+   // Main file at: file:///test/main.eligian
+
+   import { helper } from "./lib/utils.eligian"  // ✅ Resolves correctly
+   ```
+
+5. **CSS Registry**: Don't forget to setup CSS registry in `beforeEach()` if your test uses CSS classes
+   - Use the resolved CSS file path that matches what the validator will see
+   - If document is at `file:///test/main.eligian` and code has `styles "./styles.css"`,
+     the CSS registry should be set up for `file:///test/styles.css`
+
+**Common Mistakes**:
+```typescript
+// ❌ WRONG: parseAndValidate doesn't accept documentUri!
+const { errors } = await ctx.parseAndValidate(code, {
+  documentUri: 'file:///test/main.eligian'  // This doesn't work!
+});
+
+// ❌ WRONG: Missing documentUri entirely
+const document = await ctx.parse(code);  // Library imports won't resolve!
+
+// ✅ CORRECT: Use ctx.parse() with documentUri, then build manually
+const document = await ctx.parse(code, { documentUri: 'file:///test/main.eligian' });
+await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+const errors = document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Error) ?? [];
 ```
 
 ### Custom Diagnostic Assertions

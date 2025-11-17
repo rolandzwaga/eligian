@@ -51,8 +51,25 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
       }
     }
   } catch (error) {
-    // Log error but don't fail - CSS loading errors should be handled by CSSErrorParams
-    console.error(`Failed to process CSS update for ${cssFileUri}:`, error);
+    // Register CSS parsing error in the registry
+    // This ensures validation shows proper diagnostics for broken CSS files
+    const cssRegistry = Eligian.css.CSSRegistry;
+    cssRegistry.updateCSSFile(cssFileUri, {
+      classes: new Set(),
+      ids: new Set(),
+      classLocations: new Map(),
+      idLocations: new Map(),
+      classRules: new Map(),
+      idRules: new Map(),
+      errors: [
+        {
+          message: error instanceof Error ? error.message : String(error),
+          filePath: cssFileUri,
+          line: 0,
+          column: 0,
+        },
+      ],
+    });
   }
 });
 
@@ -125,7 +142,6 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           // Update registry with parsed CSS (use absolute URI as key)
           cssRegistry.updateCSSFile(cssFileUri, parseResult);
         } catch (error) {
-          console.error(`Failed to parse CSS file ${cssFileRelativePath}:`, error);
           // Still track the URI even if parsing failed
           const cleanPath = cssFileRelativePath.startsWith('./')
             ? cssFileRelativePath.substring(2)
@@ -168,29 +184,24 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
 // Register JSDoc generation request handler (Step 2 of JSDoc completion)
 // This handler runs AFTER Step 1 inserts /** */ and triggers the command
 connection.onRequest('eligian/generateJSDoc', async params => {
-  console.log('Language server received eligian/generateJSDoc request:', params);
   const { textDocument, position } = params;
 
   // Get the document from the workspace
   const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(textDocument.uri));
   if (!document) {
-    console.log('Document not found:', textDocument.uri);
     return null;
   }
 
   // Find action definition on the line below the current position
   const actionDef = findActionBelow(document, position);
-  console.log('Action found:', actionDef ? actionDef.name : 'none');
 
   // If action found, generate JSDoc content (without delimiters)
   if (actionDef) {
     const content = generateJSDocContent(actionDef);
-    console.log('Generated JSDoc content:', content);
     return content;
   }
 
   // No action found, return null (no JSDoc generation)
-  console.log('No action found below cursor, returning null');
   return null;
 });
 

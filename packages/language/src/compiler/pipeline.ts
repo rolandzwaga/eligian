@@ -331,7 +331,6 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
                 // Update registry with parsed CSS
                 cssRegistry.updateCSSFile(cssFileUri, parseResult);
               } catch (error) {
-                console.error(`Failed to parse CSS file ${cssRelativePath}:`, error);
                 // Convert to absolute URI for error registration
                 const cssFilePath = cssRelativePath.startsWith('./')
                   ? `${docDir}${cssRelativePath.substring(1)}`
@@ -673,7 +672,6 @@ export function loadLibraryFile(libraryUri: URI): Effect.Effect<string, ParseErr
       return content;
     },
     catch: error => {
-      console.error('[DEBUG] loadLibraryFile FAILED:', libraryUri.fsPath, error);
       return {
         _tag: 'ParseError' as const,
         message: `Failed to load library file: ${(error as Error).message}`,

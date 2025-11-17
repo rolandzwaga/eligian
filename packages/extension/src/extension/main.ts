@@ -173,15 +173,12 @@ function registerCompileCommand(): any {
             sourceUri: sourceUri.fsPath,
           });
 
-          let result;
+          let result: string | undefined;
           try {
             result = await Effect.runPromise(compileEffect);
           } catch (error) {
             // Handle compilation errors
             // Effect.runPromise wraps errors in a FiberFailure structure with nested cause
-            console.log('[DEBUG] Raw error object:', error);
-            console.log('[DEBUG] Error stack:', (error as any)?.stack);
-
             let compilerError: any = error;
 
             // Unwrap Effect's FiberFailure -> Cause -> failure structure
@@ -196,15 +193,6 @@ function registerCompileCommand(): any {
             }
             if (compilerError?._tag === 'Fail' && compilerError.failure) {
               compilerError = compilerError.failure;
-            }
-
-            console.log('[DEBUG] Final unwrapped error:', JSON.stringify(compilerError, null, 2));
-
-            // If it's a Die with defect, the defect might have more info
-            if (compilerError?._tag === 'Die' && compilerError.defect) {
-              console.log('[DEBUG] Defect object:', compilerError.defect);
-              console.log('[DEBUG] Defect message:', compilerError.defect?.message);
-              console.log('[DEBUG] Defect stack:', compilerError.defect?.stack);
             }
 
             const formatted = formatErrors([compilerError], sourceCode);
@@ -267,22 +255,18 @@ function registerCompileCommand(): any {
  */
 function registerGenerateJSDocCommand(client: LanguageClient): any {
   return vscode.commands.registerCommand('eligian.generateJSDoc', async () => {
-    console.log('eligian.generateJSDoc command triggered');
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      console.log('No active editor');
       return;
     }
 
     const document = editor.document;
     if (document.languageId !== 'eligian') {
-      console.log('Not an eligian document:', document.languageId);
       return;
     }
 
     // Get current cursor position (should be inside /** */ after Step 1)
     const position = editor.selection.active;
-    console.log('Cursor position:', position);
 
     // Request JSDoc generation from language server
     const params = {
@@ -291,9 +275,7 @@ function registerGenerateJSDocCommand(client: LanguageClient): any {
     };
 
     try {
-      console.log('Sending request to language server:', params);
       const jsdocContent = await client.sendRequest('eligian/generateJSDoc', params);
-      console.log('Received JSDoc content:', jsdocContent);
 
       if (jsdocContent && typeof jsdocContent === 'string') {
         // Replace the placeholder ${1} with the JSDoc content
@@ -313,12 +295,9 @@ function registerGenerateJSDocCommand(client: LanguageClient): any {
             editBuilder.replace(new vscode.Range(startPos, endPos), `\n${jsdocContent}\n `);
           }
         });
-      } else {
-        console.log('No JSDoc content to insert');
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - no JSDoc generation available
-      console.log('No JSDoc generation available:', error);
     }
   });
 }
@@ -360,8 +339,6 @@ function registerJSDocAutoCompletion(_client: LanguageClient): any {
 
       // Check if it ends with /**
       if (textBeforeCursor.trimEnd().endsWith('/**')) {
-        console.log('Auto-completing JSDoc comment');
-
         // Insert the closing */ and position cursor
         await editor.edit(
           (editBuilder: any) => {

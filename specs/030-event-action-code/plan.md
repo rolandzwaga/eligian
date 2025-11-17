@@ -28,7 +28,7 @@ Implement intelligent code completion for event actions in the Eligian DSL. When
 Verify compliance with `.specify/memory/constitution.md`:
 
 - [x] **Simplicity & Documentation**: Extends existing completion infrastructure (eligian-completion-provider.ts). Straightforward string manipulation for camelCase conversion and LSP snippet generation.
-- [x] **Comprehensive Testing**: Test-first development with unit tests for name conversion, integration tests for completion/skeleton generation using Langium test utilities. Follows TESTING_GUIDE.md patterns (eventActionProgram helper, CSS registry setup).
+- [x] **Comprehensive Testing**: Test-first development with unit tests for name conversion, integration tests for completion/skeleton generation using Langium test utilities. Follows specs/TESTING_GUIDE.md patterns (eventActionProgram helper, CSS registry setup).
 - [x] **No Gold-Plating**: Solves documented user pain point (manual boilerplate writing for event actions). Feature 028 already implements event name completion; this extends it with skeleton generation per user request.
 - [x] **Code Review**: Standard PR workflow applies. Feature branch 030-event-action-code already created.
 - [x] **UX Consistency**: Follows existing completion patterns (getEventNameCompletions, getOperationCompletions). Uses LSP CompletionItem.insertTextFormat = InsertTextFormat.Snippet consistently with existing completions.
@@ -36,7 +36,7 @@ Verify compliance with `.specify/memory/constitution.md`:
 
 **Principle XVIII (Research & Documentation)**: Will consult context7 for LSP snippet syntax and Typir integration investigation.
 **Principle XXIV (Unified Example File)**: Will add event action skeleton examples to examples/demo.eligian.
-**Principle XXV (Test System Documentation)**: Will consult TESTING_GUIDE.md when creating test tasks (eventActionProgram helper, error code validation).
+**Principle XXV (Test System Documentation)**: Will consult specs/TESTING_GUIDE.md when creating test tasks (eventActionProgram helper, error code validation).
 
 *All checks pass. No complexity violations.*
 

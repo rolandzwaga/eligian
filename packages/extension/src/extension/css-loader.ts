@@ -92,10 +92,5 @@ export async function loadCSSFile(filePath: string): Promise<string> {
  * // ['./styles/main.css', './styles/theme.css']
  */
 export function extractCSSFiles(config: IEngineConfiguration): string[] {
-  console.log('[css-loader] extractCSSFiles called with config:', {
-    hasCssFiles: 'cssFiles' in config,
-    cssFilesValue: config.cssFiles,
-    cssFilesType: typeof config.cssFiles,
-  });
   return config.cssFiles || [];
 }

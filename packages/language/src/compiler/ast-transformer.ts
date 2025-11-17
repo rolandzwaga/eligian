@@ -416,7 +416,6 @@ export const transformAST = (
       timelineProviderSettings: providerSettings as TTimelineProviderSettings,
     };
 
-
     // Return new EligiusIR wrapper (T279)
     const result = {
       config,

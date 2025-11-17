@@ -1129,7 +1129,7 @@ action processData(items: array, options) [...]
 
 > **⚠️ REQUIRED READING BEFORE WRITING ANY TESTS**
 >
-> **MUST read `TESTING_GUIDE.md` before writing tests** (Constitution Principle XXV)
+> **MUST read `specs/TESTING_GUIDE.md` before writing tests** (Constitution Principle XXV)
 >
 > The testing guide contains:
 > - Quick start templates (`minimalProgram()`, `eventActionProgram()`, etc.)

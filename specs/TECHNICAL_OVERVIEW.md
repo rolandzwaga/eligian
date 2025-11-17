@@ -582,7 +582,7 @@ interface CompileOptions {
 
 ## Module Organization
 
-The language package is organized into **12 functional domains**:
+The language package is organized into **13 functional domains**:
 
 ### 1. Grammar & Parser
 
@@ -767,7 +767,7 @@ interface CSSRegistryService {
 **Features** (Feature 010):
 - CSS file imports (`styles "./file.css"`)
 - HTML template imports (`layout "./template.html"`)
-- Library imports (`library "./actions.eligian"`)
+- Library imports (`import { action1, action2 } from "./library.eligian"`)
 - File existence validation
 - Syntax validation (CSS, HTML)
 - Circular dependency detection (libraries)
@@ -782,7 +782,79 @@ interface AssetLoadingResult {
 }
 ```
 
-### 8. JSDoc Support
+### 8. Library File Loading (Feature 032)
+
+**Location**: `src/compiler/pipeline.ts`
+
+**Features**:
+- ES6-style action imports (`import { fadeIn, fadeOut } from "./library.eligian"`)
+- Nested library dependencies (libraries can import other libraries)
+- Recursive dependency resolution with cycle detection
+- Cache invalidation on library file edits
+- Cross-document action references
+
+**Import Syntax**:
+```eligian
+// Named imports (ES6-style)
+import { fadeIn, fadeOut } from "./animations.eligian"
+
+// Import with aliases
+import { fadeIn as customFadeIn } from "./animations.eligian"
+
+// Library files can import other libraries (nested dependencies)
+// File: animations.eligian
+import { easeIn } from "./easing.eligian"
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  easeIn(duration)
+  animate({opacity: 1}, duration)
+]
+```
+
+**Implementation**:
+
+**Library Loading Functions**:
+- `loadLibraryRecursive()` - Recursively loads library and all nested dependencies
+- `parseLibraryDocument()` - Parses library file to AST (with cache invalidation)
+- `extractLibraryImportsFromLibrary()` - Extracts imports from Library AST nodes
+- `resolveLibraryPath()` - Resolves relative library paths to absolute URIs
+
+**Circular Dependency Detection**:
+```typescript
+// Detects cycles during recursive loading
+loadLibraryRecursive(libraryUri, documentUri, loadingStack)
+// If libraryUri already in loadingStack → circular dependency error
+// Example error: "Circular dependency detected: A.eligian → B.eligian → A.eligian"
+```
+
+**Cache Invalidation**:
+Library documents are cached in Langium's workspace for performance. When a library file is edited, the cache must be invalidated:
+
+```typescript
+// Before re-parsing library:
+if (existingDoc) {
+  services.shared.workspace.LangiumDocuments.deleteDocument(libraryUri);
+}
+// Now parse fresh content from disk
+```
+
+**Cross-Document Linking**:
+All library documents are built together in a single DocumentBuilder call to ensure proper linking:
+
+```typescript
+// CRITICAL: Build main document + all libraries together
+services.shared.workspace.DocumentBuilder.build(
+  [mainDocument, ...libraryDocuments],
+  { validation: false }
+);
+```
+
+**Validation**:
+- **Parameter count checking**: Imported actions validate argument counts (Feature 032 fix)
+- **Library file compilation prevention**: Cannot compile library files directly (must be imported)
+- **Circular dependency prevention**: Runtime error if libraries form import cycles
+
+### 9. JSDoc Support
 
 **Location**: `src/jsdoc/`
 
@@ -810,7 +882,7 @@ action fadeIn(selector: string, duration: number) [...]
 
 **Test Coverage**: 31 tests across 6 test suites
 
-### 9. Error System
+### 10. Error System
 
 **Location**: `src/errors/`
 
@@ -844,7 +916,7 @@ Error: Unknown CSS class: 'buttom'
 💡 Did you mean: 'button'?
 ```
 
-### 10. Effect-ts Services
+### 11. Effect-ts Services
 
 **Location**: `src/compiler/` (currently minimal, placeholder for future)
 
@@ -861,7 +933,7 @@ Error: Unknown CSS class: 'buttom'
 - `LoggerService` - Logging effects
 - `CompilerService` - Compilation effects
 
-### 11. Utilities
+### 12. Utilities
 
 **Location**: `src/utils/`
 
@@ -877,7 +949,7 @@ Error: Unknown CSS class: 'buttom'
 - `parseTimeValue()` - Parse time strings to milliseconds
 - `getSourceLocation()` - Extract source location from AST node
 
-### 12. Tests
+### 13. Tests
 
 **Location**: `src/__tests__/`
 
@@ -1947,11 +2019,12 @@ This technical overview provides a comprehensive reference for the Eligian codeb
 1. **Monorepo Structure**: 5 packages with pnpm workspace management
 2. **Three-Tool Build**: Langium CLI → TypeScript → esbuild
 3. **Five-Stage Compiler**: Parse → Validate/Transform → Type Check → Optimize → Emit
-4. **12 Functional Domains**: Grammar, compiler, LSP, operations, type system, CSS, assets, JSDoc, errors, Effect, utils, tests
+4. **13 Functional Domains**: Grammar, compiler, LSP, operations, type system, CSS, assets, library loading, JSDoc, errors, Effect, utils, tests
 5. **Three-Process Extension**: Extension Host ↔ Language Server ↔ Webview Preview
 6. **Standalone CLI**: Command-line compiler with rich error formatting
 7. **Comprehensive Testing**: 1,483 tests with 81.72% coverage
 8. **Quality-First Development**: Biome + TypeScript strict mode + 80% coverage target
+9. **Library System**: ES6-style imports with nested dependencies, cycle detection, and cache invalidation
 
 **For Further Reading**:
 - `CLAUDE.md` - Project guidance and requirements

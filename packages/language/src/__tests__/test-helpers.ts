@@ -931,3 +931,8 @@ timeline "test" in ".container" using raf {
 }
 `;
 }
+
+/**
+ * Re-export MockAssetLoader for testing with mock file system
+ */
+export { MockAssetLoader } from './mock-asset-loader.js';
