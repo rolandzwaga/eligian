@@ -33,32 +33,30 @@ describe('Parameter Types from Eligius', () => {
     { type: 'ParameterType:array' as const, description: 'array type' },
     { type: 'ParameterType:className' as const, description: 'className type' },
     { type: 'ParameterType:selector' as const, description: 'selector type' },
-  ])(
-    'should handle standard Eligius parameter type $type ($description)',
-    ({ type: eligiusType }) => {
-      const param: OperationParameter = {
-        name: 'test',
-        type: [eligiusType],
-        required: false,
-      };
+  ])('should handle standard Eligius parameter type $type ($description)', ({
+    type: eligiusType,
+  }) => {
+    const param: OperationParameter = {
+      name: 'test',
+      type: [eligiusType],
+      required: false,
+    };
 
-      expect(param.type[0]).toBe(eligiusType);
-    }
-  );
+    expect(param.type[0]).toBe(eligiusType);
+  });
 
   it.each([
     { type: 'ParameterType:function' as const, description: 'function type (recently added)' },
     { type: 'ParameterType:Date' as const, description: 'Date type (recently added)' },
-  ])(
-    'should handle newly added Eligius type $type without code changes ($description)',
-    ({ type: eligiusType }) => {
-      const param: OperationParameter = {
-        name: 'test',
-        type: [eligiusType],
-        required: false,
-      };
+  ])('should handle newly added Eligius type $type without code changes ($description)', ({
+    type: eligiusType,
+  }) => {
+    const param: OperationParameter = {
+      name: 'test',
+      type: [eligiusType],
+      required: false,
+    };
 
-      expect(param.type[0]).toBe(eligiusType);
-    }
-  );
+    expect(param.type[0]).toBe(eligiusType);
+  });
 });

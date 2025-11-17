@@ -243,8 +243,79 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
-- Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+
+---
+
+## Phase Completion Protocol (Constitution XXIII)
+
+**CRITICAL**: After completing the FINAL task of each phase, you MUST execute this protocol before proceeding to the next phase. Failure to follow this protocol is a constitutional violation.
+
+### After Each Phase Completes:
+
+**STOP IMMEDIATELY** and execute these steps:
+
+1. ✅ **Update tasks.md** - Mark all completed tasks with `[X]`:
+   - Change `[ ]` to `[X]` for each completed task
+   - Verify task completion status is accurate
+   - This step is MANDATORY before committing
+2. ✅ **Verify all phase tasks complete** - Check that every task in the phase is done
+3. ✅ **Run quality checks**:
+   ```bash
+   pnpm run check          # Biome format + lint
+   pnpm test               # All tests must pass
+   ```
+4. ✅ **Create git commit** (including tasks.md):
+   ```bash
+   git add -A
+   git commit -m "feat(033): Phase X - <description>
+
+   <list of tasks completed>
+
+   🤖 Generated with Claude Code
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   ```
+5. ✅ **Confirm commit created**: `git log -1 --oneline` to verify
+6. ✅ **ONLY THEN proceed to next phase**
+
+### TodoWrite Integration
+
+Add "Commit Phase X" as the FINAL task of each phase:
+- Status: `pending` until quality checks pass
+- Status: `in_progress` while running checks and committing
+- Status: `completed` after git commit succeeds
+- activeForm: "Committing Phase X work to git"
+
+### Example Phase Completion
+
+```bash
+# After completing all Phase 3 tasks:
+pnpm run check          # 0 errors, 0 warnings
+pnpm test               # 1828 tests passing
+git add -A
+git commit -m "feat(033): Phase 3 - Validation implementation
+
+Tasks completed:
+- T019: Invalid JSON syntax validation
+- T020: Missing required field validation
+- T021: Type validation tests
+- T022-T027: Comprehensive error coverage
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+git log -1 --oneline    # Verify commit created
+# NOW proceed to Phase 4
+```
+
+### Why This Matters
+
+Incremental commits:
+- Enable easy rollback to specific implementation stages
+- Create clear checkpoints for debugging
+- Allow resuming work from well-defined states
+- Maintain logical separation of concerns in git history
+- Prevent massive commits that combine multiple phases
 
 

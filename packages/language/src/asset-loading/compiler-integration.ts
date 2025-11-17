@@ -9,10 +9,12 @@
  */
 
 import { dirname, resolve } from 'node:path';
+import type { ILanguageLabel } from 'eligius';
 import type { Program } from '../generated/ast.js';
 import { isDefaultImport, isNamedImport } from '../utils/ast-helpers.js';
 import { getFileExtension } from '../utils/path-utils.js';
 import { getImports } from '../utils/program-helpers.js';
+import { validateLabelsJSON } from '../validators/label-import-validator.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
 import { HtmlValidator } from './html-validator.js';
@@ -37,10 +39,16 @@ export interface AssetLoadingResult {
   cssFiles: string[];
 
   /**
+   * Loaded labels JSON (from 'labels' import), or undefined if not present
+   */
+  labels?: ILanguageLabel[];
+
+  /**
    * Import map containing all loaded assets
    * - layout: HTML content
    * - styles: CSS content
    * - provider: Media file path
+   * - labels: Labels JSON content
    * - named imports: Content or paths
    */
   importMap: Record<string, string>;
@@ -55,11 +63,11 @@ export interface AssetLoadingResult {
  * Import information extracted from AST
  */
 interface ImportInfo {
-  type: 'layout' | 'styles' | 'provider' | 'named';
-  keyword?: 'layout' | 'styles' | 'provider';
+  type: 'layout' | 'styles' | 'provider' | 'labels' | 'named';
+  keyword?: 'layout' | 'styles' | 'provider' | 'labels';
   name?: string;
   path: string;
-  assetType: 'html' | 'css' | 'media';
+  assetType: 'html' | 'css' | 'media' | 'json';
   sourceLocation: SourceLocation;
 }
 
@@ -125,6 +133,7 @@ export function loadProgramAssets(
   const result: AssetLoadingResult = {
     layoutTemplate: undefined,
     cssFiles: [],
+    labels: undefined,
     importMap: {},
     errors: [],
   };
@@ -168,6 +177,23 @@ export function loadProgramAssets(
         } else if (importInfo.type === 'provider') {
           // Provider path stays relative
           result.importMap.provider = importInfo.path;
+        } else if (importInfo.type === 'labels') {
+          // Validate labels JSON before parsing
+          const validationError = validateLabelsJSON(content, importInfo.path);
+          if (validationError) {
+            result.errors.push({
+              type: 'validation-error',
+              filePath: importInfo.path,
+              absolutePath,
+              sourceLocation: importInfo.sourceLocation,
+              message: validationError.message,
+              hint: validationError.hint,
+            });
+          } else {
+            // Parse and store labels JSON
+            result.labels = JSON.parse(content) as ILanguageLabel[];
+            result.importMap.labels = content;
+          }
         } else if (importInfo.type === 'named' && importInfo.name) {
           // Named imports
           if (importInfo.assetType === 'css') {
@@ -206,12 +232,13 @@ export function loadProgramAssets(
  */
 function inferImportAssetType(
   importStmt: import('../generated/ast.js').ImportStatement
-): 'html' | 'css' | 'media' {
+): 'html' | 'css' | 'media' | 'json' {
   // Default imports: infer from keyword
   if (isDefaultImport(importStmt)) {
     if (importStmt.type === 'layout') return 'html';
     if (importStmt.type === 'styles') return 'css';
     if (importStmt.type === 'provider') return 'media';
+    if (importStmt.type === 'labels') return 'json';
   }
 
   // Named imports: use explicit type or infer from extension
@@ -254,9 +281,9 @@ function extractImports(program: Program, sourceFilePath: string): ImportInfo[] 
       column: importStmt.$cstNode?.range.start.character ?? 0,
     };
 
-    // Process default imports (layout, styles, provider)
+    // Process default imports (layout, styles, provider, labels)
     if (isDefaultImport(importStmt)) {
-      const keyword = importStmt.type; // 'layout' | 'styles' | 'provider'
+      const keyword = importStmt.type; // 'layout' | 'styles' | 'provider' | 'labels'
       const assetType = inferImportAssetType(importStmt);
 
       imports.push({

@@ -1,3 +1,4 @@
+// biome-ignore-all lint/correctness/noUnusedPrivateClassMembers: bullshit
 /**
  * Eligian Code Action Provider
  *
@@ -18,10 +19,8 @@ import type { EligianServices } from './eligian-module.js';
  */
 export class EligianCodeActionProvider implements CodeActionProvider {
   private readonly cssCodeActionProvider: CSSCodeActionProvider;
-  private readonly services: EligianServices;
 
-  constructor(services: EligianServices) {
-    this.services = services;
+  constructor(private readonly services: EligianServices) {
     this.cssCodeActionProvider = new CSSCodeActionProvider();
   }
 

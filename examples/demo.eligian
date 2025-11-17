@@ -22,6 +22,7 @@
 
 styles "./demo-styles.css"
 layout "./demo-layout.html"
+labels "./demo-labels.json"
 
 import { fadeIn, fadeOut, slideInLeft } from "./libraries/animations.eligian"
 import { safeRemoveClass } from "./libraries/utils.eligian"

@@ -34,13 +34,12 @@ describe('Operation Validator', () => {
         { operation: 'setStyle', description: 'Style manipulation' },
         { operation: 'when', description: 'Conditional operation' },
         { operation: 'forEach', description: 'Loop operation' },
-      ])(
-        'should return undefined for registered operation $operation ($description)',
-        ({ operation }) => {
-          const error = validateOperationExists(operation);
-          expect(error).toBeUndefined();
-        }
-      );
+      ])('should return undefined for registered operation $operation ($description)', ({
+        operation,
+      }) => {
+        const error = validateOperationExists(operation);
+        expect(error).toBeUndefined();
+      });
 
       it('should return error for unknown operation', () => {
         const error = validateOperationExists('unknownOperation');

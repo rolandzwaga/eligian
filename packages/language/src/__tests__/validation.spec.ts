@@ -1353,6 +1353,39 @@ describe('Eligian Grammar - Validation', () => {
       });
     });
 
+    describe('US3 - Labels import validation (Feature 033)', () => {
+      test('T029: should reject absolute path in labels import', async () => {
+        const code = "labels '/absolute/path/labels.json'";
+        const { errors } = await ctx.parseAndValidate(code);
+
+        expect(errors.length).toBeGreaterThan(0);
+        expect(
+          errors.some(e => e.message.includes('absolute') || e.message.includes('relative'))
+        ).toBe(true);
+      });
+
+      test('T030: should reject duplicate labels imports', async () => {
+        const code = `
+          labels './labels1.json'
+          labels './labels2.json'
+        `;
+        const { errors } = await ctx.parseAndValidate(code);
+
+        expect(errors.length).toBeGreaterThan(0);
+        expect(
+          errors.some(e => e.message.includes('Duplicate') && e.message.includes('labels'))
+        ).toBe(true);
+      });
+
+      test('should accept single labels import', async () => {
+        const code = "labels './labels.json'";
+        const { errors } = await ctx.parseAndValidate(code);
+
+        const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));
+        expect(duplicateErrors.length).toBe(0);
+      });
+    });
+
     describe('US2 - Named import validation', () => {
       test('T043: should reject duplicate import names', async () => {
         const code = `

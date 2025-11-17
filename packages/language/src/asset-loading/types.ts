@@ -30,7 +30,7 @@
  * New code should use the discriminated union types from the unified namespace.
  */
 export interface AssetError {
-  type: 'missing-file' | 'invalid-html' | 'invalid-css' | 'load-error';
+  type: 'missing-file' | 'invalid-html' | 'invalid-css' | 'load-error' | 'validation-error';
   filePath: string; // Relative path from source
   absolutePath: string; // Resolved absolute path
   sourceLocation: SourceLocation;

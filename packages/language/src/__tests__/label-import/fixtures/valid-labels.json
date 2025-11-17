@@ -1,0 +1,32 @@
+[
+  {
+    "id": "welcomeMessage",
+    "labels": [
+      {
+        "id": "1",
+        "languageCode": "en-US",
+        "label": "Welcome to our presentation!"
+      },
+      {
+        "id": "2",
+        "languageCode": "nl-NL",
+        "label": "Welkom bij onze presentatie!"
+      }
+    ]
+  },
+  {
+    "id": "continueButton",
+    "labels": [
+      {
+        "id": "3",
+        "languageCode": "en-US",
+        "label": "Click to continue"
+      },
+      {
+        "id": "4",
+        "languageCode": "nl-NL",
+        "label": "Klik om door te gaan"
+      }
+    ]
+  }
+]

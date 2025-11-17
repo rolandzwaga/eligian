@@ -407,7 +407,7 @@ export const transformAST = (
       layoutTemplate,
       cssFiles: assets?.cssFiles ?? [], // Use loaded CSS files from asset imports
       availableLanguages: defaults.availableLanguages,
-      labels: defaults.labels,
+      labels: assets?.labels ?? defaults.labels, // Use loaded labels from labels import
       initActions: eligiusInitActions,
       actions: eligiusActions,
       eventActions: eligiusEventActions,

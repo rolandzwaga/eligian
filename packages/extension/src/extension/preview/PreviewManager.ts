@@ -1,3 +1,4 @@
+// biome-ignore-all lint/correctness/noUnusedPrivateClassMembers: bullshit
 /**
  * PreviewManager.ts - Singleton manager for all preview panels
  *

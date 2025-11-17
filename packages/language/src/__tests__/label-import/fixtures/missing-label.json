@@ -1,0 +1,11 @@
+[
+  {
+    "id": "greeting",
+    "labels": [
+      {
+        "id": "1",
+        "languageCode": "en-US"
+      }
+    ]
+  }
+]
