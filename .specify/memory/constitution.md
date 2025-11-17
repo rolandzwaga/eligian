@@ -816,12 +816,16 @@ the remote repository and may trigger unnecessary CI/CD runs or confuse other de
   - Phase 5: IDE integration (completion, hover, definition)
   - Phase 6: Tests and documentation
   - Phase 7: Final review and cleanup
+- After completing each task, MUST mark it as complete in tasks.md by changing `[ ]` to `[X]`
+- Before committing any phase, MUST verify tasks.md accurately reflects completion status
 - After completing the FINAL task of each phase, you MUST STOP and commit before proceeding:
   1. STOP all implementation work immediately
-  2. Run quality checks: `pnpm run check` and `pnpm test`
-  3. Create git commit: `git add -A && git commit -m "..."`
-  4. ONLY THEN proceed to next phase
+  2. Update tasks.md: Mark all completed tasks with `[X]`
+  3. Run quality checks: `pnpm run check` and `pnpm test`
+  4. Create git commit: `git add -A && git commit -m "..."`
+  5. ONLY THEN proceed to next phase
 - Continuing to next phase without committing is a constitutional violation
+- Committing without updating tasks.md is a constitutional violation
 - Use TodoWrite tool to track "Commit Phase X" as explicit final task of each phase
 - MUST use descriptive commit messages following conventional commits format:
   - `docs(spec-023): Add research artifacts for library files feature`

@@ -256,13 +256,17 @@ With multiple developers:
 
 **STOP IMMEDIATELY** and execute these steps:
 
-1. ✅ **Verify all phase tasks complete** - Check that every task in the phase is done
-2. ✅ **Run quality checks**:
+1. ✅ **Update tasks.md** - Mark all completed tasks with `[X]`:
+   - Change `[ ]` to `[X]` for each completed task
+   - Verify task completion status is accurate
+   - This step is MANDATORY before committing
+2. ✅ **Verify all phase tasks complete** - Check that every task in the phase is done
+3. ✅ **Run quality checks**:
    ```bash
    pnpm run check          # Biome format + lint
    pnpm test               # All tests must pass
    ```
-3. ✅ **Create git commit**:
+4. ✅ **Create git commit** (including tasks.md):
    ```bash
    git add -A
    git commit -m "feat(033): Phase X - <description>
@@ -272,8 +276,8 @@ With multiple developers:
    🤖 Generated with Claude Code
    Co-Authored-By: Claude <noreply@anthropic.com>"
    ```
-4. ✅ **Confirm commit created**: `git log -1 --oneline` to verify
-5. ✅ **ONLY THEN proceed to next phase**
+5. ✅ **Confirm commit created**: `git log -1 --oneline` to verify
+6. ✅ **ONLY THEN proceed to next phase**
 
 ### TodoWrite Integration
 
