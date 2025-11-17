@@ -7,6 +7,7 @@ import {
   formatErrors,
 } from '@eligian/language';
 import { Effect } from 'effect';
+import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
@@ -173,7 +174,7 @@ function registerCompileCommand(): any {
             sourceUri: sourceUri.fsPath,
           });
 
-          let result: string | undefined;
+          let result: IEngineConfiguration | undefined;
           try {
             result = await Effect.runPromise(compileEffect);
           } catch (error) {

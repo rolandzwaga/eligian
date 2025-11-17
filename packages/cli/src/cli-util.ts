@@ -73,7 +73,7 @@ export async function extractDocument(
     console.error('Validation errors:');
     for (const error of validationErrors) {
       const line = error.range.start.line + 1;
-      const col = error.range.start.column + 1;
+      const col = error.range.start.character + 1;
       const text = document.textDocument.getText(error.range);
       console.error(`  ${fileName}:${line}:${col}: ${error.message}`);
       if (text) {
