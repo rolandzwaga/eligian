@@ -1,5 +1,6 @@
 import { fadeIn } from "./examples/libraries/animations.eligian"
+styles "./test-styles.css"
 
 timeline "Test" in ".container" using raf {
-  at 0s..1s fadeIn(".item")
+  at 0s..1s fadeIn(".item", 1000)
 }

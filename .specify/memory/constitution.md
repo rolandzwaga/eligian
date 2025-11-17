@@ -3,98 +3,25 @@
 SYNC IMPACT REPORT - Constitution Update
 ===================================================================================
 
-VERSION CHANGE: 1.9.0 → 2.0.0 → 2.0.1 → 2.1.0 → 2.1.1 → 2.2.0
-Rationale: MAJOR version bump (2.0.0) - Enhanced Principle II (Test-First Development) with
-strict enforcement workflow that redefines testing requirements, making "tests later"
-a constitutional violation (backward incompatible with prior "encouraged" TDD stance).
-Added 5 new principles that significantly expand governance scope.
+VERSION CHANGE: 2.2.0 → 2.3.0
+Rationale: MINOR version bump - Added Principle XXVI (Technical Overview Consultation)
+that expands governance scope with new mandatory practice for spec/plan/tasks creation
+and post-implementation documentation updates.
 
-PATCH version bump (2.0.1) - Added integration test isolation requirement to Principle II.
-
-MINOR version bump (2.1.0) - Added Principle XXIII (Incremental Feature Commits) for speckit workflow.
-
-PATCH version bump (2.1.1) - Added Principle XXIV (Unified Example File) requirement.
-
-MINOR version bump (2.2.0) - Added Principle XXV (Test System Documentation) requirement.
-
-AMENDMENTS (v2.2.0):
-+ Added Principle XXV: Test System Documentation (NON-NEGOTIABLE)
-  - Mandates consulting TESTING_GUIDE.md when creating test tasks
-  - Requires enriching task descriptions with specific test patterns and examples
-  - Prevents common test mistakes through guided task creation
-  - Documents test helper usage, CSS registry setup, and error code validation
-  - This is FORWARD COMPATIBLE - codifies best practice to reduce test iteration cycles
-
-AMENDMENTS (v2.1.1):
-+ Added Principle XXIV: Unified Example File (NON-NEGOTIABLE)
-  - Mandates all language features be demonstrated in examples/demo.eligian
-  - Prohibits separate scattered example files
-  - This is FORWARD COMPATIBLE - codifies existing best practice
-
-AMENDMENTS (v2.1.0):
-+ Added Principle XXIII: Incremental Feature Commits (NON-NEGOTIABLE)
-  - Mandates commits after each phase completion in speckit workflow
-  - Prohibits pushing to remote until feature is complete
-  - Requires conventional commit message format
-  - Documents commit workflow and examples
-  - This is FORWARD COMPATIBLE - codifies existing best practice
-
-AMENDMENTS (v2.0.1):
-* Enhanced Principle II: Comprehensive Testing (PATCH UPDATE)
-  - Added requirement: Integration tests MUST be isolated in separate files
-  - Rationale: Test environment state cannot be reliably reset between integration tests
-  - Environment pollution causes flaky tests when multiple integration tests share a file
-  - Unit tests CAN share files (isolated functions, no shared state)
-  - This is FORWARD COMPATIBLE - clarifies existing best practice
-
-AMENDMENTS (v2.0.0):
-* Enhanced Principle II: Comprehensive Testing (NON-NEGOTIABLE)
-  - Added explicit Red-Green-Refactor workflow enforcement
-  - Added strict rule: "I'll add tests later" is NOT acceptable and is a violation
-  - Added enforcement: Implementation commits without tests will be rejected
-  - Added mandatory coverage verification (80% threshold with blocking)
-  - This is BACKWARD INCOMPATIBLE - previously TDD was "encouraged", now MANDATORY
-
-* Enhanced Principle XI: Code Quality: Biome Integration (NON-NEGOTIABLE)
-  - Added mandatory TypeScript type checking after Biome checks
-  - Requires `npm run typecheck` after Biome passes
-  - Mandates fixing all type errors before task completion
-  - Updated workflow: lint → format → check → typecheck → all pass before commit
-
-+ Added Principle XVIII: Research & Documentation Standards (NON-NEGOTIABLE)
-  - Mandates use of context7 MCP server for library research and API patterns
-  - Requires verification against official documentation
-  - Documents research workflow and examples
-
-+ Added Principle XIX: Dependency Management (NON-NEGOTIABLE)
-  - Prohibits automatic package.json modifications
-  - Requires user consultation before adding dependencies
-  - Enforces approval workflow for new dependencies
-
-+ Added Principle XX: Debugging Attempt Limit (NON-NEGOTIABLE)
-  - Limits troubleshooting to 5 attempts before user consultation
-  - Defines "attempt" and tracking requirements
-  - Prevents infinite debugging loops
-
-+ Added Principle XXI: Token Efficiency (NON-NEGOTIABLE)
-  - Prohibits generating test coverage reports in documentation
-  - Prevents redundant documentation of machine-readable output
-  - Focuses documentation on insights, not data dumps
-
-+ Added Principle XXII: Accessibility Standards (NON-NEGOTIABLE)
-  - Mandates WCAG 2.1 AA compliance for all UI components
-  - Requires keyboard navigation and screen reader support
-  - Defines accessibility requirements for CLI/extension interfaces
+AMENDMENTS (v2.3.0):
++ Added Principle XXVI: Technical Overview Consultation (NON-NEGOTIABLE)
+  - Mandates consulting specs/TECHNICAL_OVERVIEW.md when writing specs, plans, and tasks
+  - Requires updating technical overview after spec implementation if appropriate
+  - Ensures architectural decisions and build processes are documented and consulted
+  - Prevents reinventing solutions that are already documented
+  - This is FORWARD COMPATIBLE - codifies best practice for maintaining living documentation
 
 MODIFIED SECTIONS:
-- Principle II: Now strictly enforces TDD with Red-Green-Refactor workflow
-- Principle XI: Expanded to include TypeScript type checking
-- Development Workflow → Testing Standards: Added coverage verification requirements
-- Governance → Compliance Review: Added new principle checkpoints
+- Compliance Review: Added checkpoint for technical overview consultation and updates
 
-PRINCIPLES ESTABLISHED (v1.0.0 - v1.9.0):
+PRINCIPLES ESTABLISHED (v1.0.0 - v2.3.0):
 I. Simplicity, Documentation, and Maintainability
-II. Comprehensive Testing (NOW NON-NEGOTIABLE with strict enforcement)
+II. Comprehensive Testing (NON-NEGOTIABLE with strict enforcement)
 III. No Gold-Plating
 IV. Mandatory Code Reviews
 V. UX Consistency
@@ -103,46 +30,41 @@ VII. UUID-Based Identifiers (NON-NEGOTIABLE)
 VIII. Debug Cleanup and Workspace Hygiene (NON-NEGOTIABLE)
 IX. ESM Import Extensions (NON-NEGOTIABLE)
 X. Validation Pattern: Compiler-First with Langium Integration (NON-NEGOTIABLE)
-XI. Code Quality: Biome Integration (NON-NEGOTIABLE) - ENHANCED with typecheck
+XI. Code Quality: Biome Integration (NON-NEGOTIABLE)
 XII. Eligius Architecture Understanding (NON-NEGOTIABLE)
 XIII. Eligius Domain Expert Consultation (NON-NEGOTIABLE)
 XIV. Question-First Implementation (NON-NEGOTIABLE)
 XV. Operation Metadata Consultation (NON-NEGOTIABLE)
 XVI. Concise Communication (NON-NEGOTIABLE)
 XVII. Language Specification Maintenance (NON-NEGOTIABLE)
-XVIII. Research & Documentation Standards (NON-NEGOTIABLE) - NEW
-XIX. Dependency Management (NON-NEGOTIABLE) - NEW
-XX. Debugging Attempt Limit (NON-NEGOTIABLE) - NEW
-XXI. Token Efficiency (NON-NEGOTIABLE) - NEW
-XXII. Accessibility Standards (NON-NEGOTIABLE) - NEW
-XXIII. Incremental Feature Commits (NON-NEGOTIABLE) - NEW (v2.1.0)
-XXIV. Unified Example File (NON-NEGOTIABLE) - NEW (v2.1.1)
+XVIII. Research & Documentation Standards (NON-NEGOTIABLE)
+XIX. Dependency Management (NON-NEGOTIABLE)
+XX. Debugging Attempt Limit (NON-NEGOTIABLE)
+XXI. Token Efficiency (NON-NEGOTIABLE)
+XXII. Accessibility Standards (NON-NEGOTIABLE)
+XXIII. Incremental Feature Commits (NON-NEGOTIABLE)
+XXIV. Unified Example File (NON-NEGOTIABLE)
+XXV. Test System Documentation (NON-NEGOTIABLE)
+XXVI. Technical Overview Consultation (NON-NEGOTIABLE) - NEW (v2.3.0)
 
 TEMPLATE CONSISTENCY CHECK:
-✅ plan-template.md - Constitution Check section aligns with new principles
-✅ spec-template.md - No changes required (principles don't affect spec structure)
-✅ tasks-template.md - No changes required (task generation unaffected)
-✅ Development Workflow section - Updated with new testing and quality requirements
-✅ Compliance Review section - Updated with new principle checkpoints
+✅ spec-template.md - No changes required (technical overview consultation is workflow guidance)
+✅ plan-template.md - No changes required (technical overview should be consulted during planning)
+✅ tasks-template.md - No changes required (technical overview should be consulted during task creation)
+✅ Compliance Review section - Updated with technical overview checkpoint
 
 FOLLOW-UP TODOS:
-- Update CLAUDE.md to reference new principles (especially context7, dependency management)
-- Ensure all contributors are aware of strict TDD enforcement (breaking change)
-- Update PR templates to include new principle checkpoints
-- Consider adding automated checks for principle compliance in CI/CD
+- Ensure specs/TECHNICAL_OVERVIEW.md is kept up to date with architectural changes
+- Update CLAUDE.md to reference Principle XXVI if needed
+- Remind contributors to consult technical overview during feature planning
 
 PROJECT CONTEXT:
 - Project: Eligian - Langium-based DSL and compiler for Eligius library
 - Domain: Story-telling engine DSL with VS Code extension
 - Tech Stack: TypeScript, Langium, Effect-TS, Vitest, Biome, Node.js ESM
-- Development Model: Test-First Development (NOW STRICTLY ENFORCED)
-- Code Quality: Biome + TypeScript type checking (mandatory enforcement)
-- Testing: Vitest with 80% coverage threshold + mandatory verification
-- Research Tool: context7 MCP server (NOW MANDATORY for library research)
-- Dependency Policy: NO automatic installations, user approval required
-- Debugging Policy: Maximum 5 attempts before user consultation
-- Communication Policy: Brief, technical communication for senior developers
-- Documentation Policy: NEVER generate redundant coverage reports
+- Development Model: Test-First Development (strictly enforced)
+- Documentation Model: Living documentation (technical overview, testing guide, language spec)
+- Technical Overview: Located at specs/TECHNICAL_OVERVIEW.md (authoritative source for architecture)
 
 ===================================================================================
 -->
@@ -949,93 +871,6 @@ git push origin 023-library-files-with
 - Create massive commits that combine multiple phases
 - Push feature branches before they are ready for review
 
-## Development Workflow
-
-### Pull Request Process
-
-All code changes follow this workflow:
-
-1. **Branch Creation**: Create feature branch from main with descriptive name
-2. **Test-First Implementation**: Write failing tests BEFORE any implementation
-3. **Implementation**: Write MINIMUM code to pass tests, then refactor
-4. **Testing**: Verify all tests pass (unit + integration)
-5. **Code Quality**: Run `npm run check && npm run typecheck` and fix all issues
-6. **Coverage Verification**: Run `npm run test:coverage` and ensure 80%+ for business logic
-7. **Documentation**: Update relevant documentation (code comments, CLAUDE.md, LANGUAGE_SPEC.md)
-8. **Self Review**: Review own changes for constitution compliance
-9. **Pull Request**: Create PR with clear description of changes and rationale
-10. **Code Review**: Address reviewer feedback, maintain constitution compliance
-11. **Merge**: Merge only after approval and passing CI/CD checks
-
-### Testing Standards
-
-- **Test-First Development**: Write failing tests BEFORE implementation (RED-GREEN-REFACTOR)
-- **Unit Tests**: Test individual functions/modules in isolation
-- **Integration Tests**: Test compilation end-to-end with real Eligian DSL source files
-- **Test Location**: Tests in `__tests__/` subdirectories alongside code
-- **Test Naming**: `*.spec.ts` extension
-- **Coverage**: Minimum 80% coverage for business logic, verified after spec completion
-- **Coverage Verification**: Run `npm run test:coverage`, achieve threshold, or get user approval for exceptions
-
-### Documentation Requirements
-
-- **Code Documentation**: Inline comments for complex logic, docstrings for all public APIs
-- **Architecture Documentation**: Major decisions documented in CLAUDE.md
-- **Language Specification**: LANGUAGE_SPEC.md kept up to date with all grammar changes
-- **Technical Analysis**: Complex domains (Eligius architecture) documented in dedicated sections
-- **NO Redundant Documentation**: Never duplicate machine-readable output (coverage reports, lint results)
-
-## Governance
-
-### Amendment Process
-
-This constitution MAY be amended when project needs evolve. Amendments require:
-
-1. **Proposal**: Document proposed change with rationale and impact analysis
-2. **Discussion**: Team discussion of benefits, risks, and alternatives
-3. **Approval**: Consensus approval from active maintainers
-4. **Migration Plan**: Document how existing code will adapt to new principles
-5. **Version Bump**: Increment constitution version following semantic versioning
-6. **Template Updates**: Update all dependent templates and documentation
-
-### Versioning Policy
-
-Constitution follows semantic versioning (MAJOR.MINOR.PATCH):
-
-- **MAJOR**: Backward incompatible changes (principle removals or redefinitions)
-- **MINOR**: New principles or materially expanded guidance
-- **PATCH**: Clarifications, wording improvements, non-semantic refinements
-
-### Compliance Review
-
-All pull requests MUST verify compliance with this constitution:
-
-- Does the code follow functional programming principles?
-- Were tests written FIRST (verify git history if needed)?
-- Are tests comprehensive (unit + integration)?
-- Does test coverage meet 80% threshold for business logic?
-- Did Biome and TypeScript type checking pass without errors?
-- Is documentation complete and clear (no redundant coverage reports)?
-- Is the solution appropriately simple (no gold-plating)?
-- Is UX consistent with existing tools?
-- Were dependencies added without user approval? (constitutional violation if yes)
-- Did debugging exceed 5 attempts without user consultation? (constitutional violation if yes)
-- Was context7 consulted for library research?
-- Are error messages accessible (WCAG 2.1 AA)?
-- Were phases committed incrementally (for speckit features)?
-- Has code review been completed?
-
-Complexity MUST be justified. If a feature violates a principle (e.g., adds significant
-complexity), the justification MUST be documented in the pull request and reviewed.
-
-### Runtime Guidance
-
-For detailed development guidance, workflow specifics, and tool usage, refer to CLAUDE.md.
-That file provides practical guidance for working with this codebase, while this
-constitution defines the non-negotiable principles that govern the project.
-
-**Version**: 2.2.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-01-12
-
 ### XXIV. Unified Example File (NON-NEGOTIABLE)
 
 All language feature examples MUST be consolidated in a single comprehensive example file
@@ -1186,3 +1021,205 @@ When writing feature specifications and implementation plans:
 - Test tasks lacking specific guidance will be rejected during code review
 - Repeated test infrastructure mistakes indicate testing guide was not consulted
 
+### XXVI. Technical Overview Consultation (NON-NEGOTIABLE)
+
+When writing specifications, implementation plans, and task lists for new features, MUST
+consult the comprehensive technical overview (`specs/TECHNICAL_OVERVIEW.md`) to understand
+existing architecture, build processes, and module organization. After implementing a feature
+specification, MUST update the technical overview if the implementation adds new architectural
+patterns, build steps, modules, or significantly changes existing structures.
+
+**Rationale**: The technical overview documents the complete architecture, build system,
+compilation pipeline, module organization, and operational procedures. Consulting this document
+during spec/plan/tasks creation prevents reinventing solutions that already exist, ensures new
+features integrate correctly with existing architecture, and maintains consistency with
+established patterns. Updating the technical overview after implementation ensures the living
+documentation remains accurate and authoritative as the codebase evolves, preventing knowledge
+decay and reducing onboarding time for future developers.
+
+**Requirements**:
+- MUST read `specs/TECHNICAL_OVERVIEW.md` when creating specs, plans, and tasks for new features
+- Spec/plan/tasks creation MUST reference relevant technical overview sections:
+  - Build system when adding new compilation steps
+  - Compilation pipeline when modifying transformation stages
+  - Module organization when creating new modules or files
+  - VS Code extension architecture when adding IDE features
+  - CLI compiler when modifying command-line interface
+  - Testing infrastructure when adding new test patterns
+- MUST update `specs/TECHNICAL_OVERVIEW.md` after spec implementation if:
+  - New architectural patterns are introduced (e.g., new pipeline stage)
+  - Build system changes (e.g., new generation step, esbuild config change)
+  - New modules or functional domains are added
+  - Module responsibilities change significantly
+  - CLI commands or options are added/modified
+  - VS Code extension architecture changes (e.g., new message types, new processes)
+  - Development workflow changes (e.g., new commands, new quality checks)
+- Technical overview updates MUST be part of the final phase before PR submission
+- Updates MUST maintain consistency with existing documentation structure and format
+- Updates MUST include version bump in document header if significant changes made
+
+**When to Update** (after spec implementation):
+
+**MUST Update** if spec adds:
+- New package or module (e.g., new functional domain in Module Organization)
+- New build step or tool (e.g., new generation script in Build System)
+- New compilation stage (e.g., new transformation in Compilation Pipeline)
+- New CLI command or option (e.g., new flag in CLI Compiler section)
+- New VS Code extension feature (e.g., new webview message type)
+- New development command or workflow (e.g., new quality check in Development Workflow)
+- New dependency with significant impact (e.g., new framework in Dependency Management)
+
+**MAY Skip Update** if spec only:
+- Adds validation rules to existing validators (no architectural change)
+- Adds operation metadata entries (no new module)
+- Fixes bugs without changing architecture
+- Adds tests using existing patterns (no new test infrastructure)
+- Updates documentation without changing code structure
+
+**Update Pattern**:
+```markdown
+# After implementing Feature 032 - New Compiler Stage
+
+## Update Technical Overview
+
+1. Read `specs/TECHNICAL_OVERVIEW.md` § Compilation Pipeline
+2. Identify where new stage fits in existing pipeline
+3. Document new stage:
+   - Input/output types
+   - Responsibilities
+   - Error types
+   - Integration with other stages
+4. Update pipeline diagram if applicable
+5. Add new stage to "Pipeline Stages" section with description
+6. Update "Pipeline Orchestration" section if composition changed
+7. Commit with message: "docs(spec-032): Update technical overview with new compiler stage"
+```
+
+**Consultation Pattern** (during spec/plan/tasks creation):
+```markdown
+# In plan.md for Feature 032 - New Compiler Stage
+
+## Architecture Context
+
+**Technical Overview Reference**: `specs/TECHNICAL_OVERVIEW.md § Compilation Pipeline`
+
+**Current Pipeline** (from technical overview):
+1. Parse (Langium AST)
+2. Validate & Transform (Eligius IR)
+3. Type Check (Typed IR)
+4. Optimize (Optimized IR)
+5. Emit (Eligius JSON)
+
+**Proposed Change**:
+- Insert new "Macro Expansion" stage between Parse and Validate
+- Expands macro invocations before transformation
+- Returns expanded AST for validation
+
+**Integration Points** (from technical overview):
+- Uses existing Langium AST types (no new module)
+- Returns Effect<Program, MacroExpansionError>
+- Fits into existing Effect composition in pipeline.ts
+```
+
+**Prohibited Practices**:
+- ❌ Creating specs/plans/tasks without consulting technical overview
+- ❌ Reinventing build processes that are already documented
+- ❌ Adding new modules without checking existing module organization
+- ❌ Implementing features without understanding how they integrate with existing architecture
+- ❌ Leaving technical overview outdated after significant architectural changes
+- ❌ Creating separate architecture documents that duplicate technical overview content
+
+**Enforcement**:
+- Spec/plan/tasks documents MUST show evidence of technical overview consultation
+- Pull requests adding significant architectural changes MUST include technical overview updates
+- Code reviews MUST verify technical overview accuracy if architecture changed
+
+## Development Workflow
+
+### Pull Request Process
+
+All code changes follow this workflow:
+
+1. **Branch Creation**: Create feature branch from main with descriptive name
+2. **Test-First Implementation**: Write failing tests BEFORE any implementation
+3. **Implementation**: Write MINIMUM code to pass tests, then refactor
+4. **Testing**: Verify all tests pass (unit + integration)
+5. **Code Quality**: Run `npm run check && npm run typecheck` and fix all issues
+6. **Coverage Verification**: Run `npm run test:coverage` and ensure 80%+ for business logic
+7. **Documentation**: Update relevant documentation (code comments, CLAUDE.md, LANGUAGE_SPEC.md, TECHNICAL_OVERVIEW.md)
+8. **Self Review**: Review own changes for constitution compliance
+9. **Pull Request**: Create PR with clear description of changes and rationale
+10. **Code Review**: Address reviewer feedback, maintain constitution compliance
+11. **Merge**: Merge only after approval and passing CI/CD checks
+
+### Testing Standards
+
+- **Test-First Development**: Write failing tests BEFORE implementation (RED-GREEN-REFACTOR)
+- **Unit Tests**: Test individual functions/modules in isolation
+- **Integration Tests**: Test compilation end-to-end with real Eligian DSL source files
+- **Test Location**: Tests in `__tests__/` subdirectories alongside code
+- **Test Naming**: `*.spec.ts` extension
+- **Coverage**: Minimum 80% coverage for business logic, verified after spec completion
+- **Coverage Verification**: Run `npm run test:coverage`, achieve threshold, or get user approval for exceptions
+
+### Documentation Requirements
+
+- **Code Documentation**: Inline comments for complex logic, docstrings for all public APIs
+- **Architecture Documentation**: Major decisions documented in CLAUDE.md
+- **Language Specification**: LANGUAGE_SPEC.md kept up to date with all grammar changes
+- **Technical Overview**: TECHNICAL_OVERVIEW.md kept up to date with architectural changes
+- **Technical Analysis**: Complex domains (Eligius architecture) documented in dedicated sections
+- **NO Redundant Documentation**: Never duplicate machine-readable output (coverage reports, lint results)
+
+## Governance
+
+### Amendment Process
+
+This constitution MAY be amended when project needs evolve. Amendments require:
+
+1. **Proposal**: Document proposed change with rationale and impact analysis
+2. **Discussion**: Team discussion of benefits, risks, and alternatives
+3. **Approval**: Consensus approval from active maintainers
+4. **Migration Plan**: Document how existing code will adapt to new principles
+5. **Version Bump**: Increment constitution version following semantic versioning
+6. **Template Updates**: Update all dependent templates and documentation
+
+### Versioning Policy
+
+Constitution follows semantic versioning (MAJOR.MINOR.PATCH):
+
+- **MAJOR**: Backward incompatible changes (principle removals or redefinitions)
+- **MINOR**: New principles or materially expanded guidance
+- **PATCH**: Clarifications, wording improvements, non-semantic refinements
+
+### Compliance Review
+
+All pull requests MUST verify compliance with this constitution:
+
+- Does the code follow functional programming principles?
+- Were tests written FIRST (verify git history if needed)?
+- Are tests comprehensive (unit + integration)?
+- Does test coverage meet 80% threshold for business logic?
+- Did Biome and TypeScript type checking pass without errors?
+- Is documentation complete and clear (no redundant coverage reports)?
+- Is the solution appropriately simple (no gold-plating)?
+- Is UX consistent with existing tools?
+- Were dependencies added without user approval? (constitutional violation if yes)
+- Did debugging exceed 5 attempts without user consultation? (constitutional violation if yes)
+- Was context7 consulted for library research?
+- Are error messages accessible (WCAG 2.1 AA)?
+- Were phases committed incrementally (for speckit features)?
+- Was the technical overview consulted during spec/plan/tasks creation?
+- Was the technical overview updated after implementation if appropriate?
+- Has code review been completed?
+
+Complexity MUST be justified. If a feature violates a principle (e.g., adds significant
+complexity), the justification MUST be documented in the pull request and reviewed.
+
+### Runtime Guidance
+
+For detailed development guidance, workflow specifics, and tool usage, refer to CLAUDE.md.
+That file provides practical guidance for working with this codebase, while this
+constitution defines the non-negotiable principles that govern the project.
+
+**Version**: 2.3.0 | **Ratified**: 2025-10-14 | **Last Amended**: 2025-01-16

@@ -64,8 +64,26 @@ async function compileFile(inputPath: string, options: CompileOptions): Promise<
     // Pass URI so CSS files can be parsed and loaded into registry
     const parseEffect = parseSource(sourceCode, absoluteInputPath);
     const program = await Effect.runPromise(parseEffect).catch(error => {
+      // Extract actual error from Effect FiberFailure wrapper
+      // Effect wraps errors in: FiberFailure -> Cause -> defect -> actual error
+      let actualError = error;
+
+      // Effect uses non-enumerable properties, so we parse JSON representation
+      if (error && typeof error === 'object') {
+        try {
+          const errorJson = JSON.stringify(error);
+          const parsed = JSON.parse(errorJson);
+          const innerError = parsed.cause?.defect || parsed.cause?.failure;
+          if (innerError?._tag) {
+            actualError = innerError;
+          }
+        } catch (_e) {
+          // If parsing fails, use original error
+        }
+      }
+
       // Handle parse errors
-      const formatted = formatErrors([error], sourceCode);
+      const formatted = formatErrors([actualError], sourceCode);
       console.error(chalk.red('\nParse failed:\n'));
 
       for (const err of formatted) {

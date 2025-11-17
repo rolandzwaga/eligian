@@ -1,0 +1,10 @@
+// Syntactically invalid library file
+library broken
+
+// Missing closing bracket
+action invalid(selector: string) [
+  selectElement(selector)
+// Missing ]
+
+action alsoInvalid() [
+  // Missing operation and bracket

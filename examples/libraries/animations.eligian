@@ -13,7 +13,7 @@ library animations
  */
 action fadeIn(selector: string, duration: number) [
   selectElement(selector)
-  setStyle("opacity", "0")
+  setStyle({opacity: "0"})
   animate({opacity: 1}, duration)
 ]
 
@@ -34,7 +34,7 @@ action fadeOut(selector: string, duration: number) [
  */
 action slideInLeft(selector: string, duration: number) [
   selectElement(selector)
-  setStyle("transform", "translateX(-100%)")
+  setStyle({transform: "translateX(-100%)"})
   animate({transform: "translateX(0)"}, duration)
 ]
 
@@ -45,7 +45,7 @@ action slideInLeft(selector: string, duration: number) [
  */
 action slideInRight(selector: string, duration: number) [
   selectElement(selector)
-  setStyle("transform", "translateX(100%)")
+  setStyle({transform: "translateX(100%)"})
   animate({transform: "translateX(0)"}, duration)
 ]
 
@@ -67,7 +67,7 @@ action slideOut(selector: string, duration: number) [
  */
 action scaleIn(selector: string, scale: number, duration: number) [
   selectElement(selector)
-  setStyle("transform", "scale(0)")
+  setStyle({transform: "scale(0)"})
   animate({transform: "scale(" + scale + ")"}, duration)
 ]
 
@@ -88,6 +88,6 @@ action rotate(selector: string, degrees: number, duration: number) [
  */
 private action resetTransforms(selector: string) [
   selectElement(selector)
-  setStyle("transform", "none")
-  setStyle("opacity", "1")
+  setStyle({transform: "none"})
+  setStyle({opacity: "1"})
 ]

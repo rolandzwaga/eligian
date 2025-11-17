@@ -173,9 +173,41 @@ function registerCompileCommand(): any {
             sourceUri: sourceUri.fsPath,
           });
 
-          const result = await Effect.runPromise(compileEffect).catch(error => {
+          let result;
+          try {
+            result = await Effect.runPromise(compileEffect);
+          } catch (error) {
             // Handle compilation errors
-            const formatted = formatErrors([error], sourceCode);
+            // Effect.runPromise wraps errors in a FiberFailure structure with nested cause
+            console.log('[DEBUG] Raw error object:', error);
+            console.log('[DEBUG] Error stack:', (error as any)?.stack);
+
+            let compilerError: any = error;
+
+            // Unwrap Effect's FiberFailure -> Cause -> failure structure
+            // Effect errors have a toJSON() method that returns the actual structure
+            if (typeof compilerError.toJSON === 'function') {
+              compilerError = compilerError.toJSON();
+            }
+
+            // Now unwrap the JSON structure
+            if (compilerError?._id === 'FiberFailure' && compilerError.cause) {
+              compilerError = compilerError.cause;
+            }
+            if (compilerError?._tag === 'Fail' && compilerError.failure) {
+              compilerError = compilerError.failure;
+            }
+
+            console.log('[DEBUG] Final unwrapped error:', JSON.stringify(compilerError, null, 2));
+
+            // If it's a Die with defect, the defect might have more info
+            if (compilerError?._tag === 'Die' && compilerError.defect) {
+              console.log('[DEBUG] Defect object:', compilerError.defect);
+              console.log('[DEBUG] Defect message:', compilerError.defect?.message);
+              console.log('[DEBUG] Defect stack:', compilerError.defect?.stack);
+            }
+
+            const formatted = formatErrors([compilerError], sourceCode);
 
             // Show errors in output channel
             const outputChannel = vscode.window.createOutputChannel('Eligian Compiler');
@@ -198,7 +230,7 @@ function registerCompileCommand(): any {
 
             outputChannel.show();
             throw new Error('Compilation failed');
-          });
+          }
 
           // Generate output JSON
           const outputJson = JSON.stringify(result, null, 2);

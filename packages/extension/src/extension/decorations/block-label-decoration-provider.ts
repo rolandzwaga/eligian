@@ -23,9 +23,10 @@ export class BlockLabelDecorationProvider {
     // Note: VS Code decorations don't support font-size CSS
     // Using Unicode superscript characters for smaller text
     // Color uses the bracket punctuation theme color
+    // ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ ⁱ ʲ ᵏ ˡ ᵐ ⁿ ᵒ ᵖ ʳ ˢ ᵗ ᵘ ᵛ ʷ ˣ ʸ ᶻ
     this.startLabelDecorationType = vscode.window.createTextEditorDecorationType({
       before: {
-        contentText: 'ˢᵗᵃʳᵗ',
+        contentText: 'ˢᵉᵗᵘᵖ',
         color: new vscode.ThemeColor('editorBracketHighlight.foreground1'),
         margin: '0 0.1em 0 0',
       },
@@ -34,7 +35,7 @@ export class BlockLabelDecorationProvider {
     // Create decoration type for "end" label
     this.endLabelDecorationType = vscode.window.createTextEditorDecorationType({
       before: {
-        contentText: 'ᵉⁿᵈ',
+        contentText: 'ᵗᵉᵃʳᵈᵒʷⁿ',
         color: new vscode.ThemeColor('editorBracketHighlight.foreground1'),
         margin: '0 0.1em 0 0',
       },

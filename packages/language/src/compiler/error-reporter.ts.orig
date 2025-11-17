@@ -155,6 +155,16 @@ export function formatTransformError(error: TransformError, sourceCode?: string)
  * console.error(formatted.message);
  */
 export function formatError(error: CompilerError, sourceCode?: string): FormattedError {
+  // DEBUG: Log error structure
+  console.error('DEBUG formatError received:', {
+    type: typeof error,
+    isObject: typeof error === 'object',
+    hasTag: '_tag' in error,
+    tag: (error as any)._tag,
+    keys: Object.keys(error),
+    fullError: JSON.stringify(error),
+  });
+
   switch (error._tag) {
     case 'ParseError':
       return formatParseError(error, sourceCode);

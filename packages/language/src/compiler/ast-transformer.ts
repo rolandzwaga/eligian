@@ -16,6 +16,7 @@
  */
 
 import { Effect } from 'effect';
+import { AstUtils, type URI } from 'langium';
 import type { TransformError } from '../errors/index.js';
 import type {
   ActionDefinition,
@@ -27,6 +28,7 @@ import type {
   Expression,
   ForStatement,
   IfStatement,
+  Library,
   OperationCall,
   OperationStatement,
   Program,
@@ -37,6 +39,7 @@ import type {
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
+import { isLibrary, isLibraryImport } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import {
   getActions,
@@ -51,6 +54,7 @@ import { findActionByName } from './name-resolver.js';
 import { getOperationSignature } from './operations/index.js';
 import { mapParameters } from './operations/mapper.js';
 import { trackOutputs, validateDependencies, validateOperation } from './operations/validator.js';
+import { getOrCreateServices, resolveLibraryPath } from './pipeline.js';
 import type { SourceLocation } from './types/common.js';
 import type { ConstantMap } from './types/constant-folding.js';
 import type {
@@ -136,13 +140,39 @@ function createEmptyScope(): ScopeContext {
  * @returns Array of ActionDefinition nodes (with aliases applied where necessary)
  */
 function resolveImports(
-  program: Program
+  program: Program,
+  visited: Set<string> = new Set()
 ): Effect.Effect<ActionDefinition[], TransformError, never> {
   return Effect.gen(function* (_) {
     const libraryImports = getLibraryImports(program);
     const importedActions: ActionDefinition[] = [];
 
+    // Track visited libraries to prevent infinite recursion
+    const currentUri = AstUtils.getDocument(program).uri;
+    if (currentUri) {
+      visited.add(currentUri.fsPath);
+    }
+
     for (const libraryImport of libraryImports) {
+      // Feature 032 US3: Get the library document to recursively collect its imports
+      const libraryUri = currentUri
+        ? resolveLibraryPath(currentUri, libraryImport.path)
+        : undefined;
+
+      if (libraryUri && !visited.has(libraryUri.fsPath)) {
+        // Recursively collect actions from this library's imports
+        const services = getOrCreateServices();
+        const libraryDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
+
+        if (libraryDoc?.parseResult.value && isLibrary(libraryDoc.parseResult.value)) {
+          const library = libraryDoc.parseResult.value;
+
+          // Recursively collect actions from library's imports
+          const nestedActions = yield* _(resolveLibraryImports(library, visited, libraryUri));
+          importedActions.push(...nestedActions);
+        }
+      }
+
       for (const actionImport of libraryImport.actions) {
         // Get the resolved ActionDefinition from the reference
         // If the reference is unresolved (undefined), skip it - validation should have caught this
@@ -162,9 +192,68 @@ function resolveImports(
           };
           importedActions.push(aliasedAction);
         } else {
-          // No alias - use original action
           importedActions.push(actionDef);
         }
+      }
+    }
+
+    return importedActions;
+  });
+}
+
+/**
+ * Feature 032 US3: Recursively resolve library imports
+ *
+ * Collects all actions from a library's imports, including nested library imports.
+ * This ensures that actions defined in libraries can call actions from libraries
+ * that those libraries import.
+ */
+function resolveLibraryImports(
+  library: Library,
+  visited: Set<string>,
+  libraryUri: URI
+): Effect.Effect<ActionDefinition[], TransformError, never> {
+  return Effect.gen(function* (_) {
+    const importedActions: ActionDefinition[] = [];
+
+    // Mark this library as visited
+    visited.add(libraryUri.fsPath);
+
+    // Get library's imports
+    const libraryImports = library.imports || [];
+
+    for (const libraryImport of libraryImports) {
+      if (!isLibraryImport(libraryImport)) continue;
+
+      // Resolve nested library
+      const nestedLibraryUri = resolveLibraryPath(libraryUri, libraryImport.path);
+
+      // Skip if already visited (circular dependency)
+      if (visited.has(nestedLibraryUri.fsPath)) {
+        continue;
+      }
+
+      // Get nested library document
+      const services = getOrCreateServices();
+      const nestedLibraryDoc =
+        services.shared.workspace.LangiumDocuments.getDocument(nestedLibraryUri);
+
+      if (!nestedLibraryDoc?.parseResult.value) continue;
+      if (!isLibrary(nestedLibraryDoc.parseResult.value)) continue;
+
+      const nestedLibrary = nestedLibraryDoc.parseResult.value;
+
+      // Recursively collect actions from nested library's imports
+      const transitiveActions = yield* _(
+        resolveLibraryImports(nestedLibrary, visited, nestedLibraryUri)
+      );
+      importedActions.push(...transitiveActions);
+
+      // Feature 032 US3: Add ALL actions from the nested library
+      // This ensures library A can use actions from library B (like slideAndFade)
+      // Library A's actions are transformed with access to all of B's actions
+      for (const action of nestedLibrary.actions || []) {
+        importedActions.push(action);
       }
     }
 
@@ -327,8 +416,9 @@ export const transformAST = (
       timelineProviderSettings: providerSettings as TTimelineProviderSettings,
     };
 
+
     // Return new EligiusIR wrapper (T279)
-    return {
+    const result = {
       config,
       sourceMap,
       metadata: {
@@ -338,6 +428,7 @@ export const transformAST = (
         sourceFile: undefined,
       },
     };
+    return result;
   });
 
 /**
@@ -1422,6 +1513,19 @@ const transformOperationStatement = (
           let actionOperationData: Record<string, JsonValue> | undefined;
           if (stmt.args && stmt.args.length > 0) {
             const parameters = actionDef.parameters || [];
+
+            // Check argument count matches parameter count
+            if (stmt.args.length !== parameters.length) {
+              return yield* _(
+                Effect.fail({
+                  _tag: 'TransformError' as const,
+                  kind: 'ValidationError' as const,
+                  message: `Action '${operationName}' expects ${parameters.length} argument(s) but got ${stmt.args.length}. Expected: ${parameters.map(p => p.name).join(', ')}`,
+                  location: getSourceLocation(stmt),
+                })
+              );
+            }
+
             actionOperationData = {};
             for (let i = 0; i < parameters.length; i++) {
               const paramName = parameters[i].name;

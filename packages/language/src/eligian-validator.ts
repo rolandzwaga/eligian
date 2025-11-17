@@ -12,6 +12,7 @@ import {
   validateParameterTypes,
 } from './compiler/index.js';
 import { findActionByName } from './compiler/name-resolver.js';
+import { resolveLibraryPath } from './compiler/pipeline.js';
 import { TIMELINE_EVENTS } from './completion/metadata/timeline-events.generated.js';
 import { findSimilarClasses } from './css/levenshtein.js';
 import { parseSelector } from './css/selector-parser.js';
@@ -530,14 +531,70 @@ export class EligianValidator {
    */
   checkParameterCount(operation: OperationCall, accept: ValidationAcceptor): void {
     const opName = getOperationCallName(operation);
+    const argumentCount = operation.args.length;
 
-    // Only validate if operation exists (avoid duplicate errors)
+    // Check if this is an action call (local, library, or imported)
+    const program = this.getProgram(operation);
+    if (program) {
+      // Check local action
+      const localAction = findActionByName(opName, program);
+      if (localAction) {
+        const expectedCount = localAction.parameters?.length ?? 0;
+        if (argumentCount !== expectedCount) {
+          const paramNames = localAction.parameters?.map(p => p.name).join(', ') ?? '';
+          accept('error', `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`, {
+            node: operation,
+            property: 'args',
+            code: 'invalid_parameter_count',
+          });
+        }
+        return;
+      }
+
+      // Check imported action
+      if (this.services) {
+        const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
+        const importedActions = scopeProvider.getImportedActions(program);
+        const importedAction = findActionByName(opName, importedActions);
+        if (importedAction) {
+          const expectedCount = importedAction.parameters?.length ?? 0;
+          if (argumentCount !== expectedCount) {
+            const paramNames = importedAction.parameters?.map(p => p.name).join(', ') ?? '';
+            accept('error', `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`, {
+              node: operation,
+              property: 'args',
+              code: 'invalid_parameter_count',
+            });
+          }
+          return;
+        }
+      }
+    }
+
+    // Check library action (for library files themselves)
+    const library = this.getLibrary(operation);
+    if (library) {
+      const libraryAction = library.actions?.find(a => a.name === opName);
+      if (libraryAction) {
+        const expectedCount = libraryAction.parameters?.length ?? 0;
+        if (argumentCount !== expectedCount) {
+          const paramNames = libraryAction.parameters?.map(p => p.name).join(', ') ?? '';
+          accept('error', `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`, {
+            node: operation,
+            property: 'args',
+            code: 'invalid_parameter_count',
+          });
+        }
+        return;
+      }
+    }
+
+    // Only validate built-in operations if not an action
     if (!hasOperation(opName)) {
       return;
     }
 
     const signature = OPERATION_REGISTRY[opName];
-    const argumentCount = operation.args.length;
 
     // Use compiler validation logic
     const error = validateParameterCount(signature, argumentCount);
@@ -1810,17 +1867,9 @@ export class EligianValidator {
       return; // Cannot resolve relative paths without document URI
     }
 
-    // Resolve the library path relative to the importing document
-    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
+    // Resolve the library path using same logic as pipeline.ts and scope provider
     const originalPath = libraryImport.path;
-    let importPath = originalPath;
-    // Normalize ./ prefix for URI resolution
-    if (importPath.startsWith('./')) {
-      importPath = importPath.substring(2);
-    }
-    const documentUriStr = documentUri.toString();
-    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
-    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
+    const resolvedUri = resolveLibraryPath(documentUri, originalPath);
 
     // Try to load the library document
     const documents = this.services.shared.workspace.LangiumDocuments;

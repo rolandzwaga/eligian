@@ -1,0 +1,10 @@
+// Program that imports library A (which imports B, which imports C)
+// Tests nested library loading: a.eligian → b.eligian → c.eligian
+
+styles "./test-styles.css"
+
+import { complexEffect } from "./a.eligian"
+
+timeline "Nested Import Test" in "#app" using raf {
+  at 0s..2s complexEffect("#box")
+}

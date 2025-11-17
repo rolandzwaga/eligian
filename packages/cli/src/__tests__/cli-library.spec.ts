@@ -12,12 +12,11 @@
  * Constitution Principle II: Write tests BEFORE implementation.
  */
 
-import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-const CLI_PATH = join(__dirname, '../../bin/cli.js');
+const _CLI_PATH = join(__dirname, '../../bin/cli.js');
 const FIXTURES_PATH = join(__dirname, '../../../../'); // Root of monorepo (4 levels up)
 const OUTPUT_DIR = join(__dirname, '__output__');
 
@@ -38,7 +37,7 @@ describe('CLI - Library Import Compilation (T011)', () => {
 
   it('should compile program with single library import', () => {
     const inputFile = join(FIXTURES_PATH, 'test-import.eligian');
-    const outputFile = join(OUTPUT_DIR, 'output.json');
+    const _outputFile = join(OUTPUT_DIR, 'output.json');
 
     // Skip test until implementation complete (T012-T017)
     // TODO: Remove skip once extractLibraryImports() and friends are implemented

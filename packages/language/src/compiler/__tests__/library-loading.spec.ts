@@ -15,7 +15,6 @@
 import { Effect } from 'effect';
 import { URI } from 'langium';
 import { describe, expect, test } from 'vitest';
-import type { Program } from '../../generated/ast.js';
 import { parseSource } from '../pipeline.js';
 
 // Import functions under test (will implement these in T012-T016)
@@ -44,7 +43,7 @@ describe('Library Loading (T006-T010)', () => {
         }
       `;
 
-      const program = await Effect.runPromise(parseSource(source));
+      const _program = await Effect.runPromise(parseSource(source));
 
       // TODO: Implement extractLibraryImports()
       // const imports = extractLibraryImports(program);
@@ -82,8 +81,8 @@ describe('Library Loading (T006-T010)', () => {
 
   describe('T007: resolveLibraryPath()', () => {
     test('should resolve relative path with ./', async () => {
-      const currentUri = URI.file('f:/projects/eligian/test.eligian');
-      const importPath = './animations.eligian';
+      const _currentUri = URI.file('f:/projects/eligian/test.eligian');
+      const _importPath = './animations.eligian';
 
       // TODO: Implement resolveLibraryPath()
       // const resolved = resolveLibraryPath(currentUri, importPath);
@@ -92,8 +91,8 @@ describe('Library Loading (T006-T010)', () => {
     });
 
     test('should resolve parent path with ../', async () => {
-      const currentUri = URI.file('f:/projects/eligian/src/test.eligian');
-      const importPath = '../lib/animations.eligian';
+      const _currentUri = URI.file('f:/projects/eligian/src/test.eligian');
+      const _importPath = '../lib/animations.eligian';
 
       // TODO: Implement resolveLibraryPath()
       // const resolved = resolveLibraryPath(currentUri, importPath);
@@ -102,8 +101,8 @@ describe('Library Loading (T006-T010)', () => {
     });
 
     test('should resolve Windows-style paths', async () => {
-      const currentUri = URI.file('C:\\projects\\eligian\\test.eligian');
-      const importPath = '.\\animations.eligian';
+      const _currentUri = URI.file('C:\\projects\\eligian\\test.eligian');
+      const _importPath = '.\\animations.eligian';
 
       // TODO: Implement resolveLibraryPath()
       // const resolved = resolveLibraryPath(currentUri, importPath);
@@ -112,8 +111,8 @@ describe('Library Loading (T006-T010)', () => {
     });
 
     test('should handle deep relative paths', async () => {
-      const currentUri = URI.file('f:/projects/eligian/src/components/test.eligian');
-      const importPath = '../../lib/animations.eligian';
+      const _currentUri = URI.file('f:/projects/eligian/src/components/test.eligian');
+      const _importPath = '../../lib/animations.eligian';
 
       // TODO: Implement resolveLibraryPath()
       // const resolved = resolveLibraryPath(currentUri, importPath);
@@ -124,7 +123,9 @@ describe('Library Loading (T006-T010)', () => {
 
   describe('T008: loadLibraryFile()', () => {
     test('should load library file content successfully', async () => {
-      const libraryUri = URI.file('f:/projects/eligius/eligian/examples/libraries/animations.eligian');
+      const _libraryUri = URI.file(
+        'f:/projects/eligius/eligian/examples/libraries/animations.eligian'
+      );
 
       // TODO: Implement loadLibraryFile()
       // const result = await Effect.runPromise(loadLibraryFile(libraryUri));
@@ -134,7 +135,7 @@ describe('Library Loading (T006-T010)', () => {
     });
 
     test('should return FileNotFoundError for missing file', async () => {
-      const libraryUri = URI.file('f:/projects/eligian/missing.eligian');
+      const _libraryUri = URI.file('f:/projects/eligian/missing.eligian');
 
       // TODO: Implement loadLibraryFile()
       // const result = Effect.runPromise(loadLibraryFile(libraryUri));
@@ -159,7 +160,7 @@ describe('Library Loading (T006-T010)', () => {
 
   describe('T009: parseLibraryDocument()', () => {
     test('should parse valid library document', async () => {
-      const libraryContent = `
+      const _libraryContent = `
         library animations
 
         action fadeIn(selector: string, duration: number) [
@@ -167,7 +168,7 @@ describe('Library Loading (T006-T010)', () => {
           animate({opacity: 1}, duration)
         ]
       `;
-      const libraryUri = URI.file('f:/test/animations.eligian');
+      const _libraryUri = URI.file('f:/test/animations.eligian');
 
       // TODO: Implement parseLibraryDocument()
       // const result = await Effect.runPromise(parseLibraryDocument(libraryContent, libraryUri));
@@ -177,7 +178,7 @@ describe('Library Loading (T006-T010)', () => {
     });
 
     test('should return ParseError for syntax errors', async () => {
-      const libraryContent = `
+      const _libraryContent = `
         library animations
 
         action fadeIn(selector: string, duration: number) [
@@ -185,7 +186,7 @@ describe('Library Loading (T006-T010)', () => {
           // Missing closing bracket
         ]
       `;
-      const libraryUri = URI.file('f:/test/animations.eligian');
+      const _libraryUri = URI.file('f:/test/animations.eligian');
 
       // TODO: Implement parseLibraryDocument()
       // const result = Effect.runPromise(parseLibraryDocument(libraryContent, libraryUri));
@@ -200,12 +201,12 @@ describe('Library Loading (T006-T010)', () => {
     });
 
     test('should return InvalidLibraryError for non-library files', async () => {
-      const programContent = `
+      const _programContent = `
         timeline "Test" in ".container" using raf {
           at 0s..5s selectElement("#title")
         }
       `;
-      const libraryUri = URI.file('f:/test/program.eligian');
+      const _libraryUri = URI.file('f:/test/program.eligian');
 
       // TODO: Implement parseLibraryDocument()
       // const result = Effect.runPromise(parseLibraryDocument(programContent, libraryUri));

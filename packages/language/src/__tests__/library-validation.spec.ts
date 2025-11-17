@@ -3,7 +3,8 @@
  *
  * Tests validation rules for library files:
  * - Libraries cannot contain timelines (grammar prevents this - parser error)
- * - Libraries cannot contain imports (grammar prevents this - parser error)
+ * - Libraries cannot contain styles/layout/provider imports (grammar prevents this - parser error)
+ * - Libraries CAN contain library action imports (Feature 032 - User Story 3 allows nested dependencies)
  * - Libraries cannot contain constants (grammar prevents this - parser error)
  * - Action names must be unique within a library (validator checks this)
  */
@@ -86,20 +87,9 @@ describe('Library Validation', () => {
     expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
   });
 
-  test('rejects library with library action import (parser error)', async () => {
-    const code = `
-      library animations
-
-      import { fadeIn } from "./other.eligian"
-
-      action fadeOut() [
-        selectElement("#box")
-      ]
-    `;
-
-    const document = await ctx.parse(code);
-    expect(document.parseResult.parserErrors.length).toBeGreaterThan(0);
-  });
+  // NOTE: Libraries CAN contain library action imports (Feature 032 - User Story 3)
+  // The old test "rejects library with library action import" was removed because
+  // it's now a VALID feature, not an error. See examples/libraries/nested/ for working examples.
 
   // T018: Test error when library contains constants
   // Note: Grammar doesn't allow constants in libraries, so this is a parser error

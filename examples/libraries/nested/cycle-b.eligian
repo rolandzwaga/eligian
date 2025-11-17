@@ -1,0 +1,9 @@
+// Circular dependency: B imports A (creates cycle)
+library cycleB
+
+import { actionA } from "./cycle-a.eligian"
+
+action actionB(selector: string) [
+  selectElement(selector)
+  actionA(selector)
+]

@@ -1,4 +1,4 @@
 #!/usr/bin/env node
 
-import main from '../out/main.js';
+import main from "../dist/cli.mjs";
 main();
