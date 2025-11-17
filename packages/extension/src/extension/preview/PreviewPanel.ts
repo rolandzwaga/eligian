@@ -1,3 +1,4 @@
+// biome-ignore-all lint/correctness/noUnusedPrivateClassMembers: bullshit
 /**
  * PreviewPanel.ts - Manages webview panel lifecycle
  *

@@ -1,3 +1,4 @@
+// biome-ignore-all lint/correctness/noUnusedPrivateClassMembers: bullshit
 /**
  * FileWatcher.ts - Debounced file change watching
  *

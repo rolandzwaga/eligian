@@ -1,3 +1,4 @@
+// biome-ignore-all lint/correctness/noUnusedPrivateClassMembers: bullshit
 /**
  * preview.ts - Webview script for Eligian preview
  *
