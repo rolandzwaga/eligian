@@ -133,7 +133,6 @@ function convertParameter(
   }
 
   // Fallback: treat as optional string (should never reach here)
-  console.warn(`Unknown property metadata format for "${name}":`, propertyMetadata);
   return {
     name,
     type: ['ParameterType:string'],

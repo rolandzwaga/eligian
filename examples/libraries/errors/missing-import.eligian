@@ -1,0 +1,6 @@
+// Program that imports a non-existent library file
+import { fadeIn } from "./nonexistent.eligian"
+
+timeline "Test" in "#app" using raf {
+  at 0s..1s fadeIn("#box", 1000)
+}

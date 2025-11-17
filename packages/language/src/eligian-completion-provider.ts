@@ -67,29 +67,12 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Get document and position from context
       const document = context.document;
 
-      // DEBUG: Log ALL completion requests to see if we're even being called
-      const text = document.textDocument.getText();
-      const lineText = text.split('\n')[document.textDocument.positionAt(context.offset).line];
-      console.log('[COMPLETION] Request at:', {
-        line: lineText.trim(),
-        offset: context.offset,
-        tokenOffset: context.tokenOffset,
-        nextType: next.type,
-        nextProperty: next.property,
-      });
-
       // NOTE: JSDoc completion is now handled in getCompletion() above
 
       // Use tokenOffset to detect context, as this points to the start of the token being completed
       // For @@loop<cursor>, tokenOffset points to 'l' in 'loop', which is inside SystemPropertyReference
       const tokenPosition = document.textDocument.positionAt(context.tokenOffset);
       const cursorContext = detectContext(document, tokenPosition);
-
-      console.log('[COMPLETION] Context detected:', {
-        isInEventNameString: cursorContext.isInEventNameString,
-        eventAction: !!cursorContext.eventAction,
-        isInsideAction: cursorContext.isInsideAction,
-      });
 
       // Check if we're completing the 'name' property of SystemPropertyReference
       // This handles @@<cursor> and @@loop<cursor> cases
@@ -420,10 +403,8 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Fallback to default Langium completions (keywords, grammar-based)
       // Use filtering acceptor to prevent invalid keywords and duplicates
       return super.completionFor(context, next, filteringAcceptor);
-    } catch (error) {
-      // Graceful error handling - log warning but don't break completion
-      console.warn('Error in Eligian completion provider:', error);
-      // Fallback to default completion
+    } catch (_error) {
+      // Graceful error handling - fallback to default completion
       return super.completionFor(context, next, acceptor);
     }
   }
@@ -468,30 +449,6 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     context: CompletionContext,
     item: any
   ): CompletionItem | undefined {
-    console.log('[FILL COMPLETION DEBUG] fillCompletionItem called with:', {
-      label: item.label,
-      hasTextEdit: !!item.textEdit,
-      insertText: item.insertText,
-    });
-    const result = super.fillCompletionItem(context, item);
-    console.log(
-      '[FILL COMPLETION DEBUG] fillCompletionItem result:',
-      result ? 'SUCCESS' : 'FILTERED OUT'
-    );
-    return result;
-  }
-
-  /**
-   * Override getCompletion to log final result
-   */
-  override async getCompletion(document: any, params: any, cancelToken?: any): Promise<any> {
-    console.log('[GET COMPLETION DEBUG] getCompletion called at position:', params.position);
-    const result = await super.getCompletion(document, params, cancelToken);
-    console.log('[GET COMPLETION DEBUG] getCompletion returning:', {
-      itemCount: result?.items?.length ?? 0,
-      isIncomplete: result?.isIncomplete,
-      firstItem: result?.items?.[0]?.label,
-    });
-    return result;
+    return super.fillCompletionItem(context, item);
   }
 }

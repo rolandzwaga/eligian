@@ -12,6 +12,7 @@ import {
   validateParameterTypes,
 } from './compiler/index.js';
 import { findActionByName } from './compiler/name-resolver.js';
+import { resolveLibraryPath } from './compiler/pipeline.js';
 import { TIMELINE_EVENTS } from './completion/metadata/timeline-events.generated.js';
 import { findSimilarClasses } from './css/levenshtein.js';
 import { parseSelector } from './css/selector-parser.js';
@@ -38,6 +39,7 @@ import type {
   TimelineEvent,
   VariableDeclaration,
 } from './generated/ast.js';
+import { isLibraryImport } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
@@ -500,10 +502,11 @@ export class EligianValidator {
     }
 
     // Feature 024: Check if operation is an IMPORTED action
+    // Feature 032 Fix: Must check aliases as well as original action names
     if (program && this.services) {
       const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
       const importedActions = scopeProvider.getImportedActions(program);
-      const importedAction = findActionByName(opName, importedActions);
+      const importedAction = this.findImportedActionByNameOrAlias(opName, program, importedActions);
       if (importedAction) {
         // This is a valid imported action call - skip operation validation
         return;
@@ -530,14 +533,87 @@ export class EligianValidator {
    */
   checkParameterCount(operation: OperationCall, accept: ValidationAcceptor): void {
     const opName = getOperationCallName(operation);
+    const argumentCount = operation.args.length;
 
-    // Only validate if operation exists (avoid duplicate errors)
+    // Check if this is an action call (local, library, or imported)
+    const program = this.getProgram(operation);
+    if (program) {
+      // Check local action
+      const localAction = findActionByName(opName, program);
+      if (localAction) {
+        const expectedCount = localAction.parameters?.length ?? 0;
+        if (argumentCount !== expectedCount) {
+          const paramNames = localAction.parameters?.map(p => p.name).join(', ') ?? '';
+          accept(
+            'error',
+            `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+            {
+              node: operation,
+              property: 'args',
+              code: 'invalid_parameter_count',
+            }
+          );
+        }
+        return;
+      }
+
+      // Check imported action
+      // Feature 032 Fix: Must check aliases as well as original action names
+      if (this.services) {
+        const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
+        const importedActions = scopeProvider.getImportedActions(program);
+        const importedAction = this.findImportedActionByNameOrAlias(
+          opName,
+          program,
+          importedActions
+        );
+        if (importedAction) {
+          const expectedCount = importedAction.parameters?.length ?? 0;
+          if (argumentCount !== expectedCount) {
+            const paramNames = importedAction.parameters?.map(p => p.name).join(', ') ?? '';
+            accept(
+              'error',
+              `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+              {
+                node: operation,
+                property: 'args',
+                code: 'invalid_parameter_count',
+              }
+            );
+          }
+          return;
+        }
+      }
+    }
+
+    // Check library action (for library files themselves)
+    const library = this.getLibrary(operation);
+    if (library) {
+      const libraryAction = library.actions?.find(a => a.name === opName);
+      if (libraryAction) {
+        const expectedCount = libraryAction.parameters?.length ?? 0;
+        if (argumentCount !== expectedCount) {
+          const paramNames = libraryAction.parameters?.map(p => p.name).join(', ') ?? '';
+          accept(
+            'error',
+            `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+            {
+              node: operation,
+              property: 'args',
+              code: 'invalid_parameter_count',
+            }
+          );
+        }
+        return;
+      }
+    }
+
+    // Only validate built-in operations if not an action
     if (!hasOperation(opName)) {
       return;
     }
 
     const signature = OPERATION_REGISTRY[opName];
-    const argumentCount = operation.args.length;
 
     // Use compiler validation logic
     const error = validateParameterCount(signature, argumentCount);
@@ -955,10 +1031,17 @@ export class EligianValidator {
     }
 
     // Feature 024: Check if it's an IMPORTED action
+    // Feature 032 Fix: Must check aliases as well as original action names
     if (this.services) {
       const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
       const importedActions = scopeProvider.getImportedActions(program);
-      const importedAction = findActionByName(callName, importedActions);
+
+      // Check if callName matches an imported action's name OR its alias
+      const importedAction = this.findImportedActionByNameOrAlias(
+        callName,
+        program,
+        importedActions
+      );
       if (importedAction) {
         // Valid imported action call - success
         return;
@@ -987,6 +1070,52 @@ export class EligianValidator {
         property: 'operationName',
       }
     );
+  }
+
+  /**
+   * Feature 032 Fix: Find imported action by name or alias
+   *
+   * Checks if the given name matches either:
+   * - The original action name (from library)
+   * - An alias used when importing the action
+   *
+   * @param callName - Name used in OperationCall (could be alias)
+   * @param program - Program containing import statements
+   * @param importedActions - List of imported action definitions
+   * @returns ActionDefinition if found, undefined otherwise
+   */
+  private findImportedActionByNameOrAlias(
+    callName: string,
+    program: Program,
+    importedActions: ActionDefinition[]
+  ): ActionDefinition | undefined {
+    // Build a map of all import aliases: alias → action
+    const aliasMap = new Map<string, ActionDefinition>();
+
+    // Get all library imports from the program
+    const statements = program.statements || [];
+    const libraryImports = statements.filter(isLibraryImport);
+
+    for (const libraryImport of libraryImports) {
+      for (const actionImport of libraryImport.actions) {
+        const action = actionImport.action.ref;
+        if (!action) continue;
+
+        // Register the alias if present
+        if (actionImport.alias) {
+          aliasMap.set(actionImport.alias, action);
+        }
+      }
+    }
+
+    // First, check if callName is an alias
+    const actionByAlias = aliasMap.get(callName);
+    if (actionByAlias) {
+      return actionByAlias;
+    }
+
+    // Otherwise, check if callName matches an original action name
+    return importedActions.find(action => action.name === callName);
   }
 
   /**
@@ -1810,17 +1939,9 @@ export class EligianValidator {
       return; // Cannot resolve relative paths without document URI
     }
 
-    // Resolve the library path relative to the importing document
-    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
+    // Resolve the library path using same logic as pipeline.ts and scope provider
     const originalPath = libraryImport.path;
-    let importPath = originalPath;
-    // Normalize ./ prefix for URI resolution
-    if (importPath.startsWith('./')) {
-      importPath = importPath.substring(2);
-    }
-    const documentUriStr = documentUri.toString();
-    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
-    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
+    const resolvedUri = resolveLibraryPath(documentUri, originalPath);
 
     // Try to load the library document
     const documents = this.services.shared.workspace.LangiumDocuments;

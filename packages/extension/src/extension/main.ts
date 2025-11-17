@@ -7,6 +7,7 @@ import {
   formatErrors,
 } from '@eligian/language';
 import { Effect } from 'effect';
+import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
@@ -173,9 +174,29 @@ function registerCompileCommand(): any {
             sourceUri: sourceUri.fsPath,
           });
 
-          const result = await Effect.runPromise(compileEffect).catch(error => {
+          let result: IEngineConfiguration | undefined;
+          try {
+            result = await Effect.runPromise(compileEffect);
+          } catch (error) {
             // Handle compilation errors
-            const formatted = formatErrors([error], sourceCode);
+            // Effect.runPromise wraps errors in a FiberFailure structure with nested cause
+            let compilerError: any = error;
+
+            // Unwrap Effect's FiberFailure -> Cause -> failure structure
+            // Effect errors have a toJSON() method that returns the actual structure
+            if (typeof compilerError.toJSON === 'function') {
+              compilerError = compilerError.toJSON();
+            }
+
+            // Now unwrap the JSON structure
+            if (compilerError?._id === 'FiberFailure' && compilerError.cause) {
+              compilerError = compilerError.cause;
+            }
+            if (compilerError?._tag === 'Fail' && compilerError.failure) {
+              compilerError = compilerError.failure;
+            }
+
+            const formatted = formatErrors([compilerError], sourceCode);
 
             // Show errors in output channel
             const outputChannel = vscode.window.createOutputChannel('Eligian Compiler');
@@ -198,7 +219,7 @@ function registerCompileCommand(): any {
 
             outputChannel.show();
             throw new Error('Compilation failed');
-          });
+          }
 
           // Generate output JSON
           const outputJson = JSON.stringify(result, null, 2);
@@ -235,22 +256,18 @@ function registerCompileCommand(): any {
  */
 function registerGenerateJSDocCommand(client: LanguageClient): any {
   return vscode.commands.registerCommand('eligian.generateJSDoc', async () => {
-    console.log('eligian.generateJSDoc command triggered');
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      console.log('No active editor');
       return;
     }
 
     const document = editor.document;
     if (document.languageId !== 'eligian') {
-      console.log('Not an eligian document:', document.languageId);
       return;
     }
 
     // Get current cursor position (should be inside /** */ after Step 1)
     const position = editor.selection.active;
-    console.log('Cursor position:', position);
 
     // Request JSDoc generation from language server
     const params = {
@@ -259,9 +276,7 @@ function registerGenerateJSDocCommand(client: LanguageClient): any {
     };
 
     try {
-      console.log('Sending request to language server:', params);
       const jsdocContent = await client.sendRequest('eligian/generateJSDoc', params);
-      console.log('Received JSDoc content:', jsdocContent);
 
       if (jsdocContent && typeof jsdocContent === 'string') {
         // Replace the placeholder ${1} with the JSDoc content
@@ -281,12 +296,9 @@ function registerGenerateJSDocCommand(client: LanguageClient): any {
             editBuilder.replace(new vscode.Range(startPos, endPos), `\n${jsdocContent}\n `);
           }
         });
-      } else {
-        console.log('No JSDoc content to insert');
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - no JSDoc generation available
-      console.log('No JSDoc generation available:', error);
     }
   });
 }
@@ -328,8 +340,6 @@ function registerJSDocAutoCompletion(_client: LanguageClient): any {
 
       // Check if it ends with /**
       if (textBeforeCursor.trimEnd().endsWith('/**')) {
-        console.log('Auto-completing JSDoc comment');
-
         // Insert the closing */ and position cursor
         await editor.edit(
           (editBuilder: any) => {

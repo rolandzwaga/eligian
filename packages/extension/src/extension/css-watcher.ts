@@ -67,13 +67,7 @@ export class CSSWatcherManager {
    * @param cssFileUris - CSS file URIs imported by the document (may be relative like "./styles.css")
    */
   registerImports(documentUri: string, cssFileUris: string[]): void {
-    console.log('[CSSWatcher] registerImports called:', {
-      documentUri,
-      cssFileUris,
-    });
-
     if (cssFileUris.length === 0) {
-      console.log('[CSSWatcher] No CSS files to register, skipping');
       return;
     }
 
@@ -92,11 +86,6 @@ export class CSSWatcherManager {
       // Convert relative CSS paths to absolute URIs to match file change events
       const absoluteCSSUri = this.resolveAbsoluteCSSUri(documentUri, cssFileUri);
 
-      console.log('[CSSWatcher] Resolved CSS URI:', {
-        input: cssFileUri,
-        output: absoluteCSSUri,
-      });
-
       let documents = this.importsByCSS.get(absoluteCSSUri);
       if (!documents) {
         documents = new Set();
@@ -109,13 +98,7 @@ export class CSSWatcherManager {
       cssFilePaths.push(cssUri.fsPath);
     }
 
-    console.log('[CSSWatcher] importsByCSS after registration:', {
-      size: this.importsByCSS.size,
-      keys: Array.from(this.importsByCSS.keys()),
-    });
-
     // Start watching the CSS files (this is idempotent - won't recreate watcher if already exists)
-    console.log('[CSSWatcher] Starting file watcher for CSS files');
     this.startWatching(cssFilePaths, workspaceRoot);
   }
 
@@ -166,26 +149,19 @@ export class CSSWatcherManager {
     if (!this.watcher) {
       // Watch all CSS files in workspace (efficient single watcher)
       const pattern = new vscode.RelativePattern(workspaceRoot, '**/*.css');
-      console.log('[CSSWatcher] Creating watcher with pattern:', {
-        workspaceRoot,
-        pattern: pattern.pattern,
-      });
       this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
       // Handle file changes
       this.watcher.onDidChange(uri => {
-        console.log('[CSSWatcher] onDidChange fired for:', uri.toString());
         this.handleFileChange(uri);
       });
 
       // Handle file deletions (stop watching)
       this.watcher.onDidDelete(uri => {
-        console.log('[CSSWatcher] onDidDelete fired for:', uri.toString());
         this.handleFileDelete(uri);
       });
 
       this.disposables.push(this.watcher);
-      console.log('[CSSWatcher] Started watching CSS files:', cssFiles);
     }
   }
 
@@ -197,10 +173,8 @@ export class CSSWatcherManager {
   updateTrackedFiles(cssFiles: string[]): void {
     this.trackedFiles.clear();
     for (const file of cssFiles) {
-      console.log('[CSSWatcher] Adding tracked file:', file);
       this.trackedFiles.add(file);
     }
-    console.log('[CSSWatcher] All tracked files:', Array.from(this.trackedFiles));
   }
 
   /**
@@ -209,19 +183,11 @@ export class CSSWatcherManager {
   private handleFileChange(uri: vscode.Uri): void {
     const filePath = uri.fsPath;
 
-    console.log('[CSSWatcher] handleFileChange called:', {
-      uriString: uri.toString(),
-      fsPath: filePath,
-      isTracked: this.trackedFiles.has(filePath),
-      trackedFiles: Array.from(this.trackedFiles),
-    });
-
     // Only process tracked files
     if (!this.trackedFiles.has(filePath)) {
       return;
     }
 
-    console.log('[CSSWatcher] File changed:', filePath);
     this.debounceChange(filePath);
   }
 
@@ -232,7 +198,6 @@ export class CSSWatcherManager {
     const filePath = uri.fsPath;
 
     if (this.trackedFiles.has(filePath)) {
-      console.log('[CSSWatcher] File deleted:', filePath);
       this.trackedFiles.delete(filePath);
 
       // Clear any pending debounce timer
@@ -263,7 +228,6 @@ export class CSSWatcherManager {
 
     // Create new timer
     const timer = setTimeout(() => {
-      console.log('[CSSWatcher] Debounce complete, triggering reload:', filePath);
       this.debounceTimers.delete(filePath);
 
       // T022: Send LSP notification for validation hot-reload
@@ -271,29 +235,17 @@ export class CSSWatcherManager {
         const cssFileUri = vscode.Uri.file(filePath).toString();
         const documentUris = Array.from(this.importsByCSS.get(cssFileUri) || []);
 
-        console.log('[CSSWatcher] Lookup for changed file:', {
-          filePath,
-          cssFileUri,
-          foundDocuments: documentUris.length,
-          allKeys: Array.from(this.importsByCSS.keys()),
-        });
-
         if (documentUris.length > 0) {
-          console.log(
-            `[CSSWatcher] Sending LSP notification for ${cssFileUri} → ${documentUris.length} document(s)`
-          );
           this.client.sendNotification(CSS_UPDATED_NOTIFICATION, {
             cssFileUri,
             documentUris,
           });
-        } else {
-          console.warn('[CSSWatcher] No documents found for changed CSS file:', cssFileUri);
         }
       }
 
       // Invoke callback (async-safe) for preview hot-reload
-      Promise.resolve(this.onChange(filePath)).catch(error => {
-        console.error('[CSSWatcher] Error in onChange callback:', error);
+      Promise.resolve(this.onChange(filePath)).catch(_error => {
+        // Error in onChange callback - silently ignore
       });
     }, this.debounceDelay);
 
@@ -322,7 +274,5 @@ export class CSSWatcherManager {
 
     // Clear tracked files
     this.trackedFiles.clear();
-
-    console.log('[CSSWatcher] Disposed');
   }
 }

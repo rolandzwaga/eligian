@@ -21,7 +21,7 @@
 import { readFileSync } from 'node:fs';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
-import { EmptyFileSystem, URI } from 'langium';
+import { EmptyFileSystem, type LangiumDocument, URI } from 'langium';
 import {
   type AssetLoadingResult,
   loadProgramAssets,
@@ -29,7 +29,7 @@ import {
 import { parseCSS } from '../css/css-parser.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { EmitError, ParseError, TransformError, TypeError } from '../errors/index.js';
-import type { Program } from '../generated/ast.js';
+import { isLibrary, isLibraryImport, type Library, type Program } from '../generated/ast.js';
 import { isDefaultImport } from '../utils/ast-helpers.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
@@ -175,6 +175,81 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
     const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
     const documentUri = URI.parse(uriString);
 
+    // T017: Load library files BEFORE parsing/validation if URI is provided
+    // This ensures libraries are in the workspace when scope provider runs
+    let mainDocument: LangiumDocument<Program> | undefined;
+    const libraryDocuments: LangiumDocument[] = [];
+    if (uri) {
+      // Pre-parse to extract library imports, then load all documents
+      const services = getOrCreateServices();
+
+      // Create main document
+      mainDocument = yield* _(
+        Effect.sync(() =>
+          services.shared.workspace.LangiumDocumentFactory.fromString<Program>(source, documentUri)
+        )
+      );
+
+      // Quick parse to extract imports (no linking/validation yet)
+      yield* _(
+        Effect.promise(() =>
+          services.shared.workspace.DocumentBuilder.build([mainDocument!], {
+            validation: false,
+          })
+        )
+      );
+
+      const tempProgram = mainDocument.parseResult.value;
+
+      // Check if user tried to compile a library file directly
+      if (isLibrary(tempProgram as any)) {
+        return yield* _(
+          Effect.fail({
+            _tag: 'ParseError' as const,
+            message: 'Cannot compile library files directly',
+            location: { line: 1, column: 1, length: 0 },
+            hint: 'Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.',
+          })
+        );
+      }
+
+      const importPaths = extractLibraryImports(tempProgram);
+
+      // Feature 032 US3: Load each library recursively (including nested dependencies)
+      for (const importPath of importPaths) {
+        const libraryUri = resolveLibraryPath(documentUri, importPath);
+
+        // Recursively load library and all its dependencies with cycle detection
+        const nestedLibraries = yield* _(loadLibraryRecursive(libraryUri, documentUri));
+
+        // Add all nested libraries to the collection (avoiding duplicates)
+        for (const libDoc of nestedLibraries) {
+          if (!libraryDocuments.some(doc => doc.uri.toString() === libDoc.uri.toString())) {
+            libraryDocuments.push(libDoc);
+          }
+        }
+      }
+
+      // CRITICAL: Reset main document to Parsed state before final build
+      // Why: We already built it once to extract imports (reached state 5)
+      // Now we need to re-link it with libraries available, so reset to Parsed
+      // This forces it to go through IndexedContent → Linked again
+      services.shared.workspace.DocumentBuilder.resetToState(mainDocument, 1); // DocumentState.Parsed
+
+      // CRITICAL: Build ALL documents together in ONE call
+      // This ensures proper linking order:
+      // 1. All docs reach IndexedContent (exports visible)
+      // 2. Then all docs reach Linked (imports resolved)
+      // Without this, main doc tries to link before libraries are indexed
+      yield* _(
+        Effect.promise(() =>
+          services.shared.workspace.DocumentBuilder.build([mainDocument!, ...libraryDocuments], {
+            validation: false,
+          })
+        )
+      );
+    }
+
     // Wrap Langium parsing in Effect.tryPromise
     const result = yield* _(
       Effect.tryPromise({
@@ -189,13 +264,15 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             services.Eligian.css.CSSRegistry.clearDocument(uriString);
           }
 
-          // Parse directly without parseHelper to avoid test utility overhead
-          const document = services.shared.workspace.LangiumDocumentFactory.fromString<Program>(
-            source,
-            documentUri
-          );
+          // Reuse main document if libraries were loaded, otherwise create new one
+          const document =
+            mainDocument ||
+            services.shared.workspace.LangiumDocumentFactory.fromString<Program>(
+              source,
+              documentUri
+            );
 
-          // Build document up to Parsed state (before validation)
+          // Build document (will be a no-op if already built from library loading)
           await services.shared.workspace.DocumentBuilder.build([document], {
             validation: false,
           });
@@ -254,7 +331,6 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
                 // Update registry with parsed CSS
                 cssRegistry.updateCSSFile(cssFileUri, parseResult);
               } catch (error) {
-                console.error(`Failed to parse CSS file ${cssRelativePath}:`, error);
                 // Convert to absolute URI for error registration
                 const cssFilePath = cssRelativePath.startsWith('./')
                   ? `${docDir}${cssRelativePath.substring(1)}`
@@ -388,7 +464,19 @@ export const compile = (
     // T076: Parse source to AST
     const program = yield* _(parseSource(source, options.sourceUri));
 
-    // T077: Validate AST (no-op, done during parsing)
+    // Check if user tried to compile a library file directly
+    if (isLibrary(program as any)) {
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: 'Cannot compile library files directly',
+          location: { line: 1, column: 1, length: 0 },
+          hint: 'Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.',
+        })
+      );
+    }
+
+    // T077: Validate AST (no-op, done during parsing - libraries already loaded in parseSource)
     const validatedProgram = yield* _(validateAST(program));
 
     // Load assets (layout HTML, CSS files, media) if sourceUri is provided
@@ -492,6 +580,339 @@ export const compileToIR = (
 
     return optimizedIR;
   });
+
+/**
+ * T012: Extract library imports from AST
+ *
+ * Extracts all LibraryImport statements from the program AST and returns
+ * an array of unique library file paths.
+ *
+ * Deduplicates imports - if multiple statements import from the same file,
+ * only returns the path once.
+ */
+export function extractLibraryImports(program: Program): string[] {
+  const importPaths = new Set<string>();
+
+  for (const statement of program.statements) {
+    if (isLibraryImport(statement)) {
+      importPaths.add(statement.path);
+    }
+  }
+
+  return Array.from(importPaths);
+}
+
+/**
+ * Feature 032 US3: Extract library imports from Library AST node
+ *
+ * Similar to extractLibraryImports but for Library nodes.
+ * Libraries can now import other libraries (nested dependencies).
+ *
+ * Returns array of unique library file paths.
+ */
+export function extractLibraryImportsFromLibrary(library: Library): string[] {
+  const importPaths = new Set<string>();
+
+  for (const importStmt of library.imports || []) {
+    if (isLibraryImport(importStmt)) {
+      importPaths.add(importStmt.path);
+    }
+  }
+
+  return Array.from(importPaths);
+}
+
+/**
+ * T013: Resolve library path to absolute URI
+ *
+ * Converts a relative library import path to an absolute URI based on
+ * the current document's location.
+ *
+ * Handles:
+ * - Relative paths with ./ and ../
+ * - Platform-specific path separators (Windows \ vs Unix /)
+ * - Normalization to file:// URIs
+ */
+export function resolveLibraryPath(currentDocUri: URI, importPath: string): URI {
+  // Get the directory of the current document
+  const currentPath = currentDocUri.fsPath;
+  const separator = currentPath.includes('\\') ? '\\' : '/';
+  const lastSepIndex = Math.max(currentPath.lastIndexOf('\\'), currentPath.lastIndexOf('/'));
+  const currentDir = currentPath.substring(0, lastSepIndex);
+
+  // Normalize import path to use forward slashes
+  const normalizedImportPath = importPath.replace(/\\/g, '/');
+
+  // Remove ./ prefix if present
+  const cleanPath = normalizedImportPath.startsWith('./')
+    ? normalizedImportPath.substring(2)
+    : normalizedImportPath;
+
+  // Resolve relative path
+  const absolutePath = `${currentDir}${separator}${cleanPath}`;
+
+  // Convert to URI
+  return URI.file(absolutePath);
+}
+
+/**
+ * T014: Load library file content
+ *
+ * Reads a library file from the file system and returns its content as a string.
+ *
+ * Returns Effect with typed errors:
+ * - FileNotFoundError: File does not exist
+ * - PermissionError: File cannot be read due to permissions
+ * - ReadError: Other I/O errors
+ */
+export function loadLibraryFile(libraryUri: URI): Effect.Effect<string, ParseError> {
+  return Effect.try({
+    try: () => {
+      const content = readFileSync(libraryUri.fsPath, 'utf-8');
+      return content;
+    },
+    catch: error => {
+      return {
+        _tag: 'ParseError' as const,
+        message: `Failed to load library file: ${(error as Error).message}`,
+        location: { line: 1, column: 1, length: 0 },
+        hint: `Check that the file exists at: ${libraryUri.fsPath}`,
+      };
+    },
+  });
+}
+
+/**
+ * T015: Parse library document
+ *
+ * Parses library file content into a Langium document and validates it's a Library node.
+ *
+ * Returns Effect with typed errors:
+ * - ParseError: Syntax errors in library file
+ * - InvalidLibraryError: File is not a library (e.g., it's a Program)
+ */
+export function parseLibraryDocument(
+  content: string,
+  libraryUri: URI
+): Effect.Effect<Library, ParseError> {
+  return Effect.gen(function* (_) {
+    // Reuse the shared Langium services
+    const services = getOrCreateServices();
+
+    // Check if document already exists in workspace
+    const existingDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
+    if (existingDoc) {
+      // Remove cached document to force re-parse (handles library file edits)
+      // This ensures we always get the latest file content
+      services.shared.workspace.LangiumDocuments.deleteDocument(libraryUri);
+    }
+
+    // Parse library content
+    const document = services.shared.workspace.LangiumDocumentFactory.fromString<Library>(
+      content,
+      libraryUri
+    );
+
+    // Build document (parse only, NO validation yet)
+    // Feature 032 US3: Validation happens later after all nested libraries are loaded
+    yield* _(
+      Effect.tryPromise({
+        try: async () => {
+          await services.shared.workspace.DocumentBuilder.build([document], {
+            validation: false,
+          });
+
+          // CRITICAL: Add document to workspace so it's accessible for cross-references
+          // This ensures the scope provider can find actions from this library
+          services.shared.workspace.LangiumDocuments.addDocument(document);
+
+          return document;
+        },
+        catch: error => ({
+          _tag: 'ParseError' as const,
+          message: `Failed to parse library document: ${error instanceof Error ? error.message : String(error)}`,
+          location: { line: 1, column: 1, length: 0 },
+          hint: 'Check library file syntax',
+        }),
+      })
+    );
+
+    // Check for parse errors
+    if (document.parseResult.lexerErrors.length > 0) {
+      const error = document.parseResult.lexerErrors[0];
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `Lexer error in library: ${error.message}`,
+          location: {
+            line: error.line ?? 1,
+            column: error.column ?? 1,
+            length: error.length ?? 0,
+          },
+          hint: `In library file: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    if (document.parseResult.parserErrors.length > 0) {
+      const error = document.parseResult.parserErrors[0];
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: error.message,
+          location: {
+            line: error.token.startLine ?? 1,
+            column: error.token.startColumn ?? 1,
+            length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
+          },
+          hint: `In library file: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    // Check for validation errors
+    if (document.diagnostics && document.diagnostics.length > 0) {
+      const error = document.diagnostics[0];
+      const range = error.range;
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: error.message,
+          location: {
+            line: range.start.line + 1,
+            column: range.start.character + 1,
+            length: range.end.character - range.start.character,
+          },
+          hint: `In library file: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    // Validate that parsed content is a Library, not a Program
+    const root: any = document.parseResult.value;
+    if (!isLibrary(root)) {
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `File is not a library (found ${root.$type || 'unknown'} instead)`,
+          location: { line: 1, column: 1, length: 0 },
+          hint: `Library files must start with "library <name>". File: ${libraryUri.fsPath}`,
+        })
+      );
+    }
+
+    return root;
+  });
+}
+
+/**
+ * Feature 032 US3: Recursively load library and all its dependencies
+ *
+ * Loads a library file and all libraries it imports, with circular dependency detection.
+ *
+ * Algorithm:
+ * 1. Check if library is already being loaded (circular dependency)
+ * 2. Load the library file content
+ * 3. Parse the library document
+ * 4. Extract library imports from the library
+ * 5. Recursively load each imported library
+ * 6. Return all loaded library documents
+ *
+ * @param libraryUri - URI of library file to load
+ * @param documentUri - URI of document importing this library (for path resolution)
+ * @param loadingStack - Stack of currently loading library paths (for cycle detection)
+ * @returns Effect with array of all library documents (self + dependencies)
+ */
+export function loadLibraryRecursive(
+  libraryUri: URI,
+  _documentUri: URI,
+  loadingStack: Set<string> = new Set()
+): Effect.Effect<LangiumDocument[], ParseError> {
+  return Effect.gen(function* (_) {
+    const uriPath = libraryUri.fsPath;
+
+    // T029: Circular dependency detection
+    if (loadingStack.has(uriPath)) {
+      // Build cycle chain for error message
+      const chain = Array.from(loadingStack);
+      chain.push(uriPath);
+      const cycleChain = chain.join(' → ');
+
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `Circular dependency detected: ${cycleChain}`,
+          location: { line: 1, column: 1, length: 0 },
+          hint: 'Remove circular import to break the cycle',
+        })
+      );
+    }
+
+    // Add current library to loading stack
+    const newStack = new Set(loadingStack);
+    newStack.add(uriPath);
+
+    // Load library file content
+    const content = yield* _(loadLibraryFile(libraryUri));
+
+    // Parse library document
+    const library = yield* _(parseLibraryDocument(content, libraryUri));
+
+    // Get library document from workspace
+    const services = getOrCreateServices();
+    const libDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
+    if (!libDoc) {
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `Failed to retrieve library document from workspace: ${uriPath}`,
+          location: { line: 1, column: 1, length: 0 },
+          hint: 'Internal error - library was parsed but not added to workspace',
+        })
+      );
+    }
+
+    // Collect all library documents (self + dependencies)
+    const allLibraries: LangiumDocument[] = [libDoc];
+
+    // Extract imports from this library
+    const importPaths = extractLibraryImportsFromLibrary(library);
+
+    // Recursively load each imported library
+    for (const importPath of importPaths) {
+      const nestedLibraryUri = resolveLibraryPath(libraryUri, importPath);
+
+      // Recursively load nested library and its dependencies
+      const nestedLibraries = yield* _(
+        loadLibraryRecursive(nestedLibraryUri, libraryUri, newStack)
+      );
+
+      allLibraries.push(...nestedLibraries);
+    }
+
+    return allLibraries;
+  });
+}
+
+/**
+ * T016: Link library documents in workspace
+ *
+ * Adds library documents to the Langium workspace and re-links the main program
+ * document so that action references resolve correctly.
+ *
+ * This function is a no-op for now - Langium automatically handles cross-document
+ * references once documents are added to the workspace via LangiumDocumentFactory.fromString().
+ * The scope provider's getImportedActions() method will find library actions once they're loaded.
+ */
+export function linkLibraryDocuments(
+  _program: Program,
+  _libraries: Library[]
+): Effect.Effect<void, never> {
+  // No-op: Langium automatically handles cross-document linking
+  // Libraries were added to workspace in parseLibraryDocument()
+  // Scope provider will resolve references via getImportedActions()
+  return Effect.succeed(undefined);
+}
 
 /**
  * T083: Version information

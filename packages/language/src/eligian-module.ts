@@ -19,6 +19,7 @@ import { EligianCompletionProvider } from './eligian-completion-provider.js';
 import { EligianDocumentValidator } from './eligian-document-validator.js';
 import { EligianFormatter } from './eligian-formatter.js';
 import { EligianHoverProvider } from './eligian-hover-provider.js';
+import { EligianScopeComputation } from './eligian-scope-computation.js';
 import { EligianScopeProvider } from './eligian-scope-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
 import { EligianAstReflection } from './generated/ast.js';
@@ -58,6 +59,7 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
   {
     references: {
       ScopeProvider: services => new EligianScopeProvider(services),
+      ScopeComputation: services => new EligianScopeComputation(services),
     },
     validation: {
       EligianValidator: services => new EligianValidator(services),

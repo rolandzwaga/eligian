@@ -1,0 +1,6 @@
+// Program that imports a syntactically broken library file
+import { invalid } from "./broken.eligian"
+
+timeline "Test" in "#app" using raf {
+  at 0s..1s invalid("#box")
+}

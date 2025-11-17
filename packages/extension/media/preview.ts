@@ -34,7 +34,6 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
-console.log('[Webview] Script loaded, vscode API acquired');
 
 // Eligius engine instance (null until initialized)
 let engine: IEligiusEngine | null = null;
@@ -42,7 +41,6 @@ let factory: EngineFactory | null = null;
 
 // Create shared eventbus for controlling playback
 const eventbus: IEventbus = new Eventbus();
-console.log('[Webview] Shared eventbus created');
 
 /**
  * Initialize the Eligius engine with the given configuration.
@@ -50,12 +48,9 @@ console.log('[Webview] Shared eventbus created');
  * Timeline container elements are automatically created by Eligius via the layoutTemplate.
  */
 async function initializeEngine(config: IEngineConfiguration): Promise<void> {
-  console.log('[Webview] Initializing Eligius engine with config:', config.id);
-
   try {
     // Clean up previous engine if exists
     if (engine) {
-      console.log('[Webview] Destroying previous engine instance');
       await engine.destroy();
       engine = null;
     }
@@ -67,15 +62,12 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     factory = new EngineFactory(new EligiusResourceImporter(), window, {
       eventbus, // Pass our eventbus so we can control playback
     });
-    console.log('[Webview] Engine factory created with shared eventbus');
 
     // Create engine from config
     engine = factory.createEngine(config);
-    console.log('[Webview] Engine instance created');
 
     // Initialize engine
     await engine.init();
-    console.log('[Webview] ✓ Engine initialized successfully');
 
     // Set up timeline event listeners for UI state updates
     setupTimelineEventListeners();
@@ -113,7 +105,6 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
  */
 async function destroyEngine(): Promise<void> {
   if (engine) {
-    console.log('[Webview] Destroying engine');
     try {
       await engine.destroy();
       engine = null;
@@ -121,7 +112,6 @@ async function destroyEngine(): Promise<void> {
 
       vscode.postMessage({ type: 'destroyed' });
     } catch (error) {
-      console.error('[Webview] ✗ Engine destruction failed:', error);
       vscode.postMessage({
         type: 'error',
         payload: {
@@ -316,16 +306,12 @@ const debugViewer = new EventbusDebugViewer();
 // Listen for messages from extension
 window.addEventListener('message', async event => {
   const message = event.data;
-  console.log('[Webview] Received message:', message.type, message);
 
   switch (message.type) {
     case 'updateConfig': {
       // Hide loading, show error container
       document.getElementById('loading')!.style.display = 'none';
       document.getElementById('error-container')!.style.display = 'none';
-
-      // Log config for debugging
-      console.log('Received config:', message.payload);
 
       // Show eligius container (don't clear innerHTML - timeline containers will be created during init)
       const container = document.getElementById('eligius-container')!;
@@ -372,22 +358,18 @@ window.addEventListener('message', async event => {
       break;
 
     case 'play':
-      console.log('[Webview] Play command received');
       vscode.postMessage({ type: 'playbackStarted' });
       break;
 
     case 'pause':
-      console.log('[Webview] Pause command received');
       vscode.postMessage({ type: 'playbackPaused' });
       break;
 
     case 'stop':
-      console.log('[Webview] Stop command received');
       vscode.postMessage({ type: 'playbackStopped' });
       break;
 
     case 'restart':
-      console.log('[Webview] Restart command received');
       vscode.postMessage({ type: 'playbackStopped' });
       // Will implement actual restart logic later
       vscode.postMessage({ type: 'playbackStarted' });
@@ -400,7 +382,6 @@ window.addEventListener('message', async event => {
     // CSS injection and hot-reload (Feature 011)
     case 'css-load': {
       const { cssId, content, loadOrder } = message.payload;
-      console.log(`[Webview] Loading CSS: ${cssId} (order: ${loadOrder})`);
 
       let styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
       if (!styleTag) {
@@ -411,40 +392,31 @@ window.addEventListener('message', async event => {
       }
       // CRITICAL: Use textContent (NOT innerHTML) for security
       styleTag.textContent = content;
-      console.log(`[Webview] ✓ CSS loaded: ${cssId}`);
       break;
     }
 
     case 'css-reload': {
       const { cssId, content } = message.payload;
-      console.log(`[Webview] Reloading CSS: ${cssId}`);
 
       const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
       if (styleTag) {
         // Hot-reload: just update content (timeline continues)
         styleTag.textContent = content;
-        console.log(`[Webview] ✓ CSS reloaded: ${cssId}`);
-      } else {
-        console.warn(`[Webview] ⚠ CSS reload failed: style tag not found for ${cssId}`);
       }
       break;
     }
 
     case 'css-remove': {
       const { cssId } = message.payload;
-      console.log(`[Webview] Removing CSS: ${cssId}`);
 
       const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`);
       if (styleTag) {
         styleTag.remove();
-        console.log(`[Webview] ✓ CSS removed: ${cssId}`);
       }
       break;
     }
 
     case 'css-error': {
-      const { cssId, filePath, error } = message.payload;
-      console.error(`[Webview] CSS Error for ${filePath} (${cssId}):`, error);
       // Keep previous CSS (if any) - no changes to DOM
       break;
     }
@@ -496,46 +468,38 @@ function _hideControls(): void {
  * These listeners update the UI based on timeline events broadcast by Eligius.
  */
 function setupTimelineEventListeners(): void {
-  console.log('[Webview] Setting up timeline event listeners');
-
   // Listen for PLAY event - timeline has started
   eventbus.on('timeline-play', () => {
-    console.log('[Webview] Timeline PLAY event received');
     updateControlStates(true);
     vscode.postMessage({ type: 'playbackStarted' });
   });
 
   // Listen for PAUSE event - timeline has paused
   eventbus.on('timeline-pause', () => {
-    console.log('[Webview] Timeline PAUSE event received');
     updateControlStates(false);
     vscode.postMessage({ type: 'playbackPaused' });
   });
 
   // Listen for STOP event - timeline has stopped
   eventbus.on('timeline-stop', () => {
-    console.log('[Webview] Timeline STOP event received');
     updateControlStates(false);
     vscode.postMessage({ type: 'playbackStopped' });
   });
 
   // Listen for COMPLETE event - timeline has finished
   eventbus.on('timeline-complete', () => {
-    console.log('[Webview] Timeline COMPLETE event received');
     updateControlStates(false);
     vscode.postMessage({ type: 'playbackStopped' });
   });
 
   // Listen for RESTART event - timeline has restarted
   eventbus.on('timeline-restart', () => {
-    console.log('[Webview] Timeline RESTART event received');
     updateControlStates(true);
     vscode.postMessage({ type: 'playbackStarted' });
   });
 
   // Register debug viewer to receive ALL eventbus events
   eventbus.registerEventlistener(debugViewer);
-  console.log('[Webview] Debug viewer registered as eventbus listener');
 }
 
 // Initialize controls after DOM loads
@@ -547,22 +511,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Wire up button click handlers to broadcast timeline control events
   playBtn.addEventListener('click', () => {
-    console.log('[Webview] Play button clicked - broadcasting PLAY_REQUEST');
     eventbus.broadcast('timeline-play-request', []);
   });
 
   pauseBtn.addEventListener('click', () => {
-    console.log('[Webview] Pause button clicked - broadcasting PAUSE_REQUEST');
     eventbus.broadcast('timeline-pause-request', []);
   });
 
   stopBtn.addEventListener('click', () => {
-    console.log('[Webview] Stop button clicked - broadcasting STOP_REQUEST');
     eventbus.broadcast('timeline-stop-request', []);
   });
 
   restartBtn.addEventListener('click', () => {
-    console.log('[Webview] Restart button clicked - broadcasting STOP then PLAY');
     // Restart = stop then play
     eventbus.broadcast('timeline-stop-request', []);
     // Small delay to ensure stop completes before play
@@ -574,7 +534,6 @@ window.addEventListener('DOMContentLoaded', () => {
   // Wire up retry button for error handling
   const retryBtn = document.getElementById('retry-button')!;
   retryBtn.addEventListener('click', () => {
-    console.log('[Webview] Retry button clicked');
     vscode.postMessage({ type: 'retry' });
     // Show loading state
     document.getElementById('error-container')!.style.display = 'none';
@@ -583,5 +542,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Send ready message to extension
-console.log('[Webview] Sending ready message to extension');
 vscode.postMessage({ type: 'ready' });

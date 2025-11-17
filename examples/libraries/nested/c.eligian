@@ -1,0 +1,8 @@
+// Nested library C - Bottom of the chain (no dependencies)
+library animations
+
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  setStyle({opacity: "0"})
+  animate({opacity: 1}, duration)
+]

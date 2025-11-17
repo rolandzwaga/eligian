@@ -18,7 +18,7 @@ import {
   type ReferenceInfo,
   type Scope,
 } from 'langium';
-import { URI } from 'vscode-uri';
+import { resolveLibraryPath } from './compiler/pipeline.js';
 import type { EligianServices } from './eligian-module.js';
 import {
   type ActionDefinition,
@@ -122,32 +122,37 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   }
 
   /**
-   * Get all actions imported from library files (Feature 024).
+   * Get all actions imported from library files (Feature 024, Feature 032 US3).
    * Used for validation and code completion.
    *
-   * Collects actions from all LibraryImport statements in the program,
+   * Collects actions from all LibraryImport statements in the program or library,
    * resolving the library file and retrieving the action definitions.
    */
-  public getImportedActions(program: any): ActionDefinition[] {
+  public getImportedActions(
+    programOrLibrary: any,
+    visited: Set<string> = new Set()
+  ): ActionDefinition[] {
     const importedActions: ActionDefinition[] = [];
 
-    // Get all LibraryImport statements
-    const statements = program.statements || [];
+    // Get current document URI for cycle detection
+    const currentUri = AstUtils.getDocument(programOrLibrary).uri;
+    if (!currentUri) return importedActions;
+
+    const currentPath = currentUri.fsPath;
+
+    // Prevent infinite recursion from circular imports
+    if (visited.has(currentPath)) {
+      return importedActions;
+    }
+    visited.add(currentPath);
+
+    // Get all LibraryImport statements (from Program.statements or Library.imports)
+    const statements = programOrLibrary.statements || programOrLibrary.imports || [];
     const libraryImports = statements.filter(isLibraryImport);
 
     for (const libraryImport of libraryImports) {
-      // Resolve library file
-      const currentUri = AstUtils.getDocument(program).uri;
-      if (!currentUri) continue;
-
-      const originalPath = libraryImport.path;
-      let importPath = originalPath;
-      if (importPath.startsWith('./')) {
-        importPath = importPath.substring(2);
-      }
-      const documentUriStr = currentUri.toString();
-      const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
-      const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
+      const importPath = libraryImport.path;
+      const resolvedUri = resolveLibraryPath(currentUri, importPath);
 
       // Load library document
       const documents = this.eligianServices.shared.workspace.LangiumDocuments;
@@ -158,7 +163,12 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       const library = libraryDoc.parseResult.value;
       if (!isLibrary(library)) continue;
 
-      // Add each imported action to the list
+      // Feature 032 US3: Recursively collect actions from nested library imports
+      // Libraries can now import other libraries, so we need to gather all transitively imported actions
+      const nestedActions = this.getImportedActions(library, visited);
+      importedActions.push(...nestedActions);
+
+      // Add each imported action from THIS library to the list
       for (const actionImport of libraryImport.actions) {
         const actionName = actionImport.action.$refText || '';
         const action = library.actions?.find(a => a.name === actionName);
@@ -267,12 +277,12 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    *
    * These are treated like constants and can be referenced with @variableName.
    *
-   * Feature 023: Library files don't have imports, so return empty array.
+   * Feature 032 US3: Library files may have library imports but not HTML imports.
    */
   private getHTMLImports(node: AstNode): NamedImport[] {
     const model = AstUtils.getDocument(node).parseResult.value;
 
-    // Library files cannot have imports (validated elsewhere)
+    // Library files cannot have HTML imports (only library imports allowed)
     if (isLibrary(model)) {
       return [];
     }
@@ -408,17 +418,9 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       return EMPTY_SCOPE;
     }
 
-    // Resolve library path relative to current document
-    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
-    const originalPath = libraryImport.path;
-    let importPath = originalPath;
-    // Normalize ./ prefix for URI resolution
-    if (importPath.startsWith('./')) {
-      importPath = importPath.substring(2);
-    }
-    const documentUriStr = currentUri.toString();
-    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
-    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
+    // Resolve library path using same logic as pipeline.ts
+    const importPath = libraryImport.path;
+    const resolvedUri = resolveLibraryPath(currentUri, importPath);
 
     // Load library document using Langium's document provider
     const documents = this.eligianServices.shared.workspace.LangiumDocuments;

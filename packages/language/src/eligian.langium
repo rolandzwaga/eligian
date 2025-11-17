@@ -50,12 +50,14 @@ entry EligianFile:
  *   ]
  *
  * Constraints (validated in eligian-validator.ts):
- * - Library files MUST only contain action definitions
- * - Library files MUST NOT contain timelines, constants, or imports
+ * - Library files MAY contain imports to other library files
+ * - Library files MUST only contain imports and action definitions
+ * - Library files MUST NOT contain timelines or constants
  * - Action names within library MUST be unique
+ * - Circular dependencies between libraries are NOT allowed
  */
 Library:
-    'library' name=ID (actions += ActionDefinition)*;
+    'library' name=ID (imports += LibraryImport)* (actions += ActionDefinition)*;
 
 // ============================================================================
 // Program Structure

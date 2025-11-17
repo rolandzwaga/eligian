@@ -16,7 +16,7 @@ import { getImports } from '../utils/program-helpers.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
 import { HtmlValidator } from './html-validator.js';
-import type { AssetError, SourceLocation } from './index.js';
+import type { AssetError, IAssetLoader, SourceLocation } from './index.js';
 import { MediaValidator } from './media-validator.js';
 import { NodeAssetLoader } from './node-asset-loader.js';
 
@@ -89,6 +89,7 @@ export function createAssetValidationService(): AssetValidationService {
  * @param program - Parsed Langium AST
  * @param sourceFilePath - Absolute path to the source .eligian file
  * @param service - Optional AssetValidationService (creates default if not provided)
+ * @param assetLoader - Optional IAssetLoader (creates NodeAssetLoader if not provided)
  * @returns Asset loading result with content and errors
  *
  * @example
@@ -114,7 +115,8 @@ export function createAssetValidationService(): AssetValidationService {
 export function loadProgramAssets(
   program: Program,
   sourceFilePath: string,
-  service?: AssetValidationService
+  service?: AssetValidationService,
+  assetLoader?: IAssetLoader
 ): AssetLoadingResult {
   // Create service if not provided
   const validationService = service || createAssetValidationService();
@@ -132,7 +134,7 @@ export function loadProgramAssets(
 
   // Get source directory for resolving relative paths
   const sourceDir = dirname(sourceFilePath);
-  const assetLoader = new NodeAssetLoader();
+  const loader = assetLoader || new NodeAssetLoader();
 
   // Process each import
   for (const importInfo of imports) {
@@ -153,7 +155,7 @@ export function loadProgramAssets(
 
       // If validation passed, load content
       if (errors.length === 0) {
-        const content = assetLoader.loadFile(absolutePath);
+        const content = loader.loadFile(absolutePath);
 
         // Store based on import type
         if (importInfo.type === 'layout') {

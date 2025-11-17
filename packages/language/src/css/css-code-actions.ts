@@ -72,9 +72,8 @@ export class CSSCodeActionProvider {
     let cssFileContent: string;
     try {
       cssFileContent = await readFile(cssFileUri);
-    } catch (error) {
+    } catch (_error) {
       // If we can't read the file, we can't create quick fixes
-      console.warn('[CSSCodeActionProvider] Failed to read CSS file:', cssFileUri, error);
       return actions;
     }
 

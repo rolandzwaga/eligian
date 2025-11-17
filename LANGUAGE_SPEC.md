@@ -1,10 +1,17 @@
 # Eligian Language Specification
 
-**Version**: 1.5.0
-**Last Updated**: 2025-11-13
+**Version**: 1.5.1
+**Last Updated**: 2025-11-17
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.5.0):
+**Recent Changes** (v1.5.1):
+- Added library cache invalidation documentation (Feature 032 improvements)
+- Added parameter count validation for imported actions (Feature 032 fix)
+- Updated CSS path resolution to be relative to source file directory (not workspace root)
+- Added library file compilation prevention documentation
+- Added nested library dependency documentation
+
+**Previous Changes** (v1.5.0):
 - Fixed event action syntax notation to avoid confusion with EBNF (Critical Issue #1)
 - Updated keyword list to include all 11 missing keywords (Critical Issue #2)
 - Added event name validation documentation (Feature 029)
@@ -459,7 +466,118 @@ timeline "Demo" at 0s {
 }
 ```
 
-#### 3.3.5 Validation Rules
+#### 3.3.5 Nested Library Dependencies
+
+Library files can import from other library files, enabling modular code organization:
+
+```eligian
+// File: easing.eligian
+library easing
+
+action easeIn(duration: number) [
+  // Easing implementation
+]
+
+action easeOut(duration: number) [
+  // Easing implementation
+]
+```
+
+```eligian
+// File: animations.eligian
+library animations
+
+import { easeIn, easeOut } from "./easing.eligian"
+
+action fadeIn(selector: string, duration: number) [
+  selectElement(selector)
+  easeIn(duration)
+  animate({opacity: 1}, duration)
+]
+
+action fadeOut(selector: string, duration: number) [
+  selectElement(selector)
+  easeOut(duration)
+  animate({opacity: 0}, duration)
+]
+```
+
+```eligian
+// File: main.eligian
+import { fadeIn, fadeOut } from "./animations.eligian"
+
+timeline "Demo" at 0s {
+  at 0s..2s fadeIn("#box", 1000)
+  at 2s..4s fadeOut("#box", 800)
+}
+```
+
+**Key Points**:
+- Libraries automatically load their dependencies recursively
+- Circular dependencies are detected and produce compile errors
+- Private actions in nested libraries cannot be imported (even transitively)
+- All library documents are linked together during compilation for proper cross-references
+
+**Circular Dependency Detection**:
+```eligian
+// File: A.eligian
+library A
+import { actionB } from "./B.eligian"
+action actionA() [...]
+
+// File: B.eligian
+library B
+import { actionA } from "./A.eligian"
+action actionB() [...]
+
+// ❌ ERROR: Circular dependency detected: A.eligian → B.eligian → A.eligian
+```
+
+#### 3.3.6 Library Cache Invalidation
+
+When a library file is edited, the Langium workspace cache is automatically invalidated to ensure the latest version is compiled.
+
+**Cache Behavior**:
+- Library documents are cached in memory for performance
+- On library file edit, cached document is deleted before re-parsing
+- Next compilation reads fresh file content from disk
+- Ensures changes to library files are immediately reflected in compilation
+
+**Workflow**:
+1. Edit library file (e.g., change parameter count in `fadeIn`)
+2. Save library file
+3. Compile main program that imports from library
+4. ✅ Compilation uses **latest** library code (cache invalidated)
+5. ❌ Without invalidation: would use **stale** cached version
+
+This automatic cache invalidation is critical for proper development workflow with libraries.
+
+#### 3.3.7 Validation Rules
+
+**Parameter Count Validation**:
+Imported actions validate argument counts at call sites:
+```eligian
+// animations.eligian
+action fadeIn(selector: string, duration: number) [...]
+
+// main.eligian
+import { fadeIn } from "./animations.eligian"
+
+timeline "test" at 0s {
+  at 0s..2s fadeIn("#box")  // ❌ ERROR: Action 'fadeIn' expects 2 argument(s) but got 1
+  at 2s..4s fadeIn("#box", 1000)  // ✅ Correct
+}
+```
+
+**Library File Compilation Prevention**:
+Library files cannot be compiled directly - they must be imported by a program:
+```bash
+# Trying to compile library file
+eligian-cli animations.eligian
+
+# ❌ ERROR: Cannot compile library files directly
+# 💡 Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.
+```
 
 **Private Action Import**:
 ```eligian
@@ -1882,9 +2000,28 @@ styles "./animations.css"
 
 **Key Features**:
 - Multiple CSS files can be imported (loaded in order)
-- Relative paths from the `.eligian` source file
+- **Path Resolution**: CSS file paths are resolved **relative to the `.eligian` source file's directory**, not the workspace root
 - CSS files are parsed using PostCSS for class/ID extraction
 - Imported CSS is automatically loaded into VS Code preview with hot-reload
+
+**Path Resolution Example**:
+```
+Project Structure:
+  workspace-root/
+    examples/
+      demo.eligian         ← Source file
+      demo-styles.css      ← CSS file
+    styles/
+      global.css
+```
+
+```eligian
+// In examples/demo.eligian:
+styles "./demo-styles.css"      // ✅ Resolved to: workspace-root/examples/demo-styles.css
+styles "../styles/global.css"   // ✅ Resolved to: workspace-root/styles/global.css
+```
+
+**Important**: CSS paths are always relative to the source file's location, ensuring consistent behavior regardless of where VS Code is opened or how the compiler is invoked.
 
 ### 12.2 CSS Class Name Validation
 
@@ -2218,6 +2355,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |
 | 1.5.0 | 2025-11-13 | **Major Update**: Fixed critical syntax notation issues, added complete documentation for 10+ missing features: Event name validation (Feature 029), event action code completion (Feature 030), CSS class/selector validation (Feature 013), preview CSS support with hot-reload (Feature 011), expanded JSDoc documentation (Feature 020), Typir integration details (Feature 021), comprehensive library file validation (Feature 023). Updated keyword list to include all 11 missing keywords. Verified 1,758 tests passing, 81.72% coverage. Added new sections 5.10, 5.11, 12, 13. |
 | 1.4.0 | 2025-11-10 | Added event action support (Feature 028): event action definitions, event topic namespacing, runtime event handling |
 | 1.3.1 | 2025-11-06 | Documentation fixes: corrected parameter reference syntax throughout (prefer direct references over `$operationdata` prefix), updated reserved keywords list, fixed grammar summary to include imports and library files |

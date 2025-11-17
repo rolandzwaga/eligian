@@ -86,7 +86,7 @@
     "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
     "vscode:prepublish": "pnpm run build",
     "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json",
-    "build": "pnpm run build:prepare && tsc -b tsconfig.json && node esbuild.mjs",
+    "build": "pnpm run build:prepare && node esbuild.mjs",
     "build:clean": "pnpm run clean && pnpm run build",
     "watch": "pnpm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\""
   },

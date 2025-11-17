@@ -1,0 +1,11 @@
+// Nested library B - Middle of the chain (imports C)
+library transitions
+
+import { fadeIn } from "./c.eligian"
+
+action slideAndFade(selector: string) [
+  selectElement(selector)
+  setStyle({transform: "translateX(-100px)"})
+  animate({transform: "translateX(0)"}, 500)
+  fadeIn(selector, 500)
+]

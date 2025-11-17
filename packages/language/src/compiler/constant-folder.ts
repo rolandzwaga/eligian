@@ -75,7 +75,7 @@ export function buildConstantMap(program: Program): ConstantMap {
       map.set(htmlImport.name, constantValue);
     } catch (error: any) {
       // Log warning but don't fail - transformer will catch missing constants
-      console.warn(`[HTML Import] Failed to load '${htmlImport.name}': ${error.message}`);
+      console.error(`[CONSTANT-FOLDER]: ${error.message}`);
     }
   }
 
@@ -100,13 +100,8 @@ export function buildConstantMap(program: Program): ConstantMap {
       };
 
       map.set(constDecl.name, constantValue);
-    } else {
-      // Cannot evaluate - log warning and skip
-      // This constant will be treated as a regular variable (no folding)
-      console.warn(
-        `[Constant Folding] Cannot evaluate constant '${constDecl.name}': ${evalResult.error?.reason}`
-      );
     }
+    // Cannot evaluate - skip (this constant will be treated as a regular variable)
   }
 
   return map;

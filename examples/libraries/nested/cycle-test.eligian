@@ -1,0 +1,8 @@
+// Program that imports cycle-a (which creates a circular dependency with cycle-b)
+// Should produce error: Circular dependency detected
+
+import { actionA } from "./cycle-a.eligian"
+
+timeline "Circular Dependency Test" in "#app" using raf {
+  at 0s..2s actionA("#box")
+}

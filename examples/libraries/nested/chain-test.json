@@ -1,0 +1,198 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "d597ff78-9b72-4f95-b015-8d29c6e1b8a9",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div id=\"app\"></div>",
+  "cssFiles": [
+    "./test-styles.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "386409e5-5fdc-4422-bc7f-2c963ad571e3",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "labels": [],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "8288d8e0-fba7-41b5-8cb5-06af4f22ff28",
+      "name": "fadeIn",
+      "startOperations": [
+        {
+          "id": "09aba105-148c-4929-9407-c8b47c0ebad0",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$operationdata.selector"
+          }
+        },
+        {
+          "id": "5a95c068-9c45-46ec-ba6c-00162d8344e8",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": "0"
+            }
+          }
+        },
+        {
+          "id": "761577d6-3ff8-459e-b9d6-34f6bb092541",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            },
+            "animationDuration": "$operationdata.duration"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "8cf12c41-d501-49db-bd3c-461fb28e4ee0",
+      "name": "slideAndFade",
+      "startOperations": [
+        {
+          "id": "9c8ba87f-0947-4881-ac40-25c60a9756f6",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$operationdata.selector"
+          }
+        },
+        {
+          "id": "9efd78d1-8a88-4585-9395-2e6822994b06",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "transform": "translateX(-100px)"
+            }
+          }
+        },
+        {
+          "id": "7ccaef45-3efa-416b-9a81-0ab785ae4f74",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "transform": "translateX(0)"
+            },
+            "animationDuration": 500
+          }
+        },
+        {
+          "id": "9ecde8c4-0256-413d-8399-9c5c6bbdd706",
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "fadeIn"
+          }
+        },
+        {
+          "id": "48c87bc9-c29d-41ac-86ad-87ff3fec0eee",
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {
+              "selector": "$operationdata.selector",
+              "duration": 500
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "fe81f764-9041-47fe-b5d9-fa5edab51eb2",
+      "name": "complexEffect",
+      "startOperations": [
+        {
+          "id": "1bf683b7-87d8-4e3f-af37-1e3a1714abb5",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$operationdata.selector"
+          }
+        },
+        {
+          "id": "04d125fb-f87e-4a56-a9da-39c1badb719e",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "id": "1b38c5c2-a10a-4d1e-b28a-d3999bb39176",
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "slideAndFade"
+          }
+        },
+        {
+          "id": "57d90091-f5d5-4c25-bd2d-ad517026ebb6",
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {
+              "selector": "$operationdata.selector"
+            }
+          }
+        },
+        {
+          "id": "e63bb2f9-da43-4308-a00f-47fcf6946413",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "c6acef11-8283-4e1a-b83f-00e3b56b528d",
+      "uri": "Nested Import Test",
+      "type": "animation",
+      "duration": 2,
+      "loop": false,
+      "selector": "#app",
+      "timelineActions": [
+        {
+          "id": "04054652-c684-444a-9d2c-a1a76fb77881",
+          "name": "timeline-action-0-2",
+          "startOperations": [
+            {
+              "id": "e5ea4c6b-bbf2-4392-8e7a-b55a34623c83",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "complexEffect"
+              }
+            },
+            {
+              "id": "57fa953a-6a3e-4ea0-8a21-0ffcd59ea437",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#box"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 2
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "id": "fa11555a-cd11-4598-9446-091e02d2ebde",
+      "vendor": "",
+      "systemName": "RequestAnimationFrameTimelineProvider"
+    }
+  }
+}

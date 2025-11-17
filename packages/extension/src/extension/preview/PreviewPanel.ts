@@ -281,14 +281,17 @@ export class PreviewPanel {
         // Inject CSS files into preview (Feature 011 - US1)
         const cssFiles = extractCSSFiles(resolvedConfig);
         if (cssFiles.length > 0) {
-          console.log(`[Preview] Injecting ${cssFiles.length} CSS file(s):`, cssFiles);
-          await this.cssInjector.injectCSS(cssFiles);
+          // Convert relative paths to absolute paths
+          // CSS file paths are relative to the .eligian file's directory, not workspace root
+          const sourceFileDir = path.dirname(this.documentUri.fsPath);
+          const absoluteCSSFiles = cssFiles.map(file =>
+            path.isAbsolute(file) ? file : path.resolve(sourceFileDir, file)
+          );
+
+          console.log(`[Preview] Injecting ${cssFiles.length} CSS file(s):`, absoluteCSSFiles);
+          await this.cssInjector.injectCSS(absoluteCSSFiles);
 
           // Start watching CSS files for hot-reload (Feature 011 - US2)
-          // Convert relative paths to absolute paths
-          const absoluteCSSFiles = cssFiles.map(file =>
-            path.isAbsolute(file) ? file : path.resolve(this.workspaceRoot, file)
-          );
           this.cssWatcher.startWatching(absoluteCSSFiles, this.workspaceRoot);
         }
 

@@ -183,7 +183,7 @@ export function formatError(error: CompilerError, sourceCode?: string): Formatte
       // Fallback for unknown error types
       return {
         severity: 'error',
-        message: `Unknown Error: ${(error as any).message || 'An unknown error occurred'}`,
+        message: `Unknown Error: ${JSON.stringify(error)}`,
         location: { line: 1, column: 1, length: 0 },
         hint: undefined,
         codeSnippet: undefined,
