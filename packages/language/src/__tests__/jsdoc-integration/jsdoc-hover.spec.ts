@@ -23,7 +23,11 @@ describe('JSDoc Hover (T021 - US3)', () => {
 
   // Expensive setup - runs once per suite
   beforeAll(() => {
-    provider = new EligianHoverProvider(services.css.CSSRegistry, services);
+    provider = new EligianHoverProvider(
+      services.css.CSSRegistry,
+      services.labels.LabelRegistry,
+      services
+    );
   });
 
   /**
