@@ -23,7 +23,11 @@ describe('EligianHoverProvider', () => {
   let provider: EligianHoverProvider;
 
   beforeAll(() => {
-    provider = new EligianHoverProvider(services.css.CSSRegistry, services);
+    provider = new EligianHoverProvider(
+      services.css.CSSRegistry,
+      services.labels.LabelRegistry,
+      services
+    );
   });
 
   describe('buildOperationHoverMarkdown()', () => {

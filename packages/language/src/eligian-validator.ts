@@ -41,6 +41,8 @@ import type {
 } from './generated/ast.js';
 import { isLibraryImport } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
+import { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
+import { validateLabelID } from './type-system-typir/validation/label-id-validation.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 import { getElements, getImports, getTimelines } from './utils/program-helpers.js';
@@ -66,6 +68,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
       validator.checkCSSImports, // Feature 013 T016: Extract and register CSS imports
+      validator.checkLabelsImports, // Feature 034: Extract and register labels imports
     ],
     Library: [
       validator.checkLibraryContent, // T021-T024: US1 - Validate library content constraints
@@ -96,6 +99,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkParameterTypes,
       validator.checkClassNameParameter, // Feature 013 T017: Validate className parameters
       validator.checkSelectorParameter, // Feature 013 T020: Validate selector parameters
+      validator.checkLabelIDParameter, // Feature 034: Validate label ID parameters
       // TODO T216: Re-enable checkDependencies once we implement proper dependency tracking across sequences
       // validator.checkDependencies
     ],
@@ -1643,6 +1647,67 @@ export class EligianValidator {
   }
 
   /**
+   * Feature 034: Extract and register labels imports
+   *
+   * Detects labels imports in the program, loads the labels JSON file,
+   * extracts label group metadata, and populates the label registry.
+   * This enables label ID validation in operation parameters.
+   *
+   * @param program - AST Program node
+   * @param accept - Validation acceptor for reporting errors
+   */
+  checkLabelsImports(program: Program, _accept: ValidationAcceptor): void {
+    if (!this.services) return;
+
+    const labelRegistry = this.services.labels.LabelRegistry;
+    const documentUri = program.$document?.uri?.toString();
+    if (!documentUri) return;
+
+    // Find labels imports (type='labels')
+    const labelsImports = getImports(program)
+      .filter(isDefaultImport)
+      .filter(imp => imp.type === 'labels');
+
+    // If no labels imports, clear registry for this document and return
+    if (labelsImports.length === 0) {
+      labelRegistry.clearDocument(documentUri);
+      return;
+    }
+
+    // Resolve labels file path to absolute URI
+    const docPath = URI.parse(documentUri).fsPath;
+    const docDir = path.dirname(docPath);
+
+    for (const labelsImport of labelsImports) {
+      if (!labelsImport.path) continue;
+
+      const labelsPath = labelsImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
+
+      // Resolve to absolute path
+      const cleanPath = labelsPath.startsWith('./') ? labelsPath.substring(2) : labelsPath;
+      const absolutePath = path.join(docDir, cleanPath);
+      const labelsFileUri = URI.file(absolutePath).toString();
+
+      try {
+        // Load program assets (includes labels JSON)
+        const assets = loadProgramAssets(program, docPath);
+
+        // Extract label metadata from loaded labels
+        if (assets.labels && Array.isArray(assets.labels)) {
+          const metadata = extractLabelMetadata(assets.labels);
+
+          // Update registry with label metadata
+          labelRegistry.updateLabelsFile(labelsFileUri, metadata);
+          labelRegistry.registerImports(documentUri, labelsFileUri);
+        }
+      } catch (_error) {
+        // Errors loading labels file are handled by existing asset loading validation
+        // We just skip registry population if loading fails
+      }
+    }
+  }
+
+  /**
    * Feature 013 - T017: Validate className parameters in operation calls
    *
    * This validator checks if className parameters reference valid CSS classes
@@ -1848,6 +1913,111 @@ export class EligianValidator {
               code: 'unknown_css_id_in_selector',
             },
           });
+        }
+      }
+    }
+  }
+
+  /**
+   * Feature 034: Validate label ID parameters in operation calls
+   *
+   * This validator checks if label ID parameters reference valid label IDs
+   * from imported labels files. It provides "Did you mean?" suggestions for typos
+   * using Levenshtein distance.
+   *
+   * Operations with label ID parameters (from Eligius metadata):
+   * - requestLabelData(labelId) - single label ID parameter
+   * - loadLottieAnimation(labelIds) - array of label IDs with @itemType=ParameterType:labelId
+   *
+   * @param operation - OperationCall AST node
+   * @param accept - Validation acceptor for reporting errors
+   */
+  checkLabelIDParameter(operation: OperationCall, accept: ValidationAcceptor): void {
+    if (!this.services) return;
+
+    const labelRegistry = this.services.labels.LabelRegistry;
+
+    // Traverse up the AST to find the root Program node
+    let node: any = operation;
+    while (node && node.$type !== 'Program') {
+      node = node.$container;
+    }
+
+    const documentUri = node?.$document?.uri?.toString();
+    if (!documentUri) return;
+
+    // Get operation name
+    const operationName = getOperationCallName(operation);
+    if (!operationName) return;
+
+    // Check if this operation has label ID parameters
+    const operationSignature = OPERATION_REGISTRY[operationName];
+    if (!operationSignature) return; // Unknown operation (caught by checkOperationExists)
+
+    // Find label ID parameter indices (both single and array with @itemType)
+    const labelIDParamIndices: number[] = [];
+
+    for (let i = 0; i < operationSignature.parameters.length; i++) {
+      const param = operationSignature.parameters[i];
+
+      // Check if parameter type array includes 'ParameterType:labelId'
+      // param.type can be ParameterType[] or ConstantValue[]
+      if (
+        Array.isArray(param.type) &&
+        param.type.some(t => typeof t === 'string' && t === 'ParameterType:labelId')
+      ) {
+        labelIDParamIndices.push(i);
+      }
+    }
+
+    // If no label ID parameters, skip validation
+    if (labelIDParamIndices.length === 0) {
+      return;
+    }
+
+    // Validate each label ID parameter
+    const args = operation.args || [];
+
+    for (const paramIndex of labelIDParamIndices) {
+      const arg = args[paramIndex];
+      if (!arg) continue; // Missing argument (caught by checkParameterCount)
+
+      // Handle single string literal
+      if (arg.$type === 'StringLiteral') {
+        const labelId = arg.value;
+
+        // Validate label ID
+        const error = validateLabelID(documentUri, labelId, labelRegistry);
+        if (error) {
+          accept('error', `${error.message}. ${error.hint}`, {
+            node: arg,
+            data: {
+              code: error.code,
+            },
+          });
+        }
+      }
+      // Handle array of label IDs
+      else if (arg.$type === 'ArrayLiteral') {
+        const arrayLiteral = arg as any; // ArrayLiteral type
+        const elements = arrayLiteral.elements || [];
+
+        for (const element of elements) {
+          // Only validate string literals in array (skip variables, expressions)
+          if (element.$type !== 'StringLiteral') continue;
+
+          const labelId = element.value;
+
+          // Validate label ID
+          const error = validateLabelID(documentUri, labelId, labelRegistry);
+          if (error) {
+            accept('error', `${error.message}. ${error.hint}`, {
+              node: element,
+              data: {
+                code: error.code,
+              },
+            });
+          }
         }
       }
     }

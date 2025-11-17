@@ -24,7 +24,11 @@ describe('Library Hover', () => {
     ctx = createTestContextWithMockFS();
 
     // Create hover provider
-    provider = new EligianHoverProvider(ctx.services.Eligian.css.CSSRegistry, ctx.services.Eligian);
+    provider = new EligianHoverProvider(
+      ctx.services.Eligian.css.CSSRegistry,
+      ctx.services.Eligian.labels.LabelRegistry,
+      ctx.services.Eligian
+    );
 
     // Create library document with documented actions
     await createLibraryDocument(

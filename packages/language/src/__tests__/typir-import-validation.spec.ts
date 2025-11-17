@@ -19,7 +19,11 @@ describe('US1: Import Statement Type Checking (Integration)', () => {
   // Expensive setup - runs once per suite
   beforeAll(() => {
     ctx = createTestContext();
-    provider = new EligianHoverProvider(ctx.services.Eligian.css.CSSRegistry, ctx.services.Eligian);
+    provider = new EligianHoverProvider(
+      ctx.services.Eligian.css.CSSRegistry,
+      ctx.services.Eligian.labels.LabelRegistry,
+      ctx.services.Eligian
+    );
   });
 
   /**

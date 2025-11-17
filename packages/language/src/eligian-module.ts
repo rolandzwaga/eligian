@@ -25,6 +25,7 @@ import { EligianValidator, registerValidationChecks } from './eligian-validator.
 import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
 import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
+import { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -40,6 +41,9 @@ export type EligianAddedServices = {
   };
   css: {
     CSSRegistry: CSSRegistryService;
+  };
+  labels: {
+    LabelRegistry: LabelRegistryService;
   };
   typir: TypirLangiumServices<EligianSpecifics>;
 };
@@ -66,13 +70,17 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       DocumentValidator: services => new EligianDocumentValidator(services),
     },
     lsp: {
-      HoverProvider: services => new EligianHoverProvider(services.css.CSSRegistry, services),
+      HoverProvider: services =>
+        new EligianHoverProvider(services.css.CSSRegistry, services.labels.LabelRegistry, services),
       CompletionProvider: services => new EligianCompletionProvider(services),
       CodeActionProvider: services => new EligianCodeActionProvider(services),
       Formatter: services => new EligianFormatter(services),
     },
     css: {
       CSSRegistry: () => new CSSRegistryService(),
+    },
+    labels: {
+      LabelRegistry: () => new LabelRegistryService(),
     },
     typir: services =>
       createTypirLangiumServices(
