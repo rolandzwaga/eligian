@@ -1982,20 +1982,43 @@ export class EligianValidator {
       const arg = args[paramIndex];
       if (!arg) continue; // Missing argument (caught by checkParameterCount)
 
-      // Only validate string literals (not variables or expressions)
-      if (arg.$type !== 'StringLiteral') continue;
+      // Handle single string literal
+      if (arg.$type === 'StringLiteral') {
+        const labelId = arg.value;
 
-      const labelId = arg.value;
+        // Validate label ID
+        const error = validateLabelID(documentUri, labelId, labelRegistry);
+        if (error) {
+          accept('error', `${error.message}. ${error.hint}`, {
+            node: arg,
+            data: {
+              code: error.code,
+            },
+          });
+        }
+      }
+      // Handle array of label IDs
+      else if (arg.$type === 'ArrayLiteral') {
+        const arrayLiteral = arg as any; // ArrayLiteral type
+        const elements = arrayLiteral.elements || [];
 
-      // Validate label ID
-      const error = validateLabelID(documentUri, labelId, labelRegistry);
-      if (error) {
-        accept('error', `${error.message}. ${error.hint}`, {
-          node: arg,
-          data: {
-            code: error.code,
-          },
-        });
+        for (const element of elements) {
+          // Only validate string literals in array (skip variables, expressions)
+          if (element.$type !== 'StringLiteral') continue;
+
+          const labelId = element.value;
+
+          // Validate label ID
+          const error = validateLabelID(documentUri, labelId, labelRegistry);
+          if (error) {
+            accept('error', `${error.message}. ${error.hint}`, {
+              node: element,
+              data: {
+                code: error.code,
+              },
+            });
+          }
+        }
       }
     }
   }
