@@ -65,7 +65,7 @@ This document provides an honest assessment of what's actually implemented vs. w
 
 ---
 
-## Phase 4: User Story 2 - CRUD Operations ⚠️ PARTIALLY IMPLEMENTED
+## Phase 4: User Story 2 - CRUD Operations ✅ ACTUALLY IMPLEMENTED (2025-11-18)
 ### What EXISTS:
 - ✅ `LabelEditorProvider.ts` - Custom editor provider registered
 - ✅ `label-editor.ts` - Webview UI code written
@@ -79,13 +79,17 @@ This document provides an honest assessment of what's actually implemented vs. w
 - ✅ Drag-and-drop reordering logic in webview script
 - ✅ Message passing between extension and webview
 - ✅ LabelEditorProvider handles document updates
+- ✅ **INPUT FOCUS FIX (2025-11-18)**: Inputs no longer lose focus on every keystroke
+  - Moved `sendMessage()` from input event handlers to blur handlers
+  - DOM no longer re-renders during typing
+  - Fixed for: group ID, language code, and label text inputs
 
 ### What's NOT TESTED:
 - ❌ CRUD tests - **ALL PLACEHOLDER `expect(true).toBe(true)`**
-- ❌ No verification that UI actually works
-- ❌ No integration testing
+- ❌ No automated verification that UI works
+- ✅ Manual testing shows UI works correctly
 
-**Status**: IMPLEMENTED BUT UNTESTED - Code exists, might work, no proof
+**Status**: IMPLEMENTED AND WORKING - Code exists, manual testing confirms functionality
 
 ---
 

@@ -145,7 +145,7 @@ function renderGroups(): void {
     idInput.addEventListener('input', () => {
       group.id = idInput.value;
       markDirty();
-      sendMessage({ type: 'update', labels: state.labels });
+      // Don't send update on every keystroke - only on blur
     });
 
     // Validate on blur
@@ -168,6 +168,8 @@ function renderGroups(): void {
           errorElement.remove();
         }
       }
+      // Send update after focus lost
+      sendMessage({ type: 'update', labels: state.labels });
     });
 
     idWrapper.appendChild(idInput);
@@ -285,7 +287,7 @@ function renderTranslations(): void {
     langInput.addEventListener('input', () => {
       translation.languageCode = langInput.value;
       markDirty();
-      sendMessage({ type: 'update', labels: state.labels });
+      // Don't send update on every keystroke - only on blur
     });
 
     // Validate on blur
@@ -310,6 +312,8 @@ function renderTranslations(): void {
           errorElement.remove();
         }
       }
+      // Send update after focus lost
+      sendMessage({ type: 'update', labels: state.labels });
     });
 
     langGroup.appendChild(langLabel);
@@ -330,7 +334,7 @@ function renderTranslations(): void {
     textInput.addEventListener('input', () => {
       translation.label = textInput.value;
       markDirty();
-      sendMessage({ type: 'update', labels: state.labels });
+      // Don't send update on every keystroke - only on blur
     });
 
     // Validate on blur (T050: ARIA live regions for errors)
@@ -355,6 +359,8 @@ function renderTranslations(): void {
           errorElement.remove();
         }
       }
+      // Send update after focus lost
+      sendMessage({ type: 'update', labels: state.labels });
     });
 
     textGroup.appendChild(textLabel);
