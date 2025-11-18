@@ -51,6 +51,9 @@ import type { LabelGroup, ToExtensionMessage, ToWebviewMessage, ValidationError 
  * );
  */
 export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
+  // Track updates we initiated to avoid feedback loops
+  private updatingDocument = new Set<string>();
+
   constructor(
     // Used in Phase 4 to resolve webview URIs
     private readonly extensionUri: vscode.Uri
@@ -132,7 +135,11 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
     // 4. Set up TextDocument change listener for external edits
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        this.updateWebview(document, webviewPanel);
+        // Skip reload if we initiated this change
+        const docUri = document.uri.toString();
+        if (!this.updatingDocument.has(docUri)) {
+          this.updateWebview(document, webviewPanel);
+        }
       }
     });
 
@@ -237,7 +244,14 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
           const json = JSON.stringify(message.labels, null, 2);
           const edit = new vscode.WorkspaceEdit();
           edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-          vscode.workspace.applyEdit(edit);
+
+          // Mark that we're updating to prevent feedback loop
+          const docUri = document.uri.toString();
+          this.updatingDocument.add(docUri);
+          vscode.workspace.applyEdit(edit).then(() => {
+            // Clear flag after a short delay to ensure change event is processed
+            setTimeout(() => this.updatingDocument.delete(docUri), 100);
+          });
         }
         break;
 
@@ -256,6 +270,10 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
             const json = JSON.stringify(message.labels, null, 2);
             const edit = new vscode.WorkspaceEdit();
             edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
+
+            // Mark that we're updating to prevent feedback loop
+            const docUri = document.uri.toString();
+            this.updatingDocument.add(docUri);
             vscode.workspace.applyEdit(edit).then(() => {
               // Trigger save
               document.save().then(success => {
@@ -264,6 +282,8 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
                   success,
                 };
                 webviewPanel.webview.postMessage(saveMessage);
+                // Clear flag after save completes
+                setTimeout(() => this.updatingDocument.delete(docUri), 100);
               });
             });
           }

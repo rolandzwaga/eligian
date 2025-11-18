@@ -182,11 +182,9 @@ window.addEventListener('message', event => {
       break;
 
     case 'reload':
-      saveFocusState(); // Save focus before re-render
       state.labels = message.labels;
       renderGroups();
       renderTranslations();
-      restoreFocusState(); // Restore focus after re-render
       break;
 
     case 'validation-error':
@@ -243,7 +241,7 @@ function renderGroups(): void {
     idInput.addEventListener('input', () => {
       group.id = idInput.value;
       markDirty();
-      // Don't send update on every keystroke - only on blur
+      sendMessage({ type: 'update', labels: state.labels });
     });
 
     // Validate on blur
@@ -266,8 +264,6 @@ function renderGroups(): void {
           errorElement.remove();
         }
       }
-      // Send update after focus lost
-      sendMessage({ type: 'update', labels: state.labels });
     });
 
     idWrapper.appendChild(idInput);
@@ -386,7 +382,7 @@ function renderTranslations(): void {
     langInput.addEventListener('input', () => {
       translation.languageCode = langInput.value;
       markDirty();
-      // Don't send update on every keystroke - only on blur
+      sendMessage({ type: 'update', labels: state.labels });
     });
 
     // Validate on blur
@@ -411,8 +407,6 @@ function renderTranslations(): void {
           errorElement.remove();
         }
       }
-      // Send update after focus lost
-      sendMessage({ type: 'update', labels: state.labels });
     });
 
     langGroup.appendChild(langLabel);
@@ -433,7 +427,7 @@ function renderTranslations(): void {
     textInput.addEventListener('input', () => {
       translation.label = textInput.value;
       markDirty();
-      // Don't send update on every keystroke - only on blur
+      sendMessage({ type: 'update', labels: state.labels });
     });
 
     // Validate on blur (T050: ARIA live regions for errors)
@@ -458,8 +452,6 @@ function renderTranslations(): void {
           errorElement.remove();
         }
       }
-      // Send update after focus lost
-      sendMessage({ type: 'update', labels: state.labels });
     });
 
     textGroup.appendChild(textLabel);
