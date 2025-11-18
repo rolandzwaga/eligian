@@ -126,6 +126,13 @@ function renderGroups(): void {
     groupElement.className = `group-item${isSelected ? ' selected' : ''}`;
     groupElement.draggable = true;
     groupElement.dataset.index = i.toString();
+    // T050: Accessibility - ARIA attributes
+    groupElement.setAttribute('role', 'listitem');
+    groupElement.setAttribute('tabindex', '0');
+    groupElement.setAttribute('aria-label', `Label group ${group.id || 'unnamed'}`);
+    if (isSelected) {
+      groupElement.setAttribute('aria-selected', 'true');
+    }
 
     // Group ID (editable) with validation
     const idWrapper = document.createElement('div');
@@ -178,6 +185,8 @@ function renderGroups(): void {
     deleteButton.textContent = '🗑️';
     deleteButton.className = 'icon-button';
     deleteButton.title = 'Delete group';
+    deleteButton.setAttribute('aria-label', `Delete group ${group.id || 'unnamed'}`);
+    deleteButton.setAttribute('role', 'button');
     deleteButton.addEventListener('click', e => {
       e.stopPropagation();
       deleteGroup(i);
@@ -189,6 +198,26 @@ function renderGroups(): void {
     // Click to select
     groupElement.addEventListener('click', () => {
       selectGroup(i);
+    });
+
+    // T049: Keyboard navigation - Enter to select, Arrow keys to navigate
+    groupElement.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectGroup(i);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextElement = groupElement.nextElementSibling as HTMLElement;
+        if (nextElement) {
+          nextElement.focus();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevElement = groupElement.previousElementSibling as HTMLElement;
+        if (prevElement) {
+          prevElement.focus();
+        }
+      }
     });
 
     // Drag and drop
@@ -235,16 +264,24 @@ function renderTranslations(): void {
 
     const card = document.createElement('div');
     card.className = 'translation-card';
+    card.setAttribute('role', 'listitem');
+    card.setAttribute(
+      'aria-label',
+      `Translation ${translation.languageCode || 'new'}: ${translation.label || 'empty'}`
+    );
 
     // Language code input with validation
     const langGroup = document.createElement('div');
     langGroup.className = 'form-group';
     const langLabel = document.createElement('label');
     langLabel.textContent = 'Language Code';
+    const langLabelId = `lang-label-${translation.id}`;
+    langLabel.id = langLabelId;
     const langInput = document.createElement('input');
     langInput.type = 'text';
     langInput.value = translation.languageCode;
     langInput.placeholder = 'en-US';
+    langInput.setAttribute('aria-labelledby', langLabelId);
     langInput.addEventListener('input', () => {
       translation.languageCode = langInput.value;
       markDirty();
@@ -257,14 +294,18 @@ function renderTranslations(): void {
       let errorElement = langGroup.querySelector('.error-message');
       if (error) {
         langInput.classList.add('error');
+        langInput.setAttribute('aria-invalid', 'true');
         if (!errorElement) {
           errorElement = document.createElement('div');
           errorElement.className = 'error-message';
+          errorElement.setAttribute('role', 'alert');
+          errorElement.setAttribute('aria-live', 'polite');
           langGroup.appendChild(errorElement);
         }
         errorElement.textContent = error;
       } else {
         langInput.classList.remove('error');
+        langInput.removeAttribute('aria-invalid');
         if (errorElement) {
           errorElement.remove();
         }
@@ -279,30 +320,37 @@ function renderTranslations(): void {
     textGroup.className = 'form-group';
     const textLabel = document.createElement('label');
     textLabel.textContent = 'Label Text';
+    const textLabelId = `text-label-${translation.id}`;
+    textLabel.id = textLabelId;
     const textInput = document.createElement('input');
     textInput.type = 'text';
     textInput.value = translation.label;
     textInput.placeholder = 'Enter label text';
+    textInput.setAttribute('aria-labelledby', textLabelId);
     textInput.addEventListener('input', () => {
       translation.label = textInput.value;
       markDirty();
       sendMessage({ type: 'update', labels: state.labels });
     });
 
-    // Validate on blur
+    // Validate on blur (T050: ARIA live regions for errors)
     textInput.addEventListener('blur', () => {
       const error = validateLabelText(translation.label);
       let errorElement = textGroup.querySelector('.error-message');
       if (error) {
         textInput.classList.add('error');
+        textInput.setAttribute('aria-invalid', 'true');
         if (!errorElement) {
           errorElement = document.createElement('div');
           errorElement.className = 'error-message';
+          errorElement.setAttribute('role', 'alert');
+          errorElement.setAttribute('aria-live', 'polite');
           textGroup.appendChild(errorElement);
         }
         errorElement.textContent = error;
       } else {
         textInput.classList.remove('error');
+        textInput.removeAttribute('aria-invalid');
         if (errorElement) {
           errorElement.remove();
         }
@@ -312,12 +360,17 @@ function renderTranslations(): void {
     textGroup.appendChild(textLabel);
     textGroup.appendChild(textInput);
 
-    // Delete button
+    // Delete button (T050: ARIA attributes)
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'translation-actions';
     const deleteButton = document.createElement('button');
     deleteButton.textContent = 'Delete';
     deleteButton.className = 'secondary';
+    deleteButton.setAttribute(
+      'aria-label',
+      `Delete translation ${translation.languageCode || 'new'}`
+    );
+    deleteButton.setAttribute('role', 'button');
     deleteButton.addEventListener('click', () => {
       group.labels.splice(i, 1);
       markDirty();
@@ -356,6 +409,16 @@ function addLabelGroup(): void {
   sendMessage({ type: 'update', labels: state.labels });
   renderGroups();
   renderTranslations();
+
+  // T051: Focus management - Focus new group's ID input
+  setTimeout(() => {
+    const groupsList = document.getElementById('groups-list');
+    const newGroupElement = groupsList?.lastElementChild as HTMLElement;
+    const idInput = newGroupElement?.querySelector('input');
+    if (idInput) {
+      idInput.focus();
+    }
+  }, 0);
 }
 
 /**
@@ -415,6 +478,19 @@ function addTranslation(): void {
   markDirty();
   sendMessage({ type: 'update', labels: state.labels });
   renderTranslations();
+
+  // T051: Focus management - Focus new translation's language code input
+  setTimeout(() => {
+    const container = document.getElementById('translations-container');
+    const cards = container?.querySelectorAll('.translation-card');
+    if (cards && cards.length > 0) {
+      const lastCard = cards[cards.length - 1];
+      const langInput = lastCard.querySelector('input[placeholder="en-US"]');
+      if (langInput instanceof HTMLInputElement) {
+        langInput.focus();
+      }
+    }
+  }, 0);
 }
 
 /**

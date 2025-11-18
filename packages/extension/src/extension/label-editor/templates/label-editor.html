@@ -245,9 +245,9 @@
         <div class="left-panel">
             <div class="panel-header">
                 <span>Label Groups</span>
-                <button id="add-group-btn" title="Add Label Group">+ Add Group</button>
+                <button id="add-group-btn" title="Add Label Group" aria-label="Add Label Group" role="button">+ Add Group</button>
             </div>
-            <div class="groups-list" id="groups-list" role="list">
+            <div class="groups-list" id="groups-list" role="list" aria-label="Label Groups">
                 <!-- Group items will be inserted here dynamically -->
             </div>
         </div>
@@ -256,10 +256,10 @@
         <div class="right-panel">
             <div class="panel-header">
                 <span id="translations-header">Translations</span>
-                <button id="add-translation-btn" title="Add Translation" style="display:none;">+ Add Translation</button>
+                <button id="add-translation-btn" title="Add Translation" aria-label="Add Translation" role="button" style="display:none;">+ Add Translation</button>
             </div>
-            <div class="translations-container" id="translations-container">
-                <div class="empty-state" id="empty-state">
+            <div class="translations-container" id="translations-container" role="list" aria-label="Translations">
+                <div class="empty-state" id="empty-state" role="status" aria-live="polite">
                     Select a label group to view translations
                 </div>
                 <!-- Translation cards will be inserted here dynamically -->
