@@ -76,6 +76,18 @@
         "mac": "cmd+k v",
         "when": "editorLangId == eligian"
       }
+    ],
+    "customEditors": [
+      {
+        "viewType": "eligian.labelEditor",
+        "displayName": "Label Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/labels*.json"
+          }
+        ],
+        "priority": "option"
+      }
     ]
   },
   "activationEvents": [
