@@ -65,8 +65,9 @@ export class LabelLinkProvider implements vscode.DocumentLinkProvider {
         const fileUri = this.resolveRelativePath(document.uri, relativePath);
         if (fileUri) {
           // Create a command URI to open with Label Editor
+          // Uses our custom command registered in main.ts
           const commandUri = vscode.Uri.parse(
-            `command:vscode.openWith?${encodeURIComponent(JSON.stringify([fileUri.toString(), 'eligian.labelEditor']))}`
+            `command:eligian.openLabelFile?${encodeURIComponent(JSON.stringify([fileUri.toString()]))}`
           );
 
           const link = new vscode.DocumentLink(range, commandUri);

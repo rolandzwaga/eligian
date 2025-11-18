@@ -72,6 +72,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.languages.registerDocumentLinkProvider({ language: 'eligian' }, linkProvider)
   );
 
+  // Register command to open label files in Label Editor (used by DocumentLinkProvider)
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.openLabelFile', (fileUriString: string) => {
+      const fileUri = vscode.Uri.parse(fileUriString);
+      vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.labelEditor');
+    })
+  );
+
   // Register compile command
   context.subscriptions.push(registerCompileCommand());
 
