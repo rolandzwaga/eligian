@@ -238,7 +238,7 @@ tsc -p tsconfig.src.json --emitDeclarationOnly
 
 **Step 1: Generate** (`pnpm run generate`):
 ```bash
-# 1a. Generate completion metadata (timeline events, CSS properties)
+# 1a. Generate completion metadata (timeline events, CSS properties, controllers)
 tsx src/completion/generate-metadata.ts
 
 # 1b. Generate operation registry from Eligius npm package
@@ -249,8 +249,9 @@ langium generate
 ```
 
 **Generated Files**:
-- `src/completion/metadata/timeline-events.generated.ts` - Timeline event metadata
+- `src/completion/metadata/timeline-events.generated.ts` - Timeline event metadata (43 events)
 - `src/completion/metadata/css-properties.generated.ts` - CSS property metadata
+- `src/completion/metadata/controllers.generated.ts` - Controller metadata (18 controllers) **[Feature 035]**
 - `src/compiler/operations/registry.generated.ts` - Operation registry (79 operations)
 - `src/generated/ast.ts` - AST node types
 - `src/generated/grammar.ts` - Parser implementation
@@ -653,11 +654,71 @@ Event:
 
 **LSP Features**:
 - **Validation**: Real-time error checking
-- **Completion**: Context-aware suggestions (operations, CSS classes, action names)
-- **Hover**: Documentation display (action JSDoc, operation signatures)
+- **Completion**: Context-aware suggestions (operations, CSS classes, action names, controller names, label IDs)
+- **Hover**: Documentation display (action JSDoc, operation signatures, controller descriptions)
 - **Go to Definition**: Navigate to action definitions
 - **Find References**: Find all action usages
 - **Rename**: Refactor action names
+
+### 3.1 Controller Completion (Feature 035)
+
+**Location**: `src/completion/`
+
+**Files**:
+- `controllers.ts` - Controller name and label ID completion (100 lines)
+- `context.ts` - Controller context detection (enhanced for addController detection)
+- `metadata/controllers.generated.ts` - Auto-generated controller metadata (18 controllers)
+
+**Features**:
+- **Controller name completion**: Autocomplete for `addController()` first parameter
+  - Dual completion modes:
+    - `addController(` + Ctrl+Space → Suggests controllers with quotes included
+    - `addController("Nav` → Filters to matching controllers (no quotes)
+- **Label ID completion**: Autocomplete for `LabelController` second parameter (label IDs from imported labels)
+- **Hover documentation**: Controller descriptions and parameter details
+
+**Controller Metadata Structure**:
+```typescript
+export const CONTROLLERS: ControllerMetadata[] = [
+  {
+    name: 'LabelController',
+    description: 'Renders multi-language labels from imported translations',
+    parameters: [
+      { name: 'labelId', type: 'string', required: true, description: 'Label identifier' }
+    ]
+  },
+  {
+    name: 'NavigationController',
+    description: 'Manages page navigation with history',
+    parameters: [
+      { name: 'config', type: 'object', required: true, description: 'Navigation configuration' }
+    ]
+  },
+  // ... 16 more controllers
+]
+```
+
+**Completion Flow**:
+1. User types `addController(` and presses Ctrl+Space
+2. `detectContext()` detects cursor is in controller name position
+3. `getControllerNameCompletions()` returns all 18 controllers
+4. VS Code displays dropdown with controller names
+5. Selecting a controller inserts `"LabelController"` (with quotes)
+
+**Label ID Completion Flow** (LabelController only):
+1. User types `addController("LabelController", "` and presses Ctrl+Space
+2. `detectContext()` detects cursor is in LabelController's second parameter
+3. `getLabelIDCompletions()` queries label registry for imported labels
+4. VS Code displays dropdown with label IDs (`welcome.title`, `button.submit`, etc.)
+
+**Auto-Generation**:
+- Controller metadata extracted from Eligius controller registry
+- Generated during `pnpm run generate` (via `src/completion/generate-metadata.ts`)
+- 18 controllers total (as of Eligius 1.5.0)
+
+**Test Coverage**: 15 tests across 2 test suites
+- `controller-completion.spec.ts` - 9 tests (controller name + label ID completion)
+- `controller-hover.spec.ts` - 6 tests (hover documentation)
 
 ### 4. Operations System
 
@@ -1519,6 +1580,8 @@ test('should validate CSS class names', async () => {
 - CSS error handling (6 tests)
 - JSDoc completion (5 tests)
 - JSDoc hover (6 tests)
+- Controller completion (9 tests) **[Feature 035]**
+- Controller hover (6 tests) **[Feature 035]**
 - Full compilation pipeline (25 tests)
 
 **Fixture-Based Tests**:

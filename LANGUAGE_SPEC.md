@@ -1508,6 +1508,66 @@ on event "language-change" action handleLanguageChange(languageCode: string) [
 - Event metadata with parameter counts and types in `timeline-events.generated.ts`
 - Skeleton generation in `packages/language/src/completion/event-action-skeleton-generator.ts`
 
+### 5.12 Controller Autocomplete (Feature 035)
+
+The VS Code extension provides intelligent autocomplete for Eligius controllers, with context-aware completion for controller names and parameters.
+
+**Controller Name Completion**:
+
+Type `addController(` and press **Ctrl+Space** (or Cmd+Space on macOS) to see all available controllers.
+
+**Dual Completion Modes**:
+
+1. **Immediate completion** (no quotes typed):
+   ```eligian
+   addController(|)  // Cursor here, press Ctrl+Space
+   // → Shows: LabelController, NavigationController, VideoController, ...
+   // → Selecting "LabelController" inserts: "LabelController" (with quotes)
+   ```
+
+2. **Filtered completion** (quotes already typed):
+   ```eligian
+   addController("Lab|")  // Cursor here, typing filters the list
+   // → Shows: LabelController
+   // → Selecting completes to: "LabelController"
+   ```
+
+**Label ID Completion** (LabelController only):
+
+For the second parameter of `LabelController`, autocomplete suggests imported label IDs:
+
+```eligian
+labels "./translations.json"  // Import labels first
+
+timeline "demo" in "#app" using raf {
+  at 0s selectElement("#title") {
+    addController("LabelController", "|")  // Press Ctrl+Space
+    // → Shows: welcome.title, welcome.subtitle, button.submit, ...
+  }
+}
+```
+
+**Completion Features**:
+- **Controller metadata**: Auto-generated from Eligius controller registry
+- **Parameter hints**: Shows controller parameters in detail text
+- **Hover documentation**: Hover over controller names for descriptions
+- **Type-ahead filtering**: VS Code filters as you type
+
+**Available Controllers** (18 total):
+- `LabelController` - Multi-language label rendering
+- `NavigationController` - Page navigation with history
+- `VideoController` - Video playback controls
+- `AudioController` - Audio playback controls
+- `LottieController` - Lottie animation playback
+- `CarouselController` - Carousel/slideshow functionality
+- And 12 more...
+
+**Implementation Details**:
+- Controller completion in `packages/language/src/completion/controllers.ts`
+- Context detection in `packages/language/src/completion/context.ts`
+- Controller metadata in `packages/language/src/completion/metadata/controllers.generated.ts`
+- Hover provider in `packages/language/src/eligian-hover-provider.ts`
+
 ---
 
 ## 6. Timelines
@@ -1770,6 +1830,54 @@ setStyle({color: "red", fontSize: "16px"})
 ```
 
 **Note**: The grammar is operation-agnostic. Valid operations are defined by the Eligius operation registry.
+
+### 8.1.1 Controller Operations (Feature 035)
+
+The `addController()` operation provides a specialized syntax for adding Eligius controllers to selected elements:
+
+```eligian
+addController("<controllerName>", <parameters>?)
+```
+
+**Parameters**:
+- `controllerName` (string, required) - Name of the controller class (e.g., `"LabelController"`, `"NavigationController"`)
+- `parameters` (object, optional) - Controller-specific configuration (varies by controller)
+
+**Available Controllers**:
+- `LabelController` - Multi-language label rendering
+- `NavigationController` - Page navigation with history
+- `VideoController` - Video playback controls
+- `AudioController` - Audio playback controls
+- And more...
+
+**Examples**:
+
+```eligian
+// LabelController with label ID
+selectElement("#title")
+addController("LabelController", "welcome.title")
+
+// NavigationController with page configuration
+selectElement("#nav")
+addController("NavigationController", {
+  pages: ["home", "about", "contact"],
+  defaultPage: "home"
+})
+
+// VideoController (no parameters)
+selectElement("#player")
+addController("VideoController")
+```
+
+**Compilation**: Expands to `getControllerInstance()` + `addControllerToElement()` operations.
+
+**IDE Support**:
+- **Controller name autocomplete**: Type `addController(` and press Ctrl+Space to see all available controllers
+  - Dual completion modes:
+    - `addController(` → Ctrl+Space → Inserts `"LabelController"` (with quotes)
+    - `addController("Lab` → Filters to matching controllers
+- **Label ID autocomplete**: For `LabelController`, the second parameter suggests imported label IDs
+- **Hover documentation**: Hover over controller names to see parameters and descriptions
 
 ### 8.2 Variable Declarations
 
