@@ -12,9 +12,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { LabelFileWatcher } from './LabelFileWatcher.js';
 import {
   generateUUID,
   validateGroupId,
+  validateLabelFileSchema,
   validateLabelText,
   validateLanguageCode,
   validateUUID,
@@ -65,6 +67,42 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
     webviewPanel: vscode.WebviewPanel,
     _token: vscode.CancellationToken
   ): Promise<void> {
+    // T056: Validate schema before opening custom editor
+    try {
+      const parsed = JSON.parse(document.getText());
+      const schemaError = validateLabelFileSchema(parsed);
+
+      if (schemaError) {
+        // T057: Show error and offer to open in text editor
+        const action = await vscode.window.showErrorMessage(
+          `Invalid label file format: ${schemaError}`,
+          'Open in Text Editor'
+        );
+
+        if (action === 'Open in Text Editor') {
+          // Open with default JSON editor
+          await vscode.commands.executeCommand('vscode.openWith', document.uri, 'default');
+        }
+
+        // Close the custom editor panel
+        webviewPanel.dispose();
+        return;
+      }
+    } catch (error) {
+      // T057: Handle JSON parse errors
+      const action = await vscode.window.showErrorMessage(
+        `Invalid JSON file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'Open in Text Editor'
+      );
+
+      if (action === 'Open in Text Editor') {
+        await vscode.commands.executeCommand('vscode.openWith', document.uri, 'default');
+      }
+
+      webviewPanel.dispose();
+      return;
+    }
+
     // 1. Configure webview options
     webviewPanel.webview.options = {
       enableScripts: true,
@@ -97,9 +135,24 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
       }
     });
 
+    // T059: Set up file watcher for external changes
+    const fileWatcher = new LabelFileWatcher(document.uri, async _fileUri => {
+      // Re-parse JSON and update webview
+      const labels = this.parseLabels(document.getText());
+      const reloadMessage: ToWebviewMessage = {
+        type: 'reload',
+        labels,
+      };
+      webviewPanel.webview.postMessage(reloadMessage);
+
+      // Show info message
+      vscode.window.showInformationMessage('Label file was modified externally. Reloaded.');
+    });
+
     // 5. Register disposables for cleanup
     webviewPanel.onDidDispose(() => {
       changeDocumentSubscription.dispose();
+      fileWatcher.dispose();
     });
   }
 

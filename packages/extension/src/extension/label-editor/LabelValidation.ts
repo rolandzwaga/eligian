@@ -107,3 +107,87 @@ export function validateUUID(uuid: string): boolean {
 export function generateUUID(): string {
   return crypto.randomUUID();
 }
+
+/**
+ * Validate label file schema structure (T056 - User Story 6)
+ * Returns error message if invalid, null if valid
+ */
+export function validateLabelFileSchema(data: unknown): string | null {
+  // Check if data is an array
+  if (!Array.isArray(data)) {
+    return 'Label file must be a JSON array';
+  }
+
+  // Check if array is empty
+  if (data.length === 0) {
+    // Empty array is valid (no labels yet)
+    return null;
+  }
+
+  // Validate each group
+  for (let i = 0; i < data.length; i++) {
+    const group = data[i];
+
+    // Check if group is an object
+    if (typeof group !== 'object' || group === null) {
+      return `Label group at index ${i} must be an object`;
+    }
+
+    // Check required fields: id and labels
+    if (!('id' in group)) {
+      return `Label group at index ${i} is missing required field 'id'`;
+    }
+
+    if (!('labels' in group)) {
+      return `Label group at index ${i} is missing required field 'labels'`;
+    }
+
+    // Validate id is a string
+    if (typeof group.id !== 'string') {
+      return `Label group at index ${i}: 'id' must be a string`;
+    }
+
+    // Validate labels is an array
+    if (!Array.isArray(group.labels)) {
+      return `Label group at index ${i}: 'labels' must be an array`;
+    }
+
+    // Validate each translation in the group
+    for (let j = 0; j < group.labels.length; j++) {
+      const translation = group.labels[j];
+
+      // Check if translation is an object
+      if (typeof translation !== 'object' || translation === null) {
+        return `Translation at index ${j} in group '${group.id}' must be an object`;
+      }
+
+      // Check required fields: id, languageCode, label
+      if (!('id' in translation)) {
+        return `Translation at index ${j} in group '${group.id}' is missing required field 'id'`;
+      }
+
+      if (!('languageCode' in translation)) {
+        return `Translation at index ${j} in group '${group.id}' is missing required field 'languageCode'`;
+      }
+
+      if (!('label' in translation)) {
+        return `Translation at index ${j} in group '${group.id}' is missing required field 'label'`;
+      }
+
+      // Validate field types
+      if (typeof translation.id !== 'string') {
+        return `Translation at index ${j} in group '${group.id}': 'id' must be a string`;
+      }
+
+      if (typeof translation.languageCode !== 'string') {
+        return `Translation at index ${j} in group '${group.id}': 'languageCode' must be a string`;
+      }
+
+      if (typeof translation.label !== 'string') {
+        return `Translation at index ${j} in group '${group.id}': 'label' must be a string`;
+      }
+    }
+  }
+
+  return null;
+}
