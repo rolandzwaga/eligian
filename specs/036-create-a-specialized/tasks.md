@@ -54,11 +54,11 @@
 
 ### Validation Infrastructure
 
-- [ ] T008 [P] Create `LabelValidation.ts` in `packages/extension/src/extension/label-editor/LabelValidation.ts`
+- [X] T008 [P] Create `LabelValidation.ts` in `packages/extension/src/extension/label-editor/LabelValidation.ts`
   - Pure validation functions for group ID, language code, label text, UUID
   - Export validation error types
   - No VSCode dependencies (pure TypeScript)
-- [ ] T009 [P] Write unit tests for LabelValidation in `packages/extension/src/extension/label-editor/__tests__/LabelValidation.spec.ts`
+- [X] T009 [P] Write unit tests for LabelValidation in `packages/extension/src/extension/label-editor/__tests__/LabelValidation.spec.ts`
   - Test validateGroupId (duplicate detection, empty string, invalid characters)
   - Test validateLanguageCode (xx-XX pattern matching)
   - Test validateLabelText (non-empty requirement)
@@ -67,7 +67,7 @@
 
 ### Message Protocol Types
 
-- [ ] T010 [P] Create message type definitions in `packages/extension/src/extension/label-editor/types.ts`
+- [X] T010 [P] Create message type definitions in `packages/extension/src/extension/label-editor/types.ts`
   - ToWebviewMessage union type (initialize, reload, validation-error, save-complete)
   - ToExtensionMessage union type (ready, update, request-save, validate, check-usage)
   - LabelGroup interface (id, labels array)
@@ -76,7 +76,7 @@
 
 ### HTML Template
 
-- [ ] T011 Create HTML template in `packages/extension/src/extension/label-editor/templates/label-editor.html`
+- [X] T011 Create HTML template in `packages/extension/src/extension/label-editor/templates/label-editor.html`
   - Split-view layout (left panel + right panel)
   - CSP directives for inline scripts
   - VSCode CSS variable usage for theming
@@ -85,7 +85,7 @@
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
-- [ ] T012 Commit Phase 2 work to git
+- [X] T012 Commit Phase 2 work to git
 
 ---
 
