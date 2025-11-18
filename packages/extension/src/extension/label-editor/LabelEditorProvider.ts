@@ -323,8 +323,6 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
     // Load HTML template
     const templatePath = path.join(
       this.extensionUri.fsPath,
-      'packages',
-      'extension',
       'src',
       'extension',
       'label-editor',

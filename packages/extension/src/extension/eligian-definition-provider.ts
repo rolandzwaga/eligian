@@ -44,11 +44,11 @@ export class EligianDefinitionProvider implements vscode.DefinitionProvider {
    * @param token - Cancellation token
    * @returns Location of the label file, or null if not on an import
    */
-  public provideDefinition(
+  public async provideDefinition(
     document: vscode.TextDocument,
     position: vscode.Position,
     _token: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.Definition> {
+  ): Promise<vscode.Definition | null> {
     // Get the line text at cursor position
     const line = document.lineAt(position).text;
 
@@ -64,7 +64,12 @@ export class EligianDefinitionProvider implements vscode.DefinitionProvider {
       return null;
     }
 
-    // Return location pointing to the start of the file
+    // Open the file in the custom Label Editor
+    // We execute the command asynchronously, but still return the location
+    // so VS Code knows we handled the request
+    vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.labelEditor');
+
+    // Return the location so VS Code doesn't show "No definition found"
     return new vscode.Location(fileUri, new vscode.Position(0, 0));
   }
 
