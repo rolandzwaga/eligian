@@ -1661,6 +1661,62 @@ export class EligianValidator {
   }
 
   /**
+   * Helper to ensure labels imports are registered before validation
+   *
+   * Langium validators can run in any order, so we need to lazily initialize
+   * the label registry if it hasn't been populated yet. This is called from both:
+   * 1. checkLabelsImports (program-level) - initial registration
+   * 2. checkControllerLabelParameter (operation-level) - ensure registered before validating
+   * 3. checkLabelIDParameter (operation-level) - ensure registered before validating
+   *
+   * @param program - AST Program node
+   * @param documentUri - Document URI string
+   */
+  private ensureLabelsImportsRegistered(program: Program, documentUri: string): void {
+    if (!this.services) return;
+
+    const labelRegistry = this.services.labels.LabelRegistry;
+
+    // Check if already registered (optimization)
+    if (labelRegistry.getLabelIDsForDocument(documentUri).size > 0) {
+      return; // Already registered
+    }
+
+    // Find labels imports and register them (same logic as checkLabelsImports)
+    const labelsImports = getImports(program)
+      .filter(isDefaultImport)
+      .filter(imp => imp.type === 'labels');
+
+    if (labelsImports.length === 0) {
+      return; // No labels to register
+    }
+
+    // Resolve and load labels files
+    const docPath = URI.parse(documentUri).fsPath;
+    const docDir = path.dirname(docPath);
+
+    for (const labelsImport of labelsImports) {
+      if (!labelsImport.path) continue;
+
+      const labelsPath = labelsImport.path.replace(/^["']|["']$/g, '');
+      const cleanPath = labelsPath.startsWith('./') ? labelsPath.substring(2) : labelsPath;
+      const absolutePath = path.join(docDir, cleanPath);
+      const labelsFileUri = URI.file(absolutePath).toString();
+
+      try {
+        const assets = loadProgramAssets(program, docPath);
+        if (assets.labels && Array.isArray(assets.labels)) {
+          const metadata = extractLabelMetadata(assets.labels);
+          labelRegistry.updateLabelsFile(labelsFileUri, metadata);
+          labelRegistry.registerImports(documentUri, labelsFileUri);
+        }
+      } catch (_error) {
+        // Skip if loading fails
+      }
+    }
+  }
+
+  /**
    * Feature 034: Extract and register labels imports
    *
    * Detects labels imports in the program, loads the labels JSON file,
@@ -2027,18 +2083,23 @@ export class EligianValidator {
     if (controllerName === 'LabelController' && this.services) {
       const labelRegistry = this.services.labels.LabelRegistry;
 
-      // Get document URI
+      // Get document URI and Program node
       let documentUri: string | undefined;
+      let programNode: Program | undefined;
       let node: AstNode | undefined = operation;
       while (node) {
         if (node.$type === 'Program') {
-          documentUri = node.$document?.uri?.toString();
+          programNode = node as Program;
+          documentUri = programNode.$document?.uri?.toString();
           break;
         }
         node = node.$container;
       }
 
-      if (!documentUri) return;
+      if (!documentUri || !programNode) return;
+
+      // CRITICAL: Ensure labels are registered before validation
+      this.ensureLabelsImportsRegistered(programNode, documentUri);
 
       // Validate labelId parameter (first parameter after controller name)
       if (paramArgs.length > 0) {
@@ -2085,8 +2146,12 @@ export class EligianValidator {
       node = node.$container;
     }
 
-    const documentUri = node?.$document?.uri?.toString();
-    if (!documentUri) return;
+    const programNode = node as Program;
+    const documentUri = programNode?.$document?.uri?.toString();
+    if (!documentUri || !programNode) return;
+
+    // CRITICAL: Ensure labels are registered before validation
+    this.ensureLabelsImportsRegistered(programNode, documentUri);
 
     // Get operation name
     const operationName = getOperationCallName(operation);

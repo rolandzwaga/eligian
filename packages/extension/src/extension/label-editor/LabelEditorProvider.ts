@@ -51,8 +51,8 @@ import type { LabelGroup, ToExtensionMessage, ToWebviewMessage, ValidationError 
  * );
  */
 export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
-  // Track last content sent to each webview to avoid unnecessary reloads
-  private lastSentContent = new Map<string, string>();
+  // Track if we're currently applying an edit from the webview
+  private isApplyingWebviewEdit = false;
 
   constructor(
     // Used in Phase 4 to resolve webview URIs
@@ -132,16 +132,21 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
       this.handleWebviewMessage(message, document, webviewPanel);
     });
 
-    // 4. Set up TextDocument change listener for external edits
+    // 4. Set up TextDocument change listener (Microsoft pattern: ONLY update on EXTERNAL changes)
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        // Skip reload if content hasn't actually changed (prevents feedback loops)
-        const docUri = document.uri.toString();
-        const currentContent = document.getText();
-        const lastContent = this.lastSentContent.get(docUri);
+        console.log('[LabelEditorProvider] onDidChangeTextDocument fired');
+        console.log('[LabelEditorProvider]   - contentChanges.length:', e.contentChanges.length);
+        console.log('[LabelEditorProvider]   - isApplyingWebviewEdit:', this.isApplyingWebviewEdit);
 
-        if (currentContent !== lastContent) {
+        // ONLY update webview if:
+        // 1. Change was NOT from webview (external change like undo/redo/file watcher)
+        // 2. AND there are actual content changes (not just state updates)
+        if (!this.isApplyingWebviewEdit && e.contentChanges.length > 0) {
+          console.log('[LabelEditorProvider] External content change detected, updating webview');
           this.updateWebview(document, webviewPanel);
+        } else {
+          console.log('[LabelEditorProvider] Skipping reload - webview edit or no content changes');
         }
       }
     });
@@ -231,38 +236,44 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
         break;
 
       case 'update':
-        // Just mark dirty, don't update document (webview is source of truth)
-        // Document only gets updated on explicit save
+        // Update document (DON'T trigger webview reload - Microsoft pattern)
+        {
+          console.log('[LabelEditorProvider] Received update message from webview');
+          const json = JSON.stringify(message.labels, null, 2);
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
+
+          console.log('[LabelEditorProvider] Applying workspace edit (flagged as webview edit)');
+          this.isApplyingWebviewEdit = true;
+          vscode.workspace.applyEdit(edit).then(() => {
+            this.isApplyingWebviewEdit = false;
+            console.log('[LabelEditorProvider] Workspace edit complete');
+          });
+        }
         break;
 
       case 'request-save':
-        // Validate and save
+        // Validate and save (document is already up-to-date from 'update' messages)
         {
           const errors = this.validateLabels(message.labels);
+          console.log('[LabelEditorProvider] Validation errors:', errors.length);
           if (errors.length > 0) {
+            console.log('[LabelEditorProvider] VALIDATION ERRORS:', JSON.stringify(errors, null, 2));
             const errorMessage: ToWebviewMessage = {
               type: 'validation-error',
               errors,
             };
             webviewPanel.webview.postMessage(errorMessage);
           } else {
-            // Update document and save
-            const json = JSON.stringify(message.labels, null, 2);
-            const edit = new vscode.WorkspaceEdit();
-            edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-
-            const docUri = document.uri.toString();
-            this.lastSentContent.set(docUri, json); // Track what we're writing
-
-            vscode.workspace.applyEdit(edit).then(() => {
-              // Trigger save
-              document.save().then(success => {
-                const saveMessage: ToWebviewMessage = {
-                  type: 'save-complete',
-                  success,
-                };
-                webviewPanel.webview.postMessage(saveMessage);
-              });
+            // Document is already up-to-date, just save
+            console.log('[LabelEditorProvider] No errors, saving document');
+            document.save().then(success => {
+              console.log('[LabelEditorProvider] Save complete');
+              const saveMessage: ToWebviewMessage = {
+                type: 'save-complete',
+                success,
+              };
+              webviewPanel.webview.postMessage(saveMessage);
             });
           }
         }
@@ -293,6 +304,30 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
           });
         }
         break;
+
+      case 'request-delete':
+        // Show VS Code native confirmation dialog
+        {
+          let confirmMessage = `Delete label group '${message.groupId}'?`;
+          if (message.usageFiles.length > 0) {
+            confirmMessage = `Label '${message.groupId}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
+          }
+
+          vscode.window.showWarningMessage(
+            confirmMessage,
+            { modal: true },
+            'Delete'
+          ).then(choice => {
+            if (choice === 'Delete') {
+              const confirmMessage: ToWebviewMessage = {
+                type: 'delete-confirmed',
+                index: message.index,
+              };
+              webviewPanel.webview.postMessage(confirmMessage);
+            }
+          });
+        }
+        break;
     }
   }
 
@@ -303,12 +338,16 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * @param webviewPanel - The webview panel
    */
   private updateWebview(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): void {
+    console.log('[LabelEditorProvider] updateWebview called');
     const labels = this.parseLabels(document.getText());
+    console.log('[LabelEditorProvider] Parsed labels, count:', labels.length);
     const reloadMessage: ToWebviewMessage = {
       type: 'reload',
       labels,
     };
+    console.log('[LabelEditorProvider] Posting reload message to webview');
     webviewPanel.webview.postMessage(reloadMessage);
+    console.log('[LabelEditorProvider] reload message posted');
   }
 
   /**
@@ -350,8 +389,8 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
     const groupIds = labels.map(g => g.id);
 
     for (const group of labels) {
-      // Validate group ID
-      const groupIdError = validateGroupId(group.id, groupIds);
+      // Validate group ID (pass current group ID to exclude from duplicate check)
+      const groupIdError = validateGroupId(group.id, groupIds, group.id);
       if (groupIdError) {
         errors.push({ ...groupIdError, groupId: group.id });
       }

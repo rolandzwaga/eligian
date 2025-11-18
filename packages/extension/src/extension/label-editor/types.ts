@@ -73,6 +73,11 @@ export type ToWebviewMessage =
       groupId: string;
       /** File URIs where this label is used */
       usageFiles: string[];
+    }
+  | {
+      type: 'delete-confirmed';
+      /** Index of group to delete */
+      index: number;
     };
 
 /**
@@ -101,4 +106,13 @@ export type ToExtensionMessage =
       type: 'check-usage';
       /** Group ID to check usage for */
       groupId: string;
+    }
+  | {
+      type: 'request-delete';
+      /** Group ID to delete */
+      groupId: string;
+      /** Index of group to delete */
+      index: number;
+      /** Usage files for confirmation message */
+      usageFiles: string[];
     };

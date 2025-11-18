@@ -28,14 +28,16 @@ type ToWebviewMessage =
   | { type: 'reload'; labels: LabelGroup[] }
   | { type: 'validation-error'; errors: ValidationError[] }
   | { type: 'save-complete'; success: boolean }
-  | { type: 'usage-check-response'; groupId: string; usageFiles: string[] };
+  | { type: 'usage-check-response'; groupId: string; usageFiles: string[] }
+  | { type: 'delete-confirmed'; index: number };
 
 type ToExtensionMessage =
   | { type: 'ready' }
   | { type: 'update'; labels: LabelGroup[] }
   | { type: 'request-save'; labels: LabelGroup[] }
   | { type: 'validate'; labels: LabelGroup[] }
-  | { type: 'check-usage'; groupId: string };
+  | { type: 'check-usage'; groupId: string }
+  | { type: 'request-delete'; groupId: string; index: number; usageFiles: string[] };
 
 // State management
 interface EditorState {
@@ -46,8 +48,8 @@ interface EditorState {
   filePath: string;
   // Focus restoration state
   focusedElement: {
-    groupId?: string;
-    translationId?: string;
+    groupIndex?: number;
+    translationIndex?: number;
     field?: 'groupId' | 'languageCode' | 'labelText';
     cursorPosition?: number;
   } | null;
@@ -86,9 +88,19 @@ function saveFocusState(): void {
   const translationElement = activeElement.closest('.translation');
 
   if (groupElement) {
-    const groupId = groupElement.getAttribute('data-group-id');
+    const groupIndex = parseInt(groupElement.getAttribute('data-index') || '-1');
+    if (groupIndex < 0) {
+      state.focusedElement = null;
+      return;
+    }
+
     if (translationElement) {
-      const translationId = translationElement.getAttribute('data-translation-id');
+      const translationIndex = parseInt(translationElement.getAttribute('data-index') || '-1');
+      if (translationIndex < 0) {
+        state.focusedElement = null;
+        return;
+      }
+
       // Determine field type by checking input's parent or sibling labels
       let field: 'languageCode' | 'labelText' = 'languageCode';
       const formGroup = activeElement.closest('.form-group');
@@ -100,15 +112,15 @@ function saveFocusState(): void {
       }
 
       state.focusedElement = {
-        groupId: groupId || undefined,
-        translationId: translationId || undefined,
+        groupIndex,
+        translationIndex,
         field,
         cursorPosition: activeElement.selectionStart ?? undefined,
       };
     } else {
       // Group ID input
       state.focusedElement = {
-        groupId: groupId || undefined,
+        groupIndex,
         field: 'groupId',
         cursorPosition: activeElement.selectionStart ?? undefined,
       };
@@ -120,18 +132,31 @@ function saveFocusState(): void {
  * Restore focus state after re-render
  */
 function restoreFocusState(): void {
-  if (!state.focusedElement) return;
+  console.log('[restoreFocusState] state.focusedElement:', state.focusedElement);
 
-  const { groupId, translationId, field, cursorPosition } = state.focusedElement;
+  if (!state.focusedElement) {
+    console.log('[restoreFocusState] No focus state to restore');
+    return;
+  }
+
+  const { groupIndex, translationIndex, field, cursorPosition } = state.focusedElement;
+
+  if (groupIndex === undefined) {
+    console.log('[restoreFocusState] groupIndex undefined, clearing state');
+    state.focusedElement = null;
+    return;
+  }
 
   // Find the input element to focus
   let inputElement: HTMLInputElement | null = null;
 
-  if (translationId && field !== 'groupId') {
-    // Find translation input
+  if (translationIndex !== undefined && field !== 'groupId') {
+    console.log(`[restoreFocusState] Looking for translation[data-index="${translationIndex}"]`);
+    // Find translation input by index
     const translationEl = document.querySelector(
-      `.translation[data-translation-id="${translationId}"]`
+      `.translation[data-index="${translationIndex}"]`
     );
+    console.log('[restoreFocusState] translationEl found:', !!translationEl);
     if (translationEl) {
       if (field === 'languageCode') {
         inputElement = translationEl.querySelector('.form-group:nth-child(1) input');
@@ -139,16 +164,20 @@ function restoreFocusState(): void {
         inputElement = translationEl.querySelector('.form-group:nth-child(2) input');
       }
     }
-  } else if (groupId && field === 'groupId') {
-    // Find group ID input
-    const groupEl = document.querySelector(`.group[data-group-id="${groupId}"]`);
+  } else if (field === 'groupId') {
+    console.log(`[restoreFocusState] Looking for group[data-index="${groupIndex}"]`);
+    // Find group ID input by index
+    const groupEl = document.querySelector(`.group[data-index="${groupIndex}"]`);
+    console.log('[restoreFocusState] groupEl found:', !!groupEl);
     if (groupEl) {
       inputElement = groupEl.querySelector('.group-id input');
     }
   }
 
+  console.log('[restoreFocusState] inputElement found:', !!inputElement);
   if (inputElement) {
     inputElement.focus();
+    console.log('[restoreFocusState] Focused, setting cursor to:', cursorPosition);
     if (cursorPosition !== undefined) {
       inputElement.setSelectionRange(cursorPosition, cursorPosition);
     }
@@ -162,6 +191,7 @@ function restoreFocusState(): void {
  * Send message to extension
  */
 function sendMessage(message: ToExtensionMessage): void {
+  console.log('[webview] sendMessage:', message.type);
   vscode.postMessage(message);
 }
 
@@ -170,6 +200,7 @@ function sendMessage(message: ToExtensionMessage): void {
  */
 window.addEventListener('message', event => {
   const message = event.data as ToWebviewMessage;
+  console.log('[webview] Received message from extension:', message.type);
 
   switch (message.type) {
     case 'initialize':
@@ -182,9 +213,19 @@ window.addEventListener('message', event => {
       break;
 
     case 'reload':
+      console.log('[reload] START - saving focus');
+      // Save focus state before updating
+      saveFocusState();
+      console.log('[reload] Focus saved, updating state and rendering');
       state.labels = message.labels;
       renderGroups();
       renderTranslations();
+      console.log('[reload] Render complete, restoring focus on next tick');
+      // Restore focus after DOM updates (next tick)
+      setTimeout(() => {
+        restoreFocusState();
+        console.log('[reload] COMPLETE');
+      }, 0);
       break;
 
     case 'validation-error':
@@ -201,6 +242,10 @@ window.addEventListener('message', event => {
     case 'usage-check-response':
       handleUsageCheckResponse(message.groupId, message.usageFiles);
       break;
+
+    case 'delete-confirmed':
+      performDelete(message.index);
+      break;
   }
 });
 
@@ -216,6 +261,8 @@ document.addEventListener('keydown', (e) => {
  * Render label groups in left panel
  */
 function renderGroups(): void {
+  console.log('[renderGroups] CALLED');
+  console.trace('[renderGroups] Call stack:');
   const container = document.getElementById('groups-list');
   if (!container) return;
 
@@ -246,6 +293,10 @@ function renderGroups(): void {
     idInput.type = 'text';
     idInput.value = group.id;
     idInput.placeholder = 'group-id';
+    // Stop click propagation to prevent re-rendering when clicking input
+    idInput.addEventListener('click', e => {
+      e.stopPropagation();
+    });
     idInput.addEventListener('input', () => {
       group.id = idInput.value;
       markDirty();
@@ -368,7 +419,8 @@ function renderTranslations(): void {
 
     const card = document.createElement('div');
     card.className = 'translation translation-card';
-    card.dataset.translationId = translation.id; // For focus restoration
+    card.dataset.translationId = translation.id; // For focus restoration (legacy)
+    card.dataset.index = i.toString(); // For index-based focus restoration
     card.setAttribute('role', 'listitem');
     card.setAttribute(
       'aria-label',
@@ -438,7 +490,7 @@ function renderTranslations(): void {
       sendMessage({ type: 'update', labels: state.labels });
     });
 
-    // Validate on blur (T050: ARIA live regions for errors)
+    // Validate on blur
     textInput.addEventListener('blur', () => {
       const error = validateLabelText(translation.label);
       let errorElement = textGroup.querySelector('.error-message');
@@ -530,40 +582,57 @@ function addLabelGroup(): void {
  * Delete a label group
  */
 function deleteGroup(index: number): void {
+  console.log('[deleteGroup] Called with index:', index);
   const group = state.labels[index];
+  console.log('[deleteGroup] Group ID:', group.id);
   // Check if group is used in .eligian files
   sendMessage({ type: 'check-usage', groupId: group.id });
 
   // Store index for later deletion after confirmation
   (window as any).__pendingDeleteIndex = index;
+  console.log('[deleteGroup] Stored pending delete index:', index);
 }
 
 /**
- * Handle usage check response and show confirmation dialog
+ * Handle usage check response and send delete request to extension
  */
 function handleUsageCheckResponse(groupId: string, usageFiles: string[]): void {
+  console.log('[handleUsageCheckResponse] Called for groupId:', groupId);
+  console.log('[handleUsageCheckResponse] Usage files:', usageFiles);
   const index = (window as any).__pendingDeleteIndex;
-  if (index === undefined) return;
-
-  let confirmMessage = `Delete label group '${groupId}'?`;
-  if (usageFiles.length > 0) {
-    confirmMessage = `Label '${groupId}' is used in ${usageFiles.length} file(s):\n${usageFiles.join('\n')}\n\nDelete anyway?`;
+  console.log('[handleUsageCheckResponse] Retrieved pending index:', index);
+  if (index === undefined) {
+    console.log('[handleUsageCheckResponse] No pending index, returning');
+    return;
   }
 
-  if (confirm(confirmMessage)) {
-    state.labels.splice(index, 1);
-    if (state.selectedGroupIndex === index) {
-      state.selectedGroupIndex = null;
-    } else if (state.selectedGroupIndex !== null && state.selectedGroupIndex > index) {
-      state.selectedGroupIndex--;
-    }
-    markDirty();
-    sendMessage({ type: 'update', labels: state.labels });
-    renderGroups();
-    renderTranslations();
-  }
+  // Send delete request to extension (will show VS Code native dialog)
+  console.log('[handleUsageCheckResponse] Sending request-delete message to extension');
+  sendMessage({
+    type: 'request-delete',
+    groupId,
+    index,
+    usageFiles,
+  });
 
   delete (window as any).__pendingDeleteIndex;
+}
+
+/**
+ * Perform the actual deletion after user confirms
+ */
+function performDelete(index: number): void {
+  console.log('[performDelete] Deleting group at index:', index);
+  state.labels.splice(index, 1);
+  if (state.selectedGroupIndex === index) {
+    state.selectedGroupIndex = null;
+  } else if (state.selectedGroupIndex !== null && state.selectedGroupIndex > index) {
+    state.selectedGroupIndex--;
+  }
+  markDirty();
+  sendMessage({ type: 'update', labels: state.labels });
+  renderGroups();
+  renderTranslations();
 }
 
 /**
@@ -620,9 +689,12 @@ function displayValidationErrors(errors: ValidationError[]): void {
     state.validationErrors.set(key, existingErrors);
   }
 
-  // Re-render to show errors
-  renderGroups();
-  renderTranslations();
+  // Re-render ONLY if there are errors to display
+  // (Don't destroy DOM unnecessarily when validation passes)
+  if (errors.length > 0) {
+    renderGroups();
+    renderTranslations();
+  }
 }
 
 /**
