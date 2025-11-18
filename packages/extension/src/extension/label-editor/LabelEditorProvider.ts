@@ -13,6 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { LabelFileWatcher } from './LabelFileWatcher.js';
+import { searchWorkspace } from './LabelUsageTracker.js';
 import {
   generateUUID,
   validateGroupId,
@@ -385,12 +386,15 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   /**
-   * Check if label group is used in .eligian files
-   * Returns array of file URIs where the label is used
+   * Check if label group is used in .eligian files (T065)
+   * Returns array of file paths where the label is used
+   *
+   * @param groupId - The label group ID to search for
+   * @returns Promise resolving to array of file paths
    */
-  private async checkLabelUsage(_groupId: string): Promise<string[]> {
-    // TODO (Phase 9): Implement label usage tracking
-    // For now, return empty array (no usage tracking)
-    return [];
+  private async checkLabelUsage(groupId: string): Promise<string[]> {
+    const usageUris = await searchWorkspace(groupId);
+    // Convert URIs to file paths for display in webview
+    return usageUris.map(uri => uri.fsPath);
   }
 }
