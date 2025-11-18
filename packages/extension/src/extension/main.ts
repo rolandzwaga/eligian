@@ -6,7 +6,7 @@ import {
   compile,
   formatErrors,
 } from '@eligian/language';
-import { EligianDefinitionProvider } from './eligian-definition-provider.js';
+import { LabelLinkProvider } from './label-link-provider.js';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
@@ -65,10 +65,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  // T017: Register definition provider for label imports (Feature 036 - User Story 1)
-  const definitionProvider = new EligianDefinitionProvider();
+  // T017: Register document link provider for label imports (Feature 036 - User Story 1)
+  // Uses DocumentLinkProvider instead of DefinitionProvider to avoid opening on hover
+  const linkProvider = new LabelLinkProvider();
   context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider({ language: 'eligian' }, definitionProvider)
+    vscode.languages.registerDocumentLinkProvider({ language: 'eligian' }, linkProvider)
   );
 
   // Register compile command
