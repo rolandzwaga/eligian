@@ -9,9 +9,11 @@
  * Constitution Principle VI: Functional Programming (immutable external API)
  */
 
-import type * as vscode from 'vscode';
-import type { LabelGroup, ToExtensionMessage } from './types.js';
-// ToWebviewMessage imported for Phase 4
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as vscode from 'vscode';
+import { validateGroupId, validateLabelText, validateLanguageCode } from './LabelValidation.js';
+import type { LabelGroup, ToExtensionMessage, ToWebviewMessage, ValidationError } from './types.js';
 
 /**
  * Custom text editor provider for label JSON files.
@@ -53,21 +55,46 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * @param token - Cancellation token
    */
   public async resolveCustomTextEditor(
-    _document: vscode.TextDocument,
-    _webviewPanel: vscode.WebviewPanel,
+    document: vscode.TextDocument,
+    webviewPanel: vscode.WebviewPanel,
     _token: vscode.CancellationToken
   ): Promise<void> {
-    // TODO (T014): Stub implementation
-    // Phase 3 will implement:
-    // 1. Configure webview options (enableScripts, localResourceRoots)
-    // 2. Load HTML template with webview URIs
-    // 3. Parse document.getText() → LabelGroup[]
-    // 4. Send 'initialize' message to webview
-    // 5. Set up message handler for ToExtensionMessage
-    // 6. Set up TextDocument change listener for external edits
-    // 7. Register disposables for cleanup
+    // 1. Configure webview options
+    webviewPanel.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.joinPath(this.extensionUri, 'out', 'media'),
+        vscode.Uri.joinPath(
+          this.extensionUri,
+          'packages',
+          'extension',
+          'src',
+          'extension',
+          'label-editor',
+          'templates'
+        ),
+      ],
+    };
 
-    console.log('LabelEditorProvider.resolveCustomTextEditor called (stub)');
+    // 2. Load HTML template
+    webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
+
+    // 3. Set up message handler
+    webviewPanel.webview.onDidReceiveMessage((message: ToExtensionMessage) => {
+      this.handleWebviewMessage(message, document, webviewPanel);
+    });
+
+    // 4. Set up TextDocument change listener for external edits
+    const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
+      if (e.document.uri.toString() === document.uri.toString()) {
+        this.updateWebview(document, webviewPanel);
+      }
+    });
+
+    // 5. Register disposables for cleanup
+    webviewPanel.onDidDispose(() => {
+      changeDocumentSubscription.dispose();
+    });
   }
 
   /**
@@ -77,9 +104,17 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * @param text - Raw JSON text from TextDocument
    * @returns Parsed label groups or empty array on error
    */
-  private parseLabels(_text: string): LabelGroup[] {
-    // TODO (Phase 4): Implement JSON parsing with error handling
-    return [];
+  private parseLabels(text: string): LabelGroup[] {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed as LabelGroup[];
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to parse label JSON:', error);
+      return [];
+    }
   }
 
   /**
@@ -90,16 +125,89 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * @param webviewPanel - The webview panel
    */
   private handleWebviewMessage(
-    _message: ToExtensionMessage,
-    _document: vscode.TextDocument,
-    _webviewPanel: vscode.WebviewPanel
+    message: ToExtensionMessage,
+    document: vscode.TextDocument,
+    webviewPanel: vscode.WebviewPanel
   ): void {
-    // TODO (Phase 4): Implement message handlers
-    // - 'ready': Send initialize message
-    // - 'update': Update TextDocument with new labels
-    // - 'request-save': Trigger save
-    // - 'validate': Run validation and send errors
-    // - 'check-usage': Query label usage in .eligian files
+    switch (message.type) {
+      case 'ready':
+        // Parse document and send initialize message
+        {
+          const labels = this.parseLabels(document.getText());
+          const initMessage: ToWebviewMessage = {
+            type: 'initialize',
+            labels,
+            filePath: document.uri.fsPath,
+          };
+          webviewPanel.webview.postMessage(initMessage);
+        }
+        break;
+
+      case 'update':
+        // Update TextDocument with new labels
+        {
+          const json = JSON.stringify(message.labels, null, 2);
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
+          vscode.workspace.applyEdit(edit);
+        }
+        break;
+
+      case 'request-save':
+        // Validate and save
+        {
+          const errors = this.validateLabels(message.labels);
+          if (errors.length > 0) {
+            const errorMessage: ToWebviewMessage = {
+              type: 'validation-error',
+              errors,
+            };
+            webviewPanel.webview.postMessage(errorMessage);
+          } else {
+            // Update document first
+            const json = JSON.stringify(message.labels, null, 2);
+            const edit = new vscode.WorkspaceEdit();
+            edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
+            vscode.workspace.applyEdit(edit).then(() => {
+              // Trigger save
+              document.save().then(success => {
+                const saveMessage: ToWebviewMessage = {
+                  type: 'save-complete',
+                  success,
+                };
+                webviewPanel.webview.postMessage(saveMessage);
+              });
+            });
+          }
+        }
+        break;
+
+      case 'validate':
+        // Run validation and send errors
+        {
+          const errors = this.validateLabels(message.labels);
+          const errorMessage: ToWebviewMessage = {
+            type: 'validation-error',
+            errors,
+          };
+          webviewPanel.webview.postMessage(errorMessage);
+        }
+        break;
+
+      case 'check-usage':
+        // Query label usage in .eligian files
+        {
+          this.checkLabelUsage(message.groupId).then(usageFiles => {
+            const usageMessage: ToWebviewMessage = {
+              type: 'usage-check-response',
+              groupId: message.groupId,
+              usageFiles,
+            };
+            webviewPanel.webview.postMessage(usageMessage);
+          });
+        }
+        break;
+    }
   }
 
   /**
@@ -108,8 +216,13 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * @param document - The document being edited
    * @param webviewPanel - The webview panel
    */
-  private updateWebview(_document: vscode.TextDocument, _webviewPanel: vscode.WebviewPanel): void {
-    // TODO (Phase 4): Parse document and send 'reload' message
+  private updateWebview(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): void {
+    const labels = this.parseLabels(document.getText());
+    const reloadMessage: ToWebviewMessage = {
+      type: 'reload',
+      labels,
+    };
+    webviewPanel.webview.postMessage(reloadMessage);
   }
 
   /**
@@ -118,8 +231,79 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * @param webview - The webview to load HTML into
    * @returns HTML string with interpolated URIs
    */
-  private getHtmlForWebview(_webview: vscode.Webview): string {
-    // TODO (Phase 3): Load template and replace ${cspSource}, ${webviewUri}
-    return '<!DOCTYPE html><html><body>Label Editor (Loading...)</body></html>';
+  private getHtmlForWebview(webview: vscode.Webview): string {
+    // Load HTML template
+    const templatePath = path.join(
+      this.extensionUri.fsPath,
+      'packages',
+      'extension',
+      'src',
+      'extension',
+      'label-editor',
+      'templates',
+      'label-editor.html'
+    );
+
+    let html = fs.readFileSync(templatePath, 'utf8');
+
+    // Get webview script URI
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'out', 'media', 'label-editor.js')
+    );
+
+    // Replace placeholders
+    html = html.replace(/\$\{webviewUri\}/g, scriptUri.toString());
+    html = html.replace(/\$\{cspSource\}/g, webview.cspSource);
+
+    return html;
+  }
+
+  /**
+   * Validate labels array
+   */
+  private validateLabels(labels: LabelGroup[]): ValidationError[] {
+    const errors: ValidationError[] = [];
+    const groupIds = labels.map(g => g.id);
+
+    for (const group of labels) {
+      // Validate group ID
+      const groupIdError = validateGroupId(group.id, groupIds);
+      if (groupIdError) {
+        errors.push({ ...groupIdError, groupId: group.id });
+      }
+
+      // Validate translations
+      for (const translation of group.labels) {
+        const langError = validateLanguageCode(translation.languageCode);
+        if (langError) {
+          errors.push({
+            ...langError,
+            groupId: group.id,
+            translationId: translation.id,
+          });
+        }
+
+        const labelError = validateLabelText(translation.label);
+        if (labelError) {
+          errors.push({
+            ...labelError,
+            groupId: group.id,
+            translationId: translation.id,
+          });
+        }
+      }
+    }
+
+    return errors;
+  }
+
+  /**
+   * Check if label group is used in .eligian files
+   * Returns array of file URIs where the label is used
+   */
+  private async checkLabelUsage(groupId: string): Promise<string[]> {
+    // TODO (Phase 9): Implement label usage tracking
+    // For now, return empty array (no usage tracking)
+    return [];
   }
 }
