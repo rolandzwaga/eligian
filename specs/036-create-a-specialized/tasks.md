@@ -99,7 +99,7 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation** (Constitution Principle II)
 
-- [ ] T013 [P] [US1] Create `navigation.spec.ts` in `packages/language/src/__tests__/label-editor-integration/navigation.spec.ts`
+- [X] T013 [P] [US1] Create `navigation.spec.ts` in `packages/language/src/__tests__/label-editor-integration/navigation.spec.ts`
   - Consult `specs/TESTING_GUIDE.md` for test helpers (createTestContext, setupCSSRegistry)
   - Use `beforeAll()` for createTestContext() (expensive setup once)
   - Test: DefinitionProvider returns location for label import path
@@ -108,47 +108,47 @@
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Create `LabelEditorProvider.ts` stub in `packages/extension/src/extension/label-editor/LabelEditorProvider.ts`
+- [X] T014 [P] [US1] Create `LabelEditorProvider.ts` stub in `packages/extension/src/extension/label-editor/LabelEditorProvider.ts`
   - Implement CustomTextEditorProvider interface
   - resolveCustomTextEditor method (receives document, webviewPanel, token)
   - Basic webview setup (HTML loading, message handling stub)
   - No actual functionality yet - just structure
   - NOTE: CustomTextEditorProvider uses TextDocument directly - no custom document wrapper needed
 
-- [ ] T015 [P] [US1] Create `EligianDefinitionProvider.ts` in `packages/language/src/eligian-definition-provider.ts`
+- [X] T015 [P] [US1] Create `EligianDefinitionProvider.ts` in `packages/language/src/eligian-definition-provider.ts`
   - Implement DefinitionProvider interface
   - provideDefinition method: detect label import path at cursor position
   - Use regex to extract import path from line text: `labels\s+"([^"]+)"`
   - Resolve relative path to absolute URI
   - Return Location with file URI and position(0, 0)
 
-- [ ] T016 [US1] Register custom editor provider in `packages/extension/src/extension/main.ts`
+- [X] T016 [US1] Register custom editor provider in `packages/extension/src/extension/main.ts`
   - Import LabelEditorProvider
   - Create provider instance
   - Register with `vscode.window.registerCustomEditorProvider`
   - Add to context.subscriptions for cleanup
 
-- [ ] T017 [US1] Register definition provider in `packages/extension/src/extension/main.ts`
+- [X] T017 [US1] Register definition provider in `packages/extension/src/extension/main.ts`
   - Import EligianDefinitionProvider
   - Create provider instance
   - Register with `vscode.languages.registerDefinitionProvider`
   - Selector: language ID 'eligian'
   - Add to context.subscriptions
 
-- [ ] T018 [US1] Implement "Edit Labels" context menu command
+- [X] T018 [US1] Implement "Edit Labels" context menu command
   - Register command `eligian.openLabelEditor` in main.ts
   - Command handler: get active editor, check if cursor on label import, open custom editor
   - Add to package.json contributions → commands
   - Add to package.json contributions → menus → editor/context (when: resourceLangId == eligian)
 
-- [ ] T019 [US1] Run navigation tests and verify they PASS
+- [X] T019 [US1] Run navigation tests and verify they PASS
   - `pnpm test navigation.spec.ts`
   - All 3 tests should pass (definition provider, path resolution, non-import positions)
   - Measure navigation time from Ctrl+Click to editor open - verify < 2 seconds (SC-001)
 
 **Checkpoint**: User can now navigate from .eligian imports to label editor (editor is empty but opens)
 
-- [ ] T020 Commit Phase 3 (US1) work to git
+- [X] T020 Commit Phase 3 (US1) work to git
 
 ---
 

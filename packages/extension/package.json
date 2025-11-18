@@ -43,6 +43,12 @@
         "title": "Eligian: Preview Timeline",
         "category": "Eligian",
         "icon": "$(preview)"
+      },
+      {
+        "command": "eligian.openLabelEditor",
+        "title": "Eligian: Edit Labels",
+        "category": "Eligian",
+        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -56,6 +62,11 @@
           "when": "resourceLangId == eligian",
           "command": "eligian.preview",
           "group": "eligian"
+        },
+        {
+          "when": "resourceLangId == eligian",
+          "command": "eligian.openLabelEditor",
+          "group": "eligian"
         }
       ],
       "commandPalette": [
@@ -65,6 +76,10 @@
         },
         {
           "command": "eligian.preview",
+          "when": "editorLangId == eligian"
+        },
+        {
+          "command": "eligian.openLabelEditor",
           "when": "editorLangId == eligian"
         }
       ]

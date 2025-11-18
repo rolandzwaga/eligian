@@ -4,6 +4,7 @@ import {
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
   type CSSImportsDiscoveredParams,
   compile,
+  EligianDefinitionProvider,
   formatErrors,
 } from '@eligian/language';
 import { Effect } from 'effect';
@@ -14,6 +15,7 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
+import { LabelEditorProvider } from './label-editor/LabelEditorProvider.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
@@ -53,6 +55,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const diagnostics = PreviewPanel.initializeDiagnostics();
   context.subscriptions.push(diagnostics);
 
+  // T016: Register custom editor provider for label JSON files (Feature 036 - User Story 1)
+  const labelEditorProvider = new LabelEditorProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider('eligian.labelEditor', labelEditorProvider, {
+      webviewOptions: {
+        retainContextWhenHidden: true,
+      },
+    })
+  );
+
+  // T017: Register definition provider for label imports (Feature 036 - User Story 1)
+  const definitionProvider = new EligianDefinitionProvider();
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider({ language: 'eligian' }, definitionProvider)
+  );
+
   // Register compile command
   context.subscriptions.push(registerCompileCommand());
 
@@ -64,6 +82,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
+
+  // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
+  context.subscriptions.push(registerOpenLabelEditorCommand());
 
   // Initialize block label decoration provider
   blockLabelProvider = new BlockLabelDecorationProvider();
@@ -356,5 +377,35 @@ function registerJSDocAutoCompletion(_client: LanguageClient): any {
         await vscode.commands.executeCommand('eligian.generateJSDoc');
       }
     }
+  });
+}
+
+/**
+ * Register the "Edit Labels" command (T018 - Feature 036 - User Story 1)
+ * Opens label JSON files in the custom Label Editor
+ */
+function registerOpenLabelEditorCommand(): vscode.Disposable {
+  return vscode.commands.registerCommand('eligian.openLabelEditor', async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage('No active editor');
+      return;
+    }
+
+    const document = editor.document;
+    if (document.languageId !== 'eligian') {
+      vscode.window.showErrorMessage('Not an Eligian file');
+      return;
+    }
+
+    // TODO (T018): Implement label import detection
+    // 1. Get cursor position
+    // 2. Get line text at cursor
+    // 3. Check if line matches: labels\s+"([^"]+)"
+    // 4. Extract file path from capture group
+    // 5. Resolve relative path to absolute URI
+    // 6. Open with custom editor: vscode.commands.executeCommand('vscode.openWith', uri, 'eligian.labelEditor')
+
+    vscode.window.showInformationMessage('Edit Labels command (stub - not yet implemented)');
   });
 }
