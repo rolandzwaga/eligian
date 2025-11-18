@@ -8,7 +8,7 @@
  * Constitution Principle I: Simplicity & Documentation
  */
 
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 
 /**
  * Provides "Go to Definition" functionality for label import statements.
@@ -45,23 +45,85 @@ export class EligianDefinitionProvider implements vscode.DefinitionProvider {
    * @returns Location of the label file, or null if not on an import
    */
   public provideDefinition(
-    _document: vscode.TextDocument,
-    _position: vscode.Position,
+    document: vscode.TextDocument,
+    position: vscode.Position,
     _token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.Definition> {
-    // TODO (T015): Implement definition provider
-    // 1. Get line text at cursor position
-    // 2. Check if line matches label import pattern: labels\s+"([^"]+)"
-    // 3. Check if cursor is inside the quoted string
-    // 4. Extract file path from capture group
-    // 5. Resolve relative path to absolute URI (relative to document.uri)
-    // 6. Return new vscode.Location(fileUri, new vscode.Position(0, 0))
-    // 7. Return null if not on a valid import
+    // Get the line text at cursor position
+    const line = document.lineAt(position).text;
+
+    // Extract import path if cursor is on one
+    const importPath = this.extractImportPath(line, position.character);
+    if (!importPath) {
+      return null;
+    }
+
+    // Resolve relative path to absolute URI
+    const fileUri = this.resolveRelativePath(document.uri, importPath);
+    if (!fileUri) {
+      return null;
+    }
+
+    // Return location pointing to the start of the file
+    return new vscode.Location(fileUri, new vscode.Position(0, 0));
+  }
+
+  /**
+   * Extract import path from line if cursor is positioned on it.
+   *
+   * @param line - The line text
+   * @param character - Cursor character position in line
+   * @returns The import path if cursor is on it, null otherwise
+   *
+   * @example
+   * extractImportPath('labels "./labels.json"', 10) // Returns "./labels.json"
+   * extractImportPath('labels "./labels.json"', 0)  // Returns null (not on path)
+   */
+  private extractImportPath(line: string, character: number): string | null {
+    // Pattern: labels\s+"([^"]+)"
+    const pattern = /labels\s+"([^"]+)"/;
+    const match = pattern.exec(line);
+
+    if (!match) {
+      return null;
+    }
+
+    // Find the position of the quoted string
+    const quotedStringStart = match.index + match[0].indexOf('"');
+    const quotedStringEnd = quotedStringStart + match[1].length + 2; // +2 for quotes
+
+    // Check if cursor is inside the quoted string
+    if (character >= quotedStringStart && character <= quotedStringEnd) {
+      return match[1]; // Return the captured path without quotes
+    }
 
     return null;
   }
 
-  // TODO (T015): Add helper methods for implementation:
-  // - extractImportPath(line, position): Extract import path from line if cursor is on it
-  // - resolveRelativePath(documentUri, relativePath): Resolve relative path to absolute URI
+  /**
+   * Resolve relative path to absolute URI.
+   *
+   * @param documentUri - The URI of the document containing the import
+   * @param relativePath - The relative path from the import statement
+   * @returns The resolved absolute URI, or null if resolution fails
+   *
+   * @example
+   * // If document is at file:///project/src/file.eligian
+   * resolveRelativePath(docUri, "./labels.json")
+   * // Returns file:///project/src/labels.json
+   */
+  private resolveRelativePath(documentUri: vscode.Uri, relativePath: string): vscode.Uri | null {
+    try {
+      // Get the directory of the document
+      const documentDir = vscode.Uri.joinPath(documentUri, '..');
+
+      // Join with the relative path
+      const resolvedUri = vscode.Uri.joinPath(documentDir, relativePath);
+
+      return resolvedUri;
+    } catch (error) {
+      console.error(`Failed to resolve path ${relativePath}:`, error);
+      return null;
+    }
+  }
 }

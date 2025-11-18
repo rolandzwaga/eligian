@@ -398,14 +398,31 @@ function registerOpenLabelEditorCommand(): vscode.Disposable {
       return;
     }
 
-    // TODO (T018): Implement label import detection
-    // 1. Get cursor position
-    // 2. Get line text at cursor
-    // 3. Check if line matches: labels\s+"([^"]+)"
-    // 4. Extract file path from capture group
-    // 5. Resolve relative path to absolute URI
-    // 6. Open with custom editor: vscode.commands.executeCommand('vscode.openWith', uri, 'eligian.labelEditor')
+    // Get cursor position
+    const position = editor.selection.active;
+    const line = document.lineAt(position).text;
 
-    vscode.window.showInformationMessage('Edit Labels command (stub - not yet implemented)');
+    // Check if line matches label import pattern
+    const pattern = /labels\s+"([^"]+)"/;
+    const match = pattern.exec(line);
+
+    if (!match) {
+      vscode.window.showErrorMessage('Cursor is not on a label import statement');
+      return;
+    }
+
+    // Extract file path
+    const relativePath = match[1];
+
+    // Resolve relative path to absolute URI
+    try {
+      const documentDir = vscode.Uri.joinPath(document.uri, '..');
+      const labelFileUri = vscode.Uri.joinPath(documentDir, relativePath);
+
+      // Open with custom editor
+      await vscode.commands.executeCommand('vscode.openWith', labelFileUri, 'eligian.labelEditor');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open label file: ${error}`);
+    }
   });
 }
