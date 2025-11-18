@@ -4,9 +4,9 @@ import {
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
   type CSSImportsDiscoveredParams,
   compile,
-  EligianDefinitionProvider,
   formatErrors,
 } from '@eligian/language';
+import { EligianDefinitionProvider } from './eligian-definition-provider.js';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';

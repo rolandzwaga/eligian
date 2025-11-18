@@ -29,7 +29,6 @@ export * from './css/css-service.js';
 export * from './css/levenshtein.js';
 export * from './css/selector-parser.js';
 // LSP/Langium exports (only needed for extension language server)
-export * from './eligian-definition-provider.js';
 export * from './eligian-module.js';
 export * from './eligian-validator.js';
 // Error type exports (Feature 018 - US3)
