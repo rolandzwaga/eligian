@@ -577,7 +577,9 @@ function validateLabelText(text: string): string | null {
 /**
  * Check if there are any validation errors
  * Returns true if errors exist
+ * @internal Reserved for future use (pre-save validation check)
  */
+// @ts-expect-error - Reserved for future use
 function _hasValidationErrors(): boolean {
   // Check client-side validation errors in state
   if (state.validationErrors.size > 0) {
