@@ -168,6 +168,8 @@ function renderGroups(): void {
 
 /**
  * Render translations for selected group in right panel
+ * NOTE: UUIDs (translation.id) are NEVER displayed in the UI
+ * Only languageCode and label fields are shown to users
  */
 function renderTranslations(): void {
   const container = document.getElementById('translations-container');
@@ -321,13 +323,14 @@ function handleUsageCheckResponse(groupId: string, usageFiles: string[]): void {
 
 /**
  * Add a new translation to selected group
+ * UUIDs are auto-generated using Web Crypto API (UUID v4)
  */
 function addTranslation(): void {
   if (state.selectedGroupIndex === null) return;
 
   const group = state.labels[state.selectedGroupIndex];
   const newTranslation: Translation = {
-    id: crypto.randomUUID(),
+    id: crypto.randomUUID(), // Auto-generate UUID v4 (never shown in UI)
     languageCode: '',
     label: '',
   };
@@ -357,7 +360,7 @@ let draggedIndex: number | null = null;
 
 function handleDragStart(e: DragEvent): void {
   const target = e.currentTarget as HTMLElement;
-  draggedIndex = Number.parseInt(target.dataset.index || '-1');
+  draggedIndex = Number.parseInt(target.dataset.index || '-1', 10);
   target.classList.add('dragging');
 }
 
@@ -372,7 +375,7 @@ function handleDrop(e: DragEvent): void {
   const target = e.currentTarget as HTMLElement;
   target.classList.remove('drop-target');
 
-  const dropIndex = Number.parseInt(target.dataset.index || '-1');
+  const dropIndex = Number.parseInt(target.dataset.index || '-1', 10);
   if (draggedIndex !== null && dropIndex !== -1 && draggedIndex !== dropIndex) {
     // Reorder array
     const [removed] = state.labels.splice(draggedIndex, 1);

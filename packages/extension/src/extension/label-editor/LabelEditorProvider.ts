@@ -12,7 +12,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { validateGroupId, validateLabelText, validateLanguageCode } from './LabelValidation.js';
+import {
+  generateUUID,
+  validateGroupId,
+  validateLabelText,
+  validateLanguageCode,
+  validateUUID,
+} from './LabelValidation.js';
 import type { LabelGroup, ToExtensionMessage, ToWebviewMessage, ValidationError } from './types.js';
 
 /**
@@ -100,6 +106,7 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
   /**
    * Parse JSON text into LabelGroup array.
    * Handles malformed JSON gracefully.
+   * Auto-fixes missing or invalid UUIDs on translations.
    *
    * @param text - Raw JSON text from TextDocument
    * @returns Parsed label groups or empty array on error
@@ -108,7 +115,23 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
     try {
       const parsed = JSON.parse(text);
       if (Array.isArray(parsed)) {
-        return parsed as LabelGroup[];
+        const labels = parsed as LabelGroup[];
+
+        // Auto-fix missing or invalid UUIDs (User Story 3)
+        for (const group of labels) {
+          if (group.labels && Array.isArray(group.labels)) {
+            for (const translation of group.labels) {
+              // Check if UUID is missing or invalid
+              if (!translation.id || !validateUUID(translation.id)) {
+                translation.id = generateUUID();
+              }
+            }
+          }
+        }
+
+        // If we auto-fixed UUIDs, the webview will receive updated data
+        // and send an 'update' message to sync the document
+        return labels;
       }
       return [];
     } catch (error) {
@@ -301,7 +324,7 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
    * Check if label group is used in .eligian files
    * Returns array of file URIs where the label is used
    */
-  private async checkLabelUsage(groupId: string): Promise<string[]> {
+  private async checkLabelUsage(_groupId: string): Promise<string[]> {
     // TODO (Phase 9): Implement label usage tracking
     // For now, return empty array (no usage tracking)
     return [];

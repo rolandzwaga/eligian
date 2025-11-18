@@ -61,31 +61,7 @@ export class EligianDefinitionProvider implements vscode.DefinitionProvider {
     return null;
   }
 
-  /**
-   * Check if cursor position is within a label import path.
-   *
-   * @param line - Line text
-   * @param position - Cursor position
-   * @returns Import path if cursor is on it, null otherwise
-   */
-  private extractImportPath(_line: string, _position: vscode.Position): string | null {
-    // TODO (T015): Implement import path extraction
-    // Regex: labels\s+"([^"]+)"
-    // Check if position.character is within the quoted string range
-    return null;
-  }
-
-  /**
-   * Resolve relative path to absolute URI.
-   *
-   * @param documentUri - URI of the document containing the import
-   * @param relativePath - Relative path from import statement
-   * @returns Absolute URI of the label file
-   */
-  private resolveRelativePath(documentUri: vscode.Uri, _relativePath: string): vscode.Uri {
-    // TODO (T015): Implement path resolution
-    // Use Node.js path.resolve or vscode.Uri.joinPath
-    // Handle both Unix (/) and Windows (\) path separators
-    return documentUri;
-  }
+  // TODO (T015): Add helper methods for implementation:
+  // - extractImportPath(line, position): Extract import path from line if cursor is on it
+  // - resolveRelativePath(documentUri, relativePath): Resolve relative path to absolute URI
 }

@@ -147,7 +147,7 @@ describe('LabelValidation', () => {
 
     it('should return true for valid UUID v4', () => {
       expect(validateUUID('a1b2c3d4-e5f6-4789-a012-3456789abcde')).toBe(true);
-      expect(validateUUID('f6a7b8c9-d0e1-4234-f567-89abcdef0123')).toBe(true);
+      expect(validateUUID('f6a7b8c9-d0e1-4234-8567-89abcdef0123')).toBe(true);
     });
 
     it('should be case-insensitive', () => {
