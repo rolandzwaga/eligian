@@ -44,6 +44,13 @@ interface EditorState {
   validationErrors: Map<string, ValidationError[]>;
   isDirty: boolean;
   filePath: string;
+  // Focus restoration state
+  focusedElement: {
+    groupId?: string;
+    translationId?: string;
+    field?: 'groupId' | 'languageCode' | 'labelText';
+    cursorPosition?: number;
+  } | null;
 }
 
 const state: EditorState = {
@@ -52,6 +59,7 @@ const state: EditorState = {
   validationErrors: new Map(),
   isDirty: false,
   filePath: '',
+  focusedElement: null,
 };
 
 // VSCode API
@@ -62,6 +70,93 @@ declare const acquireVsCodeApi: () => {
 };
 
 const vscode = acquireVsCodeApi();
+
+/**
+ * Save current focus state before re-render
+ */
+function saveFocusState(): void {
+  const activeElement = document.activeElement as HTMLInputElement | null;
+  if (!activeElement || activeElement.tagName !== 'INPUT') {
+    state.focusedElement = null;
+    return;
+  }
+
+  // Determine which field is focused based on data attributes or class names
+  const groupElement = activeElement.closest('.group');
+  const translationElement = activeElement.closest('.translation');
+
+  if (groupElement) {
+    const groupId = groupElement.getAttribute('data-group-id');
+    if (translationElement) {
+      const translationId = translationElement.getAttribute('data-translation-id');
+      // Determine field type by checking input's parent or sibling labels
+      let field: 'languageCode' | 'labelText' = 'languageCode';
+      const formGroup = activeElement.closest('.form-group');
+      if (formGroup) {
+        const label = formGroup.querySelector('label');
+        if (label?.textContent === 'Label Text') {
+          field = 'labelText';
+        }
+      }
+
+      state.focusedElement = {
+        groupId: groupId || undefined,
+        translationId: translationId || undefined,
+        field,
+        cursorPosition: activeElement.selectionStart ?? undefined,
+      };
+    } else {
+      // Group ID input
+      state.focusedElement = {
+        groupId: groupId || undefined,
+        field: 'groupId',
+        cursorPosition: activeElement.selectionStart ?? undefined,
+      };
+    }
+  }
+}
+
+/**
+ * Restore focus state after re-render
+ */
+function restoreFocusState(): void {
+  if (!state.focusedElement) return;
+
+  const { groupId, translationId, field, cursorPosition } = state.focusedElement;
+
+  // Find the input element to focus
+  let inputElement: HTMLInputElement | null = null;
+
+  if (translationId && field !== 'groupId') {
+    // Find translation input
+    const translationEl = document.querySelector(
+      `.translation[data-translation-id="${translationId}"]`
+    );
+    if (translationEl) {
+      if (field === 'languageCode') {
+        inputElement = translationEl.querySelector('.form-group:nth-child(1) input');
+      } else if (field === 'labelText') {
+        inputElement = translationEl.querySelector('.form-group:nth-child(2) input');
+      }
+    }
+  } else if (groupId && field === 'groupId') {
+    // Find group ID input
+    const groupEl = document.querySelector(`.group[data-group-id="${groupId}"]`);
+    if (groupEl) {
+      inputElement = groupEl.querySelector('.group-id input');
+    }
+  }
+
+  if (inputElement) {
+    inputElement.focus();
+    if (cursorPosition !== undefined) {
+      inputElement.setSelectionRange(cursorPosition, cursorPosition);
+    }
+  }
+
+  // Clear focus state after restoration
+  state.focusedElement = null;
+}
 
 /**
  * Send message to extension
@@ -87,9 +182,11 @@ window.addEventListener('message', event => {
       break;
 
     case 'reload':
+      saveFocusState(); // Save focus before re-render
       state.labels = message.labels;
       renderGroups();
       renderTranslations();
+      restoreFocusState(); // Restore focus after re-render
       break;
 
     case 'validation-error':
@@ -123,9 +220,10 @@ function renderGroups(): void {
     const isSelected = i === state.selectedGroupIndex;
 
     const groupElement = document.createElement('div');
-    groupElement.className = `group-item${isSelected ? ' selected' : ''}`;
+    groupElement.className = `group group-item${isSelected ? ' selected' : ''}`;
     groupElement.draggable = true;
     groupElement.dataset.index = i.toString();
+    groupElement.dataset.groupId = group.id; // For focus restoration
     // T050: Accessibility - ARIA attributes
     groupElement.setAttribute('role', 'listitem');
     groupElement.setAttribute('tabindex', '0');
@@ -136,7 +234,7 @@ function renderGroups(): void {
 
     // Group ID (editable) with validation
     const idWrapper = document.createElement('div');
-    idWrapper.className = 'input-wrapper';
+    idWrapper.className = 'group-id input-wrapper';
 
     const idInput = document.createElement('input');
     idInput.type = 'text';
@@ -265,7 +363,8 @@ function renderTranslations(): void {
     const translation = group.labels[i];
 
     const card = document.createElement('div');
-    card.className = 'translation-card';
+    card.className = 'translation translation-card';
+    card.dataset.translationId = translation.id; // For focus restoration
     card.setAttribute('role', 'listitem');
     card.setAttribute(
       'aria-label',
