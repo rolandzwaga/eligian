@@ -167,8 +167,19 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
         break;
 
       case 'update':
-        // Update TextDocument with new labels
+        // Update TextDocument with new labels (T044: validate first)
         {
+          const errors = this.validateLabels(message.labels);
+          if (errors.length > 0) {
+            // Send validation errors back to webview
+            const errorMessage: ToWebviewMessage = {
+              type: 'validation-error',
+              errors,
+            };
+            webviewPanel.webview.postMessage(errorMessage);
+            // Still update document but notify user of errors
+          }
+
           const json = JSON.stringify(message.labels, null, 2);
           const edit = new vscode.WorkspaceEdit();
           edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);

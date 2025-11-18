@@ -127,7 +127,10 @@ function renderGroups(): void {
     groupElement.draggable = true;
     groupElement.dataset.index = i.toString();
 
-    // Group ID (editable)
+    // Group ID (editable) with validation
+    const idWrapper = document.createElement('div');
+    idWrapper.className = 'input-wrapper';
+
     const idInput = document.createElement('input');
     idInput.type = 'text';
     idInput.value = group.id;
@@ -137,6 +140,38 @@ function renderGroups(): void {
       markDirty();
       sendMessage({ type: 'update', labels: state.labels });
     });
+
+    // Validate on blur
+    idInput.addEventListener('blur', () => {
+      const error = validateGroupId(group.id, i);
+      const errorElement = groupElement.querySelector('.error-message');
+      if (error) {
+        idInput.classList.add('error');
+        if (!errorElement) {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'error-message';
+          errorDiv.textContent = error;
+          idWrapper.appendChild(errorDiv);
+        } else {
+          errorElement.textContent = error;
+        }
+      } else {
+        idInput.classList.remove('error');
+        if (errorElement) {
+          errorElement.remove();
+        }
+      }
+    });
+
+    idWrapper.appendChild(idInput);
+
+    // Group-level validation: Check for empty translations (T042)
+    if (!group.labels || group.labels.length === 0) {
+      const groupError = document.createElement('div');
+      groupError.className = 'error-message';
+      groupError.textContent = 'Group must have at least one translation';
+      idWrapper.appendChild(groupError);
+    }
 
     // Delete button
     const deleteButton = document.createElement('button');
@@ -148,7 +183,7 @@ function renderGroups(): void {
       deleteGroup(i);
     });
 
-    groupElement.appendChild(idInput);
+    groupElement.appendChild(idWrapper);
     groupElement.appendChild(deleteButton);
 
     // Click to select
@@ -201,7 +236,7 @@ function renderTranslations(): void {
     const card = document.createElement('div');
     card.className = 'translation-card';
 
-    // Language code input
+    // Language code input with validation
     const langGroup = document.createElement('div');
     langGroup.className = 'form-group';
     const langLabel = document.createElement('label');
@@ -215,10 +250,31 @@ function renderTranslations(): void {
       markDirty();
       sendMessage({ type: 'update', labels: state.labels });
     });
+
+    // Validate on blur
+    langInput.addEventListener('blur', () => {
+      const error = validateLanguageCode(translation.languageCode);
+      let errorElement = langGroup.querySelector('.error-message');
+      if (error) {
+        langInput.classList.add('error');
+        if (!errorElement) {
+          errorElement = document.createElement('div');
+          errorElement.className = 'error-message';
+          langGroup.appendChild(errorElement);
+        }
+        errorElement.textContent = error;
+      } else {
+        langInput.classList.remove('error');
+        if (errorElement) {
+          errorElement.remove();
+        }
+      }
+    });
+
     langGroup.appendChild(langLabel);
     langGroup.appendChild(langInput);
 
-    // Label text input
+    // Label text input with validation
     const textGroup = document.createElement('div');
     textGroup.className = 'form-group';
     const textLabel = document.createElement('label');
@@ -232,6 +288,27 @@ function renderTranslations(): void {
       markDirty();
       sendMessage({ type: 'update', labels: state.labels });
     });
+
+    // Validate on blur
+    textInput.addEventListener('blur', () => {
+      const error = validateLabelText(translation.label);
+      let errorElement = textGroup.querySelector('.error-message');
+      if (error) {
+        textInput.classList.add('error');
+        if (!errorElement) {
+          errorElement = document.createElement('div');
+          errorElement.className = 'error-message';
+          textGroup.appendChild(errorElement);
+        }
+        errorElement.textContent = error;
+      } else {
+        textInput.classList.remove('error');
+        if (errorElement) {
+          errorElement.remove();
+        }
+      }
+    });
+
     textGroup.appendChild(textLabel);
     textGroup.appendChild(textInput);
 
@@ -348,11 +425,115 @@ function markDirty(): void {
 }
 
 /**
- * Display validation errors
+ * Display validation errors (from extension)
  */
 function displayValidationErrors(errors: ValidationError[]): void {
-  // TODO: Implement error display UI
-  console.error('Validation errors:', errors);
+  // Store errors in state
+  state.validationErrors.clear();
+  for (const error of errors) {
+    const key = error.translationId
+      ? `${error.groupId}:${error.translationId}:${error.field}`
+      : `${error.groupId}:${error.field}`;
+    const existingErrors = state.validationErrors.get(key) || [];
+    existingErrors.push(error);
+    state.validationErrors.set(key, existingErrors);
+  }
+
+  // Re-render to show errors
+  renderGroups();
+  renderTranslations();
+}
+
+/**
+ * Validate group ID (client-side)
+ * Returns error message or null if valid
+ */
+function validateGroupId(groupId: string, currentIndex: number): string | null {
+  // Check for empty
+  if (!groupId || groupId.trim().length === 0) {
+    return 'Group ID cannot be empty';
+  }
+
+  // Check for invalid characters
+  if (!/^[a-zA-Z0-9._-]+$/.test(groupId)) {
+    return 'Group ID can only contain letters, numbers, dots, hyphens, and underscores';
+  }
+
+  // Check for duplicates
+  for (let i = 0; i < state.labels.length; i++) {
+    if (i !== currentIndex && state.labels[i].id === groupId) {
+      return `Group ID '${groupId}' already exists`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validate language code (client-side)
+ * Returns error message or null if valid
+ */
+function validateLanguageCode(code: string): string | null {
+  if (!code || code.trim().length === 0) {
+    return 'Language code cannot be empty';
+  }
+
+  // xx-XX pattern (e.g., en-US, nl-NL)
+  if (!/^[a-z]{2,3}-[A-Z]{2,3}$/.test(code)) {
+    return 'Use format: en-US, nl-NL, etc.';
+  }
+
+  return null;
+}
+
+/**
+ * Validate label text (client-side)
+ * Returns error message or null if valid
+ */
+function validateLabelText(text: string): string | null {
+  if (!text || text.trim().length === 0) {
+    return 'Label text cannot be empty';
+  }
+
+  return null;
+}
+
+/**
+ * Check if there are any validation errors
+ * Returns true if errors exist
+ */
+function _hasValidationErrors(): boolean {
+  // Check client-side validation errors in state
+  if (state.validationErrors.size > 0) {
+    return true;
+  }
+
+  // Check for structural errors
+  for (let i = 0; i < state.labels.length; i++) {
+    const group = state.labels[i];
+
+    // Check group ID
+    if (validateGroupId(group.id, i) !== null) {
+      return true;
+    }
+
+    // Check group has at least one translation
+    if (!group.labels || group.labels.length === 0) {
+      return true;
+    }
+
+    // Check each translation
+    for (const translation of group.labels) {
+      if (validateLanguageCode(translation.languageCode) !== null) {
+        return true;
+      }
+      if (validateLabelText(translation.label) !== null) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 // Drag and drop state

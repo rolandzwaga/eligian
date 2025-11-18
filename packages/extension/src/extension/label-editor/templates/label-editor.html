@@ -217,6 +217,26 @@
             outline: 1px solid var(--vscode-focusBorder);
             outline-offset: 2px;
         }
+
+        /* Validation error styles (Phase 6 - User Story 4) */
+        input.error {
+            border-color: var(--vscode-inputValidation-errorBorder);
+            background-color: var(--vscode-inputValidation-errorBackground);
+        }
+
+        .error-message {
+            color: var(--vscode-errorForeground);
+            font-size: 11px;
+            margin-top: 4px;
+            padding: 4px;
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border-left: 3px solid var(--vscode-inputValidation-errorBorder);
+            border-radius: 2px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
