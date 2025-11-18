@@ -204,6 +204,14 @@ window.addEventListener('message', event => {
   }
 });
 
+// Intercept Ctrl+S / Cmd+S to save
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    sendMessage({ type: 'request-save', labels: state.labels });
+  }
+});
+
 /**
  * Render label groups in left panel
  */

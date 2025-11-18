@@ -51,8 +51,8 @@ import type { LabelGroup, ToExtensionMessage, ToWebviewMessage, ValidationError 
  * );
  */
 export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
-  // Track updates we initiated to avoid feedback loops
-  private updatingDocument = new Set<string>();
+  // Track last content sent to each webview to avoid unnecessary reloads
+  private lastSentContent = new Map<string, string>();
 
   constructor(
     // Used in Phase 4 to resolve webview URIs
@@ -135,9 +135,12 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
     // 4. Set up TextDocument change listener for external edits
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        // Skip reload if we initiated this change
+        // Skip reload if content hasn't actually changed (prevents feedback loops)
         const docUri = document.uri.toString();
-        if (!this.updatingDocument.has(docUri)) {
+        const currentContent = document.getText();
+        const lastContent = this.lastSentContent.get(docUri);
+
+        if (currentContent !== lastContent) {
           this.updateWebview(document, webviewPanel);
         }
       }
@@ -228,31 +231,8 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
         break;
 
       case 'update':
-        // Update TextDocument with new labels (T044: validate first)
-        {
-          const errors = this.validateLabels(message.labels);
-          if (errors.length > 0) {
-            // Send validation errors back to webview
-            const errorMessage: ToWebviewMessage = {
-              type: 'validation-error',
-              errors,
-            };
-            webviewPanel.webview.postMessage(errorMessage);
-            // Still update document but notify user of errors
-          }
-
-          const json = JSON.stringify(message.labels, null, 2);
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-
-          // Mark that we're updating to prevent feedback loop
-          const docUri = document.uri.toString();
-          this.updatingDocument.add(docUri);
-          vscode.workspace.applyEdit(edit).then(() => {
-            // Clear flag after a short delay to ensure change event is processed
-            setTimeout(() => this.updatingDocument.delete(docUri), 100);
-          });
-        }
+        // Just mark dirty, don't update document (webview is source of truth)
+        // Document only gets updated on explicit save
         break;
 
       case 'request-save':
@@ -266,14 +246,14 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
             };
             webviewPanel.webview.postMessage(errorMessage);
           } else {
-            // Update document first
+            // Update document and save
             const json = JSON.stringify(message.labels, null, 2);
             const edit = new vscode.WorkspaceEdit();
             edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
 
-            // Mark that we're updating to prevent feedback loop
             const docUri = document.uri.toString();
-            this.updatingDocument.add(docUri);
+            this.lastSentContent.set(docUri, json); // Track what we're writing
+
             vscode.workspace.applyEdit(edit).then(() => {
               // Trigger save
               document.save().then(success => {
@@ -282,8 +262,6 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
                   success,
                 };
                 webviewPanel.webview.postMessage(saveMessage);
-                // Clear flag after save completes
-                setTimeout(() => this.updatingDocument.delete(docUri), 100);
               });
             });
           }
