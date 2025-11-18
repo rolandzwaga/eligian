@@ -6,12 +6,19 @@
  * completion modules for operations, actions, keywords, etc.
  */
 
-import type { MaybePromise } from 'langium';
+import type { LangiumDocument, MaybePromise } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
-import type { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import type {
+  CancellationToken,
+  CompletionItem,
+  CompletionItemKind,
+  CompletionList,
+  CompletionParams,
+} from 'vscode-languageserver';
 import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
+import { getControllerNameCompletions, getLabelIDCompletions } from './completion/controllers.js';
 import { getEventNameCompletions, getEventTopicCompletions } from './completion/events.js';
 import { getOperationCompletions } from './completion/operations.js';
 import { getVariableCompletions } from './completion/variables.js';
@@ -37,6 +44,66 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     super(services);
     this.services = services;
     this.cssCompletionProvider = new CSSCompletionProvider();
+  }
+
+  /**
+   * Override getCompletion to detect controller context BEFORE calling super
+   *
+   * This is necessary because Langium's default completionFor() does NOT
+   * provide completions for string literal (terminal) positions. For controller
+   * completions inside addController("..."), we must detect and handle them here.
+   *
+   * Feature 035 US3: Controller autocomplete
+   */
+  override async getCompletion(
+    document: LangiumDocument,
+    params: CompletionParams,
+    cancelToken?: CancellationToken
+  ): Promise<CompletionList | undefined> {
+    // Detect controller context at cursor position
+    const offset = document.textDocument.offsetAt(params.position);
+    const position = params.position;
+    const cursorContext = detectContext(document, position);
+
+    // If we're in controller name or label ID position, provide custom completions
+    if (cursorContext.isInControllerName) {
+      // Controller name completion: addController("|") or addController("Nav|")
+      // Simply return all controller completions - VS Code will filter by what's typed
+
+      // Determine if we need to include quotes in insertText
+      // Check if cursor is right after opening paren (no quotes yet)
+      const text = document.textDocument.getText();
+      const textBeforeCursor = text.substring(0, offset);
+      const includeQuotes = textBeforeCursor.trimEnd().endsWith('(');
+
+      const controllerCompletions = getControllerNameCompletions(
+        {
+          document,
+          textDocument: document.textDocument,
+          offset,
+          position,
+          tokenOffset: offset,
+          tokenEndOffset: offset,
+          features: [],
+        },
+        includeQuotes
+      );
+
+      return { items: controllerCompletions, isIncomplete: false };
+    } else if (
+      cursorContext.controllerName === 'LabelController' &&
+      cursorContext.controllerParameterIndex === 1
+    ) {
+      // Label ID completion: addController("LabelController", "|")
+      const documentUri = document.uri.toString();
+      const labelRegistry = this.services.labels.LabelRegistry;
+      const labelCompletions = getLabelIDCompletions(documentUri, labelRegistry);
+
+      return { items: labelCompletions, isIncomplete: false };
+    }
+
+    // Otherwise, fallback to default Langium completion
+    return super.getCompletion(document, params, cancelToken);
   }
 
   /**
@@ -204,6 +271,9 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
           return super.completionFor(context, next, noOpAcceptor);
         }
       }
+
+      // NOTE: Feature 035 US3 controller completions are now handled in getCompletion() override
+      // (Langium doesn't call completionFor() for string literal positions)
 
       // T044: Check if we're completing an event name in EventActionDefinition
       // FEATURE 030 - Event Action Code Completion

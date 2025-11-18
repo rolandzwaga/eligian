@@ -26,8 +26,12 @@ describe('Registry Generation from Eligius Metadata', () => {
       expect(registryNames.length).toBeGreaterThan(0);
 
       // Every registry entry should have a corresponding Eligius metadata function
+      // (except synthetic operations like addController)
+      const syntheticOperations = ['addController'];
       for (const systemName of registryNames) {
-        expect(eligiusFunctionNames).toContain(systemName);
+        if (!syntheticOperations.includes(systemName)) {
+          expect(eligiusFunctionNames).toContain(systemName);
+        }
       }
     });
 
@@ -58,7 +62,12 @@ describe('Registry Generation from Eligius Metadata', () => {
 
     it('should have category from metadata for all operations', () => {
       // Every operation should have a category from Eligius metadata
+      // (except synthetic operations like addController)
+      const syntheticOperations = ['addController'];
       for (const [systemName, signature] of Object.entries(OPERATION_REGISTRY)) {
+        if (syntheticOperations.includes(systemName)) {
+          continue; // Skip synthetic operations
+        }
         const metadataFunc = metadata[systemName as keyof typeof metadata];
         expect(metadataFunc).toBeDefined();
         expect(typeof metadataFunc).toBe('function');
@@ -92,9 +101,15 @@ describe('Registry Generation from Eligius Metadata', () => {
     it('should not use any custom system name mappings', () => {
       // Verify that for every operation in the registry, the systemName
       // matches the Eligius metadata function name exactly
+      // (except synthetic operations like addController)
+      const syntheticOperations = ['addController'];
       for (const [registryKey, signature] of Object.entries(OPERATION_REGISTRY)) {
         // Registry key should match systemName
         expect(signature.systemName).toBe(registryKey);
+
+        if (syntheticOperations.includes(registryKey)) {
+          continue; // Skip synthetic operations - they don't have Eligius metadata
+        }
 
         // SystemName should exist as a function in Eligius metadata
         const metadataFunc = metadata[registryKey as keyof typeof metadata];

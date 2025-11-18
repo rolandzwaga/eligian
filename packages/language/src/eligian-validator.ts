@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
+import { type AstNode, AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
 import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 import {
@@ -13,6 +13,7 @@ import {
 } from './compiler/index.js';
 import { findActionByName } from './compiler/name-resolver.js';
 import { resolveLibraryPath } from './compiler/pipeline.js';
+import { getController, isController } from './completion/metadata/controllers.generated.js';
 import { TIMELINE_EVENTS } from './completion/metadata/timeline-events.generated.js';
 import { findSimilarClasses } from './css/levenshtein.js';
 import { parseSelector } from './css/selector-parser.js';
@@ -94,6 +95,7 @@ export function registerValidationChecks(services: EligianServices) {
     TimelineEvent: [validator.checkValidTimeRange, validator.checkNonNegativeTimes],
     OperationCall: [
       validator.checkTimelineOperationCall, // T020: Check timeline context for unified syntax
+      validator.checkControllerCall, // Feature 035: Validate addController calls
       validator.checkOperationExists,
       validator.checkParameterCount,
       validator.checkParameterTypes,
@@ -539,6 +541,12 @@ export class EligianValidator {
     const opName = getOperationCallName(operation);
     const argumentCount = operation.args.length;
 
+    // Feature 035: Skip parameter count validation for addController
+    // (handled by checkControllerCall instead)
+    if (opName === 'addController') {
+      return;
+    }
+
     // Check if this is an action call (local, library, or imported)
     const program = this.getProgram(operation);
     if (program) {
@@ -641,6 +649,12 @@ export class EligianValidator {
    */
   checkParameterTypes(operation: OperationCall, accept: ValidationAcceptor): void {
     const opName = getOperationCallName(operation);
+
+    // Feature 035: Skip parameter type validation for addController
+    // (handled by checkControllerCall instead)
+    if (opName === 'addController') {
+      return;
+    }
 
     // Only validate if operation exists (avoid duplicate errors)
     if (!hasOperation(opName)) {
@@ -1913,6 +1927,134 @@ export class EligianValidator {
               code: 'unknown_css_id_in_selector',
             },
           });
+        }
+      }
+    }
+  }
+
+  /**
+   * Feature 035: Validate addController calls (T010)
+   *
+   * This validator checks addController operations to ensure:
+   * - First argument is a valid controller name (string literal)
+   * - Controller name exists in CONTROLLERS metadata
+   * - Required parameters are provided
+   * - No excess parameters are provided
+   *
+   * Syntax: addController('ControllerName', ...args)
+   *
+   * @param operation - OperationCall AST node
+   * @param accept - Validation acceptor for reporting errors
+   */
+  checkControllerCall(operation: OperationCall, accept: ValidationAcceptor): void {
+    const operationName = getOperationCallName(operation);
+    if (operationName !== 'addController') {
+      return; // Only validate addController calls
+    }
+
+    // Check if first argument is a string literal (controller name)
+    const args = operation.args || [];
+    if (args.length === 0) {
+      // Missing controller name (will be caught by checkParameterCount)
+      return;
+    }
+
+    const firstArg = args[0];
+    if (firstArg.$type !== 'StringLiteral') {
+      accept(
+        'error',
+        "First argument of 'addController' must be a controller name (string literal)",
+        {
+          node: firstArg,
+          data: { code: 'invalid_controller_name_type' },
+        }
+      );
+      return;
+    }
+
+    const controllerName = firstArg.value;
+
+    // Check if controller exists
+    if (!isController(controllerName)) {
+      accept('error', `Unknown controller: '${controllerName}'.`, {
+        node: firstArg,
+        data: { code: 'unknown_controller' },
+      });
+      return;
+    }
+
+    // Get controller metadata
+    const controller = getController(controllerName);
+    if (!controller) {
+      return; // Should not happen if isController returned true
+    }
+
+    // Validate parameter count (args[0] is controller name, args[1+] are parameters)
+    const paramArgs = args.slice(1); // Remove controller name from args
+    const requiredParams = controller.parameters.filter(p => p.required);
+    const totalParams = controller.parameters.length;
+
+    // Check missing required parameters
+    if (paramArgs.length < requiredParams.length) {
+      const missingParam = requiredParams[paramArgs.length];
+      accept(
+        'error',
+        `Missing required parameter '${missingParam.name}' for controller '${controllerName}'.`,
+        {
+          node: operation,
+          property: 'args',
+          data: { code: 'missing_required_parameter' },
+        }
+      );
+      return;
+    }
+
+    // Check too many parameters
+    if (paramArgs.length > totalParams) {
+      accept(
+        'error',
+        `Too many parameters for controller '${controllerName}'. Expected ${totalParams} parameter(s), got ${paramArgs.length}.`,
+        {
+          node: operation,
+          property: 'args',
+          data: { code: 'too_many_parameters' },
+        }
+      );
+      return;
+    }
+
+    // Feature 035 US2: Validate label ID parameters for LabelController
+    if (controllerName === 'LabelController' && this.services) {
+      const labelRegistry = this.services.labels.LabelRegistry;
+
+      // Get document URI
+      let documentUri: string | undefined;
+      let node: AstNode | undefined = operation;
+      while (node) {
+        if (node.$type === 'Program') {
+          documentUri = node.$document?.uri?.toString();
+          break;
+        }
+        node = node.$container;
+      }
+
+      if (!documentUri) return;
+
+      // Validate labelId parameter (first parameter after controller name)
+      if (paramArgs.length > 0) {
+        const labelIdArg = paramArgs[0];
+
+        // Only validate if it's a string literal (not a variable)
+        if (labelIdArg.$type === 'StringLiteral') {
+          const labelId = labelIdArg.value;
+
+          const error = validateLabelID(documentUri, labelId, labelRegistry);
+          if (error) {
+            accept('error', `${error.message}. ${error.hint}`, {
+              node: labelIdArg,
+              data: { code: error.code },
+            });
+          }
         }
       }
     }

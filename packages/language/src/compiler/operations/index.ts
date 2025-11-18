@@ -5,14 +5,44 @@
  * It exports the generated registry and provides lookup/query functions.
  */
 
-import { OPERATION_REGISTRY } from './registry.generated.js';
+import { OPERATION_REGISTRY as GENERATED_REGISTRY } from './registry.generated.js';
 import type { OperationSignature } from './types.js';
 
 /**
- * The complete operation registry containing all 46 Eligius operations.
+ * Feature 035: Synthetic operation for addController DSL syntax sugar
+ *
+ * addController is not a real Eligius operation - it's DSL sugar that transforms into:
+ * - getControllerInstance({ systemName: 'ControllerName' })
+ * - addControllerToElement({ ...params })
+ *
+ * We register it here to prevent "unknown operation" errors during validation.
+ * The actual transformation happens in ast-transformer.ts.
+ */
+const SYNTHETIC_ADD_CONTROLLER: OperationSignature = {
+  systemName: 'addController',
+  description:
+    'DSL syntax sugar for adding a controller. Transforms to getControllerInstance + addControllerToElement.',
+  category: 'Controller',
+  parameters: [
+    {
+      name: 'controllerName',
+      type: ['ParameterType:string'],
+      required: true,
+      description: 'Name of the controller to add (e.g., "LabelController")',
+    },
+  ],
+  dependencies: [],
+  outputs: [],
+};
+
+/**
+ * The complete operation registry containing all Eligius operations + synthetic operations.
  * Maps operation name → operation signature.
  */
-export { OPERATION_REGISTRY };
+export const OPERATION_REGISTRY: Record<string, OperationSignature> = {
+  ...GENERATED_REGISTRY,
+  addController: SYNTHETIC_ADD_CONTROLLER,
+};
 
 /**
  * Export all types for consumers

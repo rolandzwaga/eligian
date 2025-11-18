@@ -10,7 +10,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { eventmetadata, metadata } from 'eligius';
+import type { IControllerMetadata, IOperationMetadata, TPropertyMetadata } from 'eligius';
+import { ctrlmetadata, eventmetadata, metadata } from 'eligius';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,20 +34,23 @@ const FILTERED_OPERATIONS = new Set([
 /**
  * Convert IOperationMetadata to our simplified structure
  */
-function convertMetadata(name: string, metadataFn: () => any) {
-  const metadata = metadataFn(); // Call the function to get the metadata object
+function convertOperationMetadata(name: string, metadataFn: () => IOperationMetadata<any>) {
+  const metadata = metadataFn();
 
   // Extract parameters from properties
   const parameters = [];
   if (metadata.properties) {
     for (const [paramName, paramMeta] of Object.entries(metadata.properties)) {
+      const propMeta = paramMeta as TPropertyMetadata;
+
       // Handle both simple string types and complex objects
-      const paramType = typeof paramMeta === 'string' ? paramMeta : (paramMeta as any).type;
-      const required = typeof paramMeta === 'object' && (paramMeta as any).required === true;
+      const paramType = typeof propMeta === 'string' ? propMeta : propMeta.type;
+      const required = typeof propMeta === 'object' && propMeta.required === true;
       const defaultValue =
-        typeof paramMeta === 'object' ? (paramMeta as any).defaultValue : undefined;
-      const description =
-        typeof paramMeta === 'object' ? (paramMeta as any).description : undefined;
+        typeof propMeta === 'object' && 'defaultValue' in propMeta
+          ? propMeta.defaultValue
+          : undefined;
+      const description = typeof propMeta === 'object' ? propMeta.description : undefined;
 
       parameters.push({
         name: paramName,
@@ -59,7 +63,7 @@ function convertMetadata(name: string, metadataFn: () => any) {
   }
 
   // Extract dependencies
-  const dependencies = metadata.dependentProperties || [];
+  const dependencies = (metadata.dependentProperties as string[]) || [];
 
   // Extract outputs from outputProperties
   const outputs = [];
@@ -72,9 +76,52 @@ function convertMetadata(name: string, metadataFn: () => any) {
   return {
     name,
     description: metadata.description || '',
+    category: metadata.category || 'Uncategorized',
     parameters,
     dependencies,
     outputs,
+  };
+}
+
+/**
+ * Convert IControllerMetadata to our simplified structure
+ */
+function convertControllerMetadata(name: string, metadataFn: () => IControllerMetadata<any>) {
+  const metadata = metadataFn();
+
+  // Extract parameters from properties
+  const parameters = [];
+  if (metadata.properties) {
+    for (const [paramName, paramMeta] of Object.entries(metadata.properties)) {
+      const propMeta = paramMeta as TPropertyMetadata;
+
+      // Handle both simple string types and complex objects
+      const paramType = typeof propMeta === 'string' ? propMeta : propMeta.type;
+      const required = typeof propMeta === 'object' && propMeta.required === true;
+      const defaultValue =
+        typeof propMeta === 'object' && 'defaultValue' in propMeta
+          ? propMeta.defaultValue
+          : undefined;
+      const description = typeof propMeta === 'object' ? propMeta.description : undefined;
+
+      parameters.push({
+        name: paramName,
+        type: paramType,
+        required,
+        defaultValue,
+        description,
+      });
+    }
+  }
+
+  // Extract dependencies
+  const dependencies = (metadata.dependentProperties as string[]) || [];
+
+  return {
+    name,
+    description: metadata.description || '',
+    parameters,
+    dependencies,
   };
 }
 
@@ -89,7 +136,7 @@ function generateOperationsMetadata(metadataModule: any) {
     // Skip non-function exports (like types)
     if (typeof metadataFn !== 'function') continue;
 
-    const metadata = convertMetadata(name, metadataFn as () => any);
+    const metadata = convertOperationMetadata(name, metadataFn as () => IOperationMetadata<any>);
     operations.push(metadata);
   }
 
@@ -112,6 +159,7 @@ function generateOperationsMetadata(metadataModule: any) {
 export interface OperationMetadata {
   name: string;
   description: string;
+  category: string;
   parameters: ParameterMetadata[];
   dependencies: string[];
   outputs: string[];
@@ -212,12 +260,90 @@ export const TIMELINE_EVENTS: TimelineEventMetadata[] = ${JSON.stringify(events,
 }
 
 /**
+ * Generate controllers.generated.ts from ctrlmetadata
+ */
+function generateControllersMetadata(ctrlmetadataModule: any) {
+  const controllers = [];
+
+  // Loop through all exported controller metadata functions
+  for (const [name, metadataFn] of Object.entries(ctrlmetadataModule)) {
+    // Skip non-function exports
+    if (typeof metadataFn !== 'function') continue;
+
+    const metadata = convertControllerMetadata(name, metadataFn as () => IControllerMetadata<any>);
+    controllers.push(metadata);
+  }
+
+  // Sort alphabetically by name
+  controllers.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Generate TypeScript module
+  const tsCode = `/**
+ * Generated Controller Metadata for Eligian Code Completion
+ *
+ * DO NOT EDIT THIS FILE MANUALLY - Generated by src/completion/generate-metadata.ts
+ *
+ * This file contains metadata imported from the Eligius npm package.
+ * Source: import { ctrlmetadata } from 'eligius' (version from packages/language/package.json)
+ */
+
+export interface ControllerMetadata {
+  name: string;
+  description: string;
+  parameters: ControllerParameterMetadata[];
+  dependencies: string[];
+}
+
+export interface ControllerParameterMetadata {
+  name: string;
+  type: string | Array<{ value: string }>;
+  required: boolean;
+  defaultValue?: unknown;
+  description?: string;
+}
+
+/**
+ * All Eligius controllers (alphabetically sorted)
+ * Total controllers: ${controllers.length}
+ */
+export const CONTROLLERS: ControllerMetadata[] = ${JSON.stringify(controllers, null, 2)};
+
+/**
+ * Controller name lookup map (O(1) lookup)
+ */
+const CONTROLLER_MAP = new Map<string, ControllerMetadata>(
+  CONTROLLERS.map(c => [c.name, c])
+);
+
+/**
+ * Check if a name is a valid controller
+ */
+export function isController(name: string): boolean {
+  return CONTROLLER_MAP.has(name);
+}
+
+/**
+ * Get controller metadata by name
+ */
+export function getController(name: string): ControllerMetadata | undefined {
+  return CONTROLLER_MAP.get(name);
+}
+`;
+
+  const outputPath = join(OUTPUT_DIR, 'controllers.generated.ts');
+  writeFileSync(outputPath, tsCode, 'utf-8');
+
+  return controllers.length;
+}
+
+/**
  * Main execution
  */
 function main() {
   try {
     generateOperationsMetadata(metadata);
     generateTimelineEventsMetadata(eventmetadata);
+    generateControllersMetadata(ctrlmetadata);
   } catch (error) {
     console.error('❌ Error:', (error as Error).message);
     console.error((error as Error).stack);

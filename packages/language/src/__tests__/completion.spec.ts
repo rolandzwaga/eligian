@@ -28,9 +28,9 @@ describe('Eligian Completion Provider', () => {
           // Should have operation completions
           expect(completions.items.length).toBeGreaterThan(0);
 
-          // Check if selectElement is present (with "operation:" prefix)
+          // Check if selectElement is present (with " (operation)" suffix)
           const selectElement = completions.items.find(
-            item => item.label === 'operation: selectElement'
+            item => item.label === 'selectElement (operation)'
           );
           expect(selectElement).toBeDefined();
           expect(selectElement?.kind).toBe(3); // CompletionItemKind.Function = 3
@@ -48,9 +48,9 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Should find selectElement when typing "sel" (with "operation:" prefix)
+          // Should find selectElement when typing "sel" (with " (operation)" suffix)
           const selectElement = completions.items.find(
-            item => item.label === 'operation: selectElement'
+            item => item.label === 'selectElement (operation)'
           );
           expect(selectElement).toBeDefined();
         },
@@ -66,10 +66,10 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Get only operation completions (labels starting with "operation:")
-          const operations = completions.items.filter(item => item.label.startsWith('operation:'));
+          // Get only operation completions (labels ending with " (operation)")
+          const operations = completions.items.filter(item => item.label.endsWith(' (operation)'));
 
-          // Check that operations are sorted alphabetically by name (after "operation: " prefix)
+          // Check that operations are sorted alphabetically by name (before " (operation)" suffix)
           const operationNames = operations.map(op => op.label);
           const sortedNames = [...operationNames].sort();
           expect(operationNames).toEqual(sortedNames);
@@ -112,9 +112,9 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Find selectElement operation (with "operation:" prefix)
+          // Find selectElement operation (with " (operation)" suffix)
           const selectElement = completions.items.find(
-            item => item.label === 'operation: selectElement'
+            item => item.label === 'selectElement (operation)'
           );
           expect(selectElement).toBeDefined();
 
@@ -140,9 +140,9 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Find selectElement operation (with "operation:" prefix)
+          // Find selectElement operation (with " (operation)" suffix)
           const selectElement = completions.items.find(
-            item => item.label === 'operation: selectElement'
+            item => item.label === 'selectElement (operation)'
           );
           expect(selectElement).toBeDefined();
           expect(selectElement?.kind).toBe(3); // CompletionItemKind.Function = 3
@@ -174,13 +174,13 @@ describe('Eligian Completion Provider', () => {
           // Should have both operations and custom actions
           expect(completions.items.length).toBeGreaterThan(0);
 
-          // Check if fadeIn custom action is present (with "action:" prefix)
-          const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+          // Check if fadeIn custom action is present (with " (action)" suffix)
+          const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
           expect(fadeIn).toBeDefined();
           expect(fadeIn?.kind).toBe(3); // CompletionItemKind.Function = 3
 
-          // Check if fadeOut custom action is present (with "action:" prefix)
-          const fadeOut = completions.items.find(item => item.label === 'action: fadeOut');
+          // Check if fadeOut custom action is present (with " (action)" suffix)
+          const fadeOut = completions.items.find(item => item.label === 'fadeOut (action)');
           expect(fadeOut).toBeDefined();
           expect(fadeOut?.kind).toBe(3); // CompletionItemKind.Function = 3
         },
@@ -200,8 +200,8 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Find fadeIn custom action (with "action:" prefix)
-          const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+          // Find fadeIn custom action (with " (action)" suffix)
+          const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
           expect(fadeIn).toBeDefined();
 
           // Should have parameter signature in detail
@@ -225,8 +225,8 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Should find fadeIn even though it's defined after the cursor (with "action:" prefix)
-          const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+          // Should find fadeIn even though it's defined after the cursor (with " (action)" suffix)
+          const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
           expect(fadeIn).toBeDefined();
           expect(fadeIn?.kind).toBe(3); // CompletionItemKind.Function = 3
         },
@@ -246,15 +246,15 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Custom actions should have "action:" prefix and CompletionItemKind.Function (3)
+          // Custom actions should have " (action)" suffix and CompletionItemKind.Function (3)
           const customAction = completions.items.find(
-            item => item.label === 'action: customAction'
+            item => item.label === 'customAction (action)'
           );
           expect(customAction).toBeDefined();
           expect(customAction?.kind).toBe(3); // CompletionItemKind.Function = 3
 
-          // Operations should have "operation:" prefix and CompletionItemKind.Function (3)
-          const operations = completions.items.filter(item => item.label.startsWith('operation:'));
+          // Operations should have " (operation)" suffix and CompletionItemKind.Function (3)
+          const operations = completions.items.filter(item => item.label.endsWith(' (operation)'));
           expect(operations.length).toBeGreaterThan(0);
         },
       });
@@ -273,8 +273,8 @@ describe('Eligian Completion Provider', () => {
         `,
         index: 0,
         assert: (completions: CompletionList) => {
-          // Find initialize action (with "action:" prefix)
-          const initialize = completions.items.find(item => item.label === 'action: initialize');
+          // Find initialize action (with " (action)" suffix)
+          const initialize = completions.items.find(item => item.label === 'initialize (action)');
           expect(initialize).toBeDefined();
           expect(initialize?.kind).toBe(3); // CompletionItemKind.Function = 3
 
@@ -615,7 +615,7 @@ describe('Eligian Completion Provider', () => {
 
   describe('Feature 008: Custom Action Code Completions with Prefixes', () => {
     describe('User Story 1: See Custom Actions in Code Completion with Prefixes', () => {
-      it('T004: should show custom actions with "action:" prefix', async () => {
+      it('T004: should show custom actions with " (action)" suffix', async () => {
         await completion({
           text: `
             action fadeIn() [
@@ -628,16 +628,16 @@ describe('Eligian Completion Provider', () => {
           `,
           index: 0,
           assert: (completions: CompletionList) => {
-            // Check if fadeIn custom action appears with "action:" prefix
-            const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+            // Check if fadeIn custom action appears with " (action)" suffix
+            const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
             expect(fadeIn).toBeDefined();
-            expect(fadeIn?.insertText).toBe('fadeIn'); // No prefix in insertText
+            expect(fadeIn?.insertText).toBe('fadeIn'); // No suffix in insertText
             expect(fadeIn?.kind).toBe(3); // CompletionItemKind.Function
           },
         });
       });
 
-      it('T005: should show operations with "operation:" prefix', async () => {
+      it('T005: should show operations with " (operation)" suffix', async () => {
         await completion({
           text: `
             action test [
@@ -646,18 +646,18 @@ describe('Eligian Completion Provider', () => {
           `,
           index: 0,
           assert: (completions: CompletionList) => {
-            // Check if selectElement operation appears with "operation:" prefix
+            // Check if selectElement operation appears with " (operation)" suffix
             const selectElement = completions.items.find(
-              item => item.label === 'operation: selectElement'
+              item => item.label === 'selectElement (operation)'
             );
             expect(selectElement).toBeDefined();
-            expect(selectElement?.insertText).toBe('selectElement'); // No prefix in insertText
+            expect(selectElement?.insertText).toBe('selectElement'); // No suffix in insertText
             expect(selectElement?.kind).toBe(3); // CompletionItemKind.Function
           },
         });
       });
 
-      it('T006: should show both operations and actions with prefixes in action bodies', async () => {
+      it('T006: should show both operations and actions with suffixes in action bodies', async () => {
         await completion({
           text: `
             action fadeIn() [
@@ -673,20 +673,20 @@ describe('Eligian Completion Provider', () => {
             // Should have both operations and actions
             expect(completions.items.length).toBeGreaterThan(0);
 
-            // Check for operation with prefix
+            // Check for operation with suffix
             const selectElement = completions.items.find(
-              item => item.label === 'operation: selectElement'
+              item => item.label === 'selectElement (operation)'
             );
             expect(selectElement).toBeDefined();
 
-            // Check for action with prefix
-            const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+            // Check for action with suffix
+            const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
             expect(fadeIn).toBeDefined();
           },
         });
       });
 
-      it('T007: should show completions with prefixes in control flow (if/for)', async () => {
+      it('T007: should show completions with suffixes in control flow (if/for)', async () => {
         await completion({
           text: `
             action fadeIn() [
@@ -701,20 +701,20 @@ describe('Eligian Completion Provider', () => {
           `,
           index: 0,
           assert: (completions: CompletionList) => {
-            // Check for operation with prefix
+            // Check for operation with suffix
             const selectElement = completions.items.find(
-              item => item.label === 'operation: selectElement'
+              item => item.label === 'selectElement (operation)'
             );
             expect(selectElement).toBeDefined();
 
-            // Check for action with prefix
-            const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+            // Check for action with suffix
+            const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
             expect(fadeIn).toBeDefined();
           },
         });
       });
 
-      it('T008: should show only operations (with prefix) when file has no custom actions', async () => {
+      it('T008: should show only operations (with suffix) when file has no custom actions', async () => {
         await completion({
           text: `
             action test [
@@ -726,14 +726,14 @@ describe('Eligian Completion Provider', () => {
             // Should have operations
             expect(completions.items.length).toBeGreaterThan(0);
 
-            // All operations should have "operation:" prefix
+            // All operations should have " (operation)" suffix
             const operations = completions.items.filter(item =>
-              item.label.startsWith('operation:')
+              item.label.endsWith(' (operation)')
             );
             expect(operations.length).toBeGreaterThan(0);
 
             // No actions should be present (no custom actions defined)
-            const actions = completions.items.filter(item => item.label.startsWith('action:'));
+            const actions = completions.items.filter(item => item.label.endsWith(' (action)'));
             expect(actions.length).toBe(0);
           },
         });
@@ -763,10 +763,10 @@ describe('Eligian Completion Provider', () => {
             const items = completions.items;
 
             // Check that sortText is set correctly (case-insensitive name)
-            const fadeIn = items.find(item => item.label === 'action: fadeIn');
-            const setup = items.find(item => item.label === 'action: setup');
-            const addClass = items.find(item => item.label === 'operation: addClass');
-            const selectElement = items.find(item => item.label === 'operation: selectElement');
+            const fadeIn = items.find(item => item.label === 'fadeIn (action)');
+            const setup = items.find(item => item.label === 'setup (action)');
+            const addClass = items.find(item => item.label === 'addClass (operation)');
+            const selectElement = items.find(item => item.label === 'selectElement (operation)');
 
             expect(fadeIn?.sortText).toBe('fadein');
             expect(setup?.sortText).toBe('setup');
@@ -806,8 +806,8 @@ describe('Eligian Completion Provider', () => {
             // This test verifies case-insensitive sortText is set correctly
             const items = completions.items;
 
-            const aaa = items.find(item => item.label === 'action: AAA');
-            const zzz = items.find(item => item.label === 'action: zzz');
+            const aaa = items.find(item => item.label === 'AAA (action)');
+            const zzz = items.find(item => item.label === 'zzz (action)');
 
             // Check sortText is lowercase (case-insensitive)
             expect(aaa?.sortText).toBe('aaa');
@@ -820,8 +820,8 @@ describe('Eligian Completion Provider', () => {
       });
     });
 
-    describe('User Story 3: Prefix Clarity for Type Distinction', () => {
-      it('T017: should insert operation name without prefix', async () => {
+    describe('User Story 3: Suffix Clarity for Type Distinction', () => {
+      it('T017: should insert operation name without suffix', async () => {
         await completion({
           text: `
             action test [
@@ -831,16 +831,16 @@ describe('Eligian Completion Provider', () => {
           index: 0,
           assert: (completions: CompletionList) => {
             const selectElement = completions.items.find(
-              item => item.label === 'operation: selectElement'
+              item => item.label === 'selectElement (operation)'
             );
             expect(selectElement).toBeDefined();
-            expect(selectElement?.insertText).toBe('selectElement'); // No prefix
-            expect(selectElement?.label).toBe('operation: selectElement'); // With prefix
+            expect(selectElement?.insertText).toBe('selectElement'); // No suffix
+            expect(selectElement?.label).toBe('selectElement (operation)'); // With suffix
           },
         });
       });
 
-      it('T018: should insert action name without prefix', async () => {
+      it('T018: should insert action name without suffix', async () => {
         await completion({
           text: `
             action fadeIn() [
@@ -853,15 +853,15 @@ describe('Eligian Completion Provider', () => {
           `,
           index: 0,
           assert: (completions: CompletionList) => {
-            const fadeIn = completions.items.find(item => item.label === 'action: fadeIn');
+            const fadeIn = completions.items.find(item => item.label === 'fadeIn (action)');
             expect(fadeIn).toBeDefined();
-            expect(fadeIn?.insertText).toBe('fadeIn'); // No prefix
-            expect(fadeIn?.label).toBe('action: fadeIn'); // With prefix
+            expect(fadeIn?.insertText).toBe('fadeIn'); // No suffix
+            expect(fadeIn?.label).toBe('fadeIn (action)'); // With suffix
           },
         });
       });
 
-      it('T019: should have consistent prefix format for all items', async () => {
+      it('T019: should have consistent suffix format for all items', async () => {
         await completion({
           text: `
             action customAction() [
@@ -874,22 +874,22 @@ describe('Eligian Completion Provider', () => {
           `,
           index: 0,
           assert: (completions: CompletionList) => {
-            // Check all operations have "operation:" prefix
+            // Check all operations have " (operation)" suffix
             const operations = completions.items.filter(item =>
-              item.label.startsWith('operation:')
+              item.label.endsWith(' (operation)')
             );
             expect(operations.length).toBeGreaterThan(0);
 
-            // Check all custom actions have "action:" prefix
-            const actions = completions.items.filter(item => item.label.startsWith('action:'));
+            // Check all custom actions have " (action)" suffix
+            const actions = completions.items.filter(item => item.label.endsWith(' (action)'));
             expect(actions.length).toBeGreaterThan(0);
 
-            // Verify no operations have "action:" prefix and vice versa
+            // Verify all operations have " (operation)" suffix and actions have " (action)" suffix
             for (const op of operations) {
-              expect(op.label).toMatch(/^operation: [a-zA-Z]+$/);
+              expect(op.label).toMatch(/^[a-zA-Z]+ \(operation\)$/);
             }
             for (const action of actions) {
-              expect(action.label).toMatch(/^action: [a-zA-Z]+$/);
+              expect(action.label).toMatch(/^[a-zA-Z]+ \(action\)$/);
             }
           },
         });

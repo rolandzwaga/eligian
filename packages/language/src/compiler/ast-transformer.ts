@@ -17,6 +17,7 @@
 
 import { Effect } from 'effect';
 import { AstUtils, type URI } from 'langium';
+import { getController, isController } from '../completion/metadata/controllers.generated.js';
 import type { TransformError } from '../errors/index.js';
 import type {
   ActionDefinition,
@@ -1408,6 +1409,21 @@ const transformOperationCall = (
     const operationName = getOperationCallName(opCall);
     const args = opCall.args || [];
 
+    // Feature 035 T011: Transform addController into getControllerInstance + addControllerToElement
+    // This is handled in transformOperationStatement which can return multiple operations
+    // Here we just validate that addController is not called directly (it should be caught by validation)
+    if (operationName === 'addController') {
+      return yield* _(
+        Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message:
+            'addController is syntactic sugar and should be transformed by transformOperationStatement',
+          location: getSourceLocation(opCall),
+        })
+      );
+    }
+
     // T218: Validate operation before transforming
     const validationResult = validateOperation(operationName, args.length);
     if (!validationResult.success) {
@@ -1496,8 +1512,98 @@ const transformOperationStatement = (
   Effect.gen(function* (_) {
     switch (stmt.$type) {
       case 'OperationCall': {
-        // T058: US3 - Check if this is an action call (for control flow in timelines)
+        // Feature 035 T011: Transform addController calls
+        // addController('LabelController', "label.id") →
+        //   getControllerInstance({ systemName: 'LabelController' })
+        //   addControllerToElement({ labelId: "label.id" })
         const operationName = getOperationCallName(stmt);
+
+        if (operationName === 'addController') {
+          const args = stmt.args || [];
+
+          // First argument must be controller name (string literal)
+          if (args.length === 0 || args[0].$type !== 'StringLiteral') {
+            return yield* _(
+              Effect.fail({
+                _tag: 'TransformError' as const,
+                kind: 'ValidationError' as const,
+                message:
+                  'addController requires controller name as first argument (string literal)',
+                location: getSourceLocation(stmt),
+              })
+            );
+          }
+
+          const controllerName = args[0].value;
+
+          // Validate controller exists
+          if (!isController(controllerName)) {
+            return yield* _(
+              Effect.fail({
+                _tag: 'TransformError' as const,
+                kind: 'ValidationError' as const,
+                message: `Unknown controller: '${controllerName}'`,
+                location: getSourceLocation(stmt),
+              })
+            );
+          }
+
+          const controller = getController(controllerName);
+          if (!controller) {
+            return yield* _(
+              Effect.fail({
+                _tag: 'TransformError' as const,
+                kind: 'InvalidAction' as const,
+                message: `Failed to get controller metadata for '${controllerName}'`,
+                location: getSourceLocation(stmt),
+              })
+            );
+          }
+
+          // Transform remaining arguments (args[1+]) to parameter object
+          const paramArgs = args.slice(1);
+          const parameterData: Record<string, JsonValue> = {};
+
+          for (let i = 0; i < paramArgs.length; i++) {
+            const param = controller.parameters[i];
+            if (!param) {
+              return yield* _(
+                Effect.fail({
+                  _tag: 'TransformError' as const,
+                  kind: 'ValidationError' as const,
+                  message: `Too many parameters for controller '${controllerName}'`,
+                  location: getSourceLocation(stmt),
+                })
+              );
+            }
+
+            const argValue = yield* _(transformExpression(paramArgs[i], scope));
+            parameterData[param.name] = argValue;
+          }
+
+          // Generate two operations: getControllerInstance + addControllerToElement
+          const operations: OperationConfigIR[] = [];
+
+          // 1. getControllerInstance
+          operations.push({
+            id: crypto.randomUUID(),
+            systemName: 'getControllerInstance',
+            operationData: { systemName: controllerName },
+            sourceLocation: getSourceLocation(stmt),
+          });
+
+          // 2. addControllerToElement
+          operations.push({
+            id: crypto.randomUUID(),
+            systemName: 'addControllerToElement',
+            operationData: parameterData,
+            sourceLocation: getSourceLocation(stmt),
+          });
+
+          return operations;
+        }
+
+        // T058: US3 - Check if this is an action call (for control flow in timelines)
         // If allActions is provided, search there (includes imported actions)
         // Otherwise, if program is passed, use it; otherwise walk up container chain
         const actionDef = allActions

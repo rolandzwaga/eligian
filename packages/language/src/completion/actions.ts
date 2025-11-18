@@ -32,10 +32,10 @@ export function getActionCompletions(document: LangiumDocument): CompletionItem[
     const documentation = buildActionDocumentation(action);
 
     return {
-      label: `action: ${action.name}`, // Prefix with "action:" for clarity
-      insertText: action.name, // Insert only the name (without prefix)
-      filterText: action.name, // Filter by name only (without prefix)
-      kind: CompletionItemKind.Function, // Use Function (same as operations, prefix distinguishes)
+      label: `${action.name} (action)`, // Suffix with "(action)" for clarity
+      insertText: action.name, // Insert only the name (without suffix)
+      filterText: action.name, // Filter by name only (without suffix)
+      kind: CompletionItemKind.Function, // Use Function (same as operations, suffix distinguishes)
       sortText: action.name.toLowerCase(), // Sort alphabetically by name (case-insensitive)
       detail: signature,
       documentation: documentation
