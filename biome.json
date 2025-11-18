@@ -60,7 +60,7 @@
       }
     },
     {
-      "includes": ["**/__tests__/**/fixtures/**/*.json"],
+      "includes": ["**/__tests__/**/fixtures/**/*.json", "**/coverage/**/*.json"],
       "linter": {
         "enabled": false
       },
