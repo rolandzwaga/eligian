@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
+import { type AstNode, AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
 import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 import {

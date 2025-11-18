@@ -19,9 +19,9 @@ describe('T224: Operation Registry Tests', () => {
   describe('Registry completeness', () => {
     it('should have all non-deprecated operations registered', () => {
       const allOperations = getAllOperations();
-      // Now includes ALL Eligius operations (not filtered by OPERATION_SYSTEM_NAMES)
-      // Count will match the number of operations in Eligius metadata
-      expect(allOperations.length).toBe(79);
+      // Now includes ALL Eligius operations + synthetic operations
+      // 79 Eligius operations + 1 synthetic (addController) = 80 total
+      expect(allOperations.length).toBe(80);
     });
 
     it('should have no duplicate operation names', () => {
@@ -119,6 +119,33 @@ describe('T224: Operation Registry Tests', () => {
           expect(output.name).toBeTruthy();
           expect(output.type).toBeDefined();
         }
+      }
+    });
+  });
+
+  describe('Synthetic operations', () => {
+    it('should include addController as a synthetic DSL operation', () => {
+      // addController is a DSL-specific operation that doesn't exist in Eligius
+      // It's transformed to getControllerInstance + addControllerToElement during compilation
+      const sig = getOperationSignature('addController');
+      expect(sig).toBeDefined();
+      expect(sig?.systemName).toBe('addController');
+      expect(sig?.category).toBe('Controller');
+
+      // Verify it's in the registry
+      expect(OPERATION_REGISTRY.addController).toBeDefined();
+    });
+
+    it('should have exactly 1 synthetic operation (80 total = 79 Eligius + 1 synthetic)', () => {
+      const syntheticOperations = ['addController'];
+      const totalOperations = Object.keys(OPERATION_REGISTRY).length;
+
+      expect(totalOperations).toBe(80);
+      expect(syntheticOperations.length).toBe(1);
+
+      // Verify all synthetic operations are present
+      for (const syntheticOp of syntheticOperations) {
+        expect(OPERATION_REGISTRY[syntheticOp]).toBeDefined();
       }
     });
   });
@@ -253,7 +280,7 @@ describe('T224: Operation Registry Tests', () => {
       expect(typeof registry).toBe('object');
 
       const keys = Object.keys(registry);
-      expect(keys.length).toBe(79);
+      expect(keys.length).toBe(80); // 79 Eligius operations + 1 synthetic (addController)
 
       for (const key of keys) {
         const operation = registry[key];

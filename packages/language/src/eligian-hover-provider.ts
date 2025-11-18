@@ -12,6 +12,7 @@ import { AstNodeHoverProvider } from 'langium/lsp';
 import type { Hover, HoverParams } from 'vscode-languageserver';
 import { getOperationSignature } from './compiler/operations/index.js';
 import type { OperationSignature } from './compiler/operations/types.js';
+import { getController } from './completion/metadata/controllers.generated.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
@@ -118,6 +119,14 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       const opName = getOperationCallName(operationCall);
 
       if (opName) {
+        // Feature 035 US3: Check if this is an addController() call
+        if (opName === 'addController') {
+          const controllerHover = this.buildControllerHover(cstNode.astNode, document, params);
+          if (controllerHover) {
+            return controllerHover;
+          }
+        }
+
         // First, check if this is a built-in operation
         const signature = getOperationSignature(opName);
         if (signature) {
@@ -294,6 +303,106 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       return type.map(t => `\`${t}\``).join(' | ');
     }
     return `\`${type}\``;
+  }
+
+  /**
+   * Build hover content for addController() calls
+   *
+   * Shows controller documentation when hovering over:
+   * - Controller name (first parameter)
+   * - Label ID (second parameter for LabelController)
+   *
+   * Feature: 035-specialized-controller-syntax
+   * User Story: US3
+   */
+  private buildControllerHover(
+    node: AstNode,
+    document: LangiumDocument,
+    _params: HoverParams
+  ): Hover | undefined {
+    // Check if we're hovering over a string literal in addController() args
+    if (node.$type !== 'StringLiteral') {
+      return undefined;
+    }
+
+    const stringLiteral = node as any;
+    const stringValue = stringLiteral.value;
+
+    // Try to find the OperationCall parent
+    const operationCall = AstUtils.getContainerOfType(node, isOperationCall);
+    if (!operationCall) {
+      return undefined;
+    }
+
+    const args = operationCall.args || [];
+
+    // Determine which parameter this is (0 = controller name, 1 = first param, etc.)
+    const paramIndex = args.indexOf(stringLiteral);
+    if (paramIndex === -1) {
+      return undefined;
+    }
+
+    if (paramIndex === 0) {
+      // Hovering over controller name - show controller documentation
+      const controller = getController(stringValue);
+      if (!controller) {
+        return undefined;
+      }
+
+      const builder = new MarkdownBuilder();
+
+      // Controller name header
+      builder.heading(3, controller.name).blank();
+
+      // Description
+      if (controller.description) {
+        builder.text(controller.description).blank();
+      }
+
+      // Parameters
+      if (controller.parameters.length > 0) {
+        builder.text('**Parameters:**');
+        const paramItems = controller.parameters.map(param => {
+          const required = param.required ? '' : '?';
+          const type = typeof param.type === 'string' ? param.type : 'object';
+          return `\`${param.name}${required}\` (\`${type}\`)${param.description ? ` - ${param.description}` : ''}`;
+        });
+        builder.list(paramItems).blank();
+      } else {
+        builder.text('**Parameters:** *none*').blank();
+      }
+
+      return createMarkdownHover(builder.build());
+    } else if (paramIndex === 1) {
+      // Hovering over second parameter - check if this is LabelController
+      const controllerName =
+        args[0]?.$type === 'StringLiteral' ? (args[0] as any).value : undefined;
+
+      if (controllerName === 'LabelController') {
+        // Show label ID metadata
+        const documentUri = document.uri.toString();
+        const metadata = this.labelRegistry.findLabelMetadata(documentUri, stringValue);
+
+        if (!metadata) {
+          return undefined;
+        }
+
+        const builder = new MarkdownBuilder();
+
+        // Label ID header
+        builder.heading(3, `Label: ${stringValue}`).blank();
+
+        // Metadata
+        builder.text(`**Translations:** ${metadata.translationCount}`);
+        if (metadata.languageCodes && metadata.languageCodes.length > 0) {
+          builder.text(`**Languages:** ${metadata.languageCodes.join(', ')}`);
+        }
+
+        return createMarkdownHover(builder.build());
+      }
+    }
+
+    return undefined;
   }
 
   /**

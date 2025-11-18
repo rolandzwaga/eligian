@@ -10,6 +10,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { IControllerMetadata, IOperationMetadata, TPropertyMetadata } from 'eligius';
 import { ctrlmetadata, eventmetadata, metadata } from 'eligius';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,20 +34,23 @@ const FILTERED_OPERATIONS = new Set([
 /**
  * Convert IOperationMetadata to our simplified structure
  */
-function convertMetadata(name: string, metadataFn: () => any) {
-  const metadata = metadataFn(); // Call the function to get the metadata object
+function convertOperationMetadata(name: string, metadataFn: () => IOperationMetadata<any>) {
+  const metadata = metadataFn();
 
   // Extract parameters from properties
   const parameters = [];
   if (metadata.properties) {
     for (const [paramName, paramMeta] of Object.entries(metadata.properties)) {
+      const propMeta = paramMeta as TPropertyMetadata;
+
       // Handle both simple string types and complex objects
-      const paramType = typeof paramMeta === 'string' ? paramMeta : (paramMeta as any).type;
-      const required = typeof paramMeta === 'object' && (paramMeta as any).required === true;
+      const paramType = typeof propMeta === 'string' ? propMeta : propMeta.type;
+      const required = typeof propMeta === 'object' && propMeta.required === true;
       const defaultValue =
-        typeof paramMeta === 'object' ? (paramMeta as any).defaultValue : undefined;
-      const description =
-        typeof paramMeta === 'object' ? (paramMeta as any).description : undefined;
+        typeof propMeta === 'object' && 'defaultValue' in propMeta
+          ? propMeta.defaultValue
+          : undefined;
+      const description = typeof propMeta === 'object' ? propMeta.description : undefined;
 
       parameters.push({
         name: paramName,
@@ -59,7 +63,7 @@ function convertMetadata(name: string, metadataFn: () => any) {
   }
 
   // Extract dependencies
-  const dependencies = metadata.dependentProperties || [];
+  const dependencies = (metadata.dependentProperties as string[]) || [];
 
   // Extract outputs from outputProperties
   const outputs = [];
@@ -72,9 +76,52 @@ function convertMetadata(name: string, metadataFn: () => any) {
   return {
     name,
     description: metadata.description || '',
+    category: metadata.category || 'Uncategorized',
     parameters,
     dependencies,
     outputs,
+  };
+}
+
+/**
+ * Convert IControllerMetadata to our simplified structure
+ */
+function convertControllerMetadata(name: string, metadataFn: () => IControllerMetadata<any>) {
+  const metadata = metadataFn();
+
+  // Extract parameters from properties
+  const parameters = [];
+  if (metadata.properties) {
+    for (const [paramName, paramMeta] of Object.entries(metadata.properties)) {
+      const propMeta = paramMeta as TPropertyMetadata;
+
+      // Handle both simple string types and complex objects
+      const paramType = typeof propMeta === 'string' ? propMeta : propMeta.type;
+      const required = typeof propMeta === 'object' && propMeta.required === true;
+      const defaultValue =
+        typeof propMeta === 'object' && 'defaultValue' in propMeta
+          ? propMeta.defaultValue
+          : undefined;
+      const description = typeof propMeta === 'object' ? propMeta.description : undefined;
+
+      parameters.push({
+        name: paramName,
+        type: paramType,
+        required,
+        defaultValue,
+        description,
+      });
+    }
+  }
+
+  // Extract dependencies
+  const dependencies = (metadata.dependentProperties as string[]) || [];
+
+  return {
+    name,
+    description: metadata.description || '',
+    parameters,
+    dependencies,
   };
 }
 
@@ -89,7 +136,7 @@ function generateOperationsMetadata(metadataModule: any) {
     // Skip non-function exports (like types)
     if (typeof metadataFn !== 'function') continue;
 
-    const metadata = convertMetadata(name, metadataFn as () => any);
+    const metadata = convertOperationMetadata(name, metadataFn as () => IOperationMetadata<any>);
     operations.push(metadata);
   }
 
@@ -112,6 +159,7 @@ function generateOperationsMetadata(metadataModule: any) {
 export interface OperationMetadata {
   name: string;
   description: string;
+  category: string;
   parameters: ParameterMetadata[];
   dependencies: string[];
   outputs: string[];
@@ -222,10 +270,8 @@ function generateControllersMetadata(ctrlmetadataModule: any) {
     // Skip non-function exports
     if (typeof metadataFn !== 'function') continue;
 
-    const metadata = convertMetadata(name, metadataFn as () => any);
-    // Controllers don't have outputs (unlike operations), so remove that field
-    const { outputs, ...controllerMetadata } = metadata;
-    controllers.push(controllerMetadata);
+    const metadata = convertControllerMetadata(name, metadataFn as () => IControllerMetadata<any>);
+    controllers.push(metadata);
   }
 
   // Sort alphabetically by name

@@ -43,10 +43,11 @@ describe('Operation Registry', () => {
       resetRegistry();
       const registry2 = loadOperationRegistry();
 
-      // Should return the same array (both reference the same OPERATIONS constant)
-      // Reset just clears the cache, but loadOperationRegistry returns the same array reference
-      expect(registry1).toBe(registry2);
+      // Should create a new array after reset (due to sorting and merging synthetic operations)
+      // But should have the same length and content
+      expect(registry1).not.toBe(registry2); // Different array references
       expect(registry1.length).toBe(registry2.length);
+      expect(registry1[0].name).toBe(registry2[0].name); // Same content
     });
   });
 
@@ -189,11 +190,13 @@ describe('Operation Registry', () => {
       expect(count).toBe(getAllOperations().length);
     });
 
-    it('should return 76 operations (current Eligius 1.4.1)', () => {
+    it('should return 77 operations (76 Eligius + 1 synthetic)', () => {
       const count = getOperationCount();
 
-      // This is the expected count for Eligius 1.4.1 (76 operations)
-      expect(count).toBe(76);
+      // Eligius 1.4.1 has 76 operations
+      // We add 1 synthetic operation (addController)
+      // Total: 77 operations
+      expect(count).toBe(77);
     });
   });
 });

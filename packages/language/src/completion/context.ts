@@ -73,6 +73,15 @@ export interface CursorContext {
 
   /** True if cursor is after 'on event' keyword (before the string) */
   isAfterEventKeyword: boolean;
+
+  /** True if cursor is in addController() first parameter (controller name) */
+  isInControllerName: boolean;
+
+  /** Controller name if cursor is in addController() and controller is known */
+  controllerName?: string;
+
+  /** Parameter index if cursor is in addController() parameters (0 = controller name, 1 = first param, etc.) */
+  controllerParameterIndex?: number;
 }
 
 /**
@@ -121,6 +130,7 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
     isAfterVariablePrefix: false,
     isInEventNameString: false,
     isAfterEventKeyword: false,
+    isInControllerName: false,
     cstNode,
   };
 
@@ -181,6 +191,14 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
 
     // Check if cursor is after "on event" keyword (before the string)
     context.isAfterEventKeyword = detectAfterEventKeyword(document, offset, eventAction);
+  }
+
+  // Detect controller completion context (Feature 035 US3)
+  if (operationCall) {
+    const controllerContext = detectControllerContext(document, offset, cstNode, operationCall);
+    context.isInControllerName = controllerContext.isInControllerName;
+    context.controllerName = controllerContext.controllerName;
+    context.controllerParameterIndex = controllerContext.parameterIndex;
   }
 
   return context;
@@ -301,4 +319,85 @@ function detectAfterEventKeyword(
 
   // Check if text ends with "on event" (possibly with whitespace)
   return /\bon\s+event\s*$/.test(textBeforeCursor);
+}
+
+/**
+ * Detect if cursor is in addController() call parameters
+ *
+ * This function determines:
+ * 1. If we're inside an addController() operation call
+ * 2. Which parameter index the cursor is at (0 = controller name, 1 = first param, etc.)
+ * 3. What controller name is being used (if known)
+ *
+ * Used to trigger controller name and label ID completions.
+ *
+ * Feature: 035-specialized-controller-syntax
+ * User Story: US3
+ *
+ * @param document - The Langium document
+ * @param offset - The cursor offset
+ * @param cstNode - The CST node at the cursor position
+ * @param operationCall - The OperationCall containing the cursor
+ * @returns Controller context information
+ */
+function detectControllerContext(
+  document: LangiumDocument,
+  offset: number,
+  cstNode: CstNode | undefined,
+  operationCall: OperationCall
+): {
+  isInControllerName: boolean;
+  controllerName?: string;
+  parameterIndex?: number;
+} {
+  // Check if this is an addController() call
+  const operationName = getOperationCallName(operationCall);
+  if (operationName !== 'addController') {
+    return { isInControllerName: false };
+  }
+
+  // Get all arguments from the operation call
+  const args = operationCall.args || [];
+
+  // If no CST node, can't determine precise position
+  if (!cstNode) {
+    return { isInControllerName: false };
+  }
+
+  // Get text content to check cursor position
+  const text = document.textDocument.getText();
+  const callStart = operationCall.$cstNode?.offset || 0;
+  const textInCall = text.substring(callStart, offset);
+
+  // Check if cursor is in a STRING token (parameter value)
+  const nodeText = cstNode.text;
+  const isInString = nodeText.includes('"') || nodeText.includes("'");
+
+  // Check if cursor is right after opening parenthesis (before any string literals)
+  // e.g., "addController(|" where | is cursor
+  const isAfterOpenParen = textInCall.trim().endsWith('(');
+
+  if (!isInString && !isAfterOpenParen) {
+    return { isInControllerName: false };
+  }
+
+  // Determine which parameter index by counting strings before cursor
+  // Count string literals before cursor (each string = one parameter)
+  const stringMatches = textInCall.match(/["']/g) || [];
+  const parameterIndex = Math.floor(stringMatches.length / 2); // Each param has 2 quotes
+
+  // First parameter (index 0) is controller name
+  const isInControllerName = parameterIndex === 0;
+
+  // Try to extract controller name from first argument (if it's a StringLiteral)
+  let controllerName: string | undefined;
+  if (args.length > 0 && args[0].$type === 'StringLiteral') {
+    controllerName = (args[0] as any).value;
+  }
+
+  return {
+    isInControllerName,
+    controllerName,
+    parameterIndex,
+  };
 }
