@@ -14,6 +14,8 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
+import { LabelEditorProvider } from './label-editor/LabelEditorProvider.js';
+import { LabelLinkProvider } from './label-link-provider.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
@@ -53,6 +55,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const diagnostics = PreviewPanel.initializeDiagnostics();
   context.subscriptions.push(diagnostics);
 
+  // T016: Register custom editor provider for label JSON files (Feature 036 - User Story 1)
+  const labelEditorProvider = new LabelEditorProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider('eligian.labelEditor', labelEditorProvider, {
+      webviewOptions: {
+        retainContextWhenHidden: true,
+      },
+    })
+  );
+
+  // T017: Register document link provider for label imports (Feature 036 - User Story 1)
+  // Uses DocumentLinkProvider instead of DefinitionProvider to avoid opening on hover
+  const linkProvider = new LabelLinkProvider();
+  context.subscriptions.push(
+    vscode.languages.registerDocumentLinkProvider({ language: 'eligian' }, linkProvider)
+  );
+
+  // Register command to open label files in Label Editor (used by DocumentLinkProvider)
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.openLabelFile', (fileUriString: string) => {
+      const fileUri = vscode.Uri.parse(fileUriString);
+      vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.labelEditor');
+    })
+  );
+
   // Register compile command
   context.subscriptions.push(registerCompileCommand());
 
@@ -64,6 +91,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
+
+  // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
+  context.subscriptions.push(registerOpenLabelEditorCommand());
 
   // Initialize block label decoration provider
   blockLabelProvider = new BlockLabelDecorationProvider();
@@ -355,6 +385,53 @@ function registerJSDocAutoCompletion(_client: LanguageClient): any {
         // Trigger JSDoc generation command
         await vscode.commands.executeCommand('eligian.generateJSDoc');
       }
+    }
+  });
+}
+
+/**
+ * Register the "Edit Labels" command (T018 - Feature 036 - User Story 1)
+ * Opens label JSON files in the custom Label Editor
+ */
+function registerOpenLabelEditorCommand(): vscode.Disposable {
+  return vscode.commands.registerCommand('eligian.openLabelEditor', async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage('No active editor');
+      return;
+    }
+
+    const document = editor.document;
+    if (document.languageId !== 'eligian') {
+      vscode.window.showErrorMessage('Not an Eligian file');
+      return;
+    }
+
+    // Get cursor position
+    const position = editor.selection.active;
+    const line = document.lineAt(position).text;
+
+    // Check if line matches label import pattern
+    const pattern = /labels\s+"([^"]+)"/;
+    const match = pattern.exec(line);
+
+    if (!match) {
+      vscode.window.showErrorMessage('Cursor is not on a label import statement');
+      return;
+    }
+
+    // Extract file path
+    const relativePath = match[1];
+
+    // Resolve relative path to absolute URI
+    try {
+      const documentDir = vscode.Uri.joinPath(document.uri, '..');
+      const labelFileUri = vscode.Uri.joinPath(documentDir, relativePath);
+
+      // Open with custom editor
+      await vscode.commands.executeCommand('vscode.openWith', labelFileUri, 'eligian.labelEditor');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open label file: ${error}`);
     }
   });
 }

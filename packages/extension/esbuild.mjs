@@ -65,12 +65,33 @@ const webviewCtx = await esbuild.context({
     plugins
 });
 
+// Build label editor webview script (Browser)
+const labelEditorCtx = await esbuild.context({
+    entryPoints: ['media/label-editor.ts'],
+    outdir: 'out/media',
+    bundle: true,
+    target: 'es2020',
+    format: 'iife',
+    platform: 'browser',
+    sourcemap: !minify,
+    minify,
+    // Provide empty stubs for Node.js modules (not used in browser context)
+    alias: {
+        'node:fs': './media/empty-stub.ts',
+        'node:path': './media/empty-stub.ts'
+    },
+    plugins
+});
+
 if (watch) {
     await ctx.watch();
     await webviewCtx.watch();
+    await labelEditorCtx.watch();
 } else {
     await ctx.rebuild();
     await webviewCtx.rebuild();
+    await labelEditorCtx.rebuild();
     ctx.dispose();
     webviewCtx.dispose();
+    labelEditorCtx.dispose();
 }
