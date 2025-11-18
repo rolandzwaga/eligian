@@ -258,7 +258,10 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
           const errors = this.validateLabels(message.labels);
           console.log('[LabelEditorProvider] Validation errors:', errors.length);
           if (errors.length > 0) {
-            console.log('[LabelEditorProvider] VALIDATION ERRORS:', JSON.stringify(errors, null, 2));
+            console.log(
+              '[LabelEditorProvider] VALIDATION ERRORS:',
+              JSON.stringify(errors, null, 2)
+            );
             const errorMessage: ToWebviewMessage = {
               type: 'validation-error',
               errors,
@@ -313,19 +316,17 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
             confirmMessage = `Label '${message.groupId}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
           }
 
-          vscode.window.showWarningMessage(
-            confirmMessage,
-            { modal: true },
-            'Delete'
-          ).then(choice => {
-            if (choice === 'Delete') {
-              const confirmMessage: ToWebviewMessage = {
-                type: 'delete-confirmed',
-                index: message.index,
-              };
-              webviewPanel.webview.postMessage(confirmMessage);
-            }
-          });
+          vscode.window
+            .showWarningMessage(confirmMessage, { modal: true }, 'Delete')
+            .then(choice => {
+              if (choice === 'Delete') {
+                const confirmMessage: ToWebviewMessage = {
+                  type: 'delete-confirmed',
+                  index: message.index,
+                };
+                webviewPanel.webview.postMessage(confirmMessage);
+              }
+            });
         }
         break;
     }

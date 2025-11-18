@@ -6,7 +6,6 @@ import {
   compile,
   formatErrors,
 } from '@eligian/language';
-import { LabelLinkProvider } from './label-link-provider.js';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
@@ -16,6 +15,7 @@ import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
 import { LabelEditorProvider } from './label-editor/LabelEditorProvider.js';
+import { LabelLinkProvider } from './label-link-provider.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;

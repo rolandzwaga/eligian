@@ -54,12 +54,7 @@ export class LabelLinkProvider implements vscode.DocumentLinkProvider {
         const startChar = match.index + match[0].indexOf('"') + 1; // +1 to skip opening quote
         const endChar = startChar + relativePath.length;
 
-        const range = new vscode.Range(
-          lineNum,
-          startChar,
-          lineNum,
-          endChar
-        );
+        const range = new vscode.Range(lineNum, startChar, lineNum, endChar);
 
         // Resolve the path to absolute URI
         const fileUri = this.resolveRelativePath(document.uri, relativePath);

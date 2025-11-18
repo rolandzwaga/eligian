@@ -5,11 +5,11 @@
  * by updating only changed elements instead of recreating the entire DOM.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  captureFocusState,
   reconcileInputValue,
   reconcileLabelGroups,
-  captureFocusState,
   restoreFocusState,
 } from '../dom-reconciliation.js';
 
@@ -97,9 +97,7 @@ describe('DOM Reconciliation', () => {
   describe('reconcileLabelGroups', () => {
     it('should add new group elements', () => {
       // ARRANGE
-      const newGroups = [
-        { id: 'group-1', labels: [] }
-      ];
+      const newGroups = [{ id: 'group-1', labels: [] }];
 
       // ACT
       reconcileLabelGroups(container, [], newGroups);
@@ -131,7 +129,7 @@ describe('DOM Reconciliation', () => {
       // ARRANGE
       const oldGroups = [
         { id: 'group-1', labels: [] },
-        { id: 'group-2', labels: [] }
+        { id: 'group-2', labels: [] },
       ];
       reconcileLabelGroups(container, [], oldGroups);
 
@@ -196,7 +194,7 @@ describe('DOM Reconciliation', () => {
       const focusState = {
         elementId: 'test-input',
         selectionStart: 3,
-        selectionEnd: 3
+        selectionEnd: 3,
       };
 
       // ACT
@@ -212,7 +210,7 @@ describe('DOM Reconciliation', () => {
       const focusState = {
         elementId: 'non-existent',
         selectionStart: 0,
-        selectionEnd: 0
+        selectionEnd: 0,
       };
 
       // ACT & ASSERT (should not throw)

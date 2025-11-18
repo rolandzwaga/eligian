@@ -88,14 +88,14 @@ function saveFocusState(): void {
   const translationElement = activeElement.closest('.translation');
 
   if (groupElement) {
-    const groupIndex = parseInt(groupElement.getAttribute('data-index') || '-1');
+    const groupIndex = parseInt(groupElement.getAttribute('data-index') || '-1', 10);
     if (groupIndex < 0) {
       state.focusedElement = null;
       return;
     }
 
     if (translationElement) {
-      const translationIndex = parseInt(translationElement.getAttribute('data-index') || '-1');
+      const translationIndex = parseInt(translationElement.getAttribute('data-index') || '-1', 10);
       if (translationIndex < 0) {
         state.focusedElement = null;
         return;
@@ -153,9 +153,7 @@ function restoreFocusState(): void {
   if (translationIndex !== undefined && field !== 'groupId') {
     console.log(`[restoreFocusState] Looking for translation[data-index="${translationIndex}"]`);
     // Find translation input by index
-    const translationEl = document.querySelector(
-      `.translation[data-index="${translationIndex}"]`
-    );
+    const translationEl = document.querySelector(`.translation[data-index="${translationIndex}"]`);
     console.log('[restoreFocusState] translationEl found:', !!translationEl);
     if (translationEl) {
       if (field === 'languageCode') {
@@ -250,7 +248,7 @@ window.addEventListener('message', event => {
 });
 
 // Intercept Ctrl+S / Cmd+S to save
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
     sendMessage({ type: 'request-save', labels: state.labels });
