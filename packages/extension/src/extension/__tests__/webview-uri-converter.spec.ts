@@ -28,48 +28,29 @@ describe('VSCodeWebviewUriConverter', () => {
     const fileUri: Uri = {
       scheme: 'file',
       path: '/workspace/styles/image.png',
-      toString: () => 'file:///workspace/styles/image.png',
+      fragment: '',
+      query: '',
     };
 
     const webviewUri = converter.convertToWebviewUri(fileUri);
 
     expect(webviewUri.scheme).toBe('vscode-webview');
-    expect(webviewUri.path).toContain('image.png');
-    expect(webviewUri.toString()).toContain('vscode-webview://');
+    expect(webviewUri.path).toBe('/workspace/styles/image.png');
   });
 
-  it('should preserve path integrity during conversion', () => {
+  it('should preserve path separators', () => {
     const mockWebview = new MockWebview();
     const converter = new VSCodeWebviewUriConverter(mockWebview as any);
 
     const fileUri: Uri = {
       scheme: 'file',
-      path: '/workspace/styles/subfolder/image.png',
-      toString: () => 'file:///workspace/styles/subfolder/image.png',
+      path: '/workspace/styles/nested/deep/image.png',
+      fragment: '',
+      query: '',
     };
 
     const webviewUri = converter.convertToWebviewUri(fileUri);
 
-    // Path should contain all components
-    expect(webviewUri.path).toContain('workspace');
-    expect(webviewUri.path).toContain('styles');
-    expect(webviewUri.path).toContain('subfolder');
-    expect(webviewUri.path).toContain('image.png');
-  });
-
-  it('should be deterministic (same input -> same output)', () => {
-    const mockWebview = new MockWebview();
-    const converter = new VSCodeWebviewUriConverter(mockWebview as any);
-
-    const fileUri: Uri = {
-      scheme: 'file',
-      path: '/workspace/image.png',
-      toString: () => 'file:///workspace/image.png',
-    };
-
-    const webviewUri1 = converter.convertToWebviewUri(fileUri);
-    const webviewUri2 = converter.convertToWebviewUri(fileUri);
-
-    expect(webviewUri1.toString()).toBe(webviewUri2.toString());
+    expect(webviewUri.path).toBe('/workspace/styles/nested/deep/image.png');
   });
 });

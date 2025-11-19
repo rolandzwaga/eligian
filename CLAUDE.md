@@ -5,6 +5,61 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 This project develops a Langium-based domain-specific language (DSL) and compiler for the Eligius library. It provides a high-level, declarative syntax that streamlines writing and validating Eligius programs while maintaining full interoperability with the core library. The project also produces a VS Code extension that delivers integrated language support — including syntax highlighting, validation, autocompletion, and on-the-fly compilation — to make working with Eligius simpler, faster, and less error-prone. The compiler translates DSL code into an optimized Eligius-compatible configuration, enabling better developer productivity, readability, and maintainability across projects that rely on Eligius.
 
+#### ⚠️ CRITICAL Bug Workaround
+
+CRITICAL: Follow these guidelines when using tools operating on file paths EXCEPT `Bash` in any skill or agent. Otherwise, they will not work correctly.
+
+- When referencing file paths in tool calls, ALWAYS use the Windows-style paths with backslashes (`\`), as we're running on Windows.
+- When referencing paths to the home directory, ALWAYS EXPAND the tilde symbol (`~`) representing the home directory to the full path, e.g., `C:\Users\some.user`.
+
+#### Applies To
+
+- `Edit`
+- `Glob`
+- `Grep`
+- `Read`
+
+#### Examples (CRITICAL Bug Workaround)
+
+##### ✅ Correct (File Paths)
+
+```json
+{
+    "type": "tool_use",
+    "id": "...",
+    "name": "Read",
+    "input": {
+        "file_path": "C:\\path\\to\\some\\file.txt"
+    }
+}
+```
+
+```json
+{
+    "type": "tool_use",
+    "id": "...",
+    "name": "Edit",
+    "input": {
+        "file_path": "C:\\path\\to\\some\\file.txt",
+        "old_string": "...",
+        "new_string": "..."
+    }
+}
+```
+
+##### ❌ Incorrect (File Paths)
+
+```json
+{
+    "type": "tool_use",
+    "id": "...",
+    "name": "Read",
+    "input": {
+        "file_path": "/c/path/to/some/file.txt"
+    }
+}
+```
+
 ### Language Name and File Extension
 
 **IMPORTANT**: The DSL language is called **"Eligian"** (derived from "Eligius") and uses the file extension **`.eligian`**.
@@ -78,8 +133,9 @@ pnpm run lint  # Review what issues remain
 # 5. Verify clean:
 pnpm run check  # Should show "0 errors, 0 warnings"
 
-# 6. Run tests to ensure no breakage:
-pnpm run test  # All tests must pass
+# 6. Run tests using vitest-mcp (Constitution Principle XXIII):
+#    - Use mcp__vitest__run_tests tool instead of pnpm test
+#    - All tests must pass
 ```
 
 #### Biome Configuration (`biome.json`)
@@ -128,7 +184,10 @@ Before considering any task complete:
 - [ ] Code changes implemented
 - [ ] `pnpm run build` passes (TypeScript compiles successfully)
 - [ ] `pnpm run check` passes (0 errors, 0 warnings)
-- [ ] `pnpm run test` passes (all tests green)
+- [ ] Tests pass using vitest-mcp tools (Constitution Principle XXIII):
+  - Use `mcp__vitest__set_project_root` to configure project
+  - Use `mcp__vitest__run_tests` with target (file/directory)
+  - Verify all tests pass (no failures in structured result)
 - [ ] Documentation updated (if applicable)
 - [ ] Biome configuration updated (if rules needed adjustment)
 
@@ -1590,6 +1649,11 @@ test("compile valid DSL", async () => {
 4. Package and test extension
 
 ## Available MCP Resources
-- effect-docs: Documentation and examples for Effect-ts usage
-- ide: VS Code integration for diagnostics and code execution
-- Always use context7 when I need code generation, setup or configuration steps, orlibrary/API documentation. This means you should automatically use the Context7 MCP tools to resolve library id and get library docs without me having to explicitly ask.
+- **effect-docs**: Documentation and examples for Effect-ts usage
+- **ide**: VS Code integration for diagnostics and code execution
+- **vitest-mcp**: Programmatic test execution and coverage analysis (Constitution Principle XXIII)
+  - `mcp__vitest__set_project_root`: Configure project root for test execution
+  - `mcp__vitest__run_tests`: Run tests with structured output (use instead of `pnpm test`)
+  - `mcp__vitest__analyze_coverage`: Analyze test coverage with gap identification
+  - `mcp__vitest__list_tests`: Discover test files across the project
+- **context7**: Always use when needing code generation, setup/configuration steps, or library/API documentation. Automatically use Context7 MCP tools to resolve library ID and get library docs without explicit request.

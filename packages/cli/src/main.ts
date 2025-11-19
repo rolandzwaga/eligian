@@ -250,6 +250,3 @@ export default function main(): void {
     program.outputHelp();
   }
 }
-
-// Run the CLI
-main();

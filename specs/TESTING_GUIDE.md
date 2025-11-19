@@ -2,25 +2,27 @@
 
 > **REQUIRED READING**: All developers writing tests for the Eligian project MUST read and follow this guide to avoid common pitfalls and maintain consistency across the test suite.
 
-**Last Updated**: 2025-01-12
-**Test Suite Size**: 1,483 tests across 106 test files
+**Last Updated**: 2025-01-20
+**Test Suite Size**: 1,495 tests across 110 test files
 **Coverage**: 81.72%
-**Framework**: Vitest + Langium Test Utilities
+**Framework**: Vitest + Langium Test Utilities + vitest-mcp
 
 ---
 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Test Infrastructure Overview](#test-infrastructure-overview)
-3. [Essential Patterns](#essential-patterns)
-4. [Program Template Builders](#program-template-builders)
-5. [CSS Registry Management](#css-registry-management)
-6. [Common Mistakes and Solutions](#common-mistakes-and-solutions)
-7. [Minimum Valid Program Requirements](#minimum-valid-program-requirements)
-8. [Test File Organization](#test-file-organization)
-9. [Best Practices](#best-practices)
-10. [Advanced Patterns](#advanced-patterns)
+2. [Running Tests](#running-tests)
+3. [Test Infrastructure Overview](#test-infrastructure-overview)
+4. [Essential Patterns](#essential-patterns)
+5. [Program Template Builders](#program-template-builders)
+6. [CSS Registry Management](#css-registry-management)
+7. [Common Mistakes and Solutions](#common-mistakes-and-solutions)
+8. [Minimum Valid Program Requirements](#minimum-valid-program-requirements)
+9. [Test File Organization](#test-file-organization)
+10. [Best Practices](#best-practices)
+11. [Advanced Patterns](#advanced-patterns)
+12. [Testing Multiple Packages](#testing-multiple-packages)
 
 ---
 
@@ -89,6 +91,246 @@ test('should validate event action', async () => {
   expect(errors).toHaveLength(0);
 });
 ```
+
+---
+
+## Running Tests
+
+### Using vitest-mcp (Required per Constitution Principle XXIII)
+
+The project uses vitest-mcp tools for running tests instead of npm/pnpm scripts. This provides structured output and better integration with the development workflow.
+
+**Constitution Principle XXIII**: All test quality gates MUST use vitest-mcp tools instead of `pnpm test` commands.
+
+**Setup**:
+```typescript
+import { mcp__vitest__set_project_root, mcp__vitest__run_tests } from 'vitest-mcp';
+
+// Set project root (required once)
+await mcp__vitest__set_project_root({ path: 'F:\\projects\\eligius\\eligian' });
+```
+
+**Run specific test file**:
+```typescript
+await mcp__vitest__run_tests({
+  target: './packages/cli/src/__tests__/cli.spec.ts',
+  format: 'summary'  // or 'detailed' for failure details
+});
+```
+
+**Run all tests in a package**:
+```typescript
+await mcp__vitest__run_tests({
+  target: 'packages/language',
+  format: 'detailed'
+});
+```
+
+**Common Commands**:
+
+| Command | Purpose |
+|---------|---------|
+| `mcp__vitest__run_tests({ target: './path/to/test.spec.ts' })` | Run specific test file |
+| `mcp__vitest__run_tests({ target: 'packages/cli' })` | Run all tests in package |
+| `mcp__vitest__list_tests({ path: 'packages/extension' })` | List test files in package |
+| `mcp__vitest__analyze_coverage({ target: 'packages/language' })` | Check code coverage |
+
+### Package-Specific Test Environments
+
+Some packages require specific test environments. Always run tests from the package directory when vitest.config.ts defines custom settings.
+
+**Extension Package** (requires jsdom for DOM tests):
+```bash
+cd packages/extension
+npx vitest run  # Picks up vitest.config.ts with jsdom environment
+```
+
+**CLI Package** (Node environment):
+```bash
+cd packages/cli
+npx vitest run
+```
+
+**Language Package** (default environment):
+```bash
+cd packages/language
+npx vitest run
+```
+
+### Common Test Issues and Solutions
+
+#### Issue 1: Missing `await` on Async Functions
+
+**Symptom**: Test expects object/array but receives `Promise{...}`
+
+**Error**:
+```
+AssertionError: expected Promise{…} to have property 'length'
+```
+
+**Cause**: Async function not awaited
+
+**Fix**:
+```typescript
+// ❌ WRONG: Missing await
+const labels = findBlockLabels(document);
+expect(labels).toHaveLength(1);
+
+// ✅ CORRECT: Await async function
+const labels = await findBlockLabels(document);
+expect(labels).toHaveLength(1);
+```
+
+**Real Example**: Fixed in [block-label-detector.spec.ts](packages/extension/src/extension/decorations/__tests__/block-label-detector.spec.ts) - 10 tests failed because `findBlockLabels()` returns `Promise<BlockLabel[]>` but wasn't being awaited.
+
+#### Issue 2: Missing vscode Module Mock
+
+**Symptom**: `Failed to resolve import "vscode"`
+
+**Cause**: VS Code extension tests try to import the `vscode` module which isn't available in test environment
+
+**Fix**: Create a mock and configure vitest.config.ts alias:
+
+```typescript
+// src/extension/__tests__/__mocks__/vscode.ts
+export class Uri {
+  scheme: string;
+  path: string;
+
+  constructor(scheme: string, path: string) {
+    this.scheme = scheme;
+    this.path = path;
+  }
+
+  static parse(uri: string): Uri {
+    const match = uri.match(/^([^:]+):\/\/([^/]+)(.*)$/);
+    if (match) {
+      const [, scheme, , path] = match;
+      return new Uri(scheme, path || '/');
+    }
+    return new Uri('file', '/');
+  }
+
+  static file(path: string): Uri {
+    return new Uri('file', path);
+  }
+}
+```
+
+```typescript
+// vitest.config.ts
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'jsdom',
+  },
+  resolve: {
+    alias: {
+      vscode: fileURLToPath(
+        new URL('./src/extension/__tests__/__mocks__/vscode.ts', import.meta.url)
+      ),
+    },
+  },
+});
+```
+
+**Real Example**: Fixed in [webview-uri-converter.spec.ts](packages/extension/src/extension/__tests__/webview-uri-converter.spec.ts) - 2 tests failed until vscode mock was created with proper URI parsing.
+
+#### Issue 3: Outdated Test Fixtures
+
+**Symptom**: Parse errors in test fixtures, tests fail with "Expecting token of type..."
+
+**Cause**: DSL syntax evolved but test fixture files weren't updated
+
+**Common Fixes**:
+
+1. **Timeline syntax** - Must include `in` clause:
+   ```eligian
+   # ❌ OLD: Missing 'in' keyword
+   timeline "test" using raf { ... }
+
+   # ✅ NEW: Includes container selector
+   timeline "test" in "#app" using raf { ... }
+   ```
+
+2. **Event syntax** - Direct operation calls, not curly braces:
+   ```eligian
+   # ❌ OLD: Curly braces around operation
+   at 0s..5s { showElement() }
+
+   # ✅ NEW: Direct operation call
+   at 0s..5s showElement()
+   ```
+
+3. **CSS imports** - Required for CSS validation:
+   ```eligian
+   # ✅ NEW: Add CSS import at top
+   styles "./test.css"
+
+   endable action test [ ... ] [ ... ]
+   ```
+
+4. **selectElement in end blocks** - Must select before other operations:
+   ```eligian
+   endable action fadeIn [
+     selectElement("#element")
+     addClass("visible")
+   ] [
+     # ✅ Must select element in end block too
+     selectElement("#element")
+     removeClass("visible")
+   ]
+   ```
+
+**Real Example**: Fixed in [CLI test fixtures](packages/cli/src/__tests__/__fixtures/) - All 3 fixture files needed updates for current syntax, plus creation of [test.css](packages/cli/src/__tests__/__fixtures__/test.css) for CSS validation.
+
+#### Issue 4: Double Execution Bug
+
+**Symptom**: CLI outputs results twice, JSON parse fails with "Unexpected non-whitespace"
+
+**Cause**: `main()` called twice - once from module import, once from bin script
+
+**Fix**: Remove auto-execution from module:
+
+```typescript
+// ❌ WRONG: Auto-executes on import
+export default function main(): void {
+  // ... implementation
+}
+
+main();  // DON'T DO THIS
+
+// ✅ CORRECT: Export only, let bin script call it
+export default function main(): void {
+  // ... implementation
+}
+// No auto-execution
+```
+
+**Real Example**: Fixed in [main.ts](packages/cli/src/main.ts) - Removed line 247 `main();` which caused stdout to contain two JSON outputs concatenated together.
+
+#### Issue 5: jsdom Environment Not Loading
+
+**Symptom**: `document is not defined` in tests
+
+**Cause**: Tests run from monorepo root don't pick up package-specific vitest.config.ts
+
+**Solution**: Run tests from package directory:
+
+```bash
+# ❌ From root - may not pick up package config
+cd /path/to/monorepo
+npx vitest run packages/extension/media/__tests__/dom-reconciliation.spec.ts
+
+# ✅ From package - picks up vitest.config.ts
+cd packages/extension
+npx vitest run media/__tests__/dom-reconciliation.spec.ts
+```
+
+**Real Example**: Fixed by running extension tests from `packages/extension` directory - all 11 DOM reconciliation tests passed once jsdom environment loaded correctly.
 
 ---
 
@@ -951,6 +1193,164 @@ Before writing new tests, ensure:
 - **Fixtures**: [`packages/language/src/__tests__/__fixtures__/`](packages/language/src/__tests__/__fixtures__/)
 - **Vitest Documentation**: https://vitest.dev/
 - **Langium Testing**: https://langium.org/docs/recipes/testing/
+
+---
+
+## Testing Multiple Packages
+
+### Monorepo Testing Strategy
+
+The Eligian project is a monorepo with multiple packages, each with their own test suites:
+
+| Package | Tests | Purpose | Special Requirements |
+|---------|-------|---------|---------------------|
+| `language` | 1,383 | Grammar, validators, type system | None |
+| `cli` | 12 | Command-line compiler | Node environment |
+| `extension` | 91 | VS Code extension | jsdom + vscode mock |
+| `compiler` | 9 | AST transformation (Effect-based) | None |
+
+### Running All Tests
+
+**From Package Directory** (recommended for package-specific tests):
+```bash
+cd packages/extension
+npx vitest run  # Uses package's vitest.config.ts
+```
+
+**Using vitest-mcp** (recommended for automation):
+```typescript
+// Run all packages sequentially
+const packages = ['language', 'cli', 'extension', 'compiler'];
+
+for (const pkg of packages) {
+  const result = await mcp__vitest__run_tests({
+    target: `packages/${pkg}`,
+    format: 'summary'
+  });
+
+  if (!result.success) {
+    console.error(`${pkg} tests failed`);
+    // Handle failure
+  }
+}
+```
+
+### Package-Specific Considerations
+
+**Language Package**:
+- Largest test suite (1,383 tests)
+- Uses Langium test utilities extensively
+- Requires CSS registry setup for many tests
+- Test helpers in `src/__tests__/test-helpers.ts`
+
+**CLI Package**:
+- Tests use `execSync()` to run compiled CLI
+- Requires test fixtures with current DSL syntax
+- Tests verify stdout/stderr output
+- Tests check exit codes (0=success, 1=compile error, 3=IO error)
+
+**Extension Package**:
+- Requires jsdom environment for DOM tests
+- Requires vscode module mock
+- Mix of unit tests (pure functions) and integration tests (VS Code API)
+- Run from package directory to ensure correct vitest.config.ts loads
+
+**Compiler Package**:
+- Effect-ts based pipeline tests
+- Snapshot testing for JSON output
+- Tests each pipeline stage independently
+
+### Common Multi-Package Issues
+
+#### Shared Dependencies
+
+All packages depend on `@eligian/language` for types and validators. When making changes to the language package:
+
+1. **Rebuild language package**:
+   ```bash
+   cd packages/language
+   pnpm run build
+   ```
+
+2. **Test dependent packages**:
+   ```bash
+   cd packages/cli
+   npx vitest run
+
+   cd packages/extension
+   npx vitest run
+   ```
+
+#### Test Fixture Synchronization
+
+When DSL syntax changes, update fixtures in ALL packages:
+
+- `packages/cli/src/__tests__/__fixtures__/*.eligian`
+- `packages/language/src/__tests__/__fixtures__/**/*.eligian`
+- `packages/extension/src/__tests__/__fixtures__/*.eligian`
+- `examples/*.eligian` (documentation examples)
+
+#### Configuration Consistency
+
+Ensure vitest.config.ts settings are appropriate for each package:
+
+```typescript
+// language - default config
+export default defineConfig({
+  test: { globals: true }
+});
+
+// extension - jsdom + vscode mock
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'jsdom'
+  },
+  resolve: {
+    alias: {
+      vscode: fileURLToPath(new URL('./src/extension/__tests__/__mocks__/vscode.ts', import.meta.url))
+    }
+  }
+});
+
+// cli - node environment (default)
+export default defineConfig({
+  test: { globals: true }
+});
+```
+
+### Continuous Integration
+
+For CI/CD, run all tests with summary output:
+
+```bash
+# From root
+pnpm -r test  # Runs test script in all packages
+
+# Or with vitest-mcp
+for pkg in language cli extension compiler; do
+  npx vitest run "packages/$pkg" --reporter=json
+done
+```
+
+### Coverage Across Packages
+
+**Individual package coverage**:
+```bash
+cd packages/language
+npx vitest run --coverage
+```
+
+**Aggregate coverage** (from root):
+```bash
+pnpm run test:coverage  # Uses tools/pruned-coverage.ts
+```
+
+**Coverage targets**:
+- Language package: >80% (currently 81.72%)
+- CLI package: >70%
+- Extension package: >60% (integration tests harder to cover)
+- Compiler package: >85% (pure logic, easier to test)
 
 ---
 

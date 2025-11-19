@@ -52,8 +52,8 @@ importers:
         specifier: 5.6.2
         version: 5.6.2
       commander:
-        specifier: 11.1.0
-        version: 11.1.0
+        specifier: 14.0.2
+        version: 14.0.2
 
   packages/extension:
     dependencies:
@@ -957,12 +957,8 @@ packages:
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==, tarball: https://registry.npmjs.org/color-name/-/color-name-1.1.4.tgz}
 
-  commander@11.1.0:
-    resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==, tarball: https://registry.npmjs.org/commander/-/commander-11.1.0.tgz}
-    engines: {node: '>=16'}
-
-  commander@14.0.1:
-    resolution: {integrity: sha512-2JkV3gUZUVrbNA+1sjBOYLsMZ5cEEl8GTFP2a4AVz5hvasAMCQ1D2l2le/cX+pV4N6ZU17zjUahLpIXRrnWL8A==, tarball: https://registry.npmjs.org/commander/-/commander-14.0.1.tgz}
+  commander@14.0.2:
+    resolution: {integrity: sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ==, tarball: https://registry.npmjs.org/commander/-/commander-14.0.2.tgz}
     engines: {node: '>=20'}
 
   concurrently@9.2.1:
@@ -2597,9 +2593,7 @@ snapshots:
 
   color-name@1.1.4: {}
 
-  commander@11.1.0: {}
-
-  commander@14.0.1: {}
+  commander@14.0.2: {}
 
   concurrently@9.2.1:
     dependencies:
@@ -3001,7 +2995,7 @@ snapshots:
   langium-cli@4.0.0:
     dependencies:
       chalk: 5.4.1
-      commander: 14.0.1
+      commander: 14.0.2
       fs-extra: 11.3.2
       jsonschema: 1.5.0
       langium: 4.0.3

@@ -1,13 +1,14 @@
 // Invalid operation name
+styles "./test.css"
+
 endable action test [
   selectElement("#foo")
   fakeOperation()  // This operation doesn't exist
 ] [
+  selectElement("#foo")
   removeClass("foo")
 ]
 
-timeline "test" using raf {
-  at 0s..5s {
-    test()
-  }
+timeline "test" in "#app" using raf {
+  at 0s..5s test()
 }

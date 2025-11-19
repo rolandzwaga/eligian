@@ -1,13 +1,14 @@
 // Simple valid Eligian program for testing
+styles "./test.css"
+
 endable action showElement [
   selectElement("#test")
   addClass("visible")
 ] [
+  selectElement("#test")
   removeClass("visible")
 ]
 
-timeline "test" using raf {
-  at 0s..5s {
-    showElement()
-  }
+timeline "test" in "#app" using raf {
+  at 0s..5s showElement()
 }

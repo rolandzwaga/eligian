@@ -23,7 +23,7 @@ endable action fadeIn(selector: string, duration) [
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('action');
@@ -41,7 +41,7 @@ endable action fadeIn(selector: string, duration) [
       const source = `endable action test() [] []`;
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('action');
@@ -56,7 +56,7 @@ endable action fadeOut() [] []
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(2);
       expect(labels[0].type).toBe('action');
@@ -77,7 +77,7 @@ timeline "Test" in "#container" using raf {
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('timeline');
@@ -97,7 +97,7 @@ timeline "Test" in "#container" using raf {
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('timeline');
@@ -112,7 +112,7 @@ timeline "Test" in "#container" using raf {
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(2);
       expect(labels[0].type).toBe('timeline');
@@ -139,7 +139,7 @@ timeline "Test" in "#container" using raf {
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(2);
       expect(labels[0].type).toBe('action');
@@ -158,7 +158,7 @@ endable action endableAction() [] []
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       // Should only find the endable action, not the regular one
       expect(labels).toHaveLength(1);
@@ -172,7 +172,7 @@ endable action endableAction() [] []
       const source = `endable action test() [log("a")] [log("b")]`;
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].startBracketPosition.line).toBe(0);
@@ -191,7 +191,7 @@ timeline "Test" in "#container" using raf {
       `.trim();
 
       const document = await createTestDocument(source);
-      const labels = findBlockLabels(document);
+      const labels = await findBlockLabels(document);
 
       expect(labels).toHaveLength(0);
     });
