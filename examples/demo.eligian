@@ -1,3 +1,8 @@
+languages {
+    "nl-NL" "Nederlands"
+  * "en-US" "English"
+    "fr-FR" "Français"
+}
 /**
  * Comprehensive Eligian Language Demo
  *

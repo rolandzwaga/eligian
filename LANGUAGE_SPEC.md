@@ -1,10 +1,20 @@
 # Eligian Language Specification
 
-**Version**: 1.5.2
-**Last Updated**: 2025-11-17
+**Version**: 1.6.0
+**Last Updated**: 2025-01-23
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.5.2):
+**Recent Changes** (v1.6.0):
+- Added languages declaration syntax (Feature 037)
+- Languages block declares available presentation languages and default language
+- Single language: implicit default (no `*` marker required)
+- Multiple languages: explicit default (exactly one `*` marker required)
+- Language code validation: IETF BCP 47 format (xx-XX)
+- Typir integration: hover tooltips show language count and default
+- Must be first declaration in file when present
+- Compiles to Eligius `language` and `availableLanguages` properties
+
+**Previous Changes** (v1.5.2):
 - Added labels import support (Feature 033)
 - Labels import allows internationalization with multi-language JSON files
 - Labels JSON validated against schema with compile-time error reporting
@@ -43,6 +53,7 @@
 1. [Introduction](#1-introduction)
 2. [Lexical Structure](#2-lexical-structure)
 3. [Program Structure](#3-program-structure)
+   - 3.3 [Languages Declaration](#33-languages-declaration-feature-037)
 4. [Actions](#4-actions)
 5. [Event Actions](#5-event-actions)
    - 5.10 [Event Name Validation](#510-event-name-validation-feature-029)
@@ -197,26 +208,37 @@ Eligian supports two types of source files:
 
 #### 3.1.1 Program Files
 
-An Eligian program consists of zero or more program statements in any order:
+An Eligian program consists of an optional languages declaration followed by zero or more program statements:
 
 ```eligian
-Program := ProgramStatement*
+Program := LanguagesBlock? ProgramStatement*
 
 ProgramStatement := ImportStatement | ProgramElement
 
 ProgramElement := ActionDefinition | Timeline | VariableDeclaration
 
 ImportStatement := DefaultImport | NamedImport | LibraryImport
+
+LanguagesBlock := 'languages' '{' LanguageEntry+ '}'
+
+LanguageEntry := '*'? STRING STRING
 ```
 
 **Key Points**:
-- **Flexible Ordering**: Imports, constants, actions, and timelines can appear in any order
+- **Languages Declaration**: Optional, but if present must be the FIRST declaration (Feature 037)
+- **Flexible Ordering**: After languages, imports, constants, actions, and timelines can appear in any order
 - **No Strict Grouping**: You can mix imports with other declarations as needed
 - **Can import from libraries**: Programs can import actions from library files
 
 **Example**:
 
 ```eligian
+// Languages declaration (MUST be first if present)
+languages {
+  * "en-US" "English"
+    "nl-NL" "Nederlands"
+}
+
 // Import action from library
 import { fadeIn } from "./animations.eligian"
 
@@ -737,6 +759,119 @@ import { fadeIn as animate } from "./animations.eligian"
 2. **Global variables** are evaluated and added to `$globaldata` scope
 3. **Actions** are registered (not executed until called)
 4. **Timelines** define event schedules (executed by Eligius runtime)
+
+### 3.3 Languages Declaration (Feature 037)
+
+The `languages` block declares the available presentation languages and default language for internationalization.
+
+**Syntax**:
+```eligian
+languages {
+  [*] "<languageCode>" "<displayLabel>"
+  ...
+}
+```
+
+**Grammar**:
+```
+LanguagesBlock := 'languages' '{' LanguageEntry+ '}'
+LanguageEntry  := '*'? STRING STRING
+```
+
+**Key Rules**:
+1. **First Declaration Only**: If present, the `languages` block MUST be the first declaration in the file
+2. **Single Language**: No default marker (`*`) required - first (and only) language is implicitly default
+3. **Multiple Languages**: Exactly one language MUST be marked with `*` as the default
+4. **Language Code Format**: Must follow IETF BCP 47 format: `xx-XX` (e.g., `en-US`, `nl-NL`, `fr-FR`)
+   - Primary language: lowercase (e.g., `en`, `nl`, `fr`)
+   - Region code: uppercase (e.g., `US`, `NL`, `FR`)
+5. **No Duplicates**: Each language code must be unique within the block
+
+**Validation**:
+- Invalid language code format → "Invalid language code format. Expected format: 'xx-XX' (e.g., 'en-US', 'nl-NL', 'fr-FR')"
+- Missing default marker (multiple languages) → "Multiple languages declared but no default language marked with '*'"
+- Multiple default markers → "Only one language can be marked as default with '*'"
+- Duplicate language codes → "Duplicate language code: 'xx-XX'"
+- Languages block not first → "languages block must be the first declaration"
+
+**Compilation**:
+
+The languages block compiles to Eligius configuration properties:
+- `language: TLanguageCode` - The default language code
+- `availableLanguages: ILabel[]` - Array of all available languages with UUIDs
+
+```typescript
+// Eligius types
+type TLanguageCode = `${Lowercase<string>}-${Uppercase<string>}`;
+
+interface ILabel {
+  id: string;              // UUID v4
+  languageCode: TLanguageCode;
+  label: string;
+}
+```
+
+**Examples**:
+
+**Single Language (implicit default)**:
+```eligian
+// Most common use case - monolingual presentation
+languages {
+  "en-US" "English"
+}
+
+// Compiles to:
+// {
+//   "language": "en-US",
+//   "availableLanguages": [
+//     { "id": "<uuid>", "languageCode": "en-US", "label": "English" }
+//   ]
+// }
+```
+
+**Multiple Languages (explicit default)**:
+```eligian
+// Multilingual presentation with Dutch as default
+languages {
+  * "nl-NL" "Nederlands"
+    "en-US" "English (US)"
+    "en-GB" "English (UK)"
+    "fr-FR" "Français"
+    "de-DE" "Deutsch"
+}
+
+// Compiles to:
+// {
+//   "language": "nl-NL",
+//   "availableLanguages": [
+//     { "id": "<uuid>", "languageCode": "nl-NL", "label": "Nederlands" },
+//     { "id": "<uuid>", "languageCode": "en-US", "label": "English (US)" },
+//     { "id": "<uuid>", "languageCode": "en-GB", "label": "English (UK)" },
+//     { "id": "<uuid>", "languageCode": "fr-FR", "label": "Français" },
+//     { "id": "<uuid>", "languageCode": "de-DE", "label": "Deutsch" }
+//   ]
+// }
+```
+
+**IDE Support**:
+
+- **Hover Tooltips**: Hovering over the `languages` keyword shows type information:
+  - Single language: `"Languages: 1 language, default: en-US"`
+  - Multiple languages: `"Languages: 5 languages, default: nl-NL"`
+- **Code Completion**: Auto-complete for common language codes
+- **Validation**: Real-time validation of language code format and default markers
+
+**Backward Compatibility**:
+
+If no `languages` block is present, the compiler defaults to:
+```json
+{
+  "language": "en-US",
+  "availableLanguages": [
+    { "id": "<uuid>", "languageCode": "en-US", "label": "English" }
+  ]
+}
+```
 
 ---
 

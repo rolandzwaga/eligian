@@ -1230,4 +1230,142 @@ describe('Eligian Grammar - Parsing', () => {
       expect(parsed).toBeNull();
     });
   });
+
+  // ============================================================================
+  // Languages Block Parsing (Feature 037 - User Story 1)
+  // ============================================================================
+
+  describe('Languages block parsing (US1)', () => {
+    test('should parse single language block (implicit default)', async () => {
+      const program = await parseEligian(`
+        languages {
+          "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `);
+
+      expect(program.languages).toBeDefined();
+      expect(program.languages?.entries).toHaveLength(1);
+
+      const entry = program.languages!.entries[0];
+      expect(entry.code).toBe('en-US');
+      expect(entry.label).toBe('English');
+      expect(entry.isDefault).toBe(false); // No * marker = false (implicit default)
+    });
+
+    test('should parse single language with explicit * marker', async () => {
+      const program = await parseEligian(`
+        languages {
+          * "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `);
+
+      expect(program.languages).toBeDefined();
+      expect(program.languages?.entries).toHaveLength(1);
+
+      const entry = program.languages!.entries[0];
+      expect(entry.code).toBe('en-US');
+      expect(entry.label).toBe('English');
+      expect(entry.isDefault).toBe(true); // Explicit * marker = true
+    });
+
+    test('should parse multiple languages with default marker', async () => {
+      const program = await parseEligian(`
+        languages {
+          * "nl-NL" "Nederlands"
+            "en-US" "English"
+            "fr-FR" "Français"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `);
+
+      expect(program.languages).toBeDefined();
+      expect(program.languages?.entries).toHaveLength(3);
+
+      const [dutch, english, french] = program.languages!.entries;
+
+      expect(dutch.code).toBe('nl-NL');
+      expect(dutch.label).toBe('Nederlands');
+      expect(dutch.isDefault).toBe(true); // * marker
+
+      expect(english.code).toBe('en-US');
+      expect(english.label).toBe('English');
+      expect(english.isDefault).toBe(false); // No * marker
+
+      expect(french.code).toBe('fr-FR');
+      expect(french.label).toBe('Français');
+      expect(french.isDefault).toBe(false); // No * marker
+    });
+  });
+
+  // Feature 037: User Story 3 - First Declaration Enforcement
+  describe('Languages block position (US3)', () => {
+    test('T027: should parse languages block as first declaration (valid)', async () => {
+      const program = await parseEligian(`
+        languages {
+          "en-US" "English"
+        }
+
+        layout "./index.html"
+        timeline "test" in ".container" using raf {}
+      `);
+
+      expect(program.languages).toBeDefined();
+      expect(program.languages?.entries).toHaveLength(1);
+    });
+
+    test('T028: should reject languages block after layout import', async () => {
+      const code = `
+        layout "./index.html"
+
+        languages {
+          "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+
+      const program = await parseEligian(code);
+
+      // Grammar should enforce position, so languages block should not be parsed
+      // or should cause a parse error
+      expect(program.languages).toBeUndefined();
+    });
+
+    test('T029: should reject languages block after styles import', async () => {
+      const code = `
+        styles "./styles.css"
+
+        languages {
+          "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+
+      const program = await parseEligian(code);
+      expect(program.languages).toBeUndefined();
+    });
+
+    test('T030: should reject languages block after action definition', async () => {
+      const code = `
+        action fadeIn(selector: string) [
+          selectElement(selector)
+        ]
+
+        languages {
+          "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+
+      const program = await parseEligian(code);
+      expect(program.languages).toBeUndefined();
+    });
+  });
 });

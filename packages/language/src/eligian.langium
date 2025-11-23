@@ -63,7 +63,16 @@ Library:
 // Program Structure
 // ============================================================================
 
+/**
+ * Program - Main program structure with optional languages block
+ *
+ * The languages block (if present) MUST be the first declaration.
+ * This is enforced at the grammar level by placing it before statements.
+ *
+ * Feature 037: Languages Declaration Syntax
+ */
 Program:
+    languages=LanguagesBlock?
     (statements += ProgramStatement)*;
 
 ProgramStatement:
@@ -71,6 +80,58 @@ ProgramStatement:
 
 ProgramElement:
     EventActionDefinition | ActionDefinition | Timeline | VariableDeclaration;
+
+// ============================================================================
+// Languages Declaration (Feature 037)
+// ============================================================================
+
+/**
+ * LanguagesBlock - Declares available presentation languages
+ *
+ * Syntax: languages { <entries> }
+ *
+ * Must be the first declaration in the file (enforced by Program rule).
+ * Contains one or more LanguageEntry definitions.
+ *
+ * Example (single language):
+ *   languages {
+ *     "en-US" "English"
+ *   }
+ *
+ * Example (multiple languages):
+ *   languages {
+ *     * "en-US" "English"
+ *       "nl-NL" "Nederlands"
+ *       "fr-FR" "Français"
+ *   }
+ *
+ * Feature 037: Languages Declaration Syntax
+ */
+LanguagesBlock:
+    'languages' '{'
+        entries+=LanguageEntry+
+    '}';
+
+/**
+ * LanguageEntry - Single language declaration
+ *
+ * Syntax: [*] "<languageCode>" "<label>"
+ *
+ * - isDefault: Optional * marker indicates default language (required if multiple entries)
+ * - code: IETF BCP 47 language code (validated: xx-XX format)
+ * - label: Human-readable language name
+ *
+ * Examples:
+ *   "en-US" "English"              (implicit default if only entry)
+ *   * "en-US" "English"            (explicit default)
+ *   "nl-NL" "Nederlands"           (non-default)
+ *
+ * Feature 037: Languages Declaration Syntax
+ */
+LanguageEntry:
+    isDefault?='*'?
+    code=STRING
+    label=STRING;
 
 // ============================================================================
 // Import Statements (Feature 009 + Feature 023)

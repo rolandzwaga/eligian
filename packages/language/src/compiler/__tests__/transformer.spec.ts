@@ -1301,4 +1301,116 @@ describe('AST Transformer', () => {
       expect(wrongStartAction).toBeUndefined(); // Should NOT have startAction in end ops
     });
   });
+
+  // ============================================================================
+  // Languages Block Transformation (Feature 037 - User Story 1)
+  // ============================================================================
+
+  describe('Languages block transformation (US1)', () => {
+    test('should transform single language to ILabel array (implicit default)', async () => {
+      const code = `
+        languages {
+          "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Check language property (default)
+      expect(result.config.language).toBe('en-US');
+
+      // Check availableLanguages array
+      expect(result.config.availableLanguages).toHaveLength(1);
+      const lang = result.config.availableLanguages[0];
+
+      expect(lang.languageCode).toBe('en-US');
+      expect(lang.label).toBe('English');
+      expect(lang.id).toBeDefined();
+      expect(typeof lang.id).toBe('string');
+      // Verify UUID v4 format (rough check)
+      expect(lang.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    });
+
+    test('should transform single language with explicit * marker', async () => {
+      const code = `
+        languages {
+          * "nl-NL" "Nederlands"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      expect(result.config.language).toBe('nl-NL');
+      expect(result.config.availableLanguages).toHaveLength(1);
+
+      const lang = result.config.availableLanguages[0];
+      expect(lang.languageCode).toBe('nl-NL');
+      expect(lang.label).toBe('Nederlands');
+      expect(lang.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    });
+
+    test('should use en-US default when no languages block present (backward compatibility)', async () => {
+      const code = `
+        timeline "test" in ".container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Should default to en-US
+      expect(result.config.language).toBe('en-US');
+      expect(result.config.availableLanguages).toHaveLength(1);
+      expect(result.config.availableLanguages[0].languageCode).toBe('en-US');
+      expect(result.config.availableLanguages[0].label).toBe('English');
+    });
+
+    test('T018: should select correct default language from multiple languages', async () => {
+      const code = `
+        languages {
+          * "nl-NL" "Nederlands"
+            "en-US" "English"
+            "fr-FR" "Français"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Check that nl-NL (marked with *) is the default
+      expect(result.config.language).toBe('nl-NL');
+
+      // Check all three languages are in availableLanguages
+      expect(result.config.availableLanguages).toHaveLength(3);
+
+      const dutch = result.config.availableLanguages.find(l => l.languageCode === 'nl-NL');
+      const english = result.config.availableLanguages.find(l => l.languageCode === 'en-US');
+      const french = result.config.availableLanguages.find(l => l.languageCode === 'fr-FR');
+
+      expect(dutch).toBeDefined();
+      expect(dutch!.label).toBe('Nederlands');
+      expect(dutch!.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+
+      expect(english).toBeDefined();
+      expect(english!.label).toBe('English');
+      expect(english!.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+
+      expect(french).toBeDefined();
+      expect(french!.label).toBe('Français');
+      expect(french!.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    });
+  });
 });

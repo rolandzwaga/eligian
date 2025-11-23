@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import { type AstNode, AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
 import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
+import { LANGUAGE_CODE_REGEX } from './compiler/constants.js';
 import {
   hasOperation,
   OPERATION_REGISTRY,
@@ -28,6 +29,7 @@ import type {
   EndableActionDefinition,
   EventActionDefinition,
   InlineEndableAction,
+  LanguagesBlock,
   Library,
   LibraryImport,
   NamedImport,
@@ -52,6 +54,39 @@ import { validateDefaultImports } from './validators/default-import-validator.js
 import { validateImportName } from './validators/import-name-validator.js';
 import { validateImportPath } from './validators/import-path-validator.js';
 import { RESERVED_KEYWORDS } from './validators/validation-constants.js';
+
+// ============================================================================
+// Validation Helpers (Feature 037)
+// ============================================================================
+
+/**
+ * Validate language code format (IETF BCP 47: xx-XX)
+ *
+ * Checks if a language code string matches the expected format:
+ * - Primary language: 2-3 lowercase letters (e.g., 'en', 'nl', 'pt')
+ * - Hyphen: '-'
+ * - Region: 2-3 uppercase letters (e.g., 'US', 'NL', 'BR')
+ *
+ * @param code - Language code string to validate
+ * @returns true if valid, false otherwise
+ *
+ * @example Valid codes
+ * isValidLanguageCode('en-US') // true
+ * isValidLanguageCode('nl-NL') // true
+ * isValidLanguageCode('pt-BR') // true
+ *
+ * @example Invalid codes
+ * isValidLanguageCode('EN-US') // false (uppercase primary)
+ * isValidLanguageCode('en-us') // false (lowercase region)
+ * isValidLanguageCode('english') // false (no region)
+ *
+ * Feature 037: Languages Declaration Syntax
+ * Research Decision: RT-002
+ * Task: T007
+ */
+export function isValidLanguageCode(code: string): boolean {
+  return LANGUAGE_CODE_REGEX.test(code);
+}
 
 /**
  * Register custom validation checks.
@@ -106,6 +141,12 @@ export function registerValidationChecks(services: EligianServices) {
       // validator.checkDependencies
     ],
     BreakStatement: validator.checkBreakInsideLoop,
+    LanguagesBlock: [
+      validator.checkDefaultMarker, // Feature 037 T023-T024: US2 - Default marker validation
+      validator.checkLanguageCodeFormat, // Feature 037 T040: US4 - Language code format validation
+      validator.checkDuplicateLanguageCodes, // Feature 037 T041: US4 - Duplicate code validation
+      validator.checkNonEmptyLanguagesBlock, // Feature 037 T043: US4 - Non-empty block validation
+    ],
     ContinueStatement: validator.checkContinueInsideLoop,
     RegularActionDefinition: [
       validator.checkActionNameCollision, // T039: US2 - Name collision detection
@@ -232,6 +273,115 @@ export class EligianValidator {
           constantNames.set(element.name, element);
         }
       }
+    }
+  }
+
+  /**
+   * T023-T024: Feature 037 US2 - Validate default marker rules for languages block
+   *
+   * Rules:
+   * - Single language (1 entry): No * marker required (implicit default)
+   * - Multiple languages (2+ entries): Exactly one * marker required (explicit default)
+   * - Multiple languages with no * marker: Error
+   * - Multiple languages with multiple * markers: Error
+   */
+  checkDefaultMarker(block: LanguagesBlock, accept: ValidationAcceptor): void {
+    const entryCount = block.entries.length;
+
+    if (entryCount === 1) {
+      // Single language - * marker is optional (implicit default)
+      // No validation needed
+      return;
+    }
+
+    // Multiple languages - need exactly one * marker
+    const defaultMarkerCount = block.entries.filter(entry => entry.isDefault).length;
+
+    if (defaultMarkerCount === 0) {
+      // T023: Missing * marker error
+      accept(
+        'error',
+        'Multiple languages require exactly one * marker to indicate the default language',
+        {
+          node: block,
+          code: 'missing_default_marker',
+        }
+      );
+    } else if (defaultMarkerCount > 1) {
+      // T024: Multiple * markers error
+      accept('error', 'Only one language can be marked as default with the * marker', {
+        node: block,
+        code: 'multiple_default_markers',
+      });
+    }
+  }
+
+  /**
+   * T040: Feature 037 US4 - Validate language code format (IETF BCP 47: xx-XX)
+   *
+   * Checks each language code in the block for correct format:
+   * - Primary language: 2-3 lowercase letters
+   * - Hyphen: -
+   * - Region: 2-3 uppercase letters
+   */
+  checkLanguageCodeFormat(block: LanguagesBlock, accept: ValidationAcceptor): void {
+    for (const entry of block.entries) {
+      if (!isValidLanguageCode(entry.code)) {
+        accept(
+          'error',
+          "Invalid language code format. Expected format: 'xx-XX' (e.g., 'en-US', 'nl-NL', 'fr-FR')",
+          {
+            node: entry,
+            property: 'code',
+            code: 'invalid_language_code_format',
+          }
+        );
+      }
+    }
+  }
+
+  /**
+   * T041: Feature 037 US4 - Validate no duplicate language codes
+   *
+   * Ensures each language code appears only once in the languages block.
+   */
+  checkDuplicateLanguageCodes(block: LanguagesBlock, accept: ValidationAcceptor): void {
+    const seen = new Set<string>();
+
+    for (const entry of block.entries) {
+      if (seen.has(entry.code)) {
+        accept('error', `Duplicate language code: '${entry.code}'`, {
+          node: entry,
+          property: 'code',
+          code: 'duplicate_language_code',
+        });
+      } else {
+        seen.add(entry.code);
+      }
+    }
+  }
+
+  /**
+   * T042: Feature 037 US4 - Validate only one languages block per file
+   */
+  checkSingleLanguagesBlock(program: Program, accept: ValidationAcceptor): void {
+    // This check is at the Program level since we need to count across the whole file
+    // However, the grammar already enforces this (languages=LanguagesBlock? means 0 or 1)
+    // So this validator is not strictly necessary but provides a clear error message
+    // if someone tries to hack around the grammar
+    // Grammar enforces this, so this method is intentionally empty
+    // The grammar rule `languages=LanguagesBlock?` means 0 or 1 block maximum
+  }
+
+  /**
+   * T043: Feature 037 US4 - Validate languages block is not empty
+   */
+  checkNonEmptyLanguagesBlock(block: LanguagesBlock, accept: ValidationAcceptor): void {
+    if (block.entries.length === 0) {
+      accept('error', 'Languages block cannot be empty. Declare at least one language.', {
+        node: block,
+        code: 'empty_languages_block',
+      });
     }
   }
 
@@ -1726,7 +1876,7 @@ export class EligianValidator {
    * @param program - AST Program node
    * @param accept - Validation acceptor for reporting errors
    */
-  checkLabelsImports(program: Program, _accept: ValidationAcceptor): void {
+  checkLabelsImports(program: Program, accept: ValidationAcceptor): void {
     if (!this.services) return;
 
     const labelRegistry = this.services.labels.LabelRegistry;
@@ -1742,6 +1892,20 @@ export class EligianValidator {
     if (labelsImports.length === 0) {
       labelRegistry.clearDocument(documentUri);
       return;
+    }
+
+    // Feature 037: Validate that languages block exists when labels are imported
+    if (!program.languages) {
+      for (const labelsImport of labelsImports) {
+        accept(
+          'error',
+          'Labels import requires a languages block to declare available languages.',
+          {
+            node: labelsImport,
+          }
+        );
+      }
+      return; // Don't process labels without languages block
     }
 
     // Resolve labels file path to absolute URI

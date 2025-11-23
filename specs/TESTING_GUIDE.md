@@ -2,10 +2,21 @@
 
 > **REQUIRED READING**: All developers writing tests for the Eligian project MUST read and follow this guide to avoid common pitfalls and maintain consistency across the test suite.
 
-**Last Updated**: 2025-01-20
+**Last Updated**: 2025-01-23 (Added comprehensive CSS import requirements)
 **Test Suite Size**: 1,495 tests across 110 test files
 **Coverage**: 81.72%
 **Framework**: Vitest + Langium Test Utilities + vitest-mcp
+
+## ⚠️ Most Common Test Failure: Missing cssImport: true
+
+**90% of CSS-related test failures** are caused by using `cssImport: false` when the code references CSS classes or IDs.
+
+**Quick Fix Checklist**:
+- ✅ Called `setupCSSRegistry()` in `beforeEach()`?
+- ✅ Used `cssImport: true` in `minimalProgram()`?
+- ✅ CSS file URI matches in both places (`'file:///styles.css'`)?
+
+If all three are yes, CSS validation will work. If any is missing, you'll get "Unknown CSS class/ID" errors.
 
 ---
 
@@ -57,10 +68,12 @@ describe('Feature Name (Feature ###, User Story #)', () => {
   });
 
   test('should validate something specific (T###)', async () => {
-    // Use program template builder instead of inline code
+    // CRITICAL: Use cssImport: true when code uses CSS classes/IDs
     const code = minimalProgram({
+      cssImport: true,  // ⚠️ REQUIRED for CSS validation to work!
       actionName: 'myAction',
       actionBody: 'addClass("button")',
+      containerSelector: '#container',
     });
 
     const { errors, warnings, diagnostics } = await ctx.parseAndValidate(code);
@@ -73,6 +86,34 @@ describe('Feature Name (Feature ###, User Story #)', () => {
     expect(errorsByCode).toHaveLength(0);
   });
 });
+
+// ⚠️ COMMON MISTAKE: Using cssImport: false causes "Unknown CSS class/ID" errors
+// Even though setupCSSRegistry() is called, CSS validation needs the "styles" import!
+```
+
+### Why cssImport: true is Required
+
+When your test uses CSS classes or IDs (in selectors, addClass, etc.), you MUST include `cssImport: true`:
+
+```typescript
+// ❌ WRONG: Will fail with "Unknown CSS class: 'button'"
+const code = minimalProgram({
+  cssImport: false,  // Missing "styles" import!
+  actionBody: 'addClass("button")',
+});
+
+// ✅ CORRECT: Includes "styles './styles.css'" in generated code
+const code = minimalProgram({
+  cssImport: true,   // Adds CSS import to code
+  actionBody: 'addClass("button")',
+});
+```
+
+**Why**: CSS validation requires:
+1. `setupCSSRegistry()` - Defines available CSS classes/IDs
+2. `styles` import in code - Links document to CSS file
+3. Both must match the same file URI (`'file:///styles.css'`)
+
 ```
 
 ### Event Action Test Template
@@ -674,25 +715,102 @@ const code = endableActionProgram(
 
 Many operations (`addClass`, `removeClass`, `selectElement`) reference CSS classes/IDs. The test system validates these references against a **CSS Registry** that must be populated before tests run.
 
-### Setup Pattern
+**CRITICAL**: CSS validation requires **THREE things working together**:
+1. `setupCSSRegistry()` - Populates CSS file metadata (classes/IDs available)
+2. `styles` import statement - Must be in the generated code
+3. `parseAndValidate()` - Automatically registers document → CSS file association
 
-**For read-only CSS** (most tests):
+### Complete Setup Pattern (REQUIRED)
+
+**Standard pattern for most tests**:
+```typescript
+import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { createTestContext, CSS_FIXTURES, minimalProgram, setupCSSRegistry } from './test-helpers.js';
+
+describe('My Tests', () => {
+  let ctx: TestContext;
+
+  beforeAll(() => {
+    ctx = createTestContext();
+  });
+
+  beforeEach(() => {
+    // STEP 1: Setup CSS registry with available classes/IDs
+    setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+  });
+
+  test('should validate CSS class usage', async () => {
+    // STEP 2: Generate code WITH cssImport: true (CRITICAL!)
+    const code = minimalProgram({
+      cssImport: true,           // ✅ MUST be true to include "styles" import
+      cssPath: './styles.css',   // ✅ Matches setupCSSRegistry URI
+      actionBody: 'addClass("button")',
+      containerSelector: '#container',  // Uses ID from CSS_FIXTURES.common
+    });
+
+    // STEP 3: parseAndValidate automatically registers document CSS imports
+    const { errors } = await ctx.parseAndValidate(code);
+
+    expect(errors).toHaveLength(0);
+  });
+});
+```
+
+### ⚠️ Common Mistake: cssImport: false
+
+**This WILL FAIL with "Unknown CSS class/ID" errors**:
+```typescript
+// ❌ WRONG: cssImport: false means no "styles" import in generated code
+const code = minimalProgram({
+  cssImport: false,  // ❌ CSS validation will fail!
+  actionBody: 'addClass("button")',
+  containerSelector: '#container',
+});
+
+// Error: Unknown CSS class: 'button'
+// Error: Unknown CSS ID in selector: 'container'
+```
+
+**Why it fails**:
+- `setupCSSRegistry()` populates CSS metadata
+- BUT the generated code has NO `styles` import statement
+- So the validator doesn't know which CSS files to check against
+- Result: All CSS classes/IDs appear "unknown"
+
+**Solution**: Always use `cssImport: true`:
+```typescript
+// ✅ CORRECT: cssImport: true includes "styles" import
+const code = minimalProgram({
+  cssImport: true,   // ✅ Generates: styles "./styles.css"
+  cssPath: './styles.css',
+  actionBody: 'addClass("button")',
+  containerSelector: '#container',
+});
+```
+
+### When to Use beforeAll vs beforeEach
+
+**Use `beforeEach()`** (recommended default):
+```typescript
+beforeEach(() => {
+  setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+});
+```
+- Ensures clean CSS registry state for each test
+- Prevents cross-test contamination
+- Required if tests modify CSS (add/remove classes)
+- Matches pattern used by 90% of existing tests
+
+**Use `beforeAll()`** (only if CSS is truly read-only):
 ```typescript
 beforeAll(() => {
   ctx = createTestContext();
   setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
 });
 ```
-
-**For CSS modifications** (hot-reload tests, per-test CSS):
-```typescript
-beforeEach(() => {
-  setupCSSRegistry(ctx, 'file:///styles.css', {
-    classes: ['button', 'primary'],
-    ids: ['app', 'header']
-  });
-});
-```
+- Use ONLY if CSS is never modified during tests
+- Slight performance improvement (avoids repeated setup)
+- **Risk**: CSS state persists across tests if any test modifies it
 
 ### Pre-Defined Fixtures
 
@@ -791,9 +909,9 @@ action test(name: string) [ ... ]
 
 ### Mistake 3: Missing CSS Import for Class Operations
 
-**Error**: `"Unknown CSS class: 'button'"`
+**Error**: `"Unknown CSS class: 'button'"` or `"Unknown CSS ID in selector: 'container'"`
 
-**Bad Code**:
+**Bad Code #1** (No CSS registry setup):
 ```typescript
 const code = `
   timeline "test" in ".container" using raf {
@@ -802,17 +920,48 @@ const code = `
 `;
 ```
 
-**Solution**: Include CSS import and setup CSS registry:
+**Bad Code #2** (CSS registry setup but cssImport: false):
 ```typescript
 beforeEach(() => {
-  setupCSSRegistry(ctx, 'file:///styles.css', { classes: ['button', 'container'] });
+  setupCSSRegistry(ctx, 'file:///styles.css', { classes: ['button'], ids: ['container'] });
 });
 
 const code = minimalProgram({
+  cssImport: false,  // ❌ WRONG: Missing "styles" import in generated code!
   actionBody: 'addClass("button")',
-  timelineBody: 'at 0s testAction()'
+  containerSelector: '#container',
 });
 ```
+
+**Solution**: Setup CSS registry AND use cssImport: true:
+```typescript
+beforeEach(() => {
+  // STEP 1: Setup CSS registry
+  setupCSSRegistry(ctx, 'file:///styles.css', {
+    classes: ['button'],
+    ids: ['container']
+  });
+});
+
+test('example', async () => {
+  // STEP 2: Use cssImport: true to include "styles" import
+  const code = minimalProgram({
+    cssImport: true,  // ✅ REQUIRED!
+    cssPath: './styles.css',
+    actionBody: 'addClass("button")',
+    containerSelector: '#container',
+  });
+
+  const { errors } = await ctx.parseAndValidate(code);
+  expect(errors).toHaveLength(0);
+});
+```
+
+**Why both are required**:
+- `setupCSSRegistry()` populates CSS metadata (what classes/IDs exist)
+- `cssImport: true` adds `styles "./styles.css"` to generated code
+- `parseAndValidate()` links the document to the CSS file
+- Without BOTH, validation can't find CSS classes/IDs
 
 ### Mistake 4: Missing Provider Source for Video/Audio
 
