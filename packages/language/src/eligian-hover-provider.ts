@@ -16,11 +16,12 @@ import { getController } from './completion/metadata/controllers.generated.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
-import type { DefaultImport, NamedImport } from './generated/ast.js';
+import type { DefaultImport, LanguagesBlock, NamedImport } from './generated/ast.js';
 import {
   isActionDefinition,
   isDefaultImport,
   isEventActionDefinition,
+  isLanguagesBlock,
   isNamedImport,
   isOperationCall,
 } from './generated/ast.js';
@@ -98,6 +99,13 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     const labelHover = this.buildLabelIDHover(cstNode.astNode, document);
     if (labelHover) {
       return labelHover;
+    }
+
+    // 2.5. Check if we're hovering over a languages block (Feature 037 US5)
+    const languagesBlock = AstUtils.getContainerOfType(cstNode.astNode, isLanguagesBlock);
+    if (languagesBlock) {
+      const hover = this.buildLanguagesHover(languagesBlock);
+      if (hover) return hover;
     }
 
     // 3. Check if we're hovering over an import statement
@@ -535,5 +543,45 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
     }
 
     return undefined;
+  }
+
+  /**
+   * Build hover information for LanguagesBlock (Feature 037 US5)
+   *
+   * Shows type information with singular/plural handling:
+   * - Single language: "Languages: 1 language, default: en-US"
+   * - Multiple languages: "Languages: 3 languages, default: nl-NL"
+   *
+   * @param block - LanguagesBlock AST node
+   * @returns Hover with formatted markdown
+   */
+  private buildLanguagesHover(block: LanguagesBlock): Hover | undefined {
+    // Extract language count and default language
+    const languageCount = block.entries.length;
+
+    // Find default language (marked with * or first entry)
+    const defaultEntry = block.entries.find(entry => entry.isDefault === true) || block.entries[0];
+    const defaultLanguage = defaultEntry?.code || 'en-US';
+
+    // Format with singular/plural
+    const languageWord = languageCount === 1 ? 'language' : 'languages';
+    const typeName = `Languages: ${languageCount} ${languageWord}, default: ${defaultLanguage}`;
+
+    // Build markdown with type information
+    const builder = new MarkdownBuilder();
+    builder
+      .heading(3, 'LanguagesType')
+      .blank()
+      .text(typeName)
+      .blank()
+      .text('**Available languages:**');
+
+    // List all languages with default marker
+    for (const entry of block.entries) {
+      const marker = entry.isDefault ? '* ' : '  ';
+      builder.text(`${marker}\`${entry.code}\` - ${entry.label}`);
+    }
+
+    return createMarkdownHover(builder.build());
   }
 }

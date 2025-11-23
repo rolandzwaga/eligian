@@ -932,6 +932,94 @@ timeline "test" in ".container" using raf {
 `;
 }
 
+// ============================================================================
+// Languages Block Test Helpers (Feature 037)
+// ============================================================================
+
+/**
+ * Build a minimal program with languages block for testing
+ *
+ * Creates a valid program with languages declaration followed by
+ * minimal timeline. Useful for testing languages block parsing and validation.
+ *
+ * @param languagesBlock Languages block content (entries only, without braces)
+ * @returns Valid Eligian program string
+ *
+ * @example Single language
+ * ```typescript
+ * const code = languagesProgram('"en-US" "English"');
+ * ```
+ *
+ * @example Multiple languages
+ * ```typescript
+ * const code = languagesProgram(`
+ *   * "en-US" "English"
+ *     "nl-NL" "Nederlands"
+ *     "fr-FR" "Français"
+ * `);
+ * ```
+ *
+ * Feature 037: Languages Declaration Syntax
+ * Task: T008
+ */
+export function languagesProgram(languagesBlock: string): string {
+  return `
+languages {
+  ${languagesBlock}
+}
+
+timeline "test" in ".container" using raf {
+  at 0s..5s selectElement("#box") {
+    animate({opacity: 1}, 1000)
+  }
+}
+`;
+}
+
+/**
+ * Build a program with languages block at invalid position
+ *
+ * Creates a program where languages block appears AFTER other declarations,
+ * which should trigger a parse/validation error (languages must be first).
+ *
+ * @param languagesBlock Languages block content
+ * @param beforeElement Element type that appears before languages (default: 'styles')
+ * @returns Invalid Eligian program string
+ *
+ * @example Languages after styles import (invalid)
+ * ```typescript
+ * const code = invalidPositionProgram('"en-US" "English"', 'styles');
+ * // styles "./styles.css"
+ * // languages { "en-US" "English" }  // ❌ Must be first
+ * ```
+ *
+ * Feature 037: Languages Declaration Syntax
+ * Task: T008, T031
+ */
+export function invalidPositionProgram(
+  languagesBlock: string,
+  beforeElement: 'styles' | 'layout' | 'action' = 'styles'
+): string {
+  const firstElement =
+    beforeElement === 'styles'
+      ? 'styles "./styles.css"'
+      : beforeElement === 'layout'
+        ? 'layout "./layout.html"'
+        : 'action test [] { selectElement("#box") }';
+
+  return `
+${firstElement}
+
+languages {
+  ${languagesBlock}
+}
+
+timeline "test" in ".container" using raf {
+  at 0s..5s selectElement("#box")
+}
+`;
+}
+
 /**
  * Re-export MockAssetLoader for testing with mock file system
  */

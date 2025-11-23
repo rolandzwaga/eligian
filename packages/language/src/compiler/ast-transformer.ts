@@ -66,6 +66,7 @@ import type {
   IEngineConfiguration,
   IEngineInfo,
   IEventActionConfiguration,
+  ILabel,
   IOperationConfiguration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
@@ -78,6 +79,7 @@ import type {
   TimelineConfigIR,
   TimelineProviderSettingIR,
   TimelineProviderSettingsIR,
+  TLanguageCode,
   TOperationData,
   TTimelineProviderSettings,
 } from './types/eligius-ir.js';
@@ -399,15 +401,18 @@ export const transformAST = (
       timelines
     );
 
+    // T012: Transform languages block (Feature 037)
+    const languagesConfig = transformLanguagesBlock(program.languages);
+
     // Build complete IEngineConfiguration (T281)
     const config: IEngineConfiguration = {
       id: defaults.id,
       engine: defaults.engine,
       containerSelector: defaults.containerSelector,
-      language: defaults.language,
+      language: languagesConfig.language, // T012: Use transformed language
       layoutTemplate,
       cssFiles: assets?.cssFiles ?? [], // Use loaded CSS files from asset imports
-      availableLanguages: defaults.availableLanguages,
+      availableLanguages: languagesConfig.availableLanguages, // T012: Use transformed availableLanguages
       labels: assets?.labels ?? defaults.labels, // Use loaded labels from labels import
       initActions: eligiusInitActions,
       actions: eligiusActions,
@@ -431,6 +436,69 @@ export const transformAST = (
     return result;
   });
 
+// ============================================================================
+// Languages Block Transformation (Feature 037)
+// ============================================================================
+
+/**
+ * Transform LanguagesBlock AST to Eligius language configuration
+ *
+ * Extracts language declarations and converts them to:
+ * - `language: TLanguageCode` - Default language code
+ * - `availableLanguages: ILabel[]` - Array of available languages
+ *
+ * Rules:
+ * - Single language (1 entry): First entry becomes default (implicit)
+ * - Multiple languages (2+ entries): Entry with isDefault=true becomes default (explicit * marker)
+ * - Each ILabel gets a UUID v4 via crypto.randomUUID()
+ *
+ * @param block - LanguagesBlock AST node (if present)
+ * @returns Object with language and availableLanguages properties
+ *
+ * Feature 037: Languages Declaration Syntax
+ * Research Decision: RT-005 (Default language behavior)
+ * Task: T006 (Stub), T011 (Full implementation)
+ */
+function transformLanguagesBlock(block: import('../generated/ast.js').LanguagesBlock | undefined): {
+  language: TLanguageCode;
+  availableLanguages: ILabel[];
+} {
+  // T013: Backward compatibility - if no languages block, default to en-US
+  if (!block || block.entries.length === 0) {
+    return {
+      language: 'en-US',
+      availableLanguages: [{ id: crypto.randomUUID(), languageCode: 'en-US', label: 'English' }],
+    };
+  }
+
+  // T011: Full implementation for single language case
+  // Single language (1 entry): First entry becomes default (implicit)
+  // Multiple languages (2+ entries): Entry with isDefault=true becomes default (explicit * marker)
+
+  // Find default language
+  let defaultLanguageCode: string;
+  if (block.entries.length === 1) {
+    // Single language - implicit default (first entry)
+    defaultLanguageCode = block.entries[0].code;
+  } else {
+    // Multiple languages - explicit default (entry with isDefault=true)
+    const defaultEntry = block.entries.find(entry => entry.isDefault);
+    defaultLanguageCode = defaultEntry!.code; // Validator ensures exactly one * marker
+  }
+
+  // T011: Map all entries to ILabel array with UUID v4 generation
+  const availableLanguages: ILabel[] = block.entries.map(entry => ({
+    id: crypto.randomUUID(), // UUID v4 for globally unique IDs
+    languageCode: entry.code as TLanguageCode,
+    label: entry.label,
+  }));
+
+  return {
+    language: defaultLanguageCode as TLanguageCode,
+    availableLanguages,
+  };
+}
+
 /**
  * Create default configuration values for required Eligius fields
  *
@@ -445,13 +513,13 @@ function createDefaultConfiguration() {
       systemName: 'EligiusEngine',
     } as IEngineInfo,
     containerSelector: '#eligius-container',
-    language: 'en-US' as const,
+    language: 'en-US' as TLanguageCode,
     layoutTemplate: 'default',
     // T275: ILabel requires id property
     // T278: TLanguageCode format is `${Lowercase}-${Uppercase}` (e.g., 'en-US')
     availableLanguages: [
-      { id: crypto.randomUUID(), languageCode: 'en-US' as const, label: 'English' },
-    ],
+      { id: crypto.randomUUID(), languageCode: 'en-US' as TLanguageCode, label: 'English' },
+    ] as ILabel[],
     labels: [] as LanguageLabelIR[],
   };
 }

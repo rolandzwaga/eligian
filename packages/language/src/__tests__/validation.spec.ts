@@ -1534,4 +1534,171 @@ describe('Eligian Grammar - Validation', () => {
       });
     });
   });
+
+  // Feature 037: Languages Declaration Syntax
+  describe('Languages block validation (US2)', () => {
+    test('T019: should error when multiple languages lack * marker', async () => {
+      const code = `
+        languages {
+          "en-US" "English"
+          "nl-NL" "Nederlands"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(
+        errors.some(
+          e =>
+            e.message.includes('Multiple languages') &&
+            e.message.includes('exactly one') &&
+            e.message.includes('*')
+        )
+      ).toBe(true);
+    });
+
+    test('T020: should error when multiple * markers present', async () => {
+      const code = `
+        languages {
+          * "en-US" "English"
+          * "nl-NL" "Nederlands"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(
+        errors.some(e => e.message.includes('Only one') && e.message.includes('default'))
+      ).toBe(true);
+    });
+
+    test('should accept single language without * marker (implicit default)', async () => {
+      const code = `
+        languages {
+          "en-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      // No errors - single language doesn't need * marker
+      const defaultMarkerErrors = errors.filter(e => e.message.includes('*'));
+      expect(defaultMarkerErrors.length).toBe(0);
+    });
+
+    test('should accept multiple languages with exactly one * marker', async () => {
+      const code = `
+        languages {
+          * "nl-NL" "Nederlands"
+            "en-US" "English"
+            "fr-FR" "Français"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      // No errors - exactly one * marker
+      const defaultMarkerErrors = errors.filter(e => e.message.includes('*'));
+      expect(defaultMarkerErrors.length).toBe(0);
+    });
+  });
+
+  // Feature 037: User Story 4 - Language Code Validation
+  describe('Language code validation (US4)', () => {
+    test('T035: should accept valid IETF language codes', async () => {
+      const code = `
+        languages {
+          * "en-US" "English"
+            "nl-NL" "Nederlands"
+            "fr-FR" "Français"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      // No language code format errors
+      const formatErrors = errors.filter(e => e.message.includes('Invalid language code'));
+      expect(formatErrors.length).toBe(0);
+    });
+
+    test('T036: should reject uppercase primary language code', async () => {
+      const code = `
+        languages {
+          "EN-US" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(
+        errors.some(
+          e => e.message.includes('Invalid language code format') && e.message.includes('xx-XX')
+        )
+      ).toBe(true);
+    });
+
+    test('T037: should reject lowercase region code', async () => {
+      const code = `
+        languages {
+          "en-us" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(
+        errors.some(
+          e => e.message.includes('Invalid language code format') && e.message.includes('xx-XX')
+        )
+      ).toBe(true);
+    });
+
+    test('T038: should reject language code without region', async () => {
+      const code = `
+        languages {
+          "english" "English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(
+        errors.some(
+          e => e.message.includes('Invalid language code format') && e.message.includes('xx-XX')
+        )
+      ).toBe(true);
+    });
+
+    test('T039: should reject duplicate language codes', async () => {
+      const code = `
+        languages {
+          * "en-US" "English"
+            "en-US" "American English"
+        }
+
+        timeline "test" in ".container" using raf {}
+      `;
+      const { errors } = await ctx.parseAndValidate(code);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(
+        errors.some(
+          e => e.message.includes('Duplicate language code') && e.message.includes('en-US')
+        )
+      ).toBe(true);
+    });
+  });
 });

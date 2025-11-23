@@ -32,3 +32,4 @@ check-*.mjs
 /TODO.txt
 /nul
 /examples/nul
+/coverage/coverage-final.json
