@@ -64,6 +64,9 @@ const state: EditorState = {
   focusedElement: null,
 };
 
+// Expose state for testing
+(window as any).__labelEditorState = state;
+
 // VSCode API
 declare const acquireVsCodeApi: () => {
   postMessage(message: ToExtensionMessage): void;
@@ -391,9 +394,8 @@ function renderGroups(): void {
 function renderTranslations(): void {
   const container = document.getElementById('translations-container');
   const emptyState = document.getElementById('empty-state');
-  const addButton = document.getElementById('add-translation-btn');
 
-  if (!container || !emptyState || !addButton) return;
+  if (!container || !emptyState) return;
 
   // Clear previous content (except empty state)
   container.innerHTML = '';
@@ -402,12 +404,10 @@ function renderTranslations(): void {
   if (state.selectedGroupIndex === null) {
     // No group selected - show empty state
     emptyState.style.display = 'block';
-    addButton.style.display = 'none';
     return;
   }
 
   emptyState.style.display = 'none';
-  addButton.style.display = 'block';
 
   const group = state.labels[state.selectedGroupIndex];
   if (!group) return;
@@ -634,38 +634,6 @@ function performDelete(index: number): void {
 }
 
 /**
- * Add a new translation to selected group
- * UUIDs are auto-generated using Web Crypto API (UUID v4)
- */
-function addTranslation(): void {
-  if (state.selectedGroupIndex === null) return;
-
-  const group = state.labels[state.selectedGroupIndex];
-  const newTranslation: Translation = {
-    id: crypto.randomUUID(), // Auto-generate UUID v4 (never shown in UI)
-    languageCode: '',
-    label: '',
-  };
-  group.labels.push(newTranslation);
-  markDirty();
-  sendMessage({ type: 'update', labels: state.labels });
-  renderTranslations();
-
-  // T051: Focus management - Focus new translation's language code input
-  setTimeout(() => {
-    const container = document.getElementById('translations-container');
-    const cards = container?.querySelectorAll('.translation-card');
-    if (cards && cards.length > 0) {
-      const lastCard = cards[cards.length - 1];
-      const langInput = lastCard.querySelector('input[placeholder="en-US"]');
-      if (langInput instanceof HTMLInputElement) {
-        langInput.focus();
-      }
-    }
-  }, 0);
-}
-
-/**
  * Mark editor as dirty
  */
 function markDirty(): void {
@@ -844,18 +812,134 @@ function handleDragEnd(e: DragEvent): void {
   }
 }
 
+/**
+ * Open the modal for adding translation to all groups
+ */
+function openTranslationModal(): void {
+  const modal = document.getElementById('translation-modal');
+  if (modal) {
+    modal.style.display = 'block';
+  }
+}
+
+/**
+ * Close the modal and clear input
+ */
+function closeTranslationModal(): void {
+  const modal = document.getElementById('translation-modal');
+  const input = document.getElementById('modal-language-code') as HTMLInputElement;
+  const errorEl = document.getElementById('modal-error');
+
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  if (input) {
+    input.value = '';
+  }
+  if (errorEl) {
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+  }
+}
+
+/**
+ * Validate language code against existing translations
+ * Returns error message or null if valid
+ */
+function validateNewLanguageCode(code: string): string | null {
+  // Check for empty
+  if (!code || code.trim().length === 0) {
+    return 'Language code cannot be empty';
+  }
+
+  // Check format (xx-XX pattern)
+  if (!/^[a-z]{2,3}-[A-Z]{2,3}$/.test(code)) {
+    return 'Use format: en-US, nl-NL, etc.';
+  }
+
+  // Check for duplicates across all groups
+  for (const group of state.labels) {
+    for (const translation of group.labels) {
+      if (translation.languageCode === code) {
+        return `Language code '${code}' already exists in one or more groups`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Add translation with given language code to all groups
+ */
+function addTranslationToAllGroups(languageCode: string): void {
+  // Add translation to each group
+  for (const group of state.labels) {
+    const newTranslation: Translation = {
+      id: crypto.randomUUID(), // Unique ID for each group
+      languageCode: languageCode,
+      label: '', // User will fill in the label text
+    };
+    group.labels.push(newTranslation);
+  }
+
+  // Mark as dirty and send update
+  markDirty();
+  sendMessage({ type: 'update', labels: state.labels });
+
+  // Re-render to show new translations
+  renderGroups();
+  renderTranslations();
+}
+
+/**
+ * Handle modal confirm button click
+ */
+function handleModalConfirm(): void {
+  const input = document.getElementById('modal-language-code') as HTMLInputElement;
+  const errorEl = document.getElementById('modal-error');
+
+  if (!input || !errorEl) return;
+
+  const languageCode = input.value.trim();
+
+  // Validate
+  const error = validateNewLanguageCode(languageCode);
+  if (error) {
+    errorEl.textContent = error;
+    errorEl.style.display = 'block';
+    return; // Keep modal open
+  }
+
+  // Valid - add to all groups
+  addTranslationToAllGroups(languageCode);
+
+  // Close modal
+  closeTranslationModal();
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   // Wire up button event listeners
   const addGroupBtn = document.getElementById('add-group-btn');
   const addTranslationBtn = document.getElementById('add-translation-btn');
+  const modalCancelBtn = document.getElementById('modal-cancel');
+  const modalConfirmBtn = document.getElementById('modal-confirm');
 
   if (addGroupBtn) {
     addGroupBtn.addEventListener('click', addLabelGroup);
   }
 
   if (addTranslationBtn) {
-    addTranslationBtn.addEventListener('click', addTranslation);
+    addTranslationBtn.addEventListener('click', openTranslationModal);
+  }
+
+  if (modalCancelBtn) {
+    modalCancelBtn.addEventListener('click', closeTranslationModal);
+  }
+
+  if (modalConfirmBtn) {
+    modalConfirmBtn.addEventListener('click', handleModalConfirm);
   }
 
   // Send ready message to extension
