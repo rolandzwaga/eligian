@@ -155,8 +155,7 @@ export type TypeNameCalculator<T> = (properties: T) => string;
  * // Returns: "Import<css>"
  * ```
  */
-export const importTypeName: TypeNameCalculator<ImportType> = (props) =>
-  `Import<${props.assetType}>`;
+export const importTypeName: TypeNameCalculator<ImportType> = props => `Import<${props.assetType}>`;
 
 /**
  * Calculate TimelineEvent type name for hover display
@@ -170,7 +169,7 @@ export const importTypeName: TypeNameCalculator<ImportType> = (props) =>
  * // Returns: "TimedEvent"
  * ```
  */
-export const eventTypeName: TypeNameCalculator<TimelineEventType> = (props) =>
+export const eventTypeName: TypeNameCalculator<TimelineEventType> = props =>
   `${props.eventKind}Event`;
 
 /**
@@ -185,7 +184,7 @@ export const eventTypeName: TypeNameCalculator<TimelineEventType> = (props) =>
  * // Returns: "Timeline<video>"
  * ```
  */
-export const timelineTypeName: TypeNameCalculator<TimelineType> = (props) =>
+export const timelineTypeName: TypeNameCalculator<TimelineType> = props =>
   `Timeline<${props.provider}>`;
 
 /**

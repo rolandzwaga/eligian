@@ -17,8 +17,8 @@ import type { ValidationAcceptor } from 'langium';
  * HTMLImport AST node (from eligian.langium)
  */
 export interface HTMLImport {
-  readonly name: string;                  // Variable name
-  readonly path: string;                  // File path
+  readonly name: string; // Variable name
+  readonly path: string; // File path
   readonly $cstNode?: {
     readonly range: {
       readonly start: { readonly line: number; readonly column: number };
@@ -43,13 +43,13 @@ export interface Program {
  * Validation error codes for HTML imports
  */
 export type HTMLImportErrorCode =
-  | 'DUPLICATE_HTML_VARIABLE'      // Variable name already defined
-  | 'HTML_FILE_NOT_FOUND'          // File doesn't exist at path
-  | 'HTML_PERMISSION_DENIED'       // File exists but not readable
+  | 'DUPLICATE_HTML_VARIABLE' // Variable name already defined
+  | 'HTML_FILE_NOT_FOUND' // File doesn't exist at path
+  | 'HTML_PERMISSION_DENIED' // File exists but not readable
   | 'HTML_PATH_SECURITY_VIOLATION' // Path escapes project directory
-  | 'INVALID_HTML_PATH'            // Path is malformed
-  | 'EMPTY_HTML_FILE'              // File is empty (warning)
-  | 'HTML_FILE_TOO_LARGE';         // File exceeds 1MB (warning)
+  | 'INVALID_HTML_PATH' // Path is malformed
+  | 'EMPTY_HTML_FILE' // File is empty (warning)
+  | 'HTML_FILE_TOO_LARGE'; // File exceeds 1MB (warning)
 
 /**
  * Validation error details
@@ -86,10 +86,7 @@ export interface HTMLImportValidationError {
  * import header from './other.html'  // ERROR: Duplicate
  * ```
  */
-export function checkHTMLImportDuplicates(
-  program: Program,
-  accept: ValidationAcceptor
-): void;
+export function checkHTMLImportDuplicates(program: Program, accept: ValidationAcceptor): void;
 
 /**
  * Check that HTML import path resolves to existing file
@@ -236,24 +233,17 @@ export function validateHTMLImports(
 /**
  * Format duplicate variable error message
  */
-export function formatDuplicateVariableError(
-  variableName: string,
-  firstLine: number
-): string;
+export function formatDuplicateVariableError(variableName: string, firstLine: number): string;
 
 /**
  * Format file not found error message
  */
-export function formatFileNotFoundError(
-  path: string
-): string;
+export function formatFileNotFoundError(path: string): string;
 
 /**
  * Format permission denied error message
  */
-export function formatPermissionDeniedError(
-  path: string
-): string;
+export function formatPermissionDeniedError(path: string): string;
 
 /**
  * Format path security violation error message
@@ -267,17 +257,12 @@ export function formatPathSecurityError(
 /**
  * Format file size warning message
  */
-export function formatFileSizeWarning(
-  path: string,
-  sizeBytes: number
-): string;
+export function formatFileSizeWarning(path: string, sizeBytes: number): string;
 
 /**
  * Format empty file warning message
  */
-export function formatEmptyFileWarning(
-  path: string
-): string;
+export function formatEmptyFileWarning(path: string): string;
 
 // ============================================================================
 // Usage Examples
@@ -341,7 +326,7 @@ export const HTML_IMPORT_VALIDATION_TEST_CASES = [
       import header from './other.html'
     `,
     expectedError: 'DUPLICATE_HTML_VARIABLE',
-    expectedMessage: "Variable '@header' is already defined"
+    expectedMessage: "Variable '@header' is already defined",
   },
 
   // File existence
@@ -351,7 +336,7 @@ export const HTML_IMPORT_VALIDATION_TEST_CASES = [
       import missing from './missing.html'
     `,
     expectedError: 'HTML_FILE_NOT_FOUND',
-    expectedMessage: "HTML file not found: './missing.html'"
+    expectedMessage: "HTML file not found: './missing.html'",
   },
 
   // Path security
@@ -361,7 +346,7 @@ export const HTML_IMPORT_VALIDATION_TEST_CASES = [
       import bad from '../../../etc/passwd'
     `,
     expectedError: 'HTML_PATH_SECURITY_VIOLATION',
-    expectedMessage: 'HTML imports must be within project directory'
+    expectedMessage: 'HTML imports must be within project directory',
   },
 
   // Valid cases
@@ -370,7 +355,7 @@ export const HTML_IMPORT_VALIDATION_TEST_CASES = [
     code: `
       import header from './header.html'
     `,
-    expectedError: null
+    expectedError: null,
   },
   {
     name: 'Accept valid multiple imports',
@@ -378,13 +363,13 @@ export const HTML_IMPORT_VALIDATION_TEST_CASES = [
       import header from './header.html'
       import footer from './footer.html'
     `,
-    expectedError: null
+    expectedError: null,
   },
   {
     name: 'Accept parent directory import (within project)',
     code: `
       import shared from '../shared/component.html'
     `,
-    expectedError: null
-  }
+    expectedError: null,
+  },
 ] as const;

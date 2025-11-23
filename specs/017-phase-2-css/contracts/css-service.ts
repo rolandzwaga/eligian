@@ -238,10 +238,7 @@ export function parseCSS(content: string, filePath: string): CSSParseResult;
  * }
  * ```
  */
-export function loadCSS(
-  filePath: string,
-  converter: WebviewUriConverter
-): Promise<LoadedCSS>;
+export function loadCSS(filePath: string, converter: WebviewUriConverter): Promise<LoadedCSS>;
 
 /**
  * Rewrite CSS url() paths to webview URIs
@@ -350,10 +347,7 @@ export interface ReadError {
 /**
  * Union type of all file operation errors
  */
-export type FileOperationError =
-  | FileNotFoundError
-  | PermissionError
-  | ReadError;
+export type FileOperationError = FileNotFoundError | PermissionError | ReadError;
 
 // ============================================================================
 // Result Type (Functional Error Handling)

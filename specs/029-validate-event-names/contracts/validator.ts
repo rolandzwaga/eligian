@@ -9,8 +9,8 @@
  * Date: 2025-11-10
  */
 
-import type { EventActionDefinition } from '../generated/ast.js';
 import type { ValidationAcceptor } from 'langium';
+import type { EventActionDefinition } from '../generated/ast.js';
 
 /**
  * User Story 1: Validate that event name matches a known Eligius event
@@ -60,7 +60,7 @@ import type { ValidationAcceptor } from 'langium';
  */
 export function checkEventNameExists(
   eventAction: EventActionDefinition,
-  accept: ValidationAcceptor,
+  accept: ValidationAcceptor
 ): void;
 
 /**
@@ -118,7 +118,7 @@ export function checkEventNameExists(
  */
 export function checkEventArgumentCount(
   eventAction: EventActionDefinition,
-  accept: ValidationAcceptor,
+  accept: ValidationAcceptor
 ): void;
 
 /**
@@ -189,7 +189,7 @@ export function checkEventArgumentCount(
  */
 export function checkEventTypeCompatibility(
   eventAction: EventActionDefinition,
-  accept: ValidationAcceptor,
+  accept: ValidationAcceptor
 ): void;
 
 /**

@@ -131,10 +131,9 @@
   },
   "devDependencies": {
     "@types/vscode": "1.106.0",
-    "@vitest/ui": "4.0.10",
+    "@vitest/ui": "4.0.13",
     "concurrently": "9.2.1",
-    "jsdom": "27.2.0",
-    "vitest": "4.0.10"
+    "jsdom": "27.2.0"
   },
   "vsce": {
     "dependencies": false

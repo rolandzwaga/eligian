@@ -93,7 +93,7 @@ export interface IControllerTransformer {
     metadata: ControllerMetadata
   ): [
     TransformedControllerOperations['getControllerInstance'],
-    TransformedControllerOperations['addControllerToElement']
+    TransformedControllerOperations['addControllerToElement'],
   ];
 
   /**

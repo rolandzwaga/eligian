@@ -1,6 +1,3 @@
 {
-    "recommendations": [
-        "langium.langium-vscode",
-        "vitest.explorer"
-    ]
+  "recommendations": ["langium.langium-vscode", "vitest.explorer"]
 }

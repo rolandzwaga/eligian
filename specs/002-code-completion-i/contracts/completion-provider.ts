@@ -8,7 +8,7 @@
  */
 
 import type { AstNode, LangiumDocument } from 'langium';
-import type { Position, CompletionItem } from 'vscode-languageserver';
+import type { CompletionItem, Position } from 'vscode-languageserver';
 
 // =============================================================================
 // Completion Context
@@ -198,10 +198,7 @@ export interface IContextDetector {
    * @param position Cursor position
    * @returns Completion context information
    */
-  detectContext(
-    document: LangiumDocument,
-    position: Position
-  ): CompletionContext;
+  detectContext(document: LangiumDocument, position: Position): CompletionContext;
 }
 
 /**
@@ -214,9 +211,7 @@ export interface IOperationCompletionProvider {
    * @param context Completion context
    * @returns Array of completion items for operations
    */
-  getOperationCompletions(
-    context: CompletionContext
-  ): CompletionItem[];
+  getOperationCompletions(context: CompletionContext): CompletionItem[];
 }
 
 /**
@@ -230,10 +225,7 @@ export interface IActionCompletionProvider {
    * @param context Completion context
    * @returns Array of completion items for custom actions
    */
-  getActionCompletions(
-    document: LangiumDocument,
-    context: CompletionContext
-  ): CompletionItem[];
+  getActionCompletions(document: LangiumDocument, context: CompletionContext): CompletionItem[];
 }
 
 /**
@@ -246,9 +238,7 @@ export interface IKeywordCompletionProvider {
    * @param context Completion context (for context-aware filtering)
    * @returns Array of completion items for keywords
    */
-  getKeywordCompletions(
-    context: CompletionContext
-  ): CompletionItem[];
+  getKeywordCompletions(context: CompletionContext): CompletionItem[];
 }
 
 /**
@@ -261,9 +251,7 @@ export interface IEventCompletionProvider {
    * @param context Completion context
    * @returns Array of completion items for events
    */
-  getEventCompletions(
-    context: CompletionContext
-  ): CompletionItem[];
+  getEventCompletions(context: CompletionContext): CompletionItem[];
 }
 
 /**
@@ -276,9 +264,7 @@ export interface IVariableCompletionProvider {
    * @param context Completion context (for scope-aware filtering)
    * @returns Array of completion items for variables
    */
-  getVariableCompletions(
-    context: CompletionContext
-  ): CompletionItem[];
+  getVariableCompletions(context: CompletionContext): CompletionItem[];
 }
 
 /**
@@ -292,10 +278,7 @@ export interface IParameterCompletionProvider {
    * @param operationName Operation or action name (to look up parameter metadata)
    * @returns Array of completion items for parameters
    */
-  getParameterCompletions(
-    context: CompletionContext,
-    operationName: string
-  ): CompletionItem[];
+  getParameterCompletions(context: CompletionContext, operationName: string): CompletionItem[];
 }
 
 // =============================================================================
@@ -356,10 +339,7 @@ export interface ITimelineEventRegistry {
  * Completion acceptor function (from Langium)
  * Used to add completion items to the result list
  */
-export type CompletionAcceptor = (
-  context: CompletionContext,
-  item: CompletionItem
-) => void;
+export type CompletionAcceptor = (context: CompletionContext, item: CompletionItem) => void;
 
 // =============================================================================
 // Error Handling

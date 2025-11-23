@@ -46,21 +46,23 @@
     }
   },
   "files": {
-    "includes": ["packages/**/*.ts", "packages/**/*.json", "!**/fixtures"],
+    "includes": [
+      "packages/**/*.ts",
+      "packages/**/*.json",
+      "!**/fixtures",
+      "!**/*.html",
+      "!**/*.css",
+      "!!**/specs",
+      "!!**/coverage",
+      "!!**/out",
+      "!!**/dist",
+      "!!**/generated"
+    ],
     "ignoreUnknown": true
   },
   "overrides": [
     {
-      "includes": ["**/out/**", "**/dist/**", "**/generated/**", "**/*.generated.ts", "**/*.d.ts"],
-      "linter": {
-        "enabled": false
-      },
-      "formatter": {
-        "enabled": false
-      }
-    },
-    {
-      "includes": ["**/__tests__/**/fixtures/**/*.json", "**/coverage/**/*.json"],
+      "includes": ["**/*.generated.ts", "**/*.d.ts", "**/__tests__/**/fixtures/**/*.json"],
       "linter": {
         "enabled": false
       },

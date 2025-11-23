@@ -7,7 +7,7 @@
  * Location: packages/compiler/src/html-loader.ts
  */
 
-import { Effect, Context } from 'effect';
+import { Context, Effect } from 'effect';
 
 // ============================================================================
 // Error Types
@@ -16,10 +16,7 @@ import { Effect, Context } from 'effect';
 /**
  * Errors that can occur during HTML file loading
  */
-export type HTMLLoadError =
-  | FileNotFoundError
-  | PermissionDeniedError
-  | ReadError;
+export type HTMLLoadError = FileNotFoundError | PermissionDeniedError | ReadError;
 
 /**
  * HTML file not found at specified path
@@ -201,7 +198,7 @@ export const loadHTMLWithSizeCheck = (path: string, location: SourceLocation) =>
       loader.validateFileSize(path, 1024 * 1024),
       Effect.catchAll(error => {
         console.warn(`Warning: HTML file is large (${error.sizeBytes} bytes): ${error.path}`);
-        return Effect.succeed(undefined);  // Continue despite warning
+        return Effect.succeed(undefined); // Continue despite warning
       })
     );
 
@@ -232,10 +229,11 @@ export const loadHTMLWithSizeCheck = (path: string, location: SourceLocation) =>
  * // result: '<header>Test</header>'
  * ```
  */
-export const createMockHTMLLoader = (
-  files: Record<string, string | HTMLLoadError>
-) => {
-  const loadHTML = (path: string, location: SourceLocation): Effect.Effect<string, HTMLLoadError> => {
+export const createMockHTMLLoader = (files: Record<string, string | HTMLLoadError>) => {
+  const loadHTML = (
+    path: string,
+    location: SourceLocation
+  ): Effect.Effect<string, HTMLLoadError> => {
     const result = files[path];
     if (result === undefined) {
       return Effect.fail({ _tag: 'FileNotFound' as const, path, sourceLocation: location });
@@ -246,8 +244,11 @@ export const createMockHTMLLoader = (
     return Effect.fail(result);
   };
 
-  const validateFileSize = (_path: string, _maxSize?: number): Effect.Effect<void, FileSizeError> => {
-    return Effect.succeed(undefined);  // Mock always passes size validation
+  const validateFileSize = (
+    _path: string,
+    _maxSize?: number
+  ): Effect.Effect<void, FileSizeError> => {
+    return Effect.succeed(undefined); // Mock always passes size validation
   };
 
   return { loadHTML, validateFileSize };

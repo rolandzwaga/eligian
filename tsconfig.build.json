@@ -1,14 +1,14 @@
 {
-    "files": [],
-    "references": [
-        {
-            "path": "./packages/language/tsconfig.src.json"
-        },
-        {
-            "path": "./packages/cli"
-        },
-        {
-            "path": "./packages/extension"
-        }
-    ]
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/language/tsconfig.src.json"
+    },
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/extension"
+    }
+  ]
 }

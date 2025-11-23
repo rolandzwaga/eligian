@@ -7,7 +7,7 @@
  * Location: packages/compiler/src/path-resolver.ts
  */
 
-import { Effect, Context } from 'effect';
+import { Context, Effect } from 'effect';
 
 // ============================================================================
 // Error Types
@@ -16,18 +16,16 @@ import { Effect, Context } from 'effect';
 /**
  * Errors that can occur during path resolution
  */
-export type PathResolutionError =
-  | PathSecurityError
-  | InvalidPathError;
+export type PathResolutionError = PathSecurityError | InvalidPathError;
 
 /**
  * Path escapes project directory (security violation)
  */
 export interface PathSecurityError {
   readonly _tag: 'PathSecurityViolation';
-  readonly importPath: string;          // Original path from import statement
-  readonly resolvedPath: string;        // Absolute path after resolution
-  readonly projectRoot: string;         // Project root directory
+  readonly importPath: string; // Original path from import statement
+  readonly resolvedPath: string; // Absolute path after resolution
+  readonly projectRoot: string; // Project root directory
   readonly sourceLocation: SourceLocation;
 }
 
@@ -188,7 +186,7 @@ export const formatPathSecurityError = (error: PathSecurityError): string => {
     `  Import path: '${error.importPath}'`,
     `  Resolves to: '${error.resolvedPath}'`,
     `  Project root: '${error.projectRoot}'`,
-    `  (line ${error.sourceLocation.line}, column ${error.sourceLocation.column})`
+    `  (line ${error.sourceLocation.line}, column ${error.sourceLocation.column})`,
   ].join('\n');
 };
 
@@ -257,7 +255,11 @@ export const resolveMultipleImports = (
 /**
  * Example 3: Validate path without full resolution
  */
-export const validatePathOnly = (absolutePath: string, projectRoot: string, location: SourceLocation) =>
+export const validatePathOnly = (
+  absolutePath: string,
+  projectRoot: string,
+  location: SourceLocation
+) =>
   Effect.gen(function* (_) {
     const resolver = yield* _(PathResolverService);
     yield* _(resolver.validateWithinProject(absolutePath, projectRoot, location));
@@ -300,7 +302,7 @@ export const createMockPathResolver = (projectRoot: string) => {
         importPath,
         resolvedPath: resolved,
         projectRoot,
-        sourceLocation: location
+        sourceLocation: location,
       });
     }
 
@@ -322,7 +324,7 @@ export const createMockPathResolver = (projectRoot: string) => {
         importPath: absolutePath,
         resolvedPath: absolutePath,
         projectRoot,
-        sourceLocation: location
+        sourceLocation: location,
       });
     }
     return Effect.succeed(undefined);
@@ -342,15 +344,35 @@ export const PATH_RESOLVER_TEST_CASES = [
   // Valid paths
   { name: 'Simple relative path', importPath: './file.html', expected: 'valid' },
   { name: 'Subdirectory path', importPath: './sub/file.html', expected: 'valid' },
-  { name: 'Parent directory (within project)', importPath: '../shared/file.html', expected: 'valid' },
-  { name: 'Multiple parent directories (within project)', importPath: '../../common/file.html', expected: 'valid' },
+  {
+    name: 'Parent directory (within project)',
+    importPath: '../shared/file.html',
+    expected: 'valid',
+  },
+  {
+    name: 'Multiple parent directories (within project)',
+    importPath: '../../common/file.html',
+    expected: 'valid',
+  },
 
   // Invalid paths - security violations
-  { name: 'Escape project root', importPath: '../../../etc/passwd', expected: 'PathSecurityViolation' },
-  { name: 'Escape with relative path', importPath: '../../../../outside.html', expected: 'PathSecurityViolation' },
+  {
+    name: 'Escape project root',
+    importPath: '../../../etc/passwd',
+    expected: 'PathSecurityViolation',
+  },
+  {
+    name: 'Escape with relative path',
+    importPath: '../../../../outside.html',
+    expected: 'PathSecurityViolation',
+  },
 
   // Edge cases
   { name: 'Normalized path separators', importPath: '.\\windows\\style.html', expected: 'valid' },
   { name: 'Path with spaces', importPath: './files/my file.html', expected: 'valid' },
-  { name: 'Path with special characters', importPath: './files/file-name_v2.html', expected: 'valid' }
+  {
+    name: 'Path with special characters',
+    importPath: './files/file-name_v2.html',
+    expected: 'valid',
+  },
 ] as const;

@@ -58,10 +58,7 @@ export interface IControllerHoverProvider {
    * //   }
    * // }
    */
-  provideControllerHover(
-    params: HoverParams,
-    controllerName: string
-  ): Hover | undefined;
+  provideControllerHover(params: HoverParams, controllerName: string): Hover | undefined;
 
   /**
    * Provide hover documentation for parameter

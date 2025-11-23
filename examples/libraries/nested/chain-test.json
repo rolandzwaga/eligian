@@ -7,9 +7,7 @@
   "containerSelector": "#eligius-container",
   "language": "en-US",
   "layoutTemplate": "<div id=\"app\"></div>",
-  "cssFiles": [
-    "./test-styles.css"
-  ],
+  "cssFiles": ["./test-styles.css"],
   "availableLanguages": [
     {
       "id": "386409e5-5fdc-4422-bc7f-2c963ad571e3",

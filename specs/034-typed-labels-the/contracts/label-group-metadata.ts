@@ -1,6 +1,6 @@
 /**
  * Metadata for a single label group from labels JSON
- * 
+ *
  * Extracted from the labels JSON structure and stored in the registry
  * for efficient validation and hover information.
  */

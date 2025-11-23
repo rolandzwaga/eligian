@@ -46,7 +46,6 @@ export class LabelFileWatcher implements vscode.Disposable {
   /**
    * Start watching the label file
    */
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Called in constructor
   private startWatching(): void {
     // Create watcher for this specific file
     const pattern = new vscode.RelativePattern(

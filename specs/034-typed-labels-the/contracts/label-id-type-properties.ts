@@ -1,6 +1,6 @@
 /**
  * Properties for LabelID Typir CustomKind
- * 
+ *
  * Represents a validated reference to a label group from imported labels JSON.
  * Used by Typir type system for type inference and validation.
  */

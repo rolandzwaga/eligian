@@ -9,8 +9,8 @@
  * User Stories: US1 (P1), US2 (P2)
  */
 
-import type { OperationCall } from '../../../packages/language/src/generated/ast.js';
 import type { ValidationAcceptor } from 'langium';
+import type { OperationCall } from '../../../packages/language/src/generated/ast.js';
 import type { ControllerMetadata } from './metadata-generator.contract.js';
 
 /**
