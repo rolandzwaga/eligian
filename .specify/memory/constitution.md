@@ -1,33 +1,36 @@
 <!--
-SYNC IMPACT REPORT - Constitution v2.0.0
+SYNC IMPACT REPORT - Constitution v2.1.0
 
-VERSION CHANGE: [template] → 2.0.0
-RATIONALE: Initial constitution ratification with formalized principles from project practices
+VERSION CHANGE: 2.0.0 → 2.1.0
+RATIONALE: Add Feature Numbering Discipline principle to prevent spec number collisions
 
 MODIFIED PRINCIPLES:
-- None (initial version)
+- None
 
 ADDED SECTIONS:
-- All principles I through XXV
-- Development Workflow section
-- Quality Gates section
-- Governance section
+- Principle XXVI: Feature Numbering Discipline (CRITICAL)
+  - Requires checking specs directory FIRST (source of truth)
+  - Must check all three sources: specs/, remote branches, local branches
+  - Use highest number + 1 across all sources
+  - Prevents number collisions from deleted branches
 
 REMOVED SECTIONS:
-- Template placeholders
+- None
 
 TEMPLATES REQUIRING UPDATES:
-- ✅ .specify/templates/plan-template.md - updated with vitest-mcp quality gate
-- ✅ .specify/templates/spec-template.md - verified alignment
-- ✅ .specify/templates/tasks-template.md - updated test quality gate guidance
-- ✅ CLAUDE.md - added vitest-mcp to Available MCP Resources section
+- No template changes required (principle affects runtime behavior only)
 
 FOLLOW-UP TODOS:
 - None
 
 BREAKING CHANGES:
-- Quality gate now requires vitest-mcp tools instead of `pnpm test` commands
-- This enables programmatic test execution and coverage analysis via MCP
+- None (additive change only)
+
+PREVIOUS VERSION HISTORY:
+v2.0.0 (2025-01-20): Initial constitution ratification
+  - Added principles I through XXV
+  - Added Development Workflow, Quality Gates, Governance sections
+  - Introduced vitest-mcp quality gate requirement
 -->
 
 # Eligian DSL Project Constitution
@@ -192,6 +195,27 @@ MUST read `specs/TESTING_GUIDE.md` before writing tests. The guide contains quic
 
 **Rationale**: The testing guide codifies lessons learned from 1,913 tests. Skipping it wastes time reinventing solved problems.
 
+### XXVI. Feature Numbering Discipline (CRITICAL)
+
+When creating new features with `/speckit.specify`, the feature number MUST be determined by finding the highest number across ALL THREE sources and incrementing by 1:
+
+1. **Check specs directory FIRST**: `ls -1 specs | grep -E '^[0-9]+-' | sort -n | tail -1`
+2. **Check remote branches**: `git ls-remote --heads origin | grep -E 'refs/heads/[0-9]+-'`
+3. **Check local branches**: `git branch | grep -E '^[* ]*[0-9]+-'`
+4. **Use highest + 1**: Take the maximum number found across all three sources and add 1
+
+**CRITICAL**: The specs directory is the source of truth. NEVER assume branch numbers match spec numbers. Features may have specs without branches, or branches may be deleted after merge.
+
+**Example**:
+```bash
+# Specs directory shows: 037-languages-syntax (HIGHEST)
+# Remote branches show: 035-specialized-controller-syntax
+# Local branches show: 036-create-a-specialized
+# Correct new number: 038 (037 + 1)
+```
+
+**Rationale**: Spec directories are permanent (never deleted), while branches are ephemeral (deleted after merge). Checking only branches leads to number collisions and requires manual cleanup.
+
 ## Development Workflow
 
 ### Planning and Specification
@@ -264,4 +288,4 @@ Principle changes:
 - MINOR bump: New principle/section added or materially expanded guidance
 - PATCH bump: Clarifications, wording, typo fixes, non-semantic refinements
 
-**Version**: 2.0.0 | **Ratified**: 2025-01-20 | **Last Amended**: 2025-01-20
+**Version**: 2.1.0 | **Ratified**: 2025-01-20 | **Last Amended**: 2025-11-24
