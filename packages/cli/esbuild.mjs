@@ -29,7 +29,7 @@ const plugins = [
 ];
 
 // Build CLI as ESM bundle (needed for top-level await)
-const ctx = await esbuild.context({
+const cliCtx = await esbuild.context({
   entryPoints: ['src/main.ts'],
   outfile: 'dist/cli.mjs',
   bundle: true,
@@ -44,9 +44,26 @@ const ctx = await esbuild.context({
   plugins,
 });
 
+// Build library entry point as ESM bundle
+const libCtx = await esbuild.context({
+  entryPoints: ['src/index.ts'],
+  outfile: 'dist/index.mjs',
+  bundle: true,
+  target: 'ES2022',
+  format: 'esm',
+  loader: { '.ts': 'ts' },
+  // Don't bundle any node_modules dependencies - consumers will install them
+  packages: 'external',
+  platform: 'node',
+  sourcemap: !minify,
+  minify,
+  plugins,
+});
+
 if (watch) {
-  await ctx.watch();
+  await Promise.all([cliCtx.watch(), libCtx.watch()]);
 } else {
-  await ctx.rebuild();
-  ctx.dispose();
+  await Promise.all([cliCtx.rebuild(), libCtx.rebuild()]);
+  cliCtx.dispose();
+  libCtx.dispose();
 }

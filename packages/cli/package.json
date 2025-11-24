@@ -1,6 +1,6 @@
 {
   "name": "@eligian/cli",
-  "description": "The cli specific package",
+  "description": "Eligian DSL compiler CLI and library - compile .eligian files to Eligius JSON",
   "version": "0.0.1",
   "type": "module",
   "engines": {
@@ -9,14 +9,23 @@
   },
   "files": [
     "dist",
-    "src"
+    "out"
   ],
+  "main": "./dist/index.mjs",
+  "types": "./out/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "default": "./dist/index.mjs"
+    }
+  },
   "bin": {
+    "eligian": "./dist/cli.mjs",
     "eligian-cli": "./dist/cli.mjs"
   },
   "scripts": {
     "clean": "shx rm -fr *.tsbuildinfo out dist",
-    "build": "node esbuild.mjs",
+    "build": "node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
     "build:clean": "pnpm run clean && pnpm run build",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -9,16 +9,9 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as url from 'node:url';
-import {
-  compile,
-  formatErrors,
-  hasImports,
-  loadProgramAssets,
-  parseSource,
-} from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { Effect } from 'effect';
+import { AssetError, CompilationError, compileFile, IOError, ParseError } from './compile-file.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const packagePath = path.resolve(__dirname, '..', 'package.json');
@@ -28,15 +21,13 @@ const packageJson = JSON.parse(packageContent);
 /**
  * Exit codes
  */
-// const EXIT_SUCCESS = 0; // Not used - success is implicit (no exit())
 const EXIT_COMPILE_ERROR = 1;
-// const EXIT_INVALID_ARGS = 2; // Not used - Commander handles this
 const EXIT_IO_ERROR = 3;
 
 /**
- * CLI options
+ * CLI-specific options (extends library options)
  */
-interface CompileOptions {
+interface CLIOptions {
   output?: string;
   check: boolean;
   minify: boolean;
@@ -46,131 +37,94 @@ interface CompileOptions {
 }
 
 /**
- * Compile a single .eligian file
+ * Format and print parse errors to console
  */
-async function compileFile(inputPath: string, options: CompileOptions): Promise<void> {
+function printParseErrors(error: ParseError): void {
+  console.error(chalk.red('\nParse failed:\n'));
+
+  for (const err of error.formatted) {
+    console.error(err.message);
+
+    if (err.codeSnippet) {
+      console.error(`\n${err.codeSnippet}`);
+    }
+
+    if (err.hint) {
+      console.error(`\n${chalk.yellow(`💡 ${err.hint}`)}`);
+    }
+
+    console.error(); // blank line
+  }
+}
+
+/**
+ * Format and print asset errors to console
+ */
+function printAssetErrors(error: AssetError): void {
+  console.error(chalk.red('\nAsset validation failed:\n'));
+
+  for (const err of error.errors) {
+    console.error(chalk.red(`✗ ${err.message}`));
+    console.error(chalk.gray(`  File: ${err.filePath}`));
+    console.error(chalk.gray(`  Path: ${err.absolutePath}`));
+    console.error(
+      chalk.gray(
+        `  Location: ${err.sourceLocation.file}:${err.sourceLocation.line}:${err.sourceLocation.column}`
+      )
+    );
+
+    if (err.hint) {
+      console.error(chalk.yellow(`  💡 ${err.hint}`));
+    }
+
+    if (err.details) {
+      console.error(chalk.gray(`  Details: ${err.details}`));
+    }
+
+    console.error(); // blank line
+  }
+}
+
+/**
+ * Format and print compilation errors to console
+ */
+function printCompilationErrors(error: CompilationError): void {
+  console.error(chalk.red('\nCompilation failed:\n'));
+
+  for (const err of error.formatted) {
+    console.error(err.message);
+
+    if (err.codeSnippet) {
+      console.error(`\n${err.codeSnippet}`);
+    }
+
+    if (err.hint) {
+      console.error(`\n${chalk.yellow(`💡 ${err.hint}`)}`);
+    }
+
+    console.error(); // blank line
+  }
+}
+
+/**
+ * CLI wrapper for compileFile - handles console output and process.exit()
+ */
+async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<void> {
+  if (options.verbose) {
+    console.log(chalk.blue(`Compiling ${inputPath}...`));
+  }
+
   try {
-    // Read source file
-    const sourceCode = await fs.readFile(inputPath, 'utf-8');
+    const result = await compileFile(inputPath, {
+      minify: options.minify,
+      optimize: options.optimize,
+    });
 
     if (options.verbose) {
-      console.log(chalk.blue(`Compiling ${inputPath}...`));
-    }
-
-    // Get absolute path for URI resolution
-    const absoluteInputPath = path.resolve(inputPath);
-
-    // Parse source to AST for asset validation
-    // Pass URI so CSS files can be parsed and loaded into registry
-    const parseEffect = parseSource(sourceCode, absoluteInputPath);
-    const program = await Effect.runPromise(parseEffect).catch(error => {
-      // Extract actual error from Effect FiberFailure wrapper
-      // Effect wraps errors in: FiberFailure -> Cause -> defect -> actual error
-      let actualError = error;
-
-      // Effect uses non-enumerable properties, so we parse JSON representation
-      if (error && typeof error === 'object') {
-        try {
-          const errorJson = JSON.stringify(error);
-          const parsed = JSON.parse(errorJson);
-          const innerError = parsed.cause?.defect || parsed.cause?.failure;
-          if (innerError?._tag) {
-            actualError = innerError;
-          }
-        } catch (_e) {
-          // If parsing fails, use original error
-        }
-      }
-
-      // Handle parse errors
-      const formatted = formatErrors([actualError], sourceCode);
-      console.error(chalk.red('\nParse failed:\n'));
-
-      for (const err of formatted) {
-        console.error(err.message);
-
-        if (err.codeSnippet) {
-          console.error(`\n${err.codeSnippet}`);
-        }
-
-        if (err.hint) {
-          console.error(`\n${chalk.yellow(`💡 ${err.hint}`)}`);
-        }
-
-        console.error(); // blank line
-      }
-
-      process.exit(EXIT_COMPILE_ERROR);
-    });
-
-    // Validate and load assets if imports exist
-    if (hasImports(program)) {
-      const assetResult = loadProgramAssets(program, absoluteInputPath);
-
-      if (assetResult.errors.length > 0) {
-        console.error(chalk.red('\nAsset validation failed:\n'));
-
-        for (const error of assetResult.errors) {
-          console.error(chalk.red(`✗ ${error.message}`));
-          console.error(chalk.gray(`  File: ${error.filePath}`));
-          console.error(chalk.gray(`  Path: ${error.absolutePath}`));
-          console.error(
-            chalk.gray(
-              `  Location: ${error.sourceLocation.file}:${error.sourceLocation.line}:${error.sourceLocation.column}`
-            )
-          );
-
-          if (error.hint) {
-            console.error(chalk.yellow(`  💡 ${error.hint}`));
-          }
-
-          if (error.details) {
-            console.error(chalk.gray(`  Details: ${error.details}`));
-          }
-
-          console.error(); // blank line
-        }
-
-        process.exit(EXIT_COMPILE_ERROR);
-      }
-
-      if (options.verbose && assetResult.errors.length === 0) {
-        const assetCount =
-          (assetResult.layoutTemplate ? 1 : 0) +
-          assetResult.cssFiles.length +
-          Object.keys(assetResult.importMap).length;
-        console.log(chalk.green(`✓ Validated ${assetCount} asset(s)`));
+      if (result.assetCount > 0) {
+        console.log(chalk.green(`✓ Validated ${result.assetCount} asset(s)`));
       }
     }
-
-    // Run compiler pipeline
-    const compileEffect = compile(sourceCode, {
-      optimize: options.optimize,
-      minify: options.minify,
-      sourceUri: absoluteInputPath,
-    });
-
-    const result = await Effect.runPromise(compileEffect).catch(error => {
-      // Handle compilation errors
-      const formatted = formatErrors([error], sourceCode);
-      console.error(chalk.red('\nCompilation failed:\n'));
-
-      for (const err of formatted) {
-        console.error(err.message);
-
-        if (err.codeSnippet) {
-          console.error(`\n${err.codeSnippet}`);
-        }
-
-        if (err.hint) {
-          console.error(`\n${chalk.yellow(`💡 ${err.hint}`)}`);
-        }
-
-        console.error(); // blank line
-      }
-
-      process.exit(EXIT_COMPILE_ERROR);
-    });
 
     // Check-only mode: don't write output
     if (options.check) {
@@ -180,25 +134,36 @@ async function compileFile(inputPath: string, options: CompileOptions): Promise<
       return;
     }
 
-    // Generate output JSON
-    const outputJson = options.minify ? JSON.stringify(result) : JSON.stringify(result, null, 2);
-
     // Determine output path
     const outputPath = options.output || inputPath.replace(/\.eligian$/, '.json');
 
     // Write output file (or stdout if output is -)
     if (outputPath === '-') {
-      console.log(outputJson);
+      console.log(result.json);
     } else {
-      await fs.writeFile(outputPath, outputJson, 'utf-8');
+      await fs.writeFile(outputPath, result.json, 'utf-8');
 
       if (!options.quiet) {
         console.log(chalk.green(`✓ Compiled ${inputPath} → ${outputPath}`));
       }
     }
   } catch (error) {
-    // Handle I/O errors (file not found, permission denied, etc.)
-    if (error instanceof Error) {
+    if (error instanceof ParseError) {
+      printParseErrors(error);
+      process.exit(EXIT_COMPILE_ERROR);
+    }
+
+    if (error instanceof AssetError) {
+      printAssetErrors(error);
+      process.exit(EXIT_COMPILE_ERROR);
+    }
+
+    if (error instanceof CompilationError) {
+      printCompilationErrors(error);
+      process.exit(EXIT_COMPILE_ERROR);
+    }
+
+    if (error instanceof IOError) {
       console.error(chalk.red(`I/O Error: ${error.message}`));
       process.exit(EXIT_IO_ERROR);
     }
@@ -230,7 +195,7 @@ export default function main(): void {
     .option('-v, --verbose', 'verbose logging', false)
     .option('-q, --quiet', 'suppress success messages', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {
-      const options: CompileOptions = {
+      const options: CLIOptions = {
         output: cmdOptions.output as string | undefined,
         check: cmdOptions.check as boolean,
         minify: cmdOptions.minify as boolean,
@@ -239,7 +204,7 @@ export default function main(): void {
         quiet: cmdOptions.quiet as boolean,
       };
 
-      await compileFile(input, options);
+      await compileFileCLI(input, options);
     });
 
   // Parse arguments
