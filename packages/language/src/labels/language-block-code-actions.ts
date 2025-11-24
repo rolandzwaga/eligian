@@ -109,6 +109,11 @@ export class LanguageBlockCodeActionProvider {
     // 1. At least one labels import exists
     // 2. No language block exists
 
+    // Safety check: program.statements might be undefined during early initialization
+    if (!program.statements) {
+      return false;
+    }
+
     const hasLabelsImport = program.statements.some(
       stmt => isDefaultImport(stmt) && stmt.type === 'labels'
     );
@@ -124,6 +129,11 @@ export class LanguageBlockCodeActionProvider {
    * @returns Array of labels file paths
    */
   private extractLabelsFilePaths(program: Program): string[] {
+    // Safety check: program.statements might be undefined during early initialization
+    if (!program.statements) {
+      return [];
+    }
+
     return program.statements
       .filter(stmt => isDefaultImport(stmt) && stmt.type === 'labels')
       .map(stmt => (isDefaultImport(stmt) ? stmt.path : ''))

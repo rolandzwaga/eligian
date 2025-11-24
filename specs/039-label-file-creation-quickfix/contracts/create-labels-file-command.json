@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateLabelsFileCommand",
+  "description": "Command arguments for creating a missing labels file",
+  "type": "object",
+  "properties": {
+    "filePath": {
+      "type": "string",
+      "description": "Absolute file system path where the labels file should be created",
+      "pattern": "^([A-Z]:\\\\|/).+\\.json$",
+      "minLength": 1,
+      "maxLength": 260
+    },
+    "content": {
+      "type": "string",
+      "description": "JSON content to write to the file (either [] or template with example entry)",
+      "minLength": 2
+    },
+    "documentUri": {
+      "type": "string",
+      "description": "URI of the Eligian document that triggered the quick fix",
+      "pattern": "^file://",
+      "format": "uri"
+    },
+    "languageCodes": {
+      "type": "array",
+      "description": "List of language codes extracted from languages block (optional, for logging/telemetry)",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{2}-[A-Z]{2}$"
+      },
+      "maxItems": 50
+    }
+  },
+  "required": ["filePath", "content", "documentUri"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "filePath": "C:\\\\Users\\\\dev\\\\project\\\\labels\\\\app.json",
+      "content": "[]",
+      "documentUri": "file:///c:/Users/dev/project/app.eligian"
+    },
+    {
+      "filePath": "C:\\\\Users\\\\dev\\\\project\\\\labels\\\\app.json",
+      "content": "[{\"id\":\"example.label\",\"nl-NL\":\"Voorbeeld NL\",\"en-US\":\"Example EN\"}]",
+      "documentUri": "file:///c:/Users/dev/project/app.eligian",
+      "languageCodes": ["nl-NL", "en-US"]
+    }
+  ]
+}

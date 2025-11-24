@@ -48,10 +48,16 @@ export {
 export { generateJSDocContent } from './jsdoc/jsdoc-template-generator.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
+// HTML validation exports
+export * from './lsp/html-notifications.js';
+// Labels validation exports
+export * from './lsp/labels-notifications.js';
+export { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
 // AST helper exports (for language server)
 export { isDefaultImport } from './utils/ast-helpers.js';
 // AST navigation exports (for JSDoc generation)
 export { findActionBelow } from './utils/ast-navigation.js';
+export { validateLabelsJSON } from './validators/label-import-validator.js';
 
 // Re-export everything from AST except TimeExpression to avoid conflict
 // Export AstTimeExpression explicitly to avoid conflict with compiler's TimeExpression

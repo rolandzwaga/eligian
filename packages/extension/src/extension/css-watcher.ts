@@ -63,16 +63,22 @@ export class CSSWatcherManager {
    *
    * This method also automatically starts watching the CSS files if not already watching.
    *
+   * **Important**: This method clears any previous imports for this document before
+   * registering new ones. This ensures stale mappings (e.g., from renamed files) are removed.
+   *
    * @param documentUri - Absolute Eligian document URI (file:///...)
    * @param cssFileUris - CSS file URIs imported by the document (may be relative like "./styles.css")
    */
   registerImports(documentUri: string, cssFileUris: string[]): void {
+    // CRITICAL: Clear old mappings for this document first
+    // This prevents stale entries when CSS paths are corrected after being invalid
+    this.clearDocumentMappings(documentUri);
+
     if (cssFileUris.length === 0) {
       return;
     }
 
     // Parse document URI to get workspace root
-    const vscode = require('vscode');
     const docUri = vscode.Uri.parse(documentUri);
     const docPath = docUri.fsPath;
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
@@ -100,6 +106,25 @@ export class CSSWatcherManager {
 
     // Start watching the CSS files (this is idempotent - won't recreate watcher if already exists)
     this.startWatching(cssFilePaths, workspaceRoot);
+  }
+
+  /**
+   * Clear all CSS import mappings for a specific document
+   *
+   * Removes the document from all CSS file → document mappings.
+   * Used when document imports change or document is closed.
+   *
+   * @param documentUri - Absolute Eligian document URI
+   */
+  private clearDocumentMappings(documentUri: string): void {
+    // Iterate through all CSS file mappings and remove this document
+    for (const [cssFileUri, documents] of this.importsByCSS.entries()) {
+      documents.delete(documentUri);
+      // Clean up empty sets to prevent memory leaks
+      if (documents.size === 0) {
+        this.importsByCSS.delete(cssFileUri);
+      }
+    }
   }
 
   /**
@@ -151,6 +176,11 @@ export class CSSWatcherManager {
       const pattern = new vscode.RelativePattern(workspaceRoot, '**/*.css');
       this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
+      // Handle file creation (including when renamed back to original name)
+      this.watcher.onDidCreate(uri => {
+        this.handleFileCreate(uri);
+      });
+
       // Handle file changes
       this.watcher.onDidChange(uri => {
         this.handleFileChange(uri);
@@ -178,6 +208,37 @@ export class CSSWatcherManager {
   }
 
   /**
+   * Handle file creation event (private helper)
+   *
+   * This handles cases where a CSS file is created or renamed back to a name
+   * that documents are importing. When this happens, we need to trigger
+   * revalidation so CSS selectors become valid again.
+   */
+  private handleFileCreate(uri: vscode.Uri): void {
+    const filePath = uri.fsPath;
+    const cssFileUri = vscode.Uri.file(filePath).toString();
+
+    // Check if any documents import this CSS file
+    // This happens when a file is renamed back to its original name
+    const documentUris = Array.from(this.importsByCSS.get(cssFileUri) || []);
+
+    if (documentUris.length > 0 && this.client) {
+      // Send LSP notification to trigger re-validation
+      // This will mark CSS selectors as valid again since the file now exists
+      this.client.sendNotification(CSS_UPDATED_NOTIFICATION, {
+        cssFileUri,
+        documentUris,
+      });
+    }
+
+    // If this file is in our tracked list, also add it back
+    // (it may have been removed by handleFileDelete)
+    if (this.importsByCSS.has(cssFileUri)) {
+      this.trackedFiles.add(filePath);
+    }
+  }
+
+  /**
    * Handle file change event (private helper)
    */
   private handleFileChange(uri: vscode.Uri): void {
@@ -196,7 +257,23 @@ export class CSSWatcherManager {
    */
   private handleFileDelete(uri: vscode.Uri): void {
     const filePath = uri.fsPath;
+    const cssFileUri = vscode.Uri.file(filePath).toString();
 
+    // Check if any documents import this CSS file (regardless of whether it's tracked)
+    // This is important because when a CSS file is renamed, the old path is no longer tracked,
+    // but documents still reference it and need revalidation
+    const documentUris = Array.from(this.importsByCSS.get(cssFileUri) || []);
+
+    if (documentUris.length > 0 && this.client) {
+      // Send LSP notification to trigger re-validation
+      // This will mark CSS selectors as invalid since the file no longer exists
+      this.client.sendNotification(CSS_UPDATED_NOTIFICATION, {
+        cssFileUri,
+        documentUris,
+      });
+    }
+
+    // Clean up tracked files and timers
     if (this.trackedFiles.has(filePath)) {
       this.trackedFiles.delete(filePath);
 

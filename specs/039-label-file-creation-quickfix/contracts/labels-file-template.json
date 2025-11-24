@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LabelsFileTemplate",
+  "description": "Structure of a labels file template entry",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Label identifier",
+        "pattern": "^[a-zA-Z0-9._-]+$",
+        "minLength": 1
+      }
+    },
+    "required": ["id"],
+    "patternProperties": {
+      "^[a-z]{2}-[A-Z]{2}$": {
+        "type": "string",
+        "description": "Placeholder text for a language code",
+        "minLength": 1
+      }
+    },
+    "additionalProperties": false
+  },
+  "minItems": 0,
+  "maxItems": 1,
+  "examples": [
+    [],
+    [
+      {
+        "id": "example.label",
+        "nl-NL": "Voorbeeld NL",
+        "en-US": "Example EN"
+      }
+    ],
+    [
+      {
+        "id": "example.label",
+        "nl-NL": "Voorbeeld NL",
+        "en-US": "Example EN",
+        "fr-FR": "Exemple FR",
+        "de-DE": "Beispiel DE"
+      }
+    ]
+  ]
+}

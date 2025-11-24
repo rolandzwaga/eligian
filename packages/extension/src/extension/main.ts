@@ -5,6 +5,10 @@ import {
   type CSSImportsDiscoveredParams,
   compile,
   formatErrors,
+  HTML_IMPORTS_DISCOVERED_NOTIFICATION,
+  type HTMLImportsDiscoveredParams,
+  LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
+  type LabelsImportsDiscoveredParams,
 } from '@eligian/language';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
@@ -14,14 +18,23 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
+import { HTMLWatcherManager } from './html-watcher.js';
 import { LabelEditorProvider } from './label-editor/LabelEditorProvider.js';
+import { createLabelsFile } from './label-file-creator.js';
 import { LabelLinkProvider } from './label-link-provider.js';
+import { LabelsWatcherManager } from './labels-watcher.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
 // T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
 // This watcher is independent of preview panels and exists for the lifetime of the extension
 let validationCSSWatcher: CSSWatcherManager | null = null;
+// Shared labels watcher for validation hot-reload (labels file hot-reload feature)
+// This watcher sends LSP notifications when labels JSON files change, triggering re-validation
+let validationLabelsWatcher: LabelsWatcherManager | null = null;
+// Shared HTML watcher for validation hot-reload (layout file hot-reload feature)
+// This watcher sends LSP notifications when HTML files change, triggering re-validation
+let validationHTMLWatcher: HTMLWatcherManager | null = null;
 // Block label decoration provider for superscript start/end labels
 let blockLabelProvider: BlockLabelDecorationProvider | null = null;
 
@@ -48,6 +61,51 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     CSS_IMPORTS_DISCOVERED_NOTIFICATION,
     (params: CSSImportsDiscoveredParams) => {
       validationCSSWatcher?.registerImports(params.documentUri, params.cssFileUris);
+    }
+  );
+
+  // Initialize shared labels watcher for validation hot-reload (labels file hot-reload feature)
+  // This watcher sends LSP notifications when labels JSON files change, triggering re-validation
+  // It's separate from the label editor watcher and exists for the extension lifetime
+  validationLabelsWatcher = new LabelsWatcherManager(() => {
+    // No-op callback - validation is handled via LSP notifications, not callbacks
+  }, client);
+  context.subscriptions.push({
+    dispose: () => validationLabelsWatcher?.dispose(),
+  });
+
+  // Register handler for labels imports discovered notification
+  // The language server sends this notification when a document's labels import is discovered.
+  // We register this import with the validationLabelsWatcher so it knows which documents to
+  // re-validate when a labels file changes.
+  client.onNotification(
+    LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
+    (params: LabelsImportsDiscoveredParams) => {
+      console.error(
+        `[Extension] Received LABELS_IMPORTS_DISCOVERED: doc=${params.documentUri}, labels=${params.labelsFileUri}`
+      );
+      validationLabelsWatcher?.registerImport(params.documentUri, params.labelsFileUri);
+    }
+  );
+
+  // Initialize shared HTML watcher for validation hot-reload (layout file hot-reload feature)
+  // This watcher sends LSP notifications when HTML files change, triggering re-validation
+  // It's separate from preview-specific concerns and exists for the extension lifetime
+  validationHTMLWatcher = new HTMLWatcherManager(() => {
+    // No-op callback - validation is handled via LSP notifications, not callbacks
+  }, client);
+  context.subscriptions.push({
+    dispose: () => validationHTMLWatcher?.dispose(),
+  });
+
+  // Register handler for HTML imports discovered notification
+  // The language server sends this notification when a document's HTML import is discovered.
+  // We register this import with the validationHTMLWatcher so it knows which documents to
+  // re-validate when an HTML file changes.
+  client.onNotification(
+    HTML_IMPORTS_DISCOVERED_NOTIFICATION,
+    (params: HTMLImportsDiscoveredParams) => {
+      validationHTMLWatcher?.registerImport(params.documentUri, params.htmlFileUri);
     }
   );
 
@@ -94,6 +152,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
   context.subscriptions.push(registerOpenLabelEditorCommand());
+
+  // Feature 039 - T011: Register "Create Labels File" command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.createLabelsFile', async args => {
+      const result = await createLabelsFile(args);
+      if (!result.success && result.error) {
+        vscode.window.showErrorMessage(result.error.message);
+      }
+    })
+  );
 
   // Initialize block label decoration provider
   blockLabelProvider = new BlockLabelDecorationProvider();
