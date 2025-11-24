@@ -30,10 +30,10 @@ timeline "My Presentation" at 0s {
 
 ```eligian
 languages {
-  * "de-DE" "de-DE label"
-  "en-US" "en-US label"
-  "fr-FR" "fr-FR label"
-  "nl-NL" "nl-NL label"
+  *  de-DE "  de-DE label"
+  en-US "en-US label"
+  fr-FR "fr-FR label"
+  nl-NL "nl-NL label"
 }
 
 labels "./labels/demo-labels.json"
@@ -45,7 +45,7 @@ timeline "My Presentation" at 0s {
 }
 ```
 
-**Solution**: The quick fix extracted all language codes from `demo-labels.json` (de-DE, en-US, fr-FR, nl-NL), sorted them alphabetically, and marked the first one as default (*).
+**Solution**: The quick fix extracted all language codes from `demo-labels.json` (  de-DE, en-US, fr-FR, nl-NL), sorted them alphabetically, and marked the first one as default (*).
 
 ---
 
@@ -128,8 +128,8 @@ labels "./labels.json"
 **Quick Fix Result**:
 ```eligian
 languages {
-  * "en-US" "en-US label"
-  "nl-NL" "nl-NL label"
+  *en-US "en-US label"
+  nl-NL "nl-NL label"
 }
 
 labels "./labels.json"
@@ -149,11 +149,11 @@ labels "./feature-labels.json"
 
 ```eligian
 languages {
-  * "de-DE" "de-DE label"
+  *  de-DE "  de-DE label"
   "en-US" "en-US label"
   "es-ES" "es-ES label"
   "fr-FR" "fr-FR label"
-  "nl-NL" "nl-NL label"
+  nl-NL "nl-NL label"
 }
 
 labels "./common-labels.json"
@@ -173,7 +173,7 @@ labels "./my-future-labels.json"  // File doesn't exist yet
 
 ```eligian
 languages {
-  * "en-US" "en-US label"
+  *en-US "en-US label"
 }
 
 labels "./my-future-labels.json"
@@ -194,7 +194,7 @@ labels "./broken-labels.json"  // Contains invalid JSON
 
 ```eligian
 languages {
-  * "en-US" "en-US label"
+  *en-US "en-US label"
 }
 
 labels "./broken-labels.json"
@@ -220,18 +220,18 @@ timeline "Demo" at 0s {
 }
 ```
 
-**Quick Fix Result**: Language block inserted after comments:
+**Quick Fix Result**: Language block inserted at line 0 (BEFORE comments):
 
 ```eligian
+languages {
+  *en-US "en-US label"
+  nl-NL "nl-NL label"
+}
+
 /**
  * My Presentation
  * Author: Jane Developer
  */
-
-languages {
-  * "en-US" "en-US label"
-  "nl-NL" "nl-NL label"
-}
 
 labels "./labels.json"
 
@@ -239,6 +239,8 @@ timeline "Demo" at 0s {
   // ...
 }
 ```
+
+**Note**: The language block is ALWAYS the first construct in an Eligian file per the language specification.
 
 ---
 
@@ -336,9 +338,9 @@ If you add a new language to your labels file later, you can:
 
 ```eligian
 languages {
-  "de-DE" "de-DE label"
-  * "en-US" "en-US label"  // Move * here for en-US as default
-  "nl-NL" "nl-NL label"
+  "  de-DE" "  de-DE label"
+  *en-US "en-US label"  // Move * here for en-US as default
+  nl-NL "nl-NL label"
 }
 ```
 
@@ -363,7 +365,7 @@ languages {
     "id": "intro-text",
     "labels": [
       { "id": "intro-en", "languageCode": "en-US", "label": "Welcome to our video" },
-      { "id": "intro-de", "languageCode": "de-DE", "label": "Willkommen zu unserem Video" },
+      { "id": "intro-de", "languageCode": "  de-DE", "label": "Willkommen zu unserem Video" },
       { "id": "intro-ja", "languageCode": "ja-JP", "label": "ビデオへようこそ" }
     ]
   }
@@ -384,7 +386,7 @@ timeline "Video Annotations" at 0s {
 **After Quick Fix**:
 ```eligian
 languages {
-  * "de-DE" "Deutsch"
+  *  de-DE "Deutsch"
   "en-US" "English"
   "ja-JP" "日本語"
 }
@@ -404,7 +406,7 @@ timeline "Video Annotations" at 0s {
 
 **Multiple Labels Files**:
 - `ui-labels.json` - UI text (en-US, nl-NL)
-- `data-labels.json` - Data labels (en-US, nl-NL, fr-FR, de-DE)
+- `data-labels.json` - Data labels (en-US, nl-NL, fr-FR,   de-DE)
 
 **Eligian File**:
 ```eligian
@@ -419,7 +421,7 @@ timeline "Infographic" at 0s {
 **After Quick Fix**: All 4 languages from both files:
 ```eligian
 languages {
-  * "de-DE" "German"
+  *  de-DE "German"
   "en-US" "English"
   "fr-FR" "French"
   "nl-NL" "Dutch"

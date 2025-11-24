@@ -34,7 +34,7 @@ When the imported labels file does not exist or cannot be parsed, the IDE should
 **Acceptance Scenarios**:
 
 1. **Given** an Eligian file importing a labels file that does not exist, **When** the developer invokes the quick fix, **Then** a template language block is generated with placeholder language codes (e.g., "en-US" as default)
-2. **Given** an Eligian file importing a labels file with invalid JSON syntax, **When** the quick fix is triggered, **Then** a template language block is generated with a warning message about the unparseable labels file
+2. **Given** an Eligian file importing a labels file with invalid JSON syntax, **When** the quick fix is triggered, **Then** a template language block is generated (error is logged for debugging)
 3. **Given** a labels file with no language codes, **When** the quick fix runs, **Then** a minimal language block template is created with a single default placeholder language
 
 ---
@@ -57,12 +57,12 @@ The generated language block should be inserted at the appropriate location in t
 
 ### Edge Cases
 
-- What happens when the labels file contains duplicate language codes? (Should deduplicate)
-- What happens when the labels file is extremely large (thousands of languages)? (Should handle gracefully, possibly with performance considerations)
-- What happens when a language block already exists but is incomplete? (Should this quick fix still be available or disabled?)
-- How does the system handle language codes with invalid formats? (Should validate or include as-is?)
-- What happens when the labels file path is relative vs. absolute? (Should resolve paths correctly)
-- What happens when the developer has multiple labels imports? (Should extract languages from all of them or just one?)
+- **Duplicate language codes**: System will deduplicate (covered by FR-008, tested in T010)
+- **Extremely large files** (thousands of languages): System must handle gracefully without performance degradation up to 50 languages (covered by SC-003, tested in T062); files with >50 languages are out of scope for MVP
+- **Existing incomplete language block**: Quick fix will NOT be available (system only detects completely missing blocks); updating existing blocks is out of scope for this feature
+- **Invalid language code formats**: System will include as-is without validation (JSON schema validates label files; quick fix should not duplicate validation)
+- **Relative vs absolute paths**: System will resolve both correctly (implementation detail in parser, tested implicitly in T019)
+- **Multiple labels imports**: System will extract languages from ALL imports and combine them (covered by FR-003, tested in T012)
 
 ## Requirements *(mandatory)*
 
@@ -72,12 +72,12 @@ The generated language block should be inserted at the appropriate location in t
 - **FR-002**: System MUST provide a code action (quick fix) option when this condition is detected
 - **FR-003**: System MUST parse the imported labels file to extract all unique language codes
 - **FR-004**: System MUST generate a languages block with all extracted language codes
-- **FR-005**: System MUST mark the first language code in the generated block as the default language (using * prefix)
+- **FR-005**: System MUST mark the first language code (alphabetically) in the generated block as the default language (using * prefix)
 - **FR-006**: System MUST insert the generated languages block at the top of the file (or after file-level comments)
 - **FR-007**: System MUST format each language entry as: `"language-code" "language-code label"` (using the language code as both the code and the default label text)
 - **FR-008**: System MUST deduplicate language codes if the labels file contains duplicates
 - **FR-009**: System MUST handle cases where the labels file does not exist by generating a template language block with placeholder values
-- **FR-010**: System MUST handle cases where the labels file cannot be parsed by generating a template language block and optionally warning the user
+- **FR-010**: System MUST handle cases where the labels file cannot be parsed by generating a template language block (warnings are logged for debugging but not shown to user)
 - **FR-011**: System MUST preserve existing file content and formatting when inserting the language block
 - **FR-012**: Quick fix MUST be accessible via standard IDE mechanisms (light bulb icon, quick fix menu, keyboard shortcut)
 
@@ -85,7 +85,7 @@ The generated language block should be inserted at the appropriate location in t
 
 - **Labels File**: A JSON file containing label definitions with language codes as keys or nested structures; referenced by the labels import statement
 - **Language Code**: A string identifier for a language (e.g., "nl-NL", "en-US") following standard locale formatting (ISO 639-1 language code + ISO 3166-1 country code)
-- **Language Block**: A DSL construct at the top of an Eligian file that declares available languages, with one marked as default
+- **Languages Block**: A DSL construct at the top of an Eligian file that declares available languages, with one marked as default (syntax: `languages { }` with language entries inside)
 - **Quick Fix**: An IDE code action that automatically corrects or improves code based on detected issues or missing elements
 
 ## Success Criteria *(mandatory)*
@@ -95,8 +95,8 @@ The generated language block should be inserted at the appropriate location in t
 - **SC-001**: Developers can generate a complete language block from an imported labels file in under 5 seconds (from detecting the issue to applying the fix)
 - **SC-002**: Generated language blocks contain 100% of the unique language codes present in the labels file with zero omissions
 - **SC-003**: The quick fix successfully handles labels files with up to 50 different language codes without performance degradation
-- **SC-004**: 95% of generated language blocks require no manual corrections by developers (correct formatting, positioning, and content)
-- **SC-005**: The feature reduces the time to set up language configuration by 80% compared to manual typing
+- **SC-004**: 95% of generated language blocks require no manual corrections by developers (correct formatting, positioning, and content) - *measured post-release via user feedback surveys*
+- **SC-005**: The feature reduces the time to set up language configuration by 80% compared to manual typing - *measured post-release via user feedback and time studies*
 - **SC-006**: Quick fix appears in the IDE within 1 second of opening a file with missing language block
 
 ## Assumptions

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "welcome-title",
+    "labels": [
+      {
+        "id": "welcome-title-en",
+        "languageCode": "en-US",
+        "label": "Welcome to Eligian"
+      },
+      {
+        "id": "welcome-title-nl",
+        "languageCode": "nl-NL",
+        "label": "Welkom bij Eligian"
+      },
+      {
+        "id": "welcome-title-fr",
+        "languageCode": "fr-FR",
+        "label": "Bienvenue à Eligian"
+      },
+      {
+        "id": "welcome-title-de",
+        "languageCode": "de-DE",
+        "label": "Willkommen bei Eligian"
+      }
+    ]
+  },
+  {
+    "id": "button-text",
+    "labels": [
+      {
+        "id": "button-text-en",
+        "languageCode": "en-US",
+        "label": "Click Here"
+      },
+      {
+        "id": "button-text-nl",
+        "languageCode": "nl-NL",
+        "label": "Klik hier"
+      }
+    ]
+  }
+]

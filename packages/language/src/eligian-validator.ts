@@ -364,7 +364,7 @@ export class EligianValidator {
   /**
    * T042: Feature 037 US4 - Validate only one languages block per file
    */
-  checkSingleLanguagesBlock(program: Program, accept: ValidationAcceptor): void {
+  checkSingleLanguagesBlock(_program: Program, _accept: ValidationAcceptor): void {
     // This check is at the Program level since we need to count across the whole file
     // However, the grammar already enforces this (languages=LanguagesBlock? means 0 or 1)
     // So this validator is not strictly necessary but provides a clear error message
