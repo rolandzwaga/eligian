@@ -12,6 +12,8 @@ import type { CodeActionProvider } from 'langium/lsp';
 import type { CodeAction, CodeActionParams, Command } from 'vscode-languageserver-protocol';
 import { CSSCodeActionProvider } from './css/css-code-actions.js';
 import type { EligianServices } from './eligian-module.js';
+import type { Program } from './generated/ast.js';
+import { LanguageBlockCodeActionProvider } from './labels/language-block-code-actions.js';
 /**
  * Eligian-specific code action provider
  *
@@ -19,9 +21,11 @@ import type { EligianServices } from './eligian-module.js';
  */
 export class EligianCodeActionProvider implements CodeActionProvider {
   private readonly cssCodeActionProvider: CSSCodeActionProvider;
+  private readonly languageBlockCodeActionProvider: LanguageBlockCodeActionProvider;
 
   constructor(private readonly services: EligianServices) {
     this.cssCodeActionProvider = new CSSCodeActionProvider();
+    this.languageBlockCodeActionProvider = new LanguageBlockCodeActionProvider();
   }
 
   /**
@@ -58,6 +62,17 @@ export class EligianCodeActionProvider implements CodeActionProvider {
     );
 
     actions.push(...cssActions);
+
+    // Get language block code actions
+    const program = document.parseResult.value as Program;
+    const languageBlockActions = await this.languageBlockCodeActionProvider.provideCodeActions(
+      params,
+      program,
+      documentUri,
+      readFile
+    );
+
+    actions.push(...languageBlockActions);
 
     // Future: Add more code action providers here
     // - Refactoring actions (extract action, inline action, etc.)
