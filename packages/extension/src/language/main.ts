@@ -16,6 +16,7 @@ import {
   LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
   LABELS_UPDATED_NOTIFICATION,
   type LabelsUpdatedParams,
+  type Program,
   parseCSS,
   validateLabelsJSON,
 } from '@eligian/language';
@@ -212,7 +213,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
     // Only process Eligian documents
     if (document.uri.path.endsWith('.eligian')) {
       const documentUri = document.uri.toString();
-      const root = document.parseResult.value;
+      const root = document.parseResult.value as Program;
       const docPath = URI.parse(documentUri).fsPath;
       const docDir = path.dirname(docPath);
 
