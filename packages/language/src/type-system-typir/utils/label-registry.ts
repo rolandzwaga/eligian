@@ -164,6 +164,22 @@ export class LabelRegistryService {
   }
 
   /**
+   * Check if a document has a labels import registered
+   *
+   * @param documentUri - Absolute URI of the Eligian document
+   * @returns True if document has imported a labels file
+   *
+   * @example
+   * ```typescript
+   * const hasImport = registry.hasImport('file:///program.eligian');
+   * // Returns: true
+   * ```
+   */
+  hasImport(documentUri: string): boolean {
+    return this.labelsFileByDocument.has(documentUri);
+  }
+
+  /**
    * Clear all data for a document (on document close)
    *
    * @param documentUri - Absolute URI of the Eligian document

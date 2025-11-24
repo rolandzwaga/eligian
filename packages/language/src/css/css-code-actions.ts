@@ -77,6 +77,11 @@ export class CSSCodeActionProvider {
       return actions;
     }
 
+    // Safety check: ensure diagnostics array exists
+    if (!params.context?.diagnostics) {
+      return actions;
+    }
+
     // Filter diagnostics for CSS-related errors
     const cssDiagnostics = params.context.diagnostics.filter(isCSSRelatedDiagnostic);
 

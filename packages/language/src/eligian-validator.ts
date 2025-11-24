@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type AstNode, AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
 import { URI } from 'vscode-uri';
@@ -46,6 +47,7 @@ import { isLibraryImport } from './generated/ast.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
 import { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
 import { validateLabelID } from './type-system-typir/validation/label-id-validation.js';
+import type { MissingLabelsFileData } from './types/code-actions.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 import { getElements, getImports, getTimelines } from './utils/program-helpers.js';
@@ -54,6 +56,12 @@ import { validateDefaultImports } from './validators/default-import-validator.js
 import { validateImportName } from './validators/import-name-validator.js';
 import { validateImportPath } from './validators/import-path-validator.js';
 import { RESERVED_KEYWORDS } from './validators/validation-constants.js';
+
+/**
+ * Diagnostic code for missing labels file
+ * Feature 039: Label File Creation Quick Fix
+ */
+export const MISSING_LABELS_FILE_CODE = 'missing_labels_file';
 
 // ============================================================================
 // Validation Helpers (Feature 037)
@@ -1917,10 +1925,33 @@ export class EligianValidator {
 
       const labelsPath = labelsImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
 
-      // Resolve to absolute path
+      // Resolve to absolute path (T004: Path normalization using node:path)
       const cleanPath = labelsPath.startsWith('./') ? labelsPath.substring(2) : labelsPath;
       const absolutePath = path.join(docDir, cleanPath);
       const labelsFileUri = URI.file(absolutePath).toString();
+
+      // Feature 039 - T003: Check if labels file exists
+      if (!fs.existsSync(absolutePath)) {
+        // Extract language codes from languages block if present
+        const languageCodes = program.languages?.entries?.map(entry => entry.code) || [];
+        const hasLanguagesBlock = !!program.languages;
+
+        // Create diagnostic data for code action
+        const diagnosticData: MissingLabelsFileData = {
+          importPath: labelsPath,
+          resolvedPath: absolutePath,
+          hasLanguagesBlock,
+          languageCodes,
+        };
+
+        // Report missing file with diagnostic code for quick fix
+        accept('error', `Labels file not found: ${labelsPath}`, {
+          node: labelsImport,
+          code: MISSING_LABELS_FILE_CODE,
+          data: diagnosticData,
+        });
+        continue; // Skip registry population for missing file
+      }
 
       try {
         // Load program assets (includes labels JSON)

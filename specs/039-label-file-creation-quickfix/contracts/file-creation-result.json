@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FileCreationResult",
+  "description": "Result of labels file creation operation",
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether file creation succeeded"
+    },
+    "filePath": {
+      "type": "string",
+      "description": "Absolute path to the created (or attempted) file",
+      "minLength": 1
+    },
+    "error": {
+      "type": "object",
+      "description": "Error details if creation failed",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code",
+          "enum": ["INVALID_PATH", "PERMISSION_DENIED", "FILE_SYSTEM_ERROR", "EDITOR_NOT_FOUND"]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "minLength": 1
+        },
+        "cause": {
+          "type": "object",
+          "description": "Original error object (for logging)",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "stack": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "editorOpened": {
+      "type": "boolean",
+      "description": "Whether label editor opened successfully"
+    }
+  },
+  "required": ["success", "filePath", "editorOpened"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "success": true,
+      "filePath": "C:\\\\Users\\\\dev\\\\project\\\\labels\\\\app.json",
+      "editorOpened": true
+    },
+    {
+      "success": false,
+      "filePath": "C:\\\\Users\\\\dev\\\\project\\\\labels\\\\app.json",
+      "error": {
+        "code": "PERMISSION_DENIED",
+        "message": "Cannot create directory: Permission denied"
+      },
+      "editorOpened": false
+    }
+  ]
+}

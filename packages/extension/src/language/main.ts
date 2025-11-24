@@ -5,20 +5,28 @@ import {
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
   CSS_UPDATED_NOTIFICATION,
   type CSSErrorParams,
-  type CSSImportsDiscoveredParams,
   type CSSUpdatedParams,
   createEligianServices,
+  extractLabelMetadata,
   findActionBelow,
   generateJSDocContent,
-  isDefaultImport,
-  isProgram,
+  HTML_IMPORTS_DISCOVERED_NOTIFICATION,
+  HTML_UPDATED_NOTIFICATION,
+  type HTMLUpdatedParams,
+  LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
+  LABELS_UPDATED_NOTIFICATION,
+  type LabelsUpdatedParams,
+  type Program,
   parseCSS,
+  validateLabelsJSON,
 } from '@eligian/language';
 import { DocumentState } from 'langium';
 import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { URI } from 'vscode-uri';
+import type { ImportProcessorConfig } from './import-processor.js';
+import { processImports } from './import-processor.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -51,8 +59,7 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
       }
     }
   } catch (error) {
-    // Register CSS parsing error in the registry
-    // This ensures validation shows proper diagnostics for broken CSS files
+    // File might be deleted or have errors - clear CSS and trigger re-validation
     const cssRegistry = Eligian.css.CSSRegistry;
     cssRegistry.updateCSSFile(cssFileUri, {
       classes: new Set(),
@@ -70,6 +77,14 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
         },
       ],
     });
+
+    // Trigger re-validation to show "file not found" or CSS errors
+    for (const docUri of documentUris) {
+      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
+      if (document) {
+        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
+      }
+    }
   }
 });
 
@@ -89,94 +104,210 @@ connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) => {
   });
 });
 
-// CRITICAL: CSS files MUST be loaded BEFORE validation phase
+// Register labels notification handlers
+connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedParams) => {
+  const { labelsFileUri, documentUris } = params;
+
+  try {
+    // Read labels file content from file system
+    const labelsFilePath = URI.parse(labelsFileUri).fsPath;
+    const labelsContent = readFileSync(labelsFilePath, 'utf-8');
+
+    // Validate labels JSON schema
+    const validationError = validateLabelsJSON(labelsContent, labelsFilePath);
+
+    if (!validationError) {
+      // Parse labels JSON to extract label metadata
+      const labels = JSON.parse(labelsContent);
+      const metadata = extractLabelMetadata(labels);
+
+      // Update the labels registry with parsed metadata
+      const labelRegistry = Eligian.labels.LabelRegistry;
+      labelRegistry.updateLabelsFile(labelsFileUri, metadata);
+
+      // Trigger re-validation of importing documents
+      for (const docUri of documentUris) {
+        const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
+        if (document) {
+          // Force re-validation by invalidating document state
+          shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
+        }
+      }
+    }
+    // If validation error, we don't update the registry
+    // The validator will handle showing the error to the user
+  } catch (_error) {
+    // File might be deleted - clear labels and trigger re-validation
+    const labelRegistry = Eligian.labels.LabelRegistry;
+    labelRegistry.updateLabelsFile(labelsFileUri, []); // Clear labels
+
+    // Trigger re-validation to show "file not found" errors
+    for (const docUri of documentUris) {
+      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
+      if (document) {
+        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
+      }
+    }
+  }
+});
+
+// Register HTML notification handlers
+connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams) => {
+  const { htmlFileUri, documentUris } = params;
+
+  try {
+    // Read HTML file content from file system
+    const htmlFilePath = URI.parse(htmlFileUri).fsPath;
+    const htmlContent = readFileSync(htmlFilePath, 'utf-8');
+
+    // Update the HTML registry with content (no parsing needed for HTML)
+    const htmlRegistry = Eligian.html.HTMLRegistry;
+    htmlRegistry.updateHTMLFile(htmlFileUri, {
+      content: htmlContent,
+      errors: [],
+    });
+
+    // Trigger re-validation of importing documents
+    for (const docUri of documentUris) {
+      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
+      if (document) {
+        // Force re-validation by invalidating document state
+        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
+      }
+    }
+  } catch (error) {
+    // File might be deleted - clear HTML and trigger re-validation
+    const htmlRegistry = Eligian.html.HTMLRegistry;
+    htmlRegistry.updateHTMLFile(htmlFileUri, {
+      content: '',
+      errors: [
+        {
+          message: error instanceof Error ? error.message : String(error),
+          line: 0,
+          column: 0,
+        },
+      ],
+    });
+
+    // Trigger re-validation to show "file not found" errors
+    for (const docUri of documentUris) {
+      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
+      if (document) {
+        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
+      }
+    }
+  }
+});
+
+// CRITICAL: Import files MUST be loaded BEFORE validation phase
 // This handler runs during DocumentState.Parsed phase (after parsing, BEFORE validation)
 // Synchronization mechanism: Langium awaits this handler completion before proceeding to validation
-// Why: Validators (e.g., CSS class validation) require CSS registry to be populated
+// Why: Validators (e.g., CSS class validation) require registries to be populated
 // This synchronous ordering ensures IDE and compiler validation produce identical results
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async documents => {
   const cssRegistry = Eligian.css.CSSRegistry;
+  const labelRegistry = Eligian.labels.LabelRegistry;
+  const htmlRegistry = Eligian.html.HTMLRegistry;
 
   for (const document of documents) {
     // Only process Eligian documents
     if (document.uri.path.endsWith('.eligian')) {
       const documentUri = document.uri.toString();
-
-      // Extract CSS imports from the AST directly (validator hasn't run yet)
-      const cssFiles: string[] = [];
-      const root = document.parseResult.value;
-      if (isProgram(root)) {
-        for (const statement of root.statements) {
-          if (isDefaultImport(statement) && statement.type === 'styles') {
-            if (!statement.path) {
-              continue;
-            }
-            const cssPath = statement.path.replace(/^["']|["']$/g, ''); // Remove quotes
-            cssFiles.push(cssPath);
-          }
-        }
-      }
-
-      // Resolve CSS file paths to absolute URIs for the extension
-      const cssFileUris: string[] = [];
+      const root = document.parseResult.value as Program;
       const docPath = URI.parse(documentUri).fsPath;
       const docDir = path.dirname(docPath);
 
-      // Parse each CSS file and load into registry (if not already loaded)
-      for (const cssFileRelativePath of cssFiles) {
-        try {
-          // Convert relative path to absolute file path (cross-platform)
-          const cleanPath = cssFileRelativePath.startsWith('./')
-            ? cssFileRelativePath.substring(2)
-            : cssFileRelativePath;
-          const cssFilePath = path.join(docDir, cleanPath);
-          const cssFileUri = URI.file(cssFilePath).toString();
-
-          // Track absolute URI for notification
-          cssFileUris.push(cssFileUri);
-
-          // Read and parse CSS file
-          const cssContent = readFileSync(cssFilePath, 'utf-8');
-          const parseResult = parseCSS(cssContent, cssFilePath);
-
-          // Update registry with parsed CSS (use absolute URI as key)
-          cssRegistry.updateCSSFile(cssFileUri, parseResult);
-        } catch (error) {
-          // Still track the URI even if parsing failed
-          const cleanPath = cssFileRelativePath.startsWith('./')
-            ? cssFileRelativePath.substring(2)
-            : cssFileRelativePath;
-          const cssFilePath = path.join(docDir, cleanPath);
-          const cssFileUri = URI.file(cssFilePath).toString();
-          cssFileUris.push(cssFileUri);
-
-          // Register error in registry
-          cssRegistry.updateCSSFile(cssFileUri, {
-            classes: new Set(),
-            ids: new Set(),
-            classLocations: new Map(),
-            idLocations: new Map(),
-            classRules: new Map(),
-            idRules: new Map(),
-            errors: [
-              {
-                message: error instanceof Error ? error.message : 'Unknown error',
-                filePath: cssFileRelativePath,
-                line: 0,
-                column: 0,
-              },
-            ],
-          });
-        }
-      }
-
-      // Send notification to extension with discovered CSS imports (absolute URIs)
-      const params: CSSImportsDiscoveredParams = {
-        documentUri,
-        cssFileUris: cssFileUris,
+      // Process CSS imports (one-to-many: document can import multiple CSS files)
+      const cssConfig: ImportProcessorConfig<ReturnType<typeof parseCSS>> = {
+        importType: 'styles',
+        parseFile: (content, filePath) => parseCSS(content, filePath),
+        createEmptyMetadata: () => ({
+          classes: new Set(),
+          ids: new Set(),
+          classLocations: new Map(),
+          idLocations: new Map(),
+          classRules: new Map(),
+          idRules: new Map(),
+          errors: [],
+        }),
+        registry: {
+          updateFile: (uri, metadata) => cssRegistry.updateCSSFile(uri, metadata),
+          registerImports: (docUri, fileUris) =>
+            cssRegistry.registerImports(docUri, fileUris as string[]),
+        },
+        notification: {
+          type: CSS_IMPORTS_DISCOVERED_NOTIFICATION,
+          createParams: (docUri, fileUris) => ({
+            documentUri: docUri,
+            cssFileUris: fileUris as string[],
+          }),
+        },
+        cardinality: 'many',
       };
 
-      connection.sendNotification(CSS_IMPORTS_DISCOVERED_NOTIFICATION, params);
+      processImports(documentUri, root, docDir, connection, cssConfig);
+
+      // Process labels imports (one-to-one: document imports single labels file)
+      const labelsConfig: ImportProcessorConfig<ReturnType<typeof extractLabelMetadata>> = {
+        importType: 'labels',
+        parseFile: (content, filePath) => {
+          const validationError = validateLabelsJSON(content, filePath);
+          if (validationError) {
+            return []; // Return empty metadata on validation error
+          }
+          const labels = JSON.parse(content);
+          return extractLabelMetadata(labels);
+        },
+        createEmptyMetadata: () => [],
+        registry: {
+          updateFile: (uri, metadata) => labelRegistry.updateLabelsFile(uri, metadata),
+          registerImports: (docUri, fileUri) =>
+            labelRegistry.registerImports(docUri, fileUri as string),
+          hasImport: docUri => labelRegistry.hasImport(docUri),
+        },
+        notification: {
+          type: LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
+          createParams: (docUri, fileUri) => ({
+            documentUri: docUri,
+            labelsFileUri: fileUri as string,
+          }),
+        },
+        cardinality: 'one',
+      };
+
+      processImports(documentUri, root, docDir, connection, labelsConfig);
+
+      // Process HTML/layout imports (one-to-one: document imports single HTML file)
+      const htmlConfig: ImportProcessorConfig<{
+        content: string;
+        errors?: Array<{ message: string; line?: number; column?: number }>;
+      }> = {
+        importType: 'layout',
+        parseFile: (content, _filePath) => ({
+          content,
+          errors: [],
+        }),
+        createEmptyMetadata: () => ({
+          content: '',
+          errors: [],
+        }),
+        registry: {
+          updateFile: (uri, metadata) => htmlRegistry.updateHTMLFile(uri, metadata),
+          registerImports: (docUri, fileUri) =>
+            htmlRegistry.registerImports(docUri, fileUri as string),
+          hasImport: docUri => htmlRegistry.hasImport(docUri),
+        },
+        notification: {
+          type: HTML_IMPORTS_DISCOVERED_NOTIFICATION,
+          createParams: (docUri, fileUri) => ({
+            documentUri: docUri,
+            htmlFileUri: fileUri as string,
+          }),
+        },
+        cardinality: 'one',
+      };
+
+      processImports(documentUri, root, docDir, connection, htmlConfig);
     }
   }
 });

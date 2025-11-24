@@ -24,6 +24,7 @@ import { EligianScopeProvider } from './eligian-scope-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
 import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
+import { HTMLRegistryService } from './html/html-registry.js';
 import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
 import { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
 
@@ -44,6 +45,9 @@ export type EligianAddedServices = {
   };
   labels: {
     LabelRegistry: LabelRegistryService;
+  };
+  html: {
+    HTMLRegistry: HTMLRegistryService;
   };
   typir: TypirLangiumServices<EligianSpecifics>;
 };
@@ -81,6 +85,9 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
     },
     labels: {
       LabelRegistry: () => new LabelRegistryService(),
+    },
+    html: {
+      HTMLRegistry: () => new HTMLRegistryService(),
     },
     typir: services =>
       createTypirLangiumServices(
