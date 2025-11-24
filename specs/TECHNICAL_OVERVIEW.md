@@ -26,7 +26,7 @@ This document provides a detailed technical analysis of the Eligian codebase, co
 
 ### Monorepo Structure
 
-Eligian is organized as a **pnpm workspace monorepo** with 5 packages:
+Eligian is organized as a **pnpm workspace monorepo** with 4 packages:
 
 ```
 eligian/
@@ -96,7 +96,7 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - Language Server Protocol implementation (validation, completion, hover, navigation)
 - Type system (Typir-based type inference and validation)
 - CSS validation and registry
-- Operation registry (79 Eligius operations)
+- Operation registry (83 Eligius operations)
 - JSDoc documentation support
 
 **Entry Points**:
@@ -122,8 +122,8 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `langium@4.0.3` - Language framework
 - `typir@0.3.0`, `typir-langium@0.3.0` - Type system
 - `postcss@8.5.6`, `css-tree@3.1.0` - CSS parsing
-- `effect@3.19.3` - Functional error handling (inherited from root)
-- `eligius@1.5.0` - Eligius library (inherited from root)
+- `effect@3.19.6` - Functional error handling (inherited from root)
+- `eligius@1.5.1` - Eligius library (inherited from root)
 
 ### 2. @eligian/cli
 
@@ -148,7 +148,7 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `@eligian/language@workspace:*` - Core compiler
 - `commander@11.1.0` - CLI argument parser
 - `chalk@5.6.2` - Terminal colors
-- `effect@3.19.3` - Error handling (inherited from root)
+- `effect@3.19.6` - Error handling (inherited from root)
 
 **Exit Codes**:
 - `0` - Success
@@ -251,8 +251,8 @@ langium generate
 **Generated Files**:
 - `src/completion/metadata/timeline-events.generated.ts` - Timeline event metadata (43 events)
 - `src/completion/metadata/css-properties.generated.ts` - CSS property metadata
-- `src/completion/metadata/controllers.generated.ts` - Controller metadata (18 controllers) **[Feature 035]**
-- `src/compiler/operations/registry.generated.ts` - Operation registry (79 operations)
+- `src/completion/metadata/controllers.generated.ts` - Controller metadata (8 controllers) **[Feature 035]**
+- `src/compiler/operations/registry.generated.ts` - Operation registry (83 operations)
 - `src/generated/ast.ts` - AST node types
 - `src/generated/grammar.ts` - Parser implementation
 - `src/generated/module.ts` - Langium module
@@ -667,7 +667,7 @@ Event:
 **Files**:
 - `controllers.ts` - Controller name and label ID completion (100 lines)
 - `context.ts` - Controller context detection (enhanced for addController detection)
-- `metadata/controllers.generated.ts` - Auto-generated controller metadata (18 controllers)
+- `metadata/controllers.generated.ts` - Auto-generated controller metadata (8 controllers)
 
 **Features**:
 - **Controller name completion**: Autocomplete for `addController()` first parameter
@@ -701,7 +701,7 @@ export const CONTROLLERS: ControllerMetadata[] = [
 **Completion Flow**:
 1. User types `addController(` and presses Ctrl+Space
 2. `detectContext()` detects cursor is in controller name position
-3. `getControllerNameCompletions()` returns all 18 controllers
+3. `getControllerNameCompletions()` returns all 8 controllers
 4. VS Code displays dropdown with controller names
 5. Selecting a controller inserts `"LabelController"` (with quotes)
 
@@ -714,7 +714,7 @@ export const CONTROLLERS: ControllerMetadata[] = [
 **Auto-Generation**:
 - Controller metadata extracted from Eligius controller registry
 - Generated during `pnpm run generate` (via `src/completion/generate-metadata.ts`)
-- 18 controllers total (as of Eligius 1.5.0)
+- 8 controllers total (as of Eligius 1.5.1)
 
 **Test Coverage**: 15 tests across 2 test suites
 - `controller-completion.spec.ts` - 9 tests (controller name + label ID completion)
@@ -725,11 +725,11 @@ export const CONTROLLERS: ControllerMetadata[] = [
 **Location**: `src/compiler/operations/`
 
 **Files**:
-- `registry.generated.ts` - Auto-generated registry of 79 Eligius operations
+- `registry.generated.ts` - Auto-generated registry of 83 Eligius operations
 - `generate-registry.ts` - Generator script (extracts from Eligius npm package)
 - `operation-metadata.ts` - Operation metadata types
 
-**Operation Categories** (79 total):
+**Operation Categories** (83 total):
 - **Selection**: `selectElement`, `selectAll`, `deselectElement`, `deselectAll`
 - **DOM Manipulation**: `addClass`, `removeClass`, `toggleClass`, `setAttribute`, `removeAttribute`
 - **Animation**: `animate`, `cancelAnimation`, `pauseAnimation`, `resumeAnimation`
@@ -1037,7 +1037,7 @@ __tests__/
     └── css/                      # CSS test files
 ```
 
-**Test Count**: 1,483 tests (1,471 passing, 12 skipped)
+**Test Count**: 2,020 tests (1,996 passing, 24 skipped)
 
 **Coverage**: 81.72% (v8 provider)
 
@@ -1553,7 +1553,7 @@ test('should validate CSS class names', async () => {
 ```
 
 **Metrics** (as of Feature 022):
-- **1,483 tests** passing (12 skipped)
+- **2,020 tests** (1,996 passing, 24 skipped)
 - **81.72% coverage** (meets baseline target)
 - **1,251 lines saved** (700 from createTestContext, 551 from setupCSSRegistry)
 
@@ -1829,7 +1829,7 @@ Before considering any task complete:
 
 **CRITICAL**: This project uses **pnpm** as the package manager, NOT npm or yarn.
 
-**Package Manager Version**: `pnpm@10.22.0` (enforced via `packageManager` field in root `package.json`)
+**Package Manager Version**: `pnpm@10.23.0` (enforced via `packageManager` field in root `package.json`)
 
 **Why pnpm?**
 - **Workspace support**: Excellent monorepo support with shared lockfile
@@ -1870,11 +1870,11 @@ yarn install  # Will cause dependency conflicts!
 ```json
 {
   "dependencies": {
-    "effect": "3.19.3",     // Functional error handling
-    "eligius": "1.5.0"      // Eligius library (for operation metadata)
+    "effect": "3.19.6",     // Functional error handling
+    "eligius": "1.5.1"      // Eligius library (for operation metadata)
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.5",  // Code quality
+    "@biomejs/biome": "2.3.7",  // Code quality
     "typescript": "5.9.3",       // TypeScript compiler
     "vitest": "3.2.4",          // Test framework
     "esbuild": "0.27.0",        // Bundler
@@ -1975,7 +1975,7 @@ pnpm --filter @eligian/cli add @eligian/language@workspace:*
 
 ## Code Quality Tools
 
-### Biome (v2.3.5)
+### Biome (v2.3.7)
 
 **Purpose**: Unified code formatting and linting (replaces ESLint + Prettier)
 
@@ -2083,13 +2083,13 @@ pnpm test -- --ui     # Web-based test UI
 
 This technical overview provides a comprehensive reference for the Eligian codebase. Key takeaways:
 
-1. **Monorepo Structure**: 5 packages with pnpm workspace management
+1. **Monorepo Structure**: 4 packages with pnpm workspace management
 2. **Three-Tool Build**: Langium CLI → TypeScript → esbuild
 3. **Five-Stage Compiler**: Parse → Validate/Transform → Type Check → Optimize → Emit
 4. **13 Functional Domains**: Grammar, compiler, LSP, operations, type system, CSS, assets, library loading, JSDoc, errors, Effect, utils, tests
 5. **Three-Process Extension**: Extension Host ↔ Language Server ↔ Webview Preview
 6. **Standalone CLI**: Command-line compiler with rich error formatting
-7. **Comprehensive Testing**: 1,483 tests with 81.72% coverage
+7. **Comprehensive Testing**: 2,020 tests with 81.72% coverage
 8. **Quality-First Development**: Biome + TypeScript strict mode + 80% coverage target
 9. **Library System**: ES6-style imports with nested dependencies, cycle detection, and cache invalidation
 
