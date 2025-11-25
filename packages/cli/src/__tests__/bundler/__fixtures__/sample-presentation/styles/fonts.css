@@ -1,0 +1,21 @@
+/**
+ * Font styles for sample presentation
+ * Used for testing font asset collection
+ */
+
+@font-face {
+  font-family: 'CustomFont';
+  src: url('../fonts/custom.woff2') format('woff2'),
+       url('../fonts/custom.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: 'CustomFont', sans-serif;
+}
+
+h1, h2, h3 {
+  font-weight: bold;
+}

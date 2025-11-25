@@ -1,0 +1,52 @@
+/**
+ * Main styles for sample presentation
+ * Used for testing CSS processing and asset collection
+ */
+
+/* Container styles */
+#presentation {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Slide with background image */
+.slide {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Hero section with background image */
+.hero {
+  background: url('../images/hero.png') center center / cover no-repeat;
+  color: white;
+}
+
+/* Icon using small image (should be inlined) */
+.icon-star {
+  background-image: url('../images/icon-star.png');
+  width: 24px;
+  height: 24px;
+}
+
+/* Button with icon */
+.btn-next {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-next::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: url('../images/arrow-right.png') center center / contain no-repeat;
+  margin-left: 8px;
+}

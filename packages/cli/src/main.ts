@@ -11,6 +11,8 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 import chalk from 'chalk';
 import { Command } from 'commander';
+import { Effect } from 'effect';
+import { BundleError, createBundle } from './bundler/index.js';
 import { AssetError, CompilationError, compileFile, IOError, ParseError } from './compile-file.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
@@ -34,6 +36,10 @@ interface CLIOptions {
   optimize: boolean;
   verbose: boolean;
   quiet: boolean;
+  bundle: boolean;
+  inlineThreshold: number;
+  sourcemap: boolean;
+  force: boolean;
 }
 
 /**
@@ -175,6 +181,50 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
 }
 
 /**
+ * Create a standalone bundle from CLI
+ */
+async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> {
+  try {
+    if (options.verbose) {
+      console.log(chalk.gray(`Bundling ${inputPath}...`));
+    }
+
+    const result = await Effect.runPromise(
+      createBundle(inputPath, {
+        outputDir: options.output,
+        minify: options.minify,
+        inlineThreshold: options.inlineThreshold,
+        sourcemap: options.sourcemap,
+        force: options.force,
+      })
+    );
+
+    if (!options.quiet) {
+      console.log(chalk.green(`✓ Bundle created: ${result.outputDir}`));
+      console.log(chalk.gray(`  Files: ${result.stats.fileCount}`));
+      console.log(chalk.gray(`  Size: ${(result.stats.totalSize / 1024).toFixed(1)} KB`));
+      console.log(chalk.gray(`  Time: ${result.stats.bundleTime}ms`));
+    }
+  } catch (error) {
+    if (error instanceof BundleError) {
+      console.error(chalk.red(`\nBundle failed: ${error.message}`));
+      process.exit(EXIT_COMPILE_ERROR);
+    }
+
+    // Check for Effect FiberFailure wrapper
+    const errorStr = String(error);
+    if (errorStr.includes('BundleError') || errorStr.includes('OutputExistsError')) {
+      console.error(chalk.red(`\nBundle failed: ${errorStr}`));
+      process.exit(EXIT_COMPILE_ERROR);
+    }
+
+    // Unknown error
+    console.error(chalk.red('Unexpected error:'), error);
+    process.exit(EXIT_IO_ERROR);
+  }
+}
+
+/**
  * Main CLI program
  */
 export default function main(): void {
@@ -194,6 +244,10 @@ export default function main(): void {
     .option('--no-optimize', 'disable optimization passes')
     .option('-v, --verbose', 'verbose logging', false)
     .option('-q, --quiet', 'suppress success messages', false)
+    .option('--bundle', 'create standalone bundle instead of JSON', false)
+    .option('--inline-threshold <bytes>', 'image inlining threshold in bytes', '51200')
+    .option('--sourcemap', 'generate source maps in bundle', false)
+    .option('--force', 'overwrite existing output directory', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {
       const options: CLIOptions = {
         output: cmdOptions.output as string | undefined,
@@ -202,9 +256,17 @@ export default function main(): void {
         optimize: cmdOptions.optimize !== false, // --no-optimize sets this to false
         verbose: cmdOptions.verbose as boolean,
         quiet: cmdOptions.quiet as boolean,
+        bundle: cmdOptions.bundle as boolean,
+        inlineThreshold: parseInt(cmdOptions.inlineThreshold as string, 10),
+        sourcemap: cmdOptions.sourcemap as boolean,
+        force: cmdOptions.force as boolean,
       };
 
-      await compileFileCLI(input, options);
+      if (options.bundle) {
+        await bundleCLI(input, options);
+      } else {
+        await compileFileCLI(input, options);
+      }
     });
 
   // Parse arguments
