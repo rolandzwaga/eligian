@@ -2,7 +2,7 @@
 
 > **REQUIRED READING**: All developers writing tests for the Eligian project MUST read and follow this guide to avoid common pitfalls and maintain consistency across the test suite.
 
-**Last Updated**: 2025-01-23 (Added comprehensive CSS import requirements)
+**Last Updated**: 2025-01-25 (Added file system testing with temporary directories)
 **Test Suite Size**: 1,495 tests across 110 test files
 **Coverage**: 81.72%
 **Framework**: Vitest + Langium Test Utilities + vitest-mcp
@@ -34,6 +34,8 @@ If all three are yes, CSS validation will work. If any is missing, you'll get "U
 10. [Best Practices](#best-practices)
 11. [Advanced Patterns](#advanced-patterns)
 12. [Testing Multiple Packages](#testing-multiple-packages)
+13. [File System Testing with Temporary Directories](#file-system-testing-with-temporary-directories)
+14. [ES Modules and Path Resolution in Tests](#es-modules-and-path-resolution-in-tests)
 
 ---
 
@@ -1500,6 +1502,376 @@ pnpm run test:coverage  # Uses tools/pruned-coverage.ts
 - CLI package: >70%
 - Extension package: >60% (integration tests harder to cover)
 - Compiler package: >85% (pure logic, easier to test)
+
+---
+
+## File System Testing with Temporary Directories
+
+When testing code that interacts with the file system (reading/writing files, creating directories), proper isolation is critical to prevent test conflicts and ensure reproducibility.
+
+### Why Temporary Directories?
+
+**Problems with in-project fixture directories**:
+- Tests can interfere with each other when sharing directories
+- Leftover files from failed tests can cause cascading failures
+- Git status becomes polluted with test artifacts
+- Directory path conflicts between test files
+
+**Solution**: Use OS-provided temporary directories with unique names for each test.
+
+### Recommended Pattern: Per-Test Isolation
+
+Based on [Vitest best practices](https://sdorra.dev/posts/2024-02-12-vitest-tmpdir) and [Vitest documentation](https://vitest.dev/guide/test-context):
+
+```typescript
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+
+/**
+ * Creates a unique temporary directory for test isolation
+ */
+async function createTempDir(): Promise<string> {
+  const ostmpdir = os.tmpdir();
+  const tmpdir = path.join(ostmpdir, 'eligian-test-');
+  return await fs.mkdtemp(tmpdir);  // Creates unique directory with random suffix
+}
+
+describe('File System Tests', () => {
+  let tmpdir: string;
+
+  // Create fresh temp directory before EACH test
+  beforeEach(async () => {
+    tmpdir = await createTempDir();
+  });
+
+  // Clean up temp directory after EACH test
+  afterEach(async () => {
+    try {
+      await fs.rm(tmpdir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors (directory may not exist if test failed early)
+    }
+  });
+
+  test('should read and write files', async () => {
+    const filePath = path.join(tmpdir, 'test-file.txt');
+    await fs.writeFile(filePath, 'Hello, World!');
+
+    const content = await fs.readFile(filePath, 'utf-8');
+    expect(content).toBe('Hello, World!');
+  });
+
+  test('should create nested directories', async () => {
+    const nestedPath = path.join(tmpdir, 'dir1', 'dir2', 'file.txt');
+    await fs.mkdir(path.dirname(nestedPath), { recursive: true });
+    await fs.writeFile(nestedPath, 'nested content');
+
+    expect(await fs.readFile(nestedPath, 'utf-8')).toBe('nested content');
+  });
+});
+```
+
+### Key Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Isolation** | Each test gets a unique directory (`/tmp/eligian-test-abc123/`) |
+| **No Conflicts** | Parallel test execution works correctly |
+| **Auto Cleanup** | `afterEach` removes temp files even if tests fail |
+| **No Git Pollution** | Temp directories are outside the project |
+| **Reproducibility** | Tests don't depend on leftover state |
+
+### When to Use Which Pattern
+
+**Use `beforeEach`/`afterEach`** (recommended for most file tests):
+```typescript
+beforeEach(async () => {
+  tmpdir = await createTempDir();
+});
+
+afterEach(async () => {
+  await fs.rm(tmpdir, { recursive: true, force: true });
+});
+```
+- Each test gets a fresh directory
+- No state leakage between tests
+- Cleanup happens even if test fails
+
+**Use `beforeAll`/`afterAll`** (only for truly shared resources):
+```typescript
+beforeAll(async () => {
+  tmpdir = await createTempDir();
+  // Create expensive fixture once
+  await createLargeTestFixture(tmpdir);
+});
+
+afterAll(async () => {
+  await fs.rm(tmpdir, { recursive: true, force: true });
+});
+```
+- Use only when fixture creation is expensive (>1 second)
+- All tests in suite share the same directory
+- **Risk**: Tests must not modify shared files
+
+### Common Mistakes
+
+#### Mistake 1: Using `__dirname` for Test Fixtures
+
+**Bad Code**:
+```typescript
+// ❌ WRONG: Creates fixtures in project directory
+const FIXTURES_DIR = path.join(__dirname, '__fixtures__', 'images');
+
+beforeAll(async () => {
+  await fs.mkdir(FIXTURES_DIR, { recursive: true });
+});
+
+afterAll(async () => {
+  await fs.rm(FIXTURES_DIR, { recursive: true });  // Deletes project files!
+});
+```
+
+**Problems**:
+- Fixtures persist in project directory
+- Git status shows untracked files
+- Can accidentally delete important files
+- Tests from different files may conflict
+
+**Solution**: Use OS temp directory:
+```typescript
+// ✅ CORRECT: Creates fixtures in system temp directory
+async function createTempDir(): Promise<string> {
+  return await fs.mkdtemp(path.join(os.tmpdir(), 'eligian-test-'));
+}
+
+beforeEach(async () => {
+  tmpdir = await createTempDir();
+});
+```
+
+#### Mistake 2: Using `beforeAll` When State Changes Per-Test
+
+**Bad Code**:
+```typescript
+// ❌ WRONG: All tests share and modify the same directory
+let tmpdir: string;
+
+beforeAll(async () => {
+  tmpdir = await createTempDir();
+});
+
+test('creates file A', async () => {
+  await fs.writeFile(path.join(tmpdir, 'a.txt'), 'test');
+});
+
+test('checks only file B exists', async () => {
+  // ❌ FAILS: file 'a.txt' exists from previous test!
+  const files = await fs.readdir(tmpdir);
+  expect(files).toEqual(['b.txt']);
+});
+```
+
+**Solution**: Use `beforeEach` for per-test isolation:
+```typescript
+// ✅ CORRECT: Each test gets a fresh directory
+beforeEach(async () => {
+  tmpdir = await createTempDir();
+});
+
+afterEach(async () => {
+  await fs.rm(tmpdir, { recursive: true, force: true });
+});
+```
+
+#### Mistake 3: Missing Error Handling in Cleanup
+
+**Bad Code**:
+```typescript
+// ❌ WRONG: Cleanup failure breaks test suite
+afterEach(async () => {
+  await fs.rm(tmpdir, { recursive: true });  // Throws if tmpdir doesn't exist
+});
+```
+
+**Solution**: Wrap cleanup in try-catch:
+```typescript
+// ✅ CORRECT: Graceful cleanup
+afterEach(async () => {
+  try {
+    await fs.rm(tmpdir, { recursive: true, force: true });
+  } catch {
+    // Ignore cleanup errors
+  }
+});
+```
+
+### Alternative: Vitest Fixtures Pattern
+
+For reusable temp directory setup across multiple test files, use [Vitest's test.extend](https://vitest.dev/guide/test-context):
+
+```typescript
+// test-fixtures.ts
+import { test as baseTest } from 'vitest';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
+interface TmpDirFixture {
+  tmpdir: string;
+}
+
+export const test = baseTest.extend<TmpDirFixture>({
+  tmpdir: async ({}, use) => {
+    // Setup: Create temp directory
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'eligian-test-'));
+
+    // Provide to test
+    await use(directory);
+
+    // Teardown: Clean up
+    await fs.rm(directory, { recursive: true, force: true });
+  },
+});
+
+// Usage in test file:
+import { test } from './test-fixtures.js';
+
+test('should work with temp directory', async ({ tmpdir }) => {
+  const file = path.join(tmpdir, 'test.txt');
+  await fs.writeFile(file, 'content');
+  // tmpdir is automatically cleaned up after test
+});
+```
+
+### File System Mocking Alternative
+
+For tests that don't need real file I/O, consider [memfs](https://vitest.dev/guide/mocking/file-system) for in-memory file system:
+
+```typescript
+import { vol, fs } from 'memfs';
+import { vi, beforeEach, test, expect } from 'vitest';
+
+// Mock node:fs with memfs
+vi.mock('node:fs', async () => {
+  const memfs = await vi.importActual('memfs');
+  return { default: memfs.fs, ...memfs.fs };
+});
+
+beforeEach(() => {
+  vol.reset();  // Clear in-memory file system
+});
+
+test('reads file from memory', () => {
+  vol.fromJSON({ '/test.txt': 'hello' });
+
+  const content = fs.readFileSync('/test.txt', 'utf-8');
+  expect(content).toBe('hello');
+});
+```
+
+**When to use memfs**:
+- Testing code that reads/writes files but doesn't need real I/O
+- Faster than real file system operations
+- No cleanup required
+- Perfect for unit tests of file utilities
+
+**When to use real temp directories**:
+- Integration tests that need real file system behavior
+- Testing CLI tools that spawn child processes
+- Testing file watchers or change detection
+- Testing permission handling
+
+### References
+
+- [Using temporary files with Vitest](https://sdorra.dev/posts/2024-02-12-vitest-tmpdir) - Detailed guide on tmpdir pattern
+- [Vitest Test Context](https://vitest.dev/guide/test-context) - Official docs on fixtures
+- [Vitest File System Mocking](https://vitest.dev/guide/mocking/file-system) - memfs integration guide
+
+---
+
+## ES Modules and Path Resolution in Tests
+
+This project uses ES modules (ESM) exclusively. Since ESM doesn't have `__dirname` or `__filename` like CommonJS, you need to use `import.meta.url` for path resolution.
+
+### Using `import.meta.url` for Path Resolution
+
+When you need to resolve paths relative to the test file (e.g., for finding `node_modules` for esbuild bundling):
+
+```typescript
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// ES Module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Now you can use __dirname as you would in CommonJS
+const fixturesDir = path.join(__dirname, '__fixtures__');
+```
+
+### Node.js Version Considerations
+
+- **Node.js 20.11+**: Can use `import.meta.dirname` and `import.meta.filename` directly
+- **Node.js 10.12+**: Use `fileURLToPath(import.meta.url)` pattern (shown above)
+
+Since this project requires Node.js >=20.10.0, we use the `fileURLToPath` pattern for compatibility.
+
+### When to Use `import.meta.url`
+
+**Use for**:
+- Finding `node_modules` directories for esbuild bundling
+- Loading fixture files relative to test location
+- Resolving paths that depend on test file location
+
+**Don't use for**:
+- Creating temporary directories (use `os.tmpdir()` instead)
+- Test fixtures that should be isolated (use temp directories)
+
+### Example: Finding node_modules for esbuild
+
+```typescript
+import * as fsSync from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Find node_modules paths for esbuild to resolve packages
+ * Walks up from current file to find monorepo's node_modules
+ */
+function getNodeModulesPaths(): string[] {
+  let currentDir = path.resolve(__dirname, '..', '..', '..', '..');
+  const paths: string[] = [];
+
+  while (true) {
+    const nodeModulesPath = path.join(currentDir, 'node_modules');
+    try {
+      const stat = fsSync.statSync(nodeModulesPath);
+      if (stat.isDirectory()) {
+        paths.push(nodeModulesPath);
+      }
+    } catch {
+      // Ignore if doesn't exist
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+  }
+
+  return paths;
+}
+```
+
+### References
+
+- [Node.js ESM Documentation](https://nodejs.org/api/esm.html#importmetaurl) - Official `import.meta.url` docs
+- [MDN import.meta](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import.meta) - Browser and Node.js support
+- [Sonar: __dirname is back](https://www.sonarsource.com/blog/dirname-node-js-es-modules/) - Node.js 20.11+ `import.meta.dirname`
 
 ---
 

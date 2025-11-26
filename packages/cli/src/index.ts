@@ -23,6 +23,15 @@
  * `@eligian/language` package directly.
  */
 
+export type { BundleFile, BundleOptions, BundleResult, BundleStats } from './bundler/index.js';
+// Bundler API
+export {
+  AssetNotFoundError,
+  BundleError,
+  createBundle,
+  OutputExistsError,
+  RuntimeBundleError,
+} from './bundler/index.js';
 // Types
 export type { CompileOptions, CompileResult } from './compile-file.js';
 // Main compilation function
