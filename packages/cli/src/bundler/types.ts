@@ -107,6 +107,23 @@ export interface BundleStats {
    * Bundle creation time in milliseconds
    */
   bundleTime: number;
+
+  /**
+   * Total original size of inlined assets in bytes (IMP5)
+   */
+  inlinedOriginalSize: number;
+
+  /**
+   * Total encoded size of inlined assets (data URI length) (IMP5)
+   */
+  inlinedEncodedSize: number;
+
+  /**
+   * Percentage overhead from base64 encoding (IMP5)
+   * Formula: ((encodedSize - originalSize) / originalSize) * 100
+   * Typical base64 overhead is ~37% (33% from encoding + data URI prefix)
+   */
+  inlineOverheadPercent: number;
 }
 
 /**
@@ -352,8 +369,12 @@ export interface AssetSource {
 
   /**
    * Type of reference
+   * - 'css-url': url() reference in CSS file
+   * - 'html-src': src attribute in HTML element
+   * - 'html-url': URL in layout template HTML (img src, video poster, srcset)
+   * - 'config': Reference in Eligius configuration (video/audio source)
    */
-  type: 'css-url' | 'html-src' | 'config';
+  type: 'css-url' | 'html-src' | 'html-url' | 'config';
 
   /**
    * Line number in source file (if known)

@@ -12,7 +12,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Effect } from 'effect';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { processCSS, rewriteCSSUrls } from '../../bundler/css-processor.js';
+import { minifyCSS, processCSS, rewriteCSSUrls } from '../../bundler/css-processor.js';
 import type { AssetEntry, AssetManifest } from '../../bundler/types.js';
 
 /**
@@ -528,6 +528,202 @@ describe('CSS Processor (Feature 040, Phase 4)', () => {
       const result = await Effect.runPromiseExit(processCSS([missingPath], manifest, tmpdir));
 
       expect(result._tag).toBe('Failure');
+    });
+
+    describe('CSS minification (IMP1 - FR-015)', () => {
+      test('should minify CSS when minify option is true', async () => {
+        const cssPath = path.join(tmpdir, 'styles.css');
+        await fs.writeFile(
+          cssPath,
+          `.button {
+            color: blue;
+            padding: 10px;
+          }
+
+          .header {
+            background: white;
+          }`
+        );
+
+        const manifest = createTestManifest();
+        const result = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: true })
+        );
+
+        // Minified CSS should have minimal whitespace (trim to remove trailing newline)
+        const trimmed = result.trim();
+        expect(trimmed).not.toContain('  '); // No double spaces
+        // Should still contain the essential CSS (esbuild converts 'blue' to '#00f')
+        expect(trimmed).toContain('.button');
+        expect(trimmed).toMatch(/color:\s*#00f|color:\s*blue/); // esbuild may convert colors
+        expect(trimmed).toContain('.header');
+      });
+
+      test('should preserve CSS formatting when minify is false', async () => {
+        const cssPath = path.join(tmpdir, 'styles.css');
+        const originalCSS = `.button {
+  color: blue;
+}`;
+        await fs.writeFile(cssPath, originalCSS);
+
+        const manifest = createTestManifest();
+        const result = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: false })
+        );
+
+        // Should contain newlines and original formatting
+        expect(result).toContain('\n');
+        expect(result).toContain('color: blue');
+      });
+
+      test('should not add source comments when minifying', async () => {
+        const cssPath = path.join(tmpdir, 'main.css');
+        await fs.writeFile(cssPath, '.button { color: blue; }');
+
+        const manifest = createTestManifest();
+        const result = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: true })
+        );
+
+        // Source comments should be omitted in minified output
+        expect(result).not.toContain('/* === Source:');
+      });
+
+      test('should add source comments when not minifying', async () => {
+        const cssPath = path.join(tmpdir, 'main.css');
+        await fs.writeFile(cssPath, '.button { color: blue; }');
+
+        const manifest = createTestManifest();
+        const result = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: false })
+        );
+
+        expect(result).toContain('/* === Source: main.css === */');
+      });
+
+      test('minified output should be smaller than original', async () => {
+        const cssPath = path.join(tmpdir, 'large.css');
+        const largeCSS = `
+          /* This is a comment that should be removed */
+          .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+
+          /* Another comment */
+          .button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+          }
+        `;
+        await fs.writeFile(cssPath, largeCSS);
+
+        const manifest = createTestManifest();
+
+        const unminified = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: false })
+        );
+        const minified = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: true })
+        );
+
+        expect(minified.length).toBeLessThan(unminified.length);
+      });
+
+      test('should remove CSS comments when minifying', async () => {
+        const cssPath = path.join(tmpdir, 'commented.css');
+        await fs.writeFile(
+          cssPath,
+          `/* Header comment */
+.button { color: blue; /* inline comment */ }
+/* Footer comment */`
+        );
+
+        const manifest = createTestManifest();
+        const result = await Effect.runPromise(
+          processCSS([cssPath], manifest, tmpdir, { minify: true })
+        );
+
+        expect(result).not.toContain('Header comment');
+        expect(result).not.toContain('inline comment');
+        expect(result).not.toContain('Footer comment');
+        expect(result).toContain('.button');
+      });
+    });
+  });
+
+  describe('minifyCSS', () => {
+    test('should remove whitespace and newlines', async () => {
+      const css = `.button {
+        color: blue;
+        padding: 10px;
+      }`;
+
+      const result = await minifyCSS(css);
+      const trimmed = result.trim();
+
+      // Minified should not have multiple internal newlines
+      expect(trimmed.split('\n').length).toBeLessThanOrEqual(1);
+      expect(trimmed.length).toBeLessThan(css.length);
+    });
+
+    test('should remove CSS comments', async () => {
+      const css = `/* comment */ .button { color: blue; }`;
+
+      const result = await minifyCSS(css);
+
+      expect(result).not.toContain('comment');
+      expect(result).toContain('.button');
+    });
+
+    test('should preserve functional CSS', async () => {
+      const css = `.button { color: blue; } .header { background: red; }`;
+
+      const result = await minifyCSS(css);
+
+      expect(result).toContain('.button');
+      expect(result).toContain('.header');
+      // esbuild converts color names to hex: blue -> #00f, red -> red (already short)
+      expect(result).toMatch(/#00f|blue/);
+      expect(result).toMatch(/red/);
+    });
+
+    test('should handle empty CSS', async () => {
+      const result = await minifyCSS('');
+
+      expect(result).toBe('');
+    });
+
+    test('should handle CSS with only comments', async () => {
+      const css = `/* only a comment */`;
+
+      const result = await minifyCSS(css);
+
+      // Should be empty or just whitespace after removing comment
+      expect(result.trim()).toBe('');
+    });
+
+    test('should preserve url() references', async () => {
+      const css = `.bg { background: url('assets/image.png'); }`;
+
+      const result = await minifyCSS(css);
+
+      // esbuild may remove quotes from url(), so check for path existence
+      expect(result).toContain('assets/image.png');
+      expect(result).toMatch(/url\(['"']?assets\/image\.png['"']?\)/);
+    });
+
+    test('should preserve data URIs', async () => {
+      const dataUri = 'data:image/png;base64,iVBORw0KGgo=';
+      const css = `.icon { background: url('${dataUri}'); }`;
+
+      const result = await minifyCSS(css);
+
+      expect(result).toContain(dataUri);
     });
   });
 });

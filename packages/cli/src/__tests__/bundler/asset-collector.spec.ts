@@ -15,7 +15,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   type CollectOptions,
   collectAssets,
+  createOutputPathTracker,
   extractCSSUrls,
+  extractHTMLUrls,
+  generateUniqueOutputPath,
   resolveAssetPath,
 } from '../../bundler/asset-collector.js';
 
@@ -166,6 +169,207 @@ describe('Asset Collector (Feature 040, Phase 4)', () => {
       const urls = extractCSSUrls('');
 
       expect(urls).toEqual([]);
+    });
+  });
+
+  // IMP2: HTML Layout Template Image Parsing tests (TDD - tests first)
+  describe('extractHTMLUrls (IMP2)', () => {
+    test('should extract src from img elements', () => {
+      const html = '<img src="./images/hero.png" alt="Hero">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/hero.png');
+    });
+
+    test('should extract src from multiple img elements', () => {
+      const html = `
+        <img src="./images/hero.png" alt="Hero">
+        <img src="./images/logo.svg" alt="Logo">
+      `;
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/hero.png');
+      expect(urls).toContain('./images/logo.svg');
+      expect(urls).toHaveLength(2);
+    });
+
+    test('should extract src from source elements', () => {
+      const html = `
+        <video>
+          <source src="./media/video.mp4" type="video/mp4">
+          <source src="./media/video.webm" type="video/webm">
+        </video>
+      `;
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./media/video.mp4');
+      expect(urls).toContain('./media/video.webm');
+    });
+
+    test('should extract src from video elements', () => {
+      const html = '<video src="./media/intro.mp4"></video>';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./media/intro.mp4');
+    });
+
+    test('should extract src from audio elements', () => {
+      const html = '<audio src="./media/sound.mp3"></audio>';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./media/sound.mp3');
+    });
+
+    test('should extract poster from video elements', () => {
+      const html = '<video src="./media/video.mp4" poster="./images/poster.jpg"></video>';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./media/video.mp4');
+      expect(urls).toContain('./images/poster.jpg');
+    });
+
+    test('should extract srcset from img elements', () => {
+      const html =
+        '<img src="./images/hero.png" srcset="./images/hero-2x.png 2x, ./images/hero-3x.png 3x">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/hero.png');
+      expect(urls).toContain('./images/hero-2x.png');
+      expect(urls).toContain('./images/hero-3x.png');
+    });
+
+    test('should extract srcset with width descriptors', () => {
+      const html =
+        '<img srcset="./images/small.jpg 480w, ./images/medium.jpg 800w, ./images/large.jpg 1200w">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/small.jpg');
+      expect(urls).toContain('./images/medium.jpg');
+      expect(urls).toContain('./images/large.jpg');
+    });
+
+    test('should skip external http:// URLs', () => {
+      const html = '<img src="http://example.com/image.png">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toHaveLength(0);
+    });
+
+    test('should skip external https:// URLs', () => {
+      const html = '<img src="https://cdn.example.com/image.png">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toHaveLength(0);
+    });
+
+    test('should skip data: URIs', () => {
+      const html = '<img src="data:image/png;base64,iVBORw0KGgo=">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toHaveLength(0);
+    });
+
+    test('should skip protocol-relative URLs', () => {
+      const html = '<img src="//cdn.example.com/image.png">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toHaveLength(0);
+    });
+
+    test('should deduplicate URLs', () => {
+      const html = `
+        <img src="./images/logo.png">
+        <img src="./images/logo.png">
+      `;
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toHaveLength(1);
+      expect(urls).toContain('./images/logo.png');
+    });
+
+    test('should handle double-quoted attributes', () => {
+      const html = '<img src="./images/hero.png">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/hero.png');
+    });
+
+    test('should handle single-quoted attributes', () => {
+      const html = "<img src='./images/hero.png'>";
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/hero.png');
+    });
+
+    test('should return empty array for HTML without asset references', () => {
+      const html = '<div class="container"><p>Hello World</p></div>';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toEqual([]);
+    });
+
+    test('should return empty array for empty HTML', () => {
+      const urls = extractHTMLUrls('');
+
+      expect(urls).toEqual([]);
+    });
+
+    test('should handle complex HTML with mixed content', () => {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Test</title>
+        </head>
+        <body>
+          <header>
+            <img src="./images/logo.png" alt="Logo">
+          </header>
+          <main>
+            <img src="./images/hero.jpg" srcset="./images/hero-2x.jpg 2x">
+            <video poster="./images/poster.png">
+              <source src="./media/video.mp4" type="video/mp4">
+            </video>
+          </main>
+        </body>
+        </html>
+      `;
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./images/logo.png');
+      expect(urls).toContain('./images/hero.jpg');
+      expect(urls).toContain('./images/hero-2x.jpg');
+      expect(urls).toContain('./images/poster.png');
+      expect(urls).toContain('./media/video.mp4');
+      expect(urls).toHaveLength(5);
+    });
+
+    test('should handle img with both src and srcset', () => {
+      const html = '<img src="./fallback.png" srcset="./image-1x.png 1x, ./image-2x.png 2x">';
+
+      const urls = extractHTMLUrls(html);
+
+      expect(urls).toContain('./fallback.png');
+      expect(urls).toContain('./image-1x.png');
+      expect(urls).toContain('./image-2x.png');
+      expect(urls).toHaveLength(3);
     });
   });
 
@@ -588,6 +792,158 @@ describe('Asset Collector (Feature 040, Phase 4)', () => {
       );
 
       expect(manifest.assets.has(imgPath)).toBe(true);
+    });
+  });
+
+  // IMP3: Asset filename collision detection tests
+  describe('filename collision detection (IMP3)', () => {
+    describe('generateUniqueOutputPath', () => {
+      test('should return simple path when no collision', () => {
+        const tracker = createOutputPathTracker();
+        const result = generateUniqueOutputPath('/project/images/hero.png', tracker);
+
+        expect(result).toBe('assets/hero.png');
+        expect(tracker.collisions).toHaveLength(0);
+      });
+
+      test('should return same path for same source (idempotent)', () => {
+        const tracker = createOutputPathTracker();
+        const sourcePath = '/project/images/hero.png';
+
+        const result1 = generateUniqueOutputPath(sourcePath, tracker);
+        const result2 = generateUniqueOutputPath(sourcePath, tracker);
+
+        expect(result1).toBe('assets/hero.png');
+        expect(result2).toBe('assets/hero.png');
+        expect(tracker.collisions).toHaveLength(0);
+      });
+
+      test('should add hash suffix when collision detected', () => {
+        const tracker = createOutputPathTracker();
+
+        // First file claims the name
+        const result1 = generateUniqueOutputPath('/project/images/logo.png', tracker);
+        // Second file with same name but different path
+        const result2 = generateUniqueOutputPath('/project/icons/logo.png', tracker);
+
+        expect(result1).toBe('assets/logo.png');
+        // Second should have hash suffix
+        expect(result2).toMatch(/^assets\/logo-[a-f0-9]{8}\.png$/);
+        expect(result2).not.toBe(result1);
+        expect(tracker.collisions).toHaveLength(1);
+      });
+
+      test('should track collision details', () => {
+        const tracker = createOutputPathTracker();
+
+        generateUniqueOutputPath('/project/images/logo.png', tracker);
+        generateUniqueOutputPath('/project/icons/logo.png', tracker);
+
+        expect(tracker.collisions).toHaveLength(1);
+        expect(tracker.collisions[0].fileName).toBe('logo.png');
+        expect(tracker.collisions[0].source1).toBe('/project/images/logo.png');
+        expect(tracker.collisions[0].source2).toBe('/project/icons/logo.png');
+        expect(tracker.collisions[0].resolvedPath).toMatch(/^assets\/logo-[a-f0-9]{8}\.png$/);
+      });
+
+      test('should handle multiple collisions for same filename', () => {
+        const tracker = createOutputPathTracker();
+
+        const result1 = generateUniqueOutputPath('/a/logo.png', tracker);
+        const result2 = generateUniqueOutputPath('/b/logo.png', tracker);
+        const result3 = generateUniqueOutputPath('/c/logo.png', tracker);
+
+        expect(result1).toBe('assets/logo.png');
+        expect(result2).toMatch(/^assets\/logo-[a-f0-9]{8}\.png$/);
+        expect(result3).toMatch(/^assets\/logo-[a-f0-9]{8}\.png$/);
+        // All three should be different
+        expect(new Set([result1, result2, result3]).size).toBe(3);
+        expect(tracker.collisions).toHaveLength(2);
+      });
+
+      test('should handle files with same name in different subdirectories', () => {
+        const tracker = createOutputPathTracker();
+
+        const result1 = generateUniqueOutputPath('/project/a/b/c/image.jpg', tracker);
+        const result2 = generateUniqueOutputPath('/project/x/y/z/image.jpg', tracker);
+
+        expect(result1).toBe('assets/image.jpg');
+        expect(result2).toMatch(/^assets\/image-[a-f0-9]{8}\.jpg$/);
+      });
+
+      test('should handle files with no extension', () => {
+        const tracker = createOutputPathTracker();
+
+        const result1 = generateUniqueOutputPath('/project/a/README', tracker);
+        const result2 = generateUniqueOutputPath('/project/b/README', tracker);
+
+        expect(result1).toBe('assets/README');
+        expect(result2).toMatch(/^assets\/README-[a-f0-9]{8}$/);
+      });
+    });
+
+    describe('collectAssets with collisions', () => {
+      test('should detect collision when two CSS files reference same-named different files', async () => {
+        // Create directory structure
+        const subDir1 = path.join(tmpdir, 'theme1');
+        const subDir2 = path.join(tmpdir, 'theme2');
+        await fs.mkdir(subDir1, { recursive: true });
+        await fs.mkdir(subDir2, { recursive: true });
+
+        // CSS files in subdirectories
+        const css1Path = path.join(subDir1, 'styles.css');
+        const css2Path = path.join(subDir2, 'styles.css');
+
+        // Same filename in both directories but different content
+        const img1Path = path.join(subDir1, 'logo.png');
+        const img2Path = path.join(subDir2, 'logo.png');
+
+        await fs.writeFile(css1Path, '.logo { background: url("./logo.png"); }');
+        await fs.writeFile(css2Path, '.logo { background: url("./logo.png"); }');
+        await fs.writeFile(img1Path, Buffer.alloc(100, 'A')); // Different content
+        await fs.writeFile(img2Path, Buffer.alloc(100, 'B')); // Different content
+
+        const manifest = await Effect.runPromise(
+          collectAssets(createMinimalConfig(), [css1Path, css2Path], tmpdir, defaultOptions)
+        );
+
+        // Both assets should be collected
+        expect(manifest.assets.size).toBe(2);
+
+        // Get output paths
+        const asset1 = manifest.assets.get(img1Path)!;
+        const asset2 = manifest.assets.get(img2Path)!;
+
+        // First one gets simple name, second gets hash
+        expect(asset1.outputPath).toBe('assets/logo.png');
+        expect(asset2.outputPath).toMatch(/^assets\/logo-[a-f0-9]{8}\.png$/);
+        expect(asset1.outputPath).not.toBe(asset2.outputPath);
+      });
+
+      test('should not detect collision when same file referenced from multiple CSS', async () => {
+        // Single image file
+        const imgDir = path.join(tmpdir, 'images');
+        await fs.mkdir(imgDir, { recursive: true });
+        const imgPath = path.join(imgDir, 'shared.png');
+        await fs.writeFile(imgPath, Buffer.alloc(100));
+
+        // Two CSS files referencing the same image
+        const css1Path = path.join(tmpdir, 'main.css');
+        const css2Path = path.join(tmpdir, 'theme.css');
+        await fs.writeFile(css1Path, '.bg1 { background: url("./images/shared.png"); }');
+        await fs.writeFile(css2Path, '.bg2 { background: url("./images/shared.png"); }');
+
+        const manifest = await Effect.runPromise(
+          collectAssets(createMinimalConfig(), [css1Path, css2Path], tmpdir, defaultOptions)
+        );
+
+        // Only one asset (deduplicated)
+        expect(manifest.assets.size).toBe(1);
+
+        const asset = manifest.assets.get(imgPath)!;
+        expect(asset.outputPath).toBe('assets/shared.png'); // No hash needed
+        expect(asset.sources).toHaveLength(2); // Referenced by both CSS files
+      });
     });
   });
 });

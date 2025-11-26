@@ -13,7 +13,8 @@ import type { IEngineConfiguration } from 'eligius';
 import { compileFile } from '../compile-file.js';
 import { type CollectOptions, collectAssets } from './asset-collector.js';
 import { processCSS } from './css-processor.js';
-import { generateHTML } from './html-generator.js';
+import { generateHTML, rewriteHTMLUrls } from './html-generator.js';
+import { calculateInlineOverhead } from './inline-overhead.js';
 import { bundleRuntime, extractUsedOperations, extractUsedProviders } from './runtime-bundler.js';
 import {
   BundleError,
@@ -126,19 +127,28 @@ export function createBundle(
     // Resolve CSS file paths to absolute paths
     const absoluteCssPaths = cssFilePaths.map(cssFile => path.resolve(basePath, cssFile));
 
-    // Collect all assets from CSS files and configuration
+    // Get layout template for asset collection
+    const layoutTemplate = config.layoutTemplate ?? '';
+
+    // Create a virtual path for the layout template (used for resolving relative URLs)
+    // We use a path relative to the basePath since that's where the .eligian file is
+    const layoutTemplatePath = path.join(basePath, 'layout.html');
+
+    // Collect all assets from CSS files, configuration, and layout template
     const collectOptions: CollectOptions = {
       inlineThreshold: resolvedOptions.inlineThreshold,
+      layoutTemplate: layoutTemplate || undefined,
+      layoutTemplatePath: layoutTemplate ? layoutTemplatePath : undefined,
     };
 
     const manifest = yield* collectAssets(config, absoluteCssPaths, basePath, collectOptions).pipe(
       Effect.mapError(e => new BundleError(`Asset collection failed: ${e.message}`))
     );
 
-    // Process CSS with URL rewriting
-    const combinedCSS = yield* processCSS(absoluteCssPaths, manifest, basePath).pipe(
-      Effect.mapError(e => new BundleError(`CSS processing failed: ${e.message}`))
-    );
+    // Process CSS with URL rewriting (and optional minification)
+    const combinedCSS = yield* processCSS(absoluteCssPaths, manifest, basePath, {
+      minify: resolvedOptions.minify,
+    }).pipe(Effect.mapError(e => new BundleError(`CSS processing failed: ${e.message}`)));
 
     // Create temp directory for bundling
     const tempDir = yield* Effect.tryPromise({
@@ -172,14 +182,18 @@ export function createBundle(
       catch: () => new BundleError('Failed to clean up temp directory'),
     }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
 
-    // Generate HTML
+    // Generate HTML with rewritten layout template URLs
     const containerSelector = config.containerSelector || '#app';
-    const layoutTemplate = config.layoutTemplate ?? '';
+
+    // Rewrite asset URLs in the layout template to use bundled paths or data URIs
+    const rewrittenLayoutTemplate = layoutTemplate
+      ? rewriteHTMLUrls(layoutTemplate, layoutTemplatePath, manifest)
+      : '';
 
     const html = generateHTML({
       title: deriveTitle(config, inputPath),
       css: combinedCSS,
-      layoutTemplate,
+      layoutTemplate: rewrittenLayoutTemplate,
       containerSelector,
       bundlePath: 'bundle.js',
     });
@@ -260,6 +274,9 @@ export function createBundle(
       }
     }
 
+    // Calculate inline overhead (IMP5)
+    const overheadResult = calculateInlineOverhead(manifest.assets);
+
     // Calculate stats
     const stats: BundleStats = {
       fileCount: files.length,
@@ -268,6 +285,9 @@ export function createBundle(
       imagesCopied,
       cssFilesCombined: absoluteCssPaths.length,
       bundleTime: Date.now() - startTime,
+      inlinedOriginalSize: overheadResult.inlinedOriginalSize,
+      inlinedEncodedSize: overheadResult.inlinedEncodedSize,
+      inlineOverheadPercent: overheadResult.inlineOverheadPercent,
     };
 
     return { outputDir, files, stats };

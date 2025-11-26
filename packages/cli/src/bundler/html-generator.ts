@@ -8,7 +8,8 @@
  * ESM has 94.58% global browser support (caniuse.com/es6-module).
  */
 
-import type { HTMLGeneratorConfig } from './types.js';
+import * as path from 'node:path';
+import type { AssetManifest, HTMLGeneratorConfig } from './types.js';
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -120,4 +121,145 @@ ${css}
 </body>
 </html>
 `;
+}
+
+/**
+ * Check if a URL is external (http:// or https://)
+ */
+function isExternalUrl(url: string): boolean {
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
+}
+
+/**
+ * Check if a URL is a data URI
+ */
+function isDataUri(url: string): boolean {
+  return url.startsWith('data:');
+}
+
+/**
+ * Resolve a URL reference relative to an HTML file path
+ *
+ * @param urlRef - The URL reference from the HTML (e.g., "./images/hero.png")
+ * @param htmlFilePath - Absolute path to the HTML file
+ * @returns Absolute path to the referenced asset
+ */
+function resolveAssetPath(urlRef: string, htmlFilePath: string): string {
+  const htmlDir = path.dirname(htmlFilePath);
+  return path.resolve(htmlDir, urlRef);
+}
+
+/**
+ * Get the rewritten URL for an asset (data URI or file path)
+ *
+ * @param asset - Asset entry from manifest
+ * @returns URL to use (data URI if inlined, otherwise output path)
+ */
+function getRewrittenUrl(asset: { inline: boolean; dataUri?: string; outputPath: string }): string {
+  if (asset.inline && asset.dataUri) {
+    return asset.dataUri;
+  }
+  return asset.outputPath;
+}
+
+/**
+ * Rewrite asset URLs in HTML content
+ *
+ * Rewrites src attributes on img, video, audio, source elements,
+ * poster attributes on video elements, and srcset attributes
+ * to point to bundled asset paths or inline data URIs.
+ *
+ * @param htmlContent - HTML content string
+ * @param htmlFilePath - Absolute path to the HTML file (for resolving relative paths)
+ * @param manifest - Asset manifest with rewritten paths
+ * @returns HTML content with rewritten URLs
+ */
+export function rewriteHTMLUrls(
+  htmlContent: string,
+  htmlFilePath: string,
+  manifest: AssetManifest
+): string {
+  if (!htmlContent) {
+    return htmlContent;
+  }
+
+  let result = htmlContent;
+
+  // Rewrite src attributes on img, video, audio, source elements
+  // Matches: src="..." or src='...' (with optional space before src)
+  const srcRegex = /(<(?:img|video|audio|source)[^>]*?)(\s?)src\s*=\s*(['"])([^'"]+)\3/gi;
+  result = result.replace(srcRegex, (match, prefix, space, quote, url) => {
+    if (isExternalUrl(url) || isDataUri(url)) {
+      return match; // Preserve external URLs and data URIs
+    }
+
+    const absolutePath = resolveAssetPath(url, htmlFilePath);
+    const asset = manifest.assets.get(absolutePath);
+
+    if (!asset) {
+      return match; // Asset not in manifest, leave unchanged
+    }
+
+    const newUrl = getRewrittenUrl(asset);
+    return `${prefix}${space}src=${quote}${newUrl}${quote}`;
+  });
+
+  // Rewrite poster attributes on video elements
+  const posterRegex = /(<video[^>]*?)(\s)poster\s*=\s*(['"])([^'"]+)\3/gi;
+  result = result.replace(posterRegex, (match, prefix, space, quote, url) => {
+    if (isExternalUrl(url) || isDataUri(url)) {
+      return match;
+    }
+
+    const absolutePath = resolveAssetPath(url, htmlFilePath);
+    const asset = manifest.assets.get(absolutePath);
+
+    if (!asset) {
+      return match;
+    }
+
+    const newUrl = getRewrittenUrl(asset);
+    return `${prefix}${space}poster=${quote}${newUrl}${quote}`;
+  });
+
+  // Rewrite srcset attributes
+  const srcsetRegex = /srcset\s*=\s*(['"])([^'"]+)\1/gi;
+  result = result.replace(srcsetRegex, (_match, quote, srcsetValue) => {
+    // Parse srcset: "url1 1x, url2 2x" or "url1 480w, url2 800w"
+    const entries = srcsetValue.split(',').map((entry: string) => {
+      const trimmed = entry.trim();
+      const spaceIndex = trimmed.indexOf(' ');
+
+      if (spaceIndex <= 0) {
+        // No descriptor, just URL
+        const url = trimmed;
+        if (isExternalUrl(url) || isDataUri(url)) {
+          return trimmed;
+        }
+        const absolutePath = resolveAssetPath(url, htmlFilePath);
+        const asset = manifest.assets.get(absolutePath);
+        return asset ? getRewrittenUrl(asset) : trimmed;
+      }
+
+      const url = trimmed.substring(0, spaceIndex);
+      const descriptor = trimmed.substring(spaceIndex); // Include the space
+
+      if (isExternalUrl(url) || isDataUri(url)) {
+        return trimmed;
+      }
+
+      const absolutePath = resolveAssetPath(url, htmlFilePath);
+      const asset = manifest.assets.get(absolutePath);
+
+      if (!asset) {
+        return trimmed;
+      }
+
+      return getRewrittenUrl(asset) + descriptor;
+    });
+
+    return `srcset=${quote}${entries.join(', ')}${quote}`;
+  });
+
+  return result;
 }

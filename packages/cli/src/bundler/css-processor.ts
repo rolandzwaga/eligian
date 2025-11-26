@@ -3,12 +3,39 @@
  *
  * Combines multiple CSS files into a single string, rewriting all url()
  * references to point to the bundle's asset paths or inline data URIs.
+ * Optionally minifies the combined CSS output.
  */
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Effect } from 'effect';
+import * as esbuild from 'esbuild';
 import { type AssetManifest, CSSProcessError } from './types.js';
+
+/**
+ * Options for CSS processing
+ */
+export interface CSSProcessOptions {
+  /**
+   * Whether to minify the combined CSS output
+   * @default false
+   */
+  minify?: boolean;
+}
+
+/**
+ * Minify CSS content using esbuild
+ *
+ * @param css - CSS content to minify
+ * @returns Minified CSS string
+ */
+export async function minifyCSS(css: string): Promise<string> {
+  const result = await esbuild.transform(css, {
+    loader: 'css',
+    minify: true,
+  });
+  return result.code;
+}
 
 /**
  * Check if a URL is external (http:// or https://)
@@ -90,20 +117,23 @@ export function rewriteCSSUrls(
 }
 
 /**
- * Process CSS files: combine, rewrite URLs
+ * Process CSS files: combine, rewrite URLs, optionally minify
  *
  * Combines multiple CSS files in order, adding source comments for debugging,
- * and rewrites all url() references based on the asset manifest.
+ * rewrites all url() references based on the asset manifest, and optionally
+ * minifies the output.
  *
  * @param cssFiles - Array of absolute CSS file paths (in order)
  * @param manifest - Asset manifest with inline decisions
  * @param basePath - Base path for resolving relative references
+ * @param options - Processing options (minify, etc.)
  * @returns Effect that resolves to processed CSS string
  */
 export function processCSS(
   cssFiles: string[],
   manifest: AssetManifest,
-  _basePath: string
+  _basePath: string,
+  options?: CSSProcessOptions
 ): Effect.Effect<string, CSSProcessError> {
   return Effect.gen(function* () {
     if (cssFiles.length === 0) {
@@ -120,20 +150,32 @@ export function processCSS(
           new CSSProcessError(`Failed to read CSS file: ${cssFilePath}: ${error}`, cssFilePath),
       });
 
-      // Get filename for source comment
-      const fileName = path.basename(cssFilePath);
-
-      // Add source comment
-      parts.push(`/* === Source: ${fileName} === */`);
+      // Get filename for source comment (only if not minifying)
+      if (!options?.minify) {
+        const fileName = path.basename(cssFilePath);
+        parts.push(`/* === Source: ${fileName} === */`);
+      }
 
       // Rewrite URLs and add content
       const processedContent = rewriteCSSUrls(cssContent, cssFilePath, manifest);
       parts.push(processedContent);
 
-      // Add spacing between files
-      parts.push('');
+      // Add spacing between files (only if not minifying)
+      if (!options?.minify) {
+        parts.push('');
+      }
     }
 
-    return parts.join('\n').trim();
+    let result = parts.join('\n').trim();
+
+    // Minify if requested
+    if (options?.minify) {
+      result = yield* Effect.tryPromise({
+        try: () => minifyCSS(result),
+        catch: error => new CSSProcessError(`CSS minification failed: ${error}`),
+      });
+    }
+
+    return result;
   });
 }

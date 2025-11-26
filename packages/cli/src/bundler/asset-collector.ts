@@ -6,6 +6,7 @@
  * determines which assets should be inlined vs copied.
  */
 
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Effect } from 'effect';
@@ -31,12 +32,40 @@ export interface CollectOptions {
    * Set to 0 to disable inlining entirely
    */
   inlineThreshold: number;
+
+  /**
+   * Optional layout template HTML content
+   * If provided, assets referenced in the layout template will be collected
+   */
+  layoutTemplate?: string;
+
+  /**
+   * Base path for resolving layout template asset references
+   * Required if layoutTemplate is provided
+   */
+  layoutTemplatePath?: string;
 }
 
 /**
  * URL regex pattern for extracting url() from CSS
  */
 const URL_REGEX = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+
+/**
+ * Regex for src attribute on img, source, video, audio elements
+ * Handles both single and double quotes
+ */
+const HTML_SRC_COMBINED_REGEX = /<(?:img|source|video|audio)[^>]*\ssrc\s*=\s*(['"])([^'"]+)\1/gi;
+
+/**
+ * Regex for poster attribute on video elements
+ */
+const HTML_POSTER_COMBINED_REGEX = /<video[^>]*\sposter\s*=\s*(['"])([^'"]+)\1/gi;
+
+/**
+ * Regex for srcset attribute (handles both quotes)
+ */
+const HTML_SRCSET_COMBINED_REGEX = /srcset\s*=\s*(['"])([^'"]+)\1/gi;
 
 /**
  * Check if a URL is external (http:// or https://)
@@ -50,6 +79,53 @@ function isExternalUrl(url: string): boolean {
  */
 function isDataUri(url: string): boolean {
   return url.startsWith('data:');
+}
+
+/**
+ * CSS URL reference with line number
+ */
+export interface CSSUrlRef {
+  /** The URL path extracted from url() */
+  url: string;
+  /** 1-indexed line number where the URL was found */
+  line: number;
+}
+
+/**
+ * Extract url() references from CSS content with line numbers
+ *
+ * Returns all local URLs with their line numbers (does not deduplicate).
+ * Useful for error reporting with source locations.
+ *
+ * @param cssContent - CSS content string
+ * @returns Array of { url, line } objects
+ */
+export function extractCSSUrlsWithLines(cssContent: string): CSSUrlRef[] {
+  const results: CSSUrlRef[] = [];
+  const lines = cssContent.split('\n');
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
+    // Reset regex state for each line
+    URL_REGEX.lastIndex = 0;
+
+    let match: RegExpExecArray | null;
+    while ((match = URL_REGEX.exec(line)) !== null) {
+      const url = match[2].trim();
+
+      // Skip external URLs and data URIs
+      if (isExternalUrl(url) || isDataUri(url)) {
+        continue;
+      }
+
+      results.push({
+        url,
+        line: lineIndex + 1, // 1-indexed
+      });
+    }
+  }
+
+  return results;
 }
 
 /**
@@ -76,6 +152,81 @@ export function extractCSSUrls(cssContent: string): string[] {
     }
 
     urls.add(url);
+  }
+
+  return [...urls];
+}
+
+/**
+ * Parse srcset attribute value and extract individual URLs
+ *
+ * srcset format: "url1 1x, url2 2x" or "url1 480w, url2 800w"
+ *
+ * @param srcsetValue - The srcset attribute value
+ * @returns Array of URLs extracted from srcset
+ */
+function parseSrcset(srcsetValue: string): string[] {
+  const urls: string[] = [];
+  // Split by comma, then extract URL (first part before space or whole value)
+  const entries = srcsetValue.split(',');
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed) {
+      // URL is everything before the first space (if any)
+      const spaceIndex = trimmed.indexOf(' ');
+      const url = spaceIndex > 0 ? trimmed.substring(0, spaceIndex) : trimmed;
+      if (url) {
+        urls.push(url);
+      }
+    }
+  }
+  return urls;
+}
+
+/**
+ * Extract asset URLs from HTML content
+ *
+ * Extracts src attributes from img, source, video, audio elements,
+ * poster attributes from video elements, and srcset attributes.
+ * Returns unique, local URLs only (skips external and data URIs).
+ *
+ * @param htmlContent - HTML content string
+ * @returns Array of unique URL references
+ */
+export function extractHTMLUrls(htmlContent: string): string[] {
+  const urls = new Set<string>();
+
+  // Reset regex state
+  HTML_SRC_COMBINED_REGEX.lastIndex = 0;
+  HTML_POSTER_COMBINED_REGEX.lastIndex = 0;
+  HTML_SRCSET_COMBINED_REGEX.lastIndex = 0;
+
+  // Extract src attributes from img, source, video, audio
+  let match: RegExpExecArray | null;
+  while ((match = HTML_SRC_COMBINED_REGEX.exec(htmlContent)) !== null) {
+    const url = match[2].trim();
+    if (!isExternalUrl(url) && !isDataUri(url)) {
+      urls.add(url);
+    }
+  }
+
+  // Extract poster attributes from video elements
+  while ((match = HTML_POSTER_COMBINED_REGEX.exec(htmlContent)) !== null) {
+    const url = match[2].trim();
+    if (!isExternalUrl(url) && !isDataUri(url)) {
+      urls.add(url);
+    }
+  }
+
+  // Extract srcset attributes
+  while ((match = HTML_SRCSET_COMBINED_REGEX.exec(htmlContent)) !== null) {
+    const srcsetValue = match[2];
+    const srcsetUrls = parseSrcset(srcsetValue);
+    for (const url of srcsetUrls) {
+      if (!isExternalUrl(url) && !isDataUri(url)) {
+        urls.add(url);
+      }
+    }
   }
 
   return [...urls];
@@ -171,16 +322,82 @@ function shouldInlineAsset(extension: string, size: number, threshold: number): 
 }
 
 /**
- * Generate a unique output filename for an asset
+ * Tracking structure for output path collisions
+ */
+interface OutputPathTracker {
+  /**
+   * Map of output path -> source path that claimed it
+   */
+  usedPaths: Map<string, string>;
+
+  /**
+   * List of detected collisions for logging
+   */
+  collisions: Array<{
+    fileName: string;
+    source1: string;
+    source2: string;
+    resolvedPath: string;
+  }>;
+}
+
+/**
+ * Generate a unique output filename for an asset, handling collisions
  *
- * Uses just the filename, assuming deduplication handles collisions
+ * If two different source files have the same filename, adds an 8-character
+ * hash suffix to distinguish them.
  *
  * @param sourcePath - Absolute path to the source file
- * @returns Output path relative to bundle root (e.g., "assets/hero.png")
+ * @param tracker - Tracker for used output paths and collisions
+ * @returns Output path relative to bundle root (e.g., "assets/hero.png" or "assets/hero-a1b2c3d4.png")
  */
-function generateOutputPath(sourcePath: string): string {
+export function generateUniqueOutputPath(sourcePath: string, tracker: OutputPathTracker): string {
   const fileName = path.basename(sourcePath);
-  return `assets/${fileName}`;
+  const baseName = path.basename(fileName, path.extname(fileName));
+  const ext = path.extname(fileName);
+
+  let outputPath = `assets/${fileName}`;
+
+  // Check for collision with a different source file
+  const existingSource = tracker.usedPaths.get(outputPath);
+  if (existingSource && existingSource !== sourcePath) {
+    // Collision detected - add hash from source path
+    const hash = createHash('md5').update(sourcePath).digest('hex').slice(0, 8);
+    outputPath = `assets/${baseName}-${hash}${ext}`;
+
+    // Track collision for logging
+    tracker.collisions.push({
+      fileName,
+      source1: existingSource,
+      source2: sourcePath,
+      resolvedPath: outputPath,
+    });
+  }
+
+  tracker.usedPaths.set(outputPath, sourcePath);
+  return outputPath;
+}
+
+/**
+ * Create a new output path tracker
+ */
+export function createOutputPathTracker(): OutputPathTracker {
+  return {
+    usedPaths: new Map(),
+    collisions: [],
+  };
+}
+
+/**
+ * Log any detected collisions as warnings
+ */
+export function logCollisionWarnings(tracker: OutputPathTracker): void {
+  for (const collision of tracker.collisions) {
+    console.warn(`⚠ Asset filename collision detected: ${collision.fileName}`);
+    console.warn(`  Source 1: ${collision.source1}`);
+    console.warn(`  Source 2: ${collision.source2}`);
+    console.warn(`  Resolved to: ${collision.resolvedPath}`);
+  }
 }
 
 /**
@@ -197,10 +414,19 @@ async function createDataUri(filePath: string, mimeType: string): Promise<string
 }
 
 /**
+ * Result of asset collection including collision info
+ */
+export interface CollectAssetsResult {
+  manifest: AssetManifest;
+  collisions: OutputPathTracker['collisions'];
+}
+
+/**
  * Collect all assets from CSS files and configuration
  *
  * Walks through CSS files extracting url() references, resolves paths,
  * reads file metadata, and builds an asset manifest with inline decisions.
+ * Detects and handles filename collisions by adding hash suffixes.
  *
  * @param config - Compiled Eligius configuration
  * @param cssFiles - Array of absolute CSS file paths
@@ -216,6 +442,7 @@ export function collectAssets(
 ): Effect.Effect<AssetManifest, AssetNotFoundError | CSSProcessError> {
   return Effect.gen(function* () {
     const assets = new Map<string, AssetEntry>();
+    const pathTracker = createOutputPathTracker();
 
     // Collect assets from CSS files
     for (const cssFilePath of cssFiles) {
@@ -226,17 +453,22 @@ export function collectAssets(
           new CSSProcessError(`Failed to read CSS file: ${cssFilePath}: ${error}`, cssFilePath),
       });
 
-      // Extract URLs from CSS
-      const urls = extractCSSUrls(cssContent);
+      // Extract URLs from CSS with line numbers for better error reporting
+      const urlRefs = extractCSSUrlsWithLines(cssContent);
 
       // Process each URL
-      for (const urlRef of urls) {
+      for (const { url: urlRef, line } of urlRefs) {
         const absolutePath = resolveAssetPath(urlRef, cssFilePath);
 
-        // Check if asset exists
+        // Check if asset exists (include source location in error)
         const stat = yield* Effect.tryPromise({
           try: () => fs.stat(absolutePath),
-          catch: () => new AssetNotFoundError(absolutePath, cssFilePath),
+          catch: () =>
+            new AssetNotFoundError(absolutePath, cssFilePath, {
+              file: cssFilePath,
+              line,
+              column: 0, // Column requires more complex parsing
+            }),
         });
 
         const extension = path.extname(absolutePath);
@@ -250,12 +482,14 @@ export function collectAssets(
           existing.sources.push({
             file: cssFilePath,
             type: 'css-url',
+            line,
           });
         } else {
           // Create new entry
           const source: AssetSource = {
             file: cssFilePath,
             type: 'css-url',
+            line,
           };
 
           let dataUri: string | undefined;
@@ -263,14 +497,14 @@ export function collectAssets(
             dataUri = yield* Effect.tryPromise({
               try: () => createDataUri(absolutePath, mimeType),
               catch: () =>
-                new CSSProcessError(`Failed to read asset: ${absolutePath}`, cssFilePath),
+                new CSSProcessError(`Failed to read asset: ${absolutePath}`, cssFilePath, line),
             });
           }
 
           const entry: AssetEntry = {
             originalRef: urlRef,
             sourcePath: absolutePath,
-            outputPath: generateOutputPath(absolutePath),
+            outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
             size: stat.size,
             inline: shouldInline,
             dataUri,
@@ -314,7 +548,7 @@ export function collectAssets(
         const entry: AssetEntry = {
           originalRef,
           sourcePath: absolutePath,
-          outputPath: generateOutputPath(absolutePath),
+          outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
           size: stat.size,
           inline: shouldInline,
           mimeType,
@@ -324,6 +558,64 @@ export function collectAssets(
         assets.set(absolutePath, entry);
       }
     }
+
+    // Collect assets from layout template HTML (if provided)
+    if (options.layoutTemplate && options.layoutTemplatePath) {
+      const htmlUrls = extractHTMLUrls(options.layoutTemplate);
+
+      for (const urlRef of htmlUrls) {
+        const absolutePath = resolveAssetPath(urlRef, options.layoutTemplatePath);
+
+        // Check if asset exists
+        const stat = yield* Effect.tryPromise({
+          try: () => fs.stat(absolutePath),
+          catch: () => new AssetNotFoundError(absolutePath, 'layoutTemplate'),
+        });
+
+        const extension = path.extname(absolutePath);
+        const mimeType = getMimeType(extension);
+        const shouldInline = shouldInlineAsset(extension, stat.size, options.inlineThreshold);
+
+        if (assets.has(absolutePath)) {
+          // Add source to existing entry
+          const existing = assets.get(absolutePath)!;
+          existing.sources.push({
+            file: 'layoutTemplate',
+            type: 'html-url',
+          });
+        } else {
+          const source: AssetSource = {
+            file: 'layoutTemplate',
+            type: 'html-url',
+          };
+
+          let dataUri: string | undefined;
+          if (shouldInline) {
+            dataUri = yield* Effect.tryPromise({
+              try: () => createDataUri(absolutePath, mimeType),
+              catch: () =>
+                new CSSProcessError(`Failed to read asset: ${absolutePath}`, 'layoutTemplate'),
+            });
+          }
+
+          const entry: AssetEntry = {
+            originalRef: urlRef,
+            sourcePath: absolutePath,
+            outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
+            size: stat.size,
+            inline: shouldInline,
+            dataUri,
+            mimeType,
+            sources: [source],
+          };
+
+          assets.set(absolutePath, entry);
+        }
+      }
+    }
+
+    // Log any collision warnings
+    logCollisionWarnings(pathTracker);
 
     const manifest: AssetManifest = {
       assets,
