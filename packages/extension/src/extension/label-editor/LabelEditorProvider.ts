@@ -12,6 +12,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { consumePendingSelection } from '../label-entry-creator.js';
 import { LabelFileWatcher } from './LabelFileWatcher.js';
 import { searchWorkspace } from './LabelUsageTracker.js';
 import {
@@ -226,10 +227,13 @@ export class LabelEditorProvider implements vscode.CustomTextEditorProvider {
         // Parse document and send initialize message
         {
           const labels = this.parseLabels(document.getText());
+          // Check for pending label selection (Feature 041 - auto-select newly created labels)
+          const selectedLabelId = consumePendingSelection(document.uri.toString());
           const initMessage: ToWebviewMessage = {
             type: 'initialize',
             labels,
             filePath: document.uri.fsPath,
+            selectedLabelId,
           };
           webviewPanel.webview.postMessage(initMessage);
         }

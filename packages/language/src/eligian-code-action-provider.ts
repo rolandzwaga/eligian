@@ -21,7 +21,12 @@ import type { EligianServices } from './eligian-module.js';
 import { MISSING_LABELS_FILE_CODE } from './eligian-validator.js';
 import type { Program } from './generated/ast.js';
 import { LanguageBlockCodeActionProvider } from './labels/language-block-code-actions.js';
-import type { CreateLabelsFileCommand, MissingLabelsFileData } from './types/code-actions.js';
+import type {
+  CreateLabelEntryCommand,
+  CreateLabelsFileCommand,
+  MissingLabelIDData,
+  MissingLabelsFileData,
+} from './types/code-actions.js';
 /**
  * Eligian-specific code action provider
  *
@@ -94,6 +99,10 @@ export class EligianCodeActionProvider implements CodeActionProvider {
       // Feature 039 - T005: Handle missing labels file diagnostics
       const labelsFileActions = this.createLabelsFileActions(params, documentUri);
       actions.push(...labelsFileActions);
+
+      // Feature 041 - T022: Handle missing label entry diagnostics
+      const labelEntryActions = this.createLabelEntryActions(params, documentUri);
+      actions.push(...labelEntryActions);
 
       // Future: Add more code action providers here
       // - Refactoring actions (extract action, inline action, etc.)
@@ -226,5 +235,91 @@ export class EligianCodeActionProvider implements CodeActionProvider {
     };
 
     return languageMap[code] || `Example ${code}`;
+  }
+
+  // ============================================================================
+  // Feature 041: Missing Label Entry Quick Fix
+  // ============================================================================
+
+  /**
+   * Feature 041 - T019: Create code actions for missing label entries
+   *
+   * Creates quick fix actions that trigger the 'eligian.createLabelEntry' command
+   * to add missing label entries to existing labels files.
+   *
+   * @param params - LSP CodeActionParams with diagnostics
+   * @param documentUri - URI of the Eligian document
+   * @returns Array of CodeActions for missing label entries
+   */
+  private createLabelEntryActions(params: CodeActionParams, documentUri: string): CodeAction[] {
+    const actions: CodeAction[] = [];
+
+    // Safety check: ensure diagnostics array exists
+    if (!params.context?.diagnostics) {
+      return actions;
+    }
+
+    // T020: Filter diagnostics for unknown_label_id code
+    const missingLabelDiagnostics = params.context.diagnostics.filter(
+      diag => (diag.data as MissingLabelIDData | undefined)?.code === 'unknown_label_id'
+    );
+
+    // Create code action for each missing label
+    for (const diagnostic of missingLabelDiagnostics) {
+      const action = this.createLabelEntryAction(diagnostic, documentUri);
+      if (action) {
+        actions.push(action);
+      }
+    }
+
+    return actions;
+  }
+
+  /**
+   * Feature 041 - T021: Create a single code action for a missing label entry
+   *
+   * @param diagnostic - Diagnostic with missing label ID data
+   * @param documentUri - URI of the Eligian document
+   * @returns CodeAction or undefined if data is invalid
+   */
+  private createLabelEntryAction(
+    diagnostic: import('vscode-languageserver-protocol').Diagnostic,
+    documentUri: string
+  ): CodeAction | undefined {
+    // Extract diagnostic data
+    const data = diagnostic.data as MissingLabelIDData | undefined;
+    if (!data || data.code !== 'unknown_label_id') return undefined;
+
+    // Validate required fields
+    if (!data.labelId || !data.labelsFileUri || !data.languageCodes?.length) {
+      return undefined;
+    }
+
+    // Convert labels file URI to file path
+    // Handle both encoded (file:///c%3A/...) and unencoded (file:///c:/...) URIs
+    let labelsFilePath = data.labelsFileUri.replace('file:///', '');
+    labelsFilePath = decodeURIComponent(labelsFilePath);
+
+    // Create command arguments
+    const commandArgs: CreateLabelEntryCommand = {
+      labelId: data.labelId,
+      labelsFilePath,
+      languageCodes: data.languageCodes,
+      documentUri,
+    };
+
+    // Create code action with descriptive title
+    const action: CodeAction = {
+      title: `Create label entry '${data.labelId}'`,
+      kind: CodeActionKind.QuickFix,
+      diagnostics: [diagnostic],
+      command: {
+        title: `Create label entry '${data.labelId}'`,
+        command: 'eligian.createLabelEntry',
+        arguments: [commandArgs],
+      },
+    };
+
+    return action;
   }
 }

@@ -44,10 +44,11 @@ import type {
   VariableDeclaration,
 } from './generated/ast.js';
 import { isLibraryImport } from './generated/ast.js';
+import { extractLanguageCodes } from './labels/index.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
 import { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
 import { validateLabelID } from './type-system-typir/validation/label-id-validation.js';
-import type { MissingLabelsFileData } from './types/code-actions.js';
+import type { MissingLabelIDData, MissingLabelsFileData } from './types/code-actions.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 import { getElements, getImports, getTimelines } from './utils/program-helpers.js';
@@ -2296,6 +2297,10 @@ export class EligianValidator {
       // CRITICAL: Ensure labels are registered before validation
       this.ensureLabelsImportsRegistered(programNode, documentUri);
 
+      // Feature 041: Get labels file URI and language codes for extended diagnostic data
+      const labelsFileUri = labelRegistry.getLabelsFileUri(documentUri);
+      const languageCodes = extractLanguageCodes(programNode);
+
       // Validate labelId parameter (first parameter after controller name)
       if (paramArgs.length > 0) {
         const labelIdArg = paramArgs[0];
@@ -2306,9 +2311,20 @@ export class EligianValidator {
 
           const error = validateLabelID(documentUri, labelId, labelRegistry);
           if (error) {
+            // Feature 041: Include extended diagnostic data for quick fix
+            const diagnosticData: MissingLabelIDData | { code: string } =
+              error.code === 'unknown_label_id' && labelsFileUri
+                ? {
+                    code: error.code,
+                    labelId,
+                    labelsFileUri,
+                    languageCodes,
+                  }
+                : { code: error.code };
+
             accept('error', `${error.message}. ${error.hint}`, {
               node: labelIdArg,
-              data: { code: error.code },
+              data: diagnosticData,
             });
           }
         }
@@ -2377,6 +2393,10 @@ export class EligianValidator {
       return;
     }
 
+    // Feature 041: Get labels file URI and language codes for extended diagnostic data
+    const labelsFileUri = labelRegistry.getLabelsFileUri(documentUri);
+    const languageCodes = extractLanguageCodes(programNode);
+
     // Validate each label ID parameter
     const args = operation.args || [];
 
@@ -2391,11 +2411,20 @@ export class EligianValidator {
         // Validate label ID
         const error = validateLabelID(documentUri, labelId, labelRegistry);
         if (error) {
+          // Feature 041: Include extended diagnostic data for quick fix
+          const diagnosticData: MissingLabelIDData | { code: string } =
+            error.code === 'unknown_label_id' && labelsFileUri
+              ? {
+                  code: error.code,
+                  labelId,
+                  labelsFileUri,
+                  languageCodes,
+                }
+              : { code: error.code };
+
           accept('error', `${error.message}. ${error.hint}`, {
             node: arg,
-            data: {
-              code: error.code,
-            },
+            data: diagnosticData,
           });
         }
       }
@@ -2413,11 +2442,20 @@ export class EligianValidator {
           // Validate label ID
           const error = validateLabelID(documentUri, labelId, labelRegistry);
           if (error) {
+            // Feature 041: Include extended diagnostic data for quick fix
+            const diagnosticData: MissingLabelIDData | { code: string } =
+              error.code === 'unknown_label_id' && labelsFileUri
+                ? {
+                    code: error.code,
+                    labelId,
+                    labelsFileUri,
+                    languageCodes,
+                  }
+                : { code: error.code };
+
             accept('error', `${error.message}. ${error.hint}`, {
               node: element,
-              data: {
-                code: error.code,
-              },
+              data: diagnosticData,
             });
           }
         }

@@ -46,6 +46,12 @@ export {
 } from './generated/ast.js';
 // JSDoc exports (for template generation)
 export { generateJSDocContent } from './jsdoc/jsdoc-template-generator.js';
+// Labels exports (for label entry quick fix - Feature 041)
+export {
+  generateLabelEntry,
+  type LabelEntry,
+  type TranslationEntry,
+} from './labels/label-entry-generator.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // HTML validation exports

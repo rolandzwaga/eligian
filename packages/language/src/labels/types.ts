@@ -155,3 +155,49 @@ export const LANGUAGE_BLOCK_TRAILING_NEWLINES = '\n\n';
 export function isValidLanguageCode(code: unknown): code is string {
   return typeof code === 'string' && code.trim().length > 0;
 }
+
+// =============================================================================
+// Feature 041: Missing Label Entry Quick Fix
+// =============================================================================
+
+/**
+ * Interface for Program AST node with optional languages block
+ * Used by extractLanguageCodes to avoid circular import from generated/ast.ts
+ */
+interface ProgramWithLanguages {
+  languages?: {
+    entries: Array<{
+      code: string;
+      isDefault: boolean;
+      label: string;
+    }>;
+  };
+}
+
+/**
+ * Extract language codes from a Program's languages block
+ *
+ * If no languages block is defined, returns ['en-US'] as the default fallback.
+ * Preserves the order of languages as defined in the languages block.
+ *
+ * @param program - Program AST node with optional languages block
+ * @returns Array of language codes (e.g., ['en-US', 'nl-NL'])
+ *
+ * @example
+ * ```typescript
+ * // With languages block: languages { *"en-US" "English" "nl-NL" "Dutch" }
+ * const codes = extractLanguageCodes(program);
+ * // Returns: ['en-US', 'nl-NL']
+ *
+ * // Without languages block
+ * const codes = extractLanguageCodes(program);
+ * // Returns: ['en-US']
+ * ```
+ */
+export function extractLanguageCodes(program: ProgramWithLanguages): string[] {
+  if (!program.languages?.entries || program.languages.entries.length === 0) {
+    return [DEFAULT_LANGUAGE_CODE]; // Default fallback per spec
+  }
+
+  return program.languages.entries.map(entry => entry.code);
+}
