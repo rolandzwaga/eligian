@@ -20,6 +20,7 @@ import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
 import { HTMLWatcherManager } from './html-watcher.js';
 import { LabelEditorProvider } from './label-editor/LabelEditorProvider.js';
+import { createLabelEntry } from './label-entry-creator.js';
 import { createLabelsFile } from './label-file-creator.js';
 import { LabelLinkProvider } from './label-link-provider.js';
 import { LabelsWatcherManager } from './labels-watcher.js';
@@ -160,6 +161,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!result.success && result.error) {
         vscode.window.showErrorMessage(result.error.message);
       }
+    })
+  );
+
+  // Feature 041 - T023: Register "Create Label Entry" command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.createLabelEntry', async args => {
+      await createLabelEntry(args);
+      // Note: createLabelEntry handles its own success/error messages
     })
   );
 

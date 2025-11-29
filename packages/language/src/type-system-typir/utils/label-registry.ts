@@ -180,6 +180,22 @@ export class LabelRegistryService {
   }
 
   /**
+   * Get the labels file URI for a document
+   *
+   * @param documentUri - Absolute URI of the Eligian document
+   * @returns Labels file URI if registered, undefined otherwise
+   *
+   * @example
+   * ```typescript
+   * const labelsFileUri = registry.getLabelsFileUri('file:///program.eligian');
+   * // Returns: 'file:///labels.json'
+   * ```
+   */
+  getLabelsFileUri(documentUri: string): string | undefined {
+    return this.labelsFileByDocument.get(documentUri);
+  }
+
+  /**
    * Clear all data for a document (on document close)
    *
    * @param documentUri - Absolute URI of the Eligian document

@@ -24,7 +24,8 @@ interface ValidationError {
 }
 
 type ToWebviewMessage =
-  | { type: 'initialize'; labels: LabelGroup[]; filePath: string }
+  | { type: 'initialize'; labels: LabelGroup[]; filePath: string; selectedLabelId?: string }
+  | { type: 'select-label'; labelId: string }
   | { type: 'reload'; labels: LabelGroup[] }
   | { type: 'validation-error'; errors: ValidationError[] }
   | { type: 'save-complete'; success: boolean }
@@ -211,6 +212,14 @@ window.addEventListener('message', event => {
       state.isDirty = false;
       renderGroups();
       renderTranslations();
+      // Auto-select label if specified
+      if (message.selectedLabelId) {
+        selectLabelById(message.selectedLabelId);
+      }
+      break;
+
+    case 'select-label':
+      selectLabelById(message.labelId);
       break;
 
     case 'reload':
@@ -548,6 +557,28 @@ function selectGroup(index: number): void {
   state.selectedGroupIndex = index;
   renderGroups();
   renderTranslations();
+}
+
+/**
+ * Select a label group by its ID and scroll it into view
+ */
+function selectLabelById(labelId: string): void {
+  const index = state.labels.findIndex(g => g.id === labelId);
+  if (index >= 0) {
+    selectGroup(index);
+    // Scroll the group into view after DOM update
+    setTimeout(() => {
+      const groupElement = document.querySelector(`.group[data-index="${index}"]`);
+      if (groupElement) {
+        groupElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add a brief highlight effect
+        groupElement.classList.add('highlight');
+        setTimeout(() => {
+          groupElement.classList.remove('highlight');
+        }, 1500);
+      }
+    }, 0);
+  }
 }
 
 /**

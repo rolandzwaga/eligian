@@ -205,6 +205,17 @@
             border: 2px dashed var(--vscode-focusBorder);
         }
 
+        /* Highlight effect for newly selected labels (Feature 041) */
+        @keyframes highlight-pulse {
+            0% { box-shadow: 0 0 0 0 var(--vscode-focusBorder); }
+            50% { box-shadow: 0 0 8px 2px var(--vscode-focusBorder); }
+            100% { box-shadow: 0 0 0 0 var(--vscode-focusBorder); }
+        }
+
+        .group-item.highlight {
+            animation: highlight-pulse 0.75s ease-in-out 2;
+        }
+
         /* Focus indicators */
         *:focus {
             outline: 1px solid var(--vscode-focusBorder);

@@ -107,13 +107,13 @@ describe('Controller Validation (Feature 035, User Story 1)', () => {
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "label.welcome")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -132,9 +132,10 @@ ${minimalProgram({
     await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     // Filter to only label ID validation errors (ignore file existence and CSS errors from generated code)
-    const labelErrors = document.diagnostics?.filter(
-      d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
-    ) ?? [];
+    const labelErrors =
+      document.diagnostics?.filter(
+        d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
+      ) ?? [];
     expect(labelErrors).toHaveLength(0);
   });
 
@@ -146,13 +147,13 @@ ${minimalProgram({
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "label.welcome", "textContent")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -171,9 +172,10 @@ ${minimalProgram({
     await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     // Filter to only label ID validation errors (ignore file existence and CSS errors from generated code)
-    const labelErrors = document.diagnostics?.filter(
-      d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
-    ) ?? [];
+    const labelErrors =
+      document.diagnostics?.filter(
+        d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
+      ) ?? [];
     expect(labelErrors).toHaveLength(0);
   });
 
@@ -222,13 +224,13 @@ describe('Controller Label ID Validation (Feature 035, User Story 2)', () => {
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "welcome.title")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -247,9 +249,10 @@ ${minimalProgram({
     await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     // Filter to only label ID validation errors (ignore file existence and CSS errors from generated code)
-    const labelErrors = document.diagnostics?.filter(
-      d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
-    ) ?? [];
+    const labelErrors =
+      document.diagnostics?.filter(
+        d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
+      ) ?? [];
     expect(labelErrors).toHaveLength(0);
   });
 
@@ -262,13 +265,13 @@ ${minimalProgram({
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "unknown.label")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -305,13 +308,13 @@ ${minimalProgram({
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "welcom.title")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -374,15 +377,15 @@ ${minimalProgram({
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "welcome.title")
         selectElement("#footer")
         addController("LabelController", "unknown.label")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -422,13 +425,13 @@ ${minimalProgram({
 }
 labels "./labels.json"
 ${minimalProgram({
-      cssImport: false, // We handle imports manually
-      actionBody: `
+  cssImport: false, // We handle imports manually
+  actionBody: `
         selectElement("#header")
         addController("LabelController", "welcome-title.v2")
       `,
-      timelineBody: 'at 0s..1s testAction()',
-    })}`;
+  timelineBody: 'at 0s..1s testAction()',
+})}`;
 
     // Parse first to get document URI, then setup labels and CSS
     const document = await ctx.parse(code);
@@ -447,9 +450,10 @@ ${minimalProgram({
     await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: true });
 
     // Filter to only label ID validation errors (ignore file existence and CSS errors from generated code)
-    const labelErrors = document.diagnostics?.filter(
-      d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
-    ) ?? [];
+    const labelErrors =
+      document.diagnostics?.filter(
+        d => d.severity === DiagnosticSeverity.Error && d.data?.code === 'unknown_label_id'
+      ) ?? [];
     expect(labelErrors).toHaveLength(0);
   });
 });

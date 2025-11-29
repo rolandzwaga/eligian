@@ -51,6 +51,13 @@ export type ToWebviewMessage =
       labels: LabelGroup[];
       /** File path for display */
       filePath: string;
+      /** Optional label ID to auto-select after initialization */
+      selectedLabelId?: string;
+    }
+  | {
+      type: 'select-label';
+      /** Label ID to select and scroll into view */
+      labelId: string;
     }
   | {
       type: 'reload';
