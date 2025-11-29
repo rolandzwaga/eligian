@@ -9,15 +9,15 @@ importers:
   .:
     dependencies:
       effect:
-        specifier: 3.19.6
-        version: 3.19.6
+        specifier: 3.19.8
+        version: 3.19.8
       eligius:
         specifier: 1.5.1
         version: 1.5.1(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4)
     devDependencies:
       '@biomejs/biome':
-        specifier: 2.3.7
-        version: 2.3.7
+        specifier: 2.3.8
+        version: 2.3.8
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1
@@ -41,7 +41,7 @@ importers:
         version: 5.1.4(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(tsx@4.20.6))
       vitest:
         specifier: 3.2.4
-        version: 3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.13)(jsdom@27.2.0)(tsx@4.20.6)
+        version: 3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.14)(jsdom@27.2.0)(tsx@4.20.6)
 
   packages/cli:
     dependencies:
@@ -83,8 +83,8 @@ importers:
         specifier: 1.106.0
         version: 1.106.0
       '@vitest/ui':
-        specifier: 4.0.13
-        version: 4.0.13(vitest@3.2.4)
+        specifier: 4.0.14
+        version: 4.0.14(vitest@3.2.4)
       concurrently:
         specifier: 9.2.1
         version: 9.2.1
@@ -116,27 +116,27 @@ importers:
         specifier: 10.0.0
         version: 10.0.0
       langium:
-        specifier: 4.0.3
-        version: 4.0.3
+        specifier: 4.1.2
+        version: 4.1.2
       postcss:
         specifier: 8.5.6
         version: 8.5.6
       postcss-selector-parser:
-        specifier: 7.1.0
-        version: 7.1.0
+        specifier: 7.1.1
+        version: 7.1.1
       typir:
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.3.1
+        version: 0.3.1
       typir-langium:
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.3.1
+        version: 0.3.1
     devDependencies:
       '@types/css-tree':
         specifier: 2.3.11
         version: 2.3.11
       langium-cli:
-        specifier: 4.0.0
-        version: 4.0.0
+        specifier: 4.1.0
+        version: 4.1.0
 
   packages/shared-utils: {}
 
@@ -183,55 +183,55 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==, tarball: https://registry.npmjs.org/@bcoe/v8-coverage/-/v8-coverage-1.0.2.tgz}
     engines: {node: '>=18'}
 
-  '@biomejs/biome@2.3.7':
-    resolution: {integrity: sha512-CTbAS/jNAiUc6rcq94BrTB8z83O9+BsgWj2sBCQg9rD6Wkh2gjfR87usjx0Ncx0zGXP1NKgT7JNglay5Zfs9jw==, tarball: https://registry.npmjs.org/@biomejs/biome/-/biome-2.3.7.tgz}
+  '@biomejs/biome@2.3.8':
+    resolution: {integrity: sha512-Qjsgoe6FEBxWAUzwFGFrB+1+M8y/y5kwmg5CHac+GSVOdmOIqsAiXM5QMVGZJ1eCUCLlPZtq4aFAQ0eawEUuUA==, tarball: https://registry.npmjs.org/@biomejs/biome/-/biome-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     hasBin: true
 
-  '@biomejs/cli-darwin-arm64@2.3.7':
-    resolution: {integrity: sha512-LirkamEwzIUULhXcf2D5b+NatXKeqhOwilM+5eRkbrnr6daKz9rsBL0kNZ16Hcy4b8RFq22SG4tcLwM+yx/wFA==, tarball: https://registry.npmjs.org/@biomejs/cli-darwin-arm64/-/cli-darwin-arm64-2.3.7.tgz}
+  '@biomejs/cli-darwin-arm64@2.3.8':
+    resolution: {integrity: sha512-HM4Zg9CGQ3txTPflxD19n8MFPrmUAjaC7PQdLkugeeC0cQ+PiVrd7i09gaBS/11QKsTDBJhVg85CEIK9f50Qww==, tarball: https://registry.npmjs.org/@biomejs/cli-darwin-arm64/-/cli-darwin-arm64-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [darwin]
 
-  '@biomejs/cli-darwin-x64@2.3.7':
-    resolution: {integrity: sha512-Q4TO633kvrMQkKIV7wmf8HXwF0dhdTD9S458LGE24TYgBjSRbuhvio4D5eOQzirEYg6eqxfs53ga/rbdd8nBKg==, tarball: https://registry.npmjs.org/@biomejs/cli-darwin-x64/-/cli-darwin-x64-2.3.7.tgz}
+  '@biomejs/cli-darwin-x64@2.3.8':
+    resolution: {integrity: sha512-lUDQ03D7y/qEao7RgdjWVGCu+BLYadhKTm40HkpJIi6kn8LSv5PAwRlew/DmwP4YZ9ke9XXoTIQDO1vAnbRZlA==, tarball: https://registry.npmjs.org/@biomejs/cli-darwin-x64/-/cli-darwin-x64-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [darwin]
 
-  '@biomejs/cli-linux-arm64-musl@2.3.7':
-    resolution: {integrity: sha512-/afy8lto4CB8scWfMdt+NoCZtatBUF62Tk3ilWH2w8ENd5spLhM77zKlFZEvsKJv9AFNHknMl03zO67CiklL2Q==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-arm64-musl/-/cli-linux-arm64-musl-2.3.7.tgz}
+  '@biomejs/cli-linux-arm64-musl@2.3.8':
+    resolution: {integrity: sha512-PShR4mM0sjksUMyxbyPNMxoKFPVF48fU8Qe8Sfx6w6F42verbwRLbz+QiKNiDPRJwUoMG1nPM50OBL3aOnTevA==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-arm64-musl/-/cli-linux-arm64-musl-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
 
-  '@biomejs/cli-linux-arm64@2.3.7':
-    resolution: {integrity: sha512-inHOTdlstUBzgjDcx0ge71U4SVTbwAljmkfi3MC5WzsYCRhancqfeL+sa4Ke6v2ND53WIwCFD5hGsYExoI3EZQ==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-arm64/-/cli-linux-arm64-2.3.7.tgz}
+  '@biomejs/cli-linux-arm64@2.3.8':
+    resolution: {integrity: sha512-Uo1OJnIkJgSgF+USx970fsM/drtPcQ39I+JO+Fjsaa9ZdCN1oysQmy6oAGbyESlouz+rzEckLTF6DS7cWse95g==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-arm64/-/cli-linux-arm64-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
 
-  '@biomejs/cli-linux-x64-musl@2.3.7':
-    resolution: {integrity: sha512-CQUtgH1tIN6e5wiYSJqzSwJumHYolNtaj1dwZGCnZXm2PZU1jOJof9TsyiP3bXNDb+VOR7oo7ZvY01If0W3iFQ==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-x64-musl/-/cli-linux-x64-musl-2.3.7.tgz}
+  '@biomejs/cli-linux-x64-musl@2.3.8':
+    resolution: {integrity: sha512-YGLkqU91r1276uwSjiUD/xaVikdxgV1QpsicT0bIA1TaieM6E5ibMZeSyjQ/izBn4tKQthUSsVZacmoJfa3pDA==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-x64-musl/-/cli-linux-x64-musl-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
 
-  '@biomejs/cli-linux-x64@2.3.7':
-    resolution: {integrity: sha512-fJMc3ZEuo/NaMYo5rvoWjdSS5/uVSW+HPRQujucpZqm2ZCq71b8MKJ9U4th9yrv2L5+5NjPF0nqqILCl8HY/fg==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-2.3.7.tgz}
+  '@biomejs/cli-linux-x64@2.3.8':
+    resolution: {integrity: sha512-QDPMD5bQz6qOVb3kiBui0zKZXASLo0NIQ9JVJio5RveBEFgDgsvJFUvZIbMbUZT3T00M/1wdzwWXk4GIh0KaAw==, tarball: https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
 
-  '@biomejs/cli-win32-arm64@2.3.7':
-    resolution: {integrity: sha512-aJAE8eCNyRpcfx2JJAtsPtISnELJ0H4xVVSwnxm13bzI8RwbXMyVtxy2r5DV1xT3WiSP+7LxORcApWw0LM8HiA==, tarball: https://registry.npmjs.org/@biomejs/cli-win32-arm64/-/cli-win32-arm64-2.3.7.tgz}
+  '@biomejs/cli-win32-arm64@2.3.8':
+    resolution: {integrity: sha512-H4IoCHvL1fXKDrTALeTKMiE7GGWFAraDwBYFquE/L/5r1927Te0mYIGseXi4F+lrrwhSWbSGt5qPFswNoBaCxg==, tarball: https://registry.npmjs.org/@biomejs/cli-win32-arm64/-/cli-win32-arm64-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [win32]
 
-  '@biomejs/cli-win32-x64@2.3.7':
-    resolution: {integrity: sha512-pulzUshqv9Ed//MiE8MOUeeEkbkSHVDVY5Cz5wVAnH1DUqliCQG3j6s1POaITTFqFfo7AVIx2sWdKpx/GS+Nqw==, tarball: https://registry.npmjs.org/@biomejs/cli-win32-x64/-/cli-win32-x64-2.3.7.tgz}
+  '@biomejs/cli-win32-x64@2.3.8':
+    resolution: {integrity: sha512-RguzimPoZWtBapfKhKjcWXBVI91tiSprqdBYu7tWhgN8pKRZhw24rFeNZTNf6UiBfjCYCi9eFQs/JzJZIhuK4w==, tarball: https://registry.npmjs.org/@biomejs/cli-win32-x64/-/cli-win32-x64-2.3.8.tgz}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
@@ -805,8 +805,8 @@ packages:
   '@vitest/pretty-format@3.2.4':
     resolution: {integrity: sha512-IVNZik8IVRJRTr9fxlitMKeJeXFFFN0JaB9PHPGQ8NKQbGpfjlTx9zO4RefN8gp7eqjNy8nyK3NZmBzOPeIxtA==, tarball: https://registry.npmjs.org/@vitest/pretty-format/-/pretty-format-3.2.4.tgz}
 
-  '@vitest/pretty-format@4.0.13':
-    resolution: {integrity: sha512-ooqfze8URWbI2ozOeLDMh8YZxWDpGXoeY3VOgcDnsUxN0jPyPWSUvjPQWqDGCBks+opWlN1E4oP1UYl3C/2EQA==, tarball: https://registry.npmjs.org/@vitest/pretty-format/-/pretty-format-4.0.13.tgz}
+  '@vitest/pretty-format@4.0.14':
+    resolution: {integrity: sha512-SOYPgujB6TITcJxgd3wmsLl+wZv+fy3av2PpiPpsWPZ6J1ySUYfScfpIt2Yv56ShJXR2MOA6q2KjKHN4EpdyRQ==, tarball: https://registry.npmjs.org/@vitest/pretty-format/-/pretty-format-4.0.14.tgz}
 
   '@vitest/runner@3.2.4':
     resolution: {integrity: sha512-oukfKT9Mk41LreEW09vt45f8wx7DordoWUZMYdY/cyAk7w5TWkTRCNZYF7sX7n2wB7jyGAl74OxgwhPgKaqDMQ==, tarball: https://registry.npmjs.org/@vitest/runner/-/runner-3.2.4.tgz}
@@ -817,16 +817,16 @@ packages:
   '@vitest/spy@3.2.4':
     resolution: {integrity: sha512-vAfasCOe6AIK70iP5UD11Ac4siNUNJ9i/9PZ3NKx07sG6sUxeag1LWdNrMWeKKYBLlzuK+Gn65Yd5nyL6ds+nw==, tarball: https://registry.npmjs.org/@vitest/spy/-/spy-3.2.4.tgz}
 
-  '@vitest/ui@4.0.13':
-    resolution: {integrity: sha512-MFV6GhTflgBj194+vowTB2iLI5niMZhqiW7/NV7U4AfWbX/IAtsq4zA+gzCLyGzpsQUdJlX26hrQ1vuWShq2BQ==, tarball: https://registry.npmjs.org/@vitest/ui/-/ui-4.0.13.tgz}
+  '@vitest/ui@4.0.14':
+    resolution: {integrity: sha512-fvDz8o7SQpFLoSBo6Cudv+fE85/fPCkwTnLAN85M+Jv7k59w2mSIjT9Q5px7XwGrmYqqKBEYxh/09IBGd1E7AQ==, tarball: https://registry.npmjs.org/@vitest/ui/-/ui-4.0.14.tgz}
     peerDependencies:
-      vitest: 4.0.13
+      vitest: 4.0.14
 
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==, tarball: https://registry.npmjs.org/@vitest/utils/-/utils-3.2.4.tgz}
 
-  '@vitest/utils@4.0.13':
-    resolution: {integrity: sha512-ydozWyQ4LZuu8rLp47xFUWis5VOKMdHjXCWhs1LuJsTNKww+pTHQNK4e0assIB9K80TxFyskENL6vCu3j34EYA==, tarball: https://registry.npmjs.org/@vitest/utils/-/utils-4.0.13.tgz}
+  '@vitest/utils@4.0.14':
+    resolution: {integrity: sha512-hLqXZKAWNg8pI+SQXyXxWCTOpA3MvsqcbVeNgSi8x/CSN2wi26dSzn1wrOhmCmFjEvN9p8/kLFRHa6PI8jHazw==, tarball: https://registry.npmjs.org/@vitest/utils/-/utils-4.0.14.tgz}
 
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==, tarball: https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.11.tgz}
@@ -990,8 +990,8 @@ packages:
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==, tarball: https://registry.npmjs.org/eastasianwidth/-/eastasianwidth-0.2.0.tgz}
 
-  effect@3.19.6:
-    resolution: {integrity: sha512-Eh1E/CI+xCAcMSDC5DtyE29yWJINC0zwBbwHappQPorjKyS69rCA8qzpsHpfhKnPDYgxdg8zkknii8mZ+6YMQA==, tarball: https://registry.npmjs.org/effect/-/effect-3.19.6.tgz}
+  effect@3.19.8:
+    resolution: {integrity: sha512-OmLw8EfH02vdmyU2fO4uY9He/wepwKI5E/JNpE2pseaWWUbaYOK9UlxIiKP20ZEqQr+S/jSqRDGmpiqD/2DeCQ==, tarball: https://registry.npmjs.org/effect/-/effect-3.19.8.tgz}
 
   eligius@1.5.1:
     resolution: {integrity: sha512-r/d2JPHWtSLAjd4AOMpla3AY5vxEarjRxmZk+fNPk4G7EOwy77A9imbWvHU0usYnLXCOOvVtwxxi/HR/vuAC4g==, tarball: https://registry.npmjs.org/eligius/-/eligius-1.5.1.tgz}
@@ -1243,16 +1243,16 @@ packages:
   jsonschema@1.5.0:
     resolution: {integrity: sha512-K+A9hhqbn0f3pJX17Q/7H6yQfD/5OXgdrR5UE12gMXCiN9D5Xq2o5mddV2QEcX/bjla99ASsAAQUyMCCRWAEhw==, tarball: https://registry.npmjs.org/jsonschema/-/jsonschema-1.5.0.tgz}
 
-  langium-cli@4.0.0:
-    resolution: {integrity: sha512-vlOo2z+Z0pzbKVLVkBrqIsCnnoS3hqObV3/w2DHS/7FBvRo+8sx4ArHt/vpv8Cqf1hD8XggvsStbetgeXzzGMA==, tarball: https://registry.npmjs.org/langium-cli/-/langium-cli-4.0.0.tgz}
+  langium-cli@4.1.0:
+    resolution: {integrity: sha512-MhjE6R/K+oBjHhOP5j3orSR3q3FKeFNgJ533tOC+dJw/6WMDFMc9tROCbJGx6Aj+3Dt3jkuHDD6npa+dH/dV6Q==, tarball: https://registry.npmjs.org/langium-cli/-/langium-cli-4.1.0.tgz}
     engines: {node: '>=20.10.0', npm: '>=10.2.3'}
     hasBin: true
 
-  langium-railroad@4.0.0:
-    resolution: {integrity: sha512-x+aHyIVq8gemJd6jR40NgJpGGdXXQtb2+jDZf1/BnBaLFX63xdaaCW/nXDlPnxlDCVINQkGESo0TgYNr7SNvrg==, tarball: https://registry.npmjs.org/langium-railroad/-/langium-railroad-4.0.0.tgz}
+  langium-railroad@4.1.0:
+    resolution: {integrity: sha512-3m9TeMNnS/rMYaueGDIAPnxhBz7eJLy4iEmMrmSt5FycxAgGtGIVbWT2ry3YRqBy/ICOaAwu530gp4IWcRM5Jg==, tarball: https://registry.npmjs.org/langium-railroad/-/langium-railroad-4.1.0.tgz}
 
-  langium@4.0.3:
-    resolution: {integrity: sha512-f61gF/jzfddwQqC7s+Tv5sNcxIUKMxGgZylApVvxMQV8+AsSWxCHQLwclmh84GSzXKGm7y3KY9DxDGOPoiEuPQ==, tarball: https://registry.npmjs.org/langium/-/langium-4.0.3.tgz}
+  langium@4.1.2:
+    resolution: {integrity: sha512-ZN3JUPV89NsfDO1ar4D8FTCYmRI5x6S5ryKlP0bmt1XLLDohCACLGpTlohsTptDMrXwIiNKCTvuA43V+4pE6Fw==, tarball: https://registry.npmjs.org/langium/-/langium-4.1.2.tgz}
     engines: {node: '>=20.10.0', npm: '>=10.2.3'}
 
   lodash-es@4.17.21:
@@ -1394,8 +1394,8 @@ packages:
     resolution: {integrity: sha512-afRERtHn54AlwaF2/+LFszyAANTCggGilmcmILUzEjvs3XgFZT+xE6+QWQcAGmu4xajy+Xtj7acLOPdx5/eXWQ==, tarball: https://registry.npmjs.org/pkcs7/-/pkcs7-1.0.4.tgz}
     hasBin: true
 
-  postcss-selector-parser@7.1.0:
-    resolution: {integrity: sha512-8sLjZwK0R+JlxlYcTuVnyT2v+htpdrjDOKuMcOVdYjt52Lh8hWRYpxBPoKx/Zg+bcjc3wx6fmQevMmUztS/ccA==, tarball: https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-7.1.0.tgz}
+  postcss-selector-parser@7.1.1:
+    resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==, tarball: https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-7.1.1.tgz}
     engines: {node: '>=4'}
 
   postcss@8.5.6:
@@ -1651,13 +1651,13 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typir-langium@0.3.0:
-    resolution: {integrity: sha512-so1QcFgNSZjGKr5R8REjDOZ36nkyJdVagnsWA1JOvU/07cJa0enMto3w3IL8v8pZJ1lKBFVt0AeVgKVnHNN6XA==, tarball: https://registry.npmjs.org/typir-langium/-/typir-langium-0.3.0.tgz}
-    engines: {node: '>= 18.0.0'}
+  typir-langium@0.3.1:
+    resolution: {integrity: sha512-trcgLfWmRJURx/yxE5bRzCguSIjptVQgNeumpZEKXHZl0m9MR65wqc0vALeJ17QUlMIwfbgpSNoOek5WIMUsQw==, tarball: https://registry.npmjs.org/typir-langium/-/typir-langium-0.3.1.tgz}
+    engines: {node: '>= 20.19.6'}
 
-  typir@0.3.0:
-    resolution: {integrity: sha512-znG9gY+qfBG3Btev3+72hvGf2nG/BlPxBezpZ6dvTCuJiLrdho4TMuPh7aeESwNNkcJ7gSiqHFQBjn0VnWzkdA==, tarball: https://registry.npmjs.org/typir/-/typir-0.3.0.tgz}
-    engines: {node: '>= 18.0.0'}
+  typir@0.3.1:
+    resolution: {integrity: sha512-QHtB+EAm7aK7q+JKol60HqHxmtNo9FER0TA+Z38bdSfdGCOIL7C+qCCGEucMEsViCkzwrjypKNBiWiZ0sIhpCA==, tarball: https://registry.npmjs.org/typir/-/typir-0.3.1.tgz}
+    engines: {node: '>= 20.19.6'}
 
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==, tarball: https://registry.npmjs.org/undici-types/-/undici-types-7.16.0.tgz}
@@ -1913,39 +1913,39 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@biomejs/biome@2.3.7':
+  '@biomejs/biome@2.3.8':
     optionalDependencies:
-      '@biomejs/cli-darwin-arm64': 2.3.7
-      '@biomejs/cli-darwin-x64': 2.3.7
-      '@biomejs/cli-linux-arm64': 2.3.7
-      '@biomejs/cli-linux-arm64-musl': 2.3.7
-      '@biomejs/cli-linux-x64': 2.3.7
-      '@biomejs/cli-linux-x64-musl': 2.3.7
-      '@biomejs/cli-win32-arm64': 2.3.7
-      '@biomejs/cli-win32-x64': 2.3.7
+      '@biomejs/cli-darwin-arm64': 2.3.8
+      '@biomejs/cli-darwin-x64': 2.3.8
+      '@biomejs/cli-linux-arm64': 2.3.8
+      '@biomejs/cli-linux-arm64-musl': 2.3.8
+      '@biomejs/cli-linux-x64': 2.3.8
+      '@biomejs/cli-linux-x64-musl': 2.3.8
+      '@biomejs/cli-win32-arm64': 2.3.8
+      '@biomejs/cli-win32-x64': 2.3.8
 
-  '@biomejs/cli-darwin-arm64@2.3.7':
+  '@biomejs/cli-darwin-arm64@2.3.8':
     optional: true
 
-  '@biomejs/cli-darwin-x64@2.3.7':
+  '@biomejs/cli-darwin-x64@2.3.8':
     optional: true
 
-  '@biomejs/cli-linux-arm64-musl@2.3.7':
+  '@biomejs/cli-linux-arm64-musl@2.3.8':
     optional: true
 
-  '@biomejs/cli-linux-arm64@2.3.7':
+  '@biomejs/cli-linux-arm64@2.3.8':
     optional: true
 
-  '@biomejs/cli-linux-x64-musl@2.3.7':
+  '@biomejs/cli-linux-x64-musl@2.3.8':
     optional: true
 
-  '@biomejs/cli-linux-x64@2.3.7':
+  '@biomejs/cli-linux-x64@2.3.8':
     optional: true
 
-  '@biomejs/cli-win32-arm64@2.3.7':
+  '@biomejs/cli-win32-arm64@2.3.8':
     optional: true
 
-  '@biomejs/cli-win32-x64@2.3.7':
+  '@biomejs/cli-win32-x64@2.3.8':
     optional: true
 
   '@chevrotain/cst-dts-gen@11.0.3':
@@ -2307,7 +2307,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.13)(jsdom@27.2.0)(tsx@4.20.6)
+      vitest: 3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.14)(jsdom@27.2.0)(tsx@4.20.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -2331,7 +2331,7 @@ snapshots:
     dependencies:
       tinyrainbow: 2.0.0
 
-  '@vitest/pretty-format@4.0.13':
+  '@vitest/pretty-format@4.0.14':
     dependencies:
       tinyrainbow: 3.0.3
 
@@ -2351,16 +2351,16 @@ snapshots:
     dependencies:
       tinyspy: 4.0.4
 
-  '@vitest/ui@4.0.13(vitest@3.2.4)':
+  '@vitest/ui@4.0.14(vitest@3.2.4)':
     dependencies:
-      '@vitest/utils': 4.0.13
+      '@vitest/utils': 4.0.14
       fflate: 0.8.2
       flatted: 3.3.3
       pathe: 2.0.3
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vitest: 3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.13)(jsdom@27.2.0)(tsx@4.20.6)
+      vitest: 3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.14)(jsdom@27.2.0)(tsx@4.20.6)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -2368,9 +2368,9 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@vitest/utils@4.0.13':
+  '@vitest/utils@4.0.14':
     dependencies:
-      '@vitest/pretty-format': 4.0.13
+      '@vitest/pretty-format': 4.0.14
       tinyrainbow: 3.0.3
 
   '@xmldom/xmldom@0.8.11': {}
@@ -2543,7 +2543,7 @@ snapshots:
 
   eastasianwidth@0.2.0: {}
 
-  effect@3.19.6:
+  effect@3.19.8:
     dependencies:
       '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
@@ -2862,22 +2862,22 @@ snapshots:
 
   jsonschema@1.5.0: {}
 
-  langium-cli@4.0.0:
+  langium-cli@4.1.0:
     dependencies:
       chalk: 5.4.1
       commander: 14.0.2
       fs-extra: 11.3.2
       jsonschema: 1.5.0
-      langium: 4.0.3
-      langium-railroad: 4.0.0
+      langium: 4.1.2
+      langium-railroad: 4.1.0
       lodash: 4.17.21
 
-  langium-railroad@4.0.0:
+  langium-railroad@4.1.0:
     dependencies:
-      langium: 4.0.3
+      langium: 4.1.2
       railroad-diagrams: 1.0.0
 
-  langium@4.0.3:
+  langium@4.1.2:
     dependencies:
       chevrotain: 11.0.3
       chevrotain-allstar: 0.3.1(chevrotain@11.0.3)
@@ -3003,7 +3003,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.4
 
-  postcss-selector-parser@7.1.0:
+  postcss-selector-parser@7.1.1:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
@@ -3239,12 +3239,12 @@ snapshots:
 
   typescript@5.9.3: {}
 
-  typir-langium@0.3.0:
+  typir-langium@0.3.1:
     dependencies:
-      langium: 4.0.3
-      typir: 0.3.0
+      langium: 4.1.2
+      typir: 0.3.1
 
-  typir@0.3.0: {}
+  typir@0.3.1: {}
 
   undici-types@7.16.0: {}
 
@@ -3325,7 +3325,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.20.6
 
-  vitest@3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.13)(jsdom@27.2.0)(tsx@4.20.6):
+  vitest@3.2.4(@types/node@24.10.1)(@vitest/ui@4.0.14)(jsdom@27.2.0)(tsx@4.20.6):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.4
@@ -3352,7 +3352,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.10.1
-      '@vitest/ui': 4.0.13(vitest@3.2.4)
+      '@vitest/ui': 4.0.14(vitest@3.2.4)
       jsdom: 27.2.0
     transitivePeerDependencies:
       - jiti
