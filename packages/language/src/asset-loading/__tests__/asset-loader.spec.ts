@@ -87,15 +87,15 @@ describe('IAssetLoader Interface', () => {
         expect(resolved).toBe('/project/src/layout.html');
       });
 
-      it('should resolve parent directory references', () => {
+      it('should resolve parent directory references (Feature 042)', () => {
         const sourcePath = '/project/src/features/main.eligian';
         const relativePath = '../shared/layout.html';
 
-        // Updated: ../ navigation is now BLOCKED (escapes source file directory)
-        // Source file is in /project/src/features/, so ../ goes to /project/src/ which is outside
-        expect(() => loader.resolvePath(sourcePath, relativePath)).toThrow(
-          /Path resolution failed/
-        );
+        // Feature 042: Parent directory navigation is now ALLOWED
+        const resolved = loader.resolvePath(sourcePath, relativePath);
+
+        // Should resolve to /project/src/shared/layout.html (goes up from features/ to src/)
+        expect(resolved).toBe('/project/src/shared/layout.html');
       });
 
       it('should resolve nested relative paths', () => {

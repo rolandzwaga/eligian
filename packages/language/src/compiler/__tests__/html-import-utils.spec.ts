@@ -1,8 +1,10 @@
 /**
  * Tests for HTML Import Utilities
  *
- * Tests path resolution, file loading, and security validation
+ * Tests path resolution, file loading, and size validation
  * for HTML imports (Feature 015).
+ *
+ * Note: As of Feature 042, parent directory navigation is allowed.
  */
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -60,39 +62,44 @@ describe('resolveHTMLPath', () => {
     expect(result).toBe(`${FIXTURES_DIR}/components/header.html`);
   });
 
-  it('should reject paths that escape project root with ..', () => {
+  it('should allow paths that navigate to parent directory (Feature 042)', () => {
     const sourceFile = join(FIXTURES_DIR, 'test.eligian');
     const projectRoot = FIXTURES_DIR;
     const importPath = '../outside.html';
 
-    // Updated: error message now says "source file directory" not "project directory"
-    expect(() => resolveHTMLPath(importPath, sourceFile, projectRoot)).toThrow(
-      /Security violation.*escapes source file directory/
-    );
+    // Feature 042: Parent directory navigation is now ALLOWED
+    const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
+
+    // Should resolve to parent of FIXTURES_DIR
+    expect(result).toContain('outside.html');
+    expect(result).not.toContain('..'); // Path should be resolved (normalized)
   });
 
-  it('should reject paths that navigate to parent', () => {
+  it('should allow paths with multiple parent directory references (Feature 042)', () => {
     const sourceFile = join(FIXTURES_DIR, 'test.eligian');
     const projectRoot = FIXTURES_DIR;
     const importPath = '../../../outside.html';
 
-    expect(() => resolveHTMLPath(importPath, sourceFile, projectRoot)).toThrow(
-      /Security violation/
-    );
+    // Feature 042: Parent directory navigation is now ALLOWED
+    const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
+
+    // Should resolve to ancestor directory
+    expect(result).toContain('outside.html');
+    expect(result).not.toContain('..'); // Path should be resolved (normalized)
   });
 
-  it('should include import path and source file in error message', () => {
+  it('should resolve parent directory paths correctly (Feature 042)', () => {
     const sourceFile = `${FIXTURES_DIR}/test.eligian`;
     const projectRoot = FIXTURES_DIR;
-    const importPath = '../escape.html';
+    const importPath = '../shared/template.html';
 
-    // Updated: error now includes source file instead of project root
-    expect(() => resolveHTMLPath(importPath, sourceFile, projectRoot)).toThrow(
-      `Import path: '${importPath}'`
-    );
-    expect(() => resolveHTMLPath(importPath, sourceFile, projectRoot)).toThrow(
-      `Source file: '${sourceFile}'`
-    );
+    // Feature 042: Parent directory navigation is now ALLOWED
+    const result = resolveHTMLPath(importPath, sourceFile, projectRoot);
+
+    // Should resolve to sibling of FIXTURES_DIR
+    expect(result).toContain('shared');
+    expect(result).toContain('template.html');
+    expect(result).not.toContain('..'); // Path should be resolved (normalized)
   });
 });
 

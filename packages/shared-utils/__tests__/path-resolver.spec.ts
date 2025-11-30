@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePath, resolvePath, validatePathSecurity } from '../src/path-resolver.js';
+import { normalizePath, resolvePath } from '../src/path-resolver.js';
 
 describe('Path Resolver', () => {
   describe('normalizePath', () => {
@@ -37,51 +37,6 @@ describe('Path Resolver', () => {
     });
   });
 
-  describe('validatePathSecurity', () => {
-    it('should allow paths within baseDir', () => {
-      const result = validatePathSecurity('/project/src/file.css', '/project/src');
-
-      expect(result.valid).toBe(true);
-    });
-
-    it('should allow path equal to baseDir', () => {
-      const result = validatePathSecurity('/project/src', '/project/src');
-
-      expect(result.valid).toBe(true);
-    });
-
-    it('should allow nested paths within baseDir', () => {
-      const result = validatePathSecurity('/project/src/components/button.tsx', '/project/src');
-
-      expect(result.valid).toBe(true);
-    });
-
-    it('should block paths outside baseDir', () => {
-      const result = validatePathSecurity('/etc/passwd', '/project/src');
-
-      expect(result.valid).toBe(false);
-      expect(result.error).toBeDefined();
-      expect(result.error?._tag).toBe('SecurityError');
-      expect(result.error?.path).toBe('/etc/passwd');
-      expect(result.error?.projectRoot).toBe('/project/src');
-    });
-
-    it('should block paths that navigate outside baseDir', () => {
-      const result = validatePathSecurity('/project/outside.html', '/project/src');
-
-      expect(result.valid).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should handle trailing slashes correctly', () => {
-      const result1 = validatePathSecurity('/project/src/file.css', '/project/src/');
-      expect(result1.valid).toBe(true);
-
-      const result2 = validatePathSecurity('/project/src/file.css', '/project/src');
-      expect(result2.valid).toBe(true);
-    });
-  });
-
   describe('resolvePath', () => {
     it('should resolve relative path to absolute path', () => {
       const result = resolvePath('./file.css', '/project/src');
@@ -92,13 +47,11 @@ describe('Path Resolver', () => {
       }
     });
 
-    it('should block parent directory references (navigates OUT OF baseDir)', () => {
+    it('should allow parent directory references', () => {
       const result = resolvePath('../shared/utils.ts', '/project/src/components');
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-      }
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/src/shared/utils.ts');
     });
 
     it('should resolve nested relative paths', () => {
@@ -121,35 +74,31 @@ describe('Path Resolver', () => {
       }
     });
 
-    it('should block path traversal escaping baseDir', () => {
+    it('should allow path traversal to parent directories', () => {
       const result = resolvePath('../../../etc/passwd', '/project/src');
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-        expect(result.error.message).toContain('Path traversal');
-        expect(result.error.hint).toBeDefined();
-      }
+      expect(result.success).toBe(true);
+      // Path resolves to /etc/passwd (3 levels up from /project/src)
+      expect(result.absolutePath).toBe('/etc/passwd');
     });
 
-    it('should block path traversal in different scenarios', () => {
+    it('should allow path traversal in different scenarios', () => {
       // Multiple levels up
       const result1 = resolvePath('../../../../outside.txt', '/project/src/components/button');
-      expect(result1.success).toBe(false);
+      expect(result1.success).toBe(true);
+      expect(result1.absolutePath).toBe('/outside.txt');
 
-      // Single level that escapes
-      const result2 = resolvePath('../../../etc/shadow', '/project/a/b');
-      expect(result2.success).toBe(false);
+      // Multiple levels up with path resolution
+      const result2 = resolvePath('../../../templates/header.html', '/project/a/b');
+      expect(result2.success).toBe(true);
+      expect(result2.absolutePath).toBe('/templates/header.html');
     });
 
-    it('should block single-level parent directory navigation', () => {
-      // Even single ../ is blocked (navigates OUT OF baseDir)
+    it('should allow single-level parent directory navigation', () => {
       const result = resolvePath('../utils/helper.ts', '/project/src/components');
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-      }
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/src/utils/helper.ts');
     });
 
     it('should handle empty relative path', () => {
@@ -187,10 +136,8 @@ describe('Path Resolver', () => {
       const result = resolvePath('./component.tsx', baseDir);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        // Result should be relative to baseDir, NOT process.cwd() or any other directory
-        expect(result.absolutePath).toBe('/project/src/pages/component.tsx');
-      }
+      // Result should be relative to baseDir, NOT process.cwd() or any other directory
+      expect(result.absolutePath).toBe('/project/src/pages/component.tsx');
     });
 
     it('RULE 2: Unix-style paths are maintained in output', () => {
@@ -198,34 +145,77 @@ describe('Path Resolver', () => {
       const result = resolvePath('./file.css', '/project/src');
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toContain('/');
-        expect(result.absolutePath).not.toContain('\\');
-      }
+      expect(result.absolutePath).toContain('/');
+      expect(result.absolutePath).not.toContain('\\');
     });
 
-    it('RULE 3: Paths navigating OUT OF baseDir are ILLEGAL', () => {
-      // Security validation MUST block navigation outside the .eligian file's directory
+    it('RULE 3: Parent directory navigation is ALLOWED', () => {
+      // Parent directory navigation using ../ is now permitted
       const result = resolvePath('../../../etc/passwd', '/project/src');
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-      }
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/etc/passwd');
     });
 
-    it('RULE 4: Only same-directory and subdirectory paths are LEGAL', () => {
+    it('RULE 4: All relative paths are LEGAL (same dir, subdirectory, or parent)', () => {
       // Same directory - LEGAL
       const result1 = resolvePath('./file.css', '/project/src');
       expect(result1.success).toBe(true);
+      expect(result1.absolutePath).toBe('/project/src/file.css');
 
       // Subdirectory - LEGAL
       const result2 = resolvePath('./components/button.tsx', '/project/src');
       expect(result2.success).toBe(true);
+      expect(result2.absolutePath).toBe('/project/src/components/button.tsx');
 
-      // Parent directory - ILLEGAL (navigates OUT OF baseDir)
+      // Parent directory - LEGAL (now allowed)
       const result3 = resolvePath('../outside.html', '/project/src');
-      expect(result3.success).toBe(false);
+      expect(result3.success).toBe(true);
+      expect(result3.absolutePath).toBe('/project/outside.html');
+
+      // Multiple parent levels - LEGAL
+      const result4 = resolvePath('../../shared/styles.css', '/project/src/features');
+      expect(result4.success).toBe(true);
+      expect(result4.absolutePath).toBe('/project/shared/styles.css');
+    });
+  });
+
+  describe('Parent Directory Navigation (Feature 042)', () => {
+    it('should resolve single parent directory reference', () => {
+      const result = resolvePath('../shared/file.css', '/project/src');
+
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/shared/file.css');
+    });
+
+    it('should resolve multiple parent directory references', () => {
+      const result = resolvePath('../../templates/header.html', '/project/src/features');
+
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/templates/header.html');
+    });
+
+    it('should resolve complex normalized paths', () => {
+      const result = resolvePath('../../shared/../common/styles.css', '/project/src/features');
+
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/common/styles.css');
+    });
+
+    it('should resolve circular path segments', () => {
+      const result = resolvePath('./foo/../bar/../foo/styles.css', '/project/src');
+
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/src/foo/styles.css');
+    });
+
+    it('should handle excessive parent navigation (more ../ than directory depth)', () => {
+      // When navigating beyond root, the path normalizes to root-relative
+      const result = resolvePath('../../../../../etc/file.txt', '/project/src');
+
+      expect(result.success).toBe(true);
+      // The path is normalized - excessive ../ is collapsed
+      expect(result.absolutePath).toBe('/etc/file.txt');
     });
   });
 });

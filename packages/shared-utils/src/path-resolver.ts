@@ -1,22 +1,22 @@
 /**
  * Path resolution utilities for Eligian DSL
  *
- * CRITICAL PATH RESOLUTION RULES (NON-NEGOTIABLE):
+ * PATH RESOLUTION RULES:
  *
  * 1. Import paths are ALWAYS relative to the `.eligian` file's directory
- *    - The `.eligian` file's directory is the ONLY valid base directory
+ *    - The `.eligian` file's directory is the base directory for resolution
  *    - NEVER use process.cwd(), workspace root, or any other directory
  *
  * 2. Paths in `.eligian` files are ALWAYS Unix-style (forward slashes)
  *    - Users write: "./styles/main.css" (always forward slashes, all platforms)
  *    - Backslashes are NEVER valid in `.eligian` source code (syntax error)
  *
- * 3. Paths that navigate OUT OF the `.eligian` file's directory are ILLEGAL
+ * 3. Parent directory navigation is ALLOWED
  *    - LEGAL: "./header.html" (same directory as .eligian file)
  *    - LEGAL: "./components/button.tsx" (subdirectory)
- *    - ILLEGAL: "../outside.html" (navigates OUT OF .eligian file's directory)
- *    - ILLEGAL: "../../etc/passwd" (navigates OUT OF .eligian file's directory)
- *    - The `.eligian` file's directory is the security boundary
+ *    - LEGAL: "../shared/styles.css" (parent directory)
+ *    - LEGAL: "../../templates/header.html" (multiple levels up)
+ *    - Paths must start with "./" or "../" (relative paths only)
  *
  * 4. OS-specific path conversion happens internally
  *    - Input: Unix-style path from `.eligian` source (e.g., "./styles/main.css")
@@ -25,7 +25,6 @@
  */
 
 import * as path from 'node:path';
-import { createSecurityError, type SecurityError } from './errors.js';
 
 /**
  * Checks if a path is a Windows absolute path (with drive letter).
@@ -60,18 +59,12 @@ function resolvePaths(baseDir: string, relativePath: string): string {
 }
 
 /**
- * Result of path resolution with security validation.
+ * Result of path resolution.
  */
-export type PathResolutionResult =
-  | { readonly success: true; readonly absolutePath: string }
-  | { readonly success: false; readonly error: SecurityError };
-
-/**
- * Result of security validation.
- */
-export type SecurityValidationResult =
-  | { readonly valid: true }
-  | { readonly valid: false; readonly error: SecurityError };
+export type PathResolutionResult = {
+  readonly success: true;
+  readonly absolutePath: string;
+};
 
 /**
  * Normalizes a file path to use forward slashes and resolve . and .. segments.
@@ -107,65 +100,18 @@ export function normalizePath(filePath: string): string {
 }
 
 /**
- * Validates that an absolute path does not escape the base directory.
+ * Resolves a relative path to an absolute path.
  *
- * This prevents path traversal attacks where malicious paths like
- * "../outside.html" attempt to access files outside the `.eligian` file's directory.
+ * The baseDir parameter MUST be the directory containing the `.eligian` file.
+ * This is the ONLY valid base directory for resolving import paths.
+ * NEVER use process.cwd(), workspace root, or any other directory as the base.
  *
- * CRITICAL: The baseDir parameter is the `.eligian` file's directory, which is
- * the security boundary. Paths cannot navigate outside this directory.
+ * Parent directory navigation is allowed - paths can use "../" to access
+ * files in parent directories relative to the `.eligian` file's location.
  *
- * @param absolutePath - Absolute path to validate (must be normalized)
- * @param baseDir - Absolute path to the `.eligian` file's directory (security boundary)
- * @returns Validation result indicating if path is within bounds
- *
- * @example
- * ```typescript
- * // Valid path within .eligian file's directory
- * validatePathSecurity('/project/src/file.css', '/project/src')
- * // => { valid: true }
- *
- * // Invalid path outside .eligian file's directory
- * validatePathSecurity('/project/outside.html', '/project/src')
- * // => { valid: false, error: SecurityError }
- * ```
- */
-export function validatePathSecurity(
-  absolutePath: string,
-  baseDir: string
-): SecurityValidationResult {
-  // Normalize both paths to ensure consistent comparison
-  const normalizedPath = normalizePath(absolutePath);
-  const normalizedBase = normalizePath(baseDir);
-
-  // Check if the path starts with the base directory
-  // The path must either be equal to baseDir or be a descendant of it
-  if (normalizedPath === normalizedBase || normalizedPath.startsWith(`${normalizedBase}/`)) {
-    return { valid: true };
-  }
-
-  // Path is outside base directory - security violation
-  return {
-    valid: false,
-    error: createSecurityError(normalizedPath, normalizedBase),
-  };
-}
-
-/**
- * Resolves a relative path to an absolute path with security validation.
- *
- * CRITICAL: The baseDir parameter MUST be the directory containing the
- * `.eligian` file. This is the ONLY valid base directory for resolving
- * import paths. NEVER use process.cwd(), workspace root, or any other
- * directory as the base.
- *
- * Security: Paths cannot navigate OUT OF the `.eligian` file's directory.
- * The baseDir is the security boundary - only same-directory or subdirectory
- * paths are allowed.
- *
- * @param relativePath - Relative path from `.eligian` source (Unix-style)
- * @param baseDir - Absolute path to the `.eligian` file's directory (security boundary)
- * @returns Resolution result with absolute path or security error
+ * @param relativePath - Relative path from `.eligian` source (Unix-style, must start with "./" or "../")
+ * @param baseDir - Absolute path to the `.eligian` file's directory
+ * @returns Resolution result with absolute path
  *
  * @example
  * ```typescript
@@ -177,9 +123,13 @@ export function validatePathSecurity(
  * resolvePath('./components/button.tsx', '/project/src')
  * // => { success: true, absolutePath: '/project/src/components/button.tsx' }
  *
- * // Path traversal OUT OF .eligian directory - blocked
- * resolvePath('../outside.html', '/project/src')
- * // => { success: false, error: SecurityError }
+ * // Parent directory - allowed
+ * resolvePath('../shared/styles.css', '/project/src')
+ * // => { success: true, absolutePath: '/project/shared/styles.css' }
+ *
+ * // Multiple parent levels - allowed
+ * resolvePath('../../templates/header.html', '/project/src/features')
+ * // => { success: true, absolutePath: '/project/templates/header.html' }
  * ```
  */
 export function resolvePath(relativePath: string, baseDir: string): PathResolutionResult {
@@ -192,17 +142,6 @@ export function resolvePath(relativePath: string, baseDir: string): PathResoluti
 
   // Normalize to Unix-style path (forward slashes)
   const normalizedPath = normalizePath(absolutePath);
-
-  // Validate that the resolved path doesn't escape the baseDir
-  // (the .eligian file's directory is the security boundary)
-  const validation = validatePathSecurity(normalizedPath, normalizedBaseDir);
-
-  if (!validation.valid) {
-    return {
-      success: false,
-      error: validation.error,
-    };
-  }
 
   return {
     success: true,
