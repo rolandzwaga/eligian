@@ -6,40 +6,40 @@
  */
 
 import path from 'node:path';
-import { loadFileSync, normalizePath, resolvePath } from '@eligian/shared-utils';
+import { loadFileSync, resolvePath } from '@eligian/shared-utils';
 
 /**
  * Resolve HTML import path relative to source file
  *
- * @param importPath - Relative path from import statement (e.g., './snippet.html')
- * @param sourceFilePath - Absolute path to source .eligian file
- * @param projectRoot - Absolute path to project root (DEPRECATED - no longer used for security)
- * @returns Absolute path to HTML file
- * @throws Error if path escapes source file directory
+ * Resolves a relative import path to an absolute path. Parent directory navigation
+ * using "../" is allowed, enabling flexible project structures.
  *
- * @remarks
- * Security boundary is the source file's directory, not the project root.
- * Paths cannot navigate outside the .eligian file's directory.
+ * @param importPath - Relative path from import statement (e.g., './snippet.html' or '../shared/template.html')
+ * @param sourceFilePath - Absolute path to source .eligian file
+ * @param projectRoot - Absolute path to project root (DEPRECATED - no longer used)
+ * @returns Absolute path to HTML file
+ *
+ * @example
+ * ```typescript
+ * // Same directory
+ * resolveHTMLPath('./template.html', '/project/src/main.eligian', '/project')
+ * // => '/project/src/template.html'
+ *
+ * // Parent directory
+ * resolveHTMLPath('../shared/header.html', '/project/src/main.eligian', '/project')
+ * // => '/project/shared/header.html'
+ * ```
  */
 export function resolveHTMLPath(
   importPath: string,
   sourceFilePath: string,
   _projectRoot: string
 ): string {
-  // Get source file directory (security boundary)
+  // Get source file directory
   const sourceDir = path.dirname(sourceFilePath);
 
-  // Use shared-utils path resolver with security validation
+  // Use shared-utils path resolver (parent directory navigation is allowed)
   const result = resolvePath(importPath, sourceDir);
-
-  if (!result.success) {
-    throw new Error(
-      `Security violation: HTML import path escapes source file directory.\n` +
-        `  Import path: '${importPath}'\n` +
-        `  Source file: '${normalizePath(sourceFilePath)}'\n` +
-        `  Error: ${result.error.message}`
-    );
-  }
 
   return result.absolutePath;
 }

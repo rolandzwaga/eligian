@@ -60,36 +60,33 @@ export class NodeAssetLoader implements IAssetLoader {
   /**
    * Resolve a relative path from a source file to an absolute path
    *
+   * Parent directory navigation using "../" is allowed, enabling flexible
+   * project structures where shared assets live in common directories.
+   *
    * @param sourcePath - Absolute path to the source .eligian file
-   * @param relativePath - Relative path from the import statement
+   * @param relativePath - Relative path from the import statement (must start with "./" or "../")
    * @returns Absolute path to the target file
-   * @throws Error if path escapes source file directory (security violation)
    *
    * @example
    * ```typescript
    * const loader = new NodeAssetLoader();
    * const sourcePath = '/project/src/main.eligian';
-   * const relativePath = './layout.html';
-   * const absolutePath = loader.resolvePath(sourcePath, relativePath);
+   *
+   * // Same directory
+   * loader.resolvePath(sourcePath, './layout.html')
    * // Result: '/project/src/layout.html'
+   *
+   * // Parent directory
+   * loader.resolvePath(sourcePath, '../shared/styles.css')
+   * // Result: '/project/shared/styles.css'
    * ```
    */
   resolvePath(sourcePath: string, relativePath: string): string {
-    // Get directory of source file (security boundary)
+    // Get directory of source file
     const sourceDir = dirname(sourcePath);
 
-    // Use shared-utils path resolver with security validation
+    // Use shared-utils path resolver (parent directory navigation is allowed)
     const result = resolvePath(relativePath, sourceDir);
-
-    if (!result.success) {
-      // Convert typed error to thrown error for IAssetLoader interface compatibility
-      const error = result.error;
-      throw new Error(
-        `Path resolution failed: ${error.message}\n` +
-          `  Source file: ${sourcePath}\n` +
-          `  Relative path: ${relativePath}`
-      );
-    }
 
     return result.absolutePath;
   }

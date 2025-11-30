@@ -21,11 +21,10 @@ interface MediaReference {
  * (video, audio, image files), resolves their paths relative to the document
  * directory, and converts them to webview URIs that can be loaded in the preview panel.
  *
- * Security features (delegated to shared-utils):
- * - Rejects absolute paths (security risk)
- * - Prevents path traversal attacks (../)
- * - Only resolves paths within document directory boundaries
- * - Consistent with HTML/CSS import security model
+ * Path resolution features (delegated to shared-utils):
+ * - Supports parent directory navigation (../) for flexible project structures
+ * - Relative paths only (must start with "./" or "../")
+ * - Consistent with HTML/CSS import path model
  */
 export class MediaResolver {
   private readonly webview: vscode.Webview;
@@ -194,6 +193,7 @@ export class MediaResolver {
    * Resolution strategy:
    * 1. HTTPS URLs → pass through unchanged
    * 2. Relative paths → resolve relative to document directory using shared-utils
+   *    (supports "../" for parent directory navigation)
    * 3. Convert resolved path to webview URI
    *
    * @param mediaPath - Original media path from config
@@ -210,15 +210,8 @@ export class MediaResolver {
     }
 
     // Use shared-utils to resolve path relative to document directory
-    // This ensures consistent security validation (no path traversal, no absolute paths)
+    // Parent directory navigation (../) is allowed
     const result = resolvePath(mediaPath, this.documentUri.fsPath);
-
-    if (!result.success) {
-      // Path resolution failed (security violation, invalid path, etc.)
-      console.warn(`[MediaResolver] Path resolution failed: ${result.error.message}`);
-      this.missingFiles.push(mediaPath);
-      return null;
-    }
 
     // Convert resolved absolute path to webview URI
     try {

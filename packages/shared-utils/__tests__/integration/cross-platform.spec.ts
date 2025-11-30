@@ -82,17 +82,15 @@ describe('Cross-Platform Path Handling', () => {
       }
     });
 
-    it('should block parent directory navigation identically on all platforms', () => {
-      // Parent directory navigation should FAIL on ALL platforms
+    it('should allow parent directory navigation identically on all platforms', () => {
+      // Parent directory navigation is now ALLOWED on ALL platforms
       const baseDir = '/project/src';
       const relativePath = '../outside/file.txt';
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-      }
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/project/outside/file.txt');
     });
 
     it('should handle Windows drive letters in baseDir (normalized)', () => {
@@ -155,43 +153,36 @@ describe('Cross-Platform Path Handling', () => {
     });
   });
 
-  describe('Security Validation - Cross-Platform', () => {
-    it('should block path traversal with Unix-style separators', () => {
+  describe('Parent Directory Navigation - Cross-Platform', () => {
+    it('should allow path traversal with Unix-style separators', () => {
       const baseDir = '/project/src';
-      const relativePath = '../../../etc/passwd'; // Unix-style attack
+      const relativePath = '../../../etc/passwd'; // Unix-style
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-        expect(result.error.message).toContain('outside');
-      }
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/etc/passwd');
     });
 
-    it('should block path traversal with Windows-style separators', () => {
+    it('should allow path traversal with Windows-style separators', () => {
       const baseDir = '/project/src';
-      const relativePath = '..\\..\\..\\Windows\\System32\\config'; // Windows-style attack
+      const relativePath = '..\\..\\..\\Windows\\System32\\config'; // Windows-style
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-        expect(result.error.message).toContain('outside');
-      }
+      expect(result.success).toBe(true);
+      // Path is normalized to Unix-style
+      expect(result.absolutePath).toBe('/Windows/System32/config');
     });
 
-    it('should block path traversal with mixed separators', () => {
+    it('should allow path traversal with mixed separators', () => {
       const baseDir = '/project/src';
-      const relativePath = '../../outside\\sensitive/data.txt'; // Mixed attack
+      const relativePath = '../../outside\\sensitive/data.txt'; // Mixed
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error._tag).toBe('SecurityError');
-      }
+      expect(result.success).toBe(true);
+      expect(result.absolutePath).toBe('/outside/sensitive/data.txt');
     });
 
     it('should allow same-directory paths on all platforms', () => {
