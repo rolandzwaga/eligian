@@ -133,9 +133,8 @@ pnpm run lint  # Review what issues remain
 # 5. Verify clean:
 pnpm run check  # Should show "0 errors, 0 warnings"
 
-# 6. Run tests using vitest-mcp (Constitution Principle XXIII):
-#    - Use mcp__vitest__run_tests tool instead of pnpm test
-#    - All tests must pass
+# 6. Run tests:
+pnpm test  # All tests must pass
 ```
 
 #### Biome Configuration (`biome.json`)
@@ -184,10 +183,7 @@ Before considering any task complete:
 - [ ] Code changes implemented
 - [ ] `pnpm run build` passes (TypeScript compiles successfully)
 - [ ] `pnpm run check` passes (0 errors, 0 warnings)
-- [ ] Tests pass using vitest-mcp tools (Constitution Principle XXIII):
-  - Use `mcp__vitest__set_project_root` to configure project
-  - Use `mcp__vitest__run_tests` with target (file/directory)
-  - Verify all tests pass (no failures in structured result)
+- [ ] `pnpm test` passes (all tests pass)
 - [ ] Documentation updated (if applicable)
 - [ ] Biome configuration updated (if rules needed adjustment)
 
@@ -1651,9 +1647,4 @@ test("compile valid DSL", async () => {
 ## Available MCP Resources
 - **effect-docs**: Documentation and examples for Effect-ts usage
 - **ide**: VS Code integration for diagnostics and code execution
-- **vitest-mcp**: Programmatic test execution and coverage analysis (Constitution Principle XXIII)
-  - `mcp__vitest__set_project_root`: Configure project root for test execution
-  - `mcp__vitest__run_tests`: Run tests with structured output (use instead of `pnpm test`)
-  - `mcp__vitest__analyze_coverage`: Analyze test coverage with gap identification
-  - `mcp__vitest__list_tests`: Discover test files across the project
 - **context7**: Always use when needing code generation, setup/configuration steps, or library/API documentation. Automatically use Context7 MCP tools to resolve library ID and get library docs without explicit request.

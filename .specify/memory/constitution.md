@@ -1,36 +1,34 @@
 <!--
-SYNC IMPACT REPORT - Constitution v2.1.0
+SYNC IMPACT REPORT - Constitution v2.2.0
 
-VERSION CHANGE: 2.0.0 → 2.1.0
-RATIONALE: Add Feature Numbering Discipline principle to prevent spec number collisions
+VERSION CHANGE: 2.1.0 → 2.2.0
+RATIONALE: Remove vitest-mcp tool requirement, use standard pnpm test commands
 
 MODIFIED PRINCIPLES:
-- None
+- Principle XXIII: Removed vitest-mcp requirement, now uses standard pnpm test
+- Quality Gates: Updated to use pnpm test instead of vitest-mcp tools
 
 ADDED SECTIONS:
-- Principle XXVI: Feature Numbering Discipline (CRITICAL)
-  - Requires checking specs directory FIRST (source of truth)
-  - Must check all three sources: specs/, remote branches, local branches
-  - Use highest number + 1 across all sources
-  - Prevents number collisions from deleted branches
-
-REMOVED SECTIONS:
 - None
 
+REMOVED SECTIONS:
+- vitest-mcp tool requirements throughout
+
 TEMPLATES REQUIRING UPDATES:
-- No template changes required (principle affects runtime behavior only)
+- No template changes required
 
 FOLLOW-UP TODOS:
 - None
 
 BREAKING CHANGES:
-- None (additive change only)
+- vitest-mcp tools no longer required for quality gates
 
 PREVIOUS VERSION HISTORY:
+v2.1.0 (2025-11-24): Add Feature Numbering Discipline
+  - Added Principle XXVI for feature numbering
 v2.0.0 (2025-01-20): Initial constitution ratification
   - Added principles I through XXV
   - Added Development Workflow, Quality Gates, Governance sections
-  - Introduced vitest-mcp quality gate requirement
 -->
 
 # Eligian DSL Project Constitution
@@ -169,15 +167,14 @@ NEVER use sed with line numbers from TypeScript compiler errors. TypeScript erro
 
 **Rationale**: The Sed Corruption Incident (documented in CLAUDE.md) corrupted multiple files by blindly targeting error line numbers. Sed line numbers are fragile and error-prone.
 
-### XXIII. Testing with vitest-mcp Tools
+### XXIII. Testing with Standard Commands
 
-All test quality gates MUST use vitest-mcp tools instead of `pnpm test` commands:
-- Use `mcp__vitest__run_tests` for running tests programmatically
-- Use `mcp__vitest__analyze_coverage` for coverage analysis
-- Use `mcp__vitest__list_tests` for test discovery
-- NEVER use `pnpm test` or `pnpm run test` in quality gate checks
+All test quality gates MUST use standard pnpm commands:
+- Use `pnpm test` or `pnpm run test` for running tests
+- Use `pnpm run test:coverage` for coverage analysis
+- Tests MUST pass before considering a task complete
 
-**Rationale**: vitest-mcp provides structured, programmatic access to test results and coverage data. This enables automated analysis, better error reporting, and integration with AI workflows. Raw npm scripts only provide exit codes and text output.
+**Rationale**: Standard pnpm commands provide consistent, reliable test execution across all environments. Coverage reports are generated in the `coverage/` directory for review.
 
 ### XXIV. Test Suite Maintenance (Feature 022)
 
@@ -238,11 +235,7 @@ Every task completion MUST pass these gates:
 
 1. **Build**: `pnpm run build` passes (TypeScript compiles successfully)
 2. **Lint**: `pnpm run check` passes (0 errors, 0 warnings)
-3. **Tests**: Use vitest-mcp tools for programmatic test execution:
-   - `mcp__vitest__set_project_root` to configure project
-   - `mcp__vitest__run_tests` with appropriate target (file path or directory)
-   - Verify all tests pass (no failures in result)
-   - For coverage analysis: `mcp__vitest__analyze_coverage` with target source files
+3. **Tests**: `pnpm test` passes (all tests pass)
 4. **Documentation**: Update documentation if adding new public APIs or changing behavior
 5. **Configuration**: Update biome.json if rules needed adjustment (with justification)
 
@@ -265,9 +258,8 @@ pnpm run lint  # Review what issues remain
 # 5. Verify clean:
 pnpm run check  # Should show "0 errors, 0 warnings"
 
-# 6. Run tests using vitest-mcp:
-#    - Use mcp__vitest__run_tests tool instead of pnpm test
-#    - All tests must pass
+# 6. Run tests:
+pnpm test  # All tests must pass
 ```
 
 ## Governance
@@ -288,4 +280,4 @@ Principle changes:
 - MINOR bump: New principle/section added or materially expanded guidance
 - PATCH bump: Clarifications, wording, typo fixes, non-semantic refinements
 
-**Version**: 2.1.0 | **Ratified**: 2025-01-20 | **Last Amended**: 2025-11-24
+**Version**: 2.2.0 | **Ratified**: 2025-01-20 | **Last Amended**: 2025-11-30
