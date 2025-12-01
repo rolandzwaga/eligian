@@ -11,6 +11,7 @@
     "build:clean": "pnpm clean && pnpm build",
     "langium:generate": "pnpm --filter @eligian/language langium:generate",
     "langium:watch": "pnpm --filter @eligian/language langium:watch",
+    "generate:html-metadata": "tsx scripts/generate-html-metadata.ts",
     "test": "pnpm -r test",
     "test:coverage:ci": "pnpm -r test:coverage:ci",
     "test:coverage": "tsx tools/pruned-coverage.ts",
@@ -22,7 +23,7 @@
   },
   "dependencies": {
     "effect": "3.19.8",
-    "eligius": "1.5.2"
+    "eligius": "1.5.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.8",

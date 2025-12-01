@@ -20,6 +20,7 @@ import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
 import { getControllerNameCompletions, getLabelIDCompletions } from './completion/controllers.js';
 import { getEventNameCompletions, getEventTopicCompletions } from './completion/events.js';
+import { HTMLElementCompletionProvider } from './completion/html-elements.js';
 import { getOperationCompletions } from './completion/operations.js';
 import { getVariableCompletions } from './completion/variables.js';
 import {
@@ -28,6 +29,8 @@ import {
 } from './css/context-detection.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
+import { detectHTMLCompletionContext } from './html/context-detection.js';
+import { HTMLCompletionContextType } from './html/context-types.js';
 import { isOffsetInStringLiteral } from './utils/string-utils.js';
 
 /**
@@ -38,12 +41,14 @@ import { isOffsetInStringLiteral } from './utils/string-utils.js';
  */
 export class EligianCompletionProvider extends DefaultCompletionProvider {
   private readonly cssCompletionProvider: CSSCompletionProvider;
+  private readonly htmlCompletionProvider: HTMLElementCompletionProvider;
   private readonly services: EligianServices;
 
   constructor(services: EligianServices) {
     super(services);
     this.services = services;
     this.cssCompletionProvider = new CSSCompletionProvider();
+    this.htmlCompletionProvider = new HTMLElementCompletionProvider();
   }
 
   /**
@@ -274,6 +279,101 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
 
       // NOTE: Feature 035 US3 controller completions are now handled in getCompletion() override
       // (Langium doesn't call completionFor() for string literal positions)
+
+      // FEATURE 043: HTML Element Completion for createElement
+      // Check if we're in a createElement context and provide appropriate completions
+      const htmlContext = detectHTMLCompletionContext(context);
+      if (htmlContext.type !== HTMLCompletionContextType.None) {
+        if (htmlContext.type === HTMLCompletionContextType.ElementName) {
+          // Provide HTML element name completions with proper TextEdit for in-string replacement
+          const elementCompletions = this.htmlCompletionProvider.getElementNameCompletions(
+            htmlContext.partialText ?? ''
+          );
+
+          // If we have string boundaries, use TextEdit to replace string content
+          if (
+            htmlContext.stringContentStart !== undefined &&
+            htmlContext.stringContentEnd !== undefined
+          ) {
+            const range = {
+              start: context.textDocument.positionAt(htmlContext.stringContentStart),
+              end: context.textDocument.positionAt(htmlContext.stringContentEnd),
+            };
+
+            for (const item of elementCompletions) {
+              const itemWithEdit: CompletionItem = {
+                ...item,
+                textEdit: {
+                  range,
+                  newText: item.insertText ?? item.label,
+                },
+                filterText: item.label,
+              };
+              acceptor(context, itemWithEdit);
+            }
+          } else {
+            // No string boundaries (cursor between parens with no quotes) - add quotes
+            for (const item of elementCompletions) {
+              const itemWithQuotes: CompletionItem = {
+                ...item,
+                insertText: `"${item.insertText ?? item.label}"`,
+              };
+              acceptor(context, itemWithQuotes);
+            }
+          }
+          return; // Return early - we've provided all completions
+        } else if (htmlContext.type === HTMLCompletionContextType.AttributeName) {
+          // Provide attribute name completions for the element
+          const attrCompletions = this.htmlCompletionProvider.getAttributeNameCompletions(
+            htmlContext.elementName ?? '',
+            ''
+          );
+          for (const item of attrCompletions) {
+            acceptor(context, item);
+          }
+          return; // Return early
+        } else if (htmlContext.type === HTMLCompletionContextType.AttributeValue) {
+          // Provide attribute value completions for enumerated attributes with proper TextEdit
+          const valueCompletions = this.htmlCompletionProvider.getAttributeValueCompletions(
+            htmlContext.elementName ?? '',
+            htmlContext.attributeName ?? '',
+            htmlContext.partialText ?? ''
+          );
+
+          // If we have string boundaries, use TextEdit to replace string content
+          if (
+            htmlContext.stringContentStart !== undefined &&
+            htmlContext.stringContentEnd !== undefined &&
+            valueCompletions.length > 0
+          ) {
+            const range = {
+              start: context.textDocument.positionAt(htmlContext.stringContentStart),
+              end: context.textDocument.positionAt(htmlContext.stringContentEnd),
+            };
+
+            for (const item of valueCompletions) {
+              const itemWithEdit: CompletionItem = {
+                ...item,
+                textEdit: {
+                  range,
+                  newText: item.insertText ?? item.label,
+                },
+                filterText: item.label,
+              };
+              acceptor(context, itemWithEdit);
+            }
+            return;
+          }
+
+          // No string boundaries or no enum values - let default completions handle it
+          for (const item of valueCompletions) {
+            acceptor(context, item);
+          }
+          if (valueCompletions.length > 0) {
+            return;
+          }
+        }
+      }
 
       // T044: Check if we're completing an event name in EventActionDefinition
       // FEATURE 030 - Event Action Code Completion

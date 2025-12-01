@@ -12,8 +12,8 @@ importers:
         specifier: 3.19.8
         version: 3.19.8
       eligius:
-        specifier: 1.5.2
-        version: 1.5.2(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4)
+        specifier: 1.5.3
+        version: 1.5.3(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.8
@@ -941,8 +941,8 @@ packages:
   effect@3.19.8:
     resolution: {integrity: sha512-OmLw8EfH02vdmyU2fO4uY9He/wepwKI5E/JNpE2pseaWWUbaYOK9UlxIiKP20ZEqQr+S/jSqRDGmpiqD/2DeCQ==, tarball: https://registry.npmjs.org/effect/-/effect-3.19.8.tgz}
 
-  eligius@1.5.2:
-    resolution: {integrity: sha512-L6TqoUUfg+TJBcfAshWKih9Gv/rntsoww7c5B7JccBoYxNNA7efhrk8vVUsN72WG7e5Kq/OgQnLxZEG6xI+SsQ==, tarball: https://registry.npmjs.org/eligius/-/eligius-1.5.2.tgz}
+  eligius@1.5.3:
+    resolution: {integrity: sha512-ocGpMjPY1nslG+zE969HOIxqdBZW0ihsb0gAFn+LukvIRgS7svmRwViQpuej8Ln/wutNi1CS4gVJOqVqXdUK5g==, tarball: https://registry.npmjs.org/eligius/-/eligius-1.5.3.tgz}
     engines: {node: '>=20'}
     peerDependencies:
       jquery: 3.7.1
@@ -2347,7 +2347,7 @@ snapshots:
       '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
 
-  eligius@1.5.2(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4):
+  eligius@1.5.3(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4):
     dependencies:
       hotkeys-js: 3.13.15
       jquery: 3.7.1
