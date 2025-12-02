@@ -297,10 +297,46 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
 
       // Array of parameter types (multi-type support)
       const types = type as string[];
-      return types.map(t => `\`${t}\``).join(' | ');
+      return types.map(t => `\`${this.translateParameterType(t)}\``).join(' | ');
     }
 
     return '`any`';
+  }
+
+  /**
+   * Translate internal ParameterType:* types to user-friendly display names
+   */
+  private translateParameterType(type: string): string {
+    // Handle ParameterType:* schema types
+    if (type.startsWith('ParameterType:')) {
+      const innerType = type.substring('ParameterType:'.length);
+      // Map semantic types to their base types for display
+      switch (innerType) {
+        case 'className':
+        case 'selector':
+        case 'labelId':
+        case 'actionName':
+        case 'eventTopic':
+        case 'string':
+          return 'string';
+        case 'number':
+          return 'number';
+        case 'boolean':
+          return 'boolean';
+        case 'object':
+          return 'object';
+        case 'array':
+          return 'array';
+        case 'function':
+          return 'function';
+        case 'Date':
+          return 'Date';
+        default:
+          // For any unknown types, show as-is without ParameterType: prefix
+          return innerType;
+      }
+    }
+    return type;
   }
 
   /**
@@ -372,7 +408,8 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         builder.text('**Parameters:**');
         const paramItems = controller.parameters.map(param => {
           const required = param.required ? '' : '?';
-          const type = typeof param.type === 'string' ? param.type : 'object';
+          const rawType = typeof param.type === 'string' ? param.type : 'object';
+          const type = this.translateParameterType(rawType);
           return `\`${param.name}${required}\` (\`${type}\`)${param.description ? ` - ${param.description}` : ''}`;
         });
         builder.list(paramItems).blank();
