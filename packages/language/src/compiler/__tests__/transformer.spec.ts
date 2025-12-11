@@ -989,6 +989,36 @@ describe('AST Transformer', () => {
         animationProperties: { opacity: 1 },
       });
     });
+
+    test('should keep string literals in action operationData', async () => {
+      const code = `
+        action test(selector, duration) [
+          selectElement(selector)
+          addClass("my-class")
+          wait(duration)
+        ]
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const action = result.config.actions[0];
+      const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
+      const addClassOp = action.startOperations.find(op => op.systemName === 'addClass');
+      const waitOp = action.startOperations.find(op => op.systemName === 'wait');
+
+      // selector is a param reference, should have no operationData
+      expect(selectOp?.operationData).toBeUndefined();
+
+      // String literal "my-class" should be kept in operationData
+      expect(addClassOp?.operationData).toEqual({
+        className: 'my-class',
+      });
+
+      // duration is a param reference, so wait should have no operationData
+      expect(waitOp?.operationData).toBeUndefined();
+    });
   });
 
   describe('Constant Folding - Reference Inlining (T007)', () => {
