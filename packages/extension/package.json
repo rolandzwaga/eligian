@@ -6,7 +6,7 @@
   "type": "module",
   "publisher": "rolandzwaga",
   "engines": {
-    "vscode": "^1.106.0"
+    "vscode": "^1.107.0"
   },
   "categories": [
     "Programming Languages"
@@ -130,10 +130,10 @@
     "vscode-languageserver": "9.0.1"
   },
   "devDependencies": {
-    "@types/vscode": "1.106.0",
-    "@vitest/ui": "4.0.14",
+    "@types/vscode": "1.107.0",
+    "@vitest/ui": "4.0.15",
     "concurrently": "9.2.1",
-    "jsdom": "27.2.0"
+    "jsdom": "27.3.0"
   },
   "vsce": {
     "dependencies": false

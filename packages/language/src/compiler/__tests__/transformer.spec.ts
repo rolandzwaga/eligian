@@ -978,12 +978,16 @@ describe('AST Transformer', () => {
       const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
       const animateOp = action.startOperations.find(op => op.systemName === 'animate');
 
-      // ❌ BUG: These currently produce {} but should have proper references
-      expect(selectOp?.operationData).toEqual({
-        selector: '$operationdata.selector', // selector → $operationdata.selector
-      });
+      // Inside action bodies, parameter references should NOT be in operationData.
+      // Eligius provides action parameters via startAction's actionOperationData,
+      // so operations inside the action body don't need to re-specify them.
+      // Only literal values (like {opacity: 1}) should be in operationData.
+      expect(selectOp?.operationData).toBeUndefined(); // selector is a param reference
 
-      expect(animateOp?.operationData?.animationDuration).toBe('$operationdata.duration');
+      // animate has a literal {opacity: 1} but duration is a param reference
+      expect(animateOp?.operationData).toEqual({
+        animationProperties: { opacity: 1 },
+      });
     });
   });
 
