@@ -723,15 +723,13 @@ function mapProviderToTimelineType(provider: string): 'animation' | 'mediaplayer
  * T273: Generate timelineProviderSettings based on timeline types used
  *
  * Creates provider settings for each unique timeline type in the program.
- * Structure per Eligius JSON schema:
- * - animation: RequestAnimationFrameTimelineProvider
- * - mediaplayer: MediaElementTimelineProvider (for video/audio)
+ * Eligius 2.0.0 API: Uses positionSource configuration with systemName
+ * - animation: RafPositionSource
+ * - mediaplayer: VideoPositionSource (for video/audio)
  *
  * Each provider setting includes:
- * - id: UUID for the provider
- * - vendor: Provider vendor name (empty string for built-in providers)
- * - systemName: Eligius class name
- * - selector: CSS selector (only for mediaplayer)
+ * - positionSource.systemName: Eligius position source class name
+ * - positionSource.selector: CSS selector (only for mediaplayer)
  */
 function generateTimelineProviderSettings(
   timelines: TimelineConfigIR[]
@@ -747,20 +745,20 @@ function generateTimelineProviderSettings(
     }
   }
 
-  // Generate provider settings for each type
+  // Generate provider settings for each type (Eligius 2.0.0 API)
   for (const type of timelineTypes) {
     if (type === 'animation') {
       settings.animation = {
-        id: crypto.randomUUID(),
-        vendor: '',
-        systemName: 'RequestAnimationFrameTimelineProvider',
+        positionSource: {
+          systemName: 'RafPositionSource',
+        },
       };
     } else if (type === 'mediaplayer') {
       settings.mediaplayer = {
-        id: crypto.randomUUID(),
-        vendor: '',
-        systemName: 'MediaElementTimelineProvider',
-        selector: '', // TODO: Could extract from timeline selector field
+        positionSource: {
+          systemName: 'VideoPositionSource',
+          selector: '', // TODO: Could extract from timeline selector field
+        },
       };
     }
   }
@@ -1545,13 +1543,27 @@ const transformOperationCall = (
       );
     }
 
-    const operationData = mappingResult.operationData as Record<string, JsonValue>;
+    let operationData = mappingResult.operationData as Record<string, JsonValue>;
+
+    // Inside action bodies, parameters that are just forwarding action arguments
+    // (i.e., $operationdata.* references) should be omitted from operationData.
+    // Eligius already provides these via startAction's actionOperationData.
+    if (scope.inActionBody) {
+      const filteredData: Record<string, JsonValue> = {};
+      for (const [key, value] of Object.entries(operationData)) {
+        // Keep only non-forwarded parameters (literals, expressions, etc.)
+        if (typeof value !== 'string' || !value.startsWith('$operationdata.')) {
+          filteredData[key] = value;
+        }
+      }
+      operationData = filteredData;
+    }
 
     return {
       // Constitution VII: UUID v4 for operation ID
       id: crypto.randomUUID(),
       systemName: operationName,
-      operationData,
+      operationData: Object.keys(operationData).length > 0 ? operationData : undefined,
       sourceLocation: getSourceLocation(opCall),
     };
   });

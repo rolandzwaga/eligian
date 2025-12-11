@@ -170,7 +170,7 @@ export function generateEntryPoint(
   lines.push('// Initialization');
   lines.push('function init(containerOrSelector) {');
   lines.push('  const factory = new EngineFactory(new BundledResourceImporter(), window);');
-  lines.push('  const engine = factory.createEngine(CONFIG);');
+  lines.push('  const { engine } = factory.createEngine(CONFIG);');
   lines.push('  return engine.init();');
   lines.push('}');
   lines.push('');

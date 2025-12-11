@@ -17,10 +17,16 @@ import {
   Eventbus,
   type IEligiusEngine,
   type IEngineConfiguration,
+  type IEngineFactoryResult,
   type IEventbus,
   type IEventbusListener,
 } from 'eligius';
-import 'jquery';
+import $ from 'jquery';
+
+// Make jQuery available globally for Eligius operations
+(window as any).$ = $;
+(window as any).jQuery = $;
+
 import lottie from 'lottie-web';
 import 'video.js';
 
@@ -39,6 +45,7 @@ const vscode = acquireVsCodeApi();
 // Eligius engine instance (null until initialized)
 let engine: IEligiusEngine | null = null;
 let factory: EngineFactory | null = null;
+let factoryResult: IEngineFactoryResult | null = null;
 
 // Create shared eventbus for controlling playback
 const eventbus: IEventbus = new Eventbus();
@@ -50,9 +57,10 @@ const eventbus: IEventbus = new Eventbus();
  */
 async function initializeEngine(config: IEngineConfiguration): Promise<void> {
   try {
-    // Clean up previous engine if exists
-    if (engine) {
-      await engine.destroy();
+    // Clean up previous engine if exists (Eligius 2.0.0: use factoryResult.destroy())
+    if (factoryResult) {
+      await factoryResult.destroy();
+      factoryResult = null;
       engine = null;
     }
 
@@ -64,8 +72,10 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
       eventbus, // Pass our eventbus so we can control playback
     });
 
-    // Create engine from config
-    engine = factory.createEngine(config);
+    // Create engine from config (Eligius 2.0.0: destructure IEngineFactoryResult)
+    const result = factory.createEngine(config);
+    factoryResult = result;
+    engine = result.engine;
 
     // Initialize engine
     await engine.init();
@@ -103,11 +113,14 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
 
 /**
  * Destroy the Eligius engine and clean up resources.
+ * (Eligius 2.0.0: use factoryResult.destroy() to properly disconnect adapters)
+ * Implementation is idempotent per FR-007 - safe to call multiple times.
  */
 async function destroyEngine(): Promise<void> {
-  if (engine) {
+  if (factoryResult) {
     try {
-      await engine.destroy();
+      await factoryResult.destroy();
+      factoryResult = null;
       engine = null;
       factory = null;
 
