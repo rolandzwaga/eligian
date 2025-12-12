@@ -51,6 +51,9 @@ export async function searchWorkspace(groupId: string): Promise<vscode.Uri[]> {
         const document = await vscode.workspace.openTextDocument(fileUri);
         const content = document.getText();
 
+        // Reset lastIndex before each test (regex with 'g' flag maintains state)
+        pattern.lastIndex = 0;
+
         // Check if label is used in this file
         if (pattern.test(content)) {
           usageFiles.push(fileUri);

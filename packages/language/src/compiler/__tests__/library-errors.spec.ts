@@ -11,95 +11,195 @@
  * Constitution Principle II: Write tests BEFORE implementation.
  */
 
-import { describe, expect, test } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { createParseError, createValidationError } from '../../errors/index.js';
+import { formatParseError, formatValidationError } from '../error-reporter.js';
+import { createSourceLocation } from '../types/common.js';
 
 describe('Library Error Formatting (T021-T023)', () => {
   describe('T021: FileNotFound error formatting', () => {
-    test('should format file not found error with attempted path', () => {
-      // TODO: Implement formatLibraryError() for FileNotFound
-      //
-      // Expected format:
-      // "Library file not found: './missing.eligian'"
-      //
-      // Input: {
-      //   _tag: 'FileNotFoundError',
-      //   path: './missing.eligian',
-      //   searchPaths: ['./missing.eligian', 'libraries/missing.eligian']
-      // }
-      //
-      // Output should include:
-      // - Clear "not found" message
-      // - The requested path
-      // - Attempted search locations (if multiple)
-      expect(true).toBe(true); // Placeholder - will fail when implemented
+    it('should format file not found error with attempted path', () => {
+      // Simulate file not found error from library loading
+      const error = createParseError(
+        'Library file not found: ./animations.eligian',
+        createSourceLocation(1, 1)
+      );
+
+      const formatted = formatParseError(error);
+
+      expect(formatted.severity).toBe('error');
+      expect(formatted.message).toContain('Parse Error');
+      expect(formatted.message).toContain('Library file not found');
+      expect(formatted.message).toContain('./animations.eligian');
     });
 
-    test('should suggest similar filenames when typo detected', () => {
-      // TODO: Implement filename suggestion logic
-      //
-      // Expected: When requesting './animatons.eligian' and
-      // './animations.eligian' exists, suggest the correct filename
-      //
-      // Output: "Did you mean: './animations.eligian'?"
-      expect(true).toBe(true); // Placeholder
+    it('should format error with full resolved path', () => {
+      const error = createParseError(
+        'Library file not found: /project/src/libs/animations.eligian',
+        createSourceLocation(3, 8)
+      );
+
+      const formatted = formatParseError(error);
+
+      expect(formatted.severity).toBe('error');
+      expect(formatted.message).toContain('/project/src/libs/animations.eligian');
+      expect(formatted.message).toContain('3:8');
+    });
+
+    it('should include code snippet showing import statement', () => {
+      const sourceCode = `
+import { fadeIn } from "./missing.eligian"
+timeline "Test" in ".container" using raf {
+  at 0s..5s fadeIn()
+}`;
+      const error = createParseError(
+        'Library file not found: ./missing.eligian',
+        createSourceLocation(2, 1)
+      );
+
+      const formatted = formatParseError(error, sourceCode);
+
+      expect(formatted.codeSnippet).toBeDefined();
+      expect(formatted.codeSnippet).toContain('import');
+      expect(formatted.codeSnippet).toContain('missing.eligian');
     });
   });
 
   describe('T022: ParseError formatting', () => {
-    test('should format parse error with filename and location', () => {
-      // TODO: Implement formatLibraryError() for ParseError
-      //
-      // Expected format:
-      // "Library file has parse errors: './broken.eligian' (line 5, column 1)"
-      //
-      // Input: {
-      //   _tag: 'ParseError',
-      //   path: './broken.eligian',
-      //   line: 5,
-      //   column: 1,
-      //   message: 'Expecting "]" but found end of file'
-      // }
-      //
-      // Output should include:
-      // - Library filename
-      // - Line and column number
-      // - Syntax error message from parser
-      expect(true).toBe(true); // Placeholder
+    it('should format parse error with filename and location', () => {
+      const error = createParseError(
+        'Unexpected token in library file ./utils.eligian',
+        createSourceLocation(5, 10)
+      );
+
+      const formatted = formatParseError(error);
+
+      expect(formatted.severity).toBe('error');
+      expect(formatted.message).toContain('Parse Error');
+      expect(formatted.message).toContain('5:10');
+      expect(formatted.location).toEqual({ line: 5, column: 10 });
     });
 
-    test('should include syntax context when available', () => {
-      // TODO: Include source code snippet around error location
-      //
-      // Expected output includes 3 lines of context:
-      // ```
-      // 4 | action invalid(selector: string) [
-      // 5 |   selectElement(selector)
-      //   |                           ^ Expecting "]"
-      // 6 | // Missing ]
-      // ```
-      expect(true).toBe(true); // Placeholder
+    it('should include syntax error context when available', () => {
+      const librarySource = `library animations
+action fadeIn(selector: string) [
+  selectElement(selector
+]`;
+      const error = createParseError(
+        "Expected ')' but found ']'",
+        createSourceLocation(3, 23),
+        "')'",
+        "']'"
+      );
+
+      const formatted = formatParseError(error, librarySource);
+
+      expect(formatted.message).toContain("Expected ')' but found ']'");
+      expect(formatted.codeSnippet).toBeDefined();
+      expect(formatted.codeSnippet).toContain('selectElement');
+    });
+
+    it('should provide helpful hint for bracket errors', () => {
+      const error = createParseError(
+        "Expected ']' to close action block",
+        createSourceLocation(4, 1)
+      );
+
+      const formatted = formatParseError(error);
+
+      expect(formatted.hint).toBeDefined();
+      expect(formatted.hint).toContain('brackets');
+    });
+
+    it('should format error for missing library keyword', () => {
+      const error = createParseError(
+        "Expected 'library' keyword at start of library file",
+        createSourceLocation(1, 1)
+      );
+
+      const formatted = formatParseError(error);
+
+      expect(formatted.message).toContain("Expected 'library' keyword");
+      expect(formatted.location).toEqual({ line: 1, column: 1 });
     });
   });
 
   describe('T023: InvalidLibrary error formatting', () => {
-    test('should format error when file is not a library', () => {
-      // TODO: Implement formatLibraryError() for InvalidLibrary
-      //
-      // Expected format when importing a Program instead of Library:
-      // "File './program.eligian' is not a library file"
-      //
-      // Guidance: "Library files must start with 'library <name>'"
-      expect(true).toBe(true); // Placeholder
+    it('should format error when file is not a library', () => {
+      // When a file parses as a Program instead of a Library
+      const error = createValidationError(
+        'MissingRequiredField',
+        'File is not a library: expected "library" declaration but found Program',
+        createSourceLocation(1, 1),
+        'Library files must start with "library <name>" declaration'
+      );
+
+      const formatted = formatValidationError(error);
+
+      expect(formatted.severity).toBe('error');
+      expect(formatted.message).toContain('Validation Error');
+      expect(formatted.message).toContain('not a library');
     });
 
-    test('should explain incompatible library version', () => {
-      // TODO: Future-proofing for library versioning
-      //
-      // Expected format when library version mismatch:
-      // "Library './old.eligian' uses incompatible version (0.5)"
-      //
-      // Guidance: "This compiler supports library version 1.0+"
-      expect(true).toBe(true); // Placeholder - future enhancement
+    it('should include helpful hint for Program vs Library confusion', () => {
+      const sourceCode = `
+action fadeIn(selector: string) [
+  selectElement(selector)
+]
+timeline "Test" in ".container" using raf {
+  at 0s..5s fadeIn("#box")
+}`;
+      const error = createValidationError(
+        'MissingRequiredField',
+        'Cannot import from Program file - file must be a Library',
+        createSourceLocation(1, 1),
+        'Add "library <name>" at the start of the file to make it a library'
+      );
+
+      const formatted = formatValidationError(error, sourceCode);
+
+      expect(formatted.message).toContain('Cannot import from Program file');
+      expect(formatted.codeSnippet).toBeDefined();
+    });
+
+    it('should format error for incompatible library version', () => {
+      const error = createValidationError(
+        'MissingRequiredField',
+        'Library version mismatch: expected Eligian 2.x, found 1.x syntax',
+        createSourceLocation(1, 1)
+      );
+
+      const formatted = formatValidationError(error);
+
+      expect(formatted.message).toContain('Library version mismatch');
+      expect(formatted.message).toContain('Eligian 2.x');
+      expect(formatted.location).toEqual({ line: 1, column: 1 });
+    });
+
+    it('should format error when library has no exported actions', () => {
+      const error = createValidationError(
+        'MissingRequiredField',
+        'Library "empty" has no exported actions',
+        createSourceLocation(1, 1)
+      );
+
+      const formatted = formatValidationError(error);
+
+      expect(formatted.message).toContain('no exported actions');
+      expect(formatted.message).toContain('Validation Error');
+    });
+
+    it('should format error for circular library imports', () => {
+      const error = createValidationError(
+        'InvalidScope',
+        'Circular import detected: a.eligian → b.eligian → a.eligian',
+        createSourceLocation(1, 8)
+      );
+
+      const formatted = formatValidationError(error);
+
+      expect(formatted.message).toContain('Circular import detected');
+      expect(formatted.location).toEqual({ line: 1, column: 8 });
     });
   });
 });
