@@ -32,6 +32,8 @@ If all three are yes, CSS validation will work. If any is missing, you'll get "U
 8. [Minimum Valid Program Requirements](#minimum-valid-program-requirements)
 9. [Test File Organization](#test-file-organization)
 10. [Best Practices](#best-practices)
+    - [General Unit Testing Principles](#general-unit-testing-principles)
+    - [Project-Specific Best Practices](#project-specific-best-practices)
 11. [Advanced Patterns](#advanced-patterns)
 12. [Testing Multiple Packages](#testing-multiple-packages)
 13. [File System Testing with Temporary Directories](#file-system-testing-with-temporary-directories)
@@ -1087,6 +1089,248 @@ packages/language/src/__tests__/
 ---
 
 ## Best Practices
+
+### General Unit Testing Principles
+
+These principles apply to all tests, regardless of the specific technology being tested.
+
+#### 1. Test Behavior, Not Implementation
+
+Focus on **what** the code does (observable behavior), not **how** it does it internally.
+
+```typescript
+// ✅ GOOD: Tests observable behavior (what the user sees)
+test('should show error when CSS class is unknown', async () => {
+  const { errors } = await ctx.parseAndValidate(codeWithUnknownClass);
+  expect(errors.some(e => e.data?.code === 'unknown_css_class')).toBe(true);
+});
+
+// ❌ BAD: Tests internal implementation details
+test('should call validateCSSClass with correct arguments', async () => {
+  const spy = vi.spyOn(validator, 'validateCSSClass');
+  await ctx.parseAndValidate(code);
+  expect(spy).toHaveBeenCalledWith('button', expect.any(Object));
+});
+```
+
+**Why**: Implementation can change (refactoring) without changing behavior. Tests tied to implementation break during refactoring even when functionality is preserved.
+
+#### 2. Test Interfaces, Not Implementations
+
+Write tests against **public APIs and contracts**, not internal methods or private state.
+
+```typescript
+// ✅ GOOD: Tests the public parseAndValidate interface
+test('should validate action parameters', async () => {
+  const { errors } = await ctx.parseAndValidate(code);
+  expect(errors).toHaveLength(0);
+});
+
+// ❌ BAD: Tests internal parsing method directly
+test('should parse parameter node correctly', () => {
+  const paramNode = parser._parseParameterInternal(tokens);
+  expect(paramNode.type).toBe('Parameter');
+});
+```
+
+**Why**: Internal methods can be refactored, renamed, or removed without affecting the public contract. Tests against internals create coupling that makes refactoring expensive.
+
+#### 3. Arrange-Act-Assert (AAA) Pattern
+
+Structure tests in three clear phases:
+
+```typescript
+test('should reject duplicate action names', async () => {
+  // ARRANGE: Set up test data and preconditions
+  const code = minimalProgram({
+    actionName: 'duplicate',
+    additionalCode: 'action duplicate() [ log("second") ]',
+  });
+
+  // ACT: Execute the behavior being tested
+  const { errors } = await ctx.parseAndValidate(code);
+
+  // ASSERT: Verify the expected outcome
+  expect(errors).toHaveLength(1);
+  expect(errors[0].data?.code).toBe('duplicate_action_name');
+});
+```
+
+**Why**: Clear structure makes tests easier to read, understand, and maintain.
+
+#### 4. One Concept Per Test
+
+Each test should verify **one specific behavior** or concept.
+
+```typescript
+// ✅ GOOD: Separate tests for separate concerns
+test('should reject unknown event name', async () => {
+  const code = eventActionProgram('unknown-event', 'Test');
+  const { errors } = await ctx.parseAndValidate(code);
+  expect(errors.some(e => e.data?.code === 'unknown_event_name')).toBe(true);
+});
+
+test('should reject wrong argument count', async () => {
+  const code = eventActionProgram('dom-mutation', 'Test', [{ name: 'extra' }]);
+  const { errors } = await ctx.parseAndValidate(code);
+  expect(errors.some(e => e.data?.code === 'wrong_argument_count')).toBe(true);
+});
+
+// ❌ BAD: Multiple concerns in one test (harder to diagnose failures)
+test('should validate event actions', async () => {
+  // Tests event name, argument count, argument types all at once
+  // If this fails, which part failed?
+});
+```
+
+**Why**: When a multi-concept test fails, you can't immediately tell which part failed without debugging.
+
+#### 5. FIRST Principles
+
+Good unit tests are:
+
+| Principle | Description |
+|-----------|-------------|
+| **F**ast | Run quickly (< 100ms per test) |
+| **I**ndependent | Don't depend on other tests or test order |
+| **R**epeatable | Same result every time, in any environment |
+| **S**elf-validating | Pass or fail clearly, no manual inspection |
+| **T**imely | Written at or before the code they test |
+
+```typescript
+// ✅ GOOD: Independent tests with no shared mutable state
+beforeEach(() => {
+  setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common);
+});
+
+// ❌ BAD: Tests depend on execution order
+let sharedState: string[];
+
+test('first test modifies state', () => {
+  sharedState = ['a', 'b'];
+});
+
+test('second test reads state', () => {
+  expect(sharedState).toEqual(['a', 'b']); // Fails if run alone!
+});
+```
+
+#### 6. Mock External Dependencies, Not Internal Logic
+
+Mock at system boundaries (external APIs, file systems, databases), not internal collaborators.
+
+```typescript
+// ✅ GOOD: Mock external file system for CLI tests
+const mockFS = {
+  readFile: vi.fn().mockResolvedValue('file content'),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+};
+
+// ✅ GOOD: Mock network calls
+vi.spyOn(global, 'fetch').mockResolvedValue(new Response('{}'));
+
+// ❌ BAD: Mock internal collaborators (creates brittle tests)
+vi.spyOn(validator, 'checkCSSImports').mockReturnValue([]);
+vi.spyOn(typeChecker, 'inferTypes').mockReturnValue(new Map());
+```
+
+**Why**: Mocking internal logic couples tests to implementation. When implementation changes, tests break even though behavior is correct.
+
+#### 7. Avoid Testing Private Methods
+
+If you feel the need to test private methods, consider:
+
+1. **Test through public API** - The private method is exercised indirectly
+2. **Extract to separate module** - If logic is complex enough to test alone, it might deserve its own public API
+3. **Reconsider the design** - Private methods with complex logic may indicate the class has too many responsibilities
+
+```typescript
+// ✅ GOOD: Test through public interface
+test('should suggest similar class names for typos', async () => {
+  // Tests levenshtein distance logic indirectly
+  const code = minimalProgram({ actionBody: 'addClass("buttn")' }); // typo
+  const { errors } = await ctx.parseAndValidate(code);
+  expect(errors[0].message).toContain('Did you mean: button');
+});
+
+// ❌ BAD: Exposing private method for testing
+test('should calculate levenshtein distance', () => {
+  const distance = validator._calculateLevenshteinDistance('button', 'buttn');
+  expect(distance).toBe(1);
+});
+```
+
+#### 8. Write Descriptive Test Names
+
+Test names should describe:
+- What is being tested
+- Under what conditions
+- What the expected outcome is
+
+```typescript
+// ✅ GOOD: Describes behavior clearly
+test('should reject timeline without container selector when using video provider', async () => {
+  // ...
+});
+
+test('should accept valid CSS class when class exists in imported stylesheet', async () => {
+  // ...
+});
+
+// ❌ BAD: Vague or implementation-focused names
+test('validates correctly', async () => { /* ... */ });
+test('calls checkTimeline', async () => { /* ... */ });
+test('test1', async () => { /* ... */ });
+```
+
+#### 9. Test Edge Cases and Error Conditions
+
+Don't just test the happy path. Include:
+
+- Boundary values (0, 1, max, empty)
+- Error conditions (invalid input, missing data)
+- Edge cases (Unicode, special characters, very long input)
+
+```typescript
+describe('Timeline time range validation', () => {
+  test('should accept valid range: 0s..5s', async () => { /* ... */ });
+  test('should accept zero duration: 0s..0s', async () => { /* ... */ });
+  test('should reject negative time: -1s..5s', async () => { /* ... */ });
+  test('should reject inverted range: 5s..0s', async () => { /* ... */ });
+  test('should handle very large times: 0s..999999s', async () => { /* ... */ });
+});
+```
+
+#### 10. Avoid Over-Mocking
+
+If a test requires many mocks, it may indicate:
+- The code under test has too many dependencies
+- You're testing at the wrong level (unit vs integration)
+- The test is coupled to implementation details
+
+```typescript
+// ⚠️ WARNING SIGN: Too many mocks
+test('should compile timeline', async () => {
+  vi.mock('./parser');
+  vi.mock('./validator');
+  vi.mock('./transformer');
+  vi.mock('./optimizer');
+  vi.mock('./emitter');
+  // This test is testing glue code, not behavior
+});
+
+// ✅ BETTER: Test at integration level with real collaborators
+test('should compile timeline', async () => {
+  const result = await compile(sourceCode);
+  expect(result).toMatchSnapshot();
+});
+```
+
+---
+
+### Project-Specific Best Practices
+
+The following best practices are specific to the Eligian project.
 
 ### 1. Always Use Test Context Helpers
 

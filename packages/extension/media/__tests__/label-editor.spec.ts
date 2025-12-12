@@ -1,22 +1,30 @@
 /**
  * Label Editor Webview Tests
  * Tests for centralized translation management
+ *
+ * This file tests the modal UI flow for adding translations.
+ * Core validation and state manipulation is tested via the actual
+ * production functions imported from label-editor-core.ts.
  */
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  addTranslationToAllGroups,
+  type EditorState,
+  type LabelGroup,
+  validateNewLanguageCode,
+} from '../label-editor-core.js';
 
 // Mock acquireVsCodeApi before importing the module
 const mockPostMessage = vi.fn();
-const mockGetState = vi.fn();
-const mockSetState = vi.fn();
 
-global.acquireVsCodeApi = vi.fn(() => ({
+(globalThis as Record<string, unknown>).acquireVsCodeApi = vi.fn(() => ({
   postMessage: mockPostMessage,
-  getState: mockGetState,
-  setState: mockSetState,
+  getState: vi.fn(),
+  setState: vi.fn(),
 }));
 
-// Helper functions that mirror the actual implementation
+// UI helper functions for modal interactions
 function simulateModalOpen(): void {
   const modal = document.getElementById('translation-modal');
   if (modal) {
@@ -41,60 +49,59 @@ function simulateModalClose(): void {
   }
 }
 
-function validateNewLanguageCode(code: string, state: any): string | null {
-  if (!code || code.trim().length === 0) {
-    return 'Language code cannot be empty';
-  }
-
-  if (!/^[a-z]{2,3}-[A-Z]{2,3}$/.test(code)) {
-    return 'Use format: en-US, nl-NL, etc.';
-  }
-
-  for (const group of state.labels) {
-    for (const translation of group.labels) {
-      if (translation.languageCode === code) {
-        return `Language code '${code}' already exists in one or more groups`;
-      }
-    }
-  }
-
-  return null;
+/**
+ * Create a minimal EditorState for testing
+ */
+function createTestState(labels: LabelGroup[]): EditorState {
+  return {
+    labels,
+    selectedGroupIndex: null,
+    validationErrors: new Map(),
+    isDirty: false,
+    filePath: '/test/labels.json',
+    focusedElement: null,
+  };
 }
 
-function addTranslationToAllGroups(languageCode: string, state: any): void {
-  for (const group of state.labels) {
-    const newTranslation = {
-      id: crypto.randomUUID(),
-      languageCode: languageCode,
-      label: '',
-    };
-    group.labels.push(newTranslation);
-  }
-  state.isDirty = true;
-  mockPostMessage({ type: 'update', labels: state.labels });
-}
-
-function handleModalConfirm(state: any): void {
+/**
+ * Simulates the modal confirm flow using actual core functions.
+ * This tests the integration between UI and core logic.
+ */
+function handleModalConfirm(
+  state: EditorState,
+  uuidGenerator: () => string
+): { newState: EditorState; error: string | null } {
   const input = document.getElementById('modal-language-code') as HTMLInputElement;
   const errorEl = document.getElementById('modal-error');
 
-  if (!input || !errorEl) return;
+  if (!input || !errorEl) return { newState: state, error: null };
 
   const languageCode = input.value.trim();
 
-  const error = validateNewLanguageCode(languageCode, state);
+  // Use actual core validation function
+  const error = validateNewLanguageCode(languageCode, state.labels);
   if (error) {
     errorEl.textContent = error;
     errorEl.style.display = 'block';
-    return;
+    return { newState: state, error };
   }
 
-  addTranslationToAllGroups(languageCode, state);
+  // Use actual core state manipulation function
+  const newState = addTranslationToAllGroups(state, languageCode, uuidGenerator);
+  mockPostMessage({ type: 'update', labels: newState.labels });
   simulateModalClose();
+
+  return { newState, error: null };
 }
 
 describe('Label Editor - Centralized Translation Management', () => {
+  // UUID generator for tests
+  let uuidCounter: number;
+  const testUuidGenerator = () => `test-uuid-${uuidCounter++}`;
+
   beforeEach(() => {
+    uuidCounter = 0;
+
     // Reset DOM
     document.body.innerHTML = `
       <div class="container">
@@ -135,11 +142,6 @@ describe('Label Editor - Centralized Translation Management', () => {
 
     // Reset mocks
     vi.clearAllMocks();
-
-    // Mock crypto.randomUUID for tests
-    if (global.crypto) {
-      vi.spyOn(global.crypto, 'randomUUID').mockImplementation(() => `test-uuid-${Math.random()}`);
-    }
   });
 
   describe('Modal Opening (User Story 1)', () => {
@@ -176,12 +178,10 @@ describe('Label Editor - Centralized Translation Management', () => {
 
   describe('Language Code Validation (User Story 2)', () => {
     test('should reject empty language code', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-          { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+        { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -190,7 +190,7 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = '';
 
-      handleModalConfirm(state);
+      handleModalConfirm(state, testUuidGenerator);
 
       expect(errorEl.style.display).toBe('block');
       expect(errorEl.textContent).toContain('cannot be empty');
@@ -198,12 +198,10 @@ describe('Label Editor - Centralized Translation Management', () => {
     });
 
     test('should reject duplicate language code', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-          { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+        { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -212,7 +210,7 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'en-US';
 
-      handleModalConfirm(state);
+      handleModalConfirm(state, testUuidGenerator);
 
       expect(errorEl.style.display).toBe('block');
       expect(errorEl.textContent).toContain('already exists');
@@ -220,12 +218,10 @@ describe('Label Editor - Centralized Translation Management', () => {
     });
 
     test('should accept new valid language code', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-          { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+        { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -234,7 +230,7 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'nl-NL';
 
-      handleModalConfirm(state);
+      handleModalConfirm(state, testUuidGenerator);
 
       expect(errorEl.style.display).toBe('none');
     });
@@ -242,13 +238,11 @@ describe('Label Editor - Centralized Translation Management', () => {
 
   describe('Add Translation to All Groups (User Story 3)', () => {
     test('should add translation with same language code to all groups', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-          { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
-          { id: 'group3', labels: [{ id: 'trans3', languageCode: 'en-US', label: 'Test' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+        { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
+        { id: 'group3', labels: [{ id: 'trans3', languageCode: 'en-US', label: 'Test' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -256,28 +250,26 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'nl-NL';
 
-      handleModalConfirm(state);
+      const { newState } = handleModalConfirm(state, testUuidGenerator);
 
-      expect(state.labels[0].labels).toHaveLength(2);
-      expect(state.labels[1].labels).toHaveLength(2);
-      expect(state.labels[2].labels).toHaveLength(2);
+      expect(newState.labels[0].labels).toHaveLength(2);
+      expect(newState.labels[1].labels).toHaveLength(2);
+      expect(newState.labels[2].labels).toHaveLength(2);
 
-      expect(state.labels[0].labels[1].languageCode).toBe('nl-NL');
-      expect(state.labels[1].labels[1].languageCode).toBe('nl-NL');
-      expect(state.labels[2].labels[1].languageCode).toBe('nl-NL');
+      expect(newState.labels[0].labels[1].languageCode).toBe('nl-NL');
+      expect(newState.labels[1].labels[1].languageCode).toBe('nl-NL');
+      expect(newState.labels[2].labels[1].languageCode).toBe('nl-NL');
 
-      expect(state.labels[0].labels[1].label).toBe('');
-      expect(state.labels[1].labels[1].label).toBe('');
-      expect(state.labels[2].labels[1].label).toBe('');
+      expect(newState.labels[0].labels[1].label).toBe('');
+      expect(newState.labels[1].labels[1].label).toBe('');
+      expect(newState.labels[2].labels[1].label).toBe('');
     });
 
     test('should generate unique IDs for each translation', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-          { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+        { id: 'group2', labels: [{ id: 'trans2', languageCode: 'en-US', label: 'World' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -285,10 +277,10 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'nl-NL';
 
-      handleModalConfirm(state);
+      const { newState } = handleModalConfirm(state, testUuidGenerator);
 
-      const id1 = state.labels[0].labels[1].id;
-      const id2 = state.labels[1].labels[1].id;
+      const id1 = newState.labels[0].labels[1].id;
+      const id2 = newState.labels[1].labels[1].id;
 
       expect(id1).toBeDefined();
       expect(id2).toBeDefined();
@@ -296,11 +288,9 @@ describe('Label Editor - Centralized Translation Management', () => {
     });
 
     test('should close modal after successful addition', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -308,17 +298,15 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'nl-NL';
 
-      handleModalConfirm(state);
+      handleModalConfirm(state, testUuidGenerator);
 
       expect(modal.style.display).toBe('none');
     });
 
     test('should send update message to extension after adding translations', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-        ],
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -326,7 +314,7 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'nl-NL';
 
-      handleModalConfirm(state);
+      handleModalConfirm(state, testUuidGenerator);
 
       expect(mockPostMessage).toHaveBeenCalledWith({
         type: 'update',
@@ -340,12 +328,9 @@ describe('Label Editor - Centralized Translation Management', () => {
     });
 
     test('should mark editor as dirty after adding translations', () => {
-      const state = {
-        labels: [
-          { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
-        ],
-        isDirty: false,
-      };
+      const state = createTestState([
+        { id: 'group1', labels: [{ id: 'trans1', languageCode: 'en-US', label: 'Hello' }] },
+      ]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -353,17 +338,15 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'nl-NL';
 
-      handleModalConfirm(state);
+      const { newState } = handleModalConfirm(state, testUuidGenerator);
 
-      expect(state.isDirty).toBe(true);
+      expect(newState.isDirty).toBe(true);
     });
   });
 
   describe('Edge Cases', () => {
     test('should handle groups with no existing translations', () => {
-      const state = {
-        labels: [{ id: 'group1', labels: [] }],
-      };
+      const state = createTestState([{ id: 'group1', labels: [] }]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -371,16 +354,14 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'en-US';
 
-      handleModalConfirm(state);
+      const { newState } = handleModalConfirm(state, testUuidGenerator);
 
-      expect(state.labels[0].labels).toHaveLength(1);
-      expect(state.labels[0].labels[0].languageCode).toBe('en-US');
+      expect(newState.labels[0].labels).toHaveLength(1);
+      expect(newState.labels[0].labels[0].languageCode).toBe('en-US');
     });
 
     test('should handle no groups case gracefully', () => {
-      const state = {
-        labels: [],
-      };
+      const state = createTestState([]);
 
       const modal = document.getElementById('translation-modal') as HTMLDivElement;
       const input = document.getElementById('modal-language-code') as HTMLInputElement;
@@ -388,7 +369,7 @@ describe('Label Editor - Centralized Translation Management', () => {
       modal.style.display = 'block';
       input.value = 'en-US';
 
-      handleModalConfirm(state);
+      handleModalConfirm(state, testUuidGenerator);
 
       expect(modal.style.display).toBe('none');
     });

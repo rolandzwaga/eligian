@@ -3,26 +3,22 @@
  * Runs in browser context, manages UI state and user interactions
  */
 
-// Type definitions matching types.ts from extension side
-interface LabelGroup {
-  id: string;
-  labels: Translation[];
-}
+// Import types and pure functions from core module
+import {
+  validateGroupId as coreValidateGroupId,
+  validateLabelText as coreValidateLabelText,
+  validateLanguageCode as coreValidateLanguageCode,
+  validateNewLanguageCode as coreValidateNewLanguageCode,
+  type EditorState,
+  type LabelGroup,
+  type Translation,
+  type ValidationError,
+} from './label-editor-core.js';
 
-interface Translation {
-  id: string; // UUID v4
-  languageCode: string;
-  label: string;
-}
+// Re-export types for this module's use
+export type { EditorState, LabelGroup, Translation, ValidationError };
 
-interface ValidationError {
-  groupId?: string;
-  translationId?: string;
-  field: string;
-  message: string;
-  code: string;
-}
-
+// Message types (webview-specific, not in core)
 type ToWebviewMessage =
   | { type: 'initialize'; labels: LabelGroup[]; filePath: string; selectedLabelId?: string }
   | { type: 'select-label'; labelId: string }
@@ -39,22 +35,6 @@ type ToExtensionMessage =
   | { type: 'validate'; labels: LabelGroup[] }
   | { type: 'check-usage'; groupId: string }
   | { type: 'request-delete'; groupId: string; index: number; usageFiles: string[] };
-
-// State management
-interface EditorState {
-  labels: LabelGroup[];
-  selectedGroupIndex: number | null;
-  validationErrors: Map<string, ValidationError[]>;
-  isDirty: boolean;
-  filePath: string;
-  // Focus restoration state
-  focusedElement: {
-    groupIndex?: number;
-    translationIndex?: number;
-    field?: 'groupId' | 'languageCode' | 'labelText';
-    cursorPosition?: number;
-  } | null;
-}
 
 const state: EditorState = {
   labels: [],
@@ -695,57 +675,27 @@ function displayValidationErrors(errors: ValidationError[]): void {
 }
 
 /**
- * Validate group ID (client-side)
+ * Validate group ID (client-side wrapper)
  * Returns error message or null if valid
  */
 function validateGroupId(groupId: string, currentIndex: number): string | null {
-  // Check for empty
-  if (!groupId || groupId.trim().length === 0) {
-    return 'Group ID cannot be empty';
-  }
-
-  // Check for invalid characters
-  if (!/^[a-zA-Z0-9._-]+$/.test(groupId)) {
-    return 'Group ID can only contain letters, numbers, dots, hyphens, and underscores';
-  }
-
-  // Check for duplicates
-  for (let i = 0; i < state.labels.length; i++) {
-    if (i !== currentIndex && state.labels[i].id === groupId) {
-      return `Group ID '${groupId}' already exists`;
-    }
-  }
-
-  return null;
+  return coreValidateGroupId(groupId, currentIndex, state.labels);
 }
 
 /**
- * Validate language code (client-side)
+ * Validate language code (client-side wrapper)
  * Returns error message or null if valid
  */
 function validateLanguageCode(code: string): string | null {
-  if (!code || code.trim().length === 0) {
-    return 'Language code cannot be empty';
-  }
-
-  // xx-XX pattern (e.g., en-US, nl-NL)
-  if (!/^[a-z]{2,3}-[A-Z]{2,3}$/.test(code)) {
-    return 'Use format: en-US, nl-NL, etc.';
-  }
-
-  return null;
+  return coreValidateLanguageCode(code);
 }
 
 /**
- * Validate label text (client-side)
+ * Validate label text (client-side wrapper)
  * Returns error message or null if valid
  */
 function validateLabelText(text: string): string | null {
-  if (!text || text.trim().length === 0) {
-    return 'Label text cannot be empty';
-  }
-
-  return null;
+  return coreValidateLabelText(text);
 }
 
 /**
@@ -874,30 +824,11 @@ function closeTranslationModal(): void {
 }
 
 /**
- * Validate language code against existing translations
+ * Validate language code against existing translations (client-side wrapper)
  * Returns error message or null if valid
  */
 function validateNewLanguageCode(code: string): string | null {
-  // Check for empty
-  if (!code || code.trim().length === 0) {
-    return 'Language code cannot be empty';
-  }
-
-  // Check format (xx-XX pattern)
-  if (!/^[a-z]{2,3}-[A-Z]{2,3}$/.test(code)) {
-    return 'Use format: en-US, nl-NL, etc.';
-  }
-
-  // Check for duplicates across all groups
-  for (const group of state.labels) {
-    for (const translation of group.labels) {
-      if (translation.languageCode === code) {
-        return `Language code '${code}' already exists in one or more groups`;
-      }
-    }
-  }
-
-  return null;
+  return coreValidateNewLanguageCode(code, state.labels);
 }
 
 /**
