@@ -2,32 +2,37 @@ import type { ParsedLabelsFile } from './types.js';
 import { isValidLanguageCode } from './types.js';
 
 /**
- * Parses Eligian labels JSON files and extracts language codes.
+ * Parses Eligian locales JSON files and extracts language codes.
  *
- * Labels files follow this structure:
+ * Feature 045: Updated to support ILocalesConfiguration format.
+ *
+ * Locales files follow this structure (Eligius 2.2.0+):
  * ```json
- * [
- *   {
- *     "id": "welcome-title",
- *     "labels": [
- *       {"id": "welcome-title-en", "languageCode": "en-US", "label": "Welcome"},
- *       {"id": "welcome-title-nl", "languageCode": "nl-NL", "label": "Welkom"}
- *     ]
- *   }
- * ]
+ * {
+ *   "en-US": { "nav": { "home": "Home" }, "button": { "submit": "Submit" } },
+ *   "nl-NL": { "nav": { "home": "Thuis" }, "button": { "submit": "Verzenden" } }
+ * }
+ * ```
+ *
+ * Or with external references:
+ * ```json
+ * {
+ *   "en-US": { "$ref": "./locales/en-US.json" },
+ *   "nl-NL": { "$ref": "./locales/nl-NL.json" }
+ * }
  * ```
  */
 export class LabelsParser {
   /**
-   * Extracts unique language codes from a labels JSON file.
+   * Extracts unique language codes from a locales JSON file.
    *
-   * @param filePath - URI or path to the labels file (for error reporting)
-   * @param content - JSON content of the labels file
-   * @returns ParsedLabelsFile with extracted language codes (sorted alphabetically and deduplicated)
+   * @param filePath - URI or path to the locales file (for error reporting)
+   * @param content - JSON content of the locales file
+   * @returns ParsedLabelsFile with extracted language codes (sorted alphabetically)
    *
    * @remarks
-   * - Language codes are automatically deduplicated across all label groups
-   * - Invalid or empty language codes are filtered out
+   * - Language codes are the top-level keys of the locales object
+   * - Invalid language codes (not matching xx-XX pattern) are filtered out
    * - Returns empty array if JSON is malformed or empty
    * - Sorts language codes alphabetically for consistent output
    */
@@ -35,36 +40,20 @@ export class LabelsParser {
     try {
       const parsed = JSON.parse(content);
 
-      // Handle non-array JSON
-      if (!Array.isArray(parsed)) {
+      // Handle non-object JSON (ILocalesConfiguration is an object)
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
         return {
           filePath,
           languageCodes: [],
           success: false,
-          error: 'JSON root must be an array',
+          error: 'JSON root must be an object with locale codes as keys',
         };
       }
 
-      // Extract language codes from all label groups
-      const languageCodeSet = new Set<string>();
-
-      for (const group of parsed) {
-        // Skip groups without labels array
-        if (!group.labels || !Array.isArray(group.labels)) {
-          continue;
-        }
-
-        // Extract language codes from labels
-        for (const label of group.labels) {
-          const code = label.languageCode;
-          if (isValidLanguageCode(code)) {
-            languageCodeSet.add(code.trim());
-          }
-        }
-      }
-
-      // Sort alphabetically for consistent output
-      const languageCodes = Array.from(languageCodeSet).sort();
+      // Extract language codes from object keys (the new format)
+      const languageCodes = Object.keys(parsed)
+        .filter(key => isValidLanguageCode(key))
+        .sort();
 
       return {
         filePath,

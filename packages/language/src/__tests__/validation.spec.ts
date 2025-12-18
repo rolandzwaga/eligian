@@ -1353,9 +1353,9 @@ describe('Eligian Grammar - Validation', () => {
       });
     });
 
-    describe('US3 - Labels import validation (Feature 033)', () => {
-      test('T029: should reject absolute path in labels import', async () => {
-        const code = "labels '/absolute/path/labels.json'";
+    describe('US3 - Locales import validation (Feature 045)', () => {
+      test('T029: should reject absolute path in locales import', async () => {
+        const code = "locales '/absolute/path/locales.json'";
         const { errors } = await ctx.parseAndValidate(code);
 
         expect(errors.length).toBeGreaterThan(0);
@@ -1364,21 +1364,21 @@ describe('Eligian Grammar - Validation', () => {
         ).toBe(true);
       });
 
-      test('T030: should reject duplicate labels imports', async () => {
+      test('T030: should reject duplicate locales imports', async () => {
         const code = `
-          labels './labels1.json'
-          labels './labels2.json'
+          locales './locales1.json'
+          locales './locales2.json'
         `;
         const { errors } = await ctx.parseAndValidate(code);
 
         expect(errors.length).toBeGreaterThan(0);
         expect(
-          errors.some(e => e.message.includes('Duplicate') && e.message.includes('labels'))
+          errors.some(e => e.message.includes('Duplicate') && e.message.includes('locales'))
         ).toBe(true);
       });
 
-      test('should accept single labels import', async () => {
-        const code = "labels './labels.json'";
+      test('should accept single locales import', async () => {
+        const code = "locales './locales.json'";
         const { errors } = await ctx.parseAndValidate(code);
 
         const duplicateErrors = errors.filter(e => e.message.includes('Duplicate'));

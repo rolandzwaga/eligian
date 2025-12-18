@@ -163,7 +163,7 @@ ImportStatement:
  * Only ONE of each type allowed per document.
  */
 DefaultImport:
-    type=('layout' | 'styles' | 'provider' | 'labels') path=STRING;
+    type=('layout' | 'styles' | 'provider' | 'locales') path=STRING;
 
 /**
  * Named Import - Reusable asset reference with identifier

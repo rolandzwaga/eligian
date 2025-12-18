@@ -55,8 +55,8 @@ async function openLabelEditorWithSelection(fileUri: vscode.Uri, labelId: string
   // Store the pending selection
   pendingSelections.set(fileUri.toString(), labelId);
 
-  // Open the label editor
-  await vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.labelEditor');
+  // Open the locale editor
+  await vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
 }
 
 /**

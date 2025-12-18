@@ -78,7 +78,7 @@ describe('Controller Validation (Feature 035, User Story 1)', () => {
 
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toContain('Missing required parameter');
-    expect(errors[0].message).toContain('labelId');
+    expect(errors[0].message).toContain('translationKey');
   });
 
   test('Too many parameters produces error (T007)', async () => {
@@ -105,7 +105,7 @@ describe('Controller Validation (Feature 035, User Story 1)', () => {
     const code = `languages {
   "en-US" "English"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `
@@ -145,7 +145,7 @@ ${minimalProgram({
     const code = `languages {
   "en-US" "English"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `
@@ -222,7 +222,7 @@ describe('Controller Label ID Validation (Feature 035, User Story 2)', () => {
   * "en-US" "English"
   "nl-NL" "Nederlands"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `
@@ -256,14 +256,14 @@ ${minimalProgram({
     expect(labelErrors).toHaveLength(0);
   });
 
-  test('Unknown label ID produces error (T015)', async () => {
+  test('Unknown translation key produces error (T015)', async () => {
     // Languages block must come FIRST, then imports, then actions/timelines
     // Syntax: languages { [*] "code" "label" } - * marks default
     const code = `languages {
   * "en-US" "English"
   "nl-NL" "Nederlands"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `
@@ -295,7 +295,7 @@ ${minimalProgram({
       ) ?? [];
 
     expect(errors).toHaveLength(1);
-    expect(errors[0].message).toContain('Unknown label ID');
+    expect(errors[0].message).toContain('Unknown translation key');
     expect(errors[0].message).toContain('unknown.label');
   });
 
@@ -306,7 +306,7 @@ ${minimalProgram({
   * "en-US" "English"
   "nl-NL" "Nederlands"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `
@@ -365,7 +365,7 @@ ${minimalProgram({
       ) ?? [];
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].message).toContain('no labels imported');
+    expect(errors[0].message).toContain('no locales imported');
   });
 
   test('Multiple LabelController calls validate independently (T020)', async () => {
@@ -375,7 +375,7 @@ ${minimalProgram({
   * "en-US" "English"
   "nl-NL" "Nederlands"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `
@@ -423,7 +423,7 @@ ${minimalProgram({
     const code = `languages {
   "en-US" "English"
 }
-labels "./labels.json"
+locales "./labels.json"
 ${minimalProgram({
   cssImport: false, // We handle imports manually
   actionBody: `

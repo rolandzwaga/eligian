@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eligius.dev/schemas/locales-configuration.json",
+  "title": "Eligius Locales Configuration",
+  "description": "JSON Schema for validating ILocalesConfiguration from Eligius 2.2.0+. Object keyed by locale codes (e.g., 'en-US'), values are nested translation objects or $ref external file references.",
+  "type": "object",
+  "minProperties": 1,
+  "patternProperties": {
+    "^[a-z]{2,3}-[A-Z]{2,3}$": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/localeData"
+        },
+        {
+          "$ref": "#/$defs/localeReference"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "localeData": {
+      "title": "Locale Data",
+      "description": "Nested translation data object. Keys are translation key segments, values are translation strings or nested objects.",
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "Translation text (may contain {{interpolation}} placeholders)"
+          },
+          {
+            "$ref": "#/$defs/localeData",
+            "description": "Nested translation object"
+          }
+        ]
+      }
+    },
+    "localeReference": {
+      "title": "Locale Reference",
+      "description": "External file reference using JSON Reference syntax",
+      "type": "object",
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "description": "Relative path to external locale JSON file",
+          "pattern": "^[^\\0]+\\.json$"
+        }
+      },
+      "required": ["$ref"],
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "en-US": {
+        "nav": {
+          "home": "Home",
+          "about": "About Us"
+        },
+        "button": {
+          "submit": "Submit",
+          "cancel": "Cancel"
+        }
+      },
+      "nl-NL": {
+        "nav": {
+          "home": "Thuis",
+          "about": "Over Ons"
+        },
+        "button": {
+          "submit": "Verzenden",
+          "cancel": "Annuleren"
+        }
+      }
+    },
+    {
+      "en-US": { "$ref": "./locales/en-US.json" },
+      "nl-NL": { "$ref": "./locales/nl-NL.json" },
+      "fr-FR": { "$ref": "./locales/fr-FR.json" }
+    }
+  ]
+}

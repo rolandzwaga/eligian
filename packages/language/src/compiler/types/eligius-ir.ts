@@ -16,7 +16,7 @@ import type {
   IEngineInfo,
   IEventActionConfiguration,
   ILabel,
-  ILanguageLabel,
+  ILocalesConfiguration,
   IOperationConfiguration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
@@ -37,7 +37,7 @@ export type {
   IEngineInfo,
   IEventActionConfiguration,
   ILabel,
-  ILanguageLabel,
+  ILocalesConfiguration,
   IOperationConfiguration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
@@ -86,18 +86,6 @@ export type SourceMap = {
  * Kept for backward compatibility during migration
  */
 export type EngineInfoIR = IEngineInfo;
-
-/**
- * T278: LabelIR now directly uses Eligius ILabel type
- * Re-exported for backward compatibility
- */
-export type LabelIR = ILabel;
-
-/**
- * T278: LanguageLabelIR now directly uses Eligius ILanguageLabel type
- * Re-exported for backward compatibility
- */
-export type LanguageLabelIR = ILanguageLabel;
 
 /**
  * T279: TimelineFlowIR now uses Eligius ITimelineFlow

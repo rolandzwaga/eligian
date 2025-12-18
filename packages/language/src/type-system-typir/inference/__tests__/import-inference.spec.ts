@@ -32,8 +32,8 @@ describe('Import Inference Rules (Unit)', () => {
       expect(result).toBe('media');
     });
 
-    it('should infer json type from labels keyword', () => {
-      const result = inferAssetTypeFromKeyword('labels');
+    it('should infer json type from locales keyword', () => {
+      const result = inferAssetTypeFromKeyword('locales');
       expect(result).toBe('json');
     });
   });

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${cspSource}; style-src 'unsafe-inline' ${cspSource}; img-src ${cspSource} https: data:; font-src ${cspSource};">
+    <title>Locale Editor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--vscode-font-family);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Split-view layout: 30% left, 70% right */
+        .container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .left-panel {
+            width: 30%;
+            border-right: 1px solid var(--vscode-panel-border);
+            display: flex;
+            flex-direction: column;
+            background-color: var(--vscode-sideBar-background);
+        }
+
+        .right-panel {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--vscode-editor-background);
+        }
+
+        /* Panel headers */
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--vscode-titleBar-activeBackground);
+            color: var(--vscode-titleBar-activeForeground);
+        }
+
+        /* Tree view styles (Feature 045) */
+        .key-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .tree-node {
+            user-select: none;
+        }
+
+        .tree-node-content {
+            padding: 4px 8px;
+            margin: 1px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background-color 0.1s;
+        }
+
+        .tree-node-content:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .tree-node-content.selected {
+            background-color: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+        }
+
+        .tree-node-content.branch {
+            font-weight: 500;
+        }
+
+        .tree-node-content.leaf {
+            font-weight: normal;
+        }
+
+        .tree-toggle {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: var(--vscode-foreground);
+            opacity: 0.7;
+        }
+
+        .tree-toggle.collapsed::before {
+            content: '▶';
+        }
+
+        .tree-toggle.expanded::before {
+            content: '▼';
+        }
+
+        .tree-toggle.leaf {
+            visibility: hidden;
+        }
+
+        .tree-node-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tree-node-actions {
+            display: none;
+            gap: 4px;
+        }
+
+        .tree-node-content:hover .tree-node-actions {
+            display: flex;
+        }
+
+        .tree-children {
+            margin-left: 16px;
+        }
+
+        .tree-children.collapsed {
+            display: none;
+        }
+
+        /* Legacy group list (backward compatibility) */
+        .groups-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .group-item {
+            padding: 12px;
+            margin-bottom: 4px;
+            background-color: var(--vscode-list-inactiveSelectionBackground);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.1s;
+        }
+
+        .group-item:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .group-item.selected {
+            background-color: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+        }
+
+        .group-item input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-family: var(--vscode-font-family);
+            font-size: inherit;
+            outline: none;
+        }
+
+        .group-item input:focus {
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-focusBorder);
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        /* Buttons */
+        button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--vscode-font-family);
+            font-size: 13px;
+            transition: background-color 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
+        button:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: 2px;
+        }
+
+        button.secondary {
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+
+        button.secondary:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        button.icon-button {
+            padding: 4px 8px;
+            min-width: 0;
+        }
+
+        button.small {
+            padding: 2px 6px;
+            font-size: 11px;
+        }
+
+        /* Locale table (Feature 045) */
+        .locale-table-container {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+        }
+
+        .locale-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .locale-table th,
+        .locale-table td {
+            border: 1px solid var(--vscode-panel-border);
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .locale-table th {
+            background-color: var(--vscode-titleBar-activeBackground);
+            font-weight: 600;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .locale-table th.key-column {
+            width: 200px;
+            min-width: 200px;
+        }
+
+        .locale-table td.key-cell {
+            font-family: var(--vscode-editor-font-family, monospace);
+            font-size: 12px;
+            color: var(--vscode-textLink-foreground);
+            background-color: var(--vscode-sideBar-background);
+        }
+
+        .locale-table td.translation-cell {
+            padding: 4px;
+        }
+
+        .locale-table td.translation-cell input {
+            width: 100%;
+            padding: 6px 8px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid transparent;
+            border-radius: 2px;
+            font-family: var(--vscode-font-family);
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .locale-table td.translation-cell input:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+        }
+
+        .locale-table td.translation-cell input:hover:not(:focus) {
+            border-color: var(--vscode-input-border);
+        }
+
+        .locale-table td.translation-cell input.missing {
+            background-color: var(--vscode-inputValidation-warningBackground);
+            border-color: var(--vscode-inputValidation-warningBorder);
+        }
+
+        .locale-table tr:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        /* Legacy translation cards (backward compatibility) */
+        .translations-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .translation-card {
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            font-family: var(--vscode-font-family);
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+        }
+
+        .translation-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        /* Error messages */
+        .error-message {
+            color: var(--vscode-errorForeground);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* Drag-and-drop feedback */
+        .group-item.dragging {
+            opacity: 0.5;
+        }
+
+        .group-item.drop-target {
+            border: 2px dashed var(--vscode-focusBorder);
+        }
+
+        /* Highlight effect for newly selected items (Feature 041) */
+        @keyframes highlight-pulse {
+            0% { box-shadow: 0 0 0 0 var(--vscode-focusBorder); }
+            50% { box-shadow: 0 0 8px 2px var(--vscode-focusBorder); }
+            100% { box-shadow: 0 0 0 0 var(--vscode-focusBorder); }
+        }
+
+        .group-item.highlight,
+        .tree-node-content.highlight {
+            animation: highlight-pulse 0.75s ease-in-out 2;
+        }
+
+        /* Focus indicators */
+        *:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: -1px;
+        }
+
+        button:focus,
+        input:focus,
+        select:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: 2px;
+        }
+
+        /* Validation error styles */
+        input.error {
+            border-color: var(--vscode-inputValidation-errorBorder);
+            background-color: var(--vscode-inputValidation-errorBackground);
+        }
+
+        .error-message {
+            color: var(--vscode-errorForeground);
+            font-size: 11px;
+            margin-top: 4px;
+            padding: 4px;
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border-left: 3px solid var(--vscode-inputValidation-errorBorder);
+            border-radius: 2px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+        }
+
+        .modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            margin: 100px auto;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+        }
+
+        .modal-content h2 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-content p {
+            margin: 0 0 16px 0;
+            color: var(--vscode-descriptionForeground);
+            font-size: 13px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel: Translation Keys (Tree View for new format, Groups List for legacy) -->
+        <div class="left-panel">
+            <!-- New Format: Translation Keys Tree View (Feature 045) -->
+            <div class="panel-header" id="keys-header">
+                <span>Translation Keys</span>
+                <div style="display: flex; gap: 8px;">
+                    <button id="add-locale-btn" class="small" title="Add Locale" aria-label="Add Locale" role="button">+ Locale</button>
+                    <button id="add-key-btn" class="small" title="Add Translation Key" aria-label="Add Translation Key" role="button">+ Key</button>
+                </div>
+            </div>
+            <div class="key-tree" id="key-tree" role="tree" aria-label="Translation Keys">
+                <!-- Tree nodes will be inserted here dynamically -->
+            </div>
+
+            <!-- Legacy Format: Label Groups (hidden when using new format) -->
+            <div class="panel-header" id="groups-header" style="display:none;">
+                <span>Label Groups</span>
+                <div style="display: flex; gap: 8px;">
+                    <button id="add-translation-btn" title="Add Translation to All Groups" aria-label="Add Translation to All Groups" role="button">+ Add Translation</button>
+                    <button id="add-group-btn" title="Add Label Id" aria-label="Add Label Id" role="button">+ Add Label</button>
+                </div>
+            </div>
+            <div class="groups-list" id="groups-list" role="list" aria-label="Label Groups" style="display:none;">
+                <!-- Group items will be inserted here dynamically -->
+            </div>
+        </div>
+
+        <!-- Right Panel: Locale Table (new format) or Translations (legacy) -->
+        <div class="right-panel">
+            <!-- New Format: Locale Table (Feature 045) -->
+            <div class="panel-header" id="locale-table-header">
+                <span id="selected-key-display">Select a key to edit translations</span>
+            </div>
+            <div class="locale-table-container" id="locale-table-container">
+                <div class="empty-state" id="locale-empty-state" role="status" aria-live="polite">
+                    Select a translation key from the tree to view and edit translations
+                </div>
+                <!-- Locale table will be inserted here dynamically -->
+            </div>
+
+            <!-- Legacy Format: Translations (hidden when using new format) -->
+            <div class="panel-header" id="translations-header-container" style="display:none;">
+                <span id="translations-header">Translations</span>
+            </div>
+            <div class="translations-container" id="translations-container" role="list" aria-label="Translations" style="display:none;">
+                <div class="empty-state" id="empty-state" role="status" aria-live="polite">
+                    Select a label group to view translations
+                </div>
+                <!-- Translation cards will be inserted here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding translation key -->
+    <div id="add-key-modal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Add Translation Key</h2>
+            <p>Enter a new translation key. Use dot notation for nested keys (e.g., "nav.home").</p>
+            <div class="form-group">
+                <label for="modal-new-key">Translation Key</label>
+                <input type="text" id="modal-new-key" placeholder="section.key" />
+                <div class="error-message" id="key-modal-error" style="display:none;"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="key-modal-cancel" class="secondary">Cancel</button>
+                <button id="key-modal-confirm">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding locale -->
+    <div id="add-locale-modal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Add Locale</h2>
+            <p>Enter the locale code to add (e.g., "fr-FR", "de-DE").</p>
+            <div class="form-group">
+                <label for="modal-new-locale">Locale Code</label>
+                <input type="text" id="modal-new-locale" placeholder="fr-FR" />
+                <div class="error-message" id="locale-modal-error" style="display:none;"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="locale-modal-cancel" class="secondary">Cancel</button>
+                <button id="locale-modal-confirm">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legacy Modal for adding translation to all groups -->
+    <div id="translation-modal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Add Translation to All Groups</h2>
+            <p>This will add a new translation with the same language code to all label groups.</p>
+            <div class="form-group">
+                <label for="modal-language-code">Language Code</label>
+                <input type="text" id="modal-language-code" placeholder="en-US" />
+                <div class="error-message" id="modal-error" style="display:none;"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="secondary">Cancel</button>
+                <button id="modal-confirm">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="${webviewUri}"></script>
+</body>
+</html>

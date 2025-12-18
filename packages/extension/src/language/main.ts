@@ -7,7 +7,7 @@ import {
   type CSSErrorParams,
   type CSSUpdatedParams,
   createEligianServices,
-  extractLabelMetadata,
+  extractTranslationKeys,
   findActionBelow,
   generateJSDocContent,
   HTML_IMPORTS_DISCOVERED_NOTIFICATION,
@@ -18,7 +18,7 @@ import {
   type LabelsUpdatedParams,
   type Program,
   parseCSS,
-  validateLabelsJSON,
+  validateLocalesJSON,
 } from '@eligian/language';
 import { DocumentState } from 'langium';
 import { startLanguageServer } from 'langium/lsp';
@@ -114,12 +114,12 @@ connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedPar
     const labelsContent = readFileSync(labelsFilePath, 'utf-8');
 
     // Validate labels JSON schema
-    const validationError = validateLabelsJSON(labelsContent, labelsFilePath);
+    const validationError = validateLocalesJSON(labelsContent, labelsFilePath);
 
     if (!validationError) {
       // Parse labels JSON to extract label metadata
       const labels = JSON.parse(labelsContent);
-      const metadata = extractLabelMetadata(labels);
+      const metadata = extractTranslationKeys(labels);
 
       // Update the labels registry with parsed metadata
       const labelRegistry = Eligian.labels.LabelRegistry;
@@ -248,15 +248,15 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
       processImports(documentUri, root, docDir, connection, cssConfig);
 
       // Process labels imports (one-to-one: document imports single labels file)
-      const labelsConfig: ImportProcessorConfig<ReturnType<typeof extractLabelMetadata>> = {
+      const labelsConfig: ImportProcessorConfig<ReturnType<typeof extractTranslationKeys>> = {
         importType: 'labels',
         parseFile: (content, filePath) => {
-          const validationError = validateLabelsJSON(content, filePath);
+          const validationError = validateLocalesJSON(content, filePath);
           if (validationError) {
             return []; // Return empty metadata on validation error
           }
           const labels = JSON.parse(content);
-          return extractLabelMetadata(labels);
+          return extractTranslationKeys(labels);
         },
         createEmptyMetadata: () => [],
         registry: {

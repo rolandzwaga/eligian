@@ -46,7 +46,7 @@
       },
       {
         "command": "eligian.openLabelEditor",
-        "title": "Eligian: Edit Labels",
+        "title": "Eligian: Edit Locales",
         "category": "Eligian",
         "icon": "$(edit)"
       }
@@ -94,11 +94,11 @@
     ],
     "customEditors": [
       {
-        "viewType": "eligian.labelEditor",
-        "displayName": "Label Editor",
+        "viewType": "eligian.localeEditor",
+        "displayName": "Locale Editor",
         "selector": [
           {
-            "filenamePattern": "**/labels*.json"
+            "filenamePattern": "**/*locale*.json"
           }
         ],
         "priority": "option"
@@ -130,9 +130,9 @@
     "vscode-languageserver": "9.0.1"
   },
   "devDependencies": {
-    "@types/jquery": "^3.5.33",
+    "@types/jquery": "3.5.33",
     "@types/vscode": "1.107.0",
-    "@vitest/ui": "4.0.15",
+    "@vitest/ui": "4.0.16",
     "concurrently": "9.2.1",
     "jsdom": "27.3.0"
   },

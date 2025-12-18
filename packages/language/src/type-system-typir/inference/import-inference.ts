@@ -31,7 +31,7 @@ import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
  * ```
  */
 export function inferAssetTypeFromKeyword(
-  keyword: 'layout' | 'styles' | 'provider' | 'labels'
+  keyword: 'layout' | 'styles' | 'provider' | 'locales'
 ): 'html' | 'css' | 'media' | 'json' {
   switch (keyword) {
     case 'layout':
@@ -40,7 +40,7 @@ export function inferAssetTypeFromKeyword(
       return 'css';
     case 'provider':
       return 'media';
-    case 'labels':
+    case 'locales':
       return 'json';
   }
 }

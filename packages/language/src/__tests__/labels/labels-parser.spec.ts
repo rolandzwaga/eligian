@@ -2,70 +2,56 @@ import { describe, expect, test } from 'vitest';
 import { LabelsParser } from '../../labels/labels-parser.js';
 import type { ParsedLabelsFile } from '../../labels/types.js';
 
+/**
+ * Feature 045: Updated to test ILocalesConfiguration format
+ *
+ * The new locales format is an object keyed by locale codes:
+ * {
+ *   "en-US": { "nav": { "home": "Home" } },
+ *   "nl-NL": { "nav": { "home": "Thuis" } }
+ * }
+ */
 describe('LabelsParser', () => {
   describe('extractLanguageCodes', () => {
-    test('should extract language codes from valid JSON with multiple languages', () => {
-      const validJSON = [
-        {
-          id: 'welcome-title',
-          labels: [
-            { id: 'welcome-title-en', languageCode: 'en-US', label: 'Welcome' },
-            { id: 'welcome-title-nl', languageCode: 'nl-NL', label: 'Welkom' },
-            { id: 'welcome-title-fr', languageCode: 'fr-FR', label: 'Bienvenue' },
-            { id: 'welcome-title-de', languageCode: 'de-DE', label: 'Willkommen' },
-          ],
-        },
-        {
-          id: 'goodbye-title',
-          labels: [
-            { id: 'goodbye-title-en', languageCode: 'en-US', label: 'Goodbye' },
-            { id: 'goodbye-title-nl', languageCode: 'nl-NL', label: 'Tot ziens' },
-          ],
-        },
-      ];
+    test('should extract language codes from ILocalesConfiguration format', () => {
+      const validJSON = {
+        'en-US': { nav: { home: 'Home' }, button: { submit: 'Submit' } },
+        'nl-NL': { nav: { home: 'Thuis' }, button: { submit: 'Verzenden' } },
+        'fr-FR': { nav: { home: 'Accueil' }, button: { submit: 'Soumettre' } },
+        'de-DE': { nav: { home: 'Startseite' }, button: { submit: 'Absenden' } },
+      };
 
       const parser = new LabelsParser();
       const result: ParsedLabelsFile = parser.extractLanguageCodes(
-        'file:///test/labels.json',
+        'file:///test/locales.json',
         JSON.stringify(validJSON)
       );
 
       expect(result.success).toBe(true);
-      expect(result.filePath).toBe('file:///test/labels.json');
+      expect(result.filePath).toBe('file:///test/locales.json');
       expect(result.languageCodes).toEqual(['de-DE', 'en-US', 'fr-FR', 'nl-NL']); // Sorted alphabetically
       expect(result.error).toBeUndefined();
     });
 
-    test('should deduplicate language codes across multiple label groups', () => {
-      const jsonWithDuplicates = [
-        {
-          id: 'group1',
-          labels: [
-            { id: 'label1', languageCode: 'en-US', label: 'Hello' },
-            { id: 'label2', languageCode: 'fr-FR', label: 'Bonjour' },
-          ],
-        },
-        {
-          id: 'group2',
-          labels: [
-            { id: 'label3', languageCode: 'en-US', label: 'World' },
-            { id: 'label4', languageCode: 'de-DE', label: 'Welt' },
-          ],
-        },
-      ];
+    test('should extract language codes from external reference format', () => {
+      const jsonWithRefs = {
+        'en-US': { $ref: './locales/en-US.json' },
+        'nl-NL': { $ref: './locales/nl-NL.json' },
+        'de-DE': { $ref: './locales/de-DE.json' },
+      };
 
       const parser = new LabelsParser();
       const result = parser.extractLanguageCodes(
-        'file:///test/labels.json',
-        JSON.stringify(jsonWithDuplicates)
+        'file:///test/locales.json',
+        JSON.stringify(jsonWithRefs)
       );
 
       expect(result.success).toBe(true);
-      expect(result.languageCodes).toEqual(['de-DE', 'en-US', 'fr-FR']); // Deduplicated and sorted
+      expect(result.languageCodes).toEqual(['de-DE', 'en-US', 'nl-NL']); // Sorted
     });
 
-    test('should return empty array for empty labels array', () => {
-      const emptyJSON = [];
+    test('should return empty array for empty object', () => {
+      const emptyJSON = {};
 
       const parser = new LabelsParser();
       const result = parser.extractLanguageCodes(
@@ -79,7 +65,7 @@ describe('LabelsParser', () => {
     });
 
     test('should return error for malformed JSON', () => {
-      const malformedJSON = '{ "id": "test" "missing-comma": true }';
+      const malformedJSON = '{ "en-US" "missing-colon": true }';
 
       const parser = new LabelsParser();
       const result = parser.extractLanguageCodes('file:///test/invalid.json', malformedJSON);
@@ -91,70 +77,75 @@ describe('LabelsParser', () => {
       expect(result.error).toContain('JSON');
     });
 
-    test('should handle JSON with missing languageCode fields gracefully', () => {
-      const jsonWithMissingCodes = [
+    test('should reject old array format (ILanguageLabel[])', () => {
+      const oldFormatJSON = [
         {
-          id: 'group1',
-          labels: [
-            { id: 'label1', languageCode: 'en-US', label: 'Hello' },
-            { id: 'label2', label: 'Missing code' }, // No languageCode
-          ],
+          id: 'welcome',
+          labels: [{ languageCode: 'en-US', label: 'Hello' }],
         },
       ];
 
       const parser = new LabelsParser();
       const result = parser.extractLanguageCodes(
-        'file:///test/partial.json',
-        JSON.stringify(jsonWithMissingCodes)
+        'file:///test/old-format.json',
+        JSON.stringify(oldFormatJSON)
       );
 
-      expect(result.success).toBe(true);
-      expect(result.languageCodes).toEqual(['en-US']); // Only valid codes extracted
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('must be an object');
     });
 
-    test('should handle JSON with empty labels arrays', () => {
-      const jsonWithEmptyLabels = [
-        {
-          id: 'group1',
-          labels: [],
-        },
-        {
-          id: 'group2',
-          labels: [{ id: 'label1', languageCode: 'fr-FR', label: 'Bonjour' }],
-        },
-      ];
+    test('should filter out invalid language codes', () => {
+      const jsonWithInvalidCodes = {
+        'en-US': { greeting: 'Hello' },
+        invalid: { greeting: 'Invalid' }, // Not a valid locale code pattern
+        '123': { greeting: 'Number' }, // Number key
+        'fr-FR': { greeting: 'Bonjour' },
+      };
 
       const parser = new LabelsParser();
       const result = parser.extractLanguageCodes(
-        'file:///test/labels.json',
-        JSON.stringify(jsonWithEmptyLabels)
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.languageCodes).toEqual(['fr-FR']);
-    });
-
-    test('should filter out invalid language codes (empty strings, whitespace)', () => {
-      const jsonWithInvalidCodes = [
-        {
-          id: 'group1',
-          labels: [
-            { id: 'label1', languageCode: 'en-US', label: 'Valid' },
-            { id: 'label2', languageCode: '', label: 'Empty code' },
-            { id: 'label3', languageCode: '   ', label: 'Whitespace code' },
-            { id: 'label4', languageCode: 'fr-FR', label: 'Valid' },
-          ],
-        },
-      ];
-
-      const parser = new LabelsParser();
-      const result = parser.extractLanguageCodes(
-        'file:///test/labels.json',
+        'file:///test/locales.json',
         JSON.stringify(jsonWithInvalidCodes)
       );
 
       expect(result.success).toBe(true);
       expect(result.languageCodes).toEqual(['en-US', 'fr-FR']); // Only valid codes
+    });
+
+    test('should handle mixed inline and reference entries', () => {
+      const mixedJSON = {
+        'en-US': { greeting: 'Hello', farewell: 'Goodbye' }, // inline
+        'nl-NL': { $ref: './nl-NL.json' }, // reference
+        'fr-FR': { greeting: 'Bonjour' }, // inline
+      };
+
+      const parser = new LabelsParser();
+      const result = parser.extractLanguageCodes(
+        'file:///test/locales.json',
+        JSON.stringify(mixedJSON)
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.languageCodes).toEqual(['en-US', 'fr-FR', 'nl-NL']);
+    });
+
+    test('should sort language codes alphabetically', () => {
+      const unsortedJSON = {
+        'nl-NL': { greeting: 'Hallo' },
+        'en-US': { greeting: 'Hello' },
+        'de-DE': { greeting: 'Hallo' },
+        'fr-FR': { greeting: 'Bonjour' },
+      };
+
+      const parser = new LabelsParser();
+      const result = parser.extractLanguageCodes(
+        'file:///test/locales.json',
+        JSON.stringify(unsortedJSON)
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.languageCodes).toEqual(['de-DE', 'en-US', 'fr-FR', 'nl-NL']);
     });
   });
 });

@@ -54,8 +54,8 @@ export function validateLabelID(
   if (availableLabelIDs.length === 0) {
     return {
       code: 'no_labels_import',
-      message: 'Label ID parameter used but no labels imported',
-      hint: "Add a labels import statement: labels './labels.json'",
+      message: 'Translation key parameter used but no locales imported',
+      hint: "Add a locales import statement: locales './locales.json'",
     };
   }
 
@@ -70,11 +70,11 @@ export function validateLabelID(
   const hint =
     suggestions.length > 0
       ? `Did you mean: '${suggestions[0]}'?`
-      : `Available label IDs: ${availableLabelIDs.slice(0, 5).join(', ')}${availableLabelIDs.length > 5 ? '...' : ''}`;
+      : `Available translation keys: ${availableLabelIDs.slice(0, 5).join(', ')}${availableLabelIDs.length > 5 ? '...' : ''}`;
 
   return {
     code: 'unknown_label_id',
-    message: `Unknown label ID: '${labelId}'`,
+    message: `Unknown translation key: '${labelId}'`,
     hint,
     labelId,
     suggestions,

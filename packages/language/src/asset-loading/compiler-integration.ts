@@ -9,12 +9,11 @@
  */
 
 import { dirname, resolve } from 'node:path';
-import type { ILanguageLabel } from 'eligius';
+import type { ILocalesConfiguration } from 'eligius';
 import type { Program } from '../generated/ast.js';
 import { isDefaultImport, isNamedImport } from '../utils/ast-helpers.js';
 import { getFileExtension } from '../utils/path-utils.js';
 import { getImports } from '../utils/program-helpers.js';
-import { validateLabelsJSON } from '../validators/label-import-validator.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
 import { HtmlValidator } from './html-validator.js';
@@ -39,16 +38,16 @@ export interface AssetLoadingResult {
   cssFiles: string[];
 
   /**
-   * Loaded labels JSON (from 'labels' import), or undefined if not present
+   * Loaded locales JSON (from 'locales' import), or undefined if not present
    */
-  labels?: ILanguageLabel[];
+  locales?: ILocalesConfiguration;
 
   /**
    * Import map containing all loaded assets
    * - layout: HTML content
    * - styles: CSS content
    * - provider: Media file path
-   * - labels: Labels JSON content
+   * - locales: Locales JSON content
    * - named imports: Content or paths
    */
   importMap: Record<string, string>;
@@ -63,8 +62,8 @@ export interface AssetLoadingResult {
  * Import information extracted from AST
  */
 interface ImportInfo {
-  type: 'layout' | 'styles' | 'provider' | 'labels' | 'named';
-  keyword?: 'layout' | 'styles' | 'provider' | 'labels';
+  type: 'layout' | 'styles' | 'provider' | 'locales' | 'named';
+  keyword?: 'layout' | 'styles' | 'provider' | 'locales';
   name?: string;
   path: string;
   assetType: 'html' | 'css' | 'media' | 'json';
@@ -133,7 +132,7 @@ export function loadProgramAssets(
   const result: AssetLoadingResult = {
     layoutTemplate: undefined,
     cssFiles: [],
-    labels: undefined,
+    locales: undefined,
     importMap: {},
     errors: [],
   };
@@ -177,22 +176,22 @@ export function loadProgramAssets(
         } else if (importInfo.type === 'provider') {
           // Provider path stays relative
           result.importMap.provider = importInfo.path;
-        } else if (importInfo.type === 'labels') {
-          // Validate labels JSON before parsing
-          const validationError = validateLabelsJSON(content, importInfo.path);
-          if (validationError) {
+        } else if (importInfo.type === 'locales') {
+          // Parse and store locales JSON
+          // TODO: Add locale validation in Phase 3 (US1)
+          try {
+            result.locales = JSON.parse(content) as ILocalesConfiguration;
+            result.importMap.locales = content;
+          } catch (parseError) {
+            const errorMessage = parseError instanceof Error ? parseError.message : 'Invalid JSON';
             result.errors.push({
               type: 'validation-error',
               filePath: importInfo.path,
               absolutePath,
               sourceLocation: importInfo.sourceLocation,
-              message: validationError.message,
-              hint: validationError.hint,
+              message: `Invalid JSON syntax in locale file: ${errorMessage}`,
+              hint: 'Check for missing commas, unclosed brackets, or trailing commas',
             });
-          } else {
-            // Parse and store labels JSON
-            result.labels = JSON.parse(content) as ILanguageLabel[];
-            result.importMap.labels = content;
           }
         } else if (importInfo.type === 'named' && importInfo.name) {
           // Named imports
@@ -238,7 +237,7 @@ function inferImportAssetType(
     if (importStmt.type === 'layout') return 'html';
     if (importStmt.type === 'styles') return 'css';
     if (importStmt.type === 'provider') return 'media';
-    if (importStmt.type === 'labels') return 'json';
+    if (importStmt.type === 'locales') return 'json';
   }
 
   // Named imports: use explicit type or infer from extension
@@ -281,9 +280,9 @@ function extractImports(program: Program, sourceFilePath: string): ImportInfo[] 
       column: importStmt.$cstNode?.range.start.character ?? 0,
     };
 
-    // Process default imports (layout, styles, provider, labels)
+    // Process default imports (layout, styles, provider, locales)
     if (isDefaultImport(importStmt)) {
-      const keyword = importStmt.type; // 'layout' | 'styles' | 'provider' | 'labels'
+      const keyword = importStmt.type; // 'layout' | 'styles' | 'provider' | 'locales'
       const assetType = inferImportAssetType(importStmt);
 
       imports.push({

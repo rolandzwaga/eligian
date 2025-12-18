@@ -37,14 +37,14 @@ describe('Controller Metadata Generation', () => {
     expect(actualNames).toEqual(expectedControllers.sort());
   });
 
-  test('LabelController has labelId parameter with type ParameterType:labelId', () => {
+  test('LabelController has translationKey parameter with type ParameterType:string', () => {
     const labelController = CONTROLLERS.find(c => c.name === 'LabelController');
     expect(labelController).toBeDefined();
 
-    const labelIdParam = labelController!.parameters.find(p => p.name === 'labelId');
-    expect(labelIdParam).toBeDefined();
-    expect(labelIdParam!.type).toBe('ParameterType:labelId');
-    expect(labelIdParam!.required).toBe(true);
+    const translationKeyParam = labelController!.parameters.find(p => p.name === 'translationKey');
+    expect(translationKeyParam).toBeDefined();
+    expect(translationKeyParam!.type).toBe('ParameterType:string');
+    expect(translationKeyParam!.required).toBe(true);
   });
 
   test('NavigationController has json parameter with type ParameterType:object', () => {
