@@ -52,6 +52,7 @@ export {
   type LabelEntry,
   type TranslationEntry,
 } from './labels/label-entry-generator.js';
+export { extractTranslationKeys } from './locales/translation-key-extractor.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // HTML validation exports

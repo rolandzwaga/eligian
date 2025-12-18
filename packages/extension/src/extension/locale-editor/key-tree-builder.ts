@@ -7,9 +7,16 @@
  * - serializeToLocalesConfiguration(): KeyTreeNode[] → ILocalesConfiguration
  */
 
-import type { ILocalesConfiguration, TLanguageCode, TLocaleData } from 'eligius';
+import type { ILocalesConfiguration, TLanguageCode, TLocaleData, TLocaleEntry } from 'eligius';
 import { isLocaleReference } from 'eligius';
 import type { KeyTreeNode } from './types.js';
+
+/**
+ * Type helper to safely index ILocalesConfiguration with string keys.
+ * ILocalesConfiguration uses TLanguageCode (template literal) as keys,
+ * but we often need to iterate with plain strings.
+ */
+type IndexableLocales = Record<string, TLocaleEntry>;
 
 /**
  * Check if a value is nested locale data (object with string or nested values)
@@ -60,13 +67,16 @@ function getTranslation(
   locale: string,
   keyParts: string[]
 ): string | undefined {
-  const entry = locales[locale];
+  const entry = (locales as IndexableLocales)[locale];
   if (!entry || isLocaleReference(entry)) return undefined;
 
-  let current: TLocaleData | string = entry;
+  let current: TLocaleData | string = entry as TLocaleData;
   for (const part of keyParts) {
-    if (typeof current === 'string') return undefined;
-    current = current[part];
+    if (typeof current === 'string' || typeof current === 'function') return undefined;
+    const next = current[part];
+    // Skip function values (parameterized translations)
+    if (typeof next === 'function') return undefined;
+    current = next as TLocaleData | string;
     if (current === undefined) return undefined;
   }
 
@@ -98,7 +108,7 @@ function buildTreeFromKeys(keys: string[], locales: ILocalesConfiguration): KeyT
   // Convert groups to tree nodes
   const nodes: KeyTreeNode[] = [];
   const localeKeys = Object.keys(locales).filter(
-    k => !isLocaleReference(locales[k])
+    k => !isLocaleReference((locales as IndexableLocales)[k])
   ) as TLanguageCode[];
 
   for (const [segment, childKeys] of groups) {
@@ -167,7 +177,7 @@ function buildTreeFromKeysWithPrefix(
   // Convert groups to tree nodes
   const nodes: KeyTreeNode[] = [];
   const localeKeys = Object.keys(locales).filter(
-    k => !isLocaleReference(locales[k])
+    k => !isLocaleReference((locales as IndexableLocales)[k])
   ) as TLanguageCode[];
 
   for (const [segment, childKeys] of groups) {
@@ -302,5 +312,5 @@ function buildLocaleDataFromTree(nodes: KeyTreeNode[], locale: TLanguageCode): T
  * Extract all locale codes from an ILocalesConfiguration.
  */
 export function extractLocales(locales: ILocalesConfiguration): string[] {
-  return Object.keys(locales).filter(k => !isLocaleReference(locales[k]));
+  return Object.keys(locales).filter(k => !isLocaleReference((locales as IndexableLocales)[k]));
 }

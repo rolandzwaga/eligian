@@ -5,8 +5,15 @@
  * All functions are immutable - they return new objects rather than mutating.
  */
 
-import type { ILocalesConfiguration, TLocaleData } from 'eligius';
-import type { KeyTreeNode, SerializableKeyTreeNode } from './types.js';
+import type { ILocalesConfiguration, TLocaleData, TLocaleEntry } from 'eligius';
+import type { KeyTreeNode, SerializableKeyTreeNode, TLanguageCode } from './types.js';
+
+/**
+ * Type helper to safely index ILocalesConfiguration with string keys.
+ * ILocalesConfiguration uses TLanguageCode (template literal) as keys,
+ * but we often need to iterate with plain strings.
+ */
+type IndexableLocales = Record<string, TLocaleEntry>;
 
 /**
  * Result of parsing ILocalesConfiguration from JSON.
@@ -78,7 +85,9 @@ export function serializableToKeyTree(serializable: SerializableKeyTreeNode[]): 
     fullKey: node.fullKey,
     isLeaf: node.isLeaf,
     children: serializableToKeyTree(node.children),
-    translations: node.translations ? new Map(Object.entries(node.translations)) : undefined,
+    translations: node.translations
+      ? new Map(Object.entries(node.translations) as [TLanguageCode, string][])
+      : undefined,
   }));
 }
 
@@ -96,10 +105,13 @@ function getAtPath(data: TLocaleData, path: string[]): string | TLocaleData | un
   let current: TLocaleData | string = data;
 
   for (const segment of path) {
-    if (typeof current === 'string' || current === undefined) {
+    if (typeof current === 'string' || typeof current === 'function' || current === undefined) {
       return undefined;
     }
-    current = current[segment];
+    const next = current[segment];
+    // Skip function values (parameterized translations)
+    if (typeof next === 'function') return undefined;
+    current = next as TLocaleData | string;
   }
 
   return current;
@@ -205,7 +217,7 @@ export function updateTranslationInConfig(
   locale: string,
   value: string
 ): ILocalesConfiguration {
-  const result = cloneConfig(config);
+  const result = cloneConfig(config) as IndexableLocales;
   const path = key.split('.');
 
   // Ensure locale exists
@@ -215,7 +227,7 @@ export function updateTranslationInConfig(
 
   setAtPath(result[locale] as TLocaleData, path, value);
 
-  return result;
+  return result as ILocalesConfiguration;
 }
 
 /**
@@ -227,7 +239,7 @@ export function updateTranslationInConfig(
  * @returns New configuration with added key
  */
 export function addKeyToConfig(config: ILocalesConfiguration, key: string): ILocalesConfiguration {
-  const result = cloneConfig(config);
+  const result = cloneConfig(config) as IndexableLocales;
   const path = key.split('.');
 
   for (const locale of Object.keys(result)) {
@@ -241,7 +253,7 @@ export function addKeyToConfig(config: ILocalesConfiguration, key: string): ILoc
     }
   }
 
-  return result;
+  return result as ILocalesConfiguration;
 }
 
 /**
@@ -256,7 +268,7 @@ export function deleteKeyFromConfig(
   config: ILocalesConfiguration,
   key: string
 ): ILocalesConfiguration {
-  const result = cloneConfig(config);
+  const result = cloneConfig(config) as IndexableLocales;
   const path = key.split('.');
 
   for (const locale of Object.keys(result)) {
@@ -266,7 +278,7 @@ export function deleteKeyFromConfig(
     deleteAtPath(entry as TLocaleData, path);
   }
 
-  return result;
+  return result as ILocalesConfiguration;
 }
 
 /**
@@ -282,7 +294,7 @@ export function renameKeyInConfig(
   oldKey: string,
   newKey: string
 ): ILocalesConfiguration {
-  const result = cloneConfig(config);
+  const result = cloneConfig(config) as IndexableLocales;
   const oldPath = oldKey.split('.');
   const newPath = newKey.split('.');
 
@@ -301,7 +313,7 @@ export function renameKeyInConfig(
     }
   }
 
-  return result;
+  return result as ILocalesConfiguration;
 }
 
 /**
@@ -309,7 +321,7 @@ export function renameKeyInConfig(
  */
 export function extractLocalesFromConfig(config: ILocalesConfiguration): string[] {
   return Object.keys(config).filter(key => {
-    const entry = config[key];
+    const entry = (config as IndexableLocales)[key];
     return typeof entry === 'object' && !('$ref' in entry);
   });
 }
