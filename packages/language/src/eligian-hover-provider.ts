@@ -424,7 +424,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         args[0]?.$type === 'StringLiteral' ? (args[0] as any).value : undefined;
 
       if (controllerName === 'LabelController') {
-        // Show label ID metadata
+        // Show translation key metadata
         const documentUri = document.uri.toString();
         const metadata = this.labelRegistry.findLabelMetadata(documentUri, stringValue);
 
@@ -434,8 +434,8 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
 
         const builder = new MarkdownBuilder();
 
-        // Label ID header
-        builder.heading(3, `Label: ${stringValue}`).blank();
+        // Translation key header
+        builder.heading(3, `Translation Key: ${stringValue}`).blank();
 
         // Metadata
         builder.text(`**Translations:** ${metadata.translationCount}`);
@@ -570,7 +570,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         // Format hover markdown
         const builder = new MarkdownBuilder();
         builder
-          .heading(3, `LabelID<${metadata.id}>`)
+          .heading(3, `TranslationKey<${metadata.id}>`)
           .blank()
           .text(`**Translations:** ${metadata.translationCount}`)
           .text(`**Languages:** ${metadata.languageCodes.join(', ')}`);

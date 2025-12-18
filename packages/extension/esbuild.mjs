@@ -67,9 +67,9 @@ const webviewCtx = await esbuild.context({
   plugins,
 });
 
-// Build label editor webview script (Browser)
-const labelEditorCtx = await esbuild.context({
-  entryPoints: ['media/label-editor.ts'],
+// Build locale editor webview script (Browser)
+const localeEditorCtx = await esbuild.context({
+  entryPoints: ['media/locale-editor.ts'],
   outdir: 'out/media',
   bundle: true,
   target: 'es2020',
@@ -88,12 +88,12 @@ const labelEditorCtx = await esbuild.context({
 if (watch) {
   await ctx.watch();
   await webviewCtx.watch();
-  await labelEditorCtx.watch();
+  await localeEditorCtx.watch();
 } else {
   await ctx.rebuild();
   await webviewCtx.rebuild();
-  await labelEditorCtx.rebuild();
+  await localeEditorCtx.rebuild();
   ctx.dispose();
   webviewCtx.dispose();
-  labelEditorCtx.dispose();
+  localeEditorCtx.dispose();
 }

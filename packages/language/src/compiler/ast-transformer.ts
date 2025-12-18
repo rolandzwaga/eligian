@@ -71,7 +71,6 @@ import type {
   ITimelineActionConfiguration,
   ITimelineConfiguration,
   JsonValue,
-  LanguageLabelIR,
   OperationConfigIR,
   SourceMap,
   TimeExpression,
@@ -413,7 +412,7 @@ export const transformAST = (
       layoutTemplate,
       cssFiles: assets?.cssFiles ?? [], // Use loaded CSS files from asset imports
       availableLanguages: languagesConfig.availableLanguages, // T012: Use transformed availableLanguages
-      labels: assets?.labels ?? defaults.labels, // Use loaded labels from labels import
+      locales: assets?.locales, // Use loaded locales from locales import
       initActions: eligiusInitActions,
       actions: eligiusActions,
       eventActions: eligiusEventActions,
@@ -520,7 +519,6 @@ function createDefaultConfiguration() {
     availableLanguages: [
       { id: crypto.randomUUID(), languageCode: 'en-US' as TLanguageCode, label: 'English' },
     ] as ILabel[],
-    labels: [] as LanguageLabelIR[],
   };
 }
 
@@ -1593,9 +1591,9 @@ const transformOperationStatement = (
     switch (stmt.$type) {
       case 'OperationCall': {
         // Feature 035 T011: Transform addController calls
-        // addController('LabelController', "label.id") →
+        // addController('LabelController', "nav.home") →
         //   getControllerInstance({ systemName: 'LabelController' })
-        //   addControllerToElement({ labelId: "label.id" })
+        //   addControllerToElement({ translationKey: "nav.home" })
         const operationName = getOperationCallName(stmt);
 
         if (operationName === 'addController') {

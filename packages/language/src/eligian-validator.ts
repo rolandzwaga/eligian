@@ -45,8 +45,10 @@ import type {
 } from './generated/ast.js';
 import { isLibraryImport } from './generated/ast.js';
 import { extractLanguageCodes } from './labels/index.js';
+import { extractTranslationKeys } from './locales/translation-key-extractor.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
-import { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
+// TODO: Feature 045 - Remove legacy label validation, replace with locale validation in Phase 3
+// import { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
 import { validateLabelID } from './type-system-typir/validation/label-id-validation.js';
 import type { MissingLabelIDData, MissingLabelsFileData } from './types/code-actions.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
@@ -113,7 +115,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
       validator.checkCSSImports, // Feature 013 T016: Extract and register CSS imports
-      validator.checkLabelsImports, // Feature 034: Extract and register labels imports
+      validator.checkLocalesImports, // Feature 045: Extract and register locales imports
     ],
     Library: [
       validator.checkLibraryContent, // T021-T024: US1 - Validate library content constraints
@@ -1823,8 +1825,8 @@ export class EligianValidator {
    * Helper to ensure labels imports are registered before validation
    *
    * Langium validators can run in any order, so we need to lazily initialize
-   * the label registry if it hasn't been populated yet. This is called from both:
-   * 1. checkLabelsImports (program-level) - initial registration
+   * the locales registry if it hasn't been populated yet. This is called from both:
+   * 1. checkLocalesImports (program-level) - initial registration
    * 2. checkControllerLabelParameter (operation-level) - ensure registered before validating
    * 3. checkLabelIDParameter (operation-level) - ensure registered before validating
    *
@@ -1841,97 +1843,74 @@ export class EligianValidator {
       return; // Already registered
     }
 
-    // Find labels imports and register them (same logic as checkLabelsImports)
-    const labelsImports = getImports(program)
+    // Find locales imports and register them
+    // TODO: Feature 045 - Implement locale registry population in Phase 3
+    const localesImports = getImports(program)
       .filter(isDefaultImport)
-      .filter(imp => imp.type === 'labels');
+      .filter(imp => imp.type === 'locales');
 
-    if (labelsImports.length === 0) {
-      return; // No labels to register
+    if (localesImports.length === 0) {
+      return; // No locales to register
     }
 
-    // Resolve and load labels files
-    const docPath = URI.parse(documentUri).fsPath;
-    const docDir = path.dirname(docPath);
-
-    for (const labelsImport of labelsImports) {
-      if (!labelsImport.path) continue;
-
-      const labelsPath = labelsImport.path.replace(/^["']|["']$/g, '');
-      const cleanPath = labelsPath.startsWith('./') ? labelsPath.substring(2) : labelsPath;
-      const absolutePath = path.join(docDir, cleanPath);
-      const labelsFileUri = URI.file(absolutePath).toString();
-
-      try {
-        const assets = loadProgramAssets(program, docPath);
-        if (assets.labels && Array.isArray(assets.labels)) {
-          const metadata = extractLabelMetadata(assets.labels);
-          labelRegistry.updateLabelsFile(labelsFileUri, metadata);
-          labelRegistry.registerImports(documentUri, labelsFileUri);
-        }
-      } catch (_error) {
-        // Skip if loading fails
-      }
-    }
+    // TODO: Feature 045 - Locale registry implementation pending
+    // The locale registry will be implemented in Phase 3 (US1)
   }
 
   /**
-   * Feature 034: Extract and register labels imports
+   * Feature 045: Extract and register locales imports
    *
-   * Detects labels imports in the program, loads the labels JSON file,
-   * extracts label group metadata, and populates the label registry.
-   * This enables label ID validation in operation parameters.
+   * Detects locales imports in the program, loads the locales JSON file,
+   * extracts translation key metadata, and populates the locale registry.
+   * This enables translation key validation in operation parameters.
+   *
+   * TODO: Full implementation in Phase 3 (US1)
    *
    * @param program - AST Program node
    * @param accept - Validation acceptor for reporting errors
    */
-  checkLabelsImports(program: Program, accept: ValidationAcceptor): void {
+  checkLocalesImports(program: Program, accept: ValidationAcceptor): void {
     if (!this.services) return;
 
-    const labelRegistry = this.services.labels.LabelRegistry;
     const documentUri = program.$document?.uri?.toString();
     if (!documentUri) return;
 
-    // Find labels imports (type='labels')
-    const labelsImports = getImports(program)
+    // Find locales imports (type='locales')
+    const localesImports = getImports(program)
       .filter(isDefaultImport)
-      .filter(imp => imp.type === 'labels');
+      .filter(imp => imp.type === 'locales');
 
-    // If no labels imports, clear registry for this document and return
-    if (labelsImports.length === 0) {
-      labelRegistry.clearDocument(documentUri);
+    // If no locales imports, return early
+    if (localesImports.length === 0) {
       return;
     }
 
-    // Feature 037: Validate that languages block exists when labels are imported
+    // Feature 045: Validate that languages block exists when locales are imported
     if (!program.languages) {
-      for (const labelsImport of labelsImports) {
+      for (const localesImport of localesImports) {
         accept(
           'error',
-          'Labels import requires a languages block to declare available languages.',
+          'Locales import requires a languages block to declare available languages.',
           {
-            node: labelsImport,
+            node: localesImport,
           }
         );
       }
-      return; // Don't process labels without languages block
+      return; // Don't process locales without languages block
     }
 
-    // Resolve labels file path to absolute URI
+    // Resolve locales file path
     const docPath = URI.parse(documentUri).fsPath;
     const docDir = path.dirname(docPath);
 
-    for (const labelsImport of labelsImports) {
-      if (!labelsImport.path) continue;
+    for (const localesImport of localesImports) {
+      if (!localesImport.path) continue;
 
-      const labelsPath = labelsImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
-
-      // Resolve to absolute path (T004: Path normalization using node:path)
-      const cleanPath = labelsPath.startsWith('./') ? labelsPath.substring(2) : labelsPath;
+      const localesPath = localesImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
+      const cleanPath = localesPath.startsWith('./') ? localesPath.substring(2) : localesPath;
       const absolutePath = path.join(docDir, cleanPath);
-      const labelsFileUri = URI.file(absolutePath).toString();
 
-      // Feature 039 - T003: Check if labels file exists
+      // Check if locales file exists
       if (!fs.existsSync(absolutePath)) {
         // Extract language codes from languages block if present
         const languageCodes = program.languages?.entries?.map(entry => entry.code) || [];
@@ -1939,36 +1918,41 @@ export class EligianValidator {
 
         // Create diagnostic data for code action
         const diagnosticData: MissingLabelsFileData = {
-          importPath: labelsPath,
+          importPath: localesPath,
           resolvedPath: absolutePath,
           hasLanguagesBlock,
           languageCodes,
         };
 
         // Report missing file with diagnostic code for quick fix
-        accept('error', `Labels file not found: ${labelsPath}`, {
-          node: labelsImport,
-          code: MISSING_LABELS_FILE_CODE,
+        accept('error', `Locales file not found: ${localesPath}`, {
+          node: localesImport,
+          code: MISSING_LABELS_FILE_CODE, // Reuse existing code for now
           data: diagnosticData,
         });
-        continue; // Skip registry population for missing file
       }
 
-      try {
-        // Load program assets (includes labels JSON)
-        const assets = loadProgramAssets(program, docPath);
+      // Feature 045 Phase 3 - Load locale file, extract keys, populate registry
+      if (fs.existsSync(absolutePath)) {
+        try {
+          const content = fs.readFileSync(absolutePath, 'utf-8');
+          const localeData = JSON.parse(content);
 
-        // Extract label metadata from loaded labels
-        if (assets.labels && Array.isArray(assets.labels)) {
-          const metadata = extractLabelMetadata(assets.labels);
+          // Extract translation keys from locale data
+          const translationKeys = extractTranslationKeys(localeData);
 
-          // Update registry with label metadata
-          labelRegistry.updateLabelsFile(labelsFileUri, metadata);
-          labelRegistry.registerImports(documentUri, labelsFileUri);
+          // Populate the label registry with extracted keys
+          const labelRegistry = this.services.labels.LabelRegistry;
+          const fileUri = URI.file(absolutePath).toString();
+          labelRegistry.updateLabelsFile(fileUri, translationKeys);
+          labelRegistry.registerImports(documentUri, fileUri);
+        } catch (e) {
+          // JSON parse errors or other issues - report as warning
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          accept('warning', `Failed to parse locales file: ${errorMessage}`, {
+            node: localesImport,
+          });
         }
-      } catch (_error) {
-        // Errors loading labels file are handled by existing asset loading validation
-        // We just skip registry population if loading fails
       }
     }
   }

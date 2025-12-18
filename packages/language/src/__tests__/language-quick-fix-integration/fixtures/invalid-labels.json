@@ -1,12 +1,6 @@
-[
-  {
-    "id": "broken-label",
-    "labels": [
-      {
-        "id": "broken-en"
-        "languageCode": "en-US",  // Missing comma - invalid JSON
-        "label": "Broken"
-      }
-    ]
+{
+  "en-US": {
+    "greeting": "Hello"
+    "farewell": "Goodbye"
   }
-]
+}

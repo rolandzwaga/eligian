@@ -19,11 +19,11 @@ import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
 import { HTMLWatcherManager } from './html-watcher.js';
-import { LabelEditorProvider } from './label-editor/LabelEditorProvider.js';
 import { createLabelEntry } from './label-entry-creator.js';
 import { createLabelsFile } from './label-file-creator.js';
-import { LabelLinkProvider } from './label-link-provider.js';
 import { LabelsWatcherManager } from './labels-watcher.js';
+import { LocaleEditorProvider } from './locale-editor/LocaleEditorProvider.js';
+import { LocaleLinkProvider } from './locale-link-provider.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
@@ -114,28 +114,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const diagnostics = PreviewPanel.initializeDiagnostics();
   context.subscriptions.push(diagnostics);
 
-  // T016: Register custom editor provider for label JSON files (Feature 036 - User Story 1)
-  const labelEditorProvider = new LabelEditorProvider(context.extensionUri);
+  // T016: Register custom editor provider for locale JSON files (Feature 036 - User Story 1)
+  const localeEditorProvider = new LocaleEditorProvider(context.extensionUri);
   context.subscriptions.push(
-    vscode.window.registerCustomEditorProvider('eligian.labelEditor', labelEditorProvider, {
+    vscode.window.registerCustomEditorProvider('eligian.localeEditor', localeEditorProvider, {
       webviewOptions: {
         retainContextWhenHidden: true,
       },
     })
   );
 
-  // T017: Register document link provider for label imports (Feature 036 - User Story 1)
+  // T017: Register document link provider for locale imports (Feature 036 - User Story 1)
   // Uses DocumentLinkProvider instead of DefinitionProvider to avoid opening on hover
-  const linkProvider = new LabelLinkProvider();
+  const linkProvider = new LocaleLinkProvider();
   context.subscriptions.push(
     vscode.languages.registerDocumentLinkProvider({ language: 'eligian' }, linkProvider)
   );
 
-  // Register command to open label files in Label Editor (used by DocumentLinkProvider)
+  // Register command to open locale files in Locale Editor (used by DocumentLinkProvider)
   context.subscriptions.push(
-    vscode.commands.registerCommand('eligian.openLabelFile', (fileUriString: string) => {
+    vscode.commands.registerCommand('eligian.openLocaleFile', (fileUriString: string) => {
       const fileUri = vscode.Uri.parse(fileUriString);
-      vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.labelEditor');
+      vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
     })
   );
 
@@ -152,7 +152,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(registerPreviewCommand(context));
 
   // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
-  context.subscriptions.push(registerOpenLabelEditorCommand());
+  context.subscriptions.push(registerOpenLocaleEditorCommand());
 
   // Feature 039 - T011: Register "Create Labels File" command
   context.subscriptions.push(
@@ -468,9 +468,9 @@ function registerJSDocAutoCompletion(_client: LanguageClient): any {
 
 /**
  * Register the "Edit Labels" command (T018 - Feature 036 - User Story 1)
- * Opens label JSON files in the custom Label Editor
+ * Opens locale JSON files in the custom Locale Editor
  */
-function registerOpenLabelEditorCommand(): vscode.Disposable {
+function registerOpenLocaleEditorCommand(): vscode.Disposable {
   return vscode.commands.registerCommand('eligian.openLabelEditor', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -488,12 +488,12 @@ function registerOpenLabelEditorCommand(): vscode.Disposable {
     const position = editor.selection.active;
     const line = document.lineAt(position).text;
 
-    // Check if line matches label import pattern
-    const pattern = /labels\s+"([^"]+)"/;
+    // Check if line matches locales import pattern
+    const pattern = /locales\s+"([^"]+)"/;
     const match = pattern.exec(line);
 
     if (!match) {
-      vscode.window.showErrorMessage('Cursor is not on a label import statement');
+      vscode.window.showErrorMessage('Cursor is not on a locales import statement');
       return;
     }
 
@@ -506,9 +506,9 @@ function registerOpenLabelEditorCommand(): vscode.Disposable {
       const labelFileUri = vscode.Uri.joinPath(documentDir, relativePath);
 
       // Open with custom editor
-      await vscode.commands.executeCommand('vscode.openWith', labelFileUri, 'eligian.labelEditor');
+      await vscode.commands.executeCommand('vscode.openWith', labelFileUri, 'eligian.localeEditor');
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to open label file: ${error}`);
+      vscode.window.showErrorMessage(`Failed to open locale file: ${error}`);
     }
   });
 }

@@ -193,14 +193,14 @@ describe('Import Validation Rules (Unit)', () => {
   });
 
   describe('T019-3: Edge cases', () => {
-    it('should handle duplicate labels imports', async () => {
+    it('should handle duplicate locales imports', async () => {
       const code = programWithImports(`
-        labels './labels1.json'
-        labels './labels2.json'
+        locales './locales1.json'
+        locales './locales2.json'
       `);
       const { errors } = await parseAndValidate(code);
 
-      const duplicateErrors = errors.filter(e => e.message.includes("Duplicate 'labels'"));
+      const duplicateErrors = errors.filter(e => e.message.includes("Duplicate 'locales'"));
       expect(duplicateErrors.length).toBeGreaterThan(0);
     });
 

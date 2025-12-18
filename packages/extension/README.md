@@ -180,6 +180,97 @@ timeline raf {
 
 **Result**: Open preview, see styled content. Edit CSS, see changes instantly without restarting timeline!
 
+## Visual Locale Editor
+
+The extension includes a visual editor for managing translation locale files used with Eligius's `LabelController`.
+
+### Opening the Editor
+
+1. Create or open a locale JSON file (e.g., `locales.json`)
+2. Right-click the file and select **"Open with Locale Editor"**
+3. Or use the command palette: **"Eligian: Open Locale Editor"**
+
+### Editor Features
+
+**Tree View Navigation**:
+- Translation keys displayed in a hierarchical tree (e.g., `nav.home.button`)
+- Expand/collapse branches for easy navigation
+- Click a key to select and edit its translations
+
+**Multi-Locale Support**:
+- Each locale (e.g., `en-US`, `nl-NL`) displayed as a column
+- Inline editing for translations
+- Add new locales with the "Add Language" button
+
+**Key Management**:
+- Add new translation keys with dot-notation (e.g., `nav.contact`)
+- Rename keys while preserving all translations
+- Delete keys with usage tracking warnings
+
+**Usage Tracking**:
+- See which `.eligian` files reference each translation key
+- Usage count displayed as badges next to keys
+- Hover for detailed file list
+
+### Supported Formats
+
+The editor supports two JSON formats:
+
+**New Format (ILocalesConfiguration)**:
+```json
+{
+  "en-US": {
+    "nav": {
+      "home": "Home",
+      "about": "About"
+    }
+  },
+  "nl-NL": {
+    "nav": {
+      "home": "Thuis",
+      "about": "Over"
+    }
+  }
+}
+```
+
+**Legacy Format (LabelGroup[])**:
+```json
+[
+  {
+    "id": "nav.home",
+    "labels": [
+      { "id": "uuid", "languageCode": "en-US", "label": "Home" },
+      { "id": "uuid", "languageCode": "nl-NL", "label": "Thuis" }
+    ]
+  }
+]
+```
+
+### Validation
+
+Real-time validation for:
+- Language code format (`xx-XX` pattern, e.g., `en-US`)
+- Translation key format (alphanumeric, dots, underscores, hyphens)
+- Duplicate key detection
+- Empty translation warnings
+
+### Using Locales in Eligian
+
+Import locale files in your `.eligian` code:
+
+```eligian
+locales "./locales.json"
+
+timeline raf {
+  0..5: {
+    addController("LabelController", "nav.home", { selector: "#title" })
+  }
+}
+```
+
+The `LabelController` will display the translation for the user's locale.
+
 ## Compilation Output
 
 When you compile, the extension:

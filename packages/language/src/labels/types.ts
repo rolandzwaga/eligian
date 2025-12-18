@@ -148,12 +148,18 @@ export const DEFAULT_LANGUAGE_MARKER = '*';
 export const LANGUAGE_BLOCK_TRAILING_NEWLINES = '\n\n';
 
 /**
+ * Pattern for validating locale codes (e.g., 'en-US', 'nl-NL', 'fr-FR')
+ * Matches: 2-3 lowercase letters, hyphen, 2-3 uppercase letters
+ */
+const LOCALE_CODE_PATTERN = /^[a-z]{2,3}-[A-Z]{2,3}$/;
+
+/**
  * Type guard for validating language code format
  * @param code - Potential language code string
- * @returns True if code matches expected format (non-empty string)
+ * @returns True if code matches locale pattern (e.g., 'en-US', 'nl-NL')
  */
 export function isValidLanguageCode(code: unknown): code is string {
-  return typeof code === 'string' && code.trim().length > 0;
+  return typeof code === 'string' && LOCALE_CODE_PATTERN.test(code);
 }
 
 // =============================================================================

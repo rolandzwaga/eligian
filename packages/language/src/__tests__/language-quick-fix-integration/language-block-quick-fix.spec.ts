@@ -1,13 +1,24 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import type { CodeAction } from 'vscode-languageserver';
 import { CodeActionKind } from 'vscode-languageserver';
 import { createTestContext, setupCSSRegistry, type TestContext } from '../test-helpers.js';
 
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Feature 045: Updated to use 'locales' keyword instead of 'labels'
+ */
 describe('Language Block Quick Fix - Integration Tests', () => {
   let ctx: TestContext;
   const fixturesDir = path.join(__dirname, 'fixtures');
+
+  // Helper to get fixture path for use in DSL code
+  const getFixturePath = (filename: string) => path.join(fixturesDir, filename).replace(/\\/g, '/');
 
   beforeAll(async () => {
     ctx = createTestContext();
@@ -28,9 +39,9 @@ describe('Language Block Quick Fix - Integration Tests', () => {
   });
 
   describe('T013: Quick Fix Availability Detection', () => {
-    test('should provide quick fix when labels imported but no language block exists', async () => {
+    test('should provide quick fix when locales imported but no language block exists', async () => {
       const program = `
-        labels "./fixtures/valid-labels.json"
+        locales "${getFixturePath('valid-labels.json')}"
 
         action testAction() [
           selectElement("#test")
@@ -69,7 +80,7 @@ describe('Language Block Quick Fix - Integration Tests', () => {
   "nl-NL" "Dutch"
 }
 
-labels "./fixtures/valid-labels.json"
+locales "${getFixturePath('valid-labels.json')}"
 
 action testAction() [
   selectElement("#test")
@@ -97,7 +108,7 @@ action testAction() [
       expect(languageBlockFix).toBeUndefined();
     });
 
-    test('should NOT provide quick fix when no labels are imported', async () => {
+    test('should NOT provide quick fix when no locales are imported', async () => {
       const program = `
         action testAction() [
           selectElement("#test")
@@ -127,31 +138,24 @@ action testAction() [
     });
   });
 
-  describe('T014: Valid Labels File Parsing', () => {
-    test('should extract language codes from valid labels file', async () => {
-      const validLabelsPath = path.join(fixturesDir, 'valid-labels.json');
-      const validLabelsContent = fs.readFileSync(validLabelsPath, 'utf-8');
-      const labelsData = JSON.parse(validLabelsContent);
+  describe('T014: Valid Locales File Parsing', () => {
+    test('should extract language codes from valid locales file', async () => {
+      const validLocalesPath = path.join(fixturesDir, 'valid-labels.json');
+      const validLocalesContent = fs.readFileSync(validLocalesPath, 'utf-8');
+      const localesData = JSON.parse(validLocalesContent);
 
-      // Extract unique language codes
-      const languageCodes = new Set<string>();
-      for (const group of labelsData) {
-        for (const label of group.labels) {
-          if (label.languageCode) {
-            languageCodes.add(label.languageCode);
-          }
-        }
-      }
+      // Extract unique language codes from object keys (ILocalesConfiguration format)
+      const languageCodes = Object.keys(localesData);
 
-      expect(languageCodes.size).toBe(4);
+      expect(languageCodes.length).toBe(4);
       expect([...languageCodes].sort()).toEqual(['de-DE', 'en-US', 'fr-FR', 'nl-NL']);
     });
   });
 
-  describe('T015: Empty Labels File Handling', () => {
-    test('should generate template language block when labels file is empty', async () => {
+  describe('T015: Empty Locales File Handling', () => {
+    test('should generate template language block when locales file is empty', async () => {
       const program = `
-        labels "./fixtures/empty-labels.json"
+        locales "${getFixturePath('empty-labels.json')}"
 
         action testAction() [
           selectElement("#test")
@@ -182,10 +186,10 @@ action testAction() [
     });
   });
 
-  describe('T016: Invalid Labels File Handling', () => {
-    test('should generate template language block when labels file is malformed', async () => {
+  describe('T016: Invalid Locales File Handling', () => {
+    test('should generate template language block when locales file is malformed', async () => {
       const program = `
-        labels "./fixtures/invalid-labels.json"
+        locales "${getFixturePath('invalid-labels.json')}"
 
         action testAction() [
           selectElement("#test")
@@ -219,7 +223,7 @@ action testAction() [
   describe('T017: Insertion Position Validation', () => {
     test('should insert language block after imports and before constants', async () => {
       const program = `
-        labels "./fixtures/valid-labels.json"
+        locales "${getFixturePath('valid-labels.json')}"
 
         const TEST_VALUE = 42
 
@@ -264,7 +268,7 @@ action testAction() [
 
     test('should insert language block at line 0 (top of file)', async () => {
       const program = `
-        labels "./fixtures/valid-labels.json"
+        locales "${getFixturePath('valid-labels.json')}"
       `;
 
       const { document } = await ctx.parseAndValidate(program);
@@ -304,7 +308,7 @@ action testAction() [
   describe('T018: Generated Code Format Validation', () => {
     test('should generate correctly formatted language block with proper syntax', async () => {
       const program = `
-        labels "./fixtures/valid-labels.json"
+        locales "${getFixturePath('valid-labels.json')}"
 
         action testAction() [
           selectElement("#test")

@@ -58,7 +58,7 @@ export interface TypeInferenceError extends ImportValidationError {
  */
 export interface DuplicateDefaultImportError extends ImportValidationError {
   code: 'DUPLICATE_DEFAULT_IMPORT';
-  importType: 'layout' | 'styles' | 'provider' | 'labels';
+  importType: 'layout' | 'styles' | 'provider' | 'locales';
 }
 
 /**

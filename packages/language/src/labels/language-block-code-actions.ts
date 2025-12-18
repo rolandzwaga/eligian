@@ -54,10 +54,10 @@ export class LanguageBlockCodeActionProvider {
       return [];
     }
 
-    // Extract labels file paths from imports
-    const labelsFilePaths = this.extractLabelsFilePaths(program);
+    // Extract locales file paths from imports
+    const localesFilePaths = this.extractLocalesFilePaths(program);
 
-    if (labelsFilePaths.length === 0) {
+    if (localesFilePaths.length === 0) {
       return [];
     }
 
@@ -67,8 +67,8 @@ export class LanguageBlockCodeActionProvider {
     sourceFilePath = decodeURIComponent(sourceFilePath);
     const sourceDir = dirname(sourceFilePath);
 
-    // Parse all labels files and collect language codes
-    const allLanguageCodes = await this.collectLanguageCodes(labelsFilePaths, sourceDir, readFile);
+    // Parse all locales files and collect language codes
+    const allLanguageCodes = await this.collectLanguageCodes(localesFilePaths, sourceDir, readFile);
 
     // Generate language block text
     const generationResult = this.languageBlockGenerator.generate(allLanguageCodes);
@@ -114,28 +114,28 @@ export class LanguageBlockCodeActionProvider {
       return false;
     }
 
-    const hasLabelsImport = program.statements.some(
-      stmt => isDefaultImport(stmt) && stmt.type === 'labels'
+    const hasLocalesImport = program.statements.some(
+      stmt => isDefaultImport(stmt) && stmt.type === 'locales'
     );
     const hasLanguageBlock = program.languages !== undefined;
 
-    return hasLabelsImport && !hasLanguageBlock;
+    return hasLocalesImport && !hasLanguageBlock;
   }
 
   /**
-   * Extracts labels file paths from import statements.
+   * Extracts locales file paths from import statements.
    *
    * @param program - Parsed Eligian program AST
-   * @returns Array of labels file paths
+   * @returns Array of locales file paths
    */
-  private extractLabelsFilePaths(program: Program): string[] {
+  private extractLocalesFilePaths(program: Program): string[] {
     // Safety check: program.statements might be undefined during early initialization
     if (!program.statements) {
       return [];
     }
 
     return program.statements
-      .filter(stmt => isDefaultImport(stmt) && stmt.type === 'labels')
+      .filter(stmt => isDefaultImport(stmt) && stmt.type === 'locales')
       .map(stmt => (isDefaultImport(stmt) ? stmt.path : ''))
       .filter((path): path is string => path.length > 0);
   }

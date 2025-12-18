@@ -56,14 +56,14 @@ export {
 export * from './lsp/css-notifications.js';
 // HTML validation exports
 export * from './lsp/html-notifications.js';
-// Labels validation exports
+// Locales validation exports (Feature 045: renamed from labels)
 export * from './lsp/labels-notifications.js';
-export { extractLabelMetadata } from './type-system-typir/utils/label-metadata-extractor.js';
+export { extractLocaleMetadata } from './type-system-typir/utils/locale-metadata-extractor.js';
 // AST helper exports (for language server)
 export { isDefaultImport } from './utils/ast-helpers.js';
 // AST navigation exports (for JSDoc generation)
 export { findActionBelow } from './utils/ast-navigation.js';
-export { validateLabelsJSON } from './validators/label-import-validator.js';
+export { validateLocalesJSON } from './validators/locale-import-validator.js';
 
 // Re-export everything from AST except TimeExpression to avoid conflict
 // Export AstTimeExpression explicitly to avoid conflict with compiler's TimeExpression

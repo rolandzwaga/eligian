@@ -101,8 +101,8 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
       const hoverText =
         typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value;
 
-      // Should show parameters: labelId, property (optional)
-      expect(hoverText).toContain('labelId');
+      // Should show parameters: translationKey, property (optional)
+      expect(hoverText).toContain('translationKey');
       expect(hoverText).toContain('string');
     });
 

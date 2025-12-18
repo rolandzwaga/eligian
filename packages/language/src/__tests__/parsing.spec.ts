@@ -978,14 +978,14 @@ describe('Eligian Grammar - Parsing', () => {
         expect(importStmt.path).toBe('./video.mp4');
       });
 
-      test('T009: should parse labels default import', async () => {
-        const program = await parseEligian("labels './labels.json'");
+      test('T009: should parse locales default import', async () => {
+        const program = await parseEligian("locales './locales.json'");
 
         expect(getImports(program)).toHaveLength(1);
         const importStmt = getImports(program)[0] as DefaultImport;
         expect(importStmt.$type).toBe('DefaultImport');
-        expect(importStmt.type).toBe('labels');
-        expect(importStmt.path).toBe('./labels.json');
+        expect(importStmt.type).toBe('locales');
+        expect(importStmt.path).toBe('./locales.json');
       });
 
       test('T032: should parse all three default imports together', async () => {
