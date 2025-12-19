@@ -32,7 +32,7 @@ If all three are yes, CSS validation will work. If any is missing, you'll get "U
 8. [Minimum Valid Program Requirements](#minimum-valid-program-requirements)
 9. [Test File Organization](#test-file-organization)
 10. [Best Practices](#best-practices)
-    - [General Unit Testing Principles](#general-unit-testing-principles)
+    - [General Unit Testing Principles](#general-unit-testing-principles) (15 principles with industry references)
     - [Project-Specific Best Practices](#project-specific-best-practices)
 11. [Advanced Patterns](#advanced-patterns)
 12. [Testing Multiple Packages](#testing-multiple-packages)
@@ -1092,11 +1092,19 @@ packages/language/src/__tests__/
 
 ### General Unit Testing Principles
 
-These principles apply to all tests, regardless of the specific technology being tested.
+These principles apply to all tests, regardless of the specific technology being tested. They represent industry-wide best practices that help create maintainable, reliable test suites.
+
+> **Key Resources**:
+> - [Martin Fowler: Mocks Aren't Stubs](https://martinfowler.com/articles/mocksArentStubs.html) - Definitive guide to test doubles
+> - [Microsoft: Unit Testing Best Practices](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices) - Comprehensive .NET-focused but universally applicable
+> - [xUnit Patterns: Fragile Test](http://xunitpatterns.com/Fragile%20Test.html) - Understanding test fragility
+> - [Vladimir Khorikov: Unit Testing Principles](https://www.manning.com/books/unit-testing) - Deep dive into testing philosophy
+
+---
 
 #### 1. Test Behavior, Not Implementation
 
-Focus on **what** the code does (observable behavior), not **how** it does it internally.
+Focus on **what** the code does (observable behavior), not **how** it does it internally. This is the single most important principle for writing maintainable tests.
 
 ```typescript
 // ✅ GOOD: Tests observable behavior (what the user sees)
@@ -1113,11 +1121,15 @@ test('should call validateCSSClass with correct arguments', async () => {
 });
 ```
 
-**Why**: Implementation can change (refactoring) without changing behavior. Tests tied to implementation break during refactoring even when functionality is preserved.
+**Why**: Implementation can change (refactoring) without changing behavior. Tests tied to implementation break during refactoring even when functionality is preserved. As [Uncle Bob notes](https://blog.cleancoder.com/uncle-bob/2017/10/03/TestContravariance.html): "The structure of the tests must not reflect the structure of the production code."
+
+**The Behavior Test Litmus Test**: Ask yourself: "If I refactor the internal implementation but the external behavior stays the same, will this test still pass?" If the answer is no, you're testing implementation, not behavior.
+
+---
 
 #### 2. Test Interfaces, Not Implementations
 
-Write tests against **public APIs and contracts**, not internal methods or private state.
+Write tests against **public APIs and contracts**, not internal methods or private state. A unit test class should focus on testing the public interface of the class.
 
 ```typescript
 // ✅ GOOD: Tests the public parseAndValidate interface
@@ -1135,9 +1147,51 @@ test('should parse parameter node correctly', () => {
 
 **Why**: Internal methods can be refactored, renamed, or removed without affecting the public contract. Tests against internals create coupling that makes refactoring expensive.
 
-#### 3. Arrange-Act-Assert (AAA) Pattern
+**When to Extract**: If a private method has complex logic that feels like it needs dedicated tests, this is often a signal that the logic should be extracted into its own module with a public interface. The [Single Responsibility Principle](https://www.baeldung.com/solid-principles) suggests this logic may belong elsewhere.
 
-Structure tests in three clear phases:
+---
+
+#### 3. Understand the SOLID-Testing Connection
+
+The [SOLID principles](https://www.baeldung.com/solid-principles) aren't just about production code—they directly impact testability:
+
+| SOLID Principle | Testing Impact |
+|-----------------|----------------|
+| **Single Responsibility** | Classes with one responsibility have fewer test cases and are easier to test in isolation |
+| **Open/Closed** | Allows adding tests for new behavior without modifying existing tests |
+| **Liskov Substitution** | Enables testing through interfaces with any implementation |
+| **Interface Segregation** | Smaller interfaces mean fewer dependencies to mock |
+| **Dependency Inversion** | **Most critical for testing**: enables isolation from dependencies |
+
+**Code Smell**: If you find yourself injecting more than 3-4 dependencies into a class (and thus needing multiple mocks), the class might be violating SRP. [The harder it is to unit test code, the greater the chances SOLID principles are being violated](https://blog.safnet.com/best-practices-tdd-oo/solid-testing/).
+
+```typescript
+// ⚠️ WARNING: Too many dependencies = likely SRP violation
+class TimelineProcessor {
+  constructor(
+    private parser: Parser,
+    private validator: Validator,
+    private transformer: Transformer,
+    private optimizer: Optimizer,
+    private emitter: Emitter,
+    private logger: Logger,
+    private cache: Cache,
+  ) {}
+  // This class has too many responsibilities
+}
+
+// ✅ BETTER: Smaller, focused classes are easier to test
+class TimelineValidator {
+  constructor(private cssRegistry: CSSRegistry) {}
+  // Single responsibility = simple tests
+}
+```
+
+---
+
+#### 4. Arrange-Act-Assert (AAA) Pattern
+
+Structure tests in three clear phases. As a rule of thumb, the "Act" section should ideally be a single line—a single logical action means a single reason for failing.
 
 ```typescript
 test('should reject duplicate action names', async () => {
@@ -1147,7 +1201,7 @@ test('should reject duplicate action names', async () => {
     additionalCode: 'action duplicate() [ log("second") ]',
   });
 
-  // ACT: Execute the behavior being tested
+  // ACT: Execute the behavior being tested (ideally one line)
   const { errors } = await ctx.parseAndValidate(code);
 
   // ASSERT: Verify the expected outcome
@@ -1156,11 +1210,13 @@ test('should reject duplicate action names', async () => {
 });
 ```
 
-**Why**: Clear structure makes tests easier to read, understand, and maintain.
+**Why**: Clear structure makes tests easier to read, understand, and maintain. When the Act section is a single line, test failures are easier to diagnose.
 
-#### 4. One Concept Per Test
+---
 
-Each test should verify **one specific behavior** or concept.
+#### 5. One Concept Per Test
+
+Each test should verify **one specific behavior** or concept. This maps directly to the Single Responsibility Principle applied to tests.
 
 ```typescript
 // ✅ GOOD: Separate tests for separate concerns
@@ -1183,9 +1239,11 @@ test('should validate event actions', async () => {
 });
 ```
 
-**Why**: When a multi-concept test fails, you can't immediately tell which part failed without debugging.
+**Why**: When a multi-concept test fails, you can't immediately tell which part failed without debugging. Focused tests provide faster feedback and clearer failure messages.
 
-#### 5. FIRST Principles
+---
+
+#### 6. FIRST Principles
 
 Good unit tests are:
 
@@ -1215,9 +1273,47 @@ test('second test reads state', () => {
 });
 ```
 
-#### 6. Mock External Dependencies, Not Internal Logic
+---
 
-Mock at system boundaries (external APIs, file systems, databases), not internal collaborators.
+#### 7. Understand Test Doubles: Mocks, Stubs, Fakes, and Spies
+
+[Gerard Meszaros coined the term "Test Double"](https://martinfowler.com/bliki/TestDouble.html) as the generic term for any pretend object used in place of a real object for testing. Understanding the differences is crucial:
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **Dummy** | Fill parameter lists, never used | `new DummyLogger()` passed but never called |
+| **Stub** | Provide canned answers | `stub.getUser().returns({ name: 'Test' })` |
+| **Fake** | Working implementation with shortcuts | In-memory database instead of real DB |
+| **Spy** | Record information about calls | Track how many emails were "sent" |
+| **Mock** | Verify interactions occurred | Assert `sendEmail()` was called with specific args |
+
+**Key Distinction**: Stubs use **state verification** (check the result), while mocks use **behavior verification** (check the interactions).
+
+```typescript
+// STUB: Returns canned data, we verify state afterward
+const userServiceStub = {
+  getUser: () => ({ id: 1, name: 'Test User' }),
+};
+const result = processUser(userServiceStub);
+expect(result.greeting).toBe('Hello, Test User'); // State verification
+
+// MOCK: We verify the interaction itself
+const emailServiceMock = vi.fn();
+sendWelcomeEmail(emailServiceMock, user);
+expect(emailServiceMock).toHaveBeenCalledWith(user.email, 'Welcome!'); // Behavior verification
+```
+
+**Best Practices for Test Doubles**:
+- [Start simple](https://www.browserstack.com/guide/mock-vs-stub-vs-fake): Use the simplest test double that works (stub before mock)
+- [Don't mock what you don't own](https://martinfowler.com/articles/mocksArentStubs.html): Only mock your own interfaces, not third-party libraries
+- Prefer fakes for complex dependencies (like in-memory databases)
+- Use mocks sparingly—only when you need to verify interaction
+
+---
+
+#### 8. Mock at Boundaries, Not Internally
+
+Mock at system boundaries (external APIs, file systems, databases), not internal collaborators. The [Dependency Inversion Principle](https://enterprisecraftsmanship.com/posts/when-to-mock/) is key here.
 
 ```typescript
 // ✅ GOOD: Mock external file system for CLI tests
@@ -1226,7 +1322,7 @@ const mockFS = {
   writeFile: vi.fn().mockResolvedValue(undefined),
 };
 
-// ✅ GOOD: Mock network calls
+// ✅ GOOD: Mock network calls (external boundary)
 vi.spyOn(global, 'fetch').mockResolvedValue(new Response('{}'));
 
 // ❌ BAD: Mock internal collaborators (creates brittle tests)
@@ -1234,9 +1330,58 @@ vi.spyOn(validator, 'checkCSSImports').mockReturnValue([]);
 vi.spyOn(typeChecker, 'inferTypes').mockReturnValue(new Map());
 ```
 
-**Why**: Mocking internal logic couples tests to implementation. When implementation changes, tests break even though behavior is correct.
+**When to Mock** (based on [Enterprise Craftsmanship guidance](https://enterprisecraftsmanship.com/posts/when-to-mock/)):
 
-#### 7. Avoid Testing Private Methods
+| Dependency Type | Mock? | Reasoning |
+|-----------------|-------|-----------|
+| **Unmanaged external** (third-party APIs, email) | ✅ Yes | Can't control, side effects persist |
+| **Managed external** (your database in tests) | ❌ No | Use real instance for integration tests |
+| **Internal collaborators** | ❌ No | Creates coupling to implementation |
+| **Pure functions/utilities** | ❌ No | Fast, no side effects |
+
+**Why This Matters**: Mocking internal logic couples tests to implementation. When implementation changes, tests break even though behavior is correct. This leads to [fragile tests](http://xunitpatterns.com/Fragile%20Test.html).
+
+---
+
+#### 9. Avoid Fragile (Brittle) Tests
+
+[Fragile tests](http://xunitpatterns.com/Fragile%20Test.html) break every time you refactor, even when behavior hasn't changed. They increase maintenance costs and reduce confidence in the test suite.
+
+**Common Causes of Fragility**:
+
+1. **Testing implementation details** instead of behavior
+2. **Over-mocking** internal collaborators
+3. **Tight coupling** to code structure
+4. **Assertions on internal state** rather than outputs
+
+**How to Avoid Fragile Tests**:
+
+```typescript
+// ❌ FRAGILE: Coupled to internal method names
+test('should process data', async () => {
+  const spy = vi.spyOn(processor, '_internalTransform');
+  await processor.process(data);
+  expect(spy).toHaveBeenCalled(); // Breaks if method is renamed
+});
+
+// ✅ ROBUST: Tests observable output
+test('should transform data correctly', async () => {
+  const result = await processor.process(data);
+  expect(result.transformed).toBe(true); // Survives refactoring
+});
+```
+
+**The Refactoring Test**: A good test should only fail when the business requirements change, not when you refactor implementation details. As [noted by testing experts](https://chroniclesofapragmaticprogrammer.substack.com/p/keeping-tests-valuable-resistance-to-refactoring): "Tests that only fail when the contract changes, not the code structure."
+
+**Signs Your Tests Are Fragile**:
+- Tests break during "safe" refactoring
+- Many mocks needed for simple tests
+- Tests mirror production code structure exactly
+- Renaming a private method breaks tests
+
+---
+
+#### 10. Avoid Testing Private Methods
 
 If you feel the need to test private methods, consider:
 
@@ -1260,7 +1405,42 @@ test('should calculate levenshtein distance', () => {
 });
 ```
 
-#### 8. Write Descriptive Test Names
+**Exception**: When private logic is extracted to a separate utility module (like our `levenshtein.ts`), it becomes a public API of that module and should have its own tests.
+
+---
+
+#### 11. Understand Solitary vs Sociable Tests
+
+There are [two schools of thought](https://martinfowler.com/articles/practical-test-pyramid.html) on unit testing:
+
+| Approach | Description | Pros | Cons |
+|----------|-------------|------|------|
+| **Solitary** (London School) | Mock all collaborators | Fast, isolated, pinpoint failures | May not catch integration issues, mocks can drift |
+| **Sociable** (Detroit School) | Use real collaborators | More realistic, survives refactoring | Slower, broader failure blast radius |
+
+**This Project's Approach**: We primarily use **sociable tests** with real collaborators (Langium services, validators, CSS registry) and only mock at true external boundaries. This gives us confidence that components work together correctly.
+
+```typescript
+// Our typical pattern: Sociable unit tests
+beforeAll(() => {
+  ctx = createTestContext(); // Real services, no mocks
+});
+
+test('should validate CSS class references', async () => {
+  setupCSSRegistry(ctx, 'file:///styles.css', CSS_FIXTURES.common); // Real registry
+  const { errors } = await ctx.parseAndValidate(code); // Real parsing + validation
+  expect(errors).toHaveLength(0);
+});
+```
+
+**When We Use Solitary Tests**:
+- Testing pure utility functions (levenshtein, time parser)
+- Testing components with external I/O (file system, network)
+- Testing error handling for edge cases hard to reproduce
+
+---
+
+#### 12. Write Descriptive Test Names
 
 Test names should describe:
 - What is being tested
@@ -1283,7 +1463,14 @@ test('calls checkTimeline', async () => { /* ... */ });
 test('test1', async () => { /* ... */ });
 ```
 
-#### 9. Test Edge Cases and Error Conditions
+**Format Options**:
+- `should [expected behavior] when [condition]`
+- `[method/feature] returns [expected] given [input]`
+- `[feature] - [scenario] - [expected result]`
+
+---
+
+#### 13. Test Edge Cases and Error Conditions
 
 Don't just test the happy path. Include:
 
@@ -1301,11 +1488,15 @@ describe('Timeline time range validation', () => {
 });
 ```
 
-#### 10. Avoid Over-Mocking
+**Coverage Tip**: Focus on **boundary values** and **equivalence classes** rather than random values. Testing `0`, `1`, and `MAX_INT` is more valuable than testing `42`, `100`, and `500`.
+
+---
+
+#### 14. Avoid Over-Mocking
 
 If a test requires many mocks, it may indicate:
-- The code under test has too many dependencies
-- You're testing at the wrong level (unit vs integration)
+- The code under test has too many dependencies (SRP violation)
+- You're testing at the wrong level (should be integration test)
 - The test is coupled to implementation details
 
 ```typescript
@@ -1325,6 +1516,47 @@ test('should compile timeline', async () => {
   expect(result).toMatchSnapshot();
 });
 ```
+
+**Rule of Thumb**: [The more you mock, the more you deviate from the real system](https://dev.to/kettanaito/when-should-i-not-use-mocks-in-testing-544e), and the less confidence your tests provide.
+
+---
+
+#### 15. Understand Test Coverage Limitations
+
+[Test coverage is a useful metric but has significant limitations](https://martinfowler.com/bliki/TestCoverage.html):
+
+**What Coverage Tells You**:
+- Which lines were *executed* during tests
+- Which branches were *taken*
+
+**What Coverage Does NOT Tell You**:
+- Whether tests have meaningful assertions
+- Whether edge cases are covered
+- Whether the right behaviors are tested
+- Whether tests will catch regressions
+
+```typescript
+// ❌ BAD: 100% coverage, zero value (assertion-free test)
+test('should process data', async () => {
+  await processData(input);
+  // No assertions! This "covers" the code but tests nothing.
+});
+
+// ✅ GOOD: Meaningful assertions on behavior
+test('should transform input to expected output', async () => {
+  const result = await processData(input);
+  expect(result.status).toBe('success');
+  expect(result.data).toEqual(expectedOutput);
+});
+```
+
+**Coverage Anti-Patterns**:
+- Chasing 100% coverage as a KPI ([Goodhart's Law](https://thinkinglabs.io/articles/2022/03/19/the-fallacy-of-the-100-code-coverage.html))
+- Writing tests without assertions to boost numbers
+- Testing trivial getters/setters
+- Ignoring [mutation testing](https://www.functionize.com/blog/the-myth-of-100-code-coverage) which reveals test quality
+
+**Better Approach**: Focus on [testing high-risk, high-complexity code](https://www.qt.io/quality-assurance/blog/is-70-80-90-or-100-code-coverage-good-enough) rather than chasing a coverage number. 70% meaningful coverage is better than 100% shallow coverage.
 
 ---
 

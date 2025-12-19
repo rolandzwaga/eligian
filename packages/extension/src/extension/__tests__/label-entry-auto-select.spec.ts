@@ -11,12 +11,14 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 // Import the actual exported function to test the real implementation
 import { consumePendingSelection } from '../label-entry-creator.js';
 
-// We need to test the pending selection store directly
-// Since we can't easily mock vscode commands, we'll test the store mechanism
-
 /**
- * Pending selection store (mirrors label-entry-creator.ts implementation)
- * This is extracted for testing without VS Code dependencies
+ * Local implementation of PendingSelectionStore for testing.
+ *
+ * WHY LOCAL: The production code's setPendingSelection function uses vscode.Uri which
+ * isn't available in the test environment. This local implementation mirrors the
+ * production Map-based logic (lines 25-40 of label-entry-creator.ts) to test the
+ * get/set/delete behavior in isolation. The actual consumePendingSelection function
+ * is tested separately below using the real export.
  */
 class PendingSelectionStore {
   private pendingSelections = new Map<string, string>();
@@ -218,86 +220,9 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
   });
 });
 
-describe('selectLabelById Function Logic (Feature 041)', () => {
-  /**
-   * Test the logic of finding a label by ID in an array
-   * This mirrors the selectLabelById function in label-editor.ts
-   */
-  interface LabelGroup {
-    id: string;
-    labels: Array<{ id: string; languageCode: string; label: string }>;
-  }
-
-  function findLabelIndex(labels: LabelGroup[], labelId: string): number {
-    return labels.findIndex(g => g.id === labelId);
-  }
-
-  test('should find label at beginning of array', () => {
-    const labels: LabelGroup[] = [
-      { id: 'first-label', labels: [] },
-      { id: 'second-label', labels: [] },
-      { id: 'third-label', labels: [] },
-    ];
-
-    expect(findLabelIndex(labels, 'first-label')).toBe(0);
-  });
-
-  test('should find label in middle of array', () => {
-    const labels: LabelGroup[] = [
-      { id: 'first-label', labels: [] },
-      { id: 'target-label', labels: [] },
-      { id: 'third-label', labels: [] },
-    ];
-
-    expect(findLabelIndex(labels, 'target-label')).toBe(1);
-  });
-
-  test('should find label at end of array', () => {
-    const labels: LabelGroup[] = [
-      { id: 'first-label', labels: [] },
-      { id: 'second-label', labels: [] },
-      { id: 'last-label', labels: [] },
-    ];
-
-    expect(findLabelIndex(labels, 'last-label')).toBe(2);
-  });
-
-  test('should return -1 for non-existent label', () => {
-    const labels: LabelGroup[] = [
-      { id: 'first-label', labels: [] },
-      { id: 'second-label', labels: [] },
-    ];
-
-    expect(findLabelIndex(labels, 'non-existent')).toBe(-1);
-  });
-
-  test('should handle empty labels array', () => {
-    const labels: LabelGroup[] = [];
-
-    expect(findLabelIndex(labels, 'any-label')).toBe(-1);
-  });
-
-  test('should find label with special characters in ID', () => {
-    const labels: LabelGroup[] = [
-      { id: 'welcome-message_v2', labels: [] },
-      { id: 'button.text', labels: [] },
-    ];
-
-    expect(findLabelIndex(labels, 'welcome-message_v2')).toBe(0);
-    expect(findLabelIndex(labels, 'button.text')).toBe(1);
-  });
-
-  test('should be case-sensitive when finding labels', () => {
-    const labels: LabelGroup[] = [
-      { id: 'MyLabel', labels: [] },
-      { id: 'mylabel', labels: [] },
-    ];
-
-    expect(findLabelIndex(labels, 'MyLabel')).toBe(0);
-    expect(findLabelIndex(labels, 'mylabel')).toBe(1);
-    expect(findLabelIndex(labels, 'MYLABEL')).toBe(-1);
-  });
-});
+// NOTE: The selectLabelById function in media/locale-editor.ts uses a simple
+// Array.findIndex call. Testing trivial array operations doesn't add value.
+// The webview code is tested via integration tests in dom-reconciliation.spec.ts.
 
 describe('Real consumePendingSelection Function (Feature 041)', () => {
   /**
@@ -330,49 +255,3 @@ describe('Real consumePendingSelection Function (Feature 041)', () => {
   });
 });
 
-describe('ToWebviewMessage Type Validation (Feature 041)', () => {
-  /**
-   * Type-level tests to ensure message types are correctly defined
-   * These tests verify the shape of messages sent to the webview
-   */
-
-  interface InitializeMessage {
-    type: 'initialize';
-    labels: Array<{ id: string }>;
-    filePath: string;
-    selectedLabelId?: string;
-  }
-
-  interface SelectLabelMessage {
-    type: 'select-label';
-    labelId: string;
-  }
-
-  test('initialize message should support optional selectedLabelId', () => {
-    const msgWithSelection: InitializeMessage = {
-      type: 'initialize',
-      labels: [{ id: 'test' }],
-      filePath: '/test/labels.json',
-      selectedLabelId: 'test',
-    };
-
-    const msgWithoutSelection: InitializeMessage = {
-      type: 'initialize',
-      labels: [{ id: 'test' }],
-      filePath: '/test/labels.json',
-    };
-
-    expect(msgWithSelection.selectedLabelId).toBe('test');
-    expect(msgWithoutSelection.selectedLabelId).toBeUndefined();
-  });
-
-  test('select-label message should require labelId', () => {
-    const msg: SelectLabelMessage = {
-      type: 'select-label',
-      labelId: 'target-label',
-    };
-
-    expect(msg.type).toBe('select-label');
-    expect(msg.labelId).toBe('target-label');
-  });
-});

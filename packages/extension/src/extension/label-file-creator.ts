@@ -45,7 +45,7 @@ function mapErrorCode(error: unknown): FileErrorCode {
  * @param filePath - File path to validate
  * @returns Validation result with reason if invalid
  */
-function validatePath(filePath: string): { valid: boolean; reason?: string } {
+export function validatePath(filePath: string): { valid: boolean; reason?: string } {
   // Check file extension
   if (!filePath.endsWith('.json')) {
     return { valid: false, reason: 'File must have .json extension' };

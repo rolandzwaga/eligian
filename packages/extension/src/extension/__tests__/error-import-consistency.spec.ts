@@ -61,61 +61,6 @@ describe('Error Import Consistency (Feature 018 - US3)', () => {
     });
   });
 
-  describe('T031-C: Document import patterns for extension developers', () => {
-    it('should demonstrate correct import pattern', () => {
-      // This test documents the correct import pattern for extension code
-
-      // ✅ Correct: Import from unified namespace
-      const correctImport = `
-        import { AllErrors, formatError, isCompilerError } from '@eligian/language/errors';
-      `;
-
-      // ❌ Wrong: Import from scattered locations
-      const wrongImport = `
-        import { CompilerError } from '@eligian/language/compiler/types/errors';
-        import { AssetError } from '@eligian/language/asset-loading/types';
-      `;
-
-      expect(correctImport).toContain('@eligian/language/errors');
-      expect(wrongImport).not.toContain('@eligian/language/errors');
-    });
-
-    it('should demonstrate error handling workflow', () => {
-      // This test documents the workflow for handling errors in extension code
-
-      // 1. Import error types and utilities from unified namespace
-      // 2. Use type guards to discriminate error types
-      // 3. Use formatError for consistent error messages
-      // 4. Convert to VS Code diagnostics or notifications
-
-      const workflow = `
-        // Step 1: Import from unified namespace
-        import { AllErrors, formatError, isCompilerError } from '@eligian/language/errors';
-
-        // Step 2: Use type guards
-        function handleError(error: AllErrors) {
-          if (isCompilerError(error)) {
-            // Handle compiler errors
-          }
-        }
-
-        // Step 3: Format error messages
-        const message = formatError(error);
-
-        // Step 4: Convert to VS Code format
-        const diagnostic = new vscode.Diagnostic(
-          range,
-          message,
-          vscode.DiagnosticSeverity.Error
-        );
-      `;
-
-      expect(workflow).toContain('@eligian/language/errors');
-      expect(workflow).toContain('isCompilerError');
-      expect(workflow).toContain('formatError');
-    });
-  });
-
   describe('T031-D: Verify no imports from deprecated locations', () => {
     it('extension should not import from compiler/types/errors.ts', () => {
       // Check all TypeScript files in extension package
@@ -161,24 +106,4 @@ describe('Error Import Consistency (Feature 018 - US3)', () => {
     });
   });
 
-  describe('T031-E: Verify type compatibility after migration', () => {
-    it('AllErrors type should be compatible with old error types', () => {
-      // After migration, code should continue to work because:
-      // 1. Old locations re-export from unified namespace
-      // 2. Type shapes remain identical
-      // 3. Only import paths change
-
-      // This test verifies the concept (actual compilation test happens in build)
-      const migrationPath = `
-        // Before migration:
-        import { CompilerError } from '@eligian/language/compiler/types/errors';
-
-        // After migration (both work):
-        import { CompilerError } from '@eligian/language/errors'; // ✅ Preferred
-        import { CompilerError } from '@eligian/language/compiler/types/errors'; // ✅ Still works (deprecated)
-      `;
-
-      expect(migrationPath).toContain('@eligian/language/errors');
-    });
-  });
 });

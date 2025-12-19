@@ -4,54 +4,7 @@
  */
 
 import { describe, expect, test } from 'vitest';
-
-/**
- * Mock validatePath function for testing
- * This is extracted from label-file-creator.ts for unit testing
- */
-function validatePath(filePath: string): { valid: boolean; reason?: string } {
-  // Check file extension
-  if (!filePath.endsWith('.json')) {
-    return { valid: false, reason: 'File must have .json extension' };
-  }
-
-  // Check path length (Windows MAX_PATH limit)
-  if (filePath.length > 260) {
-    return { valid: false, reason: 'Path exceeds 260 character limit' };
-  }
-
-  // Check for invalid characters (Windows path restrictions)
-  // Allow colon only as part of drive letter (e.g., C:)
-  // Remove drive letter prefix before checking for invalid chars
-  let pathToCheck = filePath;
-  if (/^[A-Za-z]:/.test(filePath)) {
-    // Remove drive letter (e.g., "C:") from the beginning
-    pathToCheck = filePath.substring(2);
-  }
-
-  // Now check remaining path for invalid characters
-  const invalidChars = /[<>:"|?*]/;
-  if (invalidChars.test(pathToCheck)) {
-    return { valid: false, reason: 'Path contains invalid characters: < > : " | ? *' };
-  }
-
-  // Check for trailing spaces or dots (Windows restriction)
-  // Allow '.' and '..' as they are valid path references
-  const pathParts = filePath.split(/[\\/]/);
-  for (const part of pathParts) {
-    // Skip empty parts and valid relative references
-    if (part === '' || part === '.' || part === '..') {
-      continue;
-    }
-
-    // Check for trailing spaces or dots
-    if (part.endsWith(' ') || part.endsWith('.')) {
-      return { valid: false, reason: 'Path components cannot end with spaces or dots' };
-    }
-  }
-
-  return { valid: true };
-}
+import { validatePath } from '../label-file-creator.js';
 
 describe('validatePath - Path Validation (Feature 039)', () => {
   describe('Valid Paths', () => {

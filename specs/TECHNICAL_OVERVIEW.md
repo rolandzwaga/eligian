@@ -96,7 +96,7 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - Language Server Protocol implementation (validation, completion, hover, navigation)
 - Type system (Typir-based type inference and validation)
 - CSS validation and registry
-- Operation registry (83 Eligius operations)
+- Operation registry (79 Eligius operations)
 - JSDoc documentation support
 
 **Entry Points**:
@@ -119,23 +119,26 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `src/generated/` - Langium-generated parser and AST
 
 **Dependencies**:
-- `langium@4.0.3` - Language framework
-- `typir@0.3.0`, `typir-langium@0.3.0` - Type system
-- `postcss@8.5.6`, `css-tree@3.1.0` - CSS parsing
-- `effect@3.19.6` - Functional error handling (inherited from root)
-- `eligius@1.5.1` - Eligius library (inherited from root)
+- `langium@4.1.2` - Language framework
+- `typir@0.3.1`, `typir-langium@0.3.1` - Type system
+- `postcss@8.5.6`, `postcss-selector-parser@7.1.1` - CSS parsing
+- `ajv@8.17.1` - JSON schema validation (labels, etc.)
+- `htmlparser2@10.0.0` - HTML template parsing
+- `effect@3.19.12` - Functional error handling (inherited from root)
+- `eligius@2.2.0` - Eligius library (inherited from root)
 
 ### 2. @eligian/cli
 
 **Purpose**: Command-line compiler for `.eligian` files.
 
-**Size**: ~250 lines of TypeScript (single file)
+**Size**: ~280 lines of TypeScript (main file) + bundler module (~70KB)
 
 **Key Responsibilities**:
 - CLI argument parsing (using `commander.js`)
 - File I/O (read `.eligian`, write `.json`)
 - Error formatting and display
 - Asset validation integration
+- Bundling for standalone HTML distribution (via `--bundle` flag)
 
 **Entry Point**:
 - **Binary**: `src/main.ts` → `dist/cli.mjs` (ESM bundle)
@@ -146,9 +149,8 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 
 **Dependencies**:
 - `@eligian/language@workspace:*` - Core compiler
-- `commander@11.1.0` - CLI argument parser
+- `commander@14.0.2` - CLI argument parser
 - `chalk@5.6.2` - Terminal colors
-- `effect@3.19.6` - Error handling (inherited from root)
 
 **Exit Codes**:
 - `0` - Success
@@ -184,14 +186,14 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `@eligian/language@workspace:*` - Core compiler and LSP
 - `@eligian/shared-utils@workspace:*` - Error types
 - `vscode-languageclient@9.0.1`, `vscode-languageserver@9.0.1` - LSP implementation
-- `eligius@1.5.0` - Webview timeline engine (inherited from root)
+- `eligius@2.2.0` - Webview timeline engine (inherited from root)
 - `jquery@3.7.1`, `video.js@8.23.4`, `lottie-web@^5.13.0` - Webview UI dependencies
 
 **VS Code Integration**:
 - **Language ID**: `eligian`
 - **File Extensions**: `.eligian`
 - **Activation**: `onLanguage:eligian`
-- **Commands**: Compile, Preview (keyboard: `Ctrl+K V` / `Cmd+K V`)
+- **Commands**: Compile, Preview, Edit Locales (keyboard: `Ctrl+K V` / `Cmd+K V` for preview)
 
 ### 4. @eligian/shared-utils
 
@@ -214,9 +216,9 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 
 The build system uses three specialized tools:
 
-1. **Langium CLI** (v4.0.0) - Grammar → Parser/AST generation
+1. **Langium CLI** (v4.1.0) - Grammar → Parser/AST generation
 2. **TypeScript** (v5.9.3) - Source compilation with incremental builds
-3. **esbuild** (v0.27.0) - Bundling (CommonJS, ESM, IIFE)
+3. **esbuild** (v0.27.2) - Bundling (CommonJS, ESM, IIFE)
 
 ### Build Sequence
 
@@ -250,9 +252,9 @@ langium generate
 
 **Generated Files**:
 - `src/completion/metadata/timeline-events.generated.ts` - Timeline event metadata (43 events)
-- `src/completion/metadata/css-properties.generated.ts` - CSS property metadata
+- `src/completion/metadata/operations.generated.ts` - Operation completion metadata
 - `src/completion/metadata/controllers.generated.ts` - Controller metadata (8 controllers) **[Feature 035]**
-- `src/compiler/operations/registry.generated.ts` - Operation registry (83 operations)
+- `src/compiler/operations/registry.generated.ts` - Operation registry (79 operations)
 - `src/generated/ast.ts` - AST node types
 - `src/generated/grammar.ts` - Parser implementation
 - `src/generated/module.ts` - Langium module
@@ -262,7 +264,7 @@ langium generate
 - **Output**: `dist/index.cjs`, `dist/errors/index.cjs`
 - **Format**: CommonJS (required for VS Code extension compatibility)
 - **Target**: ES2017
-- **External**: `vscode`, `css-tree` (not bundled)
+- **External**: `vscode` (not bundled)
 - **Sourcemaps**: Yes (unless `--minify` flag)
 
 **Step 3: Declarations** (`tsc`):
@@ -714,7 +716,7 @@ export const CONTROLLERS: ControllerMetadata[] = [
 **Auto-Generation**:
 - Controller metadata extracted from Eligius controller registry
 - Generated during `pnpm run generate` (via `src/completion/generate-metadata.ts`)
-- 8 controllers total (as of Eligius 1.5.1)
+- 8 controllers total (as of Eligius 2.2.0)
 
 **Test Coverage**: 15 tests across 2 test suites
 - `controller-completion.spec.ts` - 9 tests (controller name + label ID completion)
@@ -725,11 +727,11 @@ export const CONTROLLERS: ControllerMetadata[] = [
 **Location**: `src/compiler/operations/`
 
 **Files**:
-- `registry.generated.ts` - Auto-generated registry of 83 Eligius operations
+- `registry.generated.ts` - Auto-generated registry of 79 Eligius operations
 - `generate-registry.ts` - Generator script (extracts from Eligius npm package)
 - `operation-metadata.ts` - Operation metadata types
 
-**Operation Categories** (83 total):
+**Operation Categories** (79 total):
 - **Selection**: `selectElement`, `selectAll`, `deselectElement`, `deselectAll`
 - **DOM Manipulation**: `addClass`, `removeClass`, `toggleClass`, `setAttribute`, `removeAttribute`
 - **Animation**: `animate`, `cancelAnimation`, `pauseAnimation`, `resumeAnimation`
@@ -739,7 +741,7 @@ export const CONTROLLERS: ControllerMetadata[] = [
 - **Timeline Control**: `pauseTimeline`, `resumeTimeline`, `seekTimeline`
 - **Events**: `addEventListener`, `removeEventListener`, `dispatchEvent`
 - **Media**: `playMedia`, `pauseMedia`, `seekMedia`
-- **And 50+ more**
+- **And 45+ more**
 
 **Registry Structure**:
 ```typescript
@@ -1037,7 +1039,7 @@ __tests__/
     └── css/                      # CSS test files
 ```
 
-**Test Count**: 2,020 tests (1,996 passing, 24 skipped)
+**Test Count**: ~2,575 tests across all packages (language: 2,000, extension: 367, CLI: 249)
 
 **Coverage**: 81.72% (v8 provider)
 
@@ -1102,8 +1104,9 @@ The extension uses a **three-process architecture**:
 1. **Language Client**: Start LSP client, manage server lifecycle
 2. **Webview Management**: Create/destroy preview panels
 3. **CSS Watcher**: Watch CSS files for changes, trigger hot-reload
-4. **Commands**: Register `eligian.compile`, `eligian.preview`
+4. **Commands**: Register `eligian.compile`, `eligian.preview`, `eligian.openLabelEditor`
 5. **Decorations**: Block label decorations for timeline events
+6. **Locale Editor**: Custom editor for multi-language label files
 
 **Key Modules**:
 - `language-client.ts` - LSP client setup
@@ -1275,6 +1278,21 @@ eligian-cli input.eligian -v
 eligian-cli input.eligian -q
 ```
 
+**Bundling Options** (create standalone HTML):
+```bash
+# Create bundle in output directory
+eligian-cli input.eligian --bundle -o ./dist
+
+# Set inline threshold for images (default: 10KB)
+eligian-cli input.eligian --bundle --inline-threshold 20000
+
+# Generate source maps
+eligian-cli input.eligian --bundle --sourcemap
+
+# Force overwrite existing output directory
+eligian-cli input.eligian --bundle -o ./dist --force
+```
+
 **Help**:
 ```bash
 eligian-cli --help
@@ -1311,13 +1329,49 @@ Error: Unexpected token 'at' (expected 'timeline' or 'action')
 
 ### Implementation Details
 
-**Entry Point**: `src/main.ts` (238 lines)
+**Entry Point**: `src/main.ts` (~280 lines)
+
+### Bundler Module
+
+**Location**: `packages/cli/src/bundler/`
+
+The bundler creates standalone HTML distributions that include the Eligius runtime, compiled timeline, and all assets:
+
+**Files**:
+- `index.ts` - Main bundler orchestration (~250 lines)
+- `asset-collector.ts` - Collect CSS, images, HTML assets (~460 lines)
+- `css-processor.ts` - Process and inline CSS with URL rewriting (~130 lines)
+- `html-generator.ts` - Generate standalone HTML (~200 lines)
+- `image-inliner.ts` - Inline images as base64 (~85 lines)
+- `runtime-bundler.ts` - Bundle Eligius runtime with tree-shaking (~230 lines)
+- `inline-overhead.ts` - Calculate base64 overhead (~55 lines)
+- `types.ts` - Type definitions and error classes (~280 lines)
+
+**Features**:
+- Creates single HTML file with embedded timeline
+- Inlines CSS with URL rewriting for relative paths
+- Inlines images as base64 (configurable threshold)
+- Tree-shakes Eligius runtime: only includes used operations and providers
+- Generates source maps for debugging
+- Calculates and reports bundle statistics
+
+**Bundle Output**:
+```
+dist/
+├── index.html           # Main HTML with inlined CSS and images
+├── runtime.bundle.js    # Tree-shaken Eligius runtime
+├── runtime.bundle.js.map # Source map (if --sourcemap)
+├── config.json          # Compiled timeline configuration
+└── [external assets]    # Assets larger than threshold
+```
+
+### Implementation Details
 
 **Dependencies**:
-- `commander@11.1.0` - CLI argument parsing
+- `commander@14.0.2` - CLI argument parsing
 - `chalk@5.6.2` - Terminal colors
 - `@eligian/language` - Core compiler
-- `effect@3.19.3` - Error handling
+- `effect@3.19.12` - Error handling (inherited from root)
 
 **Main Workflow**:
 ```typescript
@@ -1553,7 +1607,7 @@ test('should validate CSS class names', async () => {
 ```
 
 **Metrics** (as of Feature 022):
-- **2,020 tests** (1,996 passing, 24 skipped)
+- **~2,575 tests** across all packages (language: 2,000, extension: 367, CLI: 249)
 - **81.72% coverage** (meets baseline target)
 - **1,251 lines saved** (700 from createTestContext, 551 from setupCSSRegistry)
 
@@ -1583,6 +1637,7 @@ test('should validate CSS class names', async () => {
 - Controller completion (9 tests) **[Feature 035]**
 - Controller hover (6 tests) **[Feature 035]**
 - Full compilation pipeline (25 tests)
+- CLI bundler tests (7 test files covering asset collection, CSS processing, HTML generation, image inlining, runtime bundling)
 
 **Fixture-Based Tests**:
 - Valid DSL programs (`__fixtures__/valid/`)
@@ -1829,7 +1884,7 @@ Before considering any task complete:
 
 **CRITICAL**: This project uses **pnpm** as the package manager, NOT npm or yarn.
 
-**Package Manager Version**: `pnpm@10.23.0` (enforced via `packageManager` field in root `package.json`)
+**Package Manager Version**: `pnpm@10.26.0` (enforced via `packageManager` field in root `package.json`)
 
 **Why pnpm?**
 - **Workspace support**: Excellent monorepo support with shared lockfile
@@ -1870,15 +1925,16 @@ yarn install  # Will cause dependency conflicts!
 ```json
 {
   "dependencies": {
-    "effect": "3.19.6",     // Functional error handling
-    "eligius": "1.5.1"      // Eligius library (for operation metadata)
+    "effect": "3.19.12",    // Functional error handling
+    "eligius": "2.2.0"      // Eligius library (for operation metadata)
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.7",  // Code quality
-    "typescript": "5.9.3",       // TypeScript compiler
-    "vitest": "3.2.4",          // Test framework
-    "esbuild": "0.27.0",        // Bundler
-    "tsx": "4.20.6"             // TypeScript runner
+    "@biomejs/biome": "2.3.10", // Code quality
+    "typescript": "5.9.3",      // TypeScript compiler
+    "vitest": "4.0.16",         // Test framework
+    "esbuild": "0.27.2",        // Bundler
+    "tsx": "4.21.0",            // TypeScript runner
+    "knip": "5.75.2"            // Dead code detection
   }
 }
 ```
@@ -1887,14 +1943,16 @@ yarn install  # Will cause dependency conflicts!
 ```json
 {
   "dependencies": {
-    "langium": "4.0.3",           // Language framework
-    "typir": "0.3.0",             // Type system framework
-    "typir-langium": "0.3.0",     // Typir-Langium integration
-    "postcss": "8.5.6",           // CSS parser
-    "css-tree": "3.1.0"           // CSS AST utilities
+    "langium": "4.1.2",                    // Language framework
+    "typir": "0.3.1",                      // Type system framework
+    "typir-langium": "0.3.1",              // Typir-Langium integration
+    "postcss": "8.5.6",                    // CSS parsing
+    "postcss-selector-parser": "7.1.1",   // CSS selector parsing
+    "ajv": "8.17.1",                       // JSON schema validation
+    "htmlparser2": "10.0.0"                // HTML template parsing
   },
   "devDependencies": {
-    "langium-cli": "4.0.0"        // Grammar compiler
+    "langium-cli": "4.1.0"        // Grammar compiler
   }
 }
 ```
@@ -1903,7 +1961,7 @@ yarn install  # Will cause dependency conflicts!
 ```json
 {
   "dependencies": {
-    "commander": "11.1.0",  // CLI argument parser
+    "commander": "14.0.2",  // CLI argument parser
     "chalk": "5.6.2"        // Terminal colors
   }
 }
@@ -1975,7 +2033,7 @@ pnpm --filter @eligian/cli add @eligian/language@workspace:*
 
 ## Code Quality Tools
 
-### Biome (v2.3.7)
+### Biome (v2.3.10)
 
 **Purpose**: Unified code formatting and linting (replaces ESLint + Prettier)
 
@@ -1983,15 +2041,13 @@ pnpm --filter @eligian/cli add @eligian/language@workspace:*
 
 **Enabled Rules**:
 - `recommended: true` - All recommended rules
-- `noUnusedVariables: "warn"` - Warn about unused variables
-- `noUnusedImports: "warn"` - Warn about unused imports
-- `useConst: "warn"` - Suggest using const instead of let
-- `useYield: "off"` - Disabled (Effect.gen patterns don't always yield)
-- `noShadowRestrictedNames: "off"` - Disabled (our TypeError type name is intentional)
-- `noExplicitAny: "off"` - Disabled (Langium generates some any types)
-- `noNonNullAssertion: "off"` - Disabled (we use ! when we know better than TypeScript)
-- `noParameterAssign: "off"` - Disabled (some patterns require parameter mutation)
-- `noAccumulatingSpread: "off"` - Disabled (functional patterns use spread in loops)
+- **correctness**: `noUnusedVariables: "warn"`, `noUnusedImports: "warn"`, `useYield: "off"`
+- **style**: `useConst: "warn"`, `noParameterAssign: "off"`, `noNonNullAssertion: "off"`
+- **suspicious**: `noExplicitAny: "off"`, `noShadowRestrictedNames: "off"`, `noAssignInExpressions: "off"`
+- **performance**: `noAccumulatingSpread: "off"` (functional patterns use spread in loops)
+
+**Assist Configuration** (Biome v2):
+- `assist.actions.source.organizeImports: "on"` - Auto-organize imports
 
 **Formatting**:
 - 2-space indentation
@@ -2001,12 +2057,13 @@ pnpm --filter @eligian/cli add @eligian/language@workspace:*
 - ES5 trailing commas
 - Arrow parentheses only when needed
 
-**Excluded Files**:
-- `**/out/**` - Build output
-- `**/dist/**` - Distribution builds
-- `**/generated/**` - Langium generated code
-- `**/*.generated.ts` - Generated registry files
-- `**/*.d.ts` - TypeScript declaration files
+**Included Files** (via `files.includes`):
+- `packages/**/*.ts` - TypeScript source files
+- `packages/**/*.json` - JSON configuration files
+- Excludes: `**/fixtures`, `**/*.html`, `**/*.css`, `**/coverage`, `**/out`, `**/dist`, `**/generated`
+
+**Overrides** (disabled for generated files):
+- `**/*.generated.ts`, `**/*.d.ts`, `**/__tests__/**/fixtures/**/*.json`
 
 **Commands**:
 ```bash
@@ -2048,7 +2105,7 @@ pnpm run typecheck  # Check all packages for type errors
 pnpm run watch  # Auto-recompile on file change
 ```
 
-### Vitest (v3.2.4)
+### Vitest (v4.0.16)
 
 **Configuration**: `vitest.config.ts` (per package)
 
@@ -2077,6 +2134,26 @@ pnpm test -- --watch  # Auto-run tests on file change
 pnpm test -- --ui     # Web-based test UI
 ```
 
+### Knip (v5.75.2)
+
+**Purpose**: Dead code detection and unused dependency identification
+
+**Configuration**: `knip.json` (root)
+
+**Features**:
+- Detect unused exports (functions, types, constants)
+- Identify unused dependencies in package.json
+- Find unused files (no imports)
+- Cross-package analysis in monorepo
+
+**Commands**:
+```bash
+pnpm knip        # Run analysis (read-only)
+pnpm knip:fix    # Auto-remove unused exports
+```
+
+**Integration**: Used during code cleanup phases to identify dead code that can be safely removed.
+
 ---
 
 ## Summary
@@ -2089,9 +2166,11 @@ This technical overview provides a comprehensive reference for the Eligian codeb
 4. **13 Functional Domains**: Grammar, compiler, LSP, operations, type system, CSS, assets, library loading, JSDoc, errors, Effect, utils, tests
 5. **Three-Process Extension**: Extension Host ↔ Language Server ↔ Webview Preview
 6. **Standalone CLI**: Command-line compiler with rich error formatting
-7. **Comprehensive Testing**: 2,020 tests with 81.72% coverage
-8. **Quality-First Development**: Biome + TypeScript strict mode + 80% coverage target
-9. **Library System**: ES6-style imports with nested dependencies, cycle detection, and cache invalidation
+7. **Bundler Module**: Create standalone HTML distributions with tree-shaken runtime
+8. **Comprehensive Testing**: ~2,575 tests with 81.72% coverage
+9. **Quality-First Development**: Biome + TypeScript strict mode + 80% coverage target
+10. **Library System**: ES6-style imports with nested dependencies, cycle detection, and cache invalidation
+11. **Locale Editor**: Custom VS Code editor for multi-language label files
 
 **For Further Reading**:
 - `CLAUDE.md` - Project guidance and requirements

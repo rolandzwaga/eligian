@@ -12,7 +12,7 @@
  * - T051: Message sending for new data structures
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { SerializableKeyTreeNode } from '../types.js';
 
 // New message types for ILocalesConfiguration format
@@ -48,14 +48,8 @@ type LocaleToWebviewMessage =
       success: boolean;
     };
 
-type LocaleToExtensionMessage =
-  | { type: 'ready' }
-  | { type: 'update-translation'; key: string; locale: string; value: string }
-  | { type: 'add-key'; parentKey: string | null; newSegment: string }
-  | { type: 'delete-key'; key: string }
-  | { type: 'rename-key'; oldKey: string; newKey: string }
-  | { type: 'add-locale'; locale: string }
-  | { type: 'request-save' };
+// NOTE: LocaleToExtensionMessage type removed - was only used for tautological tests.
+// Type definitions are in types.ts and validated at compile time.
 
 // Test state type for new format
 interface LocaleEditorState {
@@ -68,13 +62,9 @@ interface LocaleEditorState {
 }
 
 describe('Webview Rendering (Feature 045, Phase 4D)', () => {
-  let mockPostMessage: ReturnType<typeof vi.fn>;
   let state: LocaleEditorState;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockPostMessage = vi.fn();
-
     // Initialize test state
     state = {
       locales: [],
@@ -277,23 +267,8 @@ describe('Webview Rendering (Feature 045, Phase 4D)', () => {
   });
 
   describe('T048: Inline cell editing', () => {
-    it('should send update-translation message on edit', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'update-translation',
-        key: 'nav.home',
-        locale: 'en-US',
-        value: 'Welcome',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'update-translation',
-        key: 'nav.home',
-        locale: 'en-US',
-        value: 'Welcome',
-      });
-    });
+    // NOTE: Tautological test removed - testing mockPostMessage(x).toHaveBeenCalledWith(x)
+    // doesn't prove anything. The actual message sending is tested in integration tests.
 
     it('should update local state optimistically', () => {
       state.keyTree = [
@@ -330,109 +305,10 @@ describe('Webview Rendering (Feature 045, Phase 4D)', () => {
     });
   });
 
-  describe('T049-T050: Add key/locale functionality', () => {
-    it('should send add-key message with parent key', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'add-key',
-        parentKey: 'nav',
-        newSegment: 'contact',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'add-key',
-        parentKey: 'nav',
-        newSegment: 'contact',
-      });
-    });
-
-    it('should send add-key message for root level', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'add-key',
-        parentKey: null,
-        newSegment: 'footer',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'add-key',
-        parentKey: null,
-        newSegment: 'footer',
-      });
-    });
-
-    it('should send add-locale message', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'add-locale',
-        locale: 'de-DE',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'add-locale',
-        locale: 'de-DE',
-      });
-    });
-  });
-
-  describe('T051: Message sending for new data structures', () => {
-    it('should send delete-key message', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'delete-key',
-        key: 'nav.home',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'delete-key',
-        key: 'nav.home',
-      });
-    });
-
-    it('should send rename-key message', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'rename-key',
-        oldKey: 'nav.home',
-        newKey: 'nav.welcome',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'rename-key',
-        oldKey: 'nav.home',
-        newKey: 'nav.welcome',
-      });
-    });
-
-    it('should send request-save message', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'request-save',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'request-save',
-      });
-    });
-
-    it('should send ready message on initialization', () => {
-      const message: LocaleToExtensionMessage = {
-        type: 'ready',
-      };
-
-      mockPostMessage(message);
-
-      expect(mockPostMessage).toHaveBeenCalledWith({
-        type: 'ready',
-      });
-    });
-  });
+  // NOTE: T049-T051 tautological tests removed.
+  // Tests like mockPostMessage(x).toHaveBeenCalledWith(x) don't test production code.
+  // Message type definitions are validated by TypeScript at compile time.
+  // Actual message handling is tested in integration tests (dom-reconciliation.spec.ts).
 
   describe('Key tree utilities', () => {
     it('should find node by key in nested tree', () => {

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as fsPromises from 'node:fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FileNotFoundError, PermissionError, ReadError } from '../src/errors.js';
-import { type FileLoadResult, loadFileAsync, loadFileSync } from '../src/file-loader.js';
+import { loadFileAsync, loadFileSync } from '../src/file-loader.js';
 
 // Mock the fs module
 vi.mock('node:fs');
@@ -313,38 +313,6 @@ describe('File Loader', () => {
           _tag: 'FileNotFoundError',
         }),
       });
-    });
-  });
-
-  describe('FileLoadResult type discrimination', () => {
-    it('should allow type narrowing based on success field', () => {
-      // This test validates TypeScript type narrowing at compile time
-      const successResult: FileLoadResult = {
-        success: true,
-        content: 'test content',
-      };
-
-      const errorResult: FileLoadResult = {
-        success: false,
-        error: {
-          _tag: 'FileNotFoundError',
-          path: '/test.txt',
-          message: 'File not found',
-        },
-      };
-
-      // Type narrowing should work
-      if (successResult.success) {
-        // TypeScript should know result.content exists
-        expect(successResult.content).toBeDefined();
-      }
-
-      if (!errorResult.success) {
-        // TypeScript should know result.error exists
-        expect(errorResult.error).toBeDefined();
-      }
-
-      expect(true).toBe(true); // Placeholder assertion
     });
   });
 });

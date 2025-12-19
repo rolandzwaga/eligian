@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       effect:
-        specifier: 3.19.12
-        version: 3.19.12
+        specifier: 3.19.13
+        version: 3.19.13
       eligius:
-        specifier: 2.2.0
-        version: 2.2.0(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4)
+        specifier: 2.2.1
+        version: 2.2.1(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.10
@@ -40,8 +40,8 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       vite-tsconfig-paths:
-        specifier: 6.0.2
-        version: 6.0.2(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 6.0.3
+        version: 6.0.3(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0))
       vitest:
         specifier: 4.0.16
         version: 4.0.16(@types/node@24.10.1)(@vitest/ui@4.0.16)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(tsx@4.21.0)
@@ -106,18 +106,6 @@ importers:
       ajv:
         specifier: 8.17.1
         version: 8.17.1
-      css-tree:
-        specifier: 3.1.0
-        version: 3.1.0
-      domhandler:
-        specifier: 5.0.3
-        version: 5.0.3
-      domutils:
-        specifier: 3.2.2
-        version: 3.2.2
-      fast-check:
-        specifier: 4.4.0
-        version: 4.4.0
       htmlparser2:
         specifier: 10.0.0
         version: 10.0.0
@@ -137,9 +125,6 @@ importers:
         specifier: 0.3.1
         version: 0.3.1
     devDependencies:
-      '@types/css-tree':
-        specifier: 2.3.11
-        version: 2.3.11
       langium-cli:
         specifier: 4.1.0
         version: 4.1.0
@@ -855,9 +840,6 @@ packages:
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==, tarball: https://registry.npmjs.org/@types/chai/-/chai-5.2.3.tgz}
 
-  '@types/css-tree@2.3.11':
-    resolution: {integrity: sha512-aEokibJOI77uIlqoBOkVbaQGC9zII0A+JH1kcTNKW2CwyYWD8KM6qdo+4c77wD3wZOQfJuNWAr9M4hdk+YhDIg==, tarball: https://registry.npmjs.org/@types/css-tree/-/css-tree-2.3.11.tgz}
-
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==, tarball: https://registry.npmjs.org/@types/deep-eql/-/deep-eql-4.0.2.tgz}
 
@@ -1073,11 +1055,11 @@ packages:
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==, tarball: https://registry.npmjs.org/domutils/-/domutils-3.2.2.tgz}
 
-  effect@3.19.12:
-    resolution: {integrity: sha512-7F9RGTrCTC3D7nh9Zw+3VlJWwZgo5k33KA+476BAaD0rKIXKZsY/jQ+ipyhR/Avo239Fi6GqAVFs1mqM1IJ7yg==, tarball: https://registry.npmjs.org/effect/-/effect-3.19.12.tgz}
+  effect@3.19.13:
+    resolution: {integrity: sha512-8MZ783YuHRwHZX2Mmm+bpGxq+7XPd88sWwYAz2Ysry80sEKpftDZXs2Hg9ZyjESi1IBTNHF0oDKe0zJRkUlyew==, tarball: https://registry.npmjs.org/effect/-/effect-3.19.13.tgz}
 
-  eligius@2.2.0:
-    resolution: {integrity: sha512-1niSQffgWHxOdLevw9Gq/Ha4UF5cUXKmZmb/C/flvagIxk0hp0wE/nReIXlMUz+4LeozxqYReq1DO+80/8Y5RA==, tarball: https://registry.npmjs.org/eligius/-/eligius-2.2.0.tgz}
+  eligius@2.2.1:
+    resolution: {integrity: sha512-wKbj+idxv2mvuOo4PzHLF6pqZUInWx29Hk9N9jw7azK18bnmun2KMuirCc1IM0C3FcY8cWGMhPn1aw4Kyz3u7w==, tarball: https://registry.npmjs.org/eligius/-/eligius-2.2.1.tgz}
     engines: {node: '>=20'}
     peerDependencies:
       jquery: 3.7.1
@@ -1129,10 +1111,6 @@ packages:
   fast-check@3.23.2:
     resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==, tarball: https://registry.npmjs.org/fast-check/-/fast-check-3.23.2.tgz}
     engines: {node: '>=8.0.0'}
-
-  fast-check@4.4.0:
-    resolution: {integrity: sha512-s87BFAp8YaWYOBXjbTxeotaOhmA4hPYAyk9gBTFxdab25P6eAlqrryUvVMA2qd9bT/0Xq+YNJGtoVhJd/BxI4g==, tarball: https://registry.npmjs.org/fast-check/-/fast-check-4.4.0.tgz}
-    engines: {node: '>=12.17.0'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==, tarball: https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz}
@@ -1490,9 +1468,6 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==, tarball: https://registry.npmjs.org/pure-rand/-/pure-rand-6.1.0.tgz}
 
-  pure-rand@7.0.1:
-    resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==, tarball: https://registry.npmjs.org/pure-rand/-/pure-rand-7.0.1.tgz}
-
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==, tarball: https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz}
 
@@ -1739,8 +1714,8 @@ packages:
   videojs-vtt.js@0.15.5:
     resolution: {integrity: sha512-yZbBxvA7QMYn15Lr/ZfhhLPrNpI/RmCSCqgIff57GC2gIrV5YfyzLfLyZMj0NnZSAz8syB4N0nHXpZg9MyrMOQ==, tarball: https://registry.npmjs.org/videojs-vtt.js/-/videojs-vtt.js-0.15.5.tgz}
 
-  vite-tsconfig-paths@6.0.2:
-    resolution: {integrity: sha512-c06LOO8fWB5RuEPpEIHXU9t7Dt4DoiPIljnKws9UygIaQo6PoFKawTftz5/QVcO+6pOs/HHWycnq4UrZkWVYnQ==, tarball: https://registry.npmjs.org/vite-tsconfig-paths/-/vite-tsconfig-paths-6.0.2.tgz}
+  vite-tsconfig-paths@6.0.3:
+    resolution: {integrity: sha512-7bL7FPX/DSviaZGYUKowWF1AiDVWjMjxNbE8lyaVGDezkedWqfGhlnQ4BZXre0ZN5P4kAgIJfAlgFDVyjrCIyg==, tarball: https://registry.npmjs.org/vite-tsconfig-paths/-/vite-tsconfig-paths-6.0.3.tgz}
     peerDependencies:
       vite: '*'
     peerDependenciesMeta:
@@ -2376,8 +2351,6 @@ snapshots:
       '@types/deep-eql': 4.0.2
       assertion-error: 2.0.1
 
-  '@types/css-tree@2.3.11': {}
-
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.8': {}
@@ -2635,12 +2608,12 @@ snapshots:
       domelementtype: 2.3.0
       domhandler: 5.0.3
 
-  effect@3.19.12:
+  effect@3.19.13:
     dependencies:
       '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
 
-  eligius@2.2.0(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4):
+  eligius@2.2.1(jquery@3.7.1)(lottie-web@5.13.0)(video.js@8.23.4):
     dependencies:
       hotkeys-js: 3.13.15
       jquery: 3.7.1
@@ -2741,10 +2714,6 @@ snapshots:
   fast-check@3.23.2:
     dependencies:
       pure-rand: 6.1.0
-
-  fast-check@4.4.0:
-    dependencies:
-      pure-rand: 7.0.1
 
   fast-deep-equal@3.1.3: {}
 
@@ -3134,8 +3103,6 @@ snapshots:
 
   pure-rand@6.1.0: {}
 
-  pure-rand@7.0.1: {}
-
   queue-microtask@1.2.3: {}
 
   railroad-diagrams@1.0.0: {}
@@ -3366,7 +3333,7 @@ snapshots:
     dependencies:
       global: 4.4.0
 
-  vite-tsconfig-paths@6.0.2(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)):
+  vite-tsconfig-paths@6.0.3(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)):
     dependencies:
       debug: 4.4.3
       globrex: 0.1.2
