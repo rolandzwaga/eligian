@@ -15,7 +15,7 @@ import * as vscode from 'vscode';
 /**
  * Detailed usage location information
  */
-export interface UsageLocation {
+interface UsageLocation {
   filePath: string;
   fileName: string;
   line: number;
@@ -26,18 +26,9 @@ export interface UsageLocation {
 /**
  * Usage information for a single translation key
  */
-export interface KeyUsage {
+interface KeyUsage {
   count: number;
   files: UsageLocation[];
-}
-
-/**
- * Result of scanning all translation keys
- */
-export interface UsageTrackingResult {
-  usageByKey: Map<string, KeyUsage>;
-  totalUsages: number;
-  filesScanned: number;
 }
 
 /**
@@ -196,33 +187,6 @@ export async function getKeyUsageDetails(translationKey: string): Promise<KeyUsa
     console.error('Failed to get usage details for translation key:', error);
     return { count: 0, files: [] };
   }
-}
-
-/**
- * T057: Scan all translation keys and return usage statistics
- *
- * @param translationKeys - Array of translation keys to scan
- * @returns Promise resolving to UsageTrackingResult with all usage data
- */
-export async function scanAllKeyUsages(translationKeys: string[]): Promise<UsageTrackingResult> {
-  const usageByKey = new Map<string, KeyUsage>();
-  let totalUsages = 0;
-  const allFiles = new Set<string>();
-
-  for (const key of translationKeys) {
-    const usage = await getKeyUsageDetails(key);
-    usageByKey.set(key, usage);
-    totalUsages += usage.count;
-    for (const loc of usage.files) {
-      allFiles.add(loc.filePath);
-    }
-  }
-
-  return {
-    usageByKey,
-    totalUsages,
-    filesScanned: allFiles.size,
-  };
 }
 
 /**

@@ -12,7 +12,7 @@ import { getFileExtension } from './path-utils.js';
 /**
  * Supported asset types for Eligian imports
  */
-export type AssetType = 'html' | 'css' | 'media';
+type AssetType = 'html' | 'css' | 'media';
 
 /**
  * File extension to asset type mapping

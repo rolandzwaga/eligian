@@ -14,7 +14,7 @@
 /**
  * Base interface for all import validation errors
  */
-export interface ImportValidationError {
+interface ImportValidationError {
   code: string;
   message: string;
   hint: string;

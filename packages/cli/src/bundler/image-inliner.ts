@@ -9,7 +9,6 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Effect } from 'effect';
 import {
-  canInline,
   getMimeType,
   ImageInlineError,
   type InlineDecision,
@@ -113,18 +112,4 @@ export function shouldInline(
       reason: 'under-threshold' as const,
     };
   });
-}
-
-/**
- * Check if a file can potentially be inlined based on extension only
- *
- * This is a synchronous check that doesn't read the file.
- * Use shouldInline() for the full decision including size check.
- *
- * @param filePath - Path to the file
- * @returns true if the file type can potentially be inlined
- */
-export function canInlineByExtension(filePath: string): boolean {
-  const ext = path.extname(filePath).toLowerCase();
-  return canInline(ext);
 }

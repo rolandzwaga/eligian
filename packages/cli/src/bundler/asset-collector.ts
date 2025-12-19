@@ -84,7 +84,7 @@ function isDataUri(url: string): boolean {
 /**
  * CSS URL reference with line number
  */
-export interface CSSUrlRef {
+interface CSSUrlRef {
   /** The URL path extracted from url() */
   url: string;
   /** 1-indexed line number where the URL was found */
@@ -391,7 +391,7 @@ export function createOutputPathTracker(): OutputPathTracker {
 /**
  * Log any detected collisions as warnings
  */
-export function logCollisionWarnings(tracker: OutputPathTracker): void {
+function logCollisionWarnings(tracker: OutputPathTracker): void {
   for (const collision of tracker.collisions) {
     console.warn(`⚠ Asset filename collision detected: ${collision.fileName}`);
     console.warn(`  Source 1: ${collision.source1}`);
@@ -411,14 +411,6 @@ async function createDataUri(filePath: string, mimeType: string): Promise<string
   const content = await fs.readFile(filePath);
   const base64 = content.toString('base64');
   return `data:${mimeType};base64,${base64}`;
-}
-
-/**
- * Result of asset collection including collision info
- */
-export interface CollectAssetsResult {
-  manifest: AssetManifest;
-  collisions: OutputPathTracker['collisions'];
 }
 
 /**

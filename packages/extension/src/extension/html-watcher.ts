@@ -17,7 +17,7 @@ import type { LanguageClient } from 'vscode-languageclient/node.js';
 /**
  * Callback invoked when an HTML file changes after debouncing
  */
-export type HTMLChangeCallback = (filePath: string) => void | Promise<void>;
+type HTMLChangeCallback = (filePath: string) => void | Promise<void>;
 
 /**
  * Manages file watching for HTML layout hot-reload validation

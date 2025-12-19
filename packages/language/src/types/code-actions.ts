@@ -19,16 +19,6 @@ export interface CreateLabelsFileCommand {
 }
 
 /**
- * Structure of a labels file template entry
- */
-export interface LabelsFileTemplate {
-  /** Label identifier */
-  id: string;
-  /** Placeholder text for each language code (dynamic properties) */
-  [languageCode: string]: string;
-}
-
-/**
  * Diagnostic data for a missing labels file
  */
 export interface MissingLabelsFileData {
@@ -55,7 +45,7 @@ export enum FileErrorCode {
 /**
  * Error details for file creation failures
  */
-export interface FileCreationError {
+interface FileCreationError {
   /** Error code */
   code: FileErrorCode;
   /** Human-readable error message */
@@ -128,7 +118,7 @@ export enum LabelEntryErrorCode {
 /**
  * Error details for label entry creation failures
  */
-export interface LabelEntryError {
+interface LabelEntryError {
   /** Error code */
   code: LabelEntryErrorCode;
   /** Human-readable error message */

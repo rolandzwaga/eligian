@@ -12,7 +12,7 @@ import { hasOperation, OPERATION_REGISTRY } from './operations/index.js';
 /**
  * Name registry tracking both actions and operations
  */
-export interface NameRegistry {
+interface NameRegistry {
   operations: Set<string>;
   actions: Map<string, ActionDefinition>;
 }
@@ -20,7 +20,7 @@ export interface NameRegistry {
 /**
  * Result of resolving a call name
  */
-export type CallResolutionResult =
+type CallResolutionResult =
   | { resolved: true; type: 'action'; target: ActionDefinition }
   | { resolved: true; type: 'operation' }
   | { resolved: false; suggestions: string[] };

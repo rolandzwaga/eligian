@@ -13,7 +13,7 @@
 /**
  * Metadata for HTML content extracted from layout files
  */
-export interface HTMLMetadata {
+interface HTMLMetadata {
   /** Raw HTML content */
   content: string;
 

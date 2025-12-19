@@ -18,7 +18,7 @@ type IndexableLocales = Record<string, TLocaleEntry>;
 /**
  * Result of parsing ILocalesConfiguration from JSON.
  */
-export interface ParseResult {
+interface ParseResult {
   success: boolean;
   config?: ILocalesConfiguration;
   error?: string;
@@ -314,14 +314,4 @@ export function renameKeyInConfig(
   }
 
   return result as ILocalesConfiguration;
-}
-
-/**
- * Extract all locale codes from a configuration.
- */
-export function extractLocalesFromConfig(config: ILocalesConfiguration): string[] {
-  return Object.keys(config).filter(key => {
-    const entry = (config as IndexableLocales)[key];
-    return typeof entry === 'object' && !('$ref' in entry);
-  });
 }

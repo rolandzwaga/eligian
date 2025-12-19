@@ -13,7 +13,7 @@ import type { LabelRegistryService } from '../utils/label-registry.js';
 /**
  * Validation error for unknown label ID
  */
-export interface LabelIDValidationError {
+interface LabelIDValidationError {
   code: 'unknown_label_id' | 'no_labels_import';
   message: string;
   hint: string;
@@ -79,45 +79,4 @@ export function validateLabelID(
     labelId,
     suggestions,
   };
-}
-
-/**
- * Validate array of label IDs
- *
- * Validates each element in an array parameter, collecting all errors.
- *
- * @param documentUri - Absolute URI of the Eligian document
- * @param labelIds - Array of label IDs to validate
- * @param registry - Label registry service
- * @returns Array of validation errors (empty if all valid)
- *
- * @example
- * ```typescript
- * const errors = validateLabelIDArray('file:///program.eligian', ['valid-id', 'invalid-id'], registry);
- * // Returns: [
- * //   {
- * //     code: 'unknown_label_id',
- * //     message: "Unknown label ID: 'invalid-id'",
- * //     hint: "Did you mean: 'valid-id'?",
- * //     labelId: 'invalid-id',
- * //     suggestions: ['valid-id']
- * //   }
- * // ]
- * ```
- */
-export function validateLabelIDArray(
-  documentUri: string,
-  labelIds: string[],
-  registry: LabelRegistryService
-): LabelIDValidationError[] {
-  const errors: LabelIDValidationError[] = [];
-
-  for (const labelId of labelIds) {
-    const error = validateLabelID(documentUri, labelId, registry);
-    if (error) {
-      errors.push(error);
-    }
-  }
-
-  return errors;
 }

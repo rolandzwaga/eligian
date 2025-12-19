@@ -145,7 +145,7 @@ export function detectHTMLCompletionContext(context: CompletionContext): HTMLCom
  * @param text - Full document text
  * @returns Element name string or undefined
  */
-export function extractElementName(arg: any, text: string): string | undefined {
+function extractElementName(arg: any, text: string): string | undefined {
   if (!arg?.$cstNode) {
     return undefined;
   }
@@ -156,34 +156,6 @@ export function extractElementName(arg: any, text: string): string | undefined {
   const match = argText.match(/^["'](.*)["']$/);
   if (match) {
     return match[1];
-  }
-
-  return undefined;
-}
-
-/**
- * Extract attribute name from property assignment context
- *
- * @param context - Completion context
- * @returns Attribute name or undefined
- */
-export function extractAttributeName(context: CompletionContext): string | undefined {
-  const document = context.document;
-  const offset = context.offset;
-
-  const cstNode = document.parseResult.value.$cstNode;
-  if (!cstNode) {
-    return undefined;
-  }
-
-  const leafNode = CstUtils.findLeafNodeAtOffset(cstNode, offset);
-  if (!leafNode?.astNode) {
-    return undefined;
-  }
-
-  const objectProperty = AstUtils.getContainerOfType(leafNode.astNode, isObjectProperty);
-  if (objectProperty) {
-    return objectProperty.key;
   }
 
   return undefined;

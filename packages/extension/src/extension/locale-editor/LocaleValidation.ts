@@ -3,7 +3,7 @@
  * No VSCode dependencies - can be tested in isolation
  */
 
-export interface ValidationError {
+interface ValidationError {
   groupId?: string;
   translationId?: string;
   field: string;

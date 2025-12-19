@@ -149,7 +149,7 @@ export interface BundleResult {
 /**
  * Source location for error reporting
  */
-export interface SourceLocation {
+interface SourceLocation {
   file: string;
   line: number;
   column: number;
@@ -237,7 +237,7 @@ export class ImageInlineError extends BundleError {
 /**
  * MIME types for common asset extensions
  */
-export const MIME_TYPES: Record<string, string> = {
+const MIME_TYPES: Record<string, string> = {
   // Images
   '.png': 'image/png',
   '.jpg': 'image/jpeg',

@@ -51,10 +51,6 @@
   "dependencies": {
     "@eligian/shared-utils": "workspace:*",
     "ajv": "8.17.1",
-    "css-tree": "3.1.0",
-    "domhandler": "5.0.3",
-    "domutils": "3.2.2",
-    "fast-check": "4.4.0",
     "htmlparser2": "10.0.0",
     "langium": "4.1.2",
     "postcss": "8.5.6",
@@ -63,7 +59,6 @@
     "typir-langium": "0.3.1"
   },
   "devDependencies": {
-    "@types/css-tree": "2.3.11",
     "langium-cli": "4.1.0"
   }
 }

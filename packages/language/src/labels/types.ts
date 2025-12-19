@@ -26,39 +26,6 @@ export interface LanguageCodeInfo {
 }
 
 /**
- * Context for generating language block quick fix
- */
-export interface LanguageBlockQuickFixContext {
-  /**
-   * URI of the document being edited
-   */
-  documentUri: string;
-
-  /**
-   * Paths to labels files imported in the document
-   * Can be relative or absolute paths
-   */
-  labelsFilePaths: string[];
-
-  /**
-   * Position where language block should be inserted
-   */
-  insertionPosition: InsertionPosition;
-
-  /**
-   * Extracted language codes (empty if parsing failed)
-   * If empty, template will be generated
-   */
-  languageCodes: LanguageCodeInfo[];
-
-  /**
-   * Whether any labels files failed to parse
-   * Used to generate appropriate code action title
-   */
-  hasParseErrors: boolean;
-}
-
-/**
  * Position in document for inserting language block
  */
 export interface InsertionPosition {

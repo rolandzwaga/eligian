@@ -13,7 +13,7 @@ import { isLocaleReference } from 'eligius';
 /**
  * Metadata about a single locale in the configuration
  */
-export interface LocaleMetadata {
+interface LocaleMetadata {
   /** Locale code (e.g., 'en-US', 'nl-NL') */
   code: string;
   /** Whether this is an external file reference */
@@ -27,7 +27,7 @@ export interface LocaleMetadata {
 /**
  * Metadata about the entire locales configuration
  */
-export interface LocalesMetadata {
+interface LocalesMetadata {
   /** Array of locale metadata */
   locales: LocaleMetadata[];
   /** Total number of locales */

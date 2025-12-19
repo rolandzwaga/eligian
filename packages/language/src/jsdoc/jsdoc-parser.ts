@@ -24,7 +24,7 @@ export interface JSDocComment {
 /**
  * JSDoc @param Tag (extracted from Langium's JSDocTag)
  */
-export interface JSDocParam {
+interface JSDocParam {
   /** Parameter type (optional, from {type}) */
   type?: string;
   /** Parameter name (required) */

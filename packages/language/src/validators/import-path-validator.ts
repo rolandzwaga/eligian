@@ -59,28 +59,3 @@ export function validateImportPath(path: string): PathError | undefined {
 function isRelativePath(path: string): boolean {
   return path.startsWith('./') || path.startsWith('../');
 }
-
-/**
- * Checks if a path is absolute
- *
- * Absolute paths include:
- * - Unix absolute paths (start with `/`)
- * - Windows absolute paths (match `/^[A-Z]:\\/` like `C:\`)
- * - Protocol paths (`http://`, `https://`, `file://`, etc.)
- *
- * @param path - File path to check
- * @returns true if absolute, false if relative
- */
-export function isAbsolutePath(path: string): boolean {
-  // Unix absolute path (starts with /)
-  if (path.startsWith('/')) return true;
-
-  // Windows absolute path (C:\, D:\, etc.)
-  // Matches both backslash and forward slash variants
-  if (/^[A-Za-z]:[\\/]/.test(path)) return true;
-
-  // Protocol (http://, https://, file://, ftp://, etc.)
-  if (/^[a-z]+:\/\//i.test(path)) return true;
-
-  return false;
-}

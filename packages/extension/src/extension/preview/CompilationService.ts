@@ -21,7 +21,7 @@ import * as vscode from 'vscode';
 /**
  * Represents a single compilation error.
  */
-export interface CompilationError {
+interface CompilationError {
   message: string;
   line?: number;
   column?: number;
@@ -33,7 +33,7 @@ export interface CompilationError {
 /**
  * Result of compiling an .eligian file.
  */
-export interface CompilationResult {
+interface CompilationResult {
   success: boolean;
   config: IEngineConfiguration | null;
   errors: CompilationError[];

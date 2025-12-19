@@ -10,18 +10,5 @@
  */
 
 // Re-export all I/O error types from shared-utils
-export type {
-  FileNotFoundError,
-  FileOperationError as IOError,
-  PermissionError,
-  ReadError,
-  SecurityError,
-} from '@eligian/shared-utils';
-
+export type { FileOperationError as IOError } from '@eligian/shared-utils';
 // Re-export type guards for I/O errors
-export {
-  isFileNotFoundError,
-  isPermissionError,
-  isReadError,
-  isSecurityError,
-} from '@eligian/shared-utils';

@@ -14,7 +14,7 @@ import type { AssetEntry } from './types.js';
 /**
  * Result of inline overhead calculation
  */
-export interface InlineOverheadResult {
+interface InlineOverheadResult {
   /** Total original size of all inlined assets (bytes) */
   inlinedOriginalSize: number;
   /** Total encoded size of all inlined assets (data URI length) */

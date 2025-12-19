@@ -36,17 +36,3 @@ export interface HTMLElementMetadata {
   /** Element-specific attributes */
   readonly attributes: readonly HTMLAttributeMetadata[];
 }
-
-/**
- * Generated metadata registry structure
- */
-export interface HTMLMetadataRegistry {
-  /** All valid HTML element names */
-  readonly elementNames: readonly string[];
-
-  /** Metadata for each element */
-  readonly elements: Readonly<Record<string, HTMLElementMetadata>>;
-
-  /** Common attributes (apply to all elements) */
-  readonly commonAttributes: readonly HTMLAttributeMetadata[];
-}

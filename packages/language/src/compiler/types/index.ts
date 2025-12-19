@@ -16,33 +16,16 @@ export type {
   IDuration,
   IEndableActionConfiguration,
   IEngineConfiguration,
-  IEngineInfo,
   IEventActionConfiguration,
-  ILocalesConfiguration,
   IOperationConfiguration,
   IResolvedEngineConfiguration,
-  IResolvedOperation,
-  IStrictDuration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
-  ITimelineProviderSettings,
   TimelineTypes,
-  TLanguageCode,
-  TTimelineProviderSettings,
 } from 'eligius';
 // Error types - now imported from unified errors namespace
 // Note: Don't use export * to avoid duplicate SourceLocation export
-export type {
-  AssetError,
-  CompilerError,
-  EmitError,
-  FormattedError,
-  IOError,
-  ParseError,
-  TransformError,
-  TypeError,
-  ValidationError,
-} from '../../errors/index.js';
+export type { CompilerError } from '../../errors/index.js';
 // Common utility types
 export * from './common.js';
 // Our internal IR types

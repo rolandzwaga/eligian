@@ -17,7 +17,7 @@ import type { LanguageClient } from 'vscode-languageclient/node.js';
 /**
  * Callback invoked when a labels file changes after debouncing
  */
-export type LabelsChangeCallback = (filePath: string) => void | Promise<void>;
+type LabelsChangeCallback = (filePath: string) => void | Promise<void>;
 
 /**
  * Manages file watching for labels hot-reload validation

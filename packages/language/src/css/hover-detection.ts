@@ -15,12 +15,12 @@ import { parseSelector } from './selector-parser.js';
 /**
  * Type of CSS identifier being hovered
  */
-export type CSSIdentifierType = 'class' | 'id';
+type CSSIdentifierType = 'class' | 'id';
 
 /**
  * Hover target information
  */
-export interface HoverTarget {
+interface HoverTarget {
   /** Type of CSS identifier */
   type: CSSIdentifierType;
   /** Name of the class or ID (without . or # prefix) */

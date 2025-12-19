@@ -14,7 +14,7 @@ import * as vscode from 'vscode';
 /**
  * Callback invoked when locale file changes after debouncing
  */
-export type LocaleFileChangeCallback = (fileUri: vscode.Uri) => void | Promise<void>;
+type LocaleFileChangeCallback = (fileUri: vscode.Uri) => void | Promise<void>;
 
 /**
  * T058: Manages file watching for locale JSON files

@@ -20,7 +20,7 @@ import { URI } from 'vscode-uri';
 /**
  * Connection interface for sending notifications
  */
-export interface Connection {
+interface Connection {
   sendNotification(type: string, params: unknown): void;
 }
 

@@ -12,7 +12,7 @@ export {
   defaultCompileOptions,
 } from './Compiler.js';
 // Service definitions
-export { FileSystemService, IOError } from './FileSystem.js';
+export { FileSystemService } from './FileSystem.js';
 export { LoggerService, type LogLevel } from './Logger.js';
 
 // Layer implementations
@@ -20,7 +20,6 @@ export {
   FileSystemLive,
   FileSystemTest,
   LoggerLive,
-  LoggerSilent,
   LoggerTest,
   MainLayer,
   TestLayer,

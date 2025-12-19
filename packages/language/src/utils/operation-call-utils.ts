@@ -20,16 +20,3 @@ import type { OperationCall } from '../generated/ast.js';
 export function getOperationCallName(call: OperationCall): string {
   return call.operationName.$refText;
 }
-
-/**
- * Check if an OperationCall is a custom action call.
- *
- * Returns true if the operationName reference resolved to an ActionDefinition,
- * false if it's a built-in operation (ref is undefined).
- *
- * @param call - The OperationCall node
- * @returns True if custom action call, false if built-in operation
- */
-export function isCustomActionCall(call: OperationCall): boolean {
-  return call.operationName.ref !== undefined;
-}

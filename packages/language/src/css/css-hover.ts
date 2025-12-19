@@ -14,7 +14,7 @@ import type { CSSSourceLocation } from './css-parser.js';
 /**
  * Information about a CSS class across all imported files
  */
-export interface CSSClassInfo {
+interface CSSClassInfo {
   /** Class name (without dot prefix) */
   name: string;
   /** Definitions across all CSS files */
@@ -28,7 +28,7 @@ export interface CSSClassInfo {
 /**
  * Information about a CSS ID across all imported files
  */
-export interface CSSIDInfo {
+interface CSSIDInfo {
   /** ID name (without hash prefix) */
   name: string;
   /** Definitions across all CSS files */

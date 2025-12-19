@@ -1,0 +1,66 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts", "tools/*.ts"],
+      "ignore": ["**/__tests__/**", "**/*.spec.ts", "**/*.test.ts"]
+    },
+    "packages/shared-utils": {
+      "entry": ["src/index.ts"],
+      "ignore": ["**/__tests__/**", "**/*.spec.ts", "**/*.test.ts"]
+    },
+    "packages/language": {
+      "entry": [
+        "src/index.ts",
+        "src/css/css-service.ts",
+        "src/errors/index.ts",
+        "src/completion/generate-metadata.ts",
+        "src/compiler/operations/generate-registry.ts",
+        "src/completion/html-elements.generated.ts"
+      ],
+      "ignore": [
+        "**/__tests__/**",
+        "**/*.spec.ts",
+        "**/*.test.ts",
+        "**/generated/**"
+      ]
+    },
+    "packages/cli": {
+      "entry": ["src/index.ts", "src/main.ts"],
+      "ignore": ["**/__tests__/**", "**/*.spec.ts", "**/*.test.ts"]
+    },
+    "packages/extension": {
+      "entry": [
+        "src/extension/main.ts",
+        "src/language/main.ts",
+        "media/preview.ts",
+        "media/locale-editor.ts",
+        "media/locale-editor-core.ts",
+        "media/dom-reconciliation.ts"
+      ],
+      "ignore": [
+        "**/__tests__/**",
+        "**/*.spec.ts",
+        "**/*.test.ts",
+        "media/vitest.config.ts",
+        "media/vitest.setup.ts",
+        "media/empty-stub.ts"
+      ]
+    }
+  },
+  "ignore": [
+    "**/out/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/node_modules/**",
+    "specs/**"
+  ],
+  "ignoreDependencies": [
+    "langium",
+    "vscode-languageserver",
+    "vscode-languageserver-protocol",
+    "vscode-languageserver-types",
+    "vscode-uri",
+    "@types/vscode"
+  ]
+}

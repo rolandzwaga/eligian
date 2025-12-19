@@ -15,7 +15,7 @@ import { type AssetManifest, CSSProcessError } from './types.js';
 /**
  * Options for CSS processing
  */
-export interface CSSProcessOptions {
+interface CSSProcessOptions {
   /**
    * Whether to minify the combined CSS output
    * @default false

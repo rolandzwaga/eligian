@@ -2267,7 +2267,7 @@ const transformExpression = (
  * Maps parameter names to their indices in the eventArgs array.
  * Used during event action transformation to resolve parameter references.
  */
-export interface EventActionContext {
+interface EventActionContext {
   parameters: Map<string, number>;
 }
 
@@ -2357,7 +2357,7 @@ export function transformEventAction(
   };
 }
 
-export const transformTimeExpression = (
+const transformTimeExpression = (
   expr: AstTimeExpression,
   previousEventEndTime: number = 0
 ): Effect.Effect<TimeExpression, TransformError> =>

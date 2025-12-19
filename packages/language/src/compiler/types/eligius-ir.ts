@@ -16,11 +16,9 @@ import type {
   IEngineInfo,
   IEventActionConfiguration,
   ILabel,
-  ILocalesConfiguration,
   IOperationConfiguration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
-  ITimelineFlow,
   ITimelineProviderSettings,
   TimelineTypes,
   TLanguageCode,
@@ -37,12 +35,9 @@ export type {
   IEngineInfo,
   IEventActionConfiguration,
   ILabel,
-  ILocalesConfiguration,
   IOperationConfiguration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
-  ITimelineFlow,
-  ITimelineProviderSettings,
   TLanguageCode,
   TOperationData,
   TimelineTypes,
@@ -82,18 +77,6 @@ export type SourceMap = {
 };
 
 /**
- * @deprecated Use IEngineInfo from 'eligius' instead
- * Kept for backward compatibility during migration
- */
-export type EngineInfoIR = IEngineInfo;
-
-/**
- * T279: TimelineFlowIR now uses Eligius ITimelineFlow
- * Re-exported for backward compatibility
- */
-export type TimelineFlowIR = ITimelineFlow;
-
-/**
  * T279: TimelineProviderSettingsIR now uses Eligius TTimelineProviderSettings
  * Re-exported for backward compatibility
  */
@@ -125,7 +108,7 @@ export type TimelineConfigIR = {
  * Eligius defines: 'animation' | 'mediaplayer'
  * We extend with legacy types for backward compatibility during DSL parsing
  */
-export type TimelineType =
+type TimelineType =
   | TimelineTypes // Eligius types: 'animation' | 'mediaplayer'
   | 'raf' // Legacy - mapped to 'animation' during transformation
   | 'video' // Legacy - mapped to 'mediaplayer' during transformation
@@ -143,28 +126,12 @@ export type TimelineIR = {
 };
 
 /**
- * @deprecated Use TimelineType instead
- */
-export type TimelineProvider = TimelineType;
-
-/**
  * T278: DurationIR extends Eligius IDuration to support TimeExpression
  * Eligius IDuration only supports numbers, but DSL needs compile-time expressions
  */
-export type DurationIR = {
+type DurationIR = {
   readonly start: number | TimeExpression;
   readonly end: number | TimeExpression;
-};
-
-/**
- * T278: Base action configuration extends Eligius IActionConfiguration with sourceLocation
- * Note: Eligius uses IOperationConfiguration<TOperationData>[], we use OperationConfigIR[]
- */
-export type BaseActionIR = {
-  readonly id: string;
-  readonly name: string;
-  readonly startOperations: ReadonlyArray<OperationConfigIR>;
-  readonly sourceLocation: SourceLocation;
 };
 
 /**
@@ -249,7 +216,7 @@ export type ParameterIR = {
   readonly sourceLocation: SourceLocation;
 };
 
-export type ParameterType = 'selector' | 'number' | 'string' | 'boolean';
+type ParameterType = 'selector' | 'number' | 'string' | 'boolean';
 
 /**
  * Time expression - supports relative times, calculations
@@ -285,7 +252,7 @@ export type BuiltInActionIR = {
   readonly sourceLocation: SourceLocation;
 };
 
-export type BuiltInActionType = 'show' | 'hide' | 'animate' | 'trigger';
+type BuiltInActionType = 'show' | 'hide' | 'animate' | 'trigger';
 
 /**
  * Call to a user-defined action
@@ -300,7 +267,7 @@ export type ActionCallIR = {
 /**
  * Argument passed to an action call
  */
-export type ArgumentIR = {
+type ArgumentIR = {
   readonly value: JsonValue | TargetSelector | TimeExpression;
   readonly sourceLocation: SourceLocation;
 };
@@ -335,26 +302,16 @@ export type TargetSelector = {
 /**
  * Condition - predicate for conditional event triggering
  */
-export type ConditionIR = {
+type ConditionIR = {
   readonly kind: 'expression';
   readonly expression: string; // Boolean expression
   readonly sourceLocation: SourceLocation;
 };
 
 /**
- * Provider - custom timeline provider configuration
- */
-export type ProviderIR = {
-  readonly name: string;
-  readonly type: string;
-  readonly config: Readonly<Record<string, JsonValue>>;
-  readonly sourceLocation: SourceLocation;
-};
-
-/**
  * Metadata - compilation metadata
  */
-export type MetadataIR = {
+type MetadataIR = {
   readonly dslVersion: string;
   readonly compilerVersion: string;
   readonly compiledAt: string; // ISO 8601 timestamp

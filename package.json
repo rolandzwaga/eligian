@@ -19,7 +19,9 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "ci": "biome ci .",
-    "typecheck": "tsc -b tsconfig.build.json"
+    "typecheck": "tsc -b tsconfig.build.json",
+    "knip": "knip",
+    "knip:fix": "knip --fix"
   },
   "dependencies": {
     "effect": "3.19.12",
@@ -30,6 +32,7 @@
     "@types/node": "24.10.1",
     "@vitest/coverage-v8": "4.0.16",
     "esbuild": "0.27.2",
+    "knip": "5.75.2",
     "shx": "0.4.0",
     "tsx": "4.21.0",
     "typescript": "5.9.3",

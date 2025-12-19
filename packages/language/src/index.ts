@@ -49,7 +49,9 @@ export { generateJSDocContent } from './jsdoc/jsdoc-template-generator.js';
 // Labels exports (for label entry quick fix - Feature 041)
 export {
   generateLabelEntry,
+  generateLocaleEntry,
   type LabelEntry,
+  mergeLocaleEntry,
   type TranslationEntry,
 } from './labels/label-entry-generator.js';
 export { extractTranslationKeys } from './locales/translation-key-extractor.js';

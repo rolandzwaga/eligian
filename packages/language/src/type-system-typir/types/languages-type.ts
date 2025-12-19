@@ -23,7 +23,7 @@ import type { EligianSpecifics } from '../eligian-specifics.js';
  *
  * T051: LanguagesTypeProperties interface
  */
-export interface LanguagesTypeProperties {
+interface LanguagesTypeProperties {
   /**
    * Total number of languages declared in the languages block
    * Used for hover display and validation
@@ -69,7 +69,7 @@ export interface LanguagesTypeProperties {
  * // Returns: "Languages: 3 languages, default: nl-NL"
  * ```
  */
-export function calculateLanguagesTypeName(props: LanguagesTypeProperties): string {
+function calculateLanguagesTypeName(props: LanguagesTypeProperties): string {
   const languageWord = props.languageCount === 1 ? 'language' : 'languages';
   return `Languages: ${props.languageCount} ${languageWord}, default: ${props.defaultLanguage}`;
 }
@@ -89,7 +89,7 @@ export function calculateLanguagesTypeName(props: LanguagesTypeProperties): stri
  * // Returns: "Languages:3:nl-NL"
  * ```
  */
-export function calculateLanguagesTypeIdentifier(props: LanguagesTypeProperties): string {
+function calculateLanguagesTypeIdentifier(props: LanguagesTypeProperties): string {
   return `Languages:${props.languageCount}:${props.defaultLanguage}`;
 }
 

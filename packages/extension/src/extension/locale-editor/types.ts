@@ -4,15 +4,9 @@
  */
 
 // Import and re-export types from Eligius library
-import type {
-  ILocaleReference,
-  ILocalesConfiguration,
-  TLanguageCode,
-  TLocaleData,
-  TLocaleEntry,
-} from 'eligius';
+import type { TLanguageCode } from 'eligius';
 
-export type { ILocaleReference, ILocalesConfiguration, TLanguageCode, TLocaleData, TLocaleEntry };
+export type { TLanguageCode };
 
 // =============================================================================
 // Key Tree Types (Editor UI Model)
@@ -79,7 +73,7 @@ export interface LabelGroup {
  * Translation entity - single language variant of a label
  * @deprecated Use KeyTreeNode.translations Map instead
  */
-export interface Translation {
+interface Translation {
   /** Auto-generated UUID v4 (hidden from user) */
   id: string;
   /** Language code in xx-XX format (e.g., en-US, nl-NL) */

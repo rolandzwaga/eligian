@@ -14,7 +14,7 @@ import type { IEngineConfiguration } from 'eligius';
 /**
  * Commands that can be sent to the webview to control the Eligius engine.
  */
-export type EngineCommand =
+type EngineCommand =
   | { type: 'initialize'; payload: { config: IEngineConfiguration } }
   | { type: 'play' }
   | { type: 'pause' }

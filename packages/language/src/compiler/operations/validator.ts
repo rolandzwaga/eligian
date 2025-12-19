@@ -53,7 +53,7 @@ export interface ParameterCountError extends ValidationError {
 /**
  * Parameter type error (argument type doesn't match expected type)
  */
-export interface ParameterTypeError extends ValidationError {
+interface ParameterTypeError extends ValidationError {
   code: 'PARAMETER_TYPE';
   parameterIndex: number;
   parameterName: string;
@@ -82,7 +82,7 @@ export interface ControlFlowError extends ValidationError {
 /**
  * Union of all validation error types
  */
-export type OperationValidationError =
+type OperationValidationError =
   | UnknownOperationError
   | ParameterCountError
   | ParameterTypeError

@@ -7,8 +7,6 @@
  * @module validation-constants
  */
 
-import type { AssetType } from '../utils/asset-type-inference.js';
-
 /**
  * Reserved keywords that cannot be used as import names
  *
@@ -36,24 +34,6 @@ export const RESERVED_KEYWORDS = new Set([
   'true',
   'false',
 ]);
-
-/**
- * File extension to asset type mapping
- *
- * Used by type inference validators to determine asset type from file path.
- * Extensions are intentionally limited to unambiguous cases.
- *
- * **Excluded extensions**:
- * - `.ogg` - Ambiguous (could be audio or video), requires explicit type
- */
-export const EXTENSION_MAP: Record<string, AssetType> = {
-  html: 'html',
-  css: 'css',
-  mp4: 'media',
-  webm: 'media',
-  mp3: 'media',
-  wav: 'media',
-};
 
 /**
  * Ambiguous file extensions that require explicit type specification

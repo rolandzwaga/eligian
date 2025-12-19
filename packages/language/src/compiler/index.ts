@@ -17,7 +17,6 @@ export {
   FileSystemTest,
   LoggerLive,
   LoggerService,
-  LoggerSilent,
   LoggerTest,
   type LogLevel,
   MainLayer,

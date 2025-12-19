@@ -102,13 +102,6 @@ export const LoggerTest = Layer.succeed(LoggerService, {
 });
 
 /**
- * Silent Logger implementation (discards all log messages)
- *
- * Useful for production when you don't want any console output.
- */
-export const LoggerSilent = LoggerTest;
-
-/**
  * Main production layer (FileSystem + Logger)
  *
  * Use this in production CLI and VS Code extension.

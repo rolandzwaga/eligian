@@ -19,7 +19,7 @@ import type { LanguageClient } from 'vscode-languageclient/node.js';
 /**
  * Callback invoked when a CSS file changes after debouncing
  */
-export type CSSChangeCallback = (filePath: string) => void | Promise<void>;
+type CSSChangeCallback = (filePath: string) => void | Promise<void>;
 
 /**
  * T015-T019: Manages file watching for CSS hot-reload

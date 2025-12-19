@@ -9,39 +9,6 @@ import * as vscode from 'vscode';
 import { generateCSSId, loadCSSFile, rewriteCSSUrls } from './css-loader.js';
 
 /**
- * Message types sent to webview for CSS operations
- */
-export interface CSSLoadMessage {
-  type: 'css-load';
-  cssId: string;
-  content: string;
-  sourceFile: string;
-  loadOrder: number;
-}
-
-export interface CSSReloadMessage {
-  type: 'css-reload';
-  cssId: string;
-  content: string;
-  sourceFile: string;
-}
-
-export interface CSSRemoveMessage {
-  type: 'css-remove';
-  cssId: string;
-}
-
-export interface CSSErrorMessage {
-  type: 'css-error';
-  cssId: string;
-  filePath: string;
-  error: string;
-  code: 'NOT_FOUND' | 'READ_ERROR' | 'PERMISSION_DENIED';
-}
-
-export type CSSMessage = CSSLoadMessage | CSSReloadMessage | CSSRemoveMessage | CSSErrorMessage;
-
-/**
  * Error tracking for rate-limiting notifications
  */
 interface ErrorInfo {

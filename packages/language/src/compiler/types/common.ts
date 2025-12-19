@@ -32,7 +32,6 @@ export type JsonValue =
   | ReadonlyArray<JsonValue>;
 
 export type JsonObject = { readonly [key: string]: JsonValue };
-export type JsonArray = ReadonlyArray<JsonValue>;
 
 /**
  * Create a source location from line and column

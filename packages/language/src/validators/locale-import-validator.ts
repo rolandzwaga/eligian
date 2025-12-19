@@ -17,7 +17,7 @@ import localesSchema from '../schemas/locales-schema.json' with { type: 'json' }
 /**
  * Validation error structure for locales import failures
  */
-export interface LocaleValidationError {
+interface LocaleValidationError {
   code: 'invalid_locales_json' | 'invalid_locales_schema' | 'locales_file_not_found';
   message: string;
   hint: string;
@@ -80,7 +80,7 @@ function formatValidationError(error: ErrorObject, _data: unknown): string {
  * @param data - Parsed JSON data to validate
  * @returns LocaleValidationError if invalid, undefined if valid
  */
-export function validateSchema(data: unknown): LocaleValidationError | undefined {
+function validateSchema(data: unknown): LocaleValidationError | undefined {
   const isValid = compiledLocalesSchema(data);
 
   if (isValid) {

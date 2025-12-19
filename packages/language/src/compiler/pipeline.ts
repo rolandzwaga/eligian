@@ -115,7 +115,7 @@ export function getOrCreateServices() {
 /**
  * Compilation options
  */
-export interface CompileOptions {
+interface CompileOptions {
   /**
    * Enable optimization passes (default: true)
    */
@@ -823,7 +823,7 @@ export function parseLibraryDocument(
  * @param loadingStack - Stack of currently loading library paths (for cycle detection)
  * @returns Effect with array of all library documents (self + dependencies)
  */
-export function loadLibraryRecursive(
+function loadLibraryRecursive(
   libraryUri: URI,
   _documentUri: URI,
   loadingStack: Set<string> = new Set()
@@ -892,26 +892,6 @@ export function loadLibraryRecursive(
 
     return allLibraries;
   });
-}
-
-/**
- * T016: Link library documents in workspace
- *
- * Adds library documents to the Langium workspace and re-links the main program
- * document so that action references resolve correctly.
- *
- * This function is a no-op for now - Langium automatically handles cross-document
- * references once documents are added to the workspace via LangiumDocumentFactory.fromString().
- * The scope provider's getImportedActions() method will find library actions once they're loaded.
- */
-export function linkLibraryDocuments(
-  _program: Program,
-  _libraries: Library[]
-): Effect.Effect<void, never> {
-  // No-op: Langium automatically handles cross-document linking
-  // Libraries were added to workspace in parseLibraryDocument()
-  // Scope provider will resolve references via getImportedActions()
-  return Effect.succeed(undefined);
 }
 
 /**

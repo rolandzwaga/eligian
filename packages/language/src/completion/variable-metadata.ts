@@ -5,7 +5,7 @@
  * These correspond to properties from the IOperationScope interface in Eligius.
  */
 
-export interface VariableMetadata {
+interface VariableMetadata {
   name: string;
   type: string;
   description: string;
@@ -18,7 +18,7 @@ export interface VariableMetadata {
  * These variables are accessible via @@ syntax in Eligian DSL
  * and map to IOperationScope properties from Eligius.
  */
-export const SYSTEM_VARIABLES: VariableMetadata[] = [
+const SYSTEM_VARIABLES: VariableMetadata[] = [
   {
     name: 'loopIndex',
     type: 'number',

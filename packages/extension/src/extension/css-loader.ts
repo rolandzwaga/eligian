@@ -7,21 +7,16 @@
 
 // Import from language package (Feature 017)
 import {
-  type FileNotFoundError,
   generateCSSId as generateCSSIdInternal,
   loadCSS as loadCSSInternal,
-  type PermissionError,
-  type ReadError,
   rewriteUrls as rewriteUrlsInternal,
 } from '@eligian/language';
 import type { IEngineConfiguration } from 'eligius';
 import type * as vscode from 'vscode';
 import { VSCodeWebviewUriConverter } from './webview-uri-converter.js';
-
 /**
  * Re-export error types from language package for backwards compatibility
  */
-export type { FileNotFoundError, PermissionError, ReadError };
 
 /**
  * Generate stable unique identifier from file path using SHA-256 hash
