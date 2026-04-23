@@ -16,6 +16,10 @@ packages/extension/syntaxes/
 .pnpm-store/
 .pnpm-debug.log
 
+# fallow tool cache
+.fallow/
+**/.fallow/
+
 # Debug and temporary files (Constitution VIII)
 *.js
 *.js.map
