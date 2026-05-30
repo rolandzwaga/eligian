@@ -1,0 +1,68 @@
+name: CodeQL
+
+# Static analysis / code scanning. Two languages are analyzed:
+#   - actions:               scans the workflow files themselves. This is what
+#                            surfaces the GitHub Actions cache-poisoning query
+#                            (and other workflow misconfigurations).
+#   - javascript-typescript: scans the TS/JS source across the pnpm workspace.
+#
+# Results appear under the repo's Security > Code scanning tab and as PR checks.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly full scan (Mondays 06:00 UTC) so new query updates catch existing
+    # code even when nothing changed.
+    - cron: '0 6 * * 1'
+
+# Least privilege by default; the analyze job opts into what it needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      # Required to upload code scanning results.
+      security-events: write
+      # Required to read the repo (and, for the `actions` language, workflow runs).
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - actions
+          - javascript-typescript
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@03e4368ac7daa2bd82b3e85262f3bf87ee112f57 # v3.36.0
+        with:
+          languages: ${{ matrix.language }}
+          # security-extended ensures the full security query set runs, including
+          # the Actions cache-poisoning queries.
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@03e4368ac7daa2bd82b3e85262f3bf87ee112f57 # v3.36.0
+        with:
+          category: "/language:${{ matrix.language }}"

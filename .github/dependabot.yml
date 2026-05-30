@@ -1,11 +1,68 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Dependabot configuration for the Eligian pnpm workspace.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Two ecosystems are tracked:
+#   1. npm        -> JS/TS deps. pnpm uses the "npm" ecosystem; pointing at "/"
+#                    reads pnpm-lock.yaml and covers root + all packages/* workspaces.
+#   2. github-actions -> the actions pinned in .github/workflows/ci.yml.
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # ---------------------------------------------------------------------------
+  # JavaScript / TypeScript dependencies (pnpm workspace)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    versioning-strategy: "increase"
+    labels:
+      - "dependencies"
+    commit-message:
+      # Matches the repo's conventional "chore(deps): ..." style.
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    # Give freshly published releases a few days to surface regressions before
+    # Dependabot opens a PR for them.
+    cooldown:
+      default-days: 5
+      semver-major-days: 7
+    groups:
+      # Bundle low-risk minor/patch bumps so they land as a single PR.
+      production-minor-patch:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-minor-patch:
+        applies-to: version-updates
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    # Major bumps are intentionally left ungrouped so each gets its own PR and
+    # review (e.g. effect, eligius, vitest, biome, langium toolchain).
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions used by the CI workflow
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
