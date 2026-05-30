@@ -47,7 +47,10 @@ Current item being iterated in the \`for (${loopVarName} in ...)\` loop.`,
   }
 
   // Get standard system variables available in current context
-  const availableVariables = getAvailableVariables(cursorContext.isInsideLoop);
+  const availableVariables = getAvailableVariables(
+    cursorContext.isInsideLoop,
+    cursorContext.isInsideAction
+  );
 
   // Map each variable to a CompletionItem
   for (const variable of availableVariables) {

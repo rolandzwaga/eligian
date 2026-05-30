@@ -54,6 +54,60 @@ export interface ParsedSelector {
  * parseSelector('.button[')
  * // { classes: [], ids: [], valid: false, error: "Unexpected '[' found" }
  */
+/**
+ * A class or ID found in a selector, with its character span in the source string.
+ */
+export interface SelectorIdentifier {
+  type: 'class' | 'id';
+  /** Identifier name without the leading '.'/'#' prefix */
+  name: string;
+  /** Offset of the prefix character ('.'/'#') within the selector string */
+  start: number;
+  /** Offset one past the last character of the identifier */
+  end: number;
+}
+
+/**
+ * Parse a CSS selector and return every class/ID with its source character span.
+ *
+ * Uses postcss-selector-parser node `sourceIndex` values, which point at the
+ * leading prefix character ('.' for classes, '#' for IDs). This enables precise,
+ * cursor-position-aware hover detection in compound selectors like `.button.primary`.
+ *
+ * @param selector - CSS selector string
+ * @returns Identifiers in source order; empty array on parse failure
+ */
+export function parseSelectorIdentifiers(selector: string): SelectorIdentifier[] {
+  const identifiers: SelectorIdentifier[] = [];
+
+  try {
+    const processor = selectorParser(root => {
+      root.walkClasses(node => {
+        identifiers.push({
+          type: 'class',
+          name: node.value,
+          start: node.sourceIndex,
+          end: node.sourceIndex + 1 + node.value.length,
+        });
+      });
+      root.walkIds(node => {
+        identifiers.push({
+          type: 'id',
+          name: node.value,
+          start: node.sourceIndex,
+          end: node.sourceIndex + 1 + node.value.length,
+        });
+      });
+    });
+
+    processor.processSync(selector);
+  } catch {
+    return [];
+  }
+
+  return identifiers;
+}
+
 export function parseSelector(selector: string): ParsedSelector {
   const classes: string[] = [];
   const ids: string[] = [];

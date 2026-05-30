@@ -305,12 +305,12 @@ function detectEventNameString(
 function detectAfterEventKeyword(
   document: LangiumDocument,
   offset: number,
-  eventAction: EventActionDefinition
+  _eventAction: EventActionDefinition
 ): boolean {
-  // If eventName is already set, we're not waiting for it
-  if (eventAction.eventName) {
-    return false;
-  }
+  // NOTE: We intentionally do NOT early-return when eventAction.eventName is
+  // already set. The cursor may be positioned right after "on event" to replace
+  // an existing event name, in which case completions must still be offered. The
+  // regex below correctly gates this case by inspecting the text before the cursor.
 
   // Check the text before cursor to see if it ends with "on event"
   const text = document.textDocument.getText();

@@ -246,10 +246,22 @@ export default function main(): void {
     .option('-v, --verbose', 'verbose logging', false)
     .option('-q, --quiet', 'suppress success messages', false)
     .option('--bundle', 'create standalone bundle instead of JSON', false)
-    .option('--inline-threshold <bytes>', 'image inlining threshold in bytes', String(DEFAULT_INLINE_THRESHOLD))
+    .option(
+      '--inline-threshold <bytes>',
+      'image inlining threshold in bytes',
+      String(DEFAULT_INLINE_THRESHOLD)
+    )
     .option('--sourcemap', 'generate source maps in bundle', false)
     .option('--force', 'overwrite existing output directory', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {
+      const inlineThreshold = parseInt(cmdOptions.inlineThreshold as string, 10);
+      if (Number.isNaN(inlineThreshold)) {
+        console.error(
+          `Error: --inline-threshold must be a number (got "${cmdOptions.inlineThreshold}")`
+        );
+        process.exit(1);
+      }
+
       const options: CLIOptions = {
         output: cmdOptions.output as string | undefined,
         check: cmdOptions.check as boolean,
@@ -258,7 +270,7 @@ export default function main(): void {
         verbose: cmdOptions.verbose as boolean,
         quiet: cmdOptions.quiet as boolean,
         bundle: cmdOptions.bundle as boolean,
-        inlineThreshold: parseInt(cmdOptions.inlineThreshold as string, 10),
+        inlineThreshold,
         sourcemap: cmdOptions.sourcemap as boolean,
         force: cmdOptions.force as boolean,
       };

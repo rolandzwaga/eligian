@@ -11,8 +11,10 @@
  * For now, we comprehensively test findIdentifierAtOffset which contains the core logic
  */
 
-import { describe, expect, it } from 'vitest';
-import { findIdentifierAtOffset } from '../../css/hover-detection.js';
+import { CstUtils } from 'langium';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { detectHoverTarget, findIdentifierAtOffset } from '../../css/hover-detection.js';
+import { createTestContext, type TestContext } from '../test-helpers.js';
 
 describe('CSS Hover Target Detection', () => {
   /**
@@ -43,16 +45,16 @@ describe('CSS Hover Target Detection', () => {
         expect(result?.name).toBe('button');
       });
 
-      it('should handle single class selector (simplified implementation)', () => {
+      it('should find class when cursor is anywhere within the class name', () => {
         const selector = '.button';
         const offset = 5; // In the middle of "button"
 
         const result = findIdentifierAtOffset(selector, offset);
 
-        // NOTE: Current implementation uses midpoint heuristic
-        // For single class, if offset > midpoint (3.5), returns undefined
-        // This is a known limitation - proper implementation would parse character positions
-        expect(result).toBeUndefined(); // offset 5 > midpoint 3.5
+        // Offset 5 falls within the ".button" span [0,7) → resolves to the class.
+        expect(result).toBeDefined();
+        expect(result?.type).toBe('class');
+        expect(result?.name).toBe('button');
       });
 
       it('should handle complex selector with multiple classes', () => {
@@ -67,15 +69,16 @@ describe('CSS Hover Target Detection', () => {
         expect(result?.name).toBe('button');
       });
 
-      it('should handle class with hyphens (midpoint limitation)', () => {
+      it('should find class with hyphens regardless of cursor position', () => {
         const selector = '.btn-primary';
-        const offset = 6; // In the class name, midpoint is 6
+        const offset = 6; // Inside "btn-primary"
 
         const result = findIdentifierAtOffset(selector, offset);
 
-        // NOTE: Midpoint calculation means offset >= midpoint returns undefined
-        // This is a known limitation of the simplified implementation
-        expect(result).toBeUndefined();
+        // Offset 6 falls within the ".btn-primary" span [0,12) → resolves to the class.
+        expect(result).toBeDefined();
+        expect(result?.type).toBe('class');
+        expect(result?.name).toBe('btn-primary');
       });
 
       it('should handle class with underscores', () => {
@@ -179,15 +182,16 @@ describe('CSS Hover Target Detection', () => {
     });
 
     describe('complex selectors', () => {
-      it('should handle descendant combinator (midpoint limitation)', () => {
+      it('should resolve the class after a descendant combinator', () => {
         const selector = 'div .button';
-        const offset = 6; // In second half, midpoint is 5.5
+        const offset = 6; // Inside ".button" (the '.' sits at index 4)
 
         const result = findIdentifierAtOffset(selector, offset);
 
-        // NOTE: Midpoint calculation means offset >= midpoint returns ID (if exists) or undefined
-        // Since this selector has no ID, returns undefined
-        expect(result).toBeUndefined();
+        // Offset 6 falls within the ".button" span [4,11) → resolves to the class.
+        expect(result).toBeDefined();
+        expect(result?.type).toBe('class');
+        expect(result?.name).toBe('button');
       });
 
       it('should handle element + class', () => {
@@ -215,30 +219,84 @@ describe('CSS Hover Target Detection', () => {
   });
 
   /**
-   * TODO: detectHoverTarget integration tests
+   * detectHoverTarget integration tests
    *
-   * These tests require proper AST traversal helpers to navigate from
-   * a parsed Program to find operation calls and their string literal arguments.
-   *
-   * The implementation in hover-detection.ts is functional (used in Phase 2),
-   * but creating comprehensive tests requires:
-   * 1. Helper function to parse DSL and find AST nodes by path
-   * 2. Understanding of exact $type values for ActionDefinition, OperationCall, etc.
-   * 3. Proper handling of AST container relationships
-   *
-   * For now, the comprehensive tests for findIdentifierAtOffset() verify
-   * the core hover detection logic. The detectHoverTarget() function is a
-   * thin wrapper that:
-   * - Traverses AST to find operation type
-   * - Calls findIdentifierAtOffset() for the actual detection
-   *
-   * Since findIdentifierAtOffset() is thoroughly tested, and detectHoverTarget()
-   * is simple AST navigation + delegation, we have good coverage of the core logic.
+   * These exercise the full path: parse real DSL, locate the CST leaf node at a
+   * cursor offset (exactly as the hover provider does), and resolve the CSS
+   * identifier under the cursor. This covers className operations, selector
+   * operations (including cursor-position-aware resolution in compound
+   * selectors), and the not-a-CSS-target early returns.
    */
-  describe.skip('detectHoverTarget - TODO: Integration tests', () => {
-    // TODO: Implement when AST traversal helpers are available
-    it('should detect class name in addClass()', () => {
-      expect(true).toBe(false); // Placeholder
+  describe('detectHoverTarget - integration', () => {
+    let ctx: TestContext;
+
+    beforeAll(() => {
+      ctx = createTestContext();
+    });
+
+    // Operations are written with unique class/id names so each marker substring
+    // appears exactly once in the source, making offset lookup unambiguous.
+    const program = `styles "./styles.css"
+
+action testAction() [
+  selectElement(".alpha.beta")
+  selectElement("#gamma")
+  addClass("delta")
+]
+
+timeline "test" in ".container" using raf {
+  at 0s testAction()
+}`;
+
+    /**
+     * Resolve the hover target at the first occurrence of `marker` in the program.
+     */
+    async function detectAt(marker: string) {
+      const offset = program.indexOf(marker);
+      expect(offset).toBeGreaterThanOrEqual(0);
+
+      const document = await ctx.parse(program);
+      const root = document.parseResult.value.$cstNode;
+      expect(root).toBeDefined();
+
+      const leaf = CstUtils.findLeafNodeAtOffset(root!, offset);
+      expect(leaf?.astNode).toBeDefined();
+
+      return detectHoverTarget(leaf!.astNode!, {
+        textDocument: { uri: document.uri.toString() },
+        position: document.textDocument.positionAt(offset),
+      });
+    }
+
+    it('should detect the class under the cursor in a compound selector', async () => {
+      const result = await detectAt('beta');
+      expect(result).toEqual({ type: 'class', name: 'beta' });
+    });
+
+    it('should detect the first class when the cursor is over it', async () => {
+      const result = await detectAt('alpha');
+      expect(result).toEqual({ type: 'class', name: 'alpha' });
+    });
+
+    it('should detect an id in a selector operation', async () => {
+      const result = await detectAt('gamma');
+      expect(result).toEqual({ type: 'id', name: 'gamma' });
+    });
+
+    it('should detect the class name in a className operation', async () => {
+      const result = await detectAt('delta');
+      expect(result).toEqual({ type: 'class', name: 'delta' });
+    });
+
+    it('should return undefined when not inside an operation call', async () => {
+      // The first "testAction" occurrence is the action definition name.
+      const result = await detectAt('testAction');
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when the cursor is on the operation name, not a string', async () => {
+      const result = await detectAt('selectElement');
+      expect(result).toBeUndefined();
     });
   });
 });
