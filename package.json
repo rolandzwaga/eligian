@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "clean": "pnpm -r clean",
-    "watch": "tsc -b tsconfig.build.json --watch",
+    "watch": "tsgo -b tsconfig.build.json --watch",
     "build": "pnpm -r build",
     "build:clean": "pnpm clean && pnpm build",
     "langium:generate": "pnpm --filter @eligian/language langium:generate",
@@ -19,7 +19,7 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "ci": "biome ci .",
-    "typecheck": "tsc -b tsconfig.build.json",
+    "typecheck": "tsgo -b tsconfig.build.json",
     "knip": "knip",
     "knip:fix": "knip --fix"
   },

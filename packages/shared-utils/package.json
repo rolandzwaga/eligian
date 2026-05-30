@@ -11,7 +11,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsgo",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

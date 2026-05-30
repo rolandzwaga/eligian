@@ -41,7 +41,7 @@
     "generate:registry": "tsx src/compiler/operations/generate-registry.ts",
     "generate:html-metadata": "tsx ../../scripts/generate-html-metadata.ts",
     "generate": "pnpm run generate:metadata && pnpm run generate:registry && pnpm run generate:html-metadata && pnpm run langium:generate",
-    "build": "pnpm run generate && node esbuild.mjs && tsc -p tsconfig.src.json --emitDeclarationOnly",
+    "build": "pnpm run generate && node esbuild.mjs && tsgo -p tsconfig.src.json --emitDeclarationOnly",
     "build:clean": "pnpm run clean && pnpm run build",
     "langium:generate": "langium generate",
     "langium:watch": "langium generate --watch",
