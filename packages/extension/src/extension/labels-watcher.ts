@@ -67,10 +67,6 @@ export class LabelsWatcherManager {
    * @param labelsFileUri - Labels file URI imported by the document (may be relative like "./labels.json")
    */
   registerImport(documentUri: string, labelsFileUri: string): void {
-    console.error(
-      `[LabelsWatcher] registerImport called: doc=${documentUri}, labels=${labelsFileUri}`
-    );
-
     // CRITICAL: Clear old mappings for this document first
     // This prevents stale entries when labels paths are corrected after being invalid
     this.clearDocumentMappings(documentUri);
@@ -83,11 +79,10 @@ export class LabelsWatcherManager {
     const docUri = vscode.Uri.parse(documentUri);
     const docPath = docUri.fsPath;
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
-    const workspaceRoot = workspaceFolder?.uri.fsPath || require('node:path').dirname(docPath);
+    const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
 
     // Convert relative labels path to absolute URI to match file change events
     const absoluteLabelsUri = this.resolveAbsoluteLabelsUri(documentUri, labelsFileUri);
-    console.error(`[LabelsWatcher] Resolved to absolute URI: ${absoluteLabelsUri}`);
 
     let documents = this.importsByLabelsFile.get(absoluteLabelsUri);
     if (!documents) {
@@ -99,7 +94,6 @@ export class LabelsWatcherManager {
     // Extract file path for watching
     const labelsUri = vscode.Uri.parse(absoluteLabelsUri);
     const labelsFilePath = labelsUri.fsPath;
-    console.error(`[LabelsWatcher] Will watch file path: ${labelsFilePath}`);
 
     // Start watching the labels file (this is idempotent - won't recreate watcher if already exists)
     this.startWatching([labelsFilePath], workspaceRoot);
@@ -192,7 +186,7 @@ export class LabelsWatcherManager {
    *
    * @param labelsFiles - New array of labels file paths to track
    */
-  updateTrackedFiles(labelsFiles: string[]): void {
+  private updateTrackedFiles(labelsFiles: string[]): void {
     for (const file of labelsFiles) {
       this.trackedFiles.add(file);
     }
@@ -203,12 +197,9 @@ export class LabelsWatcherManager {
    */
   private handleFileChange(uri: vscode.Uri): void {
     const filePath = uri.fsPath;
-    console.error(`[LabelsWatcher] handleFileChange: ${filePath}`);
-    console.error(`[LabelsWatcher] trackedFiles has: ${Array.from(this.trackedFiles).join(', ')}`);
 
     // Only process tracked files
     if (!this.trackedFiles.has(filePath)) {
-      console.error(`[LabelsWatcher] File not tracked, ignoring`);
       return;
     }
 
@@ -257,8 +248,6 @@ export class LabelsWatcherManager {
    * @param filePath - Absolute path to labels file that changed
    */
   private debounceChange(filePath: string): void {
-    console.error(`[LabelsWatcher] debounceChange called for: ${filePath}`);
-
     // Clear existing timer for this file
     const existingTimer = this.debounceTimers.get(filePath);
     if (existingTimer) {
@@ -274,20 +263,12 @@ export class LabelsWatcherManager {
         const labelsFileUri = vscode.Uri.file(filePath).toString();
         const documentUris = Array.from(this.importsByLabelsFile.get(labelsFileUri) || []);
 
-        console.error(
-          `[LabelsWatcher] Sending LABELS_UPDATED for ${labelsFileUri}, docs: ${documentUris.length}`
-        );
-
         if (documentUris.length > 0) {
           this.client.sendNotification(LABELS_UPDATED_NOTIFICATION, {
             labelsFileUri,
             documentUris,
           });
-        } else {
-          console.error(`[LabelsWatcher] No importing documents found for ${labelsFileUri}`);
         }
-      } else {
-        console.error('[LabelsWatcher] No language client available');
       }
 
       // Invoke callback (async-safe)

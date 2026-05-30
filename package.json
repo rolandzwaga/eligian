@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "clean": "pnpm -r clean",
-    "watch": "tsc -b tsconfig.build.json --watch",
+    "watch": "tsgo -b tsconfig.build.json --watch",
     "build": "pnpm -r build",
     "build:clean": "pnpm clean && pnpm build",
     "langium:generate": "pnpm --filter @eligian/language langium:generate",
@@ -19,7 +19,7 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "ci": "biome ci .",
-    "typecheck": "tsc -b tsconfig.build.json",
+    "typecheck": "tsgo -b tsconfig.build.json",
     "knip": "knip",
     "knip:fix": "knip --fix"
   },
@@ -33,9 +33,9 @@
     "@typescript/native-preview": "7.0.0-dev.20260427.1",
     "@vitest/coverage-v8": "4.1.5",
     "esbuild": "0.28.0",
-    "knip": "6.7.0",
     "shx": "0.4.0",
     "tsx": "4.21.0",
+    "typescript": "^6.0.3",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.1.5"
   },

@@ -108,15 +108,10 @@ export function createBundle(
     }
 
     // Compile Eligian source to configuration
-    let compileResult: Awaited<ReturnType<typeof compileFile>>;
-    try {
-      compileResult = yield* Effect.tryPromise({
-        try: () => compileFile(inputPath, { optimize: true }),
-        catch: e => new BundleError(`Compilation failed: ${e}`),
-      });
-    } catch (error) {
-      return yield* Effect.fail(new BundleError(`Compilation failed: ${error}`));
-    }
+    const compileResult = yield* Effect.tryPromise({
+      try: () => compileFile(inputPath, { optimize: true }),
+      catch: e => new BundleError(`Compilation failed: ${e}`),
+    });
 
     const config = compileResult.config;
 
@@ -252,13 +247,14 @@ export function createBundle(
         });
 
         const ext = path.extname(asset.sourcePath);
+        const fileType = getFileType(ext);
         files.push({
           path: asset.outputPath,
           size: asset.size,
-          type: getFileType(ext),
+          type: fileType,
         });
 
-        if (getFileType(ext) === 'image') {
+        if (fileType === 'image') {
           imagesCopied++;
         }
       }

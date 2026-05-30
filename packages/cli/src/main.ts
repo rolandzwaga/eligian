@@ -13,6 +13,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import { Effect } from 'effect';
 import { BundleError, createBundle } from './bundler/index.js';
+import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
 import { AssetError, CompilationError, compileFile, IOError, ParseError } from './compile-file.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
@@ -245,7 +246,7 @@ export default function main(): void {
     .option('-v, --verbose', 'verbose logging', false)
     .option('-q, --quiet', 'suppress success messages', false)
     .option('--bundle', 'create standalone bundle instead of JSON', false)
-    .option('--inline-threshold <bytes>', 'image inlining threshold in bytes', '51200')
+    .option('--inline-threshold <bytes>', 'image inlining threshold in bytes', String(DEFAULT_INLINE_THRESHOLD))
     .option('--sourcemap', 'generate source maps in bundle', false)
     .option('--force', 'overwrite existing output directory', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {

@@ -72,7 +72,6 @@ export function validateAssetType(importStmt: NamedImport): TypeInferenceError |
   const inferredType = inferAssetType(importStmt.path);
 
   // If inference fails, extension is unknown
-  // If inference fails, extension is unknown
   if (!inferredType) {
     return createValidationError(
       'UNKNOWN_EXTENSION',

@@ -46,10 +46,12 @@ export interface BundleOptions {
 /**
  * Default bundle options
  */
+export const DEFAULT_INLINE_THRESHOLD = 51200;
+
 export const defaultBundleOptions: Required<BundleOptions> = {
   outputDir: '', // Computed from input path
   minify: false,
-  inlineThreshold: 51200, // 50KB
+  inlineThreshold: DEFAULT_INLINE_THRESHOLD, // 50KB
   sourcemap: false,
   force: false,
 };

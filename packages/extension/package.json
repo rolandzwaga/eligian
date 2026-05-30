@@ -115,7 +115,7 @@
     "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json",
     "build": "pnpm run build:prepare && node esbuild.mjs",
     "build:clean": "pnpm run clean && pnpm run build",
-    "watch": "pnpm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\"",
+    "watch": "pnpm run build:prepare && concurrently -n tsgo,esbuild -c blue,yellow \"tsgo -b tsconfig.json --watch\" \"node esbuild.mjs --watch\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
