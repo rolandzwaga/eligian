@@ -15,6 +15,20 @@ This report synthesizes a verified, cross-module static analysis of the Eligian 
 
 ---
 
+## Status — Fixes Applied
+
+The following findings were fixed and committed in **`6b1c52a`** (verified: full test suite green, build clean). They are marked **✅ FIXED** inline below. Everything else remains open.
+
+**Fixed (numbered):** B1, B6, B8, B15, B17, B23, B27, B28, B54, B56, B58, B62, D33.
+
+**Also applied (cleanups not tracked as a numbered finding):** removed dead `checkSingleLanguagesBlock` method (eligian-validator.ts); removed empty `else` block (css-code-actions.ts); removed duplicate comments (pipeline.ts, asset-type-validator.ts); used the imported `path` module instead of inline `require` and marked `updateTrackedFiles` private across the three watchers; exported/reused `DEFAULT_INLINE_THRESHOLD`; deleted committed `error-reporter.ts.orig` and added `*.orig` to `.gitignore`.
+
+> ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
+
+The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
+
+---
+
 ## Glaring Bugs
 
 Ordered by severity (High first), grouped where the same root cause spans modules.
@@ -22,6 +36,7 @@ Ordered by severity (High first), grouped where the same root cause spans module
 ### High Severity
 
 #### B1. CSS directory resolution uses `||` instead of logical max — empty path on Unix
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** High
 **Locations:** [pipeline.ts:311](packages/language/src/compiler/pipeline.ts#L311)
 `docDir` is computed as `docPath.substring(0, docPath.lastIndexOf('\\') || docPath.lastIndexOf('/'))`. On any path without a backslash, `lastIndexOf('\\')` returns `-1` (truthy), so `||` short-circuits and `substring(0, -1)` returns `''` — making `docDir` empty on all non-Windows systems and silently breaking every CSS file resolution in the compiler pipeline. `Math.max(...)` is already used correctly in `resolveLibraryPath` at line 640.
@@ -52,6 +67,7 @@ The method finds locales imports but falls through to a TODO and returns without
 **Fix:** Inline the locale-loading logic and track initialized document URIs in a dedicated `Set<string>`, or populate the registry via `registerBeforeDocument`.
 
 #### B6. Redundant `try/catch` around `yield* Effect.tryPromise` — catch branch is dead code
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** High
 **Locations:** [bundler/index.ts:112-119](packages/cli/src/bundler/index.ts#L112), [image-inliner.ts:34-43](packages/cli/src/bundler/image-inliner.ts#L34), [image-inliner.ts:78-85](packages/cli/src/bundler/image-inliner.ts#L78), [runtime-bundler.ts:219-226](packages/cli/src/bundler/runtime-bundler.ts#L219)
 Inside `Effect.gen`, `yield*` on a failed Effect short-circuits via the Effect protocol — it does not throw — so the outer `catch` can never run, and its error mapping is silently dead. The `catch` variable would capture an iterator-completion object, not the typed error.
@@ -66,6 +82,7 @@ Inside `Effect.gen`, `yield*` on a failed Effect short-circuits via the Effect p
 **Research notes:** Confirmed via Effect-ts docs — `runPromise` wraps failures in `FiberFailure`; use `runPromiseExit`/`Cause.failureOption`/`Effect.matchCause`.
 
 #### B8. Operator-precedence bug defeats token-boundary guard for single-quoted CSS strings
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** High
 **Locations:** [css-completion.ts:62](packages/language/src/css/css-completion.ts#L62), [css-completion.ts:64](packages/language/src/css/css-completion.ts#L64), [css-completion.ts:65](packages/language/src/css/css-completion.ts#L65)
 `(hasTokenBoundaries && text[tokenOffset] === '"') || text[tokenOffset] === "'"` leaves the single-quote branch outside the guard. When `text` is `undefined` (optional chaining at line 56), the unguarded branch evaluates `undefined[tokenOffset]` and throws a `TypeError`.
@@ -110,6 +127,7 @@ The `'action'` case falls through to `return true`, so `@@whenEvaluation` (marke
 **Fix:** Accept an optional `fileUri?` and, when present, call `executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor')`; or have `createLabelsFile` open it directly.
 
 #### B15. `/g` RegExp shared across loop iterations causes missed locale-import links
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** High
 **Locations:** [locale-link-provider.ts:42](packages/extension/src/extension/locale-link-provider.ts#L42), [locale-link-provider.ts:50](packages/extension/src/extension/locale-link-provider.ts#L50)
 A `/g` regex declared once outside the per-line loop retains `lastIndex` across lines, so `exec` skips valid matches on subsequent lines — the classic stateful-`/g` bug.
@@ -122,6 +140,7 @@ A single instance-level boolean is shared across all open locale documents and r
 **Fix:** Add `.catch(() => { this.isApplyingWebviewEdit = false; })` and key the flag per-document via a `Map<string, boolean>`.
 
 #### B17. `LocaleFileWatcher` RelativePattern uses `vscode.Uri.parse` on a bare POSIX path
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** High
 **Locations:** [LocaleFileWatcher.ts:51-55](packages/extension/src/extension/locale-editor/LocaleFileWatcher.ts#L51)
 `vscode.Uri.parse(this.fileUri.path).fsPath` treats `/c:/foo/bar.json` as a scheme-less URI, producing an unreliable `fsPath` on Windows and potentially a glob that never matches.
@@ -160,6 +179,7 @@ Called as `validateGroupId(group.id, groupIds, group.id)`; the check `existingId
 **Fix:** Use index-based exclusion or count occurrences; unify the two implementations.
 
 #### B23. `updateTrackedFiles` diverges — css-watcher clears, html/labels watchers accumulate
+> ✅ **FIXED** — commit `6b1c52a` (css-watcher now accumulates to match html/labels)
 **Severity:** High
 **Locations:** [css-watcher.ts:203](packages/extension/src/extension/css-watcher.ts#L203), [html-watcher.ts:189](packages/extension/src/extension/html-watcher.ts#L189), [labels-watcher.ts:195](packages/extension/src/extension/labels-watcher.ts#L195)
 *(Two verified findings describe opposite manifestations of the same divergence; merged.)* The three "parallel" watcher classes disagree: `css-watcher` calls `trackedFiles.clear()` before re-adding (replace semantics); `html-watcher`/`labels-watcher` only `add()` (monotonic growth). The CSS variant breaks hot-reload for the first document when a second is opened; the HTML/labels variant accumulates stale paths that trigger unnecessary `debounceChange` callbacks. They cannot both be correct.
@@ -187,12 +207,14 @@ The optional `services?: any` falls back to `{ References: {} }`, so `services.d
 **Fix:** Type `services` as required `EligianServices`; provide a proper typed partial mock in tests.
 
 #### B27. Empty `if` body after stripped debug `console.log`
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Medium
 **Locations:** [pipeline.ts:372](packages/language/src/compiler/pipeline.ts#L372)
 `if (document.diagnostics && document.diagnostics.length > 0) { }` is dead code with a `// DEBUG` comment.
 **Fix:** Remove the empty `if` and comment.
 
 #### B28. `&&`/`||` in `expression-evaluator` use `Boolean()` coercion, losing short-circuit semantics
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Medium
 **Locations:** [expression-evaluator.ts:167](packages/language/src/compiler/expression-evaluator.ts#L167), [expression-evaluator.ts:170](packages/language/src/compiler/expression-evaluator.ts#L170)
 `Boolean(left) && Boolean(right)` always returns `boolean`, so constant-folding `"" || "fallback"` yields `true` instead of `"fallback"`.
@@ -352,6 +374,7 @@ Manual `./` stripping makes `importPath === '.'` resolve to the directory; `path
 **Fix:** Use `path.join(docDir, importPath)` directly.
 
 #### B54. `labels-watcher` leftover `console.error` debug traces
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Medium *(merged across two findings; same set of lines)*
 **Locations:** [labels-watcher.ts:70](packages/extension/src/extension/labels-watcher.ts#L70), [labels-watcher.ts:90](packages/extension/src/extension/labels-watcher.ts#L90), [labels-watcher.ts:102](packages/extension/src/extension/labels-watcher.ts#L102), [labels-watcher.ts:206](packages/extension/src/extension/labels-watcher.ts#L206), [labels-watcher.ts:207](packages/extension/src/extension/labels-watcher.ts#L207), [labels-watcher.ts:211](packages/extension/src/extension/labels-watcher.ts#L211), [labels-watcher.ts:260](packages/extension/src/extension/labels-watcher.ts#L260), [labels-watcher.ts:277](packages/extension/src/extension/labels-watcher.ts#L277), [labels-watcher.ts:287](packages/extension/src/extension/labels-watcher.ts#L287), [labels-watcher.ts:290](packages/extension/src/extension/labels-watcher.ts#L290), [main.ts:85](packages/extension/src/extension/main.ts#L85)
 Ten `console.error` informational traces (absent in css/html watchers) spam the error channel in production.
@@ -366,6 +389,7 @@ Ten `console.error` informational traces (absent in css/html watchers) spam the 
 **Fix:** Filter only top-level `program.statements` declarations.
 
 #### B56. `generateContainerElement` misindents the closing `</div>`
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Low
 **Locations:** [html-generator.ts:80](packages/cli/src/bundler/html-generator.ts#L80)
 Hard-coded two leading spaces before `</div>` yield four-space indentation in output.
@@ -378,6 +402,7 @@ Dead/unreachable depending on Commander's required-arg handling.
 **Fix:** Verify Commander behavior; remove dead code or use a pre-action/help hook.
 
 #### B58. `applyDecorations` rejection unobserved in `setTimeout`
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Low
 **Locations:** [block-label-decoration-provider.ts:55](packages/extension/src/extension/decorations/block-label-decoration-provider.ts#L55)
 A synchronous throw before the first `await` escapes as an unhandled rejection.
@@ -402,6 +427,7 @@ Re-checks `isDefaultImport` inside `.map`, making the `''` branch and the traili
 **Fix:** Use a type-predicate `.filter` so `.map` accesses `stmt.path` directly.
 
 #### B62. `selectKey` mutates the original state's `expandedKeys` Set
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Low
 **Locations:** [media/locale-editor-core.ts:695-709](packages/extension/media/locale-editor-core.ts#L695)
 Spread shares the Set reference; `add()` mutates the original (unlike `toggleExpanded`).
@@ -612,6 +638,7 @@ Identical normalize→dir→parse→`getDocument`→null-check (also the B4 ad-h
 **Abstraction:** `upsertAsset(assets, absolutePath, source, entry)`.
 
 ### D33. `getFileType` called twice in the same loop iteration
+> ✅ **FIXED** — commit `6b1c52a`
 **Severity:** Medium
 **Sites:** [bundler/index.ts:258](packages/cli/src/bundler/index.ts#L258), [bundler/index.ts:261](packages/cli/src/bundler/index.ts#L261)
 **Abstraction:** `const fileType = getFileType(ext)` once.
@@ -692,12 +719,12 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 ### Theme: Test/dev artifacts leaking into production
 - **`getOrCreateServices()` registers test CSS classes in the production singleton.** [pipeline.ts:64](packages/language/src/compiler/pipeline.ts#L64), [pipeline.ts:72](packages/language/src/compiler/pipeline.ts#L72). Phantom classes (`test-container`, `invalid1`…) make user docs pass CSS validation incorrectly. **Remove** the test metadata; inject in tests only.
 - **Debug `console.log/trace` in webview (29 calls).** [media/locale-editor.ts:462-463](packages/extension/media/locale-editor.ts#L462), [media/locale-editor.ts:224-268](packages/extension/media/locale-editor.ts#L224). Remove or gate behind a debug flag.
-- **`labels-watcher` debug `console.error`** (see B54).
-- **Dead `.orig` file committed.** [error-reporter.ts.orig](packages/language/src/compiler/error-reporter.ts.orig). Delete and add `*.orig` to `.gitignore`.
-- **Duplicate consecutive comments.** [pipeline.ts:308](packages/language/src/compiler/pipeline.ts#L308) ("Parse each CSS file…" twice); [asset-type-validator.ts:74-75](packages/language/src/validators/asset-type-validator.ts#L74) ("If inference fails…" twice).
+- **`labels-watcher` debug `console.error`** (see B54). ✅ **FIXED** — `6b1c52a`
+- **Dead `.orig` file committed.** [error-reporter.ts.orig](packages/language/src/compiler/error-reporter.ts.orig). Delete and add `*.orig` to `.gitignore`. ✅ **FIXED** — `6b1c52a`
+- **Duplicate consecutive comments.** [pipeline.ts:308](packages/language/src/compiler/pipeline.ts#L308) ("Parse each CSS file…" twice); [asset-type-validator.ts:74-75](packages/language/src/validators/asset-type-validator.ts#L74) ("If inference fails…" twice). ✅ **FIXED** — `6b1c52a`
 
 ### Theme: Dead/stub code in public surface
-- **`checkSingleLanguagesBlock`** empty body, never registered. [eligian-validator.ts:378](packages/language/src/eligian-validator.ts#L378). Delete.
+- **`checkSingleLanguagesBlock`** empty body, never registered. [eligian-validator.ts:378](packages/language/src/eligian-validator.ts#L378). Delete. ✅ **FIXED** — `6b1c52a`
 - **`compileFile`** permanently-failing stub exported publicly. [pipeline.ts:510](packages/language/src/compiler/pipeline.ts#L510). Implement via FileSystem effect or remove the export.
 - **`image-inliner.ts` `inlineImage`/`shouldInline` unused in production.** [image-inliner.ts:27](packages/cli/src/bundler/image-inliner.ts#L27), [image-inliner.ts:68](packages/cli/src/bundler/image-inliner.ts#L68). Delete or wire into `asset-collector`.
 - **`time-parser.ts` unused.** [time-parser.ts:27](packages/language/src/type-system-typir/utils/time-parser.ts#L27). Delete or document intent.
@@ -706,7 +733,7 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 - **`PathResolutionResult` one-armed union; `success` is a dead stub.** [path-resolver.ts:64-67](packages/shared-utils/src/path-resolver.ts#L64), [:135](packages/shared-utils/src/path-resolver.ts#L135), with dead-branch guards at [node-asset-loader.ts:89](packages/language/src/asset-loading/node-asset-loader.ts#L89), [html-import-utils.ts:42](packages/language/src/compiler/html-import-utils.ts#L42), [css-service.ts:202](packages/language/src/css/css-service.ts#L202). Add a real failure variant or return `string`.
 
 ### Theme: Empty/dead branches
-- **Empty `else {}`.** [css-code-actions.ts:99](packages/language/src/css/css-code-actions.ts#L99). Remove.
+- **Empty `else {}`.** [css-code-actions.ts:99](packages/language/src/css/css-code-actions.ts#L99). Remove. ✅ **FIXED** — `6b1c52a`
 - **Magic `CompletionItemKind` literals + dead `kind === 2` branch + type-only import.** [eligian-completion-provider.ts:195](packages/language/src/eligian-completion-provider.ts#L195). Import `CompletionItemKind` as a value and use named constants; remove the dead branch.
 
 ### Theme: Effect/error-handling fragility (non-bug-level)
@@ -716,7 +743,7 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 
 ### Theme: Encapsulation / API hygiene
 - **`getDocumentImports` returns the internal Set by reference.** [css-registry.ts:113-114](packages/language/src/css/css-registry.ts#L113). Return a defensive copy.
-- **`updateTrackedFiles` unintentionally public.** [css-watcher.ts:203](packages/extension/src/extension/css-watcher.ts#L203), [html-watcher.ts:189](packages/extension/src/extension/html-watcher.ts#L189), [labels-watcher.ts:195](packages/extension/src/extension/labels-watcher.ts#L195). Mark `private`.
+- **`updateTrackedFiles` unintentionally public.** [css-watcher.ts:203](packages/extension/src/extension/css-watcher.ts#L203), [html-watcher.ts:189](packages/extension/src/extension/html-watcher.ts#L189), [labels-watcher.ts:195](packages/extension/src/extension/labels-watcher.ts#L195). Mark `private`. ✅ **FIXED** — `6b1c52a`
 - **Global `window.__pendingDeleteIndex` side-channel** (race-prone). [media/locale-editor.ts:809](packages/extension/media/locale-editor.ts#L809), [:819](packages/extension/media/locale-editor.ts#L819), [:835](packages/extension/media/locale-editor.ts#L835). Use a module-level typed variable or pass the index through the message chain.
 - **`locale-editor.ts` re-exports types it re-declares.** [media/locale-editor.ts:23](packages/extension/media/locale-editor.ts#L23). Remove the re-export.
 - **`createValidationError` name shadows the domain constructor.** [error-builder.ts:52](packages/language/src/utils/error-builder.ts#L52) vs [compiler-errors.ts:236](packages/language/src/errors/compiler-errors.ts#L236) / [errors/index.ts:44](packages/language/src/errors/index.ts#L44). Rename the utility.
@@ -740,8 +767,8 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 ### Theme: Other
 - **`EligianTypeSystem._typirServices` definite-assignment `!` without guard.** [eligian-type-system.ts:53](packages/language/src/type-system-typir/eligian-type-system.ts#L53). Add a getter guard.
 - **`LanguagesType` cache key omits `allLanguages`.** [languages-type.ts:92](packages/language/src/type-system-typir/types/languages-type.ts#L92). Include `allLanguages.join(',')`.
-- **Inline `require('node:path')` shadows the top-level import.** [css-watcher.ts:85](packages/extension/src/extension/css-watcher.ts#L85), [html-watcher.ts:82](packages/extension/src/extension/html-watcher.ts#L82), [labels-watcher.ts:86](packages/extension/src/extension/labels-watcher.ts#L86). Use `path.dirname`.
-- **Magic `51200` duplicated.** [types.ts:52](packages/cli/src/bundler/types.ts#L52), [main.ts:248](packages/cli/src/main.ts#L248). Export `DEFAULT_INLINE_THRESHOLD`.
+- **Inline `require('node:path')` shadows the top-level import.** [css-watcher.ts:85](packages/extension/src/extension/css-watcher.ts#L85), [html-watcher.ts:82](packages/extension/src/extension/html-watcher.ts#L82), [labels-watcher.ts:86](packages/extension/src/extension/labels-watcher.ts#L86). Use `path.dirname`. ✅ **FIXED** — `6b1c52a`
+- **Magic `51200` duplicated.** [types.ts:52](packages/cli/src/bundler/types.ts#L52), [main.ts:248](packages/cli/src/main.ts#L248). Export `DEFAULT_INLINE_THRESHOLD`. ✅ **FIXED** — `6b1c52a`
 
 ---
 
