@@ -10,7 +10,7 @@ import { AstUtils } from 'langium';
 import type { HoverParams } from 'vscode-languageserver-protocol';
 import { isOperationCall, isStringLiteral } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
-import { parseSelector } from './selector-parser.js';
+import { parseSelectorIdentifiers } from './selector-parser.js';
 
 /**
  * Type of CSS identifier being hovered
@@ -93,7 +93,7 @@ export function detectHoverTarget(node: AstNode, params: HoverParams): HoverTarg
 function detectClassNameHover(node: AstNode, _operationCall: any): HoverTarget | undefined {
   // Find the string literal argument
   const stringLiteral = AstUtils.getContainerOfType(node, isStringLiteral);
-  if (!stringLiteral || !stringLiteral.value) {
+  if (!stringLiteral?.value) {
     return undefined;
   }
 
@@ -118,42 +118,36 @@ function detectClassNameHover(node: AstNode, _operationCall: any): HoverTarget |
  * @param params - LSP hover parameters
  * @returns Hover target or undefined
  */
-function detectSelectorHover(node: AstNode, _params: HoverParams): HoverTarget | undefined {
+function detectSelectorHover(node: AstNode, params: HoverParams): HoverTarget | undefined {
   // Find the string literal containing the selector
   const stringLiteral = AstUtils.getContainerOfType(node, isStringLiteral);
-  if (!stringLiteral || !stringLiteral.value) {
+  if (!stringLiteral?.value) {
     return undefined;
   }
 
   const selector = stringLiteral.value;
-
-  // Parse the selector to extract classes and IDs
-  const { classes, ids } = parseSelector(selector);
-
-  // Get the hover position within the string
-  // NOTE: This is a simplified approach - proper implementation would need
-  // to calculate exact character offsets within the string literal
-  // For now, we'll return the first class if any classes exist, first ID if any IDs exist
-
-  // If selector contains classes, assume hovering over a class
-  if (classes.length > 0) {
-    // TODO: Proper implementation should determine which specific class based on cursor position
-    // For now, return first class (this is a simplification)
-    return {
-      type: 'class',
-      name: classes[0],
-    };
+  const identifiers = parseSelectorIdentifiers(selector);
+  if (identifiers.length === 0) {
+    return undefined;
   }
 
-  // If selector contains IDs, assume hovering over an ID
-  if (ids.length > 0) {
-    return {
-      type: 'id',
-      name: ids[0],
-    };
+  // Translate the cursor's document position into an offset relative to the start
+  // of the selector string value (skipping the opening quote). When this succeeds
+  // we can resolve the exact identifier under the cursor in compound selectors.
+  const cstNode = stringLiteral.$cstNode;
+  const textDocument = AstUtils.getDocument(node)?.textDocument;
+  if (cstNode && textDocument) {
+    const cursorOffset = textDocument.offsetAt(params.position);
+    const offsetInString = cursorOffset - (cstNode.offset + 1); // +1 skips opening quote
+    const hovered = findIdentifierAtOffset(selector, offsetInString);
+    if (hovered) {
+      return hovered;
+    }
   }
 
-  return undefined;
+  // Fallback: position unavailable — return the first identifier so hover still works.
+  const first = identifiers[0];
+  return { type: first.type, name: first.name };
 }
 
 /**
@@ -164,43 +158,19 @@ function detectSelectorHover(node: AstNode, _params: HoverParams): HoverTarget |
  *
  * Algorithm:
  * 1. Parse selector to get all classes/IDs with their string positions
- * 2. Calculate which identifier spans the hover offset
- * 3. Return that identifier
- *
- * NOTE: This is a placeholder for future enhancement. Current implementation
- * returns first identifier of each type, which works for simple cases.
+ * 2. Return the identifier whose source span contains the hover offset
  *
  * @param selector - Selector string (e.g., ".button.primary #header")
  * @param offsetInString - Character offset within the string
- * @returns Hover target or undefined
+ * @returns Hover target or undefined if the offset is not over an identifier
  */
 export function findIdentifierAtOffset(
   selector: string,
   offsetInString: number
 ): HoverTarget | undefined {
-  // TODO: Implement precise offset-based detection
-  // For now, this is a stub that will be enhanced in User Story 2 implementation
+  const identifiers = parseSelectorIdentifiers(selector);
 
-  // Parse selector
-  const { classes, ids } = parseSelector(selector);
+  const hovered = identifiers.find(id => offsetInString >= id.start && offsetInString < id.end);
 
-  // Simplified: return first class if offset is in first half, first ID if in second half
-  // Proper implementation would calculate exact character positions
-  const midpoint = selector.length / 2;
-
-  if (classes.length > 0 && offsetInString < midpoint) {
-    return {
-      type: 'class',
-      name: classes[0],
-    };
-  }
-
-  if (ids.length > 0) {
-    return {
-      type: 'id',
-      name: ids[0],
-    };
-  }
-
-  return undefined;
+  return hovered ? { type: hovered.type, name: hovered.name } : undefined;
 }

@@ -43,16 +43,16 @@ describe('CSS Hover Target Detection', () => {
         expect(result?.name).toBe('button');
       });
 
-      it('should handle single class selector (simplified implementation)', () => {
+      it('should find class when cursor is anywhere within the class name', () => {
         const selector = '.button';
         const offset = 5; // In the middle of "button"
 
         const result = findIdentifierAtOffset(selector, offset);
 
-        // NOTE: Current implementation uses midpoint heuristic
-        // For single class, if offset > midpoint (3.5), returns undefined
-        // This is a known limitation - proper implementation would parse character positions
-        expect(result).toBeUndefined(); // offset 5 > midpoint 3.5
+        // Offset 5 falls within the ".button" span [0,7) → resolves to the class.
+        expect(result).toBeDefined();
+        expect(result?.type).toBe('class');
+        expect(result?.name).toBe('button');
       });
 
       it('should handle complex selector with multiple classes', () => {
@@ -67,15 +67,16 @@ describe('CSS Hover Target Detection', () => {
         expect(result?.name).toBe('button');
       });
 
-      it('should handle class with hyphens (midpoint limitation)', () => {
+      it('should find class with hyphens regardless of cursor position', () => {
         const selector = '.btn-primary';
-        const offset = 6; // In the class name, midpoint is 6
+        const offset = 6; // Inside "btn-primary"
 
         const result = findIdentifierAtOffset(selector, offset);
 
-        // NOTE: Midpoint calculation means offset >= midpoint returns undefined
-        // This is a known limitation of the simplified implementation
-        expect(result).toBeUndefined();
+        // Offset 6 falls within the ".btn-primary" span [0,12) → resolves to the class.
+        expect(result).toBeDefined();
+        expect(result?.type).toBe('class');
+        expect(result?.name).toBe('btn-primary');
       });
 
       it('should handle class with underscores', () => {
@@ -179,15 +180,16 @@ describe('CSS Hover Target Detection', () => {
     });
 
     describe('complex selectors', () => {
-      it('should handle descendant combinator (midpoint limitation)', () => {
+      it('should resolve the class after a descendant combinator', () => {
         const selector = 'div .button';
-        const offset = 6; // In second half, midpoint is 5.5
+        const offset = 6; // Inside ".button" (the '.' sits at index 4)
 
         const result = findIdentifierAtOffset(selector, offset);
 
-        // NOTE: Midpoint calculation means offset >= midpoint returns ID (if exists) or undefined
-        // Since this selector has no ID, returns undefined
-        expect(result).toBeUndefined();
+        // Offset 6 falls within the ".button" span [4,11) → resolves to the class.
+        expect(result).toBeDefined();
+        expect(result?.type).toBe('class');
+        expect(result?.name).toBe('button');
       });
 
       it('should handle element + class', () => {

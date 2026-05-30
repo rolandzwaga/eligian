@@ -105,9 +105,13 @@ const SYSTEM_VARIABLES: VariableMetadata[] = [
  * Filters system variables based on cursor context (inside loop, action, etc.)
  *
  * @param isInsideLoop - Whether cursor is inside a for loop
+ * @param isInsideAction - Whether cursor is inside an action body
  * @returns Array of available variable metadata
  */
-export function getAvailableVariables(isInsideLoop: boolean): VariableMetadata[] {
+export function getAvailableVariables(
+  isInsideLoop: boolean,
+  isInsideAction: boolean
+): VariableMetadata[] {
   return SYSTEM_VARIABLES.filter(variable => {
     if (variable.availableIn === 'always') {
       return true;
@@ -115,7 +119,7 @@ export function getAvailableVariables(isInsideLoop: boolean): VariableMetadata[]
     if (variable.availableIn === 'loop') {
       return isInsideLoop;
     }
-    // 'action' context - always available in actions
-    return true;
+    // 'action' context - only available inside action bodies
+    return isInsideAction;
   });
 }

@@ -203,6 +203,14 @@ export function registerValidationChecks(services: EligianServices) {
 export class EligianValidator {
   private services?: EligianServices;
 
+  /**
+   * Tracks document URIs whose locales imports have already been loaded into the
+   * label registry. Needed because the registry size cannot be used as an
+   * "is-registered" signal: a document with zero translation keys would otherwise
+   * be treated as never-registered and re-read from disk on every validation cycle.
+   */
+  private readonly initializedLabelDocuments = new Set<string>();
+
   constructor(services?: EligianServices) {
     this.services = services;
   }
@@ -1824,25 +1832,55 @@ export class EligianValidator {
   private ensureLabelsImportsRegistered(program: Program, documentUri: string): void {
     if (!this.services) return;
 
-    const labelRegistry = this.services.labels.LabelRegistry;
-
-    // Check if already registered (optimization)
-    if (labelRegistry.getLabelIDsForDocument(documentUri).size > 0) {
-      return; // Already registered
+    // Skip if this document's locales have already been loaded. We track this in
+    // a dedicated Set rather than inspecting registry size, because a document
+    // with zero keys would otherwise be re-loaded on every validation cycle.
+    if (this.initializedLabelDocuments.has(documentUri)) {
+      return;
     }
 
-    // Find locales imports and register them
-    // TODO: Feature 045 - Implement locale registry population in Phase 3
+    // Find locales imports
     const localesImports = getImports(program)
       .filter(isDefaultImport)
       .filter(imp => imp.type === 'locales');
 
     if (localesImports.length === 0) {
+      this.initializedLabelDocuments.add(documentUri);
       return; // No locales to register
     }
 
-    // TODO: Feature 045 - Locale registry implementation pending
-    // The locale registry will be implemented in Phase 3 (US1)
+    // Resolve and load each locales file into the label registry. This mirrors
+    // the loading half of checkLocalesImports, but without diagnostics — those
+    // are reported by checkLocalesImports itself. Inlining here guarantees the
+    // registry is populated even when label-ID checks run before the
+    // program-level locales validator (Langium validator ordering is not fixed).
+    const labelRegistry = this.services.labels.LabelRegistry;
+    const docPath = URI.parse(documentUri).fsPath;
+    const docDir = path.dirname(docPath);
+
+    for (const localesImport of localesImports) {
+      if (!localesImport.path) continue;
+
+      const localesPath = localesImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
+      const cleanPath = localesPath.startsWith('./') ? localesPath.substring(2) : localesPath;
+      const absolutePath = path.join(docDir, cleanPath);
+
+      if (!fs.existsSync(absolutePath)) continue;
+
+      try {
+        const content = fs.readFileSync(absolutePath, 'utf-8');
+        const localeData = JSON.parse(content);
+        const translationKeys = extractTranslationKeys(localeData);
+        const fileUri = URI.file(absolutePath).toString();
+        labelRegistry.updateLabelsFile(fileUri, translationKeys);
+        labelRegistry.registerImports(documentUri, fileUri);
+      } catch {
+        // Parse/read errors are surfaced by checkLocalesImports; ignore here so a
+        // single malformed file doesn't block registration of the others.
+      }
+    }
+
+    this.initializedLabelDocuments.add(documentUri);
   }
 
   /**
