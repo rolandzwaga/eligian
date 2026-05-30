@@ -50,7 +50,7 @@ export class LocaleFileWatcher implements vscode.Disposable {
     // Create watcher for this specific file
     const pattern = new vscode.RelativePattern(
       vscode.Uri.joinPath(this.fileUri, '..'),
-      vscode.Uri.parse(this.fileUri.path).fsPath.split('/').pop() || '*.json'
+      this.fileUri.path.split('/').pop() || '*.json'
     );
 
     this.watcher = vscode.workspace.createFileSystemWatcher(pattern);

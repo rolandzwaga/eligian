@@ -19,6 +19,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import { EmptyFileSystem, type LangiumDocument, URI } from 'langium';
@@ -306,12 +307,8 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             }
 
             // Parse each CSS file and load into registry
-            // Parse each CSS file and load into registry
             const docPath = documentUri.fsPath;
-            const docDir = docPath.substring(
-              0,
-              docPath.lastIndexOf('\\') || docPath.lastIndexOf('/')
-            );
+            const docDir = path.dirname(docPath);
             const cssFileUris: string[] = [];
             for (const cssRelativePath of cssFiles) {
               try {
@@ -367,10 +364,6 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
           // Now run validation with CSS loaded
           document.diagnostics =
             await services.Eligian.validation.DocumentValidator.validateDocument(document);
-
-          // DEBUG: Log diagnostics count
-          if (document.diagnostics && document.diagnostics.length > 0) {
-          }
 
           return document;
         },

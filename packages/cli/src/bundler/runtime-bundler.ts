@@ -216,14 +216,10 @@ export function bundleRuntime(
     // Create temporary entry point file
     const entryPointPath = path.join(tempDir, `entry-${Date.now()}.js`);
 
-    try {
-      yield* Effect.tryPromise({
-        try: () => fs.writeFile(entryPointPath, entryPointContent, 'utf-8'),
-        catch: error => new RuntimeBundleError(`Failed to write entry point: ${error}`),
-      });
-    } catch (error) {
-      return yield* Effect.fail(new RuntimeBundleError(`Failed to write entry point: ${error}`));
-    }
+    yield* Effect.tryPromise({
+      try: () => fs.writeFile(entryPointPath, entryPointContent, 'utf-8'),
+      catch: error => new RuntimeBundleError(`Failed to write entry point: ${error}`),
+    });
 
     // Run esbuild
     // Using ESM format for modern browsers (94.58% global support per caniuse.com)

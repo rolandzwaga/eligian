@@ -62,9 +62,9 @@ export class CSSCompletionProvider {
     const hasTokenBoundaries =
       text !== undefined && tokenOffset !== undefined && tokenEndOffset !== undefined;
     const insideString =
-      (hasTokenBoundaries && text[tokenOffset] === '"') || text[tokenOffset] === "'";
+      hasTokenBoundaries && (text[tokenOffset] === '"' || text[tokenOffset] === "'");
 
-    if (insideString && text) {
+    if (insideString) {
       // INSIDE STRING LITERAL - Use Langium pattern with filtering and TextEdit
       const partialToken = text.substring(tokenOffset, offset);
 

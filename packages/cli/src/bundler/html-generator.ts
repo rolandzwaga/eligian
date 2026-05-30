@@ -77,7 +77,7 @@ export function generateContainerElement(selector: string, layoutTemplate: strin
   const content = layoutTemplate.trim();
 
   if (content) {
-    return `<div${attrString}>\n${content}\n  </div>`;
+    return `<div${attrString}>\n${content}\n</div>`;
   }
   return `<div${attrString}></div>`;
 }

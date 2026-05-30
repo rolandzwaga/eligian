@@ -79,7 +79,7 @@ export class HTMLWatcherManager {
     const docUri = vscode.Uri.parse(documentUri);
     const docPath = docUri.fsPath;
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
-    const workspaceRoot = workspaceFolder?.uri.fsPath || require('node:path').dirname(docPath);
+    const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
 
     // Convert relative HTML path to absolute URI to match file change events
     const absoluteHTMLUri = this.resolveAbsoluteHTMLUri(documentUri, htmlFileUri);
@@ -186,7 +186,7 @@ export class HTMLWatcherManager {
    *
    * @param htmlFiles - New array of HTML file paths to track
    */
-  updateTrackedFiles(htmlFiles: string[]): void {
+  private updateTrackedFiles(htmlFiles: string[]): void {
     for (const file of htmlFiles) {
       this.trackedFiles.add(file);
     }

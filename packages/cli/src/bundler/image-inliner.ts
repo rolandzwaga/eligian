@@ -30,17 +30,10 @@ export function inlineImage(filePath: string): Effect.Effect<string, ImageInline
     const mimeType = getMimeType(ext);
 
     // Read file content
-    let content: Buffer;
-    try {
-      content = yield* Effect.tryPromise({
-        try: () => fs.readFile(filePath),
-        catch: error => new ImageInlineError(`Failed to read image file: ${error}`, filePath),
-      });
-    } catch (error) {
-      return yield* Effect.fail(
-        new ImageInlineError(`Failed to read image file: ${error}`, filePath)
-      );
-    }
+    const content = yield* Effect.tryPromise({
+      try: () => fs.readFile(filePath),
+      catch: error => new ImageInlineError(`Failed to read image file: ${error}`, filePath),
+    });
 
     // SVG: Use URL encoding for smaller output
     if (ext === '.svg') {
@@ -74,15 +67,10 @@ export function shouldInline(
     const mimeType = getMimeType(ext);
 
     // Get file stats
-    let stats: { size: number };
-    try {
-      stats = yield* Effect.tryPromise({
-        try: () => fs.stat(filePath),
-        catch: error => new ImageInlineError(`Failed to stat file: ${error}`, filePath),
-      });
-    } catch (error) {
-      return yield* Effect.fail(new ImageInlineError(`Failed to stat file: ${error}`, filePath));
-    }
+    const stats = yield* Effect.tryPromise({
+      try: () => fs.stat(filePath),
+      catch: error => new ImageInlineError(`Failed to stat file: ${error}`, filePath),
+    });
 
     // Never inline media files (video/audio)
     if (NEVER_INLINE_EXTENSIONS.has(ext)) {

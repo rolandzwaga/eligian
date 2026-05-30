@@ -39,12 +39,12 @@ export class LocaleLinkProvider implements vscode.DocumentLinkProvider {
     _token: vscode.CancellationToken
   ): vscode.DocumentLink[] {
     const links: vscode.DocumentLink[] = [];
-    const pattern = /locales\s+"([^"]+)"/g;
 
     // Scan each line for locale imports
     for (let lineNum = 0; lineNum < document.lineCount; lineNum++) {
       const line = document.lineAt(lineNum);
       const text = line.text;
+      const pattern = /locales\s+"([^"]+)"/g;
 
       let match: RegExpExecArray | null;
       while ((match = pattern.exec(text)) !== null) {

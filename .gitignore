@@ -21,6 +21,7 @@ packages/extension/syntaxes/
 **/.fallow/
 
 # Debug and temporary files (Constitution VIII)
+*.orig
 *.js
 *.js.map
 packages/**/*.d.ts

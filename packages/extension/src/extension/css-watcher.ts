@@ -82,7 +82,7 @@ export class CSSWatcherManager {
     const docUri = vscode.Uri.parse(documentUri);
     const docPath = docUri.fsPath;
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
-    const workspaceRoot = workspaceFolder?.uri.fsPath || require('node:path').dirname(docPath);
+    const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
 
     // Collect CSS file absolute paths for watching
     const cssFilePaths: string[] = [];
@@ -200,8 +200,7 @@ export class CSSWatcherManager {
    *
    * @param cssFiles - New array of CSS file paths to track
    */
-  updateTrackedFiles(cssFiles: string[]): void {
-    this.trackedFiles.clear();
+  private updateTrackedFiles(cssFiles: string[]): void {
     for (const file of cssFiles) {
       this.trackedFiles.add(file);
     }

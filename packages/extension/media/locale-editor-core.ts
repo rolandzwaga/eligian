@@ -696,6 +696,7 @@ export function selectKey(state: LocaleEditorState, key: string | null): LocaleE
   const newState = {
     ...state,
     selectedKey: key,
+    expandedKeys: new Set(state.expandedKeys),
   };
 
   // Expand parent keys

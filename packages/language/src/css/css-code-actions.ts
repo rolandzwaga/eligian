@@ -96,7 +96,6 @@ export class CSSCodeActionProvider {
 
       if (codeAction) {
         actions.push(codeAction);
-      } else {
       }
     }
     return actions;

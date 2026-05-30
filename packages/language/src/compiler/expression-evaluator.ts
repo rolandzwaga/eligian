@@ -165,10 +165,10 @@ function applyBinaryOperator(
 
     // Logical operators
     case '&&':
-      return Boolean(left) && Boolean(right);
+      return left && right;
 
     case '||':
-      return Boolean(left) || Boolean(right);
+      return left || right;
 
     // Comparison operators
     case '==':
