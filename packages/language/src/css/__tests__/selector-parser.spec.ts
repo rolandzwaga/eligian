@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { parseSelector } from '../selector-parser.js';
+import { parseSelector, parseSelectorIdentifiers } from '../selector-parser.js';
 
 describe('parseSelector - Unit Tests', () => {
   describe('Single Class Selectors', () => {
@@ -388,5 +388,49 @@ describe('parseSelector - Unit Tests', () => {
         valid: true,
       });
     });
+  });
+});
+
+describe('parseSelectorIdentifiers - Unit Tests', () => {
+  test('should return class identifiers with their source spans', () => {
+    const result = parseSelectorIdentifiers('.button.primary');
+
+    expect(result).toEqual([
+      { type: 'class', name: 'button', start: 0, end: 7 },
+      { type: 'class', name: 'primary', start: 7, end: 15 },
+    ]);
+  });
+
+  test('should return id identifiers with their source spans', () => {
+    const result = parseSelectorIdentifiers('#header');
+
+    expect(result).toEqual([{ type: 'id', name: 'header', start: 0, end: 7 }]);
+  });
+
+  test('should report spans for classes after a combinator', () => {
+    // The leading "div " offsets the class start by 4 characters.
+    const result = parseSelectorIdentifiers('div .button');
+
+    expect(result).toEqual([{ type: 'class', name: 'button', start: 4, end: 11 }]);
+  });
+
+  test('should report both classes and ids in source order', () => {
+    const result = parseSelectorIdentifiers('.button#header');
+
+    expect(result).toEqual([
+      { type: 'class', name: 'button', start: 0, end: 7 },
+      { type: 'id', name: 'header', start: 7, end: 14 },
+    ]);
+  });
+
+  test('should return an empty array for selectors with no class/id', () => {
+    expect(parseSelectorIdentifiers('div')).toEqual([]);
+    expect(parseSelectorIdentifiers('')).toEqual([]);
+  });
+
+  test('should return an empty array on invalid selector syntax', () => {
+    // postcss-selector-parser throws on an unclosed attribute selector; the
+    // function swallows the error and returns no identifiers.
+    expect(parseSelectorIdentifiers('.button[')).toEqual([]);
   });
 });
