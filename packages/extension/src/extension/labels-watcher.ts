@@ -10,7 +10,7 @@
  */
 
 import * as path from 'node:path';
-import { LABELS_UPDATED_NOTIFICATION } from '@eligian/language';
+import { LABELS_UPDATED_NOTIFICATION, resolveImportPathToUri } from '@eligian/language';
 import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
 
@@ -82,7 +82,7 @@ export class LabelsWatcherManager {
     const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
 
     // Convert relative labels path to absolute URI to match file change events
-    const absoluteLabelsUri = this.resolveAbsoluteLabelsUri(documentUri, labelsFileUri);
+    const absoluteLabelsUri = resolveImportPathToUri(documentUri, labelsFileUri);
 
     let documents = this.importsByLabelsFile.get(absoluteLabelsUri);
     if (!documents) {
@@ -116,32 +116,6 @@ export class LabelsWatcherManager {
         this.importsByLabelsFile.delete(labelsFileUri);
       }
     }
-  }
-
-  /**
-   * Resolve a relative labels file URI to an absolute file URI
-   *
-   * @param documentUri - Absolute Eligian document URI (e.g., "file:///c%3A/projects/test.eligian")
-   * @param labelsFileUri - Labels file URI (may be relative like "./labels.json" or absolute)
-   * @returns Absolute labels file URI (e.g., "file:///c%3A/projects/labels.json")
-   */
-  private resolveAbsoluteLabelsUri(documentUri: string, labelsFileUri: string): string {
-    // If already absolute, return as-is
-    if (labelsFileUri.startsWith('file://')) {
-      return labelsFileUri;
-    }
-
-    // Parse document URI to get directory
-    const docUri = vscode.Uri.parse(documentUri);
-    const docPath = docUri.fsPath;
-    const docDir = path.dirname(docPath);
-
-    // Remove leading "./" from labels path
-    const cleanPath = labelsFileUri.startsWith('./') ? labelsFileUri.substring(2) : labelsFileUri;
-
-    // Combine directory with labels path and convert to URI (cross-platform)
-    const absolutePath = path.join(docDir, cleanPath);
-    return vscode.Uri.file(absolutePath).toString();
   }
 
   /**

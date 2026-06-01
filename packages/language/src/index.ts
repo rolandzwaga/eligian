@@ -66,6 +66,12 @@ export { extractLocaleMetadata } from './type-system-typir/utils/locale-metadata
 export { isDefaultImport } from './utils/ast-helpers.js';
 // AST navigation exports (for JSDoc generation)
 export { findActionBelow } from './utils/ast-navigation.js';
+// Path resolution utilities (shared import-path resolution - D4)
+export {
+  resolveImportPathToUri,
+  resolveImportRelativePath,
+  stripImportQuotes,
+} from './utils/path-utils.js';
 export { validateLocalesJSON } from './validators/locale-import-validator.js';
 
 // Re-export everything from AST except TimeExpression to avoid conflict

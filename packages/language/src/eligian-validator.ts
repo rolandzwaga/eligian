@@ -53,6 +53,11 @@ import { validateLabelID } from './type-system-typir/validation/label-id-validat
 import type { MissingLabelIDData, MissingLabelsFileData } from './types/code-actions.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import {
+  resolveImportPathToUri,
+  resolveImportRelativePath,
+  stripImportQuotes,
+} from './utils/path-utils.js';
 import { getElements, getImports, getTimelines } from './utils/program-helpers.js';
 import { validateAssetType } from './validators/asset-type-validator.js';
 import { validateDefaultImports } from './validators/default-import-validator.js';
@@ -1716,19 +1721,13 @@ export class EligianValidator {
 
     // Convert CSS file paths to absolute URIs (must match language server format)
     const cssFileUris: string[] = [];
-    const docPath = URI.parse(documentUri).fsPath;
-    const docDir = path.dirname(docPath);
 
     for (const cssImport of cssImports) {
       if (!cssImport.path) {
         continue;
       }
-      const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
-      // Resolve relative path to absolute URI
-      const cleanPath = cssPath.startsWith('./') ? cssPath.substring(2) : cssPath;
-      const absolutePath = path.join(docDir, cleanPath);
-      const absoluteUri = URI.file(absolutePath).toString();
-      cssFileUris.push(absoluteUri);
+      // Resolve relative path to absolute URI (D4: shared resolution)
+      cssFileUris.push(resolveImportPathToUri(documentUri, cssImport.path));
     }
 
     // Register CSS imports with the registry (idempotent - safe to call multiple times)
@@ -1781,20 +1780,14 @@ export class EligianValidator {
       .filter(isDefaultImport)
       .filter(imp => imp.type === 'styles');
 
-    // Resolve CSS paths to absolute URIs (same as ensureCSSImportsRegistered)
-    const docPath = URI.parse(documentUri).fsPath;
-    const docDir = path.dirname(docPath);
-
     for (const cssImport of cssImports) {
       if (!cssImport.path) {
         continue;
       }
-      const cssPath = cssImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
+      const cssPath = stripImportQuotes(cssImport.path); // Unquoted path for display
 
-      // Resolve to absolute URI to match registry keys
-      const cleanPath = cssPath.startsWith('./') ? cssPath.substring(2) : cssPath;
-      const absolutePath = path.join(docDir, cleanPath);
-      const cssFileUri = URI.file(absolutePath).toString();
+      // Resolve to absolute URI to match registry keys (D4: shared resolution)
+      const cssFileUri = resolveImportPathToUri(documentUri, cssImport.path);
 
       // Check if CSS file has errors (using absolute URI)
       if (cssRegistry.hasErrors(cssFileUri)) {
@@ -1855,15 +1848,13 @@ export class EligianValidator {
     // registry is populated even when label-ID checks run before the
     // program-level locales validator (Langium validator ordering is not fixed).
     const labelRegistry = this.services.labels.LabelRegistry;
-    const docPath = URI.parse(documentUri).fsPath;
-    const docDir = path.dirname(docPath);
+    const docDir = path.dirname(URI.parse(documentUri).fsPath);
 
     for (const localesImport of localesImports) {
       if (!localesImport.path) continue;
 
-      const localesPath = localesImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
-      const cleanPath = localesPath.startsWith('./') ? localesPath.substring(2) : localesPath;
-      const absolutePath = path.join(docDir, cleanPath);
+      // D4: shared resolution (path.join handles ./, ., ../)
+      const absolutePath = resolveImportRelativePath(localesImport.path, docDir);
 
       if (!fs.existsSync(absolutePath)) continue;
 
@@ -1926,15 +1917,14 @@ export class EligianValidator {
     }
 
     // Resolve locales file path
-    const docPath = URI.parse(documentUri).fsPath;
-    const docDir = path.dirname(docPath);
+    const docDir = path.dirname(URI.parse(documentUri).fsPath);
 
     for (const localesImport of localesImports) {
       if (!localesImport.path) continue;
 
-      const localesPath = localesImport.path.replace(/^["']|["']$/g, ''); // Remove quotes
-      const cleanPath = localesPath.startsWith('./') ? localesPath.substring(2) : localesPath;
-      const absolutePath = path.join(docDir, cleanPath);
+      const localesPath = stripImportQuotes(localesImport.path); // Unquoted path for display
+      // D4: shared resolution (path.join handles ./, ., ../)
+      const absolutePath = resolveImportRelativePath(localesImport.path, docDir);
 
       // Check if locales file exists
       if (!fs.existsSync(absolutePath)) {

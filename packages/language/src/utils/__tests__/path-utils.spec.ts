@@ -1,5 +1,12 @@
+import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { getFileExtension } from '../path-utils.js';
+import { URI } from 'vscode-uri';
+import {
+  getFileExtension,
+  resolveImportPathToUri,
+  resolveImportRelativePath,
+  stripImportQuotes,
+} from '../path-utils.js';
 
 describe('Path Utilities', () => {
   describe('getFileExtension', () => {
@@ -78,6 +85,76 @@ describe('Path Utilities', () => {
       expect(getFileExtension('..')).toBe('');
       expect(getFileExtension('...')).toBe('');
       expect(getFileExtension('file..css')).toBe('css');
+    });
+  });
+
+  describe('stripImportQuotes', () => {
+    test('should strip double quotes', () => {
+      expect(stripImportQuotes('"./styles.css"')).toBe('./styles.css');
+    });
+
+    test('should strip single quotes', () => {
+      expect(stripImportQuotes("'./styles.css'")).toBe('./styles.css');
+    });
+
+    test('should leave unquoted input unchanged (idempotent)', () => {
+      expect(stripImportQuotes('./styles.css')).toBe('./styles.css');
+      expect(stripImportQuotes(stripImportQuotes('"./a.css"'))).toBe('./a.css');
+    });
+  });
+
+  describe('resolveImportRelativePath', () => {
+    const docDir = join('proj', 'sub');
+
+    test('should strip quotes and resolve relative to docDir', () => {
+      expect(resolveImportRelativePath('"./styles.css"', docDir)).toBe(join(docDir, 'styles.css'));
+      expect(resolveImportRelativePath("'./styles.css'", docDir)).toBe(join(docDir, 'styles.css'));
+    });
+
+    test('should resolve a path without a leading ./', () => {
+      expect(resolveImportRelativePath('styles.css', docDir)).toBe(join(docDir, 'styles.css'));
+    });
+
+    test('should normalize parent-relative (../) segments', () => {
+      // B35/B53: path.join normalizes '..' instead of naive concatenation.
+      expect(resolveImportRelativePath('../shared/a.css', docDir)).toBe(
+        join('proj', 'shared', 'a.css')
+      );
+    });
+
+    test("should resolve '.' to the document directory itself", () => {
+      // B53: previously the manual './' strip mishandled '.'.
+      expect(resolveImportRelativePath('.', docDir)).toBe(join(docDir));
+    });
+
+    test('result never contains surrounding quotes', () => {
+      expect(resolveImportRelativePath('"./a.css"', docDir)).not.toContain('"');
+    });
+  });
+
+  describe('resolveImportPathToUri', () => {
+    const docDir = join('proj', 'sub');
+    const documentUri = URI.file(join(docDir, 'main.eligian')).toString();
+
+    test('should return an already-absolute file:// URI unchanged', () => {
+      const absolute = URI.file(join('other', 'a.css')).toString();
+      expect(resolveImportPathToUri(documentUri, absolute)).toBe(absolute);
+    });
+
+    test('should strip quotes before the file:// check', () => {
+      const absolute = URI.file(join('other', 'a.css')).toString();
+      expect(resolveImportPathToUri(documentUri, `"${absolute}"`)).toBe(absolute);
+    });
+
+    test('should resolve a relative path to an absolute file:// URI', () => {
+      const expected = URI.file(join(docDir, 'styles.css')).toString();
+      expect(resolveImportPathToUri(documentUri, '"./styles.css"')).toBe(expected);
+      expect(resolveImportPathToUri(documentUri, './styles.css')).toBe(expected);
+    });
+
+    test('should normalize parent-relative (../) segments', () => {
+      const expected = URI.file(join('proj', 'shared', 'a.css')).toString();
+      expect(resolveImportPathToUri(documentUri, '../shared/a.css')).toBe(expected);
     });
   });
 });

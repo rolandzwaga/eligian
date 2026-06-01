@@ -12,7 +12,7 @@
  */
 
 import * as path from 'node:path';
-import { CSS_UPDATED_NOTIFICATION } from '@eligian/language';
+import { CSS_UPDATED_NOTIFICATION, resolveImportPathToUri } from '@eligian/language';
 import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
 
@@ -90,7 +90,7 @@ export class CSSWatcherManager {
     // For each CSS file, track that this document imports it
     for (const cssFileUri of cssFileUris) {
       // Convert relative CSS paths to absolute URIs to match file change events
-      const absoluteCSSUri = this.resolveAbsoluteCSSUri(documentUri, cssFileUri);
+      const absoluteCSSUri = resolveImportPathToUri(documentUri, cssFileUri);
 
       let documents = this.importsByCSS.get(absoluteCSSUri);
       if (!documents) {
@@ -125,32 +125,6 @@ export class CSSWatcherManager {
         this.importsByCSS.delete(cssFileUri);
       }
     }
-  }
-
-  /**
-   * Resolve a relative CSS file URI to an absolute file URI
-   *
-   * @param documentUri - Absolute Eligian document URI (e.g., "file:///c%3A/projects/test.eligian")
-   * @param cssFileUri - CSS file URI (may be relative like "./styles.css" or absolute)
-   * @returns Absolute CSS file URI (e.g., "file:///c%3A/projects/styles.css")
-   */
-  private resolveAbsoluteCSSUri(documentUri: string, cssFileUri: string): string {
-    // If already absolute, return as-is
-    if (cssFileUri.startsWith('file://')) {
-      return cssFileUri;
-    }
-
-    // Parse document URI to get directory
-    const docUri = vscode.Uri.parse(documentUri);
-    const docPath = docUri.fsPath;
-    const docDir = path.dirname(docPath);
-
-    // Remove leading "./" from CSS path
-    const cleanPath = cssFileUri.startsWith('./') ? cssFileUri.substring(2) : cssFileUri;
-
-    // Combine directory with CSS path and convert to URI (cross-platform)
-    const absolutePath = path.join(docDir, cleanPath);
-    return vscode.Uri.file(absolutePath).toString();
   }
 
   /**

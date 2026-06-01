@@ -32,6 +32,7 @@ import { createEligianServices } from '../eligian-module.js';
 import type { EmitError, ParseError, TransformError, TypeError } from '../errors/index.js';
 import { isLibrary, isLibraryImport, type Library, type Program } from '../generated/ast.js';
 import { isDefaultImport } from '../utils/ast-helpers.js';
+import { resolveImportRelativePath } from '../utils/path-utils.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
 import { optimize } from './optimizer.js';
@@ -311,30 +312,21 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
             const docDir = path.dirname(docPath);
             const cssFileUris: string[] = [];
             for (const cssRelativePath of cssFiles) {
-              try {
-                // Convert relative path to absolute
-                const cssFilePath = cssRelativePath.startsWith('./')
-                  ? `${docDir}${cssRelativePath.substring(1)}`
-                  : cssRelativePath;
+              // Convert relative path to absolute (D4: shared resolution,
+              // path.join handles ./, ., ../). Computed once for both branches.
+              const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
+              // Convert to absolute URI (must match validator format)
+              const cssFileUri = URI.file(cssFilePath).toString();
+              cssFileUris.push(cssFileUri);
 
+              try {
                 // Read and parse CSS file
                 const cssContent = readFileSync(cssFilePath, 'utf-8');
                 const parseResult = parseCSS(cssContent, cssFilePath);
 
-                // Convert to absolute URI (must match validator format)
-                const cssFileUri = URI.file(cssFilePath).toString();
-                cssFileUris.push(cssFileUri);
-
                 // Update registry with parsed CSS
                 cssRegistry.updateCSSFile(cssFileUri, parseResult);
               } catch (error) {
-                // Convert to absolute URI for error registration
-                const cssFilePath = cssRelativePath.startsWith('./')
-                  ? `${docDir}${cssRelativePath.substring(1)}`
-                  : cssRelativePath;
-                const cssFileUri = URI.file(cssFilePath).toString();
-                cssFileUris.push(cssFileUri);
-
                 // Register error in registry
                 cssRegistry.updateCSSFile(cssFileUri, {
                   classes: new Set(),
