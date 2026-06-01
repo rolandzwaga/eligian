@@ -33,6 +33,10 @@ Notes on this cluster: typing the `CustomKind` factories concretely (B12) surfac
 
 **Also applied (cleanups not tracked as a numbered finding):** removed dead `checkSingleLanguagesBlock` method (eligian-validator.ts); removed empty `else` block (css-code-actions.ts); removed duplicate comments (pipeline.ts, asset-type-validator.ts); used the imported `path` module instead of inline `require` and marked `updateTrackedFiles` private across the three watchers; exported/reused `DEFAULT_INLINE_THRESHOLD`; deleted committed `error-reporter.ts.orig` and added `*.orig` to `.gitignore`.
 
+The following cluster was fixed on branch **`refactor/library-document-resolution-d30-b4`** (verified: tsgo typecheck clean, biome lint clean, full language suite green at 2001 passed/23 skipped). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D30, B4. Extracted a private `resolveLibraryNode(libraryImport): Library | undefined` on `EligianValidator` that resolves via the project-wide `resolveLibraryPath()` (the same resolution already used by `checkImportFileExists`, the compiler pipeline, and the scope provider); `checkImportedActionsExist` and `checkImportedActionsPublic` now delegate to it. This collapses two byte-identical resolve→`getDocument`→Library-type-check blocks (D30) and replaces the ad-hoc `substring`/`lastIndexOf('/')` + string-concat URI resolution that skipped normalization on Windows/percent-encoded paths (B4). Pure refactor, net −21 lines.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -65,6 +69,7 @@ A module-level `let currentConstantMap` is reassigned at the start of every `tra
 **Fix:** Pass `constantMap` explicitly through `transformAST` and all consumers; remove the module-level variable.
 
 #### B4. Two validators use ad-hoc URI resolution instead of `resolveLibraryPath`
+> ✅ **FIXED** — branch `refactor/library-document-resolution-d30-b4` (both validators now resolve via the shared `resolveLibraryNode` helper using `resolveLibraryPath`; fixed together with D30)
 **Severity:** High
 **Locations:** [eligian-validator.ts:2573](packages/language/src/eligian-validator.ts#L2573), [eligian-validator.ts:2579](packages/language/src/eligian-validator.ts#L2579), [eligian-validator.ts:2707](packages/language/src/eligian-validator.ts#L2707), [eligian-validator.ts:2713](packages/language/src/eligian-validator.ts#L2713)
 `checkImportedActionsExist` and `checkImportedActionsPublic` resolve the library URI via `substring`/`lastIndexOf('/')` + string concatenation rather than the project-wide `resolveLibraryPath()` (already imported, and used correctly by `checkImportFileExists` at line 2538). The ad-hoc approach skips normalization and is inconsistent with workspace-loaded documents on Windows/encoded paths. (Also surfaced as anti-pattern in `dup-validators`.)
@@ -642,6 +647,7 @@ Each does `typeof firstArg === 'string'` dispatch into two return blocks.
 **Abstraction:** `reportLabelIDError(node, error, labelId, labelsFileUri, languageCodes, accept)`.
 
 ### D30. Library-document resolution duplicated in two validators
+> ✅ **FIXED** — branch `refactor/library-document-resolution-d30-b4` (extracted private `resolveLibraryNode(libraryImport): Library | undefined` on `EligianValidator`, resolving via `resolveLibraryPath`; both `checkImportedActionsExist` and `checkImportedActionsPublic` now delegate to it, fixing B4 at the same time. Verified: tsgo clean, biome lint clean, full language suite green at 2001 passed/23 skipped.)
 **Severity:** High
 **Sites:** [eligian-validator.ts:2564](packages/language/src/eligian-validator.ts#L2564), [eligian-validator.ts:2698](packages/language/src/eligian-validator.ts#L2698)
 Identical normalize→dir→parse→`getDocument`→null-check (also the B4 ad-hoc-URI bug).
