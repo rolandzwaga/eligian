@@ -57,6 +57,10 @@ The following cluster was fixed on branch **`refactor/consolidate-control-flow-p
 
 **Fixed (numbered):** D5. Extracted a private generic `validateControlFlowPairingForOps<N extends AstNode>(operations, node, property, accept)` on `EligianValidator`; the five `checkControlFlowPairing*` methods (regular, endable start/end, inline start/end) now each delegate in one line, differing only in the operation list and the `accept` `property` key. Chips away at the `EligianValidator` god-class anti-pattern.
 
+The following cluster was fixed on branch **`refactor/consolidate-program-root-traversal-d6`** (verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D6. Replaced five inline `while (node.$type !== 'Program')` upward traversals in `eligian-validator.ts` with the existing `this.getProgram(node)` helper, and rewrote `getProgram`/`getLibrary` to delegate to `AstUtils.getContainerOfType(node, isProgram/isLibrary)` (typed `AstNode`, not `any`) — also clearing the paired "manual parent-walk" anti-pattern. Pure refactor.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -550,6 +554,7 @@ Identical filter→map→`validateControlFlowPairing`→iterate→`accept` body 
 **Abstraction:** Private `validateControlFlowPairingForOps(ops, node, property, accept)`; each public method becomes a one-liner.
 
 ### D6. AST "find Program root" upward traversal duplicated 4× while `getProgram` exists
+> ✅ **FIXED** — branch `refactor/consolidate-program-root-traversal-d6` (verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped). Replaced the four (in fact **five** — a fifth copy in the `LabelController` branch of the controller-call validator was also a hand-rolled walk) inline `let node: any = ...; while (node && node.$type !== 'Program') node = node.$container;` traversals with the existing `this.getProgram(node)` helper, then read the document URI via `program?.$document?.uri?.toString()`. Also rewrote `getProgram`/`getLibrary` themselves to delegate to `AstUtils.getContainerOfType(node, isProgram/isLibrary)` (typed `AstNode` instead of `any`), which clears the paired anti-pattern note under "Manual `getProgram`/`getLibrary` parent-walk instead of `AstUtils.getContainerOfType`". Pure refactor, behavior-preserving.
 **Severity:** High
 **Sites:** [eligian-validator.ts:501](packages/language/src/eligian-validator.ts#L501), [eligian-validator.ts:1977](packages/language/src/eligian-validator.ts#L1977), [eligian-validator.ts:2069](packages/language/src/eligian-validator.ts#L2069), [eligian-validator.ts:2340](packages/language/src/eligian-validator.ts#L2340); helper at [eligian-validator.ts:1376](packages/language/src/eligian-validator.ts#L1376)
 `let node: any = ...; while (node && node.$type !== 'Program') node = node.$container;` (typed `any`) is copy-pasted; the existing `getProgram` helper is a drop-in replacement. (See also anti-pattern A-getProgram: prefer `AstUtils.getContainerOfType`.)
@@ -776,7 +781,7 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 - **`extractElementName(arg: any)`.** [context-detection.ts:148](packages/language/src/html/context-detection.ts#L148). Use the AST expression union type.
 - **`getTimelines`/`getVariables` use `$type` string + `as`-cast.** [program-helpers.ts:58](packages/language/src/utils/program-helpers.ts#L58), [program-helpers.ts:78](packages/language/src/utils/program-helpers.ts#L78), [program-helpers.ts:79](packages/language/src/utils/program-helpers.ts#L79). Use generated `isTimeline`/`isVariableDeclaration`.
 - **`findActionBelow` untyped `root`/`items`.** [ast-navigation.ts:33](packages/language/src/utils/ast-navigation.ts#L33), [ast-navigation.ts:38](packages/language/src/utils/ast-navigation.ts#L38). Use `EligianFile`/`isProgram`/`isLibrary`.
-- **Manual `getProgram`/`getLibrary` parent-walk instead of `AstUtils.getContainerOfType`.** [eligian-validator.ts:1376](packages/language/src/eligian-validator.ts#L1376), [eligian-validator.ts:1391](packages/language/src/eligian-validator.ts#L1391).
+- **Manual `getProgram`/`getLibrary` parent-walk instead of `AstUtils.getContainerOfType`.** [eligian-validator.ts:1376](packages/language/src/eligian-validator.ts#L1376), [eligian-validator.ts:1391](packages/language/src/eligian-validator.ts#L1391). ✅ **FIXED** — branch `refactor/consolidate-program-root-traversal-d6` (both helpers now delegate to `AstUtils.getContainerOfType`; fixed alongside D6).
 
 ### Theme: Test/dev artifacts leaking into production
 - **`getOrCreateServices()` registers test CSS classes in the production singleton.** [pipeline.ts:64](packages/language/src/compiler/pipeline.ts#L64), [pipeline.ts:72](packages/language/src/compiler/pipeline.ts#L72). Phantom classes (`test-container`, `invalid1`…) make user docs pass CSS validation incorrectly. **Remove** the test metadata; inject in tests only.

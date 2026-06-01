@@ -49,7 +49,7 @@ import type {
   TimelineEvent,
   VariableDeclaration,
 } from './generated/ast.js';
-import { isLibraryImport } from './generated/ast.js';
+import { isLibrary, isLibraryImport, isProgram } from './generated/ast.js';
 import { extractLanguageCodes } from './labels/index.js';
 import { extractTranslationKeys } from './locales/translation-key-extractor.js';
 import { OperationDataTracker } from './operation-data-tracker.js';
@@ -503,19 +503,14 @@ export class EligianValidator {
 
     const cssRegistry = this.services.css.CSSRegistry;
 
-    // Traverse up to find Program node
-    let node: any = timeline;
-    while (node && node.$type !== 'Program') {
-      node = node.$container;
-    }
-
-    const documentUri = node?.$document?.uri?.toString();
-    if (!documentUri) {
+    // Find the root Program node
+    const program = this.getProgram(timeline);
+    const documentUri = program?.$document?.uri?.toString();
+    if (!program || !documentUri) {
       return;
     }
 
     // Register CSS imports before validation
-    const program: Program = node;
     this.ensureCSSImportsRegistered(program, documentUri);
 
     // Get available CSS classes and IDs
@@ -1344,30 +1339,16 @@ export class EligianValidator {
   /**
    * Helper: Get the Program node from any AST node
    */
-  private getProgram(node: any): Program | undefined {
-    let current = node;
-    while (current) {
-      if (current.$type === 'Program') {
-        return current as Program;
-      }
-      current = current.$container;
-    }
-    return undefined;
+  private getProgram(node: AstNode): Program | undefined {
+    return AstUtils.getContainerOfType(node, isProgram);
   }
 
   /**
    * Get the containing Library node for a given AST node (Feature 023).
    * Walks up the AST tree until a Library node is found.
    */
-  private getLibrary(node: any): Library | undefined {
-    let current = node;
-    while (current) {
-      if (current.$type === 'Library') {
-        return current as Library;
-      }
-      current = current.$container;
-    }
-    return undefined;
+  private getLibrary(node: AstNode): Library | undefined {
+    return AstUtils.getContainerOfType(node, isLibrary);
   }
 
   /**
@@ -1959,19 +1940,14 @@ export class EligianValidator {
 
     const cssRegistry = this.services.css.CSSRegistry;
 
-    // Traverse up the AST to find the root Program node
-    let node: any = operation;
-    while (node && node.$type !== 'Program') {
-      node = node.$container;
-    }
-
-    const documentUri = node?.$document?.uri?.toString();
-    if (!documentUri) return; // No document URI available
+    // Find the root Program node
+    const program = this.getProgram(operation);
+    const documentUri = program?.$document?.uri?.toString();
+    if (!program || !documentUri) return; // No document URI available
 
     // CRITICAL: Register CSS imports BEFORE checking for classes
     // This ensures the registry has the document→CSS file mapping even if
     // child validators (like this one) run before parent validators (checkCSSImports)
-    const program: Program = node;
     this.ensureCSSImportsRegistered(program, documentUri);
 
     // Get operation name
@@ -2052,19 +2028,14 @@ export class EligianValidator {
 
     const cssRegistry = this.services.css.CSSRegistry;
 
-    // Traverse up the AST to find the root Program node
-    let node: any = operation;
-    while (node && node.$type !== 'Program') {
-      node = node.$container;
-    }
-
-    const documentUri = node?.$document?.uri?.toString();
-    if (!documentUri) {
+    // Find the root Program node
+    const program = this.getProgram(operation);
+    const documentUri = program?.$document?.uri?.toString();
+    if (!program || !documentUri) {
       return;
     }
 
     // CRITICAL: Register CSS imports BEFORE checking for classes/IDs
-    const program: Program = node;
     this.ensureCSSImportsRegistered(program, documentUri);
 
     // operationName already declared at top of function
@@ -2249,20 +2220,10 @@ export class EligianValidator {
     if (controllerName === 'LabelController' && this.services) {
       const labelRegistry = this.services.labels.LabelRegistry;
 
-      // Get document URI and Program node
-      let documentUri: string | undefined;
-      let programNode: Program | undefined;
-      let node: AstNode | undefined = operation;
-      while (node) {
-        if (node.$type === 'Program') {
-          programNode = node as Program;
-          documentUri = programNode.$document?.uri?.toString();
-          break;
-        }
-        node = node.$container;
-      }
-
-      if (!documentUri || !programNode) return;
+      // Find the root Program node
+      const programNode = this.getProgram(operation);
+      const documentUri = programNode?.$document?.uri?.toString();
+      if (!programNode || !documentUri) return;
 
       // CRITICAL: Ensure labels are registered before validation
       this.ensureLabelsImportsRegistered(programNode, documentUri);
@@ -2321,15 +2282,10 @@ export class EligianValidator {
 
     const labelRegistry = this.services.labels.LabelRegistry;
 
-    // Traverse up the AST to find the root Program node
-    let node: any = operation;
-    while (node && node.$type !== 'Program') {
-      node = node.$container;
-    }
-
-    const programNode = node as Program;
+    // Find the root Program node
+    const programNode = this.getProgram(operation);
     const documentUri = programNode?.$document?.uri?.toString();
-    if (!documentUri || !programNode) return;
+    if (!programNode || !documentUri) return;
 
     // CRITICAL: Ensure labels are registered before validation
     this.ensureLabelsImportsRegistered(programNode, documentUri);
