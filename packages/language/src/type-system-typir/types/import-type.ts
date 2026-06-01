@@ -24,8 +24,9 @@ export interface ImportTypeProperties {
    * - 'html': HTML layouts, content snippets
    * - 'css': CSS stylesheets, class definitions
    * - 'media': Video/audio files (timeline providers)
+   * - 'json': Locale/translation files (locales imports)
    */
-  assetType: 'html' | 'css' | 'media';
+  assetType: 'html' | 'css' | 'media' | 'json';
 
   /**
    * Relative file path to the asset

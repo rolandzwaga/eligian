@@ -23,7 +23,7 @@ import type { EligianSpecifics } from '../eligian-specifics.js';
  *
  * T051: LanguagesTypeProperties interface
  */
-interface LanguagesTypeProperties {
+export interface LanguagesTypeProperties {
   /**
    * Total number of languages declared in the languages block
    * Used for hover display and validation
