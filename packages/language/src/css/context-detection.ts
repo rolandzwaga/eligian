@@ -15,6 +15,7 @@ import type { CompletionContext } from 'langium/lsp';
 import { isOperationCall } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { isOffsetInStringLiteral } from '../utils/string-utils.js';
+import { CLASS_NAME_OPERATIONS, SELECTOR_OPERATIONS } from './css-operations.js';
 
 /**
  * Types of completion contexts for CSS
@@ -29,21 +30,6 @@ export enum CompletionContextType {
   /** Cursor after '#' in selector string */
   SelectorID = 'SelectorID',
 }
-
-/**
- * Operations that accept className parameters
- */
-const CLASS_NAME_OPERATIONS = new Set(['addClass', 'removeClass', 'toggleClass', 'hasClass']);
-
-/**
- * Operations that accept selector parameters
- */
-const SELECTOR_OPERATIONS = new Set([
-  'selectElement',
-  'selectElements',
-  'querySelector',
-  'querySelectorAll',
-]);
 
 /**
  * Detect if cursor is in a CSS completion context
