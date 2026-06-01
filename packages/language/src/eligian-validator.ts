@@ -1,6 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { type AstNode, AstUtils, type ValidationAcceptor, type ValidationChecks } from 'langium';
+import {
+  type AstNode,
+  AstUtils,
+  type Properties,
+  type ValidationAcceptor,
+  type ValidationChecks,
+} from 'langium';
 import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 import { LANGUAGE_CODE_REGEX } from './compiler/constants.js';
@@ -888,12 +894,18 @@ export class EligianValidator {
   }
 
   /**
-   * Validate control flow pairing in regular action operations.
-   * Checks that when/endWhen and forEach/endForEach are properly paired.
+   * Shared implementation for control flow pairing validation.
+   * Checks that when/endWhen and forEach/endForEach are properly paired within
+   * a single operation list, reporting any errors against the given node/property.
    */
-  checkControlFlowPairing(action: RegularActionDefinition, accept: ValidationAcceptor): void {
+  private validateControlFlowPairingForOps<N extends AstNode>(
+    operations: AstNode[],
+    node: N,
+    property: Properties<N>,
+    accept: ValidationAcceptor
+  ): void {
     // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = action.operations
+    const operationNames = operations
       .filter(op => op.$type === 'OperationCall')
       .map(op => getOperationCallName(op as OperationCall))
       .filter((name): name is string => name !== undefined);
@@ -903,11 +915,19 @@ export class EligianValidator {
       const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
 
       accept('error', message, {
-        node: action,
-        property: 'operations',
+        node,
+        property,
         code: error.code.toLowerCase(),
       });
     }
+  }
+
+  /**
+   * Validate control flow pairing in regular action operations.
+   * Checks that when/endWhen and forEach/endForEach are properly paired.
+   */
+  checkControlFlowPairing(action: RegularActionDefinition, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(action.operations, action, 'operations', accept);
   }
 
   /**
@@ -917,22 +937,12 @@ export class EligianValidator {
     action: EndableActionDefinition,
     accept: ValidationAcceptor
   ): void {
-    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = action.startOperations
-      .filter(op => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op as OperationCall))
-      .filter((name): name is string => name !== undefined);
-    const errors = validateControlFlowPairing(operationNames);
-
-    for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
-
-      accept('error', message, {
-        node: action,
-        property: 'startOperations',
-        code: error.code.toLowerCase(),
-      });
-    }
+    this.validateControlFlowPairingForOps(
+      action.startOperations,
+      action,
+      'startOperations',
+      accept
+    );
   }
 
   /**
@@ -942,22 +952,7 @@ export class EligianValidator {
     action: EndableActionDefinition,
     accept: ValidationAcceptor
   ): void {
-    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = action.endOperations
-      .filter(op => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op as OperationCall))
-      .filter((name): name is string => name !== undefined);
-    const errors = validateControlFlowPairing(operationNames);
-
-    for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
-
-      accept('error', message, {
-        node: action,
-        property: 'endOperations',
-        code: error.code.toLowerCase(),
-      });
-    }
+    this.validateControlFlowPairingForOps(action.endOperations, action, 'endOperations', accept);
   }
 
   /**
@@ -967,22 +962,12 @@ export class EligianValidator {
     action: InlineEndableAction,
     accept: ValidationAcceptor
   ): void {
-    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = action.startOperations
-      .filter(op => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op as OperationCall))
-      .filter((name): name is string => name !== undefined);
-    const errors = validateControlFlowPairing(operationNames);
-
-    for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
-
-      accept('error', message, {
-        node: action,
-        property: 'startOperations',
-        code: error.code.toLowerCase(),
-      });
-    }
+    this.validateControlFlowPairingForOps(
+      action.startOperations,
+      action,
+      'startOperations',
+      accept
+    );
   }
 
   /**
@@ -992,22 +977,7 @@ export class EligianValidator {
     action: InlineEndableAction,
     accept: ValidationAcceptor
   ): void {
-    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = action.endOperations
-      .filter(op => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op as OperationCall))
-      .filter((name): name is string => name !== undefined);
-    const errors = validateControlFlowPairing(operationNames);
-
-    for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
-
-      accept('error', message, {
-        node: action,
-        property: 'endOperations',
-        code: error.code.toLowerCase(),
-      });
-    }
+    this.validateControlFlowPairingForOps(action.endOperations, action, 'endOperations', accept);
   }
 
   /**

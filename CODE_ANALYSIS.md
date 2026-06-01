@@ -53,6 +53,10 @@ The following cluster was fixed on branch **`refactor/library-document-resolutio
 
 **Fixed (numbered):** D30, B4. Extracted a private `resolveLibraryNode(libraryImport): Library | undefined` on `EligianValidator` that resolves via the project-wide `resolveLibraryPath()` (the same resolution already used by `checkImportFileExists`, the compiler pipeline, and the scope provider); `checkImportedActionsExist` and `checkImportedActionsPublic` now delegate to it. This collapses two byte-identical resolve→`getDocument`→Library-type-check blocks (D30) and replaces the ad-hoc `substring`/`lastIndexOf('/')` + string-concat URI resolution that skipped normalization on Windows/percent-encoded paths (B4). Pure refactor, net −21 lines.
 
+The following cluster was fixed on branch **`refactor/consolidate-control-flow-pairing-d5`** (verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D5. Extracted a private generic `validateControlFlowPairingForOps<N extends AstNode>(operations, node, property, accept)` on `EligianValidator`; the five `checkControlFlowPairing*` methods (regular, endable start/end, inline start/end) now each delegate in one line, differing only in the operation list and the `accept` `property` key. Chips away at the `EligianValidator` god-class anti-pattern.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -539,6 +543,7 @@ The three-step idiom — strip quotes (`/^["']|["']$/`), strip leading `./`, `pa
 **Abstraction:** `resolveImportRelativePath(rawQuotedPath, docDir): string` (and/or `resolveImportPathToUri(documentUri, importPath)`) in `packages/language/src/utils/path-utils.ts`, used at all sites.
 
 ### D5. Five near-identical `checkControlFlowPairing*` methods
+> ✅ **FIXED** — branch `refactor/consolidate-control-flow-pairing-d5` (extracted a private generic `validateControlFlowPairingForOps<N>(operations, node, property, accept)` on `EligianValidator`; the five public `checkControlFlowPairing*` methods are now one-line delegations differing only in the ops array and the `accept` `property` key. Pure refactor, behavior-preserving. Verified: tsgo clean, biome clean, language suite green at 2001 passed/23 skipped, coverage CI passing.)
 **Severity:** High *(confirmed independently three times; same five sites)*
 **Sites:** [eligian-validator.ts:893](packages/language/src/eligian-validator.ts#L893), [eligian-validator.ts:915](packages/language/src/eligian-validator.ts#L915), [eligian-validator.ts:940](packages/language/src/eligian-validator.ts#L940), [eligian-validator.ts:965](packages/language/src/eligian-validator.ts#L965), [eligian-validator.ts:990](packages/language/src/eligian-validator.ts#L990)
 Identical filter→map→`validateControlFlowPairing`→iterate→`accept` body (~12 lines × 5); differ only in the ops array property and the `accept` `property` key.
