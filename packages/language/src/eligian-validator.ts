@@ -58,6 +58,7 @@ import { OperationDataTracker } from './operation-data-tracker.js';
 import { validateLabelID } from './type-system-typir/validation/label-id-validation.js';
 import type { MissingLabelIDData, MissingLabelsFileData } from './types/code-actions.js';
 import { isDefaultImport, isNamedImport } from './utils/ast-helpers.js';
+import { formatValidationMessage } from './utils/error-builder.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 import {
   resolveImportPathToUri,
@@ -248,34 +249,57 @@ export class EligianValidator {
   }
 
   /**
+   * Report a `duplicate_*` error on the second and later occurrence of any
+   * named node sharing a name within `items`.
+   *
+   * Single source of truth (D27) for the "track names in a Map, error on the
+   * duplicate" loop that was hand-coded for actions, library actions, and
+   * constants. The first occurrence is recorded; every subsequent one is flagged
+   * on its `name` property with the given diagnostic `code`.
+   *
+   * @param items - Named nodes to scan, in source order
+   * @param messageFor - Builds the diagnostic message for a duplicate node
+   * @param code - Diagnostic code for the emitted error
+   * @param accept - Langium validation acceptor
+   */
+  private reportDuplicatesByName<T extends AstNode & { name: string }>(
+    items: Iterable<T>,
+    messageFor: (item: T) => string,
+    code: string,
+    accept: ValidationAcceptor
+  ): void {
+    const seen = new Map<string, T>();
+
+    for (const item of items) {
+      if (seen.has(item.name)) {
+        // Found duplicate - report error on the second/later definition
+        accept('error', messageFor(item), {
+          node: item,
+          property: 'name' as Properties<T>,
+          code,
+        });
+      } else {
+        seen.set(item.name, item);
+      }
+    }
+  }
+
+  /**
    * T042: US2 - Check for duplicate action definitions
    * Emit error if the same action name is defined multiple times
    */
   checkDuplicateActions(program: Program, accept: ValidationAcceptor): void {
-    const actionNames = new Map<string, RegularActionDefinition | EndableActionDefinition>();
+    const actions = getElements(program).filter(
+      (element): element is RegularActionDefinition | EndableActionDefinition =>
+        element.$type === 'RegularActionDefinition' || element.$type === 'EndableActionDefinition'
+    );
 
-    for (const element of getElements(program)) {
-      if (
-        element.$type === 'RegularActionDefinition' ||
-        element.$type === 'EndableActionDefinition'
-      ) {
-        const existing = actionNames.get(element.name);
-        if (existing) {
-          // Found duplicate - report error on the second definition
-          accept(
-            'error',
-            `Duplicate action definition '${element.name}'. Action already defined.`,
-            {
-              node: element,
-              property: 'name',
-              code: 'duplicate_action',
-            }
-          );
-        } else {
-          actionNames.set(element.name, element);
-        }
-      }
-    }
+    this.reportDuplicatesByName(
+      actions,
+      element => `Duplicate action definition '${element.name}'. Action already defined.`,
+      'duplicate_action',
+      accept
+    );
   }
 
   /**
@@ -283,27 +307,16 @@ export class EligianValidator {
    * Emit error if constant name is declared more than once
    */
   checkDuplicateConstants(program: Program, accept: ValidationAcceptor): void {
-    const constantNames = new Map<string, VariableDeclaration>();
+    const constants = getElements(program).filter(
+      (element): element is VariableDeclaration => element.$type === 'VariableDeclaration'
+    );
 
-    for (const element of getElements(program)) {
-      if (element.$type === 'VariableDeclaration') {
-        const existing = constantNames.get(element.name);
-        if (existing) {
-          // Found duplicate - report error on the second definition
-          accept(
-            'error',
-            `Duplicate constant declaration '${element.name}'. Constant already defined.`,
-            {
-              node: element,
-              property: 'name',
-              code: 'duplicate_constant',
-            }
-          );
-        } else {
-          constantNames.set(element.name, element);
-        }
-      }
-    }
+    this.reportDuplicatesByName(
+      constants,
+      element => `Duplicate constant declaration '${element.name}'. Constant already defined.`,
+      'duplicate_constant',
+      accept
+    );
   }
 
   /**
@@ -686,13 +699,48 @@ export class EligianValidator {
     const error = validateOperationExists(opName);
 
     if (error) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
+      const message = formatValidationMessage(error.message, error.hint);
 
       accept('error', message, {
         node: operation,
         property: 'operationName',
         code: error.code.toLowerCase(),
       });
+    }
+  }
+
+  /**
+   * Report an `invalid_parameter_count` error when an action call's argument
+   * count does not match its declared parameter count.
+   *
+   * Single source of truth (D28) for the identical expected-vs-actual check that
+   * was hand-coded for local, imported, and library action calls.
+   *
+   * @param opName - The action name as written at the call site
+   * @param parameters - The action's declared parameters (undefined → 0 expected)
+   * @param argumentCount - Number of arguments supplied at the call site
+   * @param node - The call node to attach the diagnostic to
+   * @param accept - Langium validation acceptor
+   */
+  private reportActionParameterCountError(
+    opName: string,
+    parameters: ReadonlyArray<{ name: string }> | undefined,
+    argumentCount: number,
+    node: AstNode,
+    accept: ValidationAcceptor
+  ): void {
+    const expectedCount = parameters?.length ?? 0;
+    if (argumentCount !== expectedCount) {
+      const paramNames = parameters?.map(p => p.name).join(', ') ?? '';
+      accept(
+        'error',
+        `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+        {
+          node,
+          property: 'args',
+          code: 'invalid_parameter_count',
+        }
+      );
     }
   }
 
@@ -716,19 +764,13 @@ export class EligianValidator {
       // Check local action
       const localAction = findActionByName(opName, program);
       if (localAction) {
-        const expectedCount = localAction.parameters?.length ?? 0;
-        if (argumentCount !== expectedCount) {
-          const paramNames = localAction.parameters?.map(p => p.name).join(', ') ?? '';
-          accept(
-            'error',
-            `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
-            {
-              node: operation,
-              property: 'args',
-              code: 'invalid_parameter_count',
-            }
-          );
-        }
+        this.reportActionParameterCountError(
+          opName,
+          localAction.parameters,
+          argumentCount,
+          operation,
+          accept
+        );
         return;
       }
 
@@ -743,19 +785,13 @@ export class EligianValidator {
           importedActions
         );
         if (importedAction) {
-          const expectedCount = importedAction.parameters?.length ?? 0;
-          if (argumentCount !== expectedCount) {
-            const paramNames = importedAction.parameters?.map(p => p.name).join(', ') ?? '';
-            accept(
-              'error',
-              `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
-              {
-                node: operation,
-                property: 'args',
-                code: 'invalid_parameter_count',
-              }
-            );
-          }
+          this.reportActionParameterCountError(
+            opName,
+            importedAction.parameters,
+            argumentCount,
+            operation,
+            accept
+          );
           return;
         }
       }
@@ -766,19 +802,13 @@ export class EligianValidator {
     if (library) {
       const libraryAction = library.actions?.find(a => a.name === opName);
       if (libraryAction) {
-        const expectedCount = libraryAction.parameters?.length ?? 0;
-        if (argumentCount !== expectedCount) {
-          const paramNames = libraryAction.parameters?.map(p => p.name).join(', ') ?? '';
-          accept(
-            'error',
-            `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
-            {
-              node: operation,
-              property: 'args',
-              code: 'invalid_parameter_count',
-            }
-          );
-        }
+        this.reportActionParameterCountError(
+          opName,
+          libraryAction.parameters,
+          argumentCount,
+          operation,
+          accept
+        );
         return;
       }
     }
@@ -794,7 +824,7 @@ export class EligianValidator {
     const error = validateParameterCount(signature, argumentCount);
 
     if (error) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
+      const message = formatValidationMessage(error.message, error.hint);
 
       accept('error', message, {
         node: operation,
@@ -831,7 +861,7 @@ export class EligianValidator {
 
     // Report each type error
     for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
+      const message = formatValidationMessage(error.message, error.hint);
 
       accept('error', message, {
         node: operation,
@@ -876,7 +906,7 @@ export class EligianValidator {
 
     // Report dependency warnings
     for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
+      const message = formatValidationMessage(error.message, error.hint);
 
       // Use 'warning' instead of 'error' for now since we can't track dependencies perfectly
       // Once we implement full dependency tracking, change this to 'error'
@@ -907,7 +937,7 @@ export class EligianValidator {
     const errors = validateControlFlowPairing(operationNames);
 
     for (const error of errors) {
-      const message = error.hint ? `${error.message}. ${error.hint}` : error.message;
+      const message = formatValidationMessage(error.message, error.hint);
 
       accept('error', message, {
         node,
@@ -1483,7 +1513,7 @@ export class EligianValidator {
   checkImportPath(importStmt: DefaultImport | NamedImport, accept: ValidationAcceptor): void {
     const error = validateImportPath(importStmt.path);
     if (error) {
-      accept('error', `${error.message}. ${error.hint}`, {
+      accept('error', formatValidationMessage(error.message, error.hint), {
         node: importStmt,
         property: 'path',
         code: error.code,
@@ -1510,7 +1540,7 @@ export class EligianValidator {
 
     // Report errors
     for (const [importStmt, error] of errors) {
-      accept('error', `${error.message}. ${error.hint}`, {
+      accept('error', formatValidationMessage(error.message, error.hint), {
         node: importStmt,
         property: 'type',
         code: error.code,
@@ -1548,7 +1578,7 @@ export class EligianValidator {
       );
 
       if (error) {
-        accept('error', `${error.message}. ${error.hint}`, {
+        accept('error', formatValidationMessage(error.message, error.hint), {
           node: importStmt,
           property: 'name',
           code: error.code,
@@ -1574,7 +1604,7 @@ export class EligianValidator {
     const error = validateAssetType(importStmt);
 
     if (error) {
-      accept('error', `${error.message}. ${error.hint}`, {
+      accept('error', formatValidationMessage(error.message, error.hint), {
         node: importStmt,
         property: 'path',
         code: error.code,
@@ -1637,7 +1667,7 @@ export class EligianValidator {
         );
 
         if (importStmt) {
-          accept('error', `${error.message}${error.hint ? `. ${error.hint}` : ''}`, {
+          accept('error', formatValidationMessage(error.message, error.hint), {
             node: importStmt,
             property: 'path',
           });
@@ -2242,25 +2272,59 @@ export class EligianValidator {
 
           const error = validateLabelID(documentUri, labelId, labelRegistry);
           if (error) {
-            // Feature 041: Include extended diagnostic data for quick fix
-            const diagnosticData: MissingLabelIDData | { code: string } =
-              error.code === 'unknown_label_id' && labelsFileUri
-                ? {
-                    code: error.code,
-                    labelId,
-                    labelsFileUri,
-                    languageCodes,
-                  }
-                : { code: error.code };
-
-            accept('error', `${error.message}. ${error.hint}`, {
-              node: labelIdArg,
-              data: diagnosticData,
-            });
+            this.reportLabelIDError(
+              labelIdArg,
+              error,
+              labelId,
+              labelsFileUri,
+              languageCodes,
+              accept
+            );
           }
         }
       }
     }
+  }
+
+  /**
+   * Report a label-ID validation error, attaching Feature 041 quick-fix data.
+   *
+   * Single source of truth (D29) for the diagnostic-data block that was
+   * duplicated across the LabelController argument check and the single/array
+   * label-ID parameter checks. When the error is an `unknown_label_id` and the
+   * labels file URI is known, the richer `MissingLabelIDData` payload is attached
+   * so the quick fix can create the missing entry; otherwise only the code is.
+   *
+   * @param node - The string-literal node the diagnostic is reported on
+   * @param error - The label-ID validation error (code, message, optional hint)
+   * @param labelId - The offending label ID literal value
+   * @param labelsFileUri - Labels file URI, when resolvable
+   * @param languageCodes - Language codes for the quick-fix entry template
+   * @param accept - Langium validation acceptor
+   */
+  private reportLabelIDError(
+    node: AstNode,
+    error: { code: string; message: string; hint?: string },
+    labelId: string,
+    labelsFileUri: string | undefined,
+    languageCodes: string[],
+    accept: ValidationAcceptor
+  ): void {
+    // Feature 041: Include extended diagnostic data for quick fix
+    const diagnosticData: MissingLabelIDData | { code: string } =
+      error.code === 'unknown_label_id' && labelsFileUri
+        ? {
+            code: error.code,
+            labelId,
+            labelsFileUri,
+            languageCodes,
+          }
+        : { code: error.code };
+
+    accept('error', formatValidationMessage(error.message, error.hint), {
+      node,
+      data: diagnosticData,
+    });
   }
 
   /**
@@ -2337,21 +2401,7 @@ export class EligianValidator {
         // Validate label ID
         const error = validateLabelID(documentUri, labelId, labelRegistry);
         if (error) {
-          // Feature 041: Include extended diagnostic data for quick fix
-          const diagnosticData: MissingLabelIDData | { code: string } =
-            error.code === 'unknown_label_id' && labelsFileUri
-              ? {
-                  code: error.code,
-                  labelId,
-                  labelsFileUri,
-                  languageCodes,
-                }
-              : { code: error.code };
-
-          accept('error', `${error.message}. ${error.hint}`, {
-            node: arg,
-            data: diagnosticData,
-          });
+          this.reportLabelIDError(arg, error, labelId, labelsFileUri, languageCodes, accept);
         }
       }
       // Handle array of label IDs
@@ -2368,21 +2418,7 @@ export class EligianValidator {
           // Validate label ID
           const error = validateLabelID(documentUri, labelId, labelRegistry);
           if (error) {
-            // Feature 041: Include extended diagnostic data for quick fix
-            const diagnosticData: MissingLabelIDData | { code: string } =
-              error.code === 'unknown_label_id' && labelsFileUri
-                ? {
-                    code: error.code,
-                    labelId,
-                    labelsFileUri,
-                    languageCodes,
-                  }
-                : { code: error.code };
-
-            accept('error', `${error.message}. ${error.hint}`, {
-              node: element,
-              data: diagnosticData,
-            });
+            this.reportLabelIDError(element, error, labelId, labelsFileUri, languageCodes, accept);
           }
         }
       }
@@ -2437,25 +2473,13 @@ export class EligianValidator {
    * ambiguity when importing actions.
    */
   checkLibraryDuplicateActions(library: Library, accept: ValidationAcceptor): void {
-    const actionNames = new Map<string, RegularActionDefinition | EndableActionDefinition>();
-
-    for (const action of library.actions || []) {
-      const existing = actionNames.get(action.name);
-      if (existing) {
-        // Found duplicate - report error on the second definition
-        accept(
-          'error',
-          `Duplicate action definition '${action.name}'. Action already defined in this library.`,
-          {
-            node: action,
-            property: 'name',
-            code: 'library_duplicate_action',
-          }
-        );
-      } else {
-        actionNames.set(action.name, action);
-      }
-    }
+    this.reportDuplicatesByName(
+      library.actions || [],
+      action =>
+        `Duplicate action definition '${action.name}'. Action already defined in this library.`,
+      'library_duplicate_action',
+      accept
+    );
   }
 
   /**
