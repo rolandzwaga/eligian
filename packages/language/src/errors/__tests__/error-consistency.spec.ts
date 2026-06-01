@@ -15,6 +15,7 @@
  * - formatForVSCode(): returns vscode.Diagnostic with proper range and message
  */
 
+import { createFileNotFoundError, createPermissionError } from '@eligian/shared-utils';
 import { describe, expect, test } from 'vitest';
 // Import formatters (WILL FAIL UNTIL IMPLEMENTED)
 import { formatError, formatErrorWithSnippet, formatForVSCode } from '../formatters.js';
@@ -168,26 +169,16 @@ describe('Error Consistency - formatError()', () => {
 
   describe('IOError formatting', () => {
     test('FileNotFoundError formats with file path', () => {
-      const error: IOError = {
-        _tag: 'FileNotFoundError',
-        message: 'File does not exist',
-        filePath: './missing.eligian',
-        absolutePath: '/workspace/missing.eligian',
-      };
+      const error: IOError = createFileNotFoundError('./missing.eligian');
 
       const formatted = formatError(error);
 
-      expect(formatted).toContain('File does not exist');
+      expect(formatted).toContain('File not found');
       expect(formatted).toContain('./missing.eligian');
     });
 
     test('PermissionError formats with file path', () => {
-      const error: IOError = {
-        _tag: 'PermissionError',
-        message: 'Permission denied',
-        filePath: './restricted.eligian',
-        absolutePath: '/workspace/restricted.eligian',
-      };
+      const error: IOError = createPermissionError('./restricted.eligian');
 
       const formatted = formatError(error);
 
@@ -359,16 +350,11 @@ describe('Error Consistency - formatForVSCode()', () => {
   });
 
   test('handles IOError without location', () => {
-    const error: IOError = {
-      _tag: 'FileNotFoundError',
-      message: 'File does not exist',
-      filePath: './missing.eligian',
-      absolutePath: '/workspace/missing.eligian',
-    };
+    const error: IOError = createFileNotFoundError('./missing.eligian');
 
     const diagnostic = formatForVSCode(error);
 
-    expect(diagnostic.message).toContain('File does not exist');
+    expect(diagnostic.message).toContain('File not found');
     expect(diagnostic.severity).toBe(0); // Error
     expect(diagnostic.range.start.line).toBe(0); // Default to start of file
     expect(diagnostic.range.start.character).toBe(0);

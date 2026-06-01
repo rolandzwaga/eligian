@@ -55,29 +55,35 @@ export function formatError(error: AllErrors): string {
 }
 
 /**
+ * Extract the trailing file name from a path (handles `\` and `/` separators).
+ */
+function getBaseName(filePath: string): string {
+  return filePath.split(/[\\/]/).pop() || filePath;
+}
+
+/**
  * Format location to string (file:line:column)
  */
 function formatLocation(error: AllErrors): string | null {
   // Handle CssParseError (uses filePath, line, column directly)
   if (error._tag === 'CssParseError') {
     const cssError = error as CssParseError;
-    const fileName = cssError.filePath.split(/[\\/]/).pop() || cssError.filePath;
-    return `${fileName}:${cssError.line}:${cssError.column}`;
+    return `${getBaseName(cssError.filePath)}:${cssError.line}:${cssError.column}`;
   }
 
   // Handle errors with location property
   if ('location' in error && error.location) {
     const loc = error.location as SourceLocation;
-    const fileName = loc.file?.split(/[\\/]/).pop() || loc.file || '';
+    const fileName = loc.file ? getBaseName(loc.file) : '';
     if (fileName) {
       return `${fileName}:${loc.line}:${loc.column}`;
     }
     return `${loc.line}:${loc.column}`;
   }
 
-  // Handle I/O errors with filePath
-  if ('filePath' in error && error.filePath) {
-    return error.filePath as string;
+  // Handle I/O errors (FileNotFoundError/PermissionError/ReadError/SecurityError use `path`)
+  if ('path' in error && error.path) {
+    return error.path as string;
   }
 
   return null;
@@ -103,11 +109,7 @@ function formatMessage(error: AllErrors): string {
       return baseMessage;
 
     case 'HtmlImportError':
-      return `${baseMessage} (${error.filePath})`;
-
     case 'CssImportError':
-      return `${baseMessage} (${error.filePath})`;
-
     case 'MediaImportError':
       return `${baseMessage} (${error.filePath})`;
 

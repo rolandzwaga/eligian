@@ -31,7 +31,10 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('formatParseError', () => {
     it('should format parse error with location', () => {
-      const error = createParseError('Expected timeline keyword', createSourceLocation(1, 1));
+      const error = createParseError({
+        message: 'Expected timeline keyword',
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatParseError(error);
 
@@ -43,7 +46,10 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should include code snippet when source provided', () => {
-      const error = createParseError('Expected timeline keyword', createSourceLocation(1, 1));
+      const error = createParseError({
+        message: 'Expected timeline keyword',
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatParseError(error, sourceCode);
 
@@ -54,7 +60,10 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for timeline errors', () => {
-      const error = createParseError('Missing timeline definition', createSourceLocation(1, 1));
+      const error = createParseError({
+        message: 'Missing timeline definition',
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatParseError(error);
 
@@ -63,7 +72,10 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should handle error without location', () => {
-      const error = createParseError('Generic parse error', createSourceLocation(0, 0));
+      const error = createParseError({
+        message: 'Generic parse error',
+        location: createSourceLocation(0, 0),
+      });
 
       const formatted = formatParseError(error);
 
@@ -74,11 +86,11 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('formatValidationError', () => {
     it('should format validation error with location', () => {
-      const error = createValidationError(
-        'DuplicateDefinition',
-        'Duplicate action name "test"',
-        createSourceLocation(2, 5)
-      );
+      const error = createValidationError({
+        kind: 'DuplicateDefinition',
+        message: 'Duplicate action name "test"',
+        location: createSourceLocation(2, 5),
+      });
 
       const formatted = formatValidationError(error);
 
@@ -89,11 +101,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should include code snippet when source provided', () => {
-      const error = createValidationError(
-        'ValidTimeRange',
-        'Invalid time range',
-        createSourceLocation(2, 6)
-      );
+      const error = createValidationError({
+        kind: 'ValidTimeRange',
+        message: 'Invalid time range',
+        location: createSourceLocation(2, 6),
+      });
 
       const formatted = formatValidationError(error, sourceCode);
 
@@ -103,11 +115,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for duplicate errors', () => {
-      const error = createValidationError(
-        'DuplicateDefinition',
-        'Duplicate action name',
-        createSourceLocation(2, 5)
-      );
+      const error = createValidationError({
+        kind: 'DuplicateDefinition',
+        message: 'Duplicate action name',
+        location: createSourceLocation(2, 5),
+      });
 
       const formatted = formatValidationError(error);
 
@@ -116,11 +128,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for time range errors', () => {
-      const error = createValidationError(
-        'ValidTimeRange',
-        'Invalid time range: end must be greater than start',
-        createSourceLocation(2, 6)
-      );
+      const error = createValidationError({
+        kind: 'ValidTimeRange',
+        message: 'Invalid time range: end must be greater than start',
+        location: createSourceLocation(2, 6),
+      });
 
       const formatted = formatValidationError(error);
 
@@ -131,12 +143,12 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('formatTypeError', () => {
     it('should format type error with location', () => {
-      const error = createTypeError(
-        'Expected number but got string',
-        createSourceLocation(2, 10),
-        'number',
-        'string'
-      );
+      const error = createTypeError({
+        message: 'Expected number but got string',
+        location: createSourceLocation(2, 10),
+        expected: 'number',
+        actual: 'string',
+      });
 
       const formatted = formatTypeError(error);
 
@@ -147,12 +159,12 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should include code snippet when source provided', () => {
-      const error = createTypeError(
-        'Expected number but got string',
-        createSourceLocation(3, 21),
-        'number',
-        'string'
-      );
+      const error = createTypeError({
+        message: 'Expected number but got string',
+        location: createSourceLocation(3, 21),
+        expected: 'number',
+        actual: 'string',
+      });
 
       const formatted = formatTypeError(error, sourceCode);
 
@@ -162,12 +174,12 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for number/string type errors', () => {
-      const error = createTypeError(
-        'Expected number but got string',
-        createSourceLocation(2, 10),
-        'number',
-        'string'
-      );
+      const error = createTypeError({
+        message: 'Expected number but got string',
+        location: createSourceLocation(2, 10),
+        expected: 'number',
+        actual: 'string',
+      });
 
       const formatted = formatTypeError(error);
 
@@ -178,11 +190,11 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('formatTransformError', () => {
     it('should format transform error with location', () => {
-      const error = createTransformError(
-        'ValidationError',
-        'Unknown operation: addClas',
-        createSourceLocation(4, 5)
-      );
+      const error = createTransformError({
+        kind: 'ValidationError',
+        message: 'Unknown operation: addClas',
+        location: createSourceLocation(4, 5),
+      });
 
       const formatted = formatTransformError(error);
 
@@ -194,11 +206,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should include code snippet when source provided', () => {
-      const error = createTransformError(
-        'ValidationError',
-        'Unknown operation',
-        createSourceLocation(4, 5)
-      );
+      const error = createTransformError({
+        kind: 'ValidationError',
+        message: 'Unknown operation',
+        location: createSourceLocation(4, 5),
+      });
 
       const formatted = formatTransformError(error, sourceCode);
 
@@ -208,11 +220,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for unknown operation errors', () => {
-      const error = createTransformError(
-        'ValidationError',
-        'Unknown operation: addClas',
-        createSourceLocation(4, 5)
-      );
+      const error = createTransformError({
+        kind: 'ValidationError',
+        message: 'Unknown operation: addClas',
+        location: createSourceLocation(4, 5),
+      });
 
       const formatted = formatTransformError(error);
 
@@ -221,11 +233,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for parameter errors', () => {
-      const error = createTransformError(
-        'ValidationError',
-        'Too many parameters for operation addClass',
-        createSourceLocation(4, 5)
-      );
+      const error = createTransformError({
+        kind: 'ValidationError',
+        message: 'Too many parameters for operation addClass',
+        location: createSourceLocation(4, 5),
+      });
 
       const formatted = formatTransformError(error);
 
@@ -234,11 +246,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should provide helpful hint for dependency errors', () => {
-      const error = createTransformError(
-        'ValidationError',
-        'Missing dependency: selectedElement',
-        createSourceLocation(4, 5)
-      );
+      const error = createTransformError({
+        kind: 'ValidationError',
+        message: 'Missing dependency: selectedElement',
+        location: createSourceLocation(4, 5),
+      });
 
       const formatted = formatTransformError(error);
 
@@ -249,7 +261,10 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('formatError (pattern matching)', () => {
     it('should format parse errors', () => {
-      const error = createParseError('Test error', createSourceLocation(1, 1));
+      const error = createParseError({
+        message: 'Test error',
+        location: createSourceLocation(1, 1),
+      });
       const formatted = formatError(error);
 
       expect(formatted.severity).toBe('error');
@@ -257,11 +272,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should format validation errors', () => {
-      const error = createValidationError(
-        'DuplicateDefinition',
-        'Test error',
-        createSourceLocation(1, 1)
-      );
+      const error = createValidationError({
+        kind: 'DuplicateDefinition',
+        message: 'Test error',
+        location: createSourceLocation(1, 1),
+      });
       const formatted = formatError(error);
 
       expect(formatted.severity).toBe('error');
@@ -269,7 +284,12 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should format type errors', () => {
-      const error = createTypeError('Test error', createSourceLocation(1, 1), 'number', 'string');
+      const error = createTypeError({
+        message: 'Test error',
+        location: createSourceLocation(1, 1),
+        expected: 'number',
+        actual: 'string',
+      });
       const formatted = formatError(error);
 
       expect(formatted.severity).toBe('error');
@@ -277,11 +297,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should format transform errors', () => {
-      const error = createTransformError(
-        'ValidationError',
-        'Test error',
-        createSourceLocation(1, 1)
-      );
+      const error = createTransformError({
+        kind: 'ValidationError',
+        message: 'Test error',
+        location: createSourceLocation(1, 1),
+      });
       const formatted = formatError(error);
 
       expect(formatted.severity).toBe('error');
@@ -292,13 +312,18 @@ describe('T102: Error Reporter Tests', () => {
   describe('formatErrors (array)', () => {
     it('should format multiple errors', () => {
       const errors = [
-        createParseError('Parse error', createSourceLocation(1, 1)),
-        createValidationError(
-          'DuplicateDefinition',
-          'Validation error',
-          createSourceLocation(2, 5)
-        ),
-        createTypeError('Type error', createSourceLocation(3, 10), 'number', 'string'),
+        createParseError({ message: 'Parse error', location: createSourceLocation(1, 1) }),
+        createValidationError({
+          kind: 'DuplicateDefinition',
+          message: 'Validation error',
+          location: createSourceLocation(2, 5),
+        }),
+        createTypeError({
+          message: 'Type error',
+          location: createSourceLocation(3, 10),
+          expected: 'number',
+          actual: 'string',
+        }),
       ];
 
       const formatted = formatErrors(errors);
@@ -314,8 +339,12 @@ describe('T102: Error Reporter Tests', () => {
 
     it('should include source code snippets for all errors', () => {
       const errors = [
-        createParseError('Parse error', createSourceLocation(1, 1)),
-        createValidationError('ValidTimeRange', 'Validation error', createSourceLocation(2, 6)),
+        createParseError({ message: 'Parse error', location: createSourceLocation(1, 1) }),
+        createValidationError({
+          kind: 'ValidTimeRange',
+          message: 'Validation error',
+          location: createSourceLocation(2, 6),
+        }),
       ];
 
       const formatted = formatErrors(errors, sourceCode);
@@ -329,7 +358,10 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('Code snippet extraction', () => {
     it('should show context lines before and after error', () => {
-      const error = createParseError('Error in middle', createSourceLocation(3, 5));
+      const error = createParseError({
+        message: 'Error in middle',
+        location: createSourceLocation(3, 5),
+      });
       const formatted = formatParseError(error, sourceCode);
 
       // Should show line 1-5 (2 before, error line, 2 after)
@@ -342,7 +374,7 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should mark error line with >indicator', () => {
-      const error = createParseError('Error', createSourceLocation(3, 5));
+      const error = createParseError({ message: 'Error', location: createSourceLocation(3, 5) });
       const formatted = formatParseError(error, sourceCode);
 
       expect(formatted.codeSnippet).toBeDefined();
@@ -353,7 +385,7 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should show column indicator with ^', () => {
-      const error = createParseError('Error', createSourceLocation(3, 10));
+      const error = createParseError({ message: 'Error', location: createSourceLocation(3, 10) });
       const formatted = formatParseError(error, sourceCode);
 
       expect(formatted.codeSnippet).toBeDefined();
@@ -361,7 +393,7 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should handle errors at start of file', () => {
-      const error = createParseError('Error', createSourceLocation(1, 1));
+      const error = createParseError({ message: 'Error', location: createSourceLocation(1, 1) });
       const formatted = formatParseError(error, sourceCode);
 
       expect(formatted.codeSnippet).toBeDefined();
@@ -370,7 +402,7 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should handle errors at end of file', () => {
-      const error = createParseError('Error', createSourceLocation(6, 1));
+      const error = createParseError({ message: 'Error', location: createSourceLocation(6, 1) });
       const formatted = formatParseError(error, sourceCode);
 
       expect(formatted.codeSnippet).toBeDefined();
@@ -381,7 +413,10 @@ describe('T102: Error Reporter Tests', () => {
 
   describe('Helpful hints', () => {
     it('should suggest timeline help for timeline errors', () => {
-      const error = createParseError('Missing timeline', createSourceLocation(1, 1));
+      const error = createParseError({
+        message: 'Missing timeline',
+        location: createSourceLocation(1, 1),
+      });
       const formatted = formatParseError(error);
 
       expect(formatted.hint).toBeDefined();
@@ -389,7 +424,10 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should suggest time range format for time errors', () => {
-      const error = createParseError('Invalid time range at 5..10', createSourceLocation(2, 6));
+      const error = createParseError({
+        message: 'Invalid time range at 5..10',
+        location: createSourceLocation(2, 6),
+      });
       const formatted = formatParseError(error);
 
       expect(formatted.hint).toBeDefined();
@@ -398,7 +436,10 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should suggest action bracket syntax for bracket errors', () => {
-      const error = createParseError('Missing [', createSourceLocation(2, 15));
+      const error = createParseError({
+        message: 'Missing [',
+        location: createSourceLocation(2, 15),
+      });
       const formatted = formatParseError(error);
 
       expect(formatted.hint).toBeDefined();
@@ -406,11 +447,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should suggest unique names for duplicate errors', () => {
-      const error = createValidationError(
-        'DuplicateDefinition',
-        'Duplicate action name',
-        createSourceLocation(2, 5)
-      );
+      const error = createValidationError({
+        kind: 'DuplicateDefinition',
+        message: 'Duplicate action name',
+        location: createSourceLocation(2, 5),
+      });
       const formatted = formatValidationError(error);
 
       expect(formatted.hint).toBeDefined();
@@ -418,11 +459,11 @@ describe('T102: Error Reporter Tests', () => {
     });
 
     it('should suggest non-negative times for negative time errors', () => {
-      const error = createValidationError(
-        'NonNegativeTimes',
-        'Time cannot be negative',
-        createSourceLocation(2, 6)
-      );
+      const error = createValidationError({
+        kind: 'NonNegativeTimes',
+        message: 'Time cannot be negative',
+        location: createSourceLocation(2, 6),
+      });
       const formatted = formatValidationError(error);
 
       expect(formatted.hint).toBeDefined();

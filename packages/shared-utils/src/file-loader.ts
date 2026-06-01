@@ -53,11 +53,11 @@ function mapFileSystemError(
     case 'EPERM':
       return createPermissionError(path);
 
-    default: {
-      // Generic read error for all other cases
-      const message = nodeError.message || (error instanceof Error ? error.message : String(error));
-      return createReadError(path, message);
-    }
+    default:
+      // Generic read error for all other cases. Pass the raw error as `cause`
+      // so the original (machine-inspectable) Error is preserved, not a
+      // pre-stringified message (B43).
+      return createReadError(path, error);
   }
 }
 

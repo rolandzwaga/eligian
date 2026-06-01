@@ -200,30 +200,18 @@ export type CompilerError =
  * @param params - Error parameters
  * @returns ParseError object
  */
-export function createParseError(
-  paramsOrMessage:
-    | { message: string; location: SourceLocation; expected?: string; actual?: string }
-    | string,
-  location?: SourceLocation,
-  expected?: string,
-  actual?: string
-): ParseError {
-  // Support both old positional API and new object API for backwards compatibility
-  if (typeof paramsOrMessage === 'string') {
-    return {
-      _tag: 'ParseError',
-      message: paramsOrMessage,
-      location: location!,
-      expected,
-      actual,
-    };
-  }
+export function createParseError(params: {
+  message: string;
+  location: SourceLocation;
+  expected?: string;
+  actual?: string;
+}): ParseError {
   return {
     _tag: 'ParseError',
-    message: paramsOrMessage.message,
-    location: paramsOrMessage.location,
-    expected: paramsOrMessage.expected,
-    actual: paramsOrMessage.actual,
+    message: params.message,
+    location: params.location,
+    expected: params.expected,
+    actual: params.actual,
   };
 }
 
@@ -233,30 +221,18 @@ export function createParseError(
  * @param params - Error parameters
  * @returns ValidationError object
  */
-export function createValidationError(
-  paramsOrKind:
-    | { kind: ValidationErrorKind; message: string; location: SourceLocation; hint?: string }
-    | ValidationErrorKind,
-  message?: string,
-  location?: SourceLocation,
-  hint?: string
-): ValidationError {
-  // Support both old positional API and new object API
-  if (typeof paramsOrKind === 'string') {
-    return {
-      _tag: 'ValidationError',
-      kind: paramsOrKind,
-      message: message!,
-      location: location!,
-      hint,
-    };
-  }
+export function createValidationError(params: {
+  kind: ValidationErrorKind;
+  message: string;
+  location: SourceLocation;
+  hint?: string;
+}): ValidationError {
   return {
     _tag: 'ValidationError',
-    kind: paramsOrKind.kind,
-    message: paramsOrKind.message,
-    location: paramsOrKind.location,
-    hint: paramsOrKind.hint,
+    kind: params.kind,
+    message: params.message,
+    location: params.location,
+    hint: params.hint,
   };
 }
 
@@ -266,33 +242,20 @@ export function createValidationError(
  * @param params - Error parameters
  * @returns TypeError object
  */
-export function createTypeError(
-  paramsOrMessage:
-    | { message: string; location: SourceLocation; expected: string; actual: string; hint?: string }
-    | string,
-  location?: SourceLocation,
-  expected?: string,
-  actual?: string,
-  hint?: string
-): TypeError {
-  // Support both old positional API and new object API
-  if (typeof paramsOrMessage === 'string') {
-    return {
-      _tag: 'TypeError',
-      message: paramsOrMessage,
-      location: location!,
-      expected: expected!,
-      actual: actual!,
-      hint,
-    };
-  }
+export function createTypeError(params: {
+  message: string;
+  location: SourceLocation;
+  expected: string;
+  actual: string;
+  hint?: string;
+}): TypeError {
   return {
     _tag: 'TypeError',
-    message: paramsOrMessage.message,
-    location: paramsOrMessage.location,
-    expected: paramsOrMessage.expected,
-    actual: paramsOrMessage.actual,
-    hint: paramsOrMessage.hint,
+    message: params.message,
+    location: params.location,
+    expected: params.expected,
+    actual: params.actual,
+    hint: params.hint,
   };
 }
 
@@ -302,30 +265,18 @@ export function createTypeError(
  * @param params - Error parameters
  * @returns TransformError object
  */
-export function createTransformError(
-  paramsOrKind:
-    | { kind: TransformErrorKind; message: string; location: SourceLocation; astNode?: string }
-    | TransformErrorKind,
-  message?: string,
-  location?: SourceLocation,
-  astNode?: string
-): TransformError {
-  // Support both old positional API and new object API
-  if (typeof paramsOrKind === 'string') {
-    return {
-      _tag: 'TransformError',
-      kind: paramsOrKind,
-      message: message!,
-      location: location!,
-      astNode,
-    };
-  }
+export function createTransformError(params: {
+  kind: TransformErrorKind;
+  message: string;
+  location: SourceLocation;
+  astNode?: string;
+}): TransformError {
   return {
     _tag: 'TransformError',
-    kind: paramsOrKind.kind,
-    message: paramsOrKind.message,
-    location: paramsOrKind.location,
-    astNode: paramsOrKind.astNode,
+    kind: params.kind,
+    message: params.message,
+    location: params.location,
+    astNode: params.astNode,
   };
 }
 

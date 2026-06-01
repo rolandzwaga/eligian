@@ -18,6 +18,45 @@ import type {
 import { formatSourceLocation, type SourceLocation } from './types/common.js';
 
 /**
+ * Build a FormattedError from a prefix, a located error, and a precomputed hint.
+ *
+ * All four `format*Error` functions share the same shape (prefix + message,
+ * optional `at <location>` line, optional code snippet, hint, fixed `error`
+ * severity); they differ only in the prefix string and which hint generator
+ * runs. This is the single source of truth for that assembly.
+ *
+ * @param prefix - Human-readable error category (e.g. `Parse Error`)
+ * @param error - The error's message and source location
+ * @param sourceCode - Optional source for the context snippet
+ * @param hint - Optional precomputed hint
+ * @returns Formatted error ready for display
+ */
+function buildFormattedError(
+  prefix: string,
+  error: { message: string; location: SourceLocation },
+  sourceCode: string | undefined,
+  hint: string | undefined
+): FormattedError {
+  const { message, location } = error;
+
+  let formatted = `${prefix}: ${message}`;
+
+  if (location) {
+    formatted += `\n  at ${formatSourceLocation(location)}`;
+  }
+
+  const codeSnippet = sourceCode ? extractCodeSnippet(sourceCode, location) : undefined;
+
+  return {
+    severity: 'error',
+    message: formatted,
+    location,
+    hint,
+    codeSnippet,
+  };
+}
+
+/**
  * Format a parse error with helpful context.
  *
  * Parse errors occur when the DSL syntax is invalid.
@@ -32,24 +71,7 @@ import { formatSourceLocation, type SourceLocation } from './types/common.js';
  * //  Expected 'timeline' but found 'timline'"
  */
 export function formatParseError(error: ParseError, sourceCode?: string): FormattedError {
-  const { message, location } = error;
-
-  let formatted = `Parse Error: ${message}`;
-
-  if (location) {
-    formatted += `\n  at ${formatSourceLocation(location)}`;
-  }
-
-  const codeSnippet = sourceCode ? extractCodeSnippet(sourceCode, location) : undefined;
-  const hint = generateParseHint(message);
-
-  return {
-    severity: 'error',
-    message: formatted,
-    location,
-    hint,
-    codeSnippet,
-  };
+  return buildFormattedError('Parse Error', error, sourceCode, generateParseHint(error.message));
 }
 
 /**
@@ -63,24 +85,12 @@ export function formatParseError(error: ParseError, sourceCode?: string): Format
  * @returns Formatted error message
  */
 export function formatValidationError(error: ValidationError, sourceCode?: string): FormattedError {
-  const { message, location } = error;
-
-  let formatted = `Validation Error: ${message}`;
-
-  if (location) {
-    formatted += `\n  at ${formatSourceLocation(location)}`;
-  }
-
-  const codeSnippet = sourceCode ? extractCodeSnippet(sourceCode, location) : undefined;
-  const hint = generateValidationHint(message);
-
-  return {
-    severity: 'error',
-    message: formatted,
-    location,
-    hint,
-    codeSnippet,
-  };
+  return buildFormattedError(
+    'Validation Error',
+    error,
+    sourceCode,
+    generateValidationHint(error.message)
+  );
 }
 
 /**
@@ -93,24 +103,7 @@ export function formatValidationError(error: ValidationError, sourceCode?: strin
  * @returns Formatted error message
  */
 export function formatTypeError(error: TypeError, sourceCode?: string): FormattedError {
-  const { message, location } = error;
-
-  let formatted = `Type Error: ${message}`;
-
-  if (location) {
-    formatted += `\n  at ${formatSourceLocation(location)}`;
-  }
-
-  const codeSnippet = sourceCode ? extractCodeSnippet(sourceCode, location) : undefined;
-  const hint = generateTypeHint(message);
-
-  return {
-    severity: 'error',
-    message: formatted,
-    location,
-    hint,
-    codeSnippet,
-  };
+  return buildFormattedError('Type Error', error, sourceCode, generateTypeHint(error.message));
 }
 
 /**
@@ -123,24 +116,12 @@ export function formatTypeError(error: TypeError, sourceCode?: string): Formatte
  * @returns Formatted error message
  */
 export function formatTransformError(error: TransformError, sourceCode?: string): FormattedError {
-  const { message, location, kind } = error;
-
-  let formatted = `Transform Error (${kind}): ${message}`;
-
-  if (location) {
-    formatted += `\n  at ${formatSourceLocation(location)}`;
-  }
-
-  const codeSnippet = sourceCode ? extractCodeSnippet(sourceCode, location) : undefined;
-  const hint = generateTransformHint(kind, message);
-
-  return {
-    severity: 'error',
-    message: formatted,
-    location,
-    hint,
-    codeSnippet,
-  };
+  return buildFormattedError(
+    `Transform Error (${error.kind})`,
+    error,
+    sourceCode,
+    generateTransformHint(error.kind, error.message)
+  );
 }
 
 /**
