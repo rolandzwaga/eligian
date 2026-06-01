@@ -15,64 +15,7 @@ import type { ValidationProblemAcceptor } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { SequenceBlock, StaggerBlock, TimedEvent } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
-
-/**
- * Extract time value from TimeExpression AST node
- *
- * For now, only handles TimeLiteral. BinaryTimeExpression and other
- * complex time expressions are not supported yet.
- *
- * @param timeExpr - TimeExpression AST node (TimeLiteral, BinaryTimeExpression, etc.)
- * @returns Time value in seconds
- */
-function extractTimeValue(timeExpr: any): number {
-  // Handle null/undefined
-  if (!timeExpr) {
-    return 0;
-  }
-
-  // Handle TimeLiteral (simple case: "5s", "500ms")
-  if (timeExpr.$type === 'TimeLiteral') {
-    const value = timeExpr.value;
-    const unit = timeExpr.unit || 's'; // Default to seconds
-    return unit === 'ms' ? value / 1000 : value;
-  }
-
-  // Handle BinaryTimeExpression (handles "-1s", "5s + 2s", etc.)
-  if (timeExpr.$type === 'BinaryTimeExpression') {
-    const leftValue = timeExpr.left ? extractTimeValue(timeExpr.left) : 0;
-    const rightValue = extractTimeValue(timeExpr.right);
-
-    switch (timeExpr.op) {
-      case '+':
-        return leftValue + rightValue;
-      case '-':
-        return leftValue - rightValue;
-      case '*':
-        return leftValue * rightValue;
-      case '/':
-        return rightValue !== 0 ? leftValue / rightValue : 0;
-      default:
-        return 0;
-    }
-  }
-
-  // TODO: Handle RelativeTimeLiteral, PropertyChainReference
-  // For now, return 0 for unsupported types
-  return 0;
-}
-
-/**
- * Parse start and end times from TimeRange
- *
- * @param timeRange - TimeRange AST node with start/end time expressions
- * @returns Tuple of [startTime, endTime] in seconds
- */
-function parseTimeRange(timeRange: any): [number, number] {
-  const startTime = extractTimeValue(timeRange.start);
-  const endTime = extractTimeValue(timeRange.end);
-  return [startTime, endTime];
-}
+import { extractTimeValue, parseTimeRange } from '../utils/time-expression.js';
 
 /**
  * Register timeline event validation rules with Typir
