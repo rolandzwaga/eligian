@@ -128,23 +128,7 @@ export class CSSRegistryService {
    * @returns Set of class names (without leading '.')
    */
   getClassesForDocument(documentUri: string): Set<string> {
-    const classes = new Set<string>();
-    const cssFileUris = this.importsByDocument.get(documentUri);
-
-    if (!cssFileUris) {
-      return classes;
-    }
-
-    for (const cssFileUri of cssFileUris) {
-      const metadata = this.metadataByFile.get(cssFileUri);
-      if (metadata) {
-        for (const className of metadata.classes) {
-          classes.add(className);
-        }
-      }
-    }
-
-    return classes;
+    return this.collectFromImports(documentUri, metadata => metadata.classes);
   }
 
   /**
@@ -158,23 +142,7 @@ export class CSSRegistryService {
    * @returns Set of ID names (without leading '#')
    */
   getIDsForDocument(documentUri: string): Set<string> {
-    const ids = new Set<string>();
-    const cssFileUris = this.importsByDocument.get(documentUri);
-
-    if (!cssFileUris) {
-      return ids;
-    }
-
-    for (const cssFileUri of cssFileUris) {
-      const metadata = this.metadataByFile.get(cssFileUri);
-      if (metadata) {
-        for (const idName of metadata.ids) {
-          ids.add(idName);
-        }
-      }
-    }
-
-    return ids;
+    return this.collectFromImports(documentUri, metadata => metadata.ids);
   }
 
   /**
@@ -195,23 +163,7 @@ export class CSSRegistryService {
    * @returns Source location or undefined
    */
   findClassLocation(documentUri: string, className: string): CSSSourceLocation | undefined {
-    const cssFileUris = this.importsByDocument.get(documentUri);
-
-    if (!cssFileUris) {
-      return undefined;
-    }
-
-    for (const cssFileUri of cssFileUris) {
-      const metadata = this.metadataByFile.get(cssFileUri);
-      if (metadata) {
-        const location = metadata.classLocations.get(className);
-        if (location) {
-          return location;
-        }
-      }
-    }
-
-    return undefined;
+    return this.findInImports(documentUri, metadata => metadata.classLocations.get(className));
   }
 
   /**
@@ -222,23 +174,7 @@ export class CSSRegistryService {
    * @returns Source location or undefined
    */
   findIDLocation(documentUri: string, idName: string): CSSSourceLocation | undefined {
-    const cssFileUris = this.importsByDocument.get(documentUri);
-
-    if (!cssFileUris) {
-      return undefined;
-    }
-
-    for (const cssFileUri of cssFileUris) {
-      const metadata = this.metadataByFile.get(cssFileUri);
-      if (metadata) {
-        const location = metadata.idLocations.get(idName);
-        if (location) {
-          return location;
-        }
-      }
-    }
-
-    return undefined;
+    return this.findInImports(documentUri, metadata => metadata.idLocations.get(idName));
   }
 
   /**
@@ -255,23 +191,7 @@ export class CSSRegistryService {
    * @returns CSS rule text or undefined
    */
   getClassRule(documentUri: string, className: string): string | undefined {
-    const cssFileUris = this.importsByDocument.get(documentUri);
-
-    if (!cssFileUris) {
-      return undefined;
-    }
-
-    for (const cssFileUri of cssFileUris) {
-      const metadata = this.metadataByFile.get(cssFileUri);
-      if (metadata) {
-        const rule = metadata.classRules.get(className);
-        if (rule) {
-          return rule;
-        }
-      }
-    }
-
-    return undefined;
+    return this.findInImports(documentUri, metadata => metadata.classRules.get(className));
   }
 
   /**
@@ -282,23 +202,7 @@ export class CSSRegistryService {
    * @returns CSS rule text or undefined
    */
   getIDRule(documentUri: string, idName: string): string | undefined {
-    const cssFileUris = this.importsByDocument.get(documentUri);
-
-    if (!cssFileUris) {
-      return undefined;
-    }
-
-    for (const cssFileUri of cssFileUris) {
-      const metadata = this.metadataByFile.get(cssFileUri);
-      if (metadata) {
-        const rule = metadata.idRules.get(idName);
-        if (rule) {
-          return rule;
-        }
-      }
-    }
-
-    return undefined;
+    return this.findInImports(documentUri, metadata => metadata.idRules.get(idName));
   }
 
   /**
@@ -321,6 +225,74 @@ export class CSSRegistryService {
   getErrors(fileUri: string): CSSParseError[] {
     const metadata = this.metadataByFile.get(fileUri);
     return metadata ? metadata.errors : [];
+  }
+
+  /**
+   * Accumulate values from every CSS file imported by a document into a Set.
+   *
+   * Iterates the document's imported CSS files (in registration order), pulls a
+   * collection from each file's parsed metadata via `select`, and unions the
+   * results. Files that are imported but not yet parsed are skipped.
+   *
+   * @param documentUri - Absolute Eligian document URI
+   * @param select - Extracts the per-file collection to accumulate
+   * @returns Union of all selected values (empty if no imports / nothing parsed)
+   */
+  private collectFromImports<T>(
+    documentUri: string,
+    select: (metadata: CSSMetadata) => Iterable<T>
+  ): Set<T> {
+    const result = new Set<T>();
+    const cssFileUris = this.importsByDocument.get(documentUri);
+
+    if (!cssFileUris) {
+      return result;
+    }
+
+    for (const cssFileUri of cssFileUris) {
+      const metadata = this.metadataByFile.get(cssFileUri);
+      if (metadata) {
+        for (const item of select(metadata)) {
+          result.add(item);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Return the first truthy value looked up across a document's imported CSS files.
+   *
+   * Iterates the document's imported CSS files (in registration order) and returns
+   * the result of `lookup` from the first file that yields one. Files that are
+   * imported but not yet parsed are skipped.
+   *
+   * @param documentUri - Absolute Eligian document URI
+   * @param lookup - Extracts the per-file value (e.g. a location or rule)
+   * @returns First found value, or undefined if none match
+   */
+  private findInImports<T>(
+    documentUri: string,
+    lookup: (metadata: CSSMetadata) => T | undefined
+  ): T | undefined {
+    const cssFileUris = this.importsByDocument.get(documentUri);
+
+    if (!cssFileUris) {
+      return undefined;
+    }
+
+    for (const cssFileUri of cssFileUris) {
+      const metadata = this.metadataByFile.get(cssFileUri);
+      if (metadata) {
+        const result = lookup(metadata);
+        if (result) {
+          return result;
+        }
+      }
+    }
+
+    return undefined;
   }
 
   /**
