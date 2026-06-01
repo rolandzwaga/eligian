@@ -73,6 +73,10 @@ The following cluster was fixed on branch **`refactor/consolidate-css-operations
 
 **Fixed (numbered):** D12. New `packages/language/src/css/css-operations.ts` exports the `CLASS_NAME_OPERATIONS` and `SELECTOR_OPERATIONS` Sets as the single source of truth; `context-detection.ts` and `hover-detection.ts` import them and the byte-identical local declarations are deleted. Pure behavior-preserving refactor.
 
+The following cluster was fixed on branch **`refactor/consolidate-time-expression-d14`** (verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D14. New `packages/language/src/type-system-typir/utils/time-expression.ts` exports `extractTimeValue` and `parseTimeRange` as the single source of truth; `inference/event-inference.ts` and `validation/event-validation.ts` import them and the two character-identical private copies (including JSDoc and TODOs) are deleted. The pre-existing string-based `utils/time-parser.ts` is an unrelated helper (parses time *strings* like `"5s"`, not AST nodes) and was intentionally left untouched — it remains tracked under the dead/unused-code anti-pattern. Pure behavior-preserving refactor.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -618,6 +622,7 @@ Differ only by `.` vs `#` prefix and a local var name.
 **Abstraction:** `createCSSIdentifierEdit(uri, name, content, type: 'class'|'id')`; keep thin wrappers.
 
 ### D14. `extractTimeValue` and `parseTimeRange` copy-pasted (inference vs validation)
+> ✅ **FIXED** — branch `refactor/consolidate-time-expression-d14` (new `packages/language/src/type-system-typir/utils/time-expression.ts` exports `extractTimeValue` and `parseTimeRange` as the single source of truth; `event-inference.ts` and `event-validation.ts` import them and the two character-identical private copies are deleted. The pre-existing string-based `utils/time-parser.ts` is a separate, unrelated helper (AST-node vs string parsing) and was left untouched. Pure behavior-preserving refactor. Verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing.)
 **Severity:** High
 **Sites:** [event-inference.ts:23](packages/language/src/type-system-typir/inference/event-inference.ts#L23), [event-inference.ts:66](packages/language/src/type-system-typir/inference/event-inference.ts#L66), [event-validation.ts:28](packages/language/src/type-system-typir/validation/event-validation.ts#L28), [event-validation.ts:71](packages/language/src/type-system-typir/validation/event-validation.ts#L71)
 Character-identical including JSDoc and TODOs.
