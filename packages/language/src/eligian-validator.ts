@@ -2567,48 +2567,57 @@ export class EligianValidator {
   }
 
   /**
+   * Resolve a library import to its parsed `Library` AST node.
+   *
+   * Shared by `checkImportedActionsExist` and `checkImportedActionsPublic`. Uses the
+   * project-wide `resolveLibraryPath()` (the same resolution as `checkImportFileExists`,
+   * the compiler pipeline, and the scope provider) so workspace-loaded documents resolve
+   * consistently on Windows and percent-encoded paths.
+   *
+   * Returns `undefined` when services are unavailable, the document URI cannot be
+   * determined, the library document is not loaded (already reported by
+   * `checkImportFileExists`), or the resolved file is not a library.
+   */
+  private resolveLibraryNode(libraryImport: LibraryImport): Library | undefined {
+    if (!this.services) {
+      return undefined; // Cannot resolve without services
+    }
+
+    const document = AstUtils.getDocument(libraryImport);
+    const documentUri = document.uri;
+    if (!documentUri) {
+      return undefined;
+    }
+
+    const resolvedUri = resolveLibraryPath(documentUri, libraryImport.path);
+    const documents = this.services.shared.workspace.LangiumDocuments;
+    const libraryDocument = documents.getDocument(resolvedUri);
+
+    if (!libraryDocument) {
+      return undefined; // File not found - already reported by checkImportFileExists
+    }
+
+    const library = libraryDocument.parseResult.value;
+    if (library.$type !== 'Library') {
+      return undefined; // Not a library file - skip validation
+    }
+
+    return library as Library;
+  }
+
+  /**
    * T042 + T042a: US2 - Validate imported actions exist in library
    *
    * All imported actions must exist in the target library. This validator checks each
    * action import and provides "Did you mean?" suggestions for typos using Levenshtein distance.
    */
   checkImportedActionsExist(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
-    if (!this.services) {
-      return; // Cannot validate without services
-    }
-
-    const document = AstUtils.getDocument(libraryImport);
-    const documentUri = document.uri;
-    if (!documentUri) {
+    const libraryNode = this.resolveLibraryNode(libraryImport);
+    if (!libraryNode) {
       return;
     }
 
-    // Resolve library document
-    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
     const originalPath = libraryImport.path;
-    let importPath = originalPath;
-    // Normalize ./ prefix for URI resolution
-    if (importPath.startsWith('./')) {
-      importPath = importPath.substring(2);
-    }
-    const documentUriStr = documentUri.toString();
-    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
-    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
-
-    const documents = this.services.shared.workspace.LangiumDocuments;
-    const libraryDocument = documents.getDocument(resolvedUri);
-
-    if (!libraryDocument) {
-      return; // File not found - already reported by checkImportFileExists
-    }
-
-    const library = libraryDocument.parseResult.value;
-    if (library.$type !== 'Library') {
-      return; // Not a library file - skip validation
-    }
-
-    // Get all action names from library (cast to Library type for TypeScript)
-    const libraryNode = library as Library;
     const availableActions = libraryNode.actions?.map(a => a.name) || [];
 
     // Check each imported action
@@ -2707,42 +2716,12 @@ export class EligianValidator {
    * in the library file.
    */
   checkImportedActionsPublic(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
-    if (!this.services) {
-      return; // Cannot validate without services
-    }
-
-    const document = AstUtils.getDocument(libraryImport);
-    const documentUri = document.uri;
-    if (!documentUri) {
+    const libraryNode = this.resolveLibraryNode(libraryImport);
+    if (!libraryNode) {
       return;
     }
 
-    // Resolve library document
-    // Use URI-based resolution to handle both real file paths and test URIs (file:///test/...)
     const originalPath = libraryImport.path;
-    let importPath = originalPath;
-    // Normalize ./ prefix for URI resolution
-    if (importPath.startsWith('./')) {
-      importPath = importPath.substring(2);
-    }
-    const documentUriStr = documentUri.toString();
-    const documentDir = documentUriStr.substring(0, documentUriStr.lastIndexOf('/'));
-    const resolvedUri = URI.parse(`${documentDir}/${importPath}`);
-
-    const documents = this.services.shared.workspace.LangiumDocuments;
-    const libraryDocument = documents.getDocument(resolvedUri);
-
-    if (!libraryDocument) {
-      return; // File not found - already reported by checkImportFileExists
-    }
-
-    const library = libraryDocument.parseResult.value;
-    if (library.$type !== 'Library') {
-      return; // Not a library file - skip validation
-    }
-
-    // Get all actions from library (cast to Library type for TypeScript)
-    const libraryNode = library as Library;
     const libraryActions = libraryNode.actions || [];
 
     // Check each imported action for private visibility
