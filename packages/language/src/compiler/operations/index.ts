@@ -5,6 +5,7 @@
  * It exports the generated registry and provides lookup/query functions.
  */
 
+import { findSimilar } from '../utils/string-similarity.js';
 import { OPERATION_REGISTRY as GENERATED_REGISTRY } from './registry.generated.js';
 import type { OperationSignature } from './types.js';
 
@@ -213,20 +214,7 @@ export function suggestSimilarOperations(
   maxSuggestions: number = 3,
   maxDistance: number = 3
 ): string[] {
-  const allNames = Object.keys(OPERATION_REGISTRY);
-
-  // Calculate Levenshtein distance for each operation name
-  const distances = allNames.map(name => ({
-    name,
-    distance: levenshteinDistance(unknownName.toLowerCase(), name.toLowerCase()),
-  }));
-
-  // Filter by distance threshold, sort by distance (closest first), and return top N
-  return distances
-    .filter(item => item.distance <= maxDistance)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, maxSuggestions)
-    .map(item => item.name);
+  return findSimilar(unknownName, Object.keys(OPERATION_REGISTRY), maxSuggestions, maxDistance);
 }
 
 /**
@@ -287,39 +275,4 @@ export function validateRegistry(): void {
       }
     }
   }
-}
-
-/**
- * Helper: Calculate Levenshtein distance between two strings.
- * Used for fuzzy matching and typo suggestions.
- */
-function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-
-  // Initialize first column
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-
-  // Initialize first row
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  // Fill in the rest of the matrix
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1, // insertion
-          matrix[i - 1][j] + 1 // deletion
-        );
-      }
-    }
-  }
-
-  return matrix[b.length][a.length];
 }

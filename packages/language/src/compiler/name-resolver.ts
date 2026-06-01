@@ -8,6 +8,7 @@
 import type { ActionDefinition, Program } from '../generated/ast.js';
 import { getElements } from '../utils/program-helpers.js';
 import { hasOperation, OPERATION_REGISTRY } from './operations/index.js';
+import { findSimilar } from './utils/string-similarity.js';
 
 /**
  * Name registry tracking both actions and operations
@@ -147,53 +148,7 @@ export function suggestSimilarActions(
   maxSuggestions: number = 3,
   maxDistance: number = 3
 ): string[] {
-  // Calculate Levenshtein distance for each action name
-  const distances = availableActions.map(name => ({
-    name,
-    distance: levenshteinDistance(unknownName.toLowerCase(), name.toLowerCase()),
-  }));
-
-  // Filter by distance threshold, sort by distance (closest first), and return top N
-  return distances
-    .filter(item => item.distance <= maxDistance)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, maxSuggestions)
-    .map(item => item.name);
-}
-
-/**
- * Calculate Levenshtein distance between two strings
- * (Edit distance - minimum number of single-character edits needed)
- */
-function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-
-  // Initialize first column
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-
-  // Initialize first row
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  // Fill in the rest of the matrix
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1, // insertion
-          matrix[i - 1][j] + 1 // deletion
-        );
-      }
-    }
-  }
-
-  return matrix[b.length][a.length];
+  return findSimilar(unknownName, availableActions, maxSuggestions, maxDistance);
 }
 
 /**
