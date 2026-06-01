@@ -33,6 +33,10 @@ Notes on this cluster: typing the `CustomKind` factories concretely (B12) surfac
 
 **Also applied (cleanups not tracked as a numbered finding):** removed dead `checkSingleLanguagesBlock` method (eligian-validator.ts); removed empty `else` block (css-code-actions.ts); removed duplicate comments (pipeline.ts, asset-type-validator.ts); used the imported `path` module instead of inline `require` and marked `updateTrackedFiles` private across the three watchers; exported/reused `DEFAULT_INLINE_THRESHOLD`; deleted committed `error-reporter.ts.orig` and added `*.orig` to `.gitignore`.
 
+The following was fixed on branch **`refactor/consolidate-levenshtein-d3`** (commit `92659bf`; verified: tsgo clean, language suite green at 2001 passed/23 skipped, biome clean, coverage CI passing). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D3. New `compiler/utils/string-similarity.ts` re-exports the canonical `levenshteinDistance` and adds a generic `findSimilar`; `suggestSimilarActions`/`suggestSimilarOperations` delegate to it; the two byte-identical private compiler copies are deleted and the compiler suggestion paths gain the previously-missing `maxDistance` early-exit. Net −92 lines.
+
 The following were fixed on branch **`fix/preview-webview-cluster`** (merged as PR #59, commit `b51e9db`). **Fixed (numbered):** B20, B21, B50 — eventbus listener removers stored and invoked before re-registering; play/pause/stop/restart now broadcast eventbus requests; `updateConfig`/`initialize` protocol clarified.
 
 The following cluster was fixed on branch **`fix/locale-editor-cluster`** (merged as PR #58, commit `5bbfb9f`; verified: 337 extension tests green, tsgo clean, biome clean, build green). Marked **✅ FIXED** inline below.
@@ -521,6 +525,7 @@ Identical `startsWith('file://')` → parse → dirname → strip `./` → join 
 **Abstraction:** `debounce<K>(timers, key, delay, fn)` utility in `extension/debounce-util.ts`.
 
 ### D3. `levenshteinDistance` implemented three times
+> ✅ **FIXED** — branch `refactor/consolidate-levenshtein-d3` (commit `92659bf`): new `compiler/utils/string-similarity.ts` re-exports the canonical `levenshteinDistance` (single source of truth) and adds a generic `findSimilar`; `suggestSimilarActions`/`suggestSimilarOperations` delegate to it and the two private compiler copies are deleted. The compiler suggestion paths also gain the `maxDistance` early-exit they were missing (identical results). Net −92 lines. Verified: tsgo clean, language suite green (2001 passed/23 skipped), biome clean, coverage CI passing.
 **Severity:** High
 **Sites:** [css/levenshtein.ts:20](packages/language/src/css/levenshtein.ts#L20) (canonical, has `maxDistance` early-exit), [name-resolver.ts:168](packages/language/src/compiler/name-resolver.ts#L168), [operations/index.ts:296](packages/language/src/compiler/operations/index.ts#L296)
 The two compiler copies are character-identical and lack the optimization; each is paired with its own filter-sort-slice suggestion helper.
