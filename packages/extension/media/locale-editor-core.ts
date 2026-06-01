@@ -598,12 +598,20 @@ export function updateTranslationValue(
   locale: string,
   value: string
 ): LocaleEditorState {
-  const node = findNodeByKey(state.keyTree, key);
-  if (node?.translations) {
-    node.translations[locale] = value;
-  }
+  const updateNodes = (nodes: SerializableKeyTreeNode[]): SerializableKeyTreeNode[] =>
+    nodes.map(node => {
+      if (node.fullKey === key) {
+        return { ...node, translations: { ...node.translations, [locale]: value } };
+      }
+      if (node.children.length > 0) {
+        return { ...node, children: updateNodes(node.children) };
+      }
+      return node;
+    });
+
   return {
     ...state,
+    keyTree: updateNodes(state.keyTree),
     isDirty: true,
   };
 }
@@ -636,15 +644,21 @@ export function addKeyToTree(
     };
   }
 
-  // Find parent and add child
-  const parent = findNodeByKey(state.keyTree, parentKey);
-  if (parent) {
-    parent.isLeaf = false;
-    parent.children.push(newNode);
-  }
+  // Rebuild the tree immutably, attaching the new node under the matching parent.
+  const addToParent = (nodes: SerializableKeyTreeNode[]): SerializableKeyTreeNode[] =>
+    nodes.map(node => {
+      if (node.fullKey === parentKey) {
+        return { ...node, isLeaf: false, children: [...node.children, newNode] };
+      }
+      if (node.children.length > 0) {
+        return { ...node, children: addToParent(node.children) };
+      }
+      return node;
+    });
 
   return {
     ...state,
+    keyTree: addToParent(state.keyTree),
     isDirty: true,
   };
 }

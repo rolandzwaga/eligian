@@ -84,78 +84,16 @@ function getTranslation(
 }
 
 /**
- * Build a tree structure from a flat list of keys.
- * Keys are expected to be dot-notation (e.g., "nav.home").
+ * Build a tree structure from a flat list of dot-notation keys (e.g., "nav.home").
+ *
+ * Used both at the root (prefix === '') and recursively for nested branches
+ * (prefix === the parent's full key). The prefix only affects the computed
+ * `fullKey`; at the root a segment's full key is just the segment itself.
  */
-function buildTreeFromKeys(keys: string[], locales: ILocalesConfiguration): KeyTreeNode[] {
-  // Group keys by their first segment
-  const groups = new Map<string, string[]>();
-
-  for (const key of keys) {
-    const parts = key.split('.');
-    const firstPart = parts[0];
-    const remainder = parts.slice(1).join('.');
-
-    if (!groups.has(firstPart)) {
-      groups.set(firstPart, []);
-    }
-
-    if (remainder) {
-      groups.get(firstPart)!.push(remainder);
-    }
-  }
-
-  // Convert groups to tree nodes
-  const nodes: KeyTreeNode[] = [];
-  const localeKeys = Object.keys(locales).filter(
-    k => !isLocaleReference((locales as IndexableLocales)[k])
-  ) as TLanguageCode[];
-
-  for (const [segment, childKeys] of groups) {
-    if (childKeys.length === 0) {
-      // Leaf node - collect translations
-      const translations = new Map<TLanguageCode, string>();
-
-      for (const locale of localeKeys) {
-        const translation = getTranslation(locales, locale, [segment]);
-        if (translation !== undefined) {
-          translations.set(locale, translation);
-        }
-      }
-
-      nodes.push({
-        name: segment,
-        fullKey: segment,
-        isLeaf: true,
-        children: [],
-        translations,
-      });
-    } else {
-      // Branch node - build subtree
-      const childNodes = buildTreeFromKeysWithPrefix(childKeys, locales, segment);
-
-      nodes.push({
-        name: segment,
-        fullKey: segment,
-        isLeaf: false,
-        children: childNodes,
-      });
-    }
-  }
-
-  // Sort alphabetically
-  nodes.sort((a, b) => a.name.localeCompare(b.name));
-
-  return nodes;
-}
-
-/**
- * Build tree from keys with a prefix (for recursive building).
- */
-function buildTreeFromKeysWithPrefix(
+function buildTreeFromKeys(
   keys: string[],
   locales: ILocalesConfiguration,
-  prefix: string
+  prefix = ''
 ): KeyTreeNode[] {
   // Group keys by their first segment
   const groups = new Map<string, string[]>();
@@ -181,7 +119,7 @@ function buildTreeFromKeysWithPrefix(
   ) as TLanguageCode[];
 
   for (const [segment, childKeys] of groups) {
-    const fullKey = `${prefix}.${segment}`;
+    const fullKey = prefix ? `${prefix}.${segment}` : segment;
 
     if (childKeys.length === 0) {
       // Leaf node - collect translations
@@ -204,7 +142,7 @@ function buildTreeFromKeysWithPrefix(
       });
     } else {
       // Branch node - build subtree
-      const childNodes = buildTreeFromKeysWithPrefix(childKeys, locales, fullKey);
+      const childNodes = buildTreeFromKeys(childKeys, locales, fullKey);
 
       nodes.push({
         name: segment,

@@ -32,14 +32,57 @@ interface KeyUsage {
 }
 
 /**
+ * Compiled regex patterns that match a translation key reference in DSL source.
+ *
+ * 1. @{key}                                      - template reference
+ * 2. addController("LabelController", "key", ...) - controller syntax
+ *
+ * Both use the 'g' flag, so callers must reset `lastIndex` before each use.
+ */
+interface KeyUsagePatterns {
+  template: RegExp;
+  controller: RegExp;
+}
+
+/**
+ * Build the usage-match patterns for a translation key, escaping regex metachars.
+ */
+function buildKeyUsagePatterns(key: string): KeyUsagePatterns {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return {
+    template: new RegExp(`@\\{${escaped}\\}`, 'g'),
+    controller: new RegExp(`addController\\s*\\(\\s*"LabelController"\\s*,\\s*"${escaped}"`, 'g'),
+  };
+}
+
+/**
+ * Visit every .eligian file in the workspace (excluding node_modules), invoking
+ * `handler` with the file URI and its text content. Files that cannot be read
+ * are skipped (logged, not thrown). Errors from `findFiles` propagate.
+ */
+async function forEachEligianFile(
+  handler: (fileUri: vscode.Uri, content: string) => void
+): Promise<void> {
+  const files = await vscode.workspace.findFiles('**/*.eligian', '**/node_modules/**');
+
+  for (const fileUri of files) {
+    try {
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      handler(fileUri, document.getText());
+    } catch (error) {
+      // Skip files that can't be read (permissions, etc.)
+      console.error(`Failed to read file ${fileUri.fsPath}:`, error);
+    }
+  }
+}
+
+/**
  * T064: Search workspace for translation key usage
  *
  * Design:
  * - Uses vscode.workspace.findFiles to get all .eligian files
  * - Parses each file to find translation key references using regex patterns
- * - Supports multiple patterns:
- *   1. @{translationKey} - template syntax
- *   2. addController("LabelController", "translationKey", ...) - controller syntax
+ *   (see {@link buildKeyUsagePatterns})
  * - Returns array of file URIs where the translation key is used
  *
  * @param groupId - The translation key to search for
@@ -57,49 +100,25 @@ export async function searchWorkspace(groupId: string): Promise<vscode.Uri[]> {
     return [];
   }
 
+  const usageFiles: vscode.Uri[] = [];
+
   try {
-    // Find all .eligian files in workspace
-    const files = await vscode.workspace.findFiles('**/*.eligian', '**/node_modules/**');
+    const { template, controller } = buildKeyUsagePatterns(groupId);
 
-    // Escape special regex characters in groupId
-    const escapedGroupId = groupId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await forEachEligianFile((fileUri, content) => {
+      // Reset lastIndex before each test (regex with 'g' flag maintains state)
+      template.lastIndex = 0;
+      controller.lastIndex = 0;
 
-    // Search patterns:
-    // 1. @{groupId} - template reference
-    // 2. addController("LabelController", "groupId", ...) - controller syntax
-    const templatePattern = new RegExp(`@\\{${escapedGroupId}\\}`, 'g');
-    const controllerPattern = new RegExp(
-      `addController\\s*\\(\\s*"LabelController"\\s*,\\s*"${escapedGroupId}"`,
-      'g'
-    );
-
-    const usageFiles: vscode.Uri[] = [];
-
-    // Search each file for translation key reference
-    for (const fileUri of files) {
-      try {
-        const document = await vscode.workspace.openTextDocument(fileUri);
-        const content = document.getText();
-
-        // Reset lastIndex before each test (regex with 'g' flag maintains state)
-        templatePattern.lastIndex = 0;
-        controllerPattern.lastIndex = 0;
-
-        // Check if translation key is used in this file (either pattern)
-        if (templatePattern.test(content) || controllerPattern.test(content)) {
-          usageFiles.push(fileUri);
-        }
-      } catch (error) {
-        // Skip files that can't be read (permissions, etc.)
-        console.error(`Failed to read file ${fileUri.fsPath}:`, error);
+      if (template.test(content) || controller.test(content)) {
+        usageFiles.push(fileUri);
       }
-    }
-
-    return usageFiles;
+    });
   } catch (error) {
     console.error('Failed to search workspace for translation key usage:', error);
-    return [];
   }
+
+  return usageFiles;
 }
 
 /**
@@ -117,75 +136,53 @@ export async function getKeyUsageDetails(translationKey: string): Promise<KeyUsa
     return { count: 0, files: [] };
   }
 
+  const usageLocations: UsageLocation[] = [];
+
   try {
-    // Find all .eligian files in workspace
-    const files = await vscode.workspace.findFiles('**/*.eligian', '**/node_modules/**');
+    const { template, controller } = buildKeyUsagePatterns(translationKey);
 
-    // Escape special regex characters
-    const escapedKey = translationKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await forEachEligianFile((fileUri, content) => {
+      const lines = content.split('\n');
+      const fileName = fileUri.path.split('/').pop() || fileUri.fsPath;
 
-    // Search patterns
-    const templatePattern = new RegExp(`@\\{${escapedKey}\\}`, 'g');
-    const controllerPattern = new RegExp(
-      `addController\\s*\\(\\s*"LabelController"\\s*,\\s*"${escapedKey}"`,
-      'g'
-    );
-
-    const usageLocations: UsageLocation[] = [];
-
-    // Search each file
-    for (const fileUri of files) {
-      try {
-        const document = await vscode.workspace.openTextDocument(fileUri);
-        const content = document.getText();
-        const lines = content.split('\n');
-        const fileName = fileUri.path.split('/').pop() || fileUri.fsPath;
-
-        // Search each line for matches
-        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-          const line = lines[lineIdx];
-
-          // Reset lastIndex before each test
-          templatePattern.lastIndex = 0;
-          controllerPattern.lastIndex = 0;
-
-          // Check template pattern
-          let match: RegExpExecArray | null;
-          while ((match = templatePattern.exec(line)) !== null) {
-            usageLocations.push({
-              filePath: fileUri.fsPath,
-              fileName,
-              line: lineIdx + 1, // 1-indexed
-              column: match.index + 1,
-              preview: line.trim().substring(0, 100), // Trim and limit preview
-            });
-          }
-
-          // Check controller pattern
-          templatePattern.lastIndex = 0; // Reset after while loop
-          while ((match = controllerPattern.exec(line)) !== null) {
-            usageLocations.push({
-              filePath: fileUri.fsPath,
-              fileName,
-              line: lineIdx + 1,
-              column: match.index + 1,
-              preview: line.trim().substring(0, 100),
-            });
-          }
-        }
-      } catch (error) {
-        // Skip files that can't be read
-        console.error(`Failed to read file ${fileUri.fsPath}:`, error);
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const line = lines[lineIdx];
+        collectLineMatches(template, line, fileUri, fileName, lineIdx, usageLocations);
+        collectLineMatches(controller, line, fileUri, fileName, lineIdx, usageLocations);
       }
-    }
-
-    return {
-      count: usageLocations.length,
-      files: usageLocations,
-    };
+    });
   } catch (error) {
     console.error('Failed to get usage details for translation key:', error);
-    return { count: 0, files: [] };
+  }
+
+  return {
+    count: usageLocations.length,
+    files: usageLocations,
+  };
+}
+
+/**
+ * Push a UsageLocation for every match of `pattern` (a 'g'-flagged regex) on a
+ * single line. Resets `lastIndex` first so the caller need not.
+ */
+function collectLineMatches(
+  pattern: RegExp,
+  line: string,
+  fileUri: vscode.Uri,
+  fileName: string,
+  lineIdx: number,
+  out: UsageLocation[]
+): void {
+  pattern.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(line)) !== null) {
+    out.push({
+      filePath: fileUri.fsPath,
+      fileName,
+      line: lineIdx + 1, // 1-indexed
+      column: match.index + 1,
+      preview: line.trim().substring(0, 100), // Trim and limit preview
+    });
   }
 }
 

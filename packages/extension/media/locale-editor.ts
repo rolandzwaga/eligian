@@ -7,14 +7,20 @@
  * - Legacy LabelGroup[] format (flat list view) for backward compatibility
  */
 
-// Import types and pure functions from core module
+// Import types and pure functions from core module (single source of truth for
+// the new-format tree types and pure tree/validation helpers).
 import {
   validateGroupId as coreValidateGroupId,
   validateLabelText as coreValidateLabelText,
   validateLanguageCode as coreValidateLanguageCode,
+  validateLocaleCode as coreValidateLocaleCode,
   validateNewLanguageCode as coreValidateNewLanguageCode,
   type EditorState,
+  findNodeByKey,
   type LabelGroup,
+  type LocaleEditorState,
+  removeKeyFromTree,
+  type SerializableKeyTreeNode,
   type Translation,
   type ValidationError,
 } from './locale-editor-core.js';
@@ -25,18 +31,6 @@ export type { EditorState, LabelGroup, Translation, ValidationError };
 // =============================================================================
 // New ILocalesConfiguration Types (Feature 045)
 // =============================================================================
-
-/**
- * Serializable version of KeyTreeNode for JSON messages.
- * Uses Record instead of Map for JSON compatibility.
- */
-interface SerializableKeyTreeNode {
-  name: string;
-  fullKey: string;
-  isLeaf: boolean;
-  children: SerializableKeyTreeNode[];
-  translations?: Record<string, string>;
-}
 
 /**
  * Messages from Extension to Webview (new format)
@@ -78,26 +72,6 @@ type LocaleToExtensionMessage =
   | { type: 'request-save' }
   | { type: 'check-usage'; key: string }
   | { type: 'request-delete'; key: string; usageFiles: string[] };
-
-/**
- * State for new ILocalesConfiguration format
- */
-interface LocaleEditorState {
-  /** All locale codes in this file */
-  locales: string[];
-  /** Tree structure for navigation */
-  keyTree: SerializableKeyTreeNode[];
-  /** Currently selected translation key */
-  selectedKey: string | null;
-  /** File path for display */
-  filePath: string;
-  /** Whether there are unsaved changes */
-  isDirty: boolean;
-  /** Set of expanded key paths */
-  expandedKeys: Set<string>;
-  /** Format detection: true = new format, false = legacy format */
-  isNewFormat: boolean;
-}
 
 // Message types (webview-specific, not in core)
 type ToWebviewMessage =
@@ -1120,6 +1094,13 @@ function renderKeyTree(): void {
   const container = document.getElementById('key-tree');
   if (!container) return;
 
+  // Auto-expand root on first render if there are keys.
+  // Done before rendering so we render once with the correct expanded state,
+  // instead of rendering collapsed then recursing for a second full render.
+  if (localeState.keyTree.length > 0 && !localeState.expandedKeys.has('__root__')) {
+    localeState.expandedKeys.add('__root__');
+  }
+
   container.innerHTML = '';
 
   // Create root node "locale keys"
@@ -1167,12 +1148,6 @@ function renderKeyTree(): void {
 
   rootNode.appendChild(childrenContainer);
   container.appendChild(rootNode);
-
-  // Auto-expand root on first render if there are keys
-  if (localeState.keyTree.length > 0 && !localeState.expandedKeys.has('__root__')) {
-    localeState.expandedKeys.add('__root__');
-    renderKeyTree();
-  }
 }
 
 /**
@@ -1304,7 +1279,7 @@ function renderLocaleTable(): void {
     ? findNodeByKey(localeState.keyTree, localeState.selectedKey)
     : null;
 
-  if (!selectedNode || !selectedNode.isLeaf) {
+  if (!selectedNode?.isLeaf) {
     // No leaf node selected - show empty state
     if (emptyState) emptyState.style.display = 'block';
     return;
@@ -1415,23 +1390,6 @@ function renderLocaleTable(): void {
 }
 
 /**
- * Find a node by key in the tree
- */
-function findNodeByKey(
-  tree: SerializableKeyTreeNode[],
-  key: string
-): SerializableKeyTreeNode | undefined {
-  for (const node of tree) {
-    if (node.fullKey === key) return node;
-    if (node.children.length > 0) {
-      const found = findNodeByKey(node.children, key);
-      if (found) return found;
-    }
-  }
-  return undefined;
-}
-
-/**
  * Mark locale editor as dirty
  */
 function markLocaleDirty(): void {
@@ -1493,8 +1451,14 @@ function handleKeyUsageCheckResponse(key: string, usageFiles: string[]): void {
  * Perform key deletion after confirmation
  */
 function performKeyDelete(key: string): void {
-  // Remove from local tree (optimistic update)
-  removeKeyFromTree(localeState.keyTree, key);
+  // Remove from local tree (optimistic update) using the shared pure helper,
+  // which also prunes any parent branches left empty by the removal.
+  localeState.keyTree = removeKeyFromTree(localeState.keyTree, key);
+
+  // Persist the deletion to the extension's source-of-truth config.
+  // Without this the extension's documentConfigs retains the key and the next
+  // reload/undo restores it (deletions would be silently ephemeral).
+  sendLocaleMessage({ type: 'delete-key', key });
 
   // Clear selection if deleted key was selected
   if (localeState.selectedKey === key) {
@@ -1504,28 +1468,6 @@ function performKeyDelete(key: string): void {
   markLocaleDirty();
   renderKeyTree();
   renderLocaleTable();
-}
-
-/**
- * Remove a key from the tree
- */
-function removeKeyFromTree(tree: SerializableKeyTreeNode[], key: string): boolean {
-  for (let i = 0; i < tree.length; i++) {
-    if (tree[i].fullKey === key) {
-      tree.splice(i, 1);
-      return true;
-    }
-    if (tree[i].children.length > 0) {
-      if (removeKeyFromTree(tree[i].children, key)) {
-        // Remove empty parent branches
-        if (tree[i].children.length === 0 && !tree[i].isLeaf) {
-          tree.splice(i, 1);
-        }
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 /**
@@ -1647,9 +1589,11 @@ function handleAddLocaleConfirm(): void {
 
   const locale = input.value.trim();
 
-  // Validate format (xx-XX)
-  if (!/^[a-z]{2}-[A-Z]{2}$/.test(locale)) {
-    errorEl.textContent = 'Locale must be in format xx-XX (e.g., en-US, nl-NL)';
+  // Validate format using the shared core validator (xx-XX) so the webview and
+  // core never drift on what counts as a valid locale code.
+  const formatError = coreValidateLocaleCode(locale);
+  if (formatError) {
+    errorEl.textContent = formatError;
     errorEl.style.display = 'block';
     return;
   }
