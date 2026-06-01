@@ -1,10 +1,13 @@
+import type { AssetImportsDiscoveredParams, AssetUpdatedParams } from './asset-notifications.js';
+
 /**
  * LSP Notification Types for HTML/Layout Validation
  *
  * These custom LSP notifications are sent from the VS Code extension to the language server
  * when HTML/layout files change, enabling real-time validation updates.
  *
- * Pattern: Mirrors css-notifications.ts and labels-notifications.ts for consistency
+ * Pattern: Mirrors css-notifications.ts and labels-notifications.ts for consistency; param
+ * interfaces extend the shared bases in asset-notifications.ts (see D7).
  */
 
 /**
@@ -20,19 +23,12 @@ export const HTML_UPDATED_NOTIFICATION = 'eligian/htmlUpdated';
  *
  * Sent from extension when an HTML file changes.
  */
-export interface HTMLUpdatedParams {
+export interface HTMLUpdatedParams extends AssetUpdatedParams {
   /**
    * URI of the HTML file that changed
    * - Example: "file:///f:/projects/app/layout.html"
    */
   htmlFileUri: string;
-
-  /**
-   * URIs of all Eligian documents that import this HTML file
-   * - Used to determine which documents need re-validation
-   * - Empty array if no documents import this HTML file
-   */
-  documentUris: string[];
 }
 
 /**
@@ -48,13 +44,7 @@ export const HTML_IMPORTS_DISCOVERED_NOTIFICATION = 'eligian/htmlImportsDiscover
  *
  * Sent from language server to extension when HTML import is discovered in a document.
  */
-export interface HTMLImportsDiscoveredParams {
-  /**
-   * URI of the Eligian document
-   * - Example: "file:///f:/projects/app/presentation.eligian"
-   */
-  documentUri: string;
-
+export interface HTMLImportsDiscoveredParams extends AssetImportsDiscoveredParams {
   /**
    * URI of the HTML file imported by this document
    * - Empty string if no HTML import

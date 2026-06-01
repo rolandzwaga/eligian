@@ -1,10 +1,13 @@
+import type { AssetImportsDiscoveredParams, AssetUpdatedParams } from './asset-notifications.js';
+
 /**
  * LSP Notification Types for Labels Validation
  *
  * These custom LSP notifications are sent from the VS Code extension to the language server
  * when labels JSON files change, enabling real-time validation updates.
  *
- * Pattern: Mirrors css-notifications.ts for consistency
+ * Pattern: Mirrors css-notifications.ts for consistency; param interfaces extend the
+ * shared bases in asset-notifications.ts (see D7).
  */
 
 /**
@@ -20,19 +23,12 @@ export const LABELS_UPDATED_NOTIFICATION = 'eligian/labelsUpdated';
  *
  * Sent from extension when a labels file changes.
  */
-export interface LabelsUpdatedParams {
+export interface LabelsUpdatedParams extends AssetUpdatedParams {
   /**
    * URI of the labels file that changed
    * - Example: "file:///f:/projects/app/labels.json"
    */
   labelsFileUri: string;
-
-  /**
-   * URIs of all Eligian documents that import this labels file
-   * - Used to determine which documents need re-validation
-   * - Empty array if no documents import this labels file
-   */
-  documentUris: string[];
 }
 
 /**
@@ -48,13 +44,7 @@ export const LABELS_IMPORTS_DISCOVERED_NOTIFICATION = 'eligian/labelsImportsDisc
  *
  * Sent from language server to extension when labels import is discovered in a document.
  */
-export interface LabelsImportsDiscoveredParams {
-  /**
-   * URI of the Eligian document
-   * - Example: "file:///f:/projects/app/presentation.eligian"
-   */
-  documentUri: string;
-
+export interface LabelsImportsDiscoveredParams extends AssetImportsDiscoveredParams {
   /**
    * URI of the labels file imported by this document
    * - Empty string if no labels import

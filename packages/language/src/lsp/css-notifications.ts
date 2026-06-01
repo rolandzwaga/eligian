@@ -1,10 +1,13 @@
 import type { CSSParseError } from '../css/css-parser.js';
+import type { AssetImportsDiscoveredParams, AssetUpdatedParams } from './asset-notifications.js';
 
 /**
  * LSP Notification Types for CSS Validation
  *
  * These custom LSP notifications are sent from the VS Code extension to the language server
  * when CSS files change, enabling real-time validation updates.
+ *
+ * The param interfaces extend the shared bases in asset-notifications.ts (see D7).
  */
 
 /**
@@ -28,19 +31,12 @@ export const CSS_ERROR_NOTIFICATION = 'eligian/cssError';
  *
  * Sent from extension when a CSS file changes.
  */
-export interface CSSUpdatedParams {
+export interface CSSUpdatedParams extends AssetUpdatedParams {
   /**
    * URI of the CSS file that changed
    * - Example: "file:///f:/projects/app/styles.css"
    */
   cssFileUri: string;
-
-  /**
-   * URIs of all Eligian documents that import this CSS file
-   * - Used to determine which documents need re-validation
-   * - Empty array if no documents import this CSS file
-   */
-  documentUris: string[];
 }
 
 /**
@@ -73,13 +69,7 @@ export const CSS_IMPORTS_DISCOVERED_NOTIFICATION = 'eligian/cssImportsDiscovered
  *
  * Sent from language server to extension when CSS imports are discovered in a document.
  */
-export interface CSSImportsDiscoveredParams {
-  /**
-   * URI of the Eligian document
-   * - Example: "file:///f:/projects/app/presentation.eligian"
-   */
-  documentUri: string;
-
+export interface CSSImportsDiscoveredParams extends AssetImportsDiscoveredParams {
   /**
    * URIs of all CSS files imported by this document
    * - In import order
