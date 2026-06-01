@@ -21,6 +21,12 @@ The following findings were fixed and committed in **`6b1c52a`** (verified: full
 
 **Fixed (numbered):** B1, B6, B8, B15, B17, B23, B27, B28, B54, B56, B58, B62, D33.
 
+The following findings — the **Typir inference correctness cluster** — were fixed and committed in **`220b552`** (verified: typecheck clean, biome clean, full language suite green at 1989 passed/23 skipped, coverage CI passing). They are marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** B10, B11, B12, B29.
+
+Notes on this cluster: typing the `CustomKind` factories concretely (B12) surfaced a second defect beyond the report — the event/import/languages inference rules also passed properties at the top level instead of under `{ properties: {...} }`, masked by the `any` typing; both were corrected. A side fix was forced by B12: `TimelineType.events` was `never[]`, which under concrete typing distributes to `never` and breaks `create()`, so it was changed to `string[]` (always an empty placeholder resolved by Typir later). A new regression test (`type-system-typir/inference/__tests__/inference-resolves-types.spec.ts`) asserts `Inference.inferType()` returns a resolved `Type` for import/languages/timed-event nodes — coverage the cluster previously lacked (the hover provider replicates the logic instead of using Typir). Also fixed a pre-existing `TS6307` in `packages/language/tsconfig.json` whose `include` override dropped `src/schemas/*.json`.
+
 **Also applied (cleanups not tracked as a numbered finding):** removed dead `checkSingleLanguagesBlock` method (eligian-validator.ts); removed empty `else` block (css-code-actions.ts); removed duplicate comments (pipeline.ts, asset-type-validator.ts); used the imported `path` module instead of inline `require` and marked `updateTrackedFiles` private across the three watchers; exported/reused `DEFAULT_INLINE_THRESHOLD`; deleted committed `error-reporter.ts.orig` and added `*.orig` to `.gitignore`.
 
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
@@ -95,6 +101,7 @@ The `_params: HoverParams` argument is unused; the function returns `classes[0]`
 **Fix:** Compute the character offset from `params.position` and the string literal's CST range, then resolve the identifier via `findIdentifierAtOffset` (after fixing B-stub below) using postcss-selector-parser `sourceIndex`.
 
 #### B10. Typir inference callbacks return `CustomTypeConfigurationChain` instead of a resolved `Type`
+> ✅ **FIXED** — commit `220b552`
 **Severity:** High
 **Locations:** [event-inference.ts:112](packages/language/src/type-system-typir/inference/event-inference.ts#L112), [event-inference.ts:143](packages/language/src/type-system-typir/inference/event-inference.ts#L143), [event-inference.ts:169](packages/language/src/type-system-typir/inference/event-inference.ts#L169), [import-inference.ts:86](packages/language/src/type-system-typir/inference/import-inference.ts#L86), [import-inference.ts:118](packages/language/src/type-system-typir/inference/import-inference.ts#L118), [languages-inference.ts:75](packages/language/src/type-system-typir/inference/languages-inference.ts#L75)
 The callbacks return `factory.create({...})` directly. `CustomKind.create()` returns a `CustomTypeConfigurationChain`, which is none of the four shapes `inferTypeLogicWithoutChildren` accepts, so it is treated as a language node and re-inferred, causing inference failures. `timeline-inference.ts` correctly calls `.finish().getTypeFinal()` first.
@@ -102,6 +109,7 @@ The callbacks return `factory.create({...})` directly. `CustomKind.create()` ret
 **Research notes:** Verified against Typir source — `CustomTypeConfigurationChain` exposes only `inferenceRule()`/`finish()`; `inferTypeLogicWithoutChildren` accepts `InferenceRuleNotApplicable`, a real `Type`, an `InferenceProblem`, or a language node.
 
 #### B11. `timeline-inference` `getTypeFinal()!` non-null assertion can return undefined
+> ✅ **FIXED** — commit `220b552`
 **Severity:** High
 **Locations:** [timeline-inference.ts:67](packages/language/src/type-system-typir/inference/timeline-inference.ts#L67)
 `getTypeFinal()` returns `T | undefined`; it is only set once the type switches to identifiable. For unresolved property descriptors the type stays in the initial state and the `!` becomes a runtime crash.
@@ -109,6 +117,7 @@ The callbacks return `factory.create({...})` directly. `CustomKind.create()` ret
 **Research notes:** Verified against Typir `type-initializer.ts` / `custom-initializer.ts` — `typeToReturn` starts `undefined` and is set asynchronously via a listener.
 
 #### B12. All `CustomKind` factory fields/getters typed `any`, discarding type safety
+> ✅ **FIXED** — commit `220b552`
 **Severity:** High (anti-pattern with bug-masking impact)
 **Locations:** [eligian-type-system.ts:56](packages/language/src/type-system-typir/eligian-type-system.ts#L56), [eligian-type-system.ts:63](packages/language/src/type-system-typir/eligian-type-system.ts#L63), [event-inference.ts:92](packages/language/src/type-system-typir/inference/event-inference.ts#L92), [import-inference.ts:67](packages/language/src/type-system-typir/inference/import-inference.ts#L67), [languages-inference.ts:37](packages/language/src/type-system-typir/inference/languages-inference.ts#L37)
 Six factory/type fields and their getters are typed `any`, propagating into inference modules and masking the `'json'` AssetType mismatch (B13) at compile time. (Listed here because it directly hides a real bug; also tracked under anti-patterns.)
@@ -221,6 +230,7 @@ The optional `services?: any` falls back to `{ References: {} }`, so `services.d
 **Fix:** `return left && right;` / `return left || right;` (the `string | number | boolean` return type already allows this).
 
 #### B29. `inferAssetTypeFromKeyword` returns `'json'`, incompatible with `ImportTypeProperties.assetType`
+> ✅ **FIXED** — commit `220b552`
 **Severity:** Medium
 **Locations:** [import-inference.ts:35](packages/language/src/type-system-typir/inference/import-inference.ts#L35), [import-inference.ts:44](packages/language/src/type-system-typir/inference/import-inference.ts#L44), [import-type.ts:28](packages/language/src/type-system-typir/types/import-type.ts#L28), [typir-types.ts:16](packages/language/src/type-system-typir/types/typir-types.ts#L16)
 `'json'` (returned for `'locales'`) is outside the `'html' | 'css' | 'media'` `AssetType` union; the mismatch is hidden by the `any`-typed factory (B12) and produces an inconsistent `Import<json>` type at runtime.
