@@ -169,6 +169,7 @@ HTML defines `modal-new-key`/`key-modal-*` and `modal-new-locale`/`locale-modal-
 **Fix:** Rename the HTML IDs to match the JS (`add-key-parent`, `add-key-segment`, `add-key-cancel`, `add-key-confirm`, `add-key-error`, and the `add-locale-*` equivalents).
 
 #### B20. Eventbus listeners accumulate on every engine re-initialization
+> ✅ **FIXED** — branch `fix/preview-webview-cluster`
 **Severity:** High
 **Locations:** [media/preview.ts:84](packages/extension/media/preview.ts#L84), [media/preview.ts:484-517](packages/extension/media/preview.ts#L484)
 `setupTimelineEventListeners()` registers five named listeners plus a debug viewer on every `initializeEngine()`, but previous listeners are never removed, so each re-init multiplies event firings (doubled `playbackStarted/Paused/Stopped` and `updateControlStates`).
@@ -176,6 +177,7 @@ HTML defines `modal-new-key`/`key-modal-*` and `modal-new-locale`/`locale-modal-
 **Research notes:** Verified against Eligius `eventbus` — `on()`/`registerEventlistener()` return removers; the eventbus is a module-scope singleton never cleared between inits.
 
 #### B21. `play/pause/stop/restart` messages do not actually control the engine
+> ✅ **FIXED** — branch `fix/preview-webview-cluster`
 **Severity:** High
 **Locations:** [media/preview.ts:374-390](packages/extension/media/preview.ts#L374)
 These cases only echo `playbackStarted/Paused/Stopped` back to the extension without broadcasting any eventbus request, so external playback commands have no effect while the extension receives a false confirmation.
@@ -360,6 +362,7 @@ A test-only utility runs a full from-scratch parse on every debounced keystroke 
 **Fix:** Create the channel once (module-level/lazy) and dispose via `context.subscriptions`.
 
 #### B50. `updateConfig` message shows container but never re-initializes the engine
+> ✅ **FIXED** — branch `fix/preview-webview-cluster` (protocol clarified: re-init is intended via the separate `initialize` message sent by `PreviewPanel.compileAndUpdate`; `updateConfig` only preps the DOM — calling `initializeEngine` here would double-init. Misleading comment corrected.)
 **Severity:** Medium
 **Locations:** [media/preview.ts:325-334](packages/extension/media/preview.ts#L325)
 The case only toggles container visibility (and a misleading comment hides the error container), never calling `initializeEngine`.

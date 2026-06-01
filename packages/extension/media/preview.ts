@@ -50,6 +50,11 @@ let factoryResult: IEngineFactoryResult | null = null;
 // Create shared eventbus for controlling playback
 const eventbus: IEventbus = new Eventbus();
 
+// Removers for the timeline listeners registered by setupTimelineEventListeners().
+// Tracked so that re-initializing the engine does not accumulate duplicate
+// listeners (which would multiply every state update / postMessage per re-init).
+let timelineListenerRemovers: Array<() => void> = [];
+
 /**
  * Initialize the Eligius engine with the given configuration.
  *
@@ -323,7 +328,12 @@ window.addEventListener('message', async event => {
 
   switch (message.type) {
     case 'updateConfig': {
-      // Hide loading, show error container
+      // Prepare the DOM for a (re)compiled config: hide the loading and error
+      // views and reveal the Eligius container. This message only updates
+      // visibility — the engine itself is (re)initialized by the separate
+      // 'initialize' message the extension sends immediately afterwards
+      // (see PreviewPanel.compileAndUpdate), so we must NOT init here or the
+      // engine would be created twice.
       document.getElementById('loading')!.style.display = 'none';
       document.getElementById('error-container')!.style.display = 'none';
 
@@ -371,22 +381,30 @@ window.addEventListener('message', async event => {
       await initializeEngine(message.payload.config);
       break;
 
+    // Playback commands broadcast the corresponding timeline request on the
+    // eventbus so Eligius actually changes state. We do NOT echo
+    // playbackStarted/Paused/Stopped here: the timeline-* listeners registered
+    // in setupTimelineEventListeners() report the real state once Eligius acts,
+    // so echoing would send a false confirmation before anything happened.
     case 'play':
-      vscode.postMessage({ type: 'playbackStarted' });
+      eventbus.broadcast('timeline-play-request', []);
       break;
 
     case 'pause':
-      vscode.postMessage({ type: 'playbackPaused' });
+      eventbus.broadcast('timeline-pause-request', []);
       break;
 
     case 'stop':
-      vscode.postMessage({ type: 'playbackStopped' });
+      eventbus.broadcast('timeline-stop-request', []);
       break;
 
     case 'restart':
-      vscode.postMessage({ type: 'playbackStopped' });
-      // Will implement actual restart logic later
-      vscode.postMessage({ type: 'playbackStarted' });
+      // Restart = stop then play (mirrors the restart button handler).
+      eventbus.broadcast('timeline-stop-request', []);
+      // Small delay to ensure stop completes before play.
+      setTimeout(() => {
+        eventbus.broadcast('timeline-play-request', []);
+      }, 50);
       break;
 
     case 'destroy':
@@ -482,38 +500,48 @@ function _hideControls(): void {
  * These listeners update the UI based on timeline events broadcast by Eligius.
  */
 function setupTimelineEventListeners(): void {
-  // Listen for PLAY event - timeline has started
-  eventbus.on('timeline-play', () => {
-    updateControlStates(true);
-    vscode.postMessage({ type: 'playbackStarted' });
-  });
+  // Remove any listeners registered by a previous engine initialization before
+  // re-registering. Without this, every re-init would stack another full set of
+  // listeners, causing each timeline event to fire (and postMessage) N times.
+  for (const remove of timelineListenerRemovers) {
+    remove();
+  }
+  timelineListenerRemovers = [];
 
-  // Listen for PAUSE event - timeline has paused
-  eventbus.on('timeline-pause', () => {
-    updateControlStates(false);
-    vscode.postMessage({ type: 'playbackPaused' });
-  });
+  timelineListenerRemovers.push(
+    // Listen for PLAY event - timeline has started
+    eventbus.on('timeline-play', () => {
+      updateControlStates(true);
+      vscode.postMessage({ type: 'playbackStarted' });
+    }),
 
-  // Listen for STOP event - timeline has stopped
-  eventbus.on('timeline-stop', () => {
-    updateControlStates(false);
-    vscode.postMessage({ type: 'playbackStopped' });
-  });
+    // Listen for PAUSE event - timeline has paused
+    eventbus.on('timeline-pause', () => {
+      updateControlStates(false);
+      vscode.postMessage({ type: 'playbackPaused' });
+    }),
 
-  // Listen for COMPLETE event - timeline has finished
-  eventbus.on('timeline-complete', () => {
-    updateControlStates(false);
-    vscode.postMessage({ type: 'playbackStopped' });
-  });
+    // Listen for STOP event - timeline has stopped
+    eventbus.on('timeline-stop', () => {
+      updateControlStates(false);
+      vscode.postMessage({ type: 'playbackStopped' });
+    }),
 
-  // Listen for RESTART event - timeline has restarted
-  eventbus.on('timeline-restart', () => {
-    updateControlStates(true);
-    vscode.postMessage({ type: 'playbackStarted' });
-  });
+    // Listen for COMPLETE event - timeline has finished
+    eventbus.on('timeline-complete', () => {
+      updateControlStates(false);
+      vscode.postMessage({ type: 'playbackStopped' });
+    }),
 
-  // Register debug viewer to receive ALL eventbus events
-  eventbus.registerEventlistener(debugViewer);
+    // Listen for RESTART event - timeline has restarted
+    eventbus.on('timeline-restart', () => {
+      updateControlStates(true);
+      vscode.postMessage({ type: 'playbackStarted' });
+    }),
+
+    // Register debug viewer to receive ALL eventbus events
+    eventbus.registerEventlistener(debugViewer)
+  );
 }
 
 // Initialize controls after DOM loads
