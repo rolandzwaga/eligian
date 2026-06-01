@@ -61,6 +61,10 @@ The following cluster was fixed on branch **`refactor/consolidate-program-root-t
 
 **Fixed (numbered):** D6. Replaced five inline `while (node.$type !== 'Program')` upward traversals in `eligian-validator.ts` with the existing `this.getProgram(node)` helper, and rewrote `getProgram`/`getLibrary` to delegate to `AstUtils.getContainerOfType(node, isProgram/isLibrary)` (typed `AstNode`, not `any`) — also clearing the paired "manual parent-walk" anti-pattern. Pure refactor.
 
+The following cluster was fixed on branch **`refactor/consolidate-lsp-notifications-d7`** (verified: tsgo typecheck clean for language + extension, biome clean, full language suite green at 2001 passed/23 skipped, 337 extension tests green, build clean). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D7. Extracted shared `AssetUpdatedParams` (`documentUris: string[]`) and `AssetImportsDiscoveredParams` (`documentUri: string`) bases into a new `packages/language/src/lsp/asset-notifications.ts`; the CSS/HTML/labels `*UpdatedParams` and `*ImportsDiscoveredParams` interfaces now `extend` them and keep only their asset-specific file-URI field (`cssFileUri`/`htmlFileUri`/`labelsFileUri`, plus CSS's array `cssFileUris`). The CSS-only `CSSErrorParams` pair is unchanged. All public type/constant names are preserved (the `extension/src/language/main.ts` notification handlers destructure the same fields), so this is a behavior-preserving refactor; the base is barrel-exported from the package `index.ts`.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -561,6 +565,7 @@ Identical filter→map→`validateControlFlowPairing`→iterate→`accept` body 
 **Abstraction:** Replace all four with `this.getProgram(node)` then `program?.$document?.uri?.toString()`; ideally rewrite `getProgram`/`getLibrary` to use `AstUtils.getContainerOfType`.
 
 ### D7. Three LSP notification files are near-identical structural copies
+> ✅ **FIXED** — branch `refactor/consolidate-lsp-notifications-d7` (new `lsp/asset-notifications.ts` exports the shared `AssetUpdatedParams` (`documentUris: string[]`) and `AssetImportsDiscoveredParams` (`documentUri: string`) bases; the CSS/HTML/labels param interfaces now `extend` them, retaining only their asset-specific file-URI field — `cssFileUri`/`htmlFileUri`/`labelsFileUri`, and CSS's array `cssFileUris`. The CSS-only `CSSErrorParams` pair is left in place. All public type/constant names are unchanged (consumers in `extension/src/language/main.ts` destructure the same fields), so this is a pure behavior-preserving refactor; the base is barrel-exported from `packages/language/src/index.ts`. Verified: tsgo clean (language + extension), biome clean, language suite green at 2001 passed/23 skipped, 337 extension tests green, build clean.)
 **Severity:** High
 **Sites:** [css-notifications.ts:1](packages/language/src/lsp/css-notifications.ts#L1), [labels-notifications.ts:1](packages/language/src/lsp/labels-notifications.ts#L1), [html-notifications.ts:1](packages/language/src/lsp/html-notifications.ts#L1)
 Each defines the same UPDATED + IMPORTS_DISCOVERED notification/param pair, differing only by prefix and minor field shapes (CSS also has an ERROR pair).

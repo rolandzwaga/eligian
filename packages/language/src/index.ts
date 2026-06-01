@@ -55,6 +55,8 @@ export {
   type TranslationEntry,
 } from './labels/label-entry-generator.js';
 export { extractTranslationKeys } from './locales/translation-key-extractor.js';
+// Shared asset notification base types (D7)
+export * from './lsp/asset-notifications.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // HTML validation exports
