@@ -77,6 +77,17 @@ The following cluster was fixed on branch **`refactor/consolidate-time-expressio
 
 **Fixed (numbered):** D14. New `packages/language/src/type-system-typir/utils/time-expression.ts` exports `extractTimeValue` and `parseTimeRange` as the single source of truth; `inference/event-inference.ts` and `validation/event-validation.ts` import them and the two character-identical private copies (including JSDoc and TODOs) are deleted. The pre-existing string-based `utils/time-parser.ts` is an unrelated helper (parses time *strings* like `"5s"`, not AST nodes) and was intentionally left untouched — it remains tracked under the dead/unused-code anti-pattern. Pure behavior-preserving refactor.
 
+The following combined cluster was fixed on branch **`refactor/consolidate-validator-typesystem-dedup`** (verified: tsgo typecheck clean, biome clean on the changed files, full language suite green at 2001 passed/23 skipped, coverage CI passing/exit 0). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D15, D20, D27, D28, D29. A single combined PR consolidating one Typir cluster and four `EligianValidator` clusters (continuing to chip away at the god-class anti-pattern alongside the already-done D5/D6/D30):
+- **D15** — new private `resolveTypirPrimitiveType(typeName): PrimitiveType | undefined` on `EligianTypeSystem` is the single source of truth for the string→Typir-type mapping. The three switches (operation `mapParameterTypeToTypirType`, the `Parameter` annotation inference rule, and `createActionFunctionType`) now delegate to it and apply their own fallback (`?? this.stringType` for operation params, `?? this.unknownType` for action/annotation params), preserving each site's prior default behavior.
+- **D20** — new `formatValidationMessage(message, hint?)` in `utils/error-builder.ts`; all 13 `error.hint` append sites in `eligian-validator.ts` now route through it. This also resolves the guarded-vs-unguarded inconsistency: the 7 unguarded `` `${message}. ${hint}` `` sites (which appended a literal ". undefined" when no hint was present) are now unified on the guarded behavior.
+- **D27** — new private generic `reportDuplicatesByName<T extends AstNode & { name: string }>(items, messageFor, code, accept)`; `checkDuplicateActions`, `checkDuplicateConstants`, and `checkLibraryDuplicateActions` now filter their items and delegate (one `property: 'name' as Properties<T>` cast required for the generic node).
+- **D28** — new private `reportActionParameterCountError(opName, parameters, argumentCount, node, accept)`; the three identical local/imported/library expected-vs-actual checks in `checkParameterCount` delegate to it.
+- **D29** — new private `reportLabelIDError(node, error, labelId, labelsFileUri, languageCodes, accept)` building the Feature 041 `MissingLabelIDData` quick-fix payload; the three identical diagnostic-data blocks (LabelController arg check + single/array label-ID parameter checks) delegate to it.
+
+All five are pure behavior-preserving refactors (D20's unguarded-form unification is the one intentional, strictly-safer behavior change). Only `eligian-validator.ts`, `type-system-typir/eligian-type-system.ts`, and `utils/error-builder.ts` are changed.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -629,6 +640,7 @@ Character-identical including JSDoc and TODOs.
 **Abstraction:** Shared `type-system-typir/utils/time-expression.ts`.
 
 ### D15. String→Typir-type mapping switch duplicated 3× in `EligianTypeSystem`
+> ✅ **FIXED** — branch `refactor/consolidate-validator-typesystem-dedup` (private `resolveTypirPrimitiveType()` is now the single source of truth; the three switches delegate with site-specific `?? this.stringType` / `?? this.unknownType` fallbacks, preserving prior defaults).
 **Severity:** High
 **Sites:** [eligian-type-system.ts:209](packages/language/src/type-system-typir/eligian-type-system.ts#L209), [eligian-type-system.ts:277](packages/language/src/type-system-typir/eligian-type-system.ts#L277), [eligian-type-system.ts:379](packages/language/src/type-system-typir/eligian-type-system.ts#L379)
 **Abstraction:** Private `resolveTypirPrimitiveType(typeName): Type`; delegate from all three.
@@ -655,6 +667,7 @@ Identical lexer/parser/diagnostics → `ParseError` shape.
 **Abstraction:** `hasTag<T extends string>(error, tag): error is { _tag: T }` in `packages/shared-utils/src/tag-guard.ts`; each guard becomes a one-liner. Also fix `isIOError` ([type-guards.ts:329](packages/language/src/errors/type-guards.ts#L329)) to compose leaf guards.
 
 ### D20. `error.hint` ternary repeated 13-15× (two inconsistent forms)
+> ✅ **FIXED** — branch `refactor/consolidate-validator-typesystem-dedup` (new `formatValidationMessage(message, hint?)` in `utils/error-builder.ts`; all 13 sites delegate. The 7 unguarded sites that appended ". undefined" are unified on the guarded behavior.)
 **Severity:** Medium
 **Sites:** [eligian-validator.ts:687](packages/language/src/eligian-validator.ts#L687), [eligian-validator.ts:795](packages/language/src/eligian-validator.ts#L795), [eligian-validator.ts:832](packages/language/src/eligian-validator.ts#L832), [eligian-validator.ts:877](packages/language/src/eligian-validator.ts#L877), [eligian-validator.ts:902](packages/language/src/eligian-validator.ts#L902), [eligian-validator.ts:927](packages/language/src/eligian-validator.ts#L927), [eligian-validator.ts:952](packages/language/src/eligian-validator.ts#L952), [eligian-validator.ts:977](packages/language/src/eligian-validator.ts#L977), [eligian-validator.ts:1002](packages/language/src/eligian-validator.ts#L1002), [eligian-validator.ts:1534](packages/language/src/eligian-validator.ts#L1534), [eligian-validator.ts:1561](packages/language/src/eligian-validator.ts#L1561), [eligian-validator.ts:1599](packages/language/src/eligian-validator.ts#L1599), [eligian-validator.ts:1625](packages/language/src/eligian-validator.ts#L1625), [eligian-validator.ts:1688](packages/language/src/eligian-validator.ts#L1688)
 Guarded vs unguarded forms coexist (B-level inconsistency at 1688).
@@ -690,16 +703,19 @@ Each does `typeof firstArg === 'string'` dispatch into two return blocks.
 **Abstraction:** `extractParameters(properties)` (+ `extractOutputs` for operations).
 
 ### D27. Duplicate-detection Map loops: actions / library actions / constants
+> ✅ **FIXED** — branch `refactor/consolidate-validator-typesystem-dedup` (private generic `reportDuplicatesByName<T extends AstNode & { name: string }>()`; the three checks filter their items and delegate.)
 **Severity:** Medium
 **Sites:** [eligian-validator.ts:235](packages/language/src/eligian-validator.ts#L235), [eligian-validator.ts:266](packages/language/src/eligian-validator.ts#L266), [eligian-validator.ts:2497](packages/language/src/eligian-validator.ts#L2497)
 **Abstraction:** Generic `detectDuplicatesByName<T extends {name}>(...)`.
 
 ### D28. Parameter-count error message duplicated 3× (local/imported/library)
+> ✅ **FIXED** — branch `refactor/consolidate-validator-typesystem-dedup` (private `reportActionParameterCountError(opName, parameters, argumentCount, node, accept)`; the three checks in `checkParameterCount` delegate.)
 **Severity:** Medium
 **Sites:** [eligian-validator.ts:720](packages/language/src/eligian-validator.ts#L720), [eligian-validator.ts:748](packages/language/src/eligian-validator.ts#L748), [eligian-validator.ts:770](packages/language/src/eligian-validator.ts#L770)
 **Abstraction:** `reportActionParameterCountError(opName, expected, got, parameters, node, accept)`.
 
 ### D29. `MissingLabelIDData` diagnostic-data block duplicated 3×
+> ✅ **FIXED** — branch `refactor/consolidate-validator-typesystem-dedup` (private `reportLabelIDError(node, error, labelId, labelsFileUri, languageCodes, accept)`; the three diagnostic-data blocks delegate.)
 **Severity:** Medium
 **Sites:** [eligian-validator.ts:2298](packages/language/src/eligian-validator.ts#L2298), [eligian-validator.ts:2398](packages/language/src/eligian-validator.ts#L2398), [eligian-validator.ts:2428](packages/language/src/eligian-validator.ts#L2428)
 **Abstraction:** `reportLabelIDError(node, error, labelId, labelsFileUri, languageCodes, accept)`.

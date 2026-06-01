@@ -68,3 +68,20 @@ export function createValidationError<
     ...(additionalProps || ({} as TAdditional)),
   };
 }
+
+/**
+ * Formats a validation message by optionally appending a hint.
+ *
+ * Single source of truth (D20) for the `error.hint`-append pattern that was
+ * duplicated 13-15× across the validator in two inconsistent forms: a guarded
+ * `hint ? ... : message` form and an unguarded `` `${message}. ${hint}` `` form
+ * that appended a literal ". undefined" when no hint was present. Routing every
+ * site through this helper unifies them on the guarded behavior.
+ *
+ * @param message - The base error/warning message
+ * @param hint - Optional hint, appended as ". {hint}" when truthy
+ * @returns The combined message
+ */
+export function formatValidationMessage(message: string, hint?: string): string {
+  return hint ? `${message}. ${hint}` : message;
+}

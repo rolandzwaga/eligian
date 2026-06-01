@@ -219,34 +219,8 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       const paramType = paramTypes[0];
       const typeString = String(paramType).replace('ParameterType:', '');
 
-      switch (typeString) {
-        case 'string':
-        case 'selector':
-        case 'className':
-        case 'htmlElementName':
-        case 'eventTopic':
-        case 'actionName':
-          return this.stringType;
-
-        case 'number':
-        case 'dimensions':
-        case 'dimensionsModifier':
-          return this.numberType;
-
-        case 'boolean':
-          return this.booleanType;
-
-        case 'object':
-        case 'jQuery':
-          return this.objectType;
-
-        case 'array':
-          return this.arrayType;
-
-        default:
-          // Constant values (enums) are strings
-          return this.stringType;
-      }
+      // Unknown/unmapped operation parameter types (incl. constant-value enums) are strings.
+      return this.resolveTypirPrimitiveType(typeString) ?? this.stringType;
     };
 
     // ═══════════════════════════════════════════════════════════════════
@@ -285,20 +259,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       Parameter: (param: Parameter) => {
         if (param.type) {
           // Map type annotation to Typir type
-          switch (param.type) {
-            case 'string':
-              return this.stringType;
-            case 'number':
-              return this.numberType;
-            case 'boolean':
-              return this.booleanType;
-            case 'object':
-              return this.objectType;
-            case 'array':
-              return this.arrayType;
-            default:
-              return this.unknownType;
-          }
+          return this.resolveTypirPrimitiveType(param.type) ?? this.unknownType;
         }
         // No annotation - let Typir infer from usage
         return InferenceRuleNotApplicable;
@@ -333,6 +294,49 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
     // Note: Variables don't have type annotations in Eligian grammar
     // Operation argument validation is handled automatically by Typir
     // via validateArgumentsOfFunctionCalls: true in operation function types
+  }
+
+  /**
+   * Map a parameter/annotation type name to its stored Typir primitive type.
+   *
+   * Single source of truth for the string→Typir-type mapping (D15). Covers both
+   * grammar type annotations ('string' | 'number' | 'boolean' | 'object' | 'array')
+   * and the richer operation-registry `ParameterType` aliases (e.g. 'selector',
+   * 'className', 'dimensions', 'jQuery'). Returns `undefined` for unmapped names so
+   * each call site can apply its own fallback (string for operation params, unknown
+   * for action/annotation params).
+   *
+   * @param typeName Normalized type name (no 'ParameterType:' prefix)
+   * @returns The matching primitive type, or `undefined` if unmapped
+   */
+  private resolveTypirPrimitiveType(typeName: string): PrimitiveType | undefined {
+    switch (typeName) {
+      case 'string':
+      case 'selector':
+      case 'className':
+      case 'htmlElementName':
+      case 'eventTopic':
+      case 'actionName':
+        return this.stringType;
+
+      case 'number':
+      case 'dimensions':
+      case 'dimensionsModifier':
+        return this.numberType;
+
+      case 'boolean':
+        return this.booleanType;
+
+      case 'object':
+      case 'jQuery':
+        return this.objectType;
+
+      case 'array':
+        return this.arrayType;
+
+      default:
+        return undefined;
+    }
   }
 
   /**
@@ -385,22 +389,7 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       name: param.name,
       // Use explicit type annotation if present, otherwise unknown
       type: param.type
-        ? (() => {
-            switch (param.type) {
-              case 'string':
-                return this.stringType;
-              case 'number':
-                return this.numberType;
-              case 'boolean':
-                return this.booleanType;
-              case 'object':
-                return this.objectType;
-              case 'array':
-                return this.arrayType;
-              default:
-                return this.unknownType;
-            }
-          })()
+        ? (this.resolveTypirPrimitiveType(param.type) ?? this.unknownType)
         : this.unknownType,
     }));
 
