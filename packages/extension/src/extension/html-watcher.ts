@@ -10,7 +10,7 @@
  */
 
 import * as path from 'node:path';
-import { HTML_UPDATED_NOTIFICATION } from '@eligian/language';
+import { HTML_UPDATED_NOTIFICATION, resolveImportPathToUri } from '@eligian/language';
 import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
 
@@ -82,7 +82,7 @@ export class HTMLWatcherManager {
     const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
 
     // Convert relative HTML path to absolute URI to match file change events
-    const absoluteHTMLUri = this.resolveAbsoluteHTMLUri(documentUri, htmlFileUri);
+    const absoluteHTMLUri = resolveImportPathToUri(documentUri, htmlFileUri);
 
     let documents = this.importsByHTMLFile.get(absoluteHTMLUri);
     if (!documents) {
@@ -116,32 +116,6 @@ export class HTMLWatcherManager {
         this.importsByHTMLFile.delete(htmlFileUri);
       }
     }
-  }
-
-  /**
-   * Resolve a relative HTML file URI to an absolute file URI
-   *
-   * @param documentUri - Absolute Eligian document URI (e.g., "file:///c%3A/projects/test.eligian")
-   * @param htmlFileUri - HTML file URI (may be relative like "./layout.html" or absolute)
-   * @returns Absolute HTML file URI (e.g., "file:///c%3A/projects/layout.html")
-   */
-  private resolveAbsoluteHTMLUri(documentUri: string, htmlFileUri: string): string {
-    // If already absolute, return as-is
-    if (htmlFileUri.startsWith('file://')) {
-      return htmlFileUri;
-    }
-
-    // Parse document URI to get directory
-    const docUri = vscode.Uri.parse(documentUri);
-    const docPath = docUri.fsPath;
-    const docDir = path.dirname(docPath);
-
-    // Remove leading "./" from HTML path
-    const cleanPath = htmlFileUri.startsWith('./') ? htmlFileUri.substring(2) : htmlFileUri;
-
-    // Combine directory with HTML path and convert to URI (cross-platform)
-    const absolutePath = path.join(docDir, cleanPath);
-    return vscode.Uri.file(absolutePath).toString();
   }
 
   /**

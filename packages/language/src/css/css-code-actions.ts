@@ -11,6 +11,7 @@
 
 import type { CodeAction, CodeActionParams, Diagnostic } from 'vscode-languageserver-protocol';
 import { CodeActionKind } from 'vscode-languageserver-protocol';
+import { resolveImportPathToUri } from '../utils/path-utils.js';
 import {
   createCSSClassEdit,
   createCSSIDEdit,
@@ -64,9 +65,10 @@ export class CSSCodeActionProvider {
       return actions;
     }
 
-    // Convert relative CSS path to absolute URI
-    // The CSS path is relative to the document, so resolve it
-    const cssFileUri = this.resolveCSSPath(documentUri, targetCSSFile);
+    // Convert relative CSS path to absolute URI (D4: shared resolution).
+    // Registry imports are already absolute file:// URIs, which the helper
+    // returns unchanged; the relative branch correctly normalizes ./ and ../.
+    const cssFileUri = resolveImportPathToUri(documentUri, targetCSSFile);
 
     // Read the CSS file content (needed to calculate insert position)
     let cssFileContent: string;
@@ -157,31 +159,6 @@ export class CSSCodeActionProvider {
     }
 
     return undefined;
-  }
-
-  /**
-   * Resolve a relative CSS file path to an absolute file URI
-   *
-   * @param documentUri - URI of the Eligian document (e.g., "file:///c:/projects/test.eligian")
-   * @param cssPath - Relative CSS path (e.g., "./styles.css")
-   * @returns Absolute file URI (e.g., "file:///c:/projects/styles.css")
-   */
-  private resolveCSSPath(documentUri: string, cssPath: string): string {
-    // If cssPath is already absolute, return it
-    if (cssPath.startsWith('file://')) {
-      return cssPath;
-    }
-
-    // Get the directory of the document
-    const docUri = documentUri.replace(/\\/g, '/'); // Normalize backslashes
-    const lastSlash = docUri.lastIndexOf('/');
-    const docDir = docUri.substring(0, lastSlash + 1);
-
-    // Remove leading "./" from CSS path if present
-    const cleanPath = cssPath.startsWith('./') ? cssPath.substring(2) : cssPath;
-
-    // Combine directory with CSS path
-    return docDir + cleanPath;
   }
 
   /**

@@ -12,9 +12,8 @@
  */
 
 import { readFileSync } from 'node:fs';
-import * as path from 'node:path';
 import type { Program } from '@eligian/language';
-import { isDefaultImport, isProgram } from '@eligian/language';
+import { isDefaultImport, isProgram, resolveImportRelativePath } from '@eligian/language';
 import { URI } from 'vscode-uri';
 
 /**
@@ -120,12 +119,8 @@ export function processImports<TMetadata>(
       continue;
     }
 
-    // Remove quotes from path
-    const importPath = statement.path.replace(/^["']|["']$/g, '');
-
-    // Resolve to absolute path
-    const cleanPath = importPath.startsWith('./') ? importPath.substring(2) : importPath;
-    const absolutePath = path.join(docDir, cleanPath);
+    // Resolve to absolute path (D4: shared resolution, path.join handles ./, ., ../)
+    const absolutePath = resolveImportRelativePath(statement.path, docDir);
     const fileUri = URI.file(absolutePath).toString();
 
     // Track URI for notification
