@@ -1120,6 +1120,13 @@ function renderKeyTree(): void {
   const container = document.getElementById('key-tree');
   if (!container) return;
 
+  // Auto-expand root on first render if there are keys.
+  // Done before rendering so we render once with the correct expanded state,
+  // instead of rendering collapsed then recursing for a second full render.
+  if (localeState.keyTree.length > 0 && !localeState.expandedKeys.has('__root__')) {
+    localeState.expandedKeys.add('__root__');
+  }
+
   container.innerHTML = '';
 
   // Create root node "locale keys"
@@ -1167,12 +1174,6 @@ function renderKeyTree(): void {
 
   rootNode.appendChild(childrenContainer);
   container.appendChild(rootNode);
-
-  // Auto-expand root on first render if there are keys
-  if (localeState.keyTree.length > 0 && !localeState.expandedKeys.has('__root__')) {
-    localeState.expandedKeys.add('__root__');
-    renderKeyTree();
-  }
 }
 
 /**
@@ -1304,7 +1305,7 @@ function renderLocaleTable(): void {
     ? findNodeByKey(localeState.keyTree, localeState.selectedKey)
     : null;
 
-  if (!selectedNode || !selectedNode.isLeaf) {
+  if (!selectedNode?.isLeaf) {
     // No leaf node selected - show empty state
     if (emptyState) emptyState.style.display = 'block';
     return;
@@ -1495,6 +1496,11 @@ function handleKeyUsageCheckResponse(key: string, usageFiles: string[]): void {
 function performKeyDelete(key: string): void {
   // Remove from local tree (optimistic update)
   removeKeyFromTree(localeState.keyTree, key);
+
+  // Persist the deletion to the extension's source-of-truth config.
+  // Without this the extension's documentConfigs retains the key and the next
+  // reload/undo restores it (deletions would be silently ephemeral).
+  sendLocaleMessage({ type: 'delete-key', key });
 
   // Clear selection if deleted key was selected
   if (localeState.selectedKey === key) {

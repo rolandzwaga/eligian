@@ -72,11 +72,32 @@ import type {
  * );
  */
 export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
-  // Track if we're currently applying an edit from the webview
-  private isApplyingWebviewEdit = false;
+  // Track which documents are currently having a webview-originated edit applied
+  // (keyed by document URI). Per-document so that one document's save cannot make
+  // another document ignore its external changes.
+  private applyingWebviewEdits = new Set<string>();
 
   // Current configuration state per document (keyed by document URI)
   private documentConfigs = new Map<string, ILocalesConfiguration>();
+
+  /**
+   * Apply a webview-originated edit while flagging the document so the
+   * onDidChangeTextDocument listener does not treat it as an external change.
+   * The flag is always cleared — including when applyEdit rejects — so a failed
+   * edit cannot permanently freeze external-change handling for the document.
+   */
+  private applyWebviewEdit(document: vscode.TextDocument, edit: vscode.WorkspaceEdit): void {
+    const key = document.uri.toString();
+    this.applyingWebviewEdits.add(key);
+    vscode.workspace.applyEdit(edit).then(
+      () => {
+        this.applyingWebviewEdits.delete(key);
+      },
+      () => {
+        this.applyingWebviewEdits.delete(key);
+      }
+    );
+  }
 
   constructor(
     // Used in Phase 4 to resolve webview URIs
@@ -165,23 +186,14 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     // 4. Set up TextDocument change listener (Microsoft pattern: ONLY update on EXTERNAL changes)
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        console.log('[LocaleEditorProvider] onDidChangeTextDocument fired');
-        console.log('[LocaleEditorProvider]   - contentChanges.length:', e.contentChanges.length);
-        console.log(
-          '[LocaleEditorProvider]   - isApplyingWebviewEdit:',
-          this.isApplyingWebviewEdit
-        );
-
         // ONLY update webview if:
-        // 1. Change was NOT from webview (external change like undo/redo/file watcher)
+        // 1. Change was NOT from this webview (external change like undo/redo/file watcher)
         // 2. AND there are actual content changes (not just state updates)
-        if (!this.isApplyingWebviewEdit && e.contentChanges.length > 0) {
-          console.log('[LocaleEditorProvider] External content change detected, updating webview');
+        if (
+          !this.applyingWebviewEdits.has(document.uri.toString()) &&
+          e.contentChanges.length > 0
+        ) {
           this.updateWebview(document, webviewPanel);
-        } else {
-          console.log(
-            '[LocaleEditorProvider] Skipping reload - webview edit or no content changes'
-          );
         }
       }
     });
@@ -385,18 +397,11 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
       case 'update':
         // Update document (DON'T trigger webview reload - Microsoft pattern)
         {
-          console.log('[LocaleEditorProvider] Received update message from webview');
           const legacyMessage = message as ToExtensionMessage & { type: 'update' };
           const json = JSON.stringify(legacyMessage.labels, null, 2);
           const edit = new vscode.WorkspaceEdit();
           edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-
-          console.log('[LocaleEditorProvider] Applying workspace edit (flagged as webview edit)');
-          this.isApplyingWebviewEdit = true;
-          vscode.workspace.applyEdit(edit).then(() => {
-            this.isApplyingWebviewEdit = false;
-            console.log('[LocaleEditorProvider] Workspace edit complete');
-          });
+          this.applyWebviewEdit(document, edit);
         }
         break;
 
@@ -534,11 +539,7 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     const json = JSON.stringify(config, null, 2);
     const edit = new vscode.WorkspaceEdit();
     edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-
-    this.isApplyingWebviewEdit = true;
-    vscode.workspace.applyEdit(edit).then(() => {
-      this.isApplyingWebviewEdit = false;
-    });
+    this.applyWebviewEdit(document, edit);
   }
 
   /**

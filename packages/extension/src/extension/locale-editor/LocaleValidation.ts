@@ -43,11 +43,14 @@ export function validateGroupId(
     };
   }
 
-  // Check for duplicates (excluding current group if editing)
-  const isDuplicate = existingIds.some(
-    existingId => existingId === id && existingId !== currentGroupId
-  );
-  if (isDuplicate) {
+  // Check for duplicates by counting occurrences.
+  // When editing an existing group, `existingIds` includes that group's own id
+  // once (currentGroupId === id), so a single occurrence is allowed; any second
+  // occurrence is a genuine duplicate. A value-based `existingId !== currentGroupId`
+  // exclusion would suppress ALL occurrences and never flag real duplicates.
+  const occurrences = existingIds.filter(existingId => existingId === id).length;
+  const allowedOccurrences = currentGroupId === id ? 1 : 0;
+  if (occurrences > allowedOccurrences) {
     return {
       field: 'id',
       message: `Group ID '${id}' already exists`,

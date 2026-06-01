@@ -528,15 +528,19 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content">
             <h2>Add Translation Key</h2>
-            <p>Enter a new translation key. Use dot notation for nested keys (e.g., "nav.home").</p>
+            <p>Enter a new key segment. Optionally provide a parent key using dot notation (e.g., "nav.home") to nest it.</p>
             <div class="form-group">
-                <label for="modal-new-key">Translation Key</label>
-                <input type="text" id="modal-new-key" placeholder="section.key" />
-                <div class="error-message" id="key-modal-error" style="display:none;"></div>
+                <label for="add-key-parent">Parent Key (optional)</label>
+                <input type="text" id="add-key-parent" placeholder="nav.home" />
+            </div>
+            <div class="form-group">
+                <label for="add-key-segment">Key Segment</label>
+                <input type="text" id="add-key-segment" placeholder="button" />
+                <div class="error-message" id="add-key-error" style="display:none;"></div>
             </div>
             <div class="modal-actions">
-                <button id="key-modal-cancel" class="secondary">Cancel</button>
-                <button id="key-modal-confirm">Add</button>
+                <button id="add-key-cancel" class="secondary">Cancel</button>
+                <button id="add-key-confirm">Add</button>
             </div>
         </div>
     </div>
@@ -548,13 +552,13 @@
             <h2>Add Locale</h2>
             <p>Enter the locale code to add (e.g., "fr-FR", "de-DE").</p>
             <div class="form-group">
-                <label for="modal-new-locale">Locale Code</label>
-                <input type="text" id="modal-new-locale" placeholder="fr-FR" />
-                <div class="error-message" id="locale-modal-error" style="display:none;"></div>
+                <label for="add-locale-code">Locale Code</label>
+                <input type="text" id="add-locale-code" placeholder="fr-FR" />
+                <div class="error-message" id="add-locale-error" style="display:none;"></div>
             </div>
             <div class="modal-actions">
-                <button id="locale-modal-cancel" class="secondary">Cancel</button>
-                <button id="locale-modal-confirm">Add</button>
+                <button id="add-locale-cancel" class="secondary">Cancel</button>
+                <button id="add-locale-confirm">Add</button>
             </div>
         </div>
     </div>

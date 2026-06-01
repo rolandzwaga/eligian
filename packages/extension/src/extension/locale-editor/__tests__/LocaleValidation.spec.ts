@@ -44,6 +44,16 @@ describe('LocaleValidation', () => {
       expect(error).toBeNull();
     });
 
+    it('should flag a real duplicate even when currentGroupId equals the id (B22)', () => {
+      // Two groups share the id; the full id list therefore contains it twice.
+      // Passing currentGroupId === id (as validateLabels does) must still report
+      // the duplicate rather than silently passing.
+      const existingIds = ['welcome-title', 'welcome-title'];
+      const error = validateGroupId('welcome-title', existingIds, 'welcome-title');
+      expect(error).not.toBeNull();
+      expect(error?.code).toBe('duplicate_id');
+    });
+
     it('should return null for valid group ID', () => {
       const existingIds = ['welcome-title'];
       const error = validateGroupId('goodbye-message', existingIds);
