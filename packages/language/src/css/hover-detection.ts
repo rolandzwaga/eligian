@@ -10,6 +10,7 @@ import { AstUtils } from 'langium';
 import type { HoverParams } from 'vscode-languageserver-protocol';
 import { isOperationCall, isStringLiteral } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
+import { CLASS_NAME_OPERATIONS, SELECTOR_OPERATIONS } from './css-operations.js';
 import { parseSelectorIdentifiers } from './selector-parser.js';
 
 /**
@@ -26,21 +27,6 @@ interface HoverTarget {
   /** Name of the class or ID (without . or # prefix) */
   name: string;
 }
-
-/**
- * Operations that accept className parameters
- */
-const CLASS_NAME_OPERATIONS = new Set(['addClass', 'removeClass', 'toggleClass', 'hasClass']);
-
-/**
- * Operations that accept selector parameters
- */
-const SELECTOR_OPERATIONS = new Set([
-  'selectElement',
-  'selectElements',
-  'querySelector',
-  'querySelectorAll',
-]);
 
 /**
  * Detect hover target for CSS definitions

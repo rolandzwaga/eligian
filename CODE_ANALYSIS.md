@@ -69,6 +69,10 @@ The following cluster was fixed on branch **`refactor/consolidate-css-registry-q
 
 **Fixed (numbered):** D11. Collapsed the six near-identical query methods on `CSSRegistryService` onto two private generics — `collectFromImports<T>(documentUri, select)` (Set-union across a document's imported CSS files) and `findInImports<T>(documentUri, lookup)` (first-truthy match in import order). `getClassesForDocument`/`getIDsForDocument` delegate to the former; `findClassLocation`/`findIDLocation`/`getClassRule`/`getIDRule` delegate to the latter. Public signatures, JSDoc, and behavior (skip-unparsed-files, import-order precedence) are unchanged. Net ~−95 lines.
 
+The following cluster was fixed on branch **`refactor/consolidate-css-operations-d12`** (verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D12. New `packages/language/src/css/css-operations.ts` exports the `CLASS_NAME_OPERATIONS` and `SELECTOR_OPERATIONS` Sets as the single source of truth; `context-detection.ts` and `hover-detection.ts` import them and the byte-identical local declarations are deleted. Pure behavior-preserving refactor.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -602,6 +606,7 @@ The `{ classes/ids: Set, *Locations/*Rules: Map, errors: [...] }` shape (differi
 **Abstraction:** Private generic `queryImportedFiles<T>(documentUri, extract)` with Set-accumulating and first-match variants.
 
 ### D12. `CLASS_NAME_OPERATIONS` / `SELECTOR_OPERATIONS` duplicated verbatim
+> ✅ **FIXED** — branch `refactor/consolidate-css-operations-d12` (new `packages/language/src/css/css-operations.ts` exports the two Sets as the single source of truth; `context-detection.ts` and `hover-detection.ts` now import them and the byte-identical local declarations are deleted. Pure behavior-preserving refactor. Verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing.)
 **Severity:** High
 **Sites:** [context-detection.ts:36](packages/language/src/css/context-detection.ts#L36), [context-detection.ts:41](packages/language/src/css/context-detection.ts#L41), [hover-detection.ts:33](packages/language/src/css/hover-detection.ts#L33), [hover-detection.ts:38](packages/language/src/css/hover-detection.ts#L38)
 **Abstraction:** Shared `css/css-operations.ts` exporting both Sets.
