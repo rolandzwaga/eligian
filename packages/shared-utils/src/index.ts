@@ -7,3 +7,5 @@ export * from './errors.js';
 export * from './file-loader.js';
 // Path resolution utilities (Phase 3 - US1)
 export * from './path-resolver.js';
+// Shared `_tag` discriminator guard
+export * from './tag-guard.js';

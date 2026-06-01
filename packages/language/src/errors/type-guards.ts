@@ -13,6 +13,7 @@
  * @module errors/type-guards
  */
 
+import { hasTag } from '@eligian/shared-utils';
 import type {
   AllErrors,
   AssetError,
@@ -56,9 +57,7 @@ export {
  * ```
  */
 export function isParseError(error: unknown): error is ParseError {
-  return (
-    typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'ParseError'
-  );
+  return hasTag(error, 'ParseError');
 }
 
 /**
@@ -75,12 +74,7 @@ export function isParseError(error: unknown): error is ParseError {
  * ```
  */
 export function isValidationError(error: unknown): error is ValidationError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'ValidationError'
-  );
+  return hasTag(error, 'ValidationError');
 }
 
 /**
@@ -97,9 +91,7 @@ export function isValidationError(error: unknown): error is ValidationError {
  * ```
  */
 export function isTypeError(error: unknown): error is TypeError {
-  return (
-    typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'TypeError'
-  );
+  return hasTag(error, 'TypeError');
 }
 
 /**
@@ -116,12 +108,7 @@ export function isTypeError(error: unknown): error is TypeError {
  * ```
  */
 export function isTransformError(error: unknown): error is TransformError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'TransformError'
-  );
+  return hasTag(error, 'TransformError');
 }
 
 /**
@@ -138,12 +125,7 @@ export function isTransformError(error: unknown): error is TransformError {
  * ```
  */
 export function isOptimizationError(error: unknown): error is OptimizationError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'OptimizationError'
-  );
+  return hasTag(error, 'OptimizationError');
 }
 
 /**
@@ -160,9 +142,7 @@ export function isOptimizationError(error: unknown): error is OptimizationError 
  * ```
  */
 export function isEmitError(error: unknown): error is EmitError {
-  return (
-    typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'EmitError'
-  );
+  return hasTag(error, 'EmitError');
 }
 
 /**
@@ -211,12 +191,7 @@ export function isCompilerError(error: unknown): error is CompilerError {
  * ```
  */
 export function isHtmlImportError(error: unknown): error is HtmlImportError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'HtmlImportError'
-  );
+  return hasTag(error, 'HtmlImportError');
 }
 
 /**
@@ -233,12 +208,7 @@ export function isHtmlImportError(error: unknown): error is HtmlImportError {
  * ```
  */
 export function isCssImportError(error: unknown): error is CssImportError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'CssImportError'
-  );
+  return hasTag(error, 'CssImportError');
 }
 
 /**
@@ -258,9 +228,7 @@ export function isCssImportError(error: unknown): error is CssImportError {
  * ```
  */
 export function isCssParseError(error: unknown): error is CssParseError {
-  return (
-    typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'CssParseError'
-  );
+  return hasTag(error, 'CssParseError');
 }
 
 /**
@@ -277,12 +245,7 @@ export function isCssParseError(error: unknown): error is CssParseError {
  * ```
  */
 export function isMediaImportError(error: unknown): error is MediaImportError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'MediaImportError'
-  );
+  return hasTag(error, 'MediaImportError');
 }
 
 /**
@@ -328,13 +291,10 @@ export function isAssetError(error: unknown): error is AssetError {
  */
 export function isIOError(error: unknown): error is IOError {
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    (error._tag === 'FileNotFoundError' ||
-      error._tag === 'PermissionError' ||
-      error._tag === 'ReadError' ||
-      error._tag === 'SecurityError')
+    hasTag(error, 'FileNotFoundError') ||
+    hasTag(error, 'PermissionError') ||
+    hasTag(error, 'ReadError') ||
+    hasTag(error, 'SecurityError')
   );
 }
 

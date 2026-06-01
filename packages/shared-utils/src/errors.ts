@@ -6,6 +6,8 @@
  * class inheritance complexity.
  */
 
+import { hasTag } from './tag-guard.js';
+
 /**
  * Indicates a file does not exist at the specified path.
  */
@@ -127,12 +129,7 @@ export function createSecurityError(path: string, projectRoot: string): Security
  * @returns True if error is FileNotFoundError
  */
 export function isFileNotFoundError(error: unknown): error is FileNotFoundError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'FileNotFoundError'
-  );
+  return hasTag(error, 'FileNotFoundError');
 }
 
 /**
@@ -142,12 +139,7 @@ export function isFileNotFoundError(error: unknown): error is FileNotFoundError 
  * @returns True if error is PermissionError
  */
 export function isPermissionError(error: unknown): error is PermissionError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '_tag' in error &&
-    error._tag === 'PermissionError'
-  );
+  return hasTag(error, 'PermissionError');
 }
 
 /**
@@ -157,9 +149,7 @@ export function isPermissionError(error: unknown): error is PermissionError {
  * @returns True if error is ReadError
  */
 export function isReadError(error: unknown): error is ReadError {
-  return (
-    typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'ReadError'
-  );
+  return hasTag(error, 'ReadError');
 }
 
 /**
@@ -169,7 +159,5 @@ export function isReadError(error: unknown): error is ReadError {
  * @returns True if error is SecurityError
  */
 export function isSecurityError(error: unknown): error is SecurityError {
-  return (
-    typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'SecurityError'
-  );
+  return hasTag(error, 'SecurityError');
 }

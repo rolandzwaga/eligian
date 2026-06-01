@@ -11,6 +11,25 @@
 import type { SourceLocation } from './base.js';
 
 // ============================================================================
+// Shared Base
+// ============================================================================
+
+/**
+ * Fields shared by every file-import error (HTML/CSS/media).
+ *
+ * These three errors are structurally identical apart from their `_tag` (and
+ * HTML's optional syntax-location fields), so they intersect this base instead
+ * of repeating the same five fields three times.
+ */
+export type FileImportErrorBase = {
+  readonly filePath: string; // Relative path from source file
+  readonly absolutePath: string; // Resolved absolute path
+  readonly message: string;
+  readonly location: SourceLocation; // Location of import statement
+  readonly hint?: string;
+};
+
+// ============================================================================
 // HTML Import Errors
 // ============================================================================
 
@@ -25,15 +44,10 @@ import type { SourceLocation } from './base.js';
  * layout "./invalid.html"  // HtmlImportError: Unclosed <div> tag
  * ```
  */
-export type HtmlImportError = {
+export type HtmlImportError = FileImportErrorBase & {
   readonly _tag: 'HtmlImportError';
-  readonly filePath: string; // Relative path from source file
-  readonly absolutePath: string; // Resolved absolute path
-  readonly message: string;
-  readonly location: SourceLocation; // Location of import statement
   readonly line?: number; // Line in HTML file (if syntax error)
   readonly column?: number; // Column in HTML file (if syntax error)
-  readonly hint?: string;
 };
 
 // ============================================================================
@@ -51,13 +65,8 @@ export type HtmlImportError = {
  * styles "./missing.css"  // CssImportError: File not found
  * ```
  */
-export type CssImportError = {
+export type CssImportError = FileImportErrorBase & {
   readonly _tag: 'CssImportError';
-  readonly filePath: string; // Relative path from source file
-  readonly absolutePath: string; // Resolved absolute path
-  readonly message: string;
-  readonly location: SourceLocation; // Location of import statement
-  readonly hint?: string;
 };
 
 /**
@@ -94,13 +103,8 @@ export type CssParseError = {
  * provider VideoProvider({src: "./missing.mp4"})  // MediaImportError: File not found
  * ```
  */
-export type MediaImportError = {
+export type MediaImportError = FileImportErrorBase & {
   readonly _tag: 'MediaImportError';
-  readonly filePath: string; // Relative path from source file
-  readonly absolutePath: string; // Resolved absolute path
-  readonly message: string;
-  readonly location: SourceLocation; // Location of import/reference
-  readonly hint?: string;
 };
 
 // ============================================================================
@@ -119,6 +123,23 @@ export type AssetError = HtmlImportError | CssImportError | CssParseError | Medi
 // ============================================================================
 
 /**
+ * Build a file-import error by tagging a parameter object.
+ *
+ * Single source of truth for the three structurally identical import-error
+ * constructors; each public constructor below is a thin, typed wrapper.
+ *
+ * @param tag - Discriminator (`HtmlImportError` / `CssImportError` / `MediaImportError`)
+ * @param params - Error fields (extends {@link FileImportErrorBase})
+ * @returns The tagged error object
+ */
+function makeImportError<T extends string, P extends FileImportErrorBase>(
+  tag: T,
+  params: P
+): P & { readonly _tag: T } {
+  return { _tag: tag, ...params };
+}
+
+/**
  * Create an HtmlImportError
  *
  * @param params - Error parameters
@@ -133,16 +154,7 @@ export function createHtmlImportError(params: {
   column?: number;
   hint?: string;
 }): HtmlImportError {
-  return {
-    _tag: 'HtmlImportError',
-    filePath: params.filePath,
-    absolutePath: params.absolutePath,
-    message: params.message,
-    location: params.location,
-    line: params.line,
-    column: params.column,
-    hint: params.hint,
-  };
+  return makeImportError('HtmlImportError', params);
 }
 
 /**
@@ -158,14 +170,7 @@ export function createCssImportError(params: {
   location: SourceLocation;
   hint?: string;
 }): CssImportError {
-  return {
-    _tag: 'CssImportError',
-    filePath: params.filePath,
-    absolutePath: params.absolutePath,
-    message: params.message,
-    location: params.location,
-    hint: params.hint,
-  };
+  return makeImportError('CssImportError', params);
 }
 
 /**
@@ -206,12 +211,5 @@ export function createMediaImportError(params: {
   location: SourceLocation;
   hint?: string;
 }): MediaImportError {
-  return {
-    _tag: 'MediaImportError',
-    filePath: params.filePath,
-    absolutePath: params.absolutePath,
-    message: params.message,
-    location: params.location,
-    hint: params.hint,
-  };
+  return makeImportError('MediaImportError', params);
 }

@@ -88,7 +88,18 @@ The following combined cluster was fixed on branch **`refactor/consolidate-valid
 
 All five are pure behavior-preserving refactors (D20's unguarded-form unification is the one intentional, strictly-safer behavior change). Only `eligian-validator.ts`, `type-system-typir/eligian-type-system.ts`, and `utils/error-builder.ts` are changed.
 
-> ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
+The following combined cluster was fixed on branch **`refactor/errors-module-dedup-d17-d22`** (verified: tsgo typecheck clean for shared-utils/language/extension/cli, biome clean, all suites green — shared-utils 87, language 2001 passed/23 skipped, extension 337, cli 230 passed/19 skipped — language coverage CI passing/exit 0). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D17, D18, D19, D21, D22, D42, B43, B45, B46. A single PR consolidating the errors-module duplication clusters plus the co-located IO-error bugs:
+- **D19** — new `hasTag<T>(error, tag)` in `shared-utils/src/tag-guard.ts` is the single source of truth; all 14 `_tag` guards (10 in `errors/type-guards.ts`, 4 in `shared-utils/errors.ts`) delegate, and `isIOError` ORs four `hasTag` calls. This is the fix the earlier revert botched — `hasTag` is *imported* (locally bound), not referenced through the re-export.
+- **D21** — dropped the positional overloads from the four compiler-error constructors (object form is used everywhere in production); two test files migrated to object form.
+- **D22** — `FileImportErrorBase` + generic `makeImportError<T, P>`; the three import errors intersect the base and their constructors/formatter cases collapse.
+- **D17/D18** — `extractDocumentErrors` (pipeline) and `buildFormattedError` (error-reporter) extract the duplicated bodies.
+- **D42** — `getBaseName` helper in `formatters.ts`.
+- **B45/B46** — the mutually-masking IO-error location bug: `formatLocation` now reads `path` (not `filePath`), and the test literals that had been hiding it are rebuilt via the IO factories.
+- **B43** — `mapFileSystemError` passes the raw error as `cause`.
+
+> ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct. *(Superseded: D19 above recomposes `isIOError` via the imported `hasTag` instead of the re-exported leaf guards, sidestepping the binding problem.)*
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
 
@@ -384,6 +395,7 @@ Relies on Effect's undocumented FiberFailure serialization; `JSON.stringify` of 
 **Research notes:** Effect docs endorse `Cause.failures`/`matchCause`/`runPromiseExit`; the JSON approach is not documented.
 
 #### B43. `createReadError` called with a pre-stringified message instead of the raw cause
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (the generic-read-error branch of `mapFileSystemError` now passes the raw `error` as `cause` instead of `nodeError.message`; `message` stays the generic "Failed to read file" string)
 **Severity:** Medium
 **Locations:** [file-loader.ts:58](packages/shared-utils/src/file-loader.ts#L58), [file-loader.ts:59](packages/shared-utils/src/file-loader.ts#L59), [errors.ts:96](packages/shared-utils/src/errors.ts#L96)
 The OS error detail is stored in `cause` as a string; `message` stays generic, defeating the `cause` field's purpose (machine-inspectable original Error).
@@ -396,12 +408,14 @@ Only strips leading `./` and concatenates; correctness depends on an undocumente
 **Fix:** Use `path.win32.resolve(baseDir, relativePath)` (then normalize slashes) or unify both branches on `path.resolve`.
 
 #### B45. `formatLocation` checks `filePath` but IOError uses `path` — IO errors silently lose location
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (the IO fallback branch now checks `'path' in error && error.path` and returns `error.path`; fixed together with B46, which had been masking it by supplying `filePath` in the test literals)
 **Severity:** High (verified) — *placed here adjacent to B43/B44 IO cluster*
 **Locations:** [formatters.ts:79](packages/language/src/errors/formatters.ts#L79), [errors.ts:14](packages/shared-utils/src/errors.ts#L14)
 The IO fallback branch checks `'filePath' in error`, but the IOError subtypes define `path`, not `filePath`, so `formatLocation` always returns `null` for IO errors and the file path is dropped from output.
 **Fix:** Change to `'path' in error && error.path` and return `error.path`.
 
 #### B46. `error-consistency.spec.ts` constructs IOError literals with wrong field names
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (the three IOError literals now use `createFileNotFoundError`/`createPermissionError`, so they carry the real `path` field; assertions updated to the factory messages — `File not found` instead of the bespoke `File does not exist`)
 **Severity:** Medium
 **Locations:** [error-consistency.spec.ts:171](packages/language/src/errors/__tests__/error-consistency.spec.ts#L171), [error-consistency.spec.ts:184](packages/language/src/errors/__tests__/error-consistency.spec.ts#L184), [error-consistency.spec.ts:362](packages/language/src/errors/__tests__/error-consistency.spec.ts#L362)
 Test literals use `filePath`/`absolutePath` instead of `path`, which both diverges from the real type and masks B45.
@@ -651,17 +665,20 @@ Character-identical including JSDoc and TODOs.
 **Abstraction:** `buildActionCallOperations(actionName, actionOperationData, sourceLocation, isEnd): OperationConfigIR[]`.
 
 ### D17. Parse-error extraction duplicated (parseSource vs parseLibraryDocument)
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (extracted `extractDocumentErrors(document, hints)` in `pipeline.ts` — an `Effect<void, ParseError>` that runs the three identical lexer/parser/diagnostic location-computing checks; `parseSource` and `parseLibraryDocument` each delegate, passing a `DocumentErrorHints` object for the few message/hint strings that differ. Pure behavior-preserving refactor.)
 **Severity:** High
 **Sites:** [pipeline.ts:389](packages/language/src/compiler/pipeline.ts#L389), [pipeline.ts:741](packages/language/src/compiler/pipeline.ts#L741)
 Identical lexer/parser/diagnostics → `ParseError` shape.
 **Abstraction:** `extractDocumentErrors(document, fileHint?): Effect<void, ParseError>`.
 
 ### D18. `format{Parse,Validation,Type,Transform}Error` share structure
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (new private `buildFormattedError(prefix, error, sourceCode, hint)` in `error-reporter.ts` assembles the prefix+message / `at <location>` line / code snippet / hint; the four public formatters are now one-line delegations differing only in the prefix string and which `generate*Hint` runs. Pure behavior-preserving refactor.)
 **Severity:** Medium
 **Sites:** [error-reporter.ts:34](packages/language/src/compiler/error-reporter.ts#L34), [error-reporter.ts:65](packages/language/src/compiler/error-reporter.ts#L65), [error-reporter.ts:95](packages/language/src/compiler/error-reporter.ts#L95), [error-reporter.ts:125](packages/language/src/compiler/error-reporter.ts#L125)
 **Abstraction:** `buildFormattedError(prefix, error, sourceCode, hintFn)`.
 
 ### D19. `_tag` type-guard predicate copy-pasted 14× across two packages
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (new `hasTag<T extends string>(error, tag): error is { _tag: T }` in `packages/shared-utils/src/tag-guard.ts`, barrel-exported. All 14 guards — the 10 in `errors/type-guards.ts` and the 4 in `shared-utils/errors.ts` — are now one-line `hasTag(error, '...')` delegations, and `isIOError` ORs four `hasTag` calls. The `import { hasTag } from '@eligian/shared-utils'` binds locally (the previous revert failed because it referenced the *re-exported* leaf guards, which aren't bound in module scope). Verified across language/shared-utils/extension/cli typecheck + suites.)
 **Severity:** High *(merges the language `type-guards.ts` set and the shared-utils set)*
 **Sites:** [type-guards.ts:58](packages/language/src/errors/type-guards.ts#L58), [type-guards.ts:77](packages/language/src/errors/type-guards.ts#L77), [type-guards.ts:99](packages/language/src/errors/type-guards.ts#L99), [type-guards.ts:118](packages/language/src/errors/type-guards.ts#L118), [type-guards.ts:140](packages/language/src/errors/type-guards.ts#L140), [type-guards.ts:162](packages/language/src/errors/type-guards.ts#L162), [type-guards.ts:213](packages/language/src/errors/type-guards.ts#L213), [type-guards.ts:235](packages/language/src/errors/type-guards.ts#L235), [type-guards.ts:260](packages/language/src/errors/type-guards.ts#L260), [type-guards.ts:279](packages/language/src/errors/type-guards.ts#L279), [shared-utils/errors.ts:129](packages/shared-utils/src/errors.ts#L129), [shared-utils/errors.ts:144](packages/shared-utils/src/errors.ts#L144), [shared-utils/errors.ts:159](packages/shared-utils/src/errors.ts#L159), [shared-utils/errors.ts:171](packages/shared-utils/src/errors.ts#L171)
 **Abstraction:** `hasTag<T extends string>(error, tag): error is { _tag: T }` in `packages/shared-utils/src/tag-guard.ts`; each guard becomes a one-liner. Also fix `isIOError` ([type-guards.ts:329](packages/language/src/errors/type-guards.ts#L329)) to compose leaf guards.
@@ -674,12 +691,14 @@ Guarded vs unguarded forms coexist (B-level inconsistency at 1688).
 **Abstraction:** `formatValidationMessage(message, hint?)` in `utils/error-builder.ts`.
 
 ### D21. Constructor dual-API branching copy-pasted across 4 compiler error constructors
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (dropped the positional overloads from `createParseError`/`createValidationError`/`createTypeError`/`createTransformError` — production used the object form exclusively; the `typeof firstArg === 'string'` dispatch + duplicate return blocks are gone, each constructor is now a single object→object map. The only positional callers were two test files (`error-reporter.spec.ts`, `library-errors.spec.ts`), migrated to the object form.)
 **Severity:** High
 **Sites:** [compiler-errors.ts:203](packages/language/src/errors/compiler-errors.ts#L203), [compiler-errors.ts:236](packages/language/src/errors/compiler-errors.ts#L236), [compiler-errors.ts:269](packages/language/src/errors/compiler-errors.ts#L269), [compiler-errors.ts:305](packages/language/src/errors/compiler-errors.ts#L305)
 Each does `typeof firstArg === 'string'` dispatch into two return blocks.
 **Abstraction:** Drop the positional overloads (object form is used everywhere), or a `resolveParams<T>` normalizer.
 
 ### D22. `Html/Css/MediaImportError` structurally identical shapes/constructors/formatters
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (new exported `FileImportErrorBase` holds the five shared fields; `HtmlImportError`/`CssImportError`/`MediaImportError` are now `FileImportErrorBase & { _tag }` intersections (HTML keeps its optional `line`/`column`). A private generic `makeImportError<T, P>(tag, params)` is the single constructor body; the three public constructors are thin typed wrappers. `CssParseError` (different shape) is unchanged. The three identical `${baseMessage} (${error.filePath})` formatter cases are collapsed into one fall-through case.)
 **Severity:** Medium
 **Sites:** [asset-errors.ts:28](packages/language/src/errors/asset-errors.ts#L28), [asset-errors.ts:54](packages/language/src/errors/asset-errors.ts#L54), [asset-errors.ts:97](packages/language/src/errors/asset-errors.ts#L97), [asset-errors.ts:127](packages/language/src/errors/asset-errors.ts#L127), [asset-errors.ts:154](packages/language/src/errors/asset-errors.ts#L154), [asset-errors.ts:202](packages/language/src/errors/asset-errors.ts#L202), [formatters.ts:105](packages/language/src/errors/formatters.ts#L105)
 **Abstraction:** `FileImportErrorBase` + intersection types; generic `makeImportError<T>(tag, params)`; collapse the formatter cases.
@@ -787,6 +806,7 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 **Abstraction:** Refactor `formatJSDocAsMarkdown` to use `MarkdownBuilder` (the pattern it was built to replace).
 
 ### D42. File-basename extraction `split(/[\\/]/).pop()` duplicated in `formatLocation`
+> ✅ **FIXED** — branch `refactor/errors-module-dedup-d17-d22` (private `getBaseName(filePath)` in `formatters.ts`; both the `CssParseError` and `location`-bearing branches of `formatLocation` delegate to it.)
 **Severity:** Low
 **Sites:** [formatters.ts:64](packages/language/src/errors/formatters.ts#L64), [formatters.ts:71](packages/language/src/errors/formatters.ts#L71)
 **Abstraction:** Private `getBaseName(filePath)`.

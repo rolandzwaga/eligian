@@ -20,10 +20,10 @@ describe('Library Error Formatting (T021-T023)', () => {
   describe('T021: FileNotFound error formatting', () => {
     it('should format file not found error with attempted path', () => {
       // Simulate file not found error from library loading
-      const error = createParseError(
-        'Library file not found: ./animations.eligian',
-        createSourceLocation(1, 1)
-      );
+      const error = createParseError({
+        message: 'Library file not found: ./animations.eligian',
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatParseError(error);
 
@@ -34,10 +34,10 @@ describe('Library Error Formatting (T021-T023)', () => {
     });
 
     it('should format error with full resolved path', () => {
-      const error = createParseError(
-        'Library file not found: /project/src/libs/animations.eligian',
-        createSourceLocation(3, 8)
-      );
+      const error = createParseError({
+        message: 'Library file not found: /project/src/libs/animations.eligian',
+        location: createSourceLocation(3, 8),
+      });
 
       const formatted = formatParseError(error);
 
@@ -52,10 +52,10 @@ import { fadeIn } from "./missing.eligian"
 timeline "Test" in ".container" using raf {
   at 0s..5s fadeIn()
 }`;
-      const error = createParseError(
-        'Library file not found: ./missing.eligian',
-        createSourceLocation(2, 1)
-      );
+      const error = createParseError({
+        message: 'Library file not found: ./missing.eligian',
+        location: createSourceLocation(2, 1),
+      });
 
       const formatted = formatParseError(error, sourceCode);
 
@@ -67,10 +67,10 @@ timeline "Test" in ".container" using raf {
 
   describe('T022: ParseError formatting', () => {
     it('should format parse error with filename and location', () => {
-      const error = createParseError(
-        'Unexpected token in library file ./utils.eligian',
-        createSourceLocation(5, 10)
-      );
+      const error = createParseError({
+        message: 'Unexpected token in library file ./utils.eligian',
+        location: createSourceLocation(5, 10),
+      });
 
       const formatted = formatParseError(error);
 
@@ -85,12 +85,12 @@ timeline "Test" in ".container" using raf {
 action fadeIn(selector: string) [
   selectElement(selector
 ]`;
-      const error = createParseError(
-        "Expected ')' but found ']'",
-        createSourceLocation(3, 23),
-        "')'",
-        "']'"
-      );
+      const error = createParseError({
+        message: "Expected ')' but found ']'",
+        location: createSourceLocation(3, 23),
+        expected: "')'",
+        actual: "']'",
+      });
 
       const formatted = formatParseError(error, librarySource);
 
@@ -100,10 +100,10 @@ action fadeIn(selector: string) [
     });
 
     it('should provide helpful hint for bracket errors', () => {
-      const error = createParseError(
-        "Expected ']' to close action block",
-        createSourceLocation(4, 1)
-      );
+      const error = createParseError({
+        message: "Expected ']' to close action block",
+        location: createSourceLocation(4, 1),
+      });
 
       const formatted = formatParseError(error);
 
@@ -112,10 +112,10 @@ action fadeIn(selector: string) [
     });
 
     it('should format error for missing library keyword', () => {
-      const error = createParseError(
-        "Expected 'library' keyword at start of library file",
-        createSourceLocation(1, 1)
-      );
+      const error = createParseError({
+        message: "Expected 'library' keyword at start of library file",
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatParseError(error);
 
@@ -127,12 +127,12 @@ action fadeIn(selector: string) [
   describe('T023: InvalidLibrary error formatting', () => {
     it('should format error when file is not a library', () => {
       // When a file parses as a Program instead of a Library
-      const error = createValidationError(
-        'MissingRequiredField',
-        'File is not a library: expected "library" declaration but found Program',
-        createSourceLocation(1, 1),
-        'Library files must start with "library <name>" declaration'
-      );
+      const error = createValidationError({
+        kind: 'MissingRequiredField',
+        message: 'File is not a library: expected "library" declaration but found Program',
+        location: createSourceLocation(1, 1),
+        hint: 'Library files must start with "library <name>" declaration',
+      });
 
       const formatted = formatValidationError(error);
 
@@ -149,12 +149,12 @@ action fadeIn(selector: string) [
 timeline "Test" in ".container" using raf {
   at 0s..5s fadeIn("#box")
 }`;
-      const error = createValidationError(
-        'MissingRequiredField',
-        'Cannot import from Program file - file must be a Library',
-        createSourceLocation(1, 1),
-        'Add "library <name>" at the start of the file to make it a library'
-      );
+      const error = createValidationError({
+        kind: 'MissingRequiredField',
+        message: 'Cannot import from Program file - file must be a Library',
+        location: createSourceLocation(1, 1),
+        hint: 'Add "library <name>" at the start of the file to make it a library',
+      });
 
       const formatted = formatValidationError(error, sourceCode);
 
@@ -163,11 +163,11 @@ timeline "Test" in ".container" using raf {
     });
 
     it('should format error for incompatible library version', () => {
-      const error = createValidationError(
-        'MissingRequiredField',
-        'Library version mismatch: expected Eligian 2.x, found 1.x syntax',
-        createSourceLocation(1, 1)
-      );
+      const error = createValidationError({
+        kind: 'MissingRequiredField',
+        message: 'Library version mismatch: expected Eligian 2.x, found 1.x syntax',
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatValidationError(error);
 
@@ -177,11 +177,11 @@ timeline "Test" in ".container" using raf {
     });
 
     it('should format error when library has no exported actions', () => {
-      const error = createValidationError(
-        'MissingRequiredField',
-        'Library "empty" has no exported actions',
-        createSourceLocation(1, 1)
-      );
+      const error = createValidationError({
+        kind: 'MissingRequiredField',
+        message: 'Library "empty" has no exported actions',
+        location: createSourceLocation(1, 1),
+      });
 
       const formatted = formatValidationError(error);
 
@@ -190,11 +190,11 @@ timeline "Test" in ".container" using raf {
     });
 
     it('should format error for circular library imports', () => {
-      const error = createValidationError(
-        'InvalidScope',
-        'Circular import detected: a.eligian → b.eligian → a.eligian',
-        createSourceLocation(1, 8)
-      );
+      const error = createValidationError({
+        kind: 'InvalidScope',
+        message: 'Circular import detected: a.eligian → b.eligian → a.eligian',
+        location: createSourceLocation(1, 8),
+      });
 
       const formatted = formatValidationError(error);
 

@@ -161,6 +161,83 @@ export type CompileError = ParseError | TransformError | TypeError | EmitError;
 let documentCounter = 0;
 
 /**
+ * Per-call message/hint customization for {@link extractDocumentErrors}.
+ *
+ * The location-computing logic is identical across `parseSource` and
+ * `parseLibraryDocument`; only the user-facing strings differ (top-level vs.
+ * library file context).
+ */
+interface DocumentErrorHints {
+  /** Prefix prepended to the lexer error message (e.g. `Lexer error: `). */
+  readonly lexerMessagePrefix: string;
+  readonly lexerHint: string;
+  readonly parserHint: string;
+  readonly diagnosticHint: string;
+}
+
+/**
+ * Fail with a ParseError for the first lexer / parser / validation problem on a
+ * built Langium document, or succeed (void) if there are none.
+ *
+ * Single source of truth for the three near-identical error checks that
+ * `parseSource` and `parseLibraryDocument` previously duplicated verbatim (D17).
+ */
+const extractDocumentErrors = (
+  document: LangiumDocument,
+  hints: DocumentErrorHints
+): Effect.Effect<void, ParseError> =>
+  Effect.gen(function* (_) {
+    if (document.parseResult.lexerErrors.length > 0) {
+      const error = document.parseResult.lexerErrors[0];
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: `${hints.lexerMessagePrefix}${error.message}`,
+          location: {
+            line: error.line ?? 1,
+            column: error.column ?? 1,
+            length: error.length ?? 0,
+          },
+          hint: hints.lexerHint,
+        })
+      );
+    }
+
+    if (document.parseResult.parserErrors.length > 0) {
+      const error = document.parseResult.parserErrors[0];
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: error.message,
+          location: {
+            line: error.token.startLine ?? 1,
+            column: error.token.startColumn ?? 1,
+            length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
+          },
+          hint: hints.parserHint,
+        })
+      );
+    }
+
+    if (document.diagnostics && document.diagnostics.length > 0) {
+      const error = document.diagnostics[0];
+      const range = error.range;
+      return yield* _(
+        Effect.fail({
+          _tag: 'ParseError' as const,
+          message: error.message,
+          location: {
+            line: range.start.line + 1, // Langium is 0-based
+            column: range.start.character + 1,
+            length: range.end.character - range.start.character,
+          },
+          hint: hints.diagnosticHint,
+        })
+      );
+    }
+  });
+
+/**
  * T076: Parse DSL source → Langium AST
  *
  * Uses Langium parser to convert source string to AST.
@@ -370,56 +447,15 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
 
     const document = result;
 
-    // Check for parse errors
-    if (document.parseResult.lexerErrors.length > 0) {
-      const error = document.parseResult.lexerErrors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: `Lexer error: ${error.message}`,
-          location: {
-            line: error.line ?? 1,
-            column: error.column ?? 1,
-            length: error.length ?? 0,
-          },
-          hint: 'Check for invalid characters or tokens',
-        })
-      );
-    }
-
-    if (document.parseResult.parserErrors.length > 0) {
-      const error = document.parseResult.parserErrors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: error.message,
-          location: {
-            line: error.token.startLine ?? 1,
-            column: error.token.startColumn ?? 1,
-            length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
-          },
-          hint: 'Check syntax against Eligian grammar',
-        })
-      );
-    }
-
-    // Check for validation errors (from semantic validator)
-    if (document.diagnostics && document.diagnostics.length > 0) {
-      const error = document.diagnostics[0];
-      const range = error.range;
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: error.message,
-          location: {
-            line: range.start.line + 1, // Langium is 0-based
-            column: range.start.character + 1,
-            length: range.end.character - range.start.character,
-          },
-          hint: 'Semantic validation failed',
-        })
-      );
-    }
+    // Check for lexer / parser / semantic-validation errors
+    yield* _(
+      extractDocumentErrors(document, {
+        lexerMessagePrefix: 'Lexer error: ',
+        lexerHint: 'Check for invalid characters or tokens',
+        parserHint: 'Check syntax against Eligian grammar',
+        diagnosticHint: 'Semantic validation failed',
+      })
+    );
 
     // Return parsed AST
     return document.parseResult.value;
@@ -722,56 +758,15 @@ export function parseLibraryDocument(
       })
     );
 
-    // Check for parse errors
-    if (document.parseResult.lexerErrors.length > 0) {
-      const error = document.parseResult.lexerErrors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: `Lexer error in library: ${error.message}`,
-          location: {
-            line: error.line ?? 1,
-            column: error.column ?? 1,
-            length: error.length ?? 0,
-          },
-          hint: `In library file: ${libraryUri.fsPath}`,
-        })
-      );
-    }
-
-    if (document.parseResult.parserErrors.length > 0) {
-      const error = document.parseResult.parserErrors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: error.message,
-          location: {
-            line: error.token.startLine ?? 1,
-            column: error.token.startColumn ?? 1,
-            length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
-          },
-          hint: `In library file: ${libraryUri.fsPath}`,
-        })
-      );
-    }
-
-    // Check for validation errors
-    if (document.diagnostics && document.diagnostics.length > 0) {
-      const error = document.diagnostics[0];
-      const range = error.range;
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: error.message,
-          location: {
-            line: range.start.line + 1,
-            column: range.start.character + 1,
-            length: range.end.character - range.start.character,
-          },
-          hint: `In library file: ${libraryUri.fsPath}`,
-        })
-      );
-    }
+    // Check for lexer / parser / semantic-validation errors
+    yield* _(
+      extractDocumentErrors(document, {
+        lexerMessagePrefix: 'Lexer error in library: ',
+        lexerHint: `In library file: ${libraryUri.fsPath}`,
+        parserHint: `In library file: ${libraryUri.fsPath}`,
+        diagnosticHint: `In library file: ${libraryUri.fsPath}`,
+      })
+    );
 
     // Validate that parsed content is a Library, not a Program
     const root: any = document.parseResult.value;
