@@ -65,6 +65,10 @@ The following cluster was fixed on branch **`refactor/consolidate-lsp-notificati
 
 **Fixed (numbered):** D7. Extracted shared `AssetUpdatedParams` (`documentUris: string[]`) and `AssetImportsDiscoveredParams` (`documentUri: string`) bases into a new `packages/language/src/lsp/asset-notifications.ts`; the CSS/HTML/labels `*UpdatedParams` and `*ImportsDiscoveredParams` interfaces now `extend` them and keep only their asset-specific file-URI field (`cssFileUri`/`htmlFileUri`/`labelsFileUri`, plus CSS's array `cssFileUris`). The CSS-only `CSSErrorParams` pair is unchanged. All public type/constant names are preserved (the `extension/src/language/main.ts` notification handlers destructure the same fields), so this is a behavior-preserving refactor; the base is barrel-exported from the package `index.ts`.
 
+The following cluster was fixed on branch **`refactor/consolidate-css-registry-queries-d11`** (verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D11. Collapsed the six near-identical query methods on `CSSRegistryService` onto two private generics — `collectFromImports<T>(documentUri, select)` (Set-union across a document's imported CSS files) and `findInImports<T>(documentUri, lookup)` (first-truthy match in import order). `getClassesForDocument`/`getIDsForDocument` delegate to the former; `findClassLocation`/`findIDLocation`/`getClassRule`/`getIDRule` delegate to the latter. Public signatures, JSDoc, and behavior (skip-unparsed-files, import-order precedence) are unchanged. Net ~−95 lines.
+
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct.
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
@@ -591,6 +595,7 @@ The `{ classes/ids: Set, *Locations/*Rules: Map, errors: [...] }` shape (differi
 **Abstraction:** `uriToFsPath(uri): string` (via `URI.parse(uri).fsPath`) in `utils/path-utils.ts`.
 
 ### D11. Six near-identical traversal methods in `CSSRegistryService`
+> ✅ **FIXED** — branch `refactor/consolidate-css-registry-queries-d11` (extracted two private generics on `CSSRegistryService`: `collectFromImports<T>(documentUri, select)` (Set-accumulating, used by `getClassesForDocument`/`getIDsForDocument`) and `findInImports<T>(documentUri, lookup)` (first-match across imports, used by `findClassLocation`/`findIDLocation`/`getClassRule`/`getIDRule`). The six public methods are now one-line delegations preserving their JSDoc and exact behavior (import-order iteration, skip-unparsed-files, first-truthy-wins). Pure refactor, behavior-preserving. Verified: tsgo typecheck clean, biome clean, full language suite green at 2001 passed/23 skipped, coverage CI passing.)
 **Severity:** High
 **Sites:** [css-registry.ts:130](packages/language/src/css/css-registry.ts#L130), [css-registry.ts:160](packages/language/src/css/css-registry.ts#L160), [css-registry.ts:197](packages/language/src/css/css-registry.ts#L197), [css-registry.ts:224](packages/language/src/css/css-registry.ts#L224), [css-registry.ts:257](packages/language/src/css/css-registry.ts#L257), [css-registry.ts:284](packages/language/src/css/css-registry.ts#L284)
 `getClassesForDocument`/`getIDsForDocument`/`findClassLocation`/`findIDLocation`/`getClassRule`/`getIDRule` share the imports→loop→metadata→map-lookup structure (~120 lines).
