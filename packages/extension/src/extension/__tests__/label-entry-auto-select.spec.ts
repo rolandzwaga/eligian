@@ -254,4 +254,3 @@ describe('Real consumePendingSelection Function (Feature 041)', () => {
     expect(() => consumePendingSelection('invalid-uri')).not.toThrow();
   });
 });
-

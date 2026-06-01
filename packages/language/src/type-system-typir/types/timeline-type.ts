@@ -44,14 +44,20 @@ export interface TimelineType {
    */
   source: string;
 
-  /** Timeline events (circular reference to TimelineEventType) */
-  events: never[]; // Empty array type to satisfy index signature
+  /**
+   * Timeline events (circular reference to TimelineEventType).
+   * Always initialized as an empty array here; the real event types are resolved
+   * by Typir after finish(). Typed as string[] (not never[]) so that Typir's
+   * CustomTypePropertyInitialization mapping resolves correctly under concrete typing
+   * (a never[] element type distributes to never and breaks create()).
+   */
+  events: string[];
 
   /**
    * Index signature required by Typir CustomTypeProperties
    * Must be: string | number | boolean | bigint | symbol | arrays/maps/sets of these
    */
-  [key: string]: string | never[];
+  [key: string]: string | string[];
 }
 
 /**

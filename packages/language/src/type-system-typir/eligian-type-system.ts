@@ -1,5 +1,10 @@
 import type { AstNode } from 'langium';
-import { InferenceRuleNotApplicable } from 'typir';
+import {
+  type CustomKind,
+  InferenceRuleNotApplicable,
+  type PrimitiveType,
+  type TopType,
+} from 'typir';
 import type { LangiumTypeSystemDefinition, TypirLangiumServices } from 'typir-langium';
 import { OPERATION_REGISTRY } from '../compiler/operations/registry.generated.js';
 import type { ConstantValue, ParameterType } from '../compiler/operations/types.js';
@@ -25,10 +30,16 @@ import { registerEventInference } from './inference/event-inference.js';
 import { registerImportInference } from './inference/import-inference.js';
 import { registerLanguagesInference } from './inference/languages-inference.js';
 import { registerTimelineInference } from './inference/timeline-inference.js';
-import { createImportTypeFactory } from './types/import-type.js';
-import { createLanguagesTypeFactory } from './types/languages-type.js';
-import { createEventTypeFactory } from './types/timeline-event-type.js';
-import { createTimelineTypeFactory } from './types/timeline-type.js';
+import { createImportTypeFactory, type ImportTypeProperties } from './types/import-type.js';
+import {
+  createLanguagesTypeFactory,
+  type LanguagesTypeProperties,
+} from './types/languages-type.js';
+import {
+  createEventTypeFactory,
+  type TimelineEventTypeProperties,
+} from './types/timeline-event-type.js';
+import { createTimelineTypeFactory, type TimelineType } from './types/timeline-type.js';
 import { registerConstantValidation } from './validation/constant-validation.js';
 import { registerControlFlowValidation } from './validation/control-flow-validation.js';
 import { registerEventValidation } from './validation/event-validation.js';
@@ -53,17 +64,17 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   private _typirServices!: TypirLangiumServices<EligianSpecifics>;
 
   // Store primitive type references for use in action function type creation
-  private stringType: any;
-  private numberType: any;
-  private booleanType: any;
-  private objectType: any;
-  private arrayType: any;
-  private unknownType: any;
+  private stringType!: PrimitiveType;
+  private numberType!: PrimitiveType;
+  private booleanType!: PrimitiveType;
+  private objectType!: PrimitiveType;
+  private arrayType!: PrimitiveType;
+  private unknownType!: TopType;
   // Custom type factories
-  private _importFactory: any; // Initialized in onInitialize() for US1
-  private _languagesFactory: any; // Initialized in onInitialize() for Feature 037 US5
-  private _eventFactory: any; // Initialized in onInitialize() for US3
-  private _timelineFactory: any; // Initialized in onInitialize() for US5
+  private _importFactory!: CustomKind<ImportTypeProperties, EligianSpecifics>; // Initialized in onInitialize() for US1
+  private _languagesFactory!: CustomKind<LanguagesTypeProperties, EligianSpecifics>; // Initialized in onInitialize() for Feature 037 US5
+  private _eventFactory!: CustomKind<TimelineEventTypeProperties, EligianSpecifics>; // Initialized in onInitialize() for US3
+  private _timelineFactory!: CustomKind<TimelineType, EligianSpecifics>; // Initialized in onInitialize() for US5
 
   /**
    * Public getters for factories and services (used by inference/validation modules)
@@ -72,19 +83,19 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
     return this._typirServices;
   }
 
-  get importFactory(): any {
+  get importFactory(): CustomKind<ImportTypeProperties, EligianSpecifics> {
     return this._importFactory;
   }
 
-  get languagesFactory(): any {
+  get languagesFactory(): CustomKind<LanguagesTypeProperties, EligianSpecifics> {
     return this._languagesFactory;
   }
 
-  get eventFactory(): any {
+  get eventFactory(): CustomKind<TimelineEventTypeProperties, EligianSpecifics> {
     return this._eventFactory;
   }
 
-  get timelineFactory(): any {
+  get timelineFactory(): CustomKind<TimelineType, EligianSpecifics> {
     return this._timelineFactory;
   }
 

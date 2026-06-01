@@ -7,9 +7,11 @@
  * @module type-system-typir/inference/event-inference
  */
 
+import { type CustomKind, InferenceRuleNotApplicable } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { SequenceBlock, StaggerBlock, TimedEvent } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
+import type { TimelineEventTypeProperties } from '../types/timeline-event-type.js';
 
 /**
  * Extract time value from TimeExpression AST node
@@ -89,7 +91,7 @@ function parseTimeRange(timeRange: any): [number, number] {
  */
 export function registerEventInference(
   typir: TypirLangiumServices<EligianSpecifics>,
-  eventFactory: any // CustomKind<TimelineEventTypeProperties, EligianSpecifics>
+  eventFactory: CustomKind<TimelineEventTypeProperties, EligianSpecifics>
 ): void {
   // Register inference rules using the helper method
   typir.Inference.addInferenceRulesForAstNodes({
@@ -108,14 +110,22 @@ export function registerEventInference(
     TimedEvent: (node: TimedEvent) => {
       const [startTime, endTime] = parseTimeRange(node.timeRange);
 
-      // Create TimelineEventType using the factory
-      return eventFactory.create({
-        eventKind: 'timed',
-        startTime,
-        endTime,
-        duration: 0,
-        delay: 0,
-      });
+      // Create TimelineEventType using the factory and resolve it to a finished Type.
+      // create() returns a configuration chain; the inference rule must return a resolved
+      // Type (or InferenceRuleNotApplicable), not the chain itself.
+      const type = eventFactory
+        .create({
+          properties: {
+            eventKind: 'timed',
+            startTime,
+            endTime,
+            duration: 0,
+            delay: 0,
+          },
+        })
+        .finish()
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
 
     /**
@@ -139,14 +149,20 @@ export function registerEventInference(
       const firstItem = node.items[0];
       const duration = firstItem ? extractTimeValue(firstItem.duration) : 0;
 
-      // Create TimelineEventType using the factory
-      return eventFactory.create({
-        eventKind: 'sequence',
-        duration,
-        startTime: 0,
-        endTime: 0,
-        delay: 0,
-      });
+      // Create TimelineEventType using the factory and resolve it to a finished Type.
+      const type = eventFactory
+        .create({
+          properties: {
+            eventKind: 'sequence',
+            duration,
+            startTime: 0,
+            endTime: 0,
+            delay: 0,
+          },
+        })
+        .finish()
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
 
     /**
@@ -165,14 +181,20 @@ export function registerEventInference(
       const delay = extractTimeValue(node.delay);
       const duration = extractTimeValue(node.duration);
 
-      // Create TimelineEventType using the factory
-      return eventFactory.create({
-        eventKind: 'stagger',
-        delay,
-        duration,
-        startTime: 0,
-        endTime: 0,
-      });
+      // Create TimelineEventType using the factory and resolve it to a finished Type.
+      const type = eventFactory
+        .create({
+          properties: {
+            eventKind: 'stagger',
+            delay,
+            duration,
+            startTime: 0,
+            endTime: 0,
+          },
+        })
+        .finish()
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
   });
 }

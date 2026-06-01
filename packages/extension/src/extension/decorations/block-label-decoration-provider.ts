@@ -53,7 +53,9 @@ export class BlockLabelDecorationProvider {
     }
 
     this.updateTimeout = setTimeout(() => {
-      this.applyDecorations(editor).catch(err => console.error('[BlockLabelDecorationProvider]', err));
+      this.applyDecorations(editor).catch(err =>
+        console.error('[BlockLabelDecorationProvider]', err)
+      );
     }, this.debounceMs);
   }
 

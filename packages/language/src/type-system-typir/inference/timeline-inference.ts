@@ -10,7 +10,7 @@
  * @module type-system-typir/inference/timeline-inference
  */
 
-import { isType } from 'typir';
+import { InferenceRuleNotApplicable, isType } from 'typir';
 import type { Timeline } from '../../generated/ast.js';
 import type { EligianTypeSystem } from '../eligian-type-system.js';
 
@@ -53,8 +53,10 @@ export function registerTimelineInference(typeSystem: EligianTypeSystem): void {
         }
       }
 
-      // Create TimelineType with inferred properties
-      return timelineFactory
+      // Create TimelineType with inferred properties and resolve it to a finished Type.
+      // getTypeFinal() returns undefined until the type becomes identifiable; fall back to
+      // InferenceRuleNotApplicable instead of asserting non-null (which can crash at runtime).
+      const type = timelineFactory
         .create({
           properties: {
             provider: node.provider as 'video' | 'audio' | 'raf' | 'custom',
@@ -64,7 +66,8 @@ export function registerTimelineInference(typeSystem: EligianTypeSystem): void {
           },
         })
         .finish()
-        .getTypeFinal()!;
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
   });
 }

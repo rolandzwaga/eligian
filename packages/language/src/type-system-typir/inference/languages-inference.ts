@@ -10,9 +10,11 @@
  * @module type-system-typir/inference/languages-inference
  */
 
+import { type CustomKind, InferenceRuleNotApplicable } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { LanguagesBlock } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
+import type { LanguagesTypeProperties } from '../types/languages-type.js';
 
 /**
  * T055: Register languages inference rules with Typir
@@ -34,7 +36,7 @@ import type { EligianSpecifics } from '../eligian-specifics.js';
  */
 export function registerLanguagesInference(
   typir: TypirLangiumServices<EligianSpecifics>,
-  languagesFactory: any // CustomKind<LanguagesTypeProperties, EligianSpecifics>
+  languagesFactory: CustomKind<LanguagesTypeProperties, EligianSpecifics>
 ): void {
   // Register inference rules using the helper method
   typir.Inference.addInferenceRulesForAstNodes({
@@ -71,12 +73,20 @@ export function registerLanguagesInference(
       // Collect all language codes in declaration order
       const allLanguages = node.entries.map(entry => entry.code);
 
-      // Create LanguagesType using the factory
-      return languagesFactory.create({
-        languageCount,
-        defaultLanguage,
-        allLanguages,
-      });
+      // Create LanguagesType using the factory and resolve it to a finished Type.
+      // create() returns a configuration chain; the inference rule must return a resolved
+      // Type (or InferenceRuleNotApplicable), not the chain itself.
+      const type = languagesFactory
+        .create({
+          properties: {
+            languageCount,
+            defaultLanguage,
+            allLanguages,
+          },
+        })
+        .finish()
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
   });
 }

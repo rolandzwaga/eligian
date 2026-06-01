@@ -12,8 +12,9 @@
  * - 'html': HTML layouts, content snippets
  * - 'css': CSS stylesheets, class definitions
  * - 'media': Video/audio files (timeline providers)
+ * - 'json': Locale/translation files (locales imports)
  */
-export type AssetType = 'html' | 'css' | 'media';
+export type AssetType = 'html' | 'css' | 'media' | 'json';
 
 /**
  * Reserved keywords that cannot be used as constant names

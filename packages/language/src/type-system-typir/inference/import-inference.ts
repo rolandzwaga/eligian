@@ -7,9 +7,11 @@
  * @module type-system-typir/inference/import-inference
  */
 
+import { type CustomKind, InferenceRuleNotApplicable } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { DefaultImport, NamedImport } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
+import type { ImportTypeProperties } from '../types/import-type.js';
 import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
 
 /**
@@ -64,7 +66,7 @@ export function inferAssetTypeFromKeyword(
  */
 export function registerImportInference(
   typir: TypirLangiumServices<EligianSpecifics>,
-  importFactory: any // CustomKind<ImportTypeProperties, EligianSpecifics>
+  importFactory: CustomKind<ImportTypeProperties, EligianSpecifics>
 ): void {
   // Register inference rules using the helper method
   typir.Inference.addInferenceRulesForAstNodes({
@@ -82,12 +84,20 @@ export function registerImportInference(
     DefaultImport: (node: DefaultImport) => {
       const assetType = inferAssetTypeFromKeyword(node.type);
 
-      // Create ImportType using the factory
-      return importFactory.create({
-        assetType,
-        path: node.path,
-        isDefault: true,
-      });
+      // Create ImportType using the factory and resolve it to a finished Type.
+      // create() returns a configuration chain; the inference rule must return a resolved
+      // Type (or InferenceRuleNotApplicable), not the chain itself.
+      const type = importFactory
+        .create({
+          properties: {
+            assetType,
+            path: node.path,
+            isDefault: true,
+          },
+        })
+        .finish()
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
 
     /**
@@ -114,12 +124,18 @@ export function registerImportInference(
         ? node.assetType // Explicit type from 'as' clause
         : inferAssetTypeFromExtension(node.path); // Infer from extension
 
-      // Create ImportType using the factory
-      return importFactory.create({
-        assetType,
-        path: node.path,
-        isDefault: false,
-      });
+      // Create ImportType using the factory and resolve it to a finished Type.
+      const type = importFactory
+        .create({
+          properties: {
+            assetType,
+            path: node.path,
+            isDefault: false,
+          },
+        })
+        .finish()
+        .getTypeFinal();
+      return type ?? InferenceRuleNotApplicable;
     },
   });
 }
