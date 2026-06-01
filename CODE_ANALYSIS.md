@@ -33,7 +33,19 @@ Notes on this cluster: typing the `CustomKind` factories concretely (B12) surfac
 
 **Also applied (cleanups not tracked as a numbered finding):** removed dead `checkSingleLanguagesBlock` method (eligian-validator.ts); removed empty `else` block (css-code-actions.ts); removed duplicate comments (pipeline.ts, asset-type-validator.ts); used the imported `path` module instead of inline `require` and marked `updateTrackedFiles` private across the three watchers; exported/reused `DEFAULT_INLINE_THRESHOLD`; deleted committed `error-reporter.ts.orig` and added `*.orig` to `.gitignore`.
 
-The following cluster was fixed on branch **`refactor/library-document-resolution-d30-b4`** (verified: tsgo typecheck clean, biome lint clean, full language suite green at 2001 passed/23 skipped). Marked **✅ FIXED** inline below.
+The following were fixed on branch **`fix/preview-webview-cluster`** (merged as PR #59, commit `b51e9db`). **Fixed (numbered):** B20, B21, B50 — eventbus listener removers stored and invoked before re-registering; play/pause/stop/restart now broadcast eventbus requests; `updateConfig`/`initialize` protocol clarified.
+
+The following cluster was fixed on branch **`fix/locale-editor-cluster`** (merged as PR #58, commit `5bbfb9f`; verified: 337 extension tests green, tsgo clean, biome clean, build green). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** B16, B18, B19, B22, B63, B64–B66 (correctness), and duplication clusters D36, D37, D38. The webview now imports `SerializableKeyTreeNode`/`LocaleEditorState`/`findNodeByKey`/pure `removeKeyFromTree` from `locale-editor-core` (D36, source-of-truth dedup that also locks in the B18 mutating-vs-pure divergence) and calls core `validateLocaleCode` (kills the divergent inline locale-code regex); `buildTreeFromKeys`/`buildTreeFromKeysWithPrefix` collapsed to one `buildTreeFromKeys(keys, locales, prefix='')` (D37); `LocaleUsageTracker` extracted `buildKeyUsagePatterns`/`forEachEligianFile`/`collectLineMatches` shared by `searchWorkspace` and `getKeyUsageDetails` (D38). Host-side type duplication (`locale-editor/types.ts` vs the media bundle) was deliberately left as-is to avoid coupling the webview to the extension host.
+
+The following cluster was fixed on branch **`refactor/d4-import-path-resolution`** (merged as PR #60, commit `1d7e1be`; verified: full language suite green at 2001 passed/23 skipped). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D4, and as side effects of the single fix point B53 (`importPath === '.'` now resolves via `path.join`) and B35 (`../` segments normalized). Replaced the strip-quotes→strip-`./`→`path.join` idiom across ~10 sites in 6 files with three shared helpers in `utils/path-utils.ts` (`stripImportQuotes`, `resolveImportRelativePath`, `resolveImportPathToUri`), exported from the package barrel; also removed the three byte-identical `resolveAbsolute*Uri` watcher methods (reinforcing D2). Adds 12 unit tests incl. B53/B35 regressions.
+
+The following cluster was fixed on branch **`refactor/trigger-revalidation-d8-b51`** (merged as PR #63, commit `4faa989`). **Fixed (numbered):** D8, B51 — single `triggerRevalidation(documentUris)` helper in `language/main.ts`; all six CSS/labels/HTML success+error loops delegate to it, parsing each URI once.
+
+The following cluster was fixed on branch **`refactor/library-document-resolution-d30-b4`** (merged as PR #62, commit `55a9a3b`; verified: tsgo typecheck clean, biome lint clean, full language suite green at 2001 passed/23 skipped). Marked **✅ FIXED** inline below.
 
 **Fixed (numbered):** D30, B4. Extracted a private `resolveLibraryNode(libraryImport): Library | undefined` on `EligianValidator` that resolves via the project-wide `resolveLibraryPath()` (the same resolution already used by `checkImportFileExists`, the compiler pipeline, and the scope provider); `checkImportedActionsExist` and `checkImportedActionsPublic` now delegate to it. This collapses two byte-identical resolve→`getDocument`→Library-type-check blocks (D30) and replaces the ad-hoc `substring`/`lastIndexOf('/')` + string-concat URI resolution that skipped normalization on Windows/percent-encoded paths (B4). Pure refactor, net −21 lines.
 
@@ -152,6 +164,7 @@ A `/g` regex declared once outside the per-line loop retains `lastIndex` across 
 **Fix:** Move the regex declaration inside the loop (or reset `pattern.lastIndex = 0` per iteration).
 
 #### B16. `isApplyingWebviewEdit` race condition; flag never reset on rejected `applyEdit`
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): replaced with a per-document `Set` cleared on both resolve and reject
 **Severity:** High
 **Locations:** [LocaleEditorProvider.ts:533-542](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts#L533), [LocaleEditorProvider.ts:395-399](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts#L395)
 A single instance-level boolean is shared across all open locale documents and reset only inside an unawaited `.then()`. If `applyEdit` rejects the flag stays `true` forever (all external changes ignored); with two open files, one document's save corrupts the other's state.
@@ -166,12 +179,14 @@ A single instance-level boolean is shared across all open locale documents and r
 **Research notes:** VS Code API docs confirm `Uri.parse` expects a full URI string, not a path component.
 
 #### B18. `performKeyDelete` mutates the local tree but never tells the extension
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): now persists via `sendLocaleMessage({ type: 'delete-key', key })` and uses the pure `removeKeyFromTree`
 **Severity:** High
 **Locations:** [media/locale-editor.ts:1495-1507](packages/extension/media/locale-editor.ts#L1495)
 After `delete-confirmed`, the webview mutates `localeState.keyTree` but never sends `delete-key`, so the extension's `documentConfigs` retains the key and the next reload/undo restores it — deletions are silently ephemeral.
 **Fix:** Send `sendLocaleMessage({ type: 'delete-key', key })` in `performKeyDelete`.
 
 #### B19. Locale-editor modal element IDs do not match the IDs looked up in JS
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): HTML IDs renamed to `add-key-*`/`add-locale-*`; key modal split into parent + segment fields the handler expects
 **Severity:** High
 **Locations:** [locale-editor.html:527-560](packages/extension/src/extension/locale-editor/templates/locale-editor.html#L527), [media/locale-editor.ts:1562-1573](packages/extension/media/locale-editor.ts#L1562), [media/locale-editor.ts:1626-1636](packages/extension/media/locale-editor.ts#L1626), [media/locale-editor.ts:1700-1727](packages/extension/media/locale-editor.ts#L1700)
 HTML defines `modal-new-key`/`key-modal-*` and `modal-new-locale`/`locale-modal-*`; JS looks for `add-key-*` and `add-locale-*`. Null-guards swallow the mismatch, so both add-key and add-locale modals open but their inputs and buttons are completely non-functional.
@@ -193,6 +208,7 @@ These cases only echo `playbackStarted/Paused/Stopped` back to the extension wit
 **Fix:** Broadcast `timeline-play-request` (etc.) in each case and drop the spurious echo (the existing `eventbus.on('timeline-play')` listener already reports real state).
 
 #### B22. `validateGroupId` duplicate check always passes (identity exclusion of self)
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): switched to occurrence counting; regression test added
 **Severity:** Medium→High (data integrity)
 **Locations:** [LocaleEditorProvider.ts:677](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts#L677), [LocaleValidation.ts:47-50](packages/extension/src/extension/locale-editor/LocaleValidation.ts#L47), [media/locale-editor-core.ts:111-134](packages/extension/media/locale-editor-core.ts#L111)
 Called as `validateGroupId(group.id, groupIds, group.id)`; the check `existingId === id && existingId !== currentGroupId` can never be true when `id === currentGroupId`, so duplicate group IDs are never flagged server-side. Two divergent `validateGroupId` signatures also exist (extension vs webview).
@@ -279,6 +295,7 @@ Uses `selector.length / 2` as a class/ID boundary (meaningless) and is never wir
 **Research notes:** postcss-selector-parser nodes carry `sourceIndex` (zero-based offset) and `source.start/end`.
 
 #### B35. `resolveCSSPath` does not normalize `../` segments
+> ✅ **FIXED** — PR #60 (`refactor/d4-import-path-resolution`): side effect of the D4 single fix point; `../` now normalized
 **Severity:** Medium
 **Locations:** [css-code-actions.ts:170](packages/language/src/css/css-code-actions.ts#L170), [css-code-actions.ts:179](packages/language/src/css/css-code-actions.ts#L179), [css-code-actions.ts:185](packages/language/src/css/css-code-actions.ts#L185)
 Plain `docDir + cleanPath` concatenation yields `file:///.../../shared/styles.css` for parent-relative imports — currently masked by an early return on absolute URIs, but fragile.
@@ -391,6 +408,7 @@ For `'one'`-cardinality types, multiple imports are parsed but only the last is 
 **Fix:** Validate exactly one import (warn on multiple) or register the first occurrence only.
 
 #### B53. `import-processor` path stripping mishandles `'.'`
+> ✅ **FIXED** — PR #60 (`refactor/d4-import-path-resolution`): now uses `path.join` via the shared D4 helper; regression test added
 **Severity:** Medium *(part of D9 path-resolution cluster)*
 **Locations:** [import-processor.ts:127-128](packages/extension/src/language/import-processor.ts#L127)
 Manual `./` stripping makes `importPath === '.'` resolve to the directory; `path.join` already handles `./`.
@@ -457,12 +475,14 @@ Spread shares the Set reference; `add()` mutates the original (unlike `toggleExp
 **Fix:** `expandedKeys: new Set(state.expandedKeys)` before mutating.
 
 #### B63. `renderKeyTree` auto-expand triggers a synchronous recursive double-render
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): auto-expand now runs before rendering
 **Severity:** Medium *(state/render bug)*
 **Locations:** [media/locale-editor.ts:1172-1175](packages/extension/media/locale-editor.ts#L1172)
 Auto-expand of `__root__` recurses after rendering, doubling DOM work on initial load.
 **Fix:** Move the auto-expand logic before the render (or into initialization).
 
 #### B64–B66. Webview "immutable" state functions mutate in place
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): `updateTranslationValue`/`addKeyToTree` now rebuild the tree immutably; regression tests added
 **Severity:** Medium
 **Locations:** `updateTranslationValue` [media/locale-editor-core.ts:595-609](packages/extension/media/locale-editor-core.ts#L595); `addKeyToTree` [media/locale-editor-core.ts:639-650](packages/extension/media/locale-editor-core.ts#L639)
 Both find a node and mutate it in place while returning a shallow-spread state that shares the same `keyTree` array — reference-equality consumers miss the change.
@@ -507,6 +527,7 @@ The two compiler copies are character-identical and lack the optimization; each 
 **Abstraction:** Import the canonical `levenshteinDistance` (or promote to a shared `compiler/utils/string-similarity.ts`); delete the private copies; have `suggestSimilarActions`/`suggestSimilarOperations` delegate to a shared `findSimilar`.
 
 ### D4. Import-path strip-and-resolve pattern duplicated across ~9 sites in 5 files
+> ✅ **FIXED** — PR #60 (`refactor/d4-import-path-resolution`, commit `1d7e1be`): consolidated into `stripImportQuotes`/`resolveImportRelativePath`/`resolveImportPathToUri` in `utils/path-utils.ts` (barrel-exported), applied at all ~10 sites across 6 files; also removed the three `resolveAbsolute*Uri` watcher copies (reinforces D2) and fixed B53 + B35 at the single fix point. +12 unit tests.
 **Severity:** High *(the single largest cross-module duplication; merges the validator-local, css, pipeline, and extension variants)*
 **Sites:** [eligian-validator.ts:1730](packages/language/src/eligian-validator.ts#L1730), [eligian-validator.ts:1796](packages/language/src/eligian-validator.ts#L1796), [eligian-validator.ts:1909](packages/language/src/eligian-validator.ts#L1909), [pipeline.ts:303](packages/language/src/compiler/pipeline.ts#L303), [css-code-actions.ts:182](packages/language/src/css/css-code-actions.ts#L182), [import-processor.ts:124](packages/extension/src/language/import-processor.ts#L124), [css-watcher.ts:149](packages/extension/src/extension/css-watcher.ts#L149), [labels-watcher.ts:146](packages/extension/src/extension/labels-watcher.ts#L146), [html-watcher.ts:140](packages/extension/src/extension/html-watcher.ts#L140)
 The three-step idiom — strip quotes (`/^["']|["']$/`), strip leading `./`, `path.join(docDir, cleanPath)` (→ `URI.file().toString()`) — is repeated verbatim. The `pipeline.ts` variant additionally contains the broken `||` dirname bug (B1), and `import-processor.ts` the `'.'` edge-case bug (B53). A single fix point would have prevented both.
@@ -682,17 +703,20 @@ Identical normalize→dir→parse→`getDocument`→null-check (also the B4 ad-h
 **Abstraction:** `collectImportedActions(importStatements, visited, currentUri)`.
 
 ### D36. Locale-editor webview/extension type & function duplication
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`, commit `5bbfb9f`): webview now imports `SerializableKeyTreeNode`/`LocaleEditorState`/`findNodeByKey`/pure `removeKeyFromTree` from `locale-editor-core` (core is the single source of truth); the divergent inline locale-code regex replaced with core `validateLocaleCode`. Host-side `locale-editor/types.ts` duplication left as-is to avoid coupling the webview to the extension host.
 **Severity:** High *(cluster; merges several findings)*
 **Sites:** `SerializableKeyTreeNode`/`LocaleEditorState` defined in [types.ts:40-55](packages/extension/src/extension/locale-editor/types.ts#L40), [media/locale-editor-core.ts:42-48](packages/extension/media/locale-editor-core.ts#L42), [media/locale-editor-core.ts:64-72](packages/extension/media/locale-editor-core.ts#L64), [media/locale-editor.ts:33-40](packages/extension/media/locale-editor.ts#L33), [media/locale-editor.ts:84-100](packages/extension/media/locale-editor.ts#L84); `findNodeByKey` ([media/locale-editor-core.ts:578-590](packages/extension/media/locale-editor-core.ts#L578) vs [media/locale-editor.ts:1420-1432](packages/extension/media/locale-editor.ts#L1420)); `removeKeyFromTree` pure vs mutating ([media/locale-editor-core.ts:655-666](packages/extension/media/locale-editor-core.ts#L655) vs [media/locale-editor.ts:1512-1529](packages/extension/media/locale-editor.ts#L1512))
 The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-editor.ts:1651), a real behavioral inconsistency.
 **Abstraction:** Single shared module for the types/message-union; import `findNodeByKey`/pure `removeKeyFromTree` from core and delete the local copies (the mutating `removeKeyFromTree` is tied to bug B18).
 
 ### D37. `buildTreeFromKeys` / `buildTreeFromKeysWithPrefix` near-identical (~60 lines)
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): collapsed into a single `buildTreeFromKeys(keys, locales, prefix='')` (root case is `prefix === ''`).
 **Severity:** High
 **Sites:** [key-tree-builder.ts:90-150](packages/extension/src/extension/locale-editor/key-tree-builder.ts#L90), [key-tree-builder.ts:155-222](packages/extension/src/extension/locale-editor/key-tree-builder.ts#L155)
 **Abstraction:** Single `buildTreeFromKeysWithPrefix(keys, locales, prefix='')`.
 
 ### D38. `searchWorkspace` / `getKeyUsageDetails` duplicate find/regex/read setup
+> ✅ **FIXED** — PR #58 (`fix/locale-editor-cluster`): extracted `buildKeyUsagePatterns`/`forEachEligianFile`/`collectLineMatches`; each caller now only post-processes.
 **Severity:** High
 **Sites:** [LocaleUsageTracker.ts:54-103](packages/extension/src/extension/locale-editor/LocaleUsageTracker.ts#L54), [LocaleUsageTracker.ts:114-190](packages/extension/src/extension/locale-editor/LocaleUsageTracker.ts#L114)
 **Abstraction:** Shared private helper returning raw match data; each caller post-processes.
