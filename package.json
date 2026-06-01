@@ -28,16 +28,16 @@
     "eligius": "2.2.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.13",
-    "@types/node": "25.6.0",
+    "@biomejs/biome": "2.4.15",
+    "@types/node": "25.9.1",
     "@typescript/native-preview": "7.0.0-dev.20260427.1",
-    "@vitest/coverage-v8": "4.1.5",
+    "@vitest/coverage-v8": "4.1.7",
     "esbuild": "0.28.0",
     "shx": "0.4.0",
-    "tsx": "4.21.0",
+    "tsx": "4.22.3",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "6.1.1",
-    "vitest": "4.1.5"
+    "vitest": "4.1.7"
   },
   "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8"
 }
