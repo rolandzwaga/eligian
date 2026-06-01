@@ -2,279 +2,46 @@
  * Labels Watcher Manager
  *
  * Watches labels JSON files for changes and triggers validation hot-reload
- * without requiring manual document save. Uses a single FileSystemWatcher
- * with per-file debouncing to handle rapid file changes (e.g., auto-save).
+ * without requiring a manual document save.
  *
- * Pattern: Mirrors css-watcher.ts for consistency
+ * Thin wrapper over {@link FileImportWatcherManager} (consolidation D1).
+ *
  * Constitution Principle I: Simplicity & Documentation
  */
 
-import * as path from 'node:path';
-import { LABELS_UPDATED_NOTIFICATION, resolveImportPathToUri } from '@eligian/language';
-import * as vscode from 'vscode';
+import { LABELS_UPDATED_NOTIFICATION } from '@eligian/language';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
-
-/**
- * Callback invoked when a labels file changes after debouncing
- */
-type LabelsChangeCallback = (filePath: string) => void | Promise<void>;
+import { type FileChangeCallback, FileImportWatcherManager } from './base-watcher-manager.js';
 
 /**
  * Manages file watching for labels hot-reload validation
- *
- * Design:
- * - Single FileSystemWatcher for all labels files (efficient)
- * - Per-file debouncing (300ms) to handle auto-save
- * - Independent timers for each file (parallel editing support)
- * - Reverse mapping: labels file URI → documents that import it (for LSP notifications)
- * - Graceful cleanup on disposal
+ * (one-to-one document → labels file relationship).
  */
-export class LabelsWatcherManager {
-  private watcher: vscode.FileSystemWatcher | null = null;
-  private trackedFiles = new Set<string>();
-  private debounceTimers = new Map<string, NodeJS.Timeout>();
-  private readonly debounceDelay = 300; // milliseconds
-  private readonly onChange: LabelsChangeCallback;
-  private disposables: vscode.Disposable[] = [];
-
-  // LSP notification support for validation hot-reload
-  private client: LanguageClient | null = null;
-  private importsByLabelsFile = new Map<string, Set<string>>(); // labels file URI → Set<document URIs>
-
+export class LabelsWatcherManager extends FileImportWatcherManager {
   /**
-   * Create a new labels watcher manager
-   *
-   * @param onChange - Callback invoked when labels file changes (after debouncing)
+   * @param onChange - Callback invoked when a labels file changes (after debouncing)
    * @param client - Optional LanguageClient for sending LSP notifications
    */
-  constructor(onChange: LabelsChangeCallback, client?: LanguageClient) {
-    this.onChange = onChange;
-    this.client = client || null;
+  constructor(onChange: FileChangeCallback, client?: LanguageClient) {
+    super(
+      {
+        globPattern: '**/*.json',
+        sendUpdateNotification: (c, labelsFileUri, documentUris) => {
+          c.sendNotification(LABELS_UPDATED_NOTIFICATION, { labelsFileUri, documentUris });
+        },
+      },
+      onChange,
+      client
+    );
   }
 
   /**
-   * Register which labels file an Eligian document imports
-   *
-   * Builds reverse mapping: labels file URI → Set of document URIs that import it.
-   * Used to determine which documents need re-validation when a labels file changes.
-   *
-   * This method also automatically starts watching the labels file if not already watching.
-   *
-   * **Important**: This method clears any previous import for this document before
-   * registering new ones. This ensures stale mappings (e.g., from renamed files) are removed.
+   * Register which labels file an Eligian document imports (and start watching it).
    *
    * @param documentUri - Absolute Eligian document URI (file:///...)
-   * @param labelsFileUri - Labels file URI imported by the document (may be relative like "./labels.json")
+   * @param labelsFileUri - Labels file URI imported by the document (may be relative)
    */
   registerImport(documentUri: string, labelsFileUri: string): void {
-    // CRITICAL: Clear old mappings for this document first
-    // This prevents stale entries when labels paths are corrected after being invalid
-    this.clearDocumentMappings(documentUri);
-
-    if (!labelsFileUri) {
-      return;
-    }
-
-    // Parse document URI to get workspace root
-    const docUri = vscode.Uri.parse(documentUri);
-    const docPath = docUri.fsPath;
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
-    const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
-
-    // Convert relative labels path to absolute URI to match file change events
-    const absoluteLabelsUri = resolveImportPathToUri(documentUri, labelsFileUri);
-
-    let documents = this.importsByLabelsFile.get(absoluteLabelsUri);
-    if (!documents) {
-      documents = new Set();
-      this.importsByLabelsFile.set(absoluteLabelsUri, documents);
-    }
-    documents.add(documentUri);
-
-    // Extract file path for watching
-    const labelsUri = vscode.Uri.parse(absoluteLabelsUri);
-    const labelsFilePath = labelsUri.fsPath;
-
-    // Start watching the labels file (this is idempotent - won't recreate watcher if already exists)
-    this.startWatching([labelsFilePath], workspaceRoot);
-  }
-
-  /**
-   * Clear all labels import mappings for a specific document
-   *
-   * Removes the document from all labels file → document mappings.
-   * Used when document imports change or document is closed.
-   *
-   * @param documentUri - Absolute Eligian document URI
-   */
-  private clearDocumentMappings(documentUri: string): void {
-    // Iterate through all labels file mappings and remove this document
-    for (const [labelsFileUri, documents] of this.importsByLabelsFile.entries()) {
-      documents.delete(documentUri);
-      // Clean up empty sets to prevent memory leaks
-      if (documents.size === 0) {
-        this.importsByLabelsFile.delete(labelsFileUri);
-      }
-    }
-  }
-
-  /**
-   * Start watching labels files for changes
-   *
-   * Creates a FileSystemWatcher for the workspace and tracks specified labels files.
-   * File changes are debounced per-file to handle rapid saves.
-   *
-   * @param labelsFiles - Array of labels file paths to watch (relative to workspace)
-   * @param workspaceRoot - Workspace root directory
-   */
-  startWatching(labelsFiles: string[], workspaceRoot: string): void {
-    if (labelsFiles.length === 0) {
-      return;
-    }
-
-    // Update tracked files
-    this.updateTrackedFiles(labelsFiles);
-
-    // Create watcher if it doesn't exist
-    if (!this.watcher) {
-      // Watch all JSON files in workspace (efficient single watcher)
-      const pattern = new vscode.RelativePattern(workspaceRoot, '**/*.json');
-      this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
-
-      // Handle file changes
-      this.watcher.onDidChange(uri => {
-        this.handleFileChange(uri);
-      });
-
-      // Handle file deletions (stop watching)
-      this.watcher.onDidDelete(uri => {
-        this.handleFileDelete(uri);
-      });
-
-      this.disposables.push(this.watcher);
-    }
-  }
-
-  /**
-   * Update the set of tracked files without recreating the watcher
-   *
-   * @param labelsFiles - New array of labels file paths to track
-   */
-  private updateTrackedFiles(labelsFiles: string[]): void {
-    for (const file of labelsFiles) {
-      this.trackedFiles.add(file);
-    }
-  }
-
-  /**
-   * Handle file change event (private helper)
-   */
-  private handleFileChange(uri: vscode.Uri): void {
-    const filePath = uri.fsPath;
-
-    // Only process tracked files
-    if (!this.trackedFiles.has(filePath)) {
-      return;
-    }
-
-    this.debounceChange(filePath);
-  }
-
-  /**
-   * Handle file deletion event (private helper)
-   */
-  private handleFileDelete(uri: vscode.Uri): void {
-    const filePath = uri.fsPath;
-
-    if (this.trackedFiles.has(filePath)) {
-      this.trackedFiles.delete(filePath);
-
-      // Clear any pending debounce timer
-      const timer = this.debounceTimers.get(filePath);
-      if (timer) {
-        clearTimeout(timer);
-        this.debounceTimers.delete(filePath);
-      }
-
-      // Send LSP notification to trigger re-validation with empty labels
-      if (this.client) {
-        const labelsFileUri = vscode.Uri.file(filePath).toString();
-        const documentUris = Array.from(this.importsByLabelsFile.get(labelsFileUri) || []);
-
-        if (documentUris.length > 0) {
-          this.client.sendNotification(LABELS_UPDATED_NOTIFICATION, {
-            labelsFileUri,
-            documentUris,
-          });
-        }
-      }
-    }
-  }
-
-  /**
-   * Debounce file change events per-file with 300ms delay
-   * Send LSP notifications for validation hot-reload
-   *
-   * Uses independent timers for each file to support parallel editing.
-   * This handles auto-save scenarios where files are saved multiple times
-   * in quick succession.
-   *
-   * @param filePath - Absolute path to labels file that changed
-   */
-  private debounceChange(filePath: string): void {
-    // Clear existing timer for this file
-    const existingTimer = this.debounceTimers.get(filePath);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    // Create new timer
-    const timer = setTimeout(() => {
-      this.debounceTimers.delete(filePath);
-
-      // Send LSP notification for validation hot-reload
-      if (this.client) {
-        const labelsFileUri = vscode.Uri.file(filePath).toString();
-        const documentUris = Array.from(this.importsByLabelsFile.get(labelsFileUri) || []);
-
-        if (documentUris.length > 0) {
-          this.client.sendNotification(LABELS_UPDATED_NOTIFICATION, {
-            labelsFileUri,
-            documentUris,
-          });
-        }
-      }
-
-      // Invoke callback (async-safe)
-      Promise.resolve(this.onChange(filePath)).catch(_error => {
-        // Error in onChange callback - silently ignore
-      });
-    }, this.debounceDelay);
-
-    this.debounceTimers.set(filePath, timer);
-  }
-
-  /**
-   * Dispose the watcher and clean up resources
-   *
-   * Clears all debounce timers, disposes FileSystemWatcher,
-   * and prevents memory leaks.
-   */
-  dispose(): void {
-    // Clear all debounce timers
-    for (const timer of this.debounceTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.debounceTimers.clear();
-
-    // Dispose watcher
-    for (const disposable of this.disposables) {
-      disposable.dispose();
-    }
-    this.disposables = [];
-    this.watcher = null;
-
-    // Clear tracked files
-    this.trackedFiles.clear();
+    this.registerImportsInternal(documentUri, [labelsFileUri]);
   }
 }
