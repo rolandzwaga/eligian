@@ -34,6 +34,24 @@ const connection = createConnection(ProposedFeatures.all);
 // Inject the shared services and language-specific services
 const { shared, Eligian } = createEligianServices({ connection, ...NodeFileSystem });
 
+/**
+ * Force a re-validation pass on every document that imports a changed asset file.
+ *
+ * Shared by the CSS/labels/HTML update handlers (success and error paths alike),
+ * which each invalidate the build state of the importing documents so diagnostics
+ * refresh. Each URI is parsed exactly once per document (previously parsed twice
+ * per iteration).
+ */
+function triggerRevalidation(documentUris: string[]): void {
+  for (const docUri of documentUris) {
+    const uri = URI.parse(docUri);
+    if (shared.workspace.LangiumDocuments.getDocument(uri)) {
+      // Force re-validation by invalidating document state
+      shared.workspace.DocumentBuilder.update([uri], []);
+    }
+  }
+}
+
 // Register CSS notification handlers
 connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) => {
   const { cssFileUri, documentUris } = params;
@@ -51,13 +69,7 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
     cssRegistry.updateCSSFile(cssFileUri, parseResult);
 
     // Trigger re-validation of importing documents
-    for (const docUri of documentUris) {
-      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
-      if (document) {
-        // Force re-validation by invalidating document state
-        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
-      }
-    }
+    triggerRevalidation(documentUris);
   } catch (error) {
     // File might be deleted or have errors - clear CSS and trigger re-validation
     const cssRegistry = Eligian.css.CSSRegistry;
@@ -79,12 +91,7 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
     });
 
     // Trigger re-validation to show "file not found" or CSS errors
-    for (const docUri of documentUris) {
-      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
-      if (document) {
-        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
-      }
-    }
+    triggerRevalidation(documentUris);
   }
 });
 
@@ -126,13 +133,7 @@ connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedPar
       labelRegistry.updateLabelsFile(labelsFileUri, metadata);
 
       // Trigger re-validation of importing documents
-      for (const docUri of documentUris) {
-        const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
-        if (document) {
-          // Force re-validation by invalidating document state
-          shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
-        }
-      }
+      triggerRevalidation(documentUris);
     }
     // If validation error, we don't update the registry
     // The validator will handle showing the error to the user
@@ -142,12 +143,7 @@ connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedPar
     labelRegistry.updateLabelsFile(labelsFileUri, []); // Clear labels
 
     // Trigger re-validation to show "file not found" errors
-    for (const docUri of documentUris) {
-      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
-      if (document) {
-        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
-      }
-    }
+    triggerRevalidation(documentUris);
   }
 });
 
@@ -168,13 +164,7 @@ connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams)
     });
 
     // Trigger re-validation of importing documents
-    for (const docUri of documentUris) {
-      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
-      if (document) {
-        // Force re-validation by invalidating document state
-        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
-      }
-    }
+    triggerRevalidation(documentUris);
   } catch (error) {
     // File might be deleted - clear HTML and trigger re-validation
     const htmlRegistry = Eligian.html.HTMLRegistry;
@@ -190,12 +180,7 @@ connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams)
     });
 
     // Trigger re-validation to show "file not found" errors
-    for (const docUri of documentUris) {
-      const document = shared.workspace.LangiumDocuments.getDocument(URI.parse(docUri));
-      if (document) {
-        shared.workspace.DocumentBuilder.update([URI.parse(docUri)], []);
-      }
-    }
+    triggerRevalidation(documentUris);
   }
 });
 

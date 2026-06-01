@@ -378,6 +378,7 @@ The case only toggles container visibility (and a misleading comment hides the e
 **Fix:** Clarify the protocol; if re-init is intended, call `initializeEngine(message.payload.config)`; fix the comment.
 
 #### B51. Redundant `URI.parse()` calls in re-validation loops
+> ✅ **FIXED** — branch `refactor/trigger-revalidation-d8-b51` (folded into the D8 `triggerRevalidation` helper, which parses each URI once)
 **Severity:** Medium *(also part of duplication cluster D8)*
 **Locations:** [language/main.ts:55-59](packages/extension/src/language/main.ts#L55), [language/main.ts:83-87](packages/extension/src/language/main.ts#L83), [language/main.ts:130-134](packages/extension/src/language/main.ts#L130), [language/main.ts:145-149](packages/extension/src/language/main.ts#L145), [language/main.ts:172-176](packages/extension/src/language/main.ts#L172), [language/main.ts:193-197](packages/extension/src/language/main.ts#L193)
 `URI.parse(docUri)` is called twice per iteration in six loops.
@@ -530,6 +531,7 @@ Each defines the same UPDATED + IMPORTS_DISCOVERED notification/param pair, diff
 **Abstraction:** Generic `AssetUpdatedParams`/`AssetImportsDiscoveredParams` base in `lsp/asset-notifications.ts`; asset-specific files extend/re-export.
 
 ### D8. Trigger-revalidation loop duplicated six times in language/main.ts
+> ✅ **FIXED** — branch `refactor/trigger-revalidation-d8-b51` (extracted a single `triggerRevalidation(documentUris)` helper in `packages/extension/src/language/main.ts`; all six CSS/labels/HTML success+error loops now delegate to it, parsing each URI once — resolves B51. Verified: tsgo clean, 337 extension tests green, biome clean.)
 **Severity:** High
 **Sites:** [language/main.ts:53-60](packages/extension/src/language/main.ts#L53), [language/main.ts:81-88](packages/extension/src/language/main.ts#L81), [language/main.ts:128-135](packages/extension/src/language/main.ts#L128), [language/main.ts:144-151](packages/extension/src/language/main.ts#L144), [language/main.ts:170-177](packages/extension/src/language/main.ts#L170), [language/main.ts:192-199](packages/extension/src/language/main.ts#L192)
 Identical `for...getDocument(URI.parse)...update([URI.parse], [])` across success/error paths of CSS/labels/HTML handlers.
