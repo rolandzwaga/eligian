@@ -25,6 +25,10 @@ The following findings — the **Typir inference correctness cluster** — were 
 
 **Fixed (numbered):** B10, B11, B12, B29.
 
+The following duplication cluster was fixed on branch **`refactor/consolidate-file-watchers-d1`** (verified: tsgo typecheck clean, 337 extension tests green, esbuild build clean). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D1, D2, D2b. The three watcher classes (`CSSWatcherManager`/`HTMLWatcherManager`/`LabelsWatcherManager`) now extend a shared `FileImportWatcherManager` (`packages/extension/src/extension/base-watcher-manager.ts`) parameterized by `{ globPattern, watchCreate, notifyOnDeleteWhenUntracked, sendUpdateNotification }`; each concrete watcher is a ~50-line wrapper preserving its existing public API. This also gives the watchers one shared accumulate-only `updateTrackedFiles`, locking in the earlier B23 fix.
+
 Notes on this cluster: typing the `CustomKind` factories concretely (B12) surfaced a second defect beyond the report — the event/import/languages inference rules also passed properties at the top level instead of under `{ properties: {...} }`, masked by the `any` typing; both were corrected. A side fix was forced by B12: `TimelineType.events` was `never[]`, which under concrete typing distributes to `never` and breaks `create()`, so it was changed to `string[]` (always an empty placeholder resolved by Typir later). A new regression test (`type-system-typir/inference/__tests__/inference-resolves-types.spec.ts`) asserts `Inference.inferType()` returns a resolved `Type` for import/languages/timed-event nodes — coverage the cluster previously lacked (the hover provider replicates the logic instead of using Typir). Also fixed a pre-existing `TS6307` in `packages/language/tsconfig.json` whose `include` override dropped `src/schemas/*.json`.
 
 **Also applied (cleanups not tracked as a numbered finding):** removed dead `checkSingleLanguagesBlock` method (eligian-validator.ts); removed empty `else` block (css-code-actions.ts); removed duplicate comments (pipeline.ts, asset-type-validator.ts); used the imported `path` module instead of inline `require` and marked `updateTrackedFiles` private across the three watchers; exported/reused `DEFAULT_INLINE_THRESHOLD`; deleted committed `error-reporter.ts.orig` and added `*.orig` to `.gitignore`.
@@ -465,6 +469,7 @@ Both find a node and mutate it in place while returning a shallow-spread state t
 Clusters are merged across the per-module and repo-wide passes (the analysis found the same clusters independently from multiple angles; their locations are unioned here).
 
 ### D1. Three near-identical file-watcher classes — CSS / HTML / Labels (~690-800 lines)
+> ✅ **FIXED** — branch `refactor/consolidate-file-watchers-d1` (extracted `FileImportWatcherManager` base in `extension/base-watcher-manager.ts`; the three watchers are now ~50-line config wrappers. Subsumes D2 and D2b; locks in the B23 fix via one shared accumulate-only `updateTrackedFiles`. Verified: tsgo clean, 337 extension tests green, build clean.)
 **Severity:** High
 **Sites:** [css-watcher.ts:35](packages/extension/src/extension/css-watcher.ts#L35), [html-watcher.ts:32](packages/extension/src/extension/html-watcher.ts#L32), [labels-watcher.ts:32](packages/extension/src/extension/labels-watcher.ts#L32)
 `CSSWatcherManager`, `HTMLWatcherManager`, `LabelsWatcherManager` share identical fields, constructor, `clearDocumentMappings`, `startWatching` skeleton, `updateTrackedFiles`, `handleFileChange`, `debounceChange`, `handleFileDelete`, and a byte-for-byte identical `dispose()`. They differ only in glob pattern, notification constant, the imports-Map field name, and single-vs-array URI registration. This cluster directly caused the behavioral divergence bug B23 (`updateTrackedFiles` clear vs accumulate) and harbors the duplicated `resolveAbsolute*Uri` (D2), `dispose()` (D2b), and the leftover `console.error` traces (B54).
@@ -472,12 +477,14 @@ Clusters are merged across the per-module and repo-wide passes (the analysis fou
 **Proposed abstraction:** A generic `BaseWatcherManager`/`FileImportWatcherManager` (abstract class or options-configured factory in `extension/base-watcher-manager.ts`) parameterized by `{ globPattern, notificationFactory, single|array registration }`. Each concrete watcher becomes a ~20-30 line wrapper. Fix B23 as part of the consolidation.
 
 ### D2. `resolveAbsolute{CSS,HTML,Labels}Uri` — byte-identical private methods
+> ✅ **FIXED** — branch `refactor/consolidate-file-watchers-d1` (consolidated into the D1 base, which resolves import paths via the D4 `resolveImportPathToUri` helper instead of the per-watcher copies).
 **Severity:** Medium
 **Sites:** [css-watcher.ts:137](packages/extension/src/extension/css-watcher.ts#L137), [html-watcher.ts:128](packages/extension/src/extension/html-watcher.ts#L128), [labels-watcher.ts:134](packages/extension/src/extension/labels-watcher.ts#L134)
 Identical `startsWith('file://')` → parse → dirname → strip `./` → join → `Uri.file().toString()` logic (~18 lines each).
 **Abstraction:** Standalone `resolveAbsoluteFileUri(documentUri, fileUri)` in `extension/uri-utils.ts` (or `watcher-utils.ts`). Useful independently of D1.
 
 #### D2b. `dispose()` byte-for-byte identical across the three watchers
+> ✅ **FIXED** — branch `refactor/consolidate-file-watchers-d1` (single `dispose()` now lives on the D1 base class).
 **Severity:** Medium
 **Sites:** [css-watcher.ts:338](packages/extension/src/extension/css-watcher.ts#L338), [html-watcher.ts:289](packages/extension/src/extension/html-watcher.ts#L289), [labels-watcher.ts:308](packages/extension/src/extension/labels-watcher.ts#L308)
 ~17 lines × 3. Subsumed by D1; otherwise extract `disposeWatcherResources(state)`.
