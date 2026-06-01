@@ -910,4 +910,4 @@ export const compileWithDefaults = (source: string) =>
  *
  * Re-export all compilation functions for external use.
  */
-export { transformAST, typeCheck, optimize, emitJSON };
+export { emitJSON, optimize, transformAST, typeCheck };

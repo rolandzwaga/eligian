@@ -26,8 +26,8 @@ import type {
   TTimelineProviderSettings,
 } from 'eligius';
 import type { JsonValue, SourceLocation } from './common.js';
+
 // Re-export for external use
-export type { JsonValue };
 // Re-export Eligius types for convenience
 export type {
   IEndableActionConfiguration,
@@ -38,9 +38,10 @@ export type {
   IOperationConfiguration,
   ITimelineActionConfiguration,
   ITimelineConfiguration,
+  JsonValue,
+  TimelineTypes,
   TLanguageCode,
   TOperationData,
-  TimelineTypes,
   TTimelineProviderSettings,
 };
 
