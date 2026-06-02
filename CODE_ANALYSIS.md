@@ -4,7 +4,7 @@
 
 This report synthesizes a verified, cross-module static analysis of the Eligian DSL monorepo (language core, compiler, CSS/HTML/labels tooling, Typir type system, completion, asset loading, CLI, VS Code extension, locale editor, and shared utilities). The original deduplicated framing identified **96 distinct issues** across bugs, code-duplication clusters, and anti-patterns. The dominant theme of the report was **systemic code duplication** — the same logic (file-watcher classes, Levenshtein distance, import-path resolution, control-flow-pairing validators, `_tag` type guards, `error.hint` formatting, empty-CSS-metadata construction, AST root traversal) copy-pasted across 3-9 sites with silent behavioral drift that produced real bugs.
 
-**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the remaining open work is the **medium/low bug tail** (17 Medium, 3 Low) plus the **anti-pattern themes** (god classes, pervasive `any`, dead/stub code, encapsulation/perf). See the status table below.
+**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the medium/low bug tail has been substantially drained — **11 Medium bugs were closed** in the four co-located cleanup batches (asset-loading correctness, extension resource leaks, validator performance, completion correctness). The remaining open work is a **smaller medium/low bug tail** (6 Medium, 3 Low) plus the **anti-pattern themes** (god classes, pervasive `any`, dead/stub code, encapsulation/perf). See the status table below.
 
 ## Summary Table — Status by Category
 
@@ -12,19 +12,21 @@ Re-tallied from the inline-numbered findings in this document (each `B`/`D` find
 
 | Category | Fixed | Open | Total |
 |---|---|---|---|
-| Bug | 46 | 20 | 66 |
+| Bug | 57 | 9 | 66 |
 | Duplication | 46 | 0 | 46 |
-| Anti-pattern | 9 | 39 | 48 |
-| **Total** | **101** | **59** | **160** |
+| Anti-pattern | 11 | 37 | 48 |
+| **Total** | **114** | **46** | **160** |
 
 **Open bugs by severity** (the actionable remainder — all High-severity bugs are fixed):
 
 | | High | Medium | Low |
 |---|---|---|---|
-| Open | 0 | 17 | 3 |
+| Open | 0 | 6 | 3 |
 
-Open Medium bugs: B24, B25, B26, B30, B31, B32, B33, B36, B37, B38, B39, B44, B47, B48, B49, B52, B59.
+Open Medium bugs: B30, B31, B44, B47, B52, B59.
 Open Low bugs: B55, B57, B61.
+
+> **B47 note:** the resource-leak half (the undisposed singleton `EligianServices` in `block-label-detector`) is fixed; the remaining open work is the architectural migration of bracket-position detection from the extension host to a custom LSP request (deferred to its own PR — it crosses the LSP boundary, needs version-sync handling, and would require redesigning the existing `findBlockLabels` test suite).
 
 ---
 
@@ -138,6 +140,20 @@ The following "dedup tail" cluster (Track A — the remaining medium/low duplica
 - **D39** — `locale-serializer.ts` was already removed in earlier work (no longer tracked/present); no action required.
 - **D2c** — new generic `debounce<K>(timers, key, delay, fn)` in `extension/debounce-util.ts`; `FileImportWatcherManager.debounceChange` (the D1 base) and the preview `FileWatcher` now delegate, replacing their hand-rolled clear-timer/setTimeout/delete-on-fire blocks.
 - **D41** — `jsdoc-formatter.ts` `formatJSDocAsMarkdown` now builds via `MarkdownBuilder` instead of the manual `lines.push`/`join` array (output byte-identical).
+
+The following four co-located cleanup batches were fixed on branch **`fix/medium-bug-tail-batches`** (verified: `pnpm run typecheck` clean across all packages, biome `check` clean — only 4 pre-existing `useOptionalChain` warnings remain in the untouched `eligian-scope-provider.ts` — full suites green at baseline: language 2001 passed/23 skipped, extension 337, cli 230 passed/19 skipped, shared-utils 87; language coverage CI passing/exit 0). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** B24, B25, B26, B32, B33, B36, B37, B38, B39, B48, B49 — eleven Medium bugs, grouped by module:
+- **Batch A — asset-loading correctness:** **B36** (CST `range.start` is 0-based; import `SourceLocation` now `+ 1` to match `getSourceLocation`), **B37** (`provider` imports no longer read the binary media file into memory as a UTF-8 string only to discard it), **B38** (`IAssetValidationService.validateAsset` interface union now includes `'json'`, matching the implementation), **B39** (`loadProgramAssets` locales branch now runs the AJV `validateLocalesJSON` schema check instead of bare `JSON.parse`, so structurally-invalid-but-parseable locale files are rejected).
+- **Batch B — extension resource leaks:** **B48** (`PreviewManager` singleton torn down via a new static `disposeInstance()` pushed into `context.subscriptions`), **B49** (the `'Eligian Compiler'` output channel is created once via a lazy module-level getter and disposed through `context.subscriptions`, instead of a fresh channel per failed compile). Also removed the leftover `LABELS_IMPORTS_DISCOVERED` `console.error` in `extension/main.ts` (the trailing half of B54) and added `disposeBlockLabelServices()` wiring.
+- **Batch C — validator performance:** **B24** (`checkRecursiveActionCalls` DFS now carries a finished-node `visited` set — standard white/gray/black coloring — eliminating the O(M^N) re-exploration; cycle reporting is preserved and deduplicated), **B25** (`checkLocalesImports` is now `async` and uses `fs.promises` + a non-throwing `fileExistsAsync`, so LSP validation no longer blocks the event loop on synchronous disk I/O).
+- **Batch D — completion correctness:** **B26** (`EligianHoverProvider.services` is now a required, concretely-typed `EligianServices`; the `{ References: {} }` mock that silently disabled JSDoc hover is gone — all call sites already pass real services), **B33** (`detectControllerContext` parameter index now counts complete quoted-string literals with escape handling rather than halving a raw quote count, fixing `addController("O'Brien", …)` miscounts). **B32** was **verified already-resolved** in prior unmarked work (the `eventAction.eventName` early-return is gone; the regex gate handles re-editing an existing event name).
+
+**Also fixed (anti-patterns):**
+- **`checkImportNameCollisions` O(N²)** — moved from a per-`LibraryImport` check to a single Program-level validator that scans all imports once (local-conflict lookup also switched to a `Set`); this removes the redundant full re-scan per import and the duplicate diagnostics it emitted.
+- **Singleton `EligianServices` in `block-label-detector` with no disposal** — exposed `disposeServices()`, wired into the extension's `deactivate()` via `context.subscriptions` (pairs with B47).
+
+Deliberately **deferred** (risky / cross-cutting, left for focused follow-ups consistent with this report's "manual review" policy): **B47**'s LSP-request migration (see note in the summary), the **deprecated `AssetError` → discriminated-union migration**, the **double media file-existence check**, and **`getImportedActions` memoization** (a naive cache would hold stale library-AST nodes across document rebuilds — a correctness hazard worse than the perf cost; needs build-cycle-aware invalidation).
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
 
@@ -329,12 +345,14 @@ Called as `validateGroupId(group.id, groupIds, group.id)`; the check `existingId
 ### Medium Severity
 
 #### B24. `checkRecursiveActionCalls` DFS has no global visited set (exponential blowup)
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (added a finished-node `visited: Set<string>` to the DFS — white/gray/black coloring where `chain` is the recursion stack and `visited` is the completed set — so a node reachable via N paths is explored once; cycle detection and reporting are preserved, and duplicate diagnostics for diamond-reachable cycles are deduplicated)
 **Severity:** Medium
 **Locations:** [eligian-validator.ts:1421](packages/language/src/eligian-validator.ts#L1421), [eligian-validator.ts:1440](packages/language/src/eligian-validator.ts#L1440), [eligian-validator.ts:1452](packages/language/src/eligian-validator.ts#L1452)
 Only the linear call chain is tracked; nodes outside the current chain are re-explored from scratch, giving O(M^N) worst case.
 **Fix:** Add a `visited: Set<string>` initialized once; skip already-visited actions; add to `visited` after iterating.
 
 #### B25. Synchronous `fs.existsSync`/`fs.readFileSync` in an LSP validator blocks the event loop
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (`checkLocalesImports` is now `async`/returns `Promise<void>`; existence is probed with a non-throwing `fileExistsAsync` (`fs.promises.access`) and content read via `fs.promises.readFile`. Langium `ValidationCheck` natively supports async checks, and `parseAndValidate` already awaits them.)
 **Severity:** Medium
 **Locations:** [eligian-validator.ts:1914](packages/language/src/eligian-validator.ts#L1914), [eligian-validator.ts:1936](packages/language/src/eligian-validator.ts#L1936), [eligian-validator.ts:1938](packages/language/src/eligian-validator.ts#L1938)
 `checkLocalesImports` does synchronous disk I/O inside the validation cycle, freezing the UI proportional to file size/disk latency.
@@ -342,6 +360,7 @@ Only the linear call chain is tracked; nodes outside the current chain are re-ex
 **Research notes:** Langium `ValidationCheck` is `(node, accept, cancelToken) => MaybePromise<void>` — async validators are natively supported.
 
 #### B26. `EligianHoverProvider` stores a mock `services` typed `any`; CommentProvider silently degrades
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (constructor `services` is now a required `EligianServices` (no `?`, no `any`); the `{ References: {} }` fallback that left `documentation.CommentProvider` undefined is removed. The module registration and all four test suites already construct the provider with real `EligianServices`, so no call site relied on the mock.)
 **Severity:** Medium
 **Locations:** [eligian-hover-provider.ts:38](packages/language/src/eligian-hover-provider.ts#L38), [eligian-hover-provider.ts:40](packages/language/src/eligian-hover-provider.ts#L40), [eligian-hover-provider.ts:43](packages/language/src/eligian-hover-provider.ts#L43), [eligian-hover-provider.ts:47](packages/language/src/eligian-hover-provider.ts#L47)
 The optional `services?: any` falls back to `{ References: {} }`, so `services.documentation?.CommentProvider` is always `undefined` and JSDoc hover is silently disabled when instantiated without real services.
@@ -381,12 +400,14 @@ The `validatedDocuments` WeakSet skips any second call for the same `Program` in
 **Fix:** Relax the regex to allow whitespace/commas/combinators, or use a real selector parser; at minimum document the limitation in the error message.
 
 #### B32. `detectAfterEventKeyword` suppresses completions when re-editing an existing event name
+> ✅ **FIXED** — verified on branch `fix/medium-bug-tail-batches` (already implemented in prior unmarked work): the `if (eventAction.eventName) { return false; }` early-return is gone (the param is now `_eventAction`, unused), and a comment documents that the `/\bon\s+event\s*$/` regex on the text before the cursor is the sole gate — so completions are offered when re-editing an existing event name.
 **Severity:** Medium
 **Locations:** [context.ts:311](packages/language/src/completion/context.ts#L311)
 `if (eventAction.eventName) { return false; }` blocks completions even when the cursor is right after `on event` to replace an existing name; the regex at line 321 already gates this case correctly.
 **Fix:** Remove the early-return guard and rely on the existing regex.
 
 #### B33. Controller parameter index miscounted with embedded/escaped quotes
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (`detectControllerContext` now counts complete quoted-string literals via `/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g` — each closed string is exactly one consumed parameter and the in-progress trailing quote is correctly not counted — instead of halving a raw `match(/["']/g)` count, which mis-indexed `addController("O'Brien", …)`)
 **Severity:** Medium
 **Locations:** [context.ts:386](packages/language/src/completion/context.ts#L386), [context.ts:390](packages/language/src/completion/context.ts#L390)
 `textInCall.match(/["']/g)` counts raw quotes, so `addController("O'Brien")` or escaped quotes throw off `Math.floor(count/2)`.
@@ -408,24 +429,28 @@ Plain `docDir + cleanPath` concatenation yields `file:///.../../shared/styles.cs
 **Fix:** Document/assert the absolute-URI invariant, or normalize with `new URL(cleanPath, docDir).href` / `path.resolve`.
 
 #### B36. CST line/column stored 0-indexed into 1-indexed `SourceLocation`
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (the import-statement `sourceLocation` in `compiler-integration.ts` now adds `+ 1` to `range.start.line`/`character` (defaulting to line/col 1 when no CST node), matching the `+ 1` every other call site applies and the 1-indexed `SourceLocation` contract in `errors/base.ts`)
 **Severity:** Medium
 **Locations:** [compiler-integration.ts:279](packages/language/src/asset-loading/compiler-integration.ts#L279), [compiler-integration.ts:280](packages/language/src/asset-loading/compiler-integration.ts#L280), [base.ts:18](packages/language/src/errors/base.ts#L18)
 Import-statement `sourceLocation` omits the `+1` that every other call site applies; currently no observable effect because consumers re-resolve position, but the field is wrong.
 **Fix:** Add `+ 1` to line/column (guarding null), matching `ast-transformer.ts:2474-2475`.
 
 #### B37. Provider (media) file read as UTF-8 then discarded
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (the `provider` branch of `loadProgramAssets` now stores only the relative path and skips `loader.loadFile()` entirely; `loadFile` is called lazily inside the non-provider `else` arm, so layout/styles/locales/named imports still read content as before)
 **Severity:** Medium
 **Locations:** [compiler-integration.ts:165](packages/language/src/asset-loading/compiler-integration.ts#L165), [compiler-integration.ts:166](packages/language/src/asset-loading/compiler-integration.ts#L166), [compiler-integration.ts:176](packages/language/src/asset-loading/compiler-integration.ts#L176), [compiler-integration.ts:178](packages/language/src/asset-loading/compiler-integration.ts#L178)
 `loadFile` reads entire binary media files into memory as UTF-8 strings, then stores only the path — wasteful for large videos.
 **Fix:** Skip `loadFile()` for provider imports; read content only in branches that use it.
 
 #### B38. `IAssetValidationService` interface and implementation have mismatched `assetType`
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (`IAssetValidationService.validateAsset` now accepts `'html' | 'css' | 'media' | 'json'`, matching the implementation and the real `'json'` caller; JSDoc updated)
 **Severity:** Medium
 **Locations:** [interfaces.ts:118](packages/language/src/asset-loading/interfaces.ts#L118), [interfaces.ts:119](packages/language/src/asset-loading/interfaces.ts#L119), [asset-validation-service.ts:39](packages/language/src/asset-loading/asset-validation-service.ts#L39), [asset-validation-service.ts:40](packages/language/src/asset-loading/asset-validation-service.ts#L40)
 Interface omits `'json'` but the implementation and a real caller use it; callers typed to the interface cannot pass `'json'`.
 **Fix:** Add `'json'` to the interface union and JSDoc.
 
 #### B39. Locales JSON schema validation bypassed in `loadProgramAssets`
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (the `locales` branch now calls `validateLocalesJSON(content, importInfo.path)` and maps a returned `LocaleValidationError` to a `validation-error` `AssetError` (including its `details`); the parsed config is only assigned when schema validation passes. Structurally invalid-but-parseable locale files are now rejected. Test documents remain skip-gated in `checkAssetLoading`, so the stricter check surfaces only for real files.)
 **Severity:** Medium
 **Locations:** [compiler-integration.ts:181](packages/language/src/asset-loading/compiler-integration.ts#L181), [compiler-integration.ts:183](packages/language/src/asset-loading/compiler-integration.ts#L183), [locale-import-validator.ts:121](packages/language/src/validators/locale-import-validator.ts#L121)
 Only `JSON.parse` is used; the existing AJV `validateLocalesJSON` (locale-code format, required fields, minProperties) is skipped, so structurally invalid-but-parseable files pass.
@@ -488,12 +513,14 @@ A test-only utility runs a full from-scratch parse on every debounced keystroke 
 **Research notes:** Langium docs use `parseDocument`/`parseHelper` exclusively in test contexts; it bundles fine (no runtime crash), so this is a correctness/perf concern, not a load failure.
 
 #### B48. `PreviewManager` singleton never disposed on deactivation
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (added a static `PreviewManager.disposeInstance()` that disposes the instance if one exists; `activate()` pushes `{ dispose: () => PreviewManager.disposeInstance() }` into `context.subscriptions`, so VS Code tears down all preview panels and the active-editor listener on deactivation)
 **Severity:** Medium
 **Locations:** [main.ts:205](packages/extension/src/extension/main.ts#L205), [PreviewManager.ts:113](packages/extension/src/extension/preview/PreviewManager.ts#L113)
 `dispose()` exists but is never called from `deactivate()` or registered in `context.subscriptions`, leaking panels and the active-editor listener.
 **Fix:** Push a disposal wrapper into `context.subscriptions` or call `dispose()` in `deactivate()`.
 
 #### B49. Output channel leaked on every failing compile command
+> ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (the `'Eligian Compiler'` channel is now created once via a lazy module-level `getCompilerOutputChannel()` and disposed through `context.subscriptions`; the per-failure `createOutputChannel` call is gone)
 **Severity:** Medium
 **Locations:** [main.ts:309](packages/extension/src/extension/main.ts#L309)
 `createOutputChannel('Eligian Compiler')` runs on every failure, never disposed — duplicate output entries and leaked resources.
@@ -950,12 +977,12 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 - **`getAllOperations` JSDoc implies runtime filtering by `FILTERED_OPERATIONS`.** [registry.ts:10](packages/language/src/completion/registry.ts#L10), [registry.ts:81](packages/language/src/completion/registry.ts#L81). Clarify that filtering happens at codegen.
 
 ### Theme: Performance / I/O
-- **`checkImportNameCollisions` O(N²) (full scan per `LibraryImport`).** [eligian-validator.ts:2629](packages/language/src/eligian-validator.ts#L2629), [:2638](packages/language/src/eligian-validator.ts#L2638). Move to a Program-level validator.
+- **`checkImportNameCollisions` O(N²) (full scan per `LibraryImport`).** [eligian-validator.ts:2629](packages/language/src/eligian-validator.ts#L2629), [:2638](packages/language/src/eligian-validator.ts#L2638). Move to a Program-level validator. ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (re-registered as a single `Program`-level check that scans all library imports once; local-conflict lookup uses a `Set`. Also eliminates the duplicate diagnostics the per-import re-scan emitted.)
 - **`getImportedActions` not memoized (called up to 3× per `OperationCall`).** [eligian-scope-provider.ts:131](packages/language/src/eligian-scope-provider.ts#L131), [eligian-validator.ts:675](packages/language/src/eligian-validator.ts#L675), [eligian-validator.ts:737](packages/language/src/eligian-validator.ts#L737), [eligian-validator.ts:1216](packages/language/src/eligian-validator.ts#L1216). Cache per document URI or via `registerBeforeDocument`.
 - **`mapParameterTypeToTypirType` ignores all but the first param type.** [eligian-type-system.ts:198](packages/language/src/type-system-typir/eligian-type-system.ts#L198), [:208](packages/language/src/type-system-typir/eligian-type-system.ts#L208). Document single-type constraint or build a union.
 - **Double file-existence check for media assets.** [asset-validation-service.ts:55](packages/language/src/asset-loading/asset-validation-service.ts#L55), [:76](packages/language/src/asset-loading/asset-validation-service.ts#L76), [media-validator.ts:47](packages/language/src/asset-loading/media-validator.ts#L47), [:61](packages/language/src/asset-loading/media-validator.ts#L61). Remove one check.
 - **`getHtmlForWebview` synchronous `fs.readFileSync` on the extension host.** [LocaleEditorProvider.ts:654](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts#L654). Cache at construction or use `fs.promises`.
-- **Singleton `EligianServices` in `block-label-detector` with no disposal.** [block-label-detector.ts:31](packages/extension/src/extension/decorations/block-label-detector.ts#L31). Expose `disposeServices()` (pairs with B47).
+- **Singleton `EligianServices` in `block-label-detector` with no disposal.** [block-label-detector.ts:31](packages/extension/src/extension/decorations/block-label-detector.ts#L31). Expose `disposeServices()` (pairs with B47). ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (added `disposeServices()` which nulls the singleton; the extension pushes `{ dispose: () => disposeBlockLabelServices() }` into `context.subscriptions`).
 
 ### Theme: Unsafe casts / silent failures
 - **Blind `as NodeJS.ErrnoException` before any guard.** [file-loader.ts:45](packages/shared-utils/src/file-loader.ts#L45). Add an `instanceof Error` check.

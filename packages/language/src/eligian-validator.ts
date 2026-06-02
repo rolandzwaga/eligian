@@ -128,6 +128,7 @@ export function registerValidationChecks(services: EligianServices) {
       validator.checkAssetLoading, // Feature 010: Asset loading and validation
       validator.checkCSSImports, // Feature 013 T016: Extract and register CSS imports
       validator.checkLocalesImports, // Feature 045: Extract and register locales imports
+      validator.checkImportNameCollisions, // T043: US2 - Validate no name conflicts (program-wide, runs once)
     ],
     Library: [
       validator.checkLibraryContent, // T021-T024: US1 - Validate library content constraints
@@ -136,7 +137,6 @@ export function registerValidationChecks(services: EligianServices) {
     LibraryImport: [
       validator.checkImportFileExists, // T041: US2 - Validate library file exists
       validator.checkImportedActionsExist, // T042 + T042a: US2 - Validate imported actions exist
-      validator.checkImportNameCollisions, // T043: US2 - Validate no name conflicts
       validator.checkImportedActionsPublic, // T055: US3 - Validate imported actions are public
       validator.checkImportAliasCollision, // T073: US5 - Validate aliases don't conflict with built-ins
     ],
@@ -202,6 +202,21 @@ export function registerValidationChecks(services: EligianServices) {
     ],
   };
   registry.register(checks, validator);
+}
+
+/**
+ * Asynchronously check whether a file exists, without throwing.
+ *
+ * B25: used in place of the synchronous `fs.existsSync` inside validation
+ * checks so the LSP event loop is not blocked on disk access.
+ */
+async function fileExistsAsync(absolutePath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(absolutePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -1400,6 +1415,15 @@ export class EligianValidator {
     // Track action names in current call chain to detect cycles
     const callChain: string[] = [action.name];
 
+    // B24: actions whose entire call subtree has already been explored (and
+    // found cycle-free relative to the current root). Without this, an action
+    // reachable via N distinct paths is re-explored from scratch each time,
+    // giving O(M^N) worst-case blow-up. This is standard DFS coloring: `chain`
+    // is the recursion stack (gray) used to detect back-edges, `visited` is the
+    // finished set (black). A finished node cannot be part of an undiscovered
+    // cycle, so it is safe to prune.
+    const visited = new Set<string>();
+
     // Helper: Recursively check for cycles starting from an action
     const checkForCycles = (
       currentAction: RegularActionDefinition | EndableActionDefinition,
@@ -1431,11 +1455,14 @@ export class EligianValidator {
               code: 'recursive_action_call',
             }
           );
-        } else {
-          // No cycle yet - recurse deeper with this action added to chain
+        } else if (!visited.has(calledActionName)) {
+          // No cycle yet and not already fully explored - recurse deeper
           checkForCycles(actionRef, [...chain, calledActionName]);
         }
       }
+
+      // Done with this action's subtree - mark finished so other paths skip it.
+      visited.add(currentAction.name);
     };
 
     // Start cycle detection from this action
@@ -1867,7 +1894,7 @@ export class EligianValidator {
    * @param program - AST Program node
    * @param accept - Validation acceptor for reporting errors
    */
-  checkLocalesImports(program: Program, accept: ValidationAcceptor): void {
+  async checkLocalesImports(program: Program, accept: ValidationAcceptor): Promise<void> {
     if (!this.services) return;
 
     const documentUri = program.$document?.uri?.toString();
@@ -1907,8 +1934,12 @@ export class EligianValidator {
       // D4: shared resolution (path.join handles ./, ., ../)
       const absolutePath = resolveImportRelativePath(localesImport.path, docDir);
 
+      // B25: probe existence asynchronously so the LSP validation cycle never
+      // blocks the event loop on synchronous disk I/O.
+      const exists = await fileExistsAsync(absolutePath);
+
       // Check if locales file exists
-      if (!fs.existsSync(absolutePath)) {
+      if (!exists) {
         // Extract language codes from languages block if present
         const languageCodes = program.languages?.entries?.map(entry => entry.code) || [];
         const hasLanguagesBlock = !!program.languages;
@@ -1927,29 +1958,28 @@ export class EligianValidator {
           code: MISSING_LABELS_FILE_CODE, // Reuse existing code for now
           data: diagnosticData,
         });
+        continue;
       }
 
       // Feature 045 Phase 3 - Load locale file, extract keys, populate registry
-      if (fs.existsSync(absolutePath)) {
-        try {
-          const content = fs.readFileSync(absolutePath, 'utf-8');
-          const localeData = JSON.parse(content);
+      try {
+        const content = await fs.promises.readFile(absolutePath, 'utf-8');
+        const localeData = JSON.parse(content);
 
-          // Extract translation keys from locale data
-          const translationKeys = extractTranslationKeys(localeData);
+        // Extract translation keys from locale data
+        const translationKeys = extractTranslationKeys(localeData);
 
-          // Populate the label registry with extracted keys
-          const labelRegistry = this.services.labels.LabelRegistry;
-          const fileUri = URI.file(absolutePath).toString();
-          labelRegistry.updateLabelsFile(fileUri, translationKeys);
-          labelRegistry.registerImports(documentUri, fileUri);
-        } catch (e) {
-          // JSON parse errors or other issues - report as warning
-          const errorMessage = e instanceof Error ? e.message : String(e);
-          accept('warning', `Failed to parse locales file: ${errorMessage}`, {
-            node: localesImport,
-          });
-        }
+        // Populate the label registry with extracted keys
+        const labelRegistry = this.services.labels.LabelRegistry;
+        const fileUri = URI.file(absolutePath).toString();
+        labelRegistry.updateLabelsFile(fileUri, translationKeys);
+        labelRegistry.registerImports(documentUri, fileUri);
+      } catch (e) {
+        // JSON parse errors or other issues - report as warning
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        accept('warning', `Failed to parse locales file: ${errorMessage}`, {
+          node: localesImport,
+        });
       }
     }
   }
@@ -2601,54 +2631,63 @@ export class EligianValidator {
    * - Other imported actions from the same or different libraries
    * - Built-in operations (handled by checkActionNameCollision)
    */
-  checkImportNameCollisions(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
-    const program = libraryImport.$container;
-    if (program.$type !== 'Program') {
-      return; // Library imports only valid in programs
+  checkImportNameCollisions(program: Program, accept: ValidationAcceptor): void {
+    // Anti-pattern fix: previously a `LibraryImport`-level check that re-scanned
+    // every import statement on each invocation — O(N²) over N library imports
+    // and emitting each duplicate-import diagnostic once per import. Running once
+    // at the Program level scans all imports a single time.
+    const libraryImports = program.statements.filter(
+      (stmt): stmt is LibraryImport => stmt.$type === 'LibraryImport'
+    );
+    if (libraryImports.length === 0) {
+      return;
     }
 
-    // Collect all imported action names (with aliases applied)
+    // Collect all imported action names (with aliases applied), in one pass.
     const importedNames = new Map<string, LibraryImport>();
 
-    for (const stmt of program.statements) {
-      if (stmt.$type === 'LibraryImport') {
-        for (const actionImport of stmt.actions) {
-          // Use alias if provided, otherwise use original action name
-          const finalName = actionImport.alias || actionImport.action.$refText || '';
+    for (const stmt of libraryImports) {
+      for (const actionImport of stmt.actions) {
+        // Use alias if provided, otherwise use original action name
+        const finalName = actionImport.alias || actionImport.action.$refText || '';
 
-          // Check for duplicate imports
-          if (importedNames.has(finalName)) {
-            accept('error', `Duplicate import: action '${finalName}' is already imported`, {
-              node: actionImport,
-              property: actionImport.alias ? 'alias' : 'action',
-              code: 'import_name_collision',
-            });
-          } else {
-            importedNames.set(finalName, stmt);
-          }
+        // Check for duplicate imports
+        if (importedNames.has(finalName)) {
+          accept('error', `Duplicate import: action '${finalName}' is already imported`, {
+            node: actionImport,
+            property: actionImport.alias ? 'alias' : 'action',
+            code: 'import_name_collision',
+          });
+        } else {
+          importedNames.set(finalName, stmt);
         }
       }
     }
 
-    // Check for conflicts with locally-defined actions
-    const localActions = getElements(program).filter(
-      el => el.$type === 'RegularActionDefinition' || el.$type === 'EndableActionDefinition'
+    // Check for conflicts with locally-defined actions (computed once).
+    const localActionNames = new Set(
+      getElements(program)
+        .filter(
+          el => el.$type === 'RegularActionDefinition' || el.$type === 'EndableActionDefinition'
+        )
+        .map(action => action.name)
     );
 
-    for (const actionImport of libraryImport.actions) {
-      const finalName = actionImport.alias || actionImport.action.$refText || '';
+    for (const stmt of libraryImports) {
+      for (const actionImport of stmt.actions) {
+        const finalName = actionImport.alias || actionImport.action.$refText || '';
 
-      const conflict = localActions.find(action => action.name === finalName);
-      if (conflict) {
-        accept(
-          'error',
-          `Import name collision: action '${finalName}' conflicts with locally-defined action`,
-          {
-            node: actionImport,
-            property: actionImport.alias ? 'alias' : 'action',
-            code: 'import_name_collision',
-          }
-        );
+        if (localActionNames.has(finalName)) {
+          accept(
+            'error',
+            `Import name collision: action '${finalName}' conflicts with locally-defined action`,
+            {
+              node: actionImport,
+              property: actionImport.alias ? 'alias' : 'action',
+              code: 'import_name_collision',
+            }
+          );
+        }
       }
     }
   }

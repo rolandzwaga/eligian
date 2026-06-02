@@ -16,6 +16,7 @@ import { getController } from './completion/metadata/controllers.generated.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
+import type { EligianServices } from './eligian-module.js';
 import type { DefaultImport, LanguagesBlock, NamedImport } from './generated/ast.js';
 import {
   isActionDefinition,
@@ -35,17 +36,19 @@ import { getFileExtension } from './utils/path-utils.js';
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   private cssHoverProvider = new CSSHoverProvider();
-  private services: any;
+  private services: EligianServices;
 
   constructor(
     private cssRegistry: CSSRegistryService,
     private labelRegistry: LabelRegistryService,
-    services?: any
+    services: EligianServices
   ) {
-    // AstNodeHoverProvider requires services parameter
-    // If services provided (for testing), use them; otherwise create minimal mock
-    super(services || ({ References: {} } as any));
-    this.services = services || ({ References: {} } as any);
+    // B26: services is required and concretely typed. Passing a `{ References: {} }`
+    // mock previously left `documentation.CommentProvider` undefined, silently
+    // disabling JSDoc hover whenever the provider was constructed without real
+    // services. All call sites (module + tests) already pass real EligianServices.
+    super(services);
+    this.services = services;
   }
   /**
    * Override the main hover method to handle:

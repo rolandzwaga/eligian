@@ -38,6 +38,17 @@ function getServices(): EligianServices {
 }
 
 /**
+ * Release the lazily-created Langium services singleton.
+ *
+ * Pairs with B47: the singleton was created on first decoration pass and never
+ * released. Called from the extension's `deactivate()` so the shared module's
+ * services do not outlive the extension host.
+ */
+export function disposeServices(): void {
+  services = null;
+}
+
+/**
  * Find all start/end block bracket positions in a document
  *
  * @param document - TextDocument to analyze
