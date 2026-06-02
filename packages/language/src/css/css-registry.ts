@@ -111,7 +111,10 @@ export class CSSRegistryService {
    * @returns Set of CSS file URIs
    */
   getDocumentImports(documentUri: string): Set<string> {
-    return this.importsByDocument.get(documentUri) || new Set();
+    // Return a defensive copy so callers cannot mutate the registry's internal
+    // import set by reference.
+    const imports = this.importsByDocument.get(documentUri);
+    return imports ? new Set(imports) : new Set();
   }
 
   /**

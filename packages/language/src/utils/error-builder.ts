@@ -35,13 +35,13 @@
  * };
  *
  * // After:
- * return createValidationError('DUPLICATE_IMPORT_NAME', ERROR_MESSAGES.DUPLICATE_IMPORT_NAME, name);
+ * return buildValidationError('DUPLICATE_IMPORT_NAME', ERROR_MESSAGES.DUPLICATE_IMPORT_NAME, name);
  * ```
  *
  * @example
  * ```typescript
  * // With additional properties:
- * return createValidationError(
+ * return buildValidationError(
  *   'UNKNOWN_EXTENSION',
  *   ERROR_MESSAGES.UNKNOWN_EXTENSION,
  *   extension,
@@ -49,7 +49,7 @@
  * );
  * ```
  */
-export function createValidationError<
+export function buildValidationError<
   TCode extends string,
   TDefinition extends (...args: any[]) => { message: string; hint: string },
   TAdditional extends Record<string, unknown> = Record<string, never>,

@@ -13,7 +13,7 @@
 
 import type { NamedImport } from '../generated/ast.js';
 import { inferAssetType } from '../utils/asset-type-inference.js';
-import { createValidationError } from '../utils/error-builder.js';
+import { buildValidationError } from '../utils/error-builder.js';
 import { getFileExtension } from '../utils/path-utils.js';
 import { AMBIGUOUS_EXTENSIONS } from './validation-constants.js';
 import { ERROR_MESSAGES, type TypeInferenceError } from './validation-errors.js';
@@ -60,7 +60,7 @@ export function validateAssetType(importStmt: NamedImport): TypeInferenceError |
 
   // Check if extension is ambiguous (like .ogg)
   if (extension && AMBIGUOUS_EXTENSIONS.has(extension)) {
-    return createValidationError(
+    return buildValidationError(
       'AMBIGUOUS_EXTENSION',
       ERROR_MESSAGES.AMBIGUOUS_EXTENSION,
       [extension],
@@ -73,7 +73,7 @@ export function validateAssetType(importStmt: NamedImport): TypeInferenceError |
 
   // If inference fails, extension is unknown
   if (!inferredType) {
-    return createValidationError(
+    return buildValidationError(
       'UNKNOWN_EXTENSION',
       ERROR_MESSAGES.UNKNOWN_EXTENSION,
       [extension || ''],

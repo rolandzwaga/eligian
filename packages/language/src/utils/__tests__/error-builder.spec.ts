@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { createValidationError } from '../error-builder.js';
+import { buildValidationError } from '../error-builder.js';
 
 describe('Error Builder Utilities', () => {
-  describe('createValidationError', () => {
+  describe('buildValidationError', () => {
     test('should create error with code, message, and hint from definition', () => {
       // Mock error definition function
       const mockDefinition = (name: string) => ({
@@ -10,7 +10,7 @@ describe('Error Builder Utilities', () => {
         hint: 'Use a unique name for each import',
       });
 
-      const result = createValidationError('DUPLICATE_IMPORT_NAME', mockDefinition, ['myFile']);
+      const result = buildValidationError('DUPLICATE_IMPORT_NAME', mockDefinition, ['myFile']);
 
       expect(result).toEqual({
         code: 'DUPLICATE_IMPORT_NAME',
@@ -25,7 +25,7 @@ describe('Error Builder Utilities', () => {
         hint: 'Use a supported file extension',
       });
 
-      const result = createValidationError('UNKNOWN_EXTENSION', mockDefinition, ['.xyz'], {
+      const result = buildValidationError('UNKNOWN_EXTENSION', mockDefinition, ['.xyz'], {
         extension: '.xyz',
       });
 
@@ -43,7 +43,7 @@ describe('Error Builder Utilities', () => {
         hint: 'Use relative paths starting with ./ or ../',
       });
 
-      const result = createValidationError('ABSOLUTE_PATH', mockDefinition, []);
+      const result = buildValidationError('ABSOLUTE_PATH', mockDefinition, []);
 
       expect(result).toEqual({
         code: 'ABSOLUTE_PATH',
@@ -59,7 +59,7 @@ describe('Error Builder Utilities', () => {
       });
 
       const keywords = new Set(['if', 'else', 'for']);
-      const result = createValidationError('RESERVED_KEYWORD', mockDefinition, ['if', keywords]);
+      const result = buildValidationError('RESERVED_KEYWORD', mockDefinition, ['if', keywords]);
 
       expect(result).toEqual({
         code: 'RESERVED_KEYWORD',
@@ -74,7 +74,7 @@ describe('Error Builder Utilities', () => {
         hint: 'Specify the asset type explicitly',
       });
 
-      const result = createValidationError('AMBIGUOUS_EXTENSION', mockDefinition, ['.mp4'], {
+      const result = buildValidationError('AMBIGUOUS_EXTENSION', mockDefinition, ['.mp4'], {
         extension: '.mp4',
         importType: 'media',
       });
@@ -97,7 +97,7 @@ describe('Error Builder Utilities', () => {
         };
       };
 
-      const result = createValidationError('OPERATION_NAME_CONFLICT', mockDefinition, [
+      const result = buildValidationError('OPERATION_NAME_CONFLICT', mockDefinition, [
         'selectElement',
       ]);
 
@@ -114,7 +114,7 @@ describe('Error Builder Utilities', () => {
         hint: 'Only one default import per type is allowed',
       });
 
-      const result = createValidationError('DUPLICATE_DEFAULT_IMPORT', mockDefinition, ['css'], {});
+      const result = buildValidationError('DUPLICATE_DEFAULT_IMPORT', mockDefinition, ['css'], {});
 
       expect(result).toEqual({
         code: 'DUPLICATE_DEFAULT_IMPORT',
@@ -129,7 +129,7 @@ describe('Error Builder Utilities', () => {
         hint: 'Fix the errors above',
       });
 
-      const result = createValidationError('MULTIPLE_ERRORS', mockDefinition, [5], {
+      const result = buildValidationError('MULTIPLE_ERRORS', mockDefinition, [5], {
         errorCount: 5,
         severity: 'high' as const,
       });

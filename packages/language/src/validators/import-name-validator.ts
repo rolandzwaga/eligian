@@ -11,7 +11,7 @@
  * @module import-name-validator
  */
 
-import { createValidationError } from '../utils/error-builder.js';
+import { buildValidationError } from '../utils/error-builder.js';
 import type { ImportNameError } from './validation-errors.js';
 import { ERROR_MESSAGES } from './validation-errors.js';
 
@@ -52,14 +52,14 @@ export function validateImportName(
 ): ImportNameError | undefined {
   // Priority 1: Check for duplicate names
   if (existingNames.has(name)) {
-    return createValidationError('DUPLICATE_IMPORT_NAME', ERROR_MESSAGES.DUPLICATE_IMPORT_NAME, [
+    return buildValidationError('DUPLICATE_IMPORT_NAME', ERROR_MESSAGES.DUPLICATE_IMPORT_NAME, [
       name,
     ]);
   }
 
   // Priority 2: Check for reserved keywords
   if (reservedKeywords.has(name)) {
-    return createValidationError('RESERVED_KEYWORD', ERROR_MESSAGES.RESERVED_KEYWORD, [
+    return buildValidationError('RESERVED_KEYWORD', ERROR_MESSAGES.RESERVED_KEYWORD, [
       name,
       reservedKeywords,
     ]);
@@ -67,11 +67,9 @@ export function validateImportName(
 
   // Priority 3: Check for operation name conflicts
   if (operationNames.has(name)) {
-    return createValidationError(
-      'OPERATION_NAME_CONFLICT',
-      ERROR_MESSAGES.OPERATION_NAME_CONFLICT,
-      [name]
-    );
+    return buildValidationError('OPERATION_NAME_CONFLICT', ERROR_MESSAGES.OPERATION_NAME_CONFLICT, [
+      name,
+    ]);
   }
   // Valid name
   return undefined;

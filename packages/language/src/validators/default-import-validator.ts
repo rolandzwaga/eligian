@@ -12,7 +12,7 @@
  */
 
 import type { DefaultImport } from '../generated/ast.js';
-import { createValidationError } from '../utils/error-builder.js';
+import { buildValidationError } from '../utils/error-builder.js';
 import type { DuplicateDefaultImportError } from './validation-errors.js';
 import { ERROR_MESSAGES } from './validation-errors.js';
 
@@ -50,7 +50,7 @@ export function validateDefaultImports(
     if (existing) {
       errors.set(
         importStmt,
-        createValidationError(
+        buildValidationError(
           'DUPLICATE_DEFAULT_IMPORT',
           ERROR_MESSAGES.DUPLICATE_DEFAULT_IMPORT,
           [importStmt.type],

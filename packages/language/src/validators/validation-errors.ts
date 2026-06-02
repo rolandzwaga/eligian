@@ -73,7 +73,7 @@ export const ERROR_MESSAGES = {
   // Path errors
   // D43: kept as zero-arg functions (rather than static objects) so every
   // ERROR_MESSAGES entry has the uniform `(...args) => { message, hint }` shape
-  // and can be passed directly to createValidationError without an arrow wrapper.
+  // and can be passed directly to buildValidationError without an arrow wrapper.
   ABSOLUTE_PATH: () => ({
     message:
       "Import path must be relative (start with './' or '../'), absolute paths are not portable",

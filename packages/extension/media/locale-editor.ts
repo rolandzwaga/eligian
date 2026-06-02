@@ -10,6 +10,8 @@
 // Import types and pure functions from core module (single source of truth for
 // the new-format tree types and pure tree/validation helpers).
 import {
+  selectKey as coreSelectKey,
+  toggleExpanded as coreToggleExpanded,
   validateGroupId as coreValidateGroupId,
   validateLabelText as coreValidateLabelText,
   validateLanguageCode as coreValidateLanguageCode,
@@ -24,9 +26,6 @@ import {
   type Translation,
   type ValidationError,
 } from './locale-editor-core.js';
-
-// Re-export types for this module's use
-export type { EditorState, LabelGroup, Translation, ValidationError };
 
 // =============================================================================
 // New ILocalesConfiguration Types (Feature 045)
@@ -111,6 +110,39 @@ const localeState: LocaleEditorState = {
   isNewFormat: false,
 };
 
+// Index of the group awaiting delete confirmation (legacy flat format).
+// Module-level rather than stashed on `window` to avoid a race-prone global side-channel.
+let pendingDeleteIndex: number | null = null;
+
+// Debug logging is gated behind a flag so the production webview console stays
+// quiet. Enable from devtools with `window.__localeEditorDebug = true`.
+function isDebugEnabled(): boolean {
+  return (window as unknown as { __localeEditorDebug?: boolean }).__localeEditorDebug === true;
+}
+function debugLog(...args: unknown[]): void {
+  if (isDebugEnabled()) console.log(...args);
+}
+function debugTrace(...args: unknown[]): void {
+  if (isDebugEnabled()) console.trace(...args);
+}
+
+/**
+ * Apply a core LocaleEditorState transition back onto the in-place `localeState`
+ * singleton. The webview keeps a single mutable state object (exposed for tests
+ * via `window.__localeEditorNewState`), so rather than reassigning it we copy the
+ * fields produced by the pure core transition functions — keeping the transition
+ * logic in one place (the core module) instead of re-implementing it inline.
+ */
+function applyLocaleTransition(next: LocaleEditorState): void {
+  localeState.locales = next.locales;
+  localeState.keyTree = next.keyTree;
+  localeState.selectedKey = next.selectedKey;
+  localeState.filePath = next.filePath;
+  localeState.isDirty = next.isDirty;
+  localeState.expandedKeys = next.expandedKeys;
+  localeState.isNewFormat = next.isNewFormat;
+}
+
 // Expose state for testing
 (window as any).__localeEditorState = state;
 (window as any).__localeEditorNewState = localeState;
@@ -132,7 +164,7 @@ const vscode = acquireVsCodeApi();
  * Send message to extension (new format)
  */
 function sendLocaleMessage(message: LocaleToExtensionMessage): void {
-  console.log('[webview] sendLocaleMessage:', message.type);
+  debugLog('[webview] sendLocaleMessage:', message.type);
   vscode.postMessage(message);
 }
 
@@ -195,17 +227,17 @@ function saveFocusState(): void {
  * Restore focus state after re-render
  */
 function restoreFocusState(): void {
-  console.log('[restoreFocusState] state.focusedElement:', state.focusedElement);
+  debugLog('[restoreFocusState] state.focusedElement:', state.focusedElement);
 
   if (!state.focusedElement) {
-    console.log('[restoreFocusState] No focus state to restore');
+    debugLog('[restoreFocusState] No focus state to restore');
     return;
   }
 
   const { groupIndex, translationIndex, field, cursorPosition } = state.focusedElement;
 
   if (groupIndex === undefined) {
-    console.log('[restoreFocusState] groupIndex undefined, clearing state');
+    debugLog('[restoreFocusState] groupIndex undefined, clearing state');
     state.focusedElement = null;
     return;
   }
@@ -214,10 +246,10 @@ function restoreFocusState(): void {
   let inputElement: HTMLInputElement | null = null;
 
   if (translationIndex !== undefined && field !== 'groupId') {
-    console.log(`[restoreFocusState] Looking for translation[data-index="${translationIndex}"]`);
+    debugLog(`[restoreFocusState] Looking for translation[data-index="${translationIndex}"]`);
     // Find translation input by index
     const translationEl = document.querySelector(`.translation[data-index="${translationIndex}"]`);
-    console.log('[restoreFocusState] translationEl found:', !!translationEl);
+    debugLog('[restoreFocusState] translationEl found:', !!translationEl);
     if (translationEl) {
       if (field === 'languageCode') {
         inputElement = translationEl.querySelector('.form-group:nth-child(1) input');
@@ -226,19 +258,19 @@ function restoreFocusState(): void {
       }
     }
   } else if (field === 'groupId') {
-    console.log(`[restoreFocusState] Looking for group[data-index="${groupIndex}"]`);
+    debugLog(`[restoreFocusState] Looking for group[data-index="${groupIndex}"]`);
     // Find group ID input by index
     const groupEl = document.querySelector(`.group[data-index="${groupIndex}"]`);
-    console.log('[restoreFocusState] groupEl found:', !!groupEl);
+    debugLog('[restoreFocusState] groupEl found:', !!groupEl);
     if (groupEl) {
       inputElement = groupEl.querySelector('.group-id input');
     }
   }
 
-  console.log('[restoreFocusState] inputElement found:', !!inputElement);
+  debugLog('[restoreFocusState] inputElement found:', !!inputElement);
   if (inputElement) {
     inputElement.focus();
-    console.log('[restoreFocusState] Focused, setting cursor to:', cursorPosition);
+    debugLog('[restoreFocusState] Focused, setting cursor to:', cursorPosition);
     if (cursorPosition !== undefined) {
       inputElement.setSelectionRange(cursorPosition, cursorPosition);
     }
@@ -252,7 +284,7 @@ function restoreFocusState(): void {
  * Send message to extension
  */
 function sendMessage(message: ToExtensionMessage): void {
-  console.log('[webview] sendMessage:', message.type);
+  debugLog('[webview] sendMessage:', message.type);
   vscode.postMessage(message);
 }
 
@@ -261,7 +293,7 @@ function sendMessage(message: ToExtensionMessage): void {
  */
 window.addEventListener('message', event => {
   const message = event.data as ToWebviewMessage | LocaleToWebviewMessage;
-  console.log('[webview] Received message from extension:', message.type);
+  debugLog('[webview] Received message from extension:', message.type);
 
   // Detect new format by checking for keyTree property
   if ('keyTree' in message && message.type === 'initialize') {
@@ -316,18 +348,18 @@ window.addEventListener('message', event => {
       break;
 
     case 'reload':
-      console.log('[reload] START - saving focus');
+      debugLog('[reload] START - saving focus');
       // Save focus state before updating
       saveFocusState();
-      console.log('[reload] Focus saved, updating state and rendering');
+      debugLog('[reload] Focus saved, updating state and rendering');
       state.labels = legacyMessage.labels;
       renderGroups();
       renderTranslations();
-      console.log('[reload] Render complete, restoring focus on next tick');
+      debugLog('[reload] Render complete, restoring focus on next tick');
       // Restore focus after DOM updates (next tick)
       setTimeout(() => {
         restoreFocusState();
-        console.log('[reload] COMPLETE');
+        debugLog('[reload] COMPLETE');
       }, 0);
       break;
 
@@ -339,7 +371,7 @@ window.addEventListener('message', event => {
       state.isDirty = false;
       localeState.isDirty = false;
       if (legacyMessage.success) {
-        console.log('Save successful');
+        debugLog('Save successful');
       }
       break;
 
@@ -376,8 +408,7 @@ function handleNewFormatMessage(message: LocaleToWebviewMessage): void {
       break;
 
     case 'select-key':
-      localeState.selectedKey = message.key;
-      expandParentKeys(message.key);
+      applyLocaleTransition(coreSelectKey(localeState, message.key));
       renderKeyTree();
       renderLocaleTable();
       scrollToKey(message.key);
@@ -401,7 +432,7 @@ function handleNewFormatMessage(message: LocaleToWebviewMessage): void {
     case 'save-complete':
       localeState.isDirty = false;
       if (message.success) {
-        console.log('Save successful');
+        debugLog('Save successful');
       }
       break;
 
@@ -433,8 +464,8 @@ document.addEventListener('keydown', e => {
  * Render label groups in left panel
  */
 function renderGroups(): void {
-  console.log('[renderGroups] CALLED');
-  console.trace('[renderGroups] Call stack:');
+  debugLog('[renderGroups] CALLED');
+  debugTrace('[renderGroups] Call stack:');
   const container = document.getElementById('groups-list');
   if (!container) return;
 
@@ -773,32 +804,32 @@ function addLabelGroup(): void {
  * Delete a label group
  */
 function deleteGroup(index: number): void {
-  console.log('[deleteGroup] Called with index:', index);
+  debugLog('[deleteGroup] Called with index:', index);
   const group = state.labels[index];
-  console.log('[deleteGroup] Group ID:', group.id);
+  debugLog('[deleteGroup] Group ID:', group.id);
   // Check if group is used in .eligian files
   sendMessage({ type: 'check-usage', groupId: group.id });
 
   // Store index for later deletion after confirmation
-  (window as any).__pendingDeleteIndex = index;
-  console.log('[deleteGroup] Stored pending delete index:', index);
+  pendingDeleteIndex = index;
+  debugLog('[deleteGroup] Stored pending delete index:', index);
 }
 
 /**
  * Handle usage check response and send delete request to extension
  */
 function handleUsageCheckResponse(groupId: string, usageFiles: string[]): void {
-  console.log('[handleUsageCheckResponse] Called for groupId:', groupId);
-  console.log('[handleUsageCheckResponse] Usage files:', usageFiles);
-  const index = (window as any).__pendingDeleteIndex;
-  console.log('[handleUsageCheckResponse] Retrieved pending index:', index);
-  if (index === undefined) {
-    console.log('[handleUsageCheckResponse] No pending index, returning');
+  debugLog('[handleUsageCheckResponse] Called for groupId:', groupId);
+  debugLog('[handleUsageCheckResponse] Usage files:', usageFiles);
+  const index = pendingDeleteIndex;
+  debugLog('[handleUsageCheckResponse] Retrieved pending index:', index);
+  if (index === null) {
+    debugLog('[handleUsageCheckResponse] No pending index, returning');
     return;
   }
 
   // Send delete request to extension (will show VS Code native dialog)
-  console.log('[handleUsageCheckResponse] Sending request-delete message to extension');
+  debugLog('[handleUsageCheckResponse] Sending request-delete message to extension');
   sendMessage({
     type: 'request-delete',
     groupId,
@@ -806,14 +837,14 @@ function handleUsageCheckResponse(groupId: string, usageFiles: string[]): void {
     usageFiles,
   });
 
-  delete (window as any).__pendingDeleteIndex;
+  pendingDeleteIndex = null;
 }
 
 /**
  * Perform the actual deletion after user confirms
  */
 function performDelete(index: number): void {
-  console.log('[performDelete] Deleting group at index:', index);
+  debugLog('[performDelete] Deleting group at index:', index);
   state.labels.splice(index, 1);
   if (state.selectedGroupIndex === index) {
     state.selectedGroupIndex = null;
@@ -1181,7 +1212,7 @@ function createTreeNodeElement(node: SerializableKeyTreeNode, depth: number): HT
 
     // Click to select
     nodeElement.addEventListener('click', () => {
-      localeState.selectedKey = node.fullKey;
+      applyLocaleTransition(coreSelectKey(localeState, node.fullKey));
       renderKeyTree();
       renderLocaleTable();
     });
@@ -1206,11 +1237,7 @@ function createTreeNodeElement(node: SerializableKeyTreeNode, depth: number): HT
     // Toggle expand/collapse
     toggleBtn.addEventListener('click', e => {
       e.stopPropagation();
-      if (isExpanded) {
-        localeState.expandedKeys.delete(node.fullKey);
-      } else {
-        localeState.expandedKeys.add(node.fullKey);
-      }
+      applyLocaleTransition(coreToggleExpanded(localeState, node.fullKey));
       renderKeyTree();
     });
 
