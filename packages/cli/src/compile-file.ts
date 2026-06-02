@@ -17,7 +17,7 @@ import {
   type Program,
   parseSource,
 } from '@eligian/language';
-import { Effect } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 
 /**
  * Options for compiling an Eligian file
@@ -120,22 +120,15 @@ export class IOError extends CompileError {
 }
 
 /**
- * Extract the actual error from Effect's FiberFailure wrapper
+ * Recover the underlying error from an Effect failure Cause.
+ *
+ * Prefers the typed failure (Cause.failureOption); for defects/interruptions it
+ * falls back to Cause.squash, which surfaces the original thrown value. This
+ * replaces a fragile JSON.stringify round-trip that relied on FiberFailure's
+ * undocumented serialization and silently dropped defects.
  */
-function extractEffectError(error: unknown): unknown {
-  if (error && typeof error === 'object') {
-    try {
-      const errorJson = JSON.stringify(error);
-      const parsed = JSON.parse(errorJson);
-      const innerError = parsed.cause?.defect || parsed.cause?.failure;
-      if (innerError?._tag) {
-        return innerError;
-      }
-    } catch {
-      // If parsing fails, use original error
-    }
-  }
-  return error;
+function causeToError<E>(cause: Cause.Cause<E>): E {
+  return Option.getOrElse(Cause.failureOption(cause), () => Cause.squash(cause) as E);
 }
 
 /**
@@ -187,12 +180,9 @@ export async function compileFile(
   const absoluteInputPath = path.resolve(inputPath);
 
   // Parse source to AST
-  let program: Program;
-  try {
-    const parseEffect = parseSource(sourceCode, absoluteInputPath);
-    program = await Effect.runPromise(parseEffect);
-  } catch (error) {
-    const actualError = extractEffectError(error) as CompilerError;
+  const parseExit = await Effect.runPromiseExit(parseSource(sourceCode, absoluteInputPath));
+  if (Exit.isFailure(parseExit)) {
+    const actualError = causeToError(parseExit.cause) as CompilerError;
     const formatted = formatErrors([actualError], sourceCode);
     throw new ParseError(
       'Failed to parse Eligian source',
@@ -203,6 +193,7 @@ export async function compileFile(
       }))
     );
   }
+  const program: Program = parseExit.value;
 
   // Validate and load assets if imports exist
   let assetCount = 0;
@@ -230,16 +221,16 @@ export async function compileFile(
   }
 
   // Run compiler pipeline
-  let config: IEngineConfiguration;
-  try {
-    const compileEffect = compile(sourceCode, {
+  const compileExit = await Effect.runPromiseExit(
+    compile(sourceCode, {
       optimize,
       minify,
       sourceUri: absoluteInputPath,
-    });
-    config = await Effect.runPromise(compileEffect);
-  } catch (error) {
-    const formatted = formatErrors([error as CompilerError], sourceCode);
+    })
+  );
+  if (Exit.isFailure(compileExit)) {
+    const actualError = causeToError(compileExit.cause) as CompilerError;
+    const formatted = formatErrors([actualError], sourceCode);
     throw new CompilationError(
       'Compilation failed',
       formatted.map(err => ({
@@ -249,6 +240,7 @@ export async function compileFile(
       }))
     );
   }
+  const config: IEngineConfiguration = compileExit.value;
 
   // Generate output JSON
   const json = minify ? JSON.stringify(config) : JSON.stringify(config, null, 2);

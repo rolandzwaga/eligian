@@ -8,8 +8,8 @@
  * ESM has 94.58% global browser support (caniuse.com/es6-module).
  */
 
-import * as path from 'node:path';
 import type { AssetManifest, HTMLGeneratorConfig } from './types.js';
+import { isDataUri, isExternalUrl, resolveAssetPath } from './url-utils.js';
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -121,32 +121,6 @@ ${css}
 </body>
 </html>
 `;
-}
-
-/**
- * Check if a URL is external (http:// or https://)
- */
-function isExternalUrl(url: string): boolean {
-  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
-}
-
-/**
- * Check if a URL is a data URI
- */
-function isDataUri(url: string): boolean {
-  return url.startsWith('data:');
-}
-
-/**
- * Resolve a URL reference relative to an HTML file path
- *
- * @param urlRef - The URL reference from the HTML (e.g., "./images/hero.png")
- * @param htmlFilePath - Absolute path to the HTML file
- * @returns Absolute path to the referenced asset
- */
-function resolveAssetPath(urlRef: string, htmlFilePath: string): string {
-  const htmlDir = path.dirname(htmlFilePath);
-  return path.resolve(htmlDir, urlRef);
 }
 
 /**

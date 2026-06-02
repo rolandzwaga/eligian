@@ -21,6 +21,10 @@ import {
   getMimeType,
   NEVER_INLINE_EXTENSIONS,
 } from './types.js';
+import { isDataUri, isExternalUrl, resolveAssetPath } from './url-utils.js';
+
+// Re-export for consumers that imported it from this module (e.g. tests)
+export { resolveAssetPath } from './url-utils.js';
 
 /**
  * Options for asset collection
@@ -66,20 +70,6 @@ const HTML_POSTER_COMBINED_REGEX = /<video[^>]*\sposter\s*=\s*(['"])([^'"]+)\1/g
  * Regex for srcset attribute (handles both quotes)
  */
 const HTML_SRCSET_COMBINED_REGEX = /srcset\s*=\s*(['"])([^'"]+)\1/gi;
-
-/**
- * Check if a URL is external (http:// or https://)
- */
-function isExternalUrl(url: string): boolean {
-  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
-}
-
-/**
- * Check if a URL is a data URI
- */
-function isDataUri(url: string): boolean {
-  return url.startsWith('data:');
-}
 
 /**
  * CSS URL reference with line number
@@ -230,18 +220,6 @@ export function extractHTMLUrls(htmlContent: string): string[] {
   }
 
   return [...urls];
-}
-
-/**
- * Resolve a URL reference relative to a CSS file path
- *
- * @param urlRef - The URL reference from the CSS (e.g., "./images/hero.png")
- * @param cssFilePath - Absolute path to the CSS file
- * @returns Absolute path to the referenced asset
- */
-export function resolveAssetPath(urlRef: string, cssFilePath: string): string {
-  const cssDir = path.dirname(cssFilePath);
-  return path.resolve(cssDir, urlRef);
 }
 
 /**
@@ -414,6 +392,28 @@ async function createDataUri(filePath: string, mimeType: string): Promise<string
 }
 
 /**
+ * Append a source reference to an existing asset entry, if one is already
+ * tracked for the given path.
+ *
+ * @returns true if the asset was already present (source appended); false if
+ *   the caller must create and register a new entry. Returning early on `true`
+ *   preserves the original behavior of only reading/inlining files for new
+ *   assets.
+ */
+function tryAppendAssetSource(
+  assets: Map<string, AssetEntry>,
+  absolutePath: string,
+  source: AssetSource
+): boolean {
+  const existing = assets.get(absolutePath);
+  if (existing) {
+    existing.sources.push(source);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Collect all assets from CSS files and configuration
  *
  * Walks through CSS files extracting url() references, resolves paths,
@@ -468,44 +468,36 @@ export function collectAssets(
         const shouldInline = shouldInlineAsset(extension, stat.size, options.inlineThreshold);
 
         // Create or update asset entry
-        if (assets.has(absolutePath)) {
-          // Add source to existing entry
-          const existing = assets.get(absolutePath)!;
-          existing.sources.push({
-            file: cssFilePath,
-            type: 'css-url',
-            line,
-          });
-        } else {
-          // Create new entry
-          const source: AssetSource = {
-            file: cssFilePath,
-            type: 'css-url',
-            line,
-          };
-
-          let dataUri: string | undefined;
-          if (shouldInline) {
-            dataUri = yield* Effect.tryPromise({
-              try: () => createDataUri(absolutePath, mimeType),
-              catch: () =>
-                new CSSProcessError(`Failed to read asset: ${absolutePath}`, cssFilePath, line),
-            });
-          }
-
-          const entry: AssetEntry = {
-            originalRef: urlRef,
-            sourcePath: absolutePath,
-            outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
-            size: stat.size,
-            inline: shouldInline,
-            dataUri,
-            mimeType,
-            sources: [source],
-          };
-
-          assets.set(absolutePath, entry);
+        const source: AssetSource = {
+          file: cssFilePath,
+          type: 'css-url',
+          line,
+        };
+        if (tryAppendAssetSource(assets, absolutePath, source)) {
+          continue;
         }
+
+        let dataUri: string | undefined;
+        if (shouldInline) {
+          dataUri = yield* Effect.tryPromise({
+            try: () => createDataUri(absolutePath, mimeType),
+            catch: () =>
+              new CSSProcessError(`Failed to read asset: ${absolutePath}`, cssFilePath, line),
+          });
+        }
+
+        const entry: AssetEntry = {
+          originalRef: urlRef,
+          sourcePath: absolutePath,
+          outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
+          size: stat.size,
+          inline: shouldInline,
+          dataUri,
+          mimeType,
+          sources: [source],
+        };
+
+        assets.set(absolutePath, entry);
       }
     }
 
@@ -524,31 +516,25 @@ export function collectAssets(
       // Config assets (video, audio) are never inlined
       const shouldInline = false;
 
-      if (assets.has(absolutePath)) {
-        // Add source to existing entry
-        const existing = assets.get(absolutePath)!;
-        existing.sources.push({
-          file: 'configuration',
-          type: sourceType,
-        });
-      } else {
-        const source: AssetSource = {
-          file: 'configuration',
-          type: sourceType,
-        };
-
-        const entry: AssetEntry = {
-          originalRef,
-          sourcePath: absolutePath,
-          outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
-          size: stat.size,
-          inline: shouldInline,
-          mimeType,
-          sources: [source],
-        };
-
-        assets.set(absolutePath, entry);
+      const source: AssetSource = {
+        file: 'configuration',
+        type: sourceType,
+      };
+      if (tryAppendAssetSource(assets, absolutePath, source)) {
+        continue;
       }
+
+      const entry: AssetEntry = {
+        originalRef,
+        sourcePath: absolutePath,
+        outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
+        size: stat.size,
+        inline: shouldInline,
+        mimeType,
+        sources: [source],
+      };
+
+      assets.set(absolutePath, entry);
     }
 
     // Collect assets from layout template HTML (if provided)
@@ -568,41 +554,35 @@ export function collectAssets(
         const mimeType = getMimeType(extension);
         const shouldInline = shouldInlineAsset(extension, stat.size, options.inlineThreshold);
 
-        if (assets.has(absolutePath)) {
-          // Add source to existing entry
-          const existing = assets.get(absolutePath)!;
-          existing.sources.push({
-            file: 'layoutTemplate',
-            type: 'html-url',
-          });
-        } else {
-          const source: AssetSource = {
-            file: 'layoutTemplate',
-            type: 'html-url',
-          };
-
-          let dataUri: string | undefined;
-          if (shouldInline) {
-            dataUri = yield* Effect.tryPromise({
-              try: () => createDataUri(absolutePath, mimeType),
-              catch: () =>
-                new CSSProcessError(`Failed to read asset: ${absolutePath}`, 'layoutTemplate'),
-            });
-          }
-
-          const entry: AssetEntry = {
-            originalRef: urlRef,
-            sourcePath: absolutePath,
-            outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
-            size: stat.size,
-            inline: shouldInline,
-            dataUri,
-            mimeType,
-            sources: [source],
-          };
-
-          assets.set(absolutePath, entry);
+        const source: AssetSource = {
+          file: 'layoutTemplate',
+          type: 'html-url',
+        };
+        if (tryAppendAssetSource(assets, absolutePath, source)) {
+          continue;
         }
+
+        let dataUri: string | undefined;
+        if (shouldInline) {
+          dataUri = yield* Effect.tryPromise({
+            try: () => createDataUri(absolutePath, mimeType),
+            catch: () =>
+              new CSSProcessError(`Failed to read asset: ${absolutePath}`, 'layoutTemplate'),
+          });
+        }
+
+        const entry: AssetEntry = {
+          originalRef: urlRef,
+          sourcePath: absolutePath,
+          outputPath: generateUniqueOutputPath(absolutePath, pathTracker),
+          size: stat.size,
+          inline: shouldInline,
+          dataUri,
+          mimeType,
+          sources: [source],
+        };
+
+        assets.set(absolutePath, entry);
       }
     }
 

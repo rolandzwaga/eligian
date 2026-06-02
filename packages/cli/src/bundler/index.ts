@@ -171,11 +171,13 @@ export function createBundle(
       nodePaths,
     }).pipe(Effect.mapError(e => new BundleError(`Runtime bundling failed: ${e.message}`)));
 
-    // Clean up temp directory
+    // Clean up temp directory (non-fatal: warn but don't abort the bundle)
     yield* Effect.tryPromise({
       try: () => fs.rm(tempDir, { recursive: true, force: true }),
       catch: () => new BundleError('Failed to clean up temp directory'),
-    }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+    }).pipe(
+      Effect.catchAll(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`)))
+    );
 
     // Generate HTML with rewritten layout template URLs
     const containerSelector = config.containerSelector || '#app';
