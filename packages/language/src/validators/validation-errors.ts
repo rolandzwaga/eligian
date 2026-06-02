@@ -71,16 +71,19 @@ export interface DuplicateDefaultImportError extends ImportValidationError {
  */
 export const ERROR_MESSAGES = {
   // Path errors
-  ABSOLUTE_PATH: {
+  // D43: kept as zero-arg functions (rather than static objects) so every
+  // ERROR_MESSAGES entry has the uniform `(...args) => { message, hint }` shape
+  // and can be passed directly to createValidationError without an arrow wrapper.
+  ABSOLUTE_PATH: () => ({
     message:
       "Import path must be relative (start with './' or '../'), absolute paths are not portable",
     hint: "Use './filename.ext' or '../folder/filename.ext' for relative paths",
-  },
+  }),
 
-  INVALID_PATH_FORMAT: {
+  INVALID_PATH_FORMAT: () => ({
     message: 'Invalid path format',
     hint: "Paths must be quoted strings starting with './' or '../'",
-  },
+  }),
 
   // Name errors
   DUPLICATE_IMPORT_NAME: (name: string) => ({

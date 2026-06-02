@@ -11,8 +11,8 @@
 import { dirname, resolve } from 'node:path';
 import type { ILocalesConfiguration } from 'eligius';
 import type { Program } from '../generated/ast.js';
+import { inferAssetType } from '../utils/asset-type-inference.js';
 import { isDefaultImport, isNamedImport } from '../utils/ast-helpers.js';
-import { getFileExtension } from '../utils/path-utils.js';
 import { getImports } from '../utils/program-helpers.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
@@ -247,11 +247,10 @@ function inferImportAssetType(
       return importStmt.assetType;
     }
 
-    // Infer from file extension
-    const ext = getFileExtension(importStmt.path);
-    if (ext === 'html') return 'html';
-    if (ext === 'css') return 'css';
-    if (ext === 'mp4' || ext === 'webm' || ext === 'mp3' || ext === 'wav') return 'media';
+    // Infer from file extension (D25: single source of truth shared with the
+    // import validators, via the EXTENSION_MAP in asset-type-inference).
+    const inferred = inferAssetType(importStmt.path);
+    if (inferred) return inferred;
   }
 
   // Default to media (safest assumption for unknown)

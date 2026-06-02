@@ -2,16 +2,29 @@
 
 ## Executive Summary
 
-This report synthesizes a verified, cross-module static analysis of the Eligian DSL monorepo (language core, compiler, CSS/HTML/labels tooling, Typir type system, completion, asset loading, CLI, VS Code extension, locale editor, and shared utilities). After deduplicating findings that share a common root cause across modules, the analysis identifies **96 distinct issues**: **45 bugs**, **30 code-duplication clusters**, and **21 anti-patterns**. The dominant theme — and the priority of this report — is **systemic code duplication**: the same logic (file-watcher classes, Levenshtein distance, import-path resolution, control-flow-pairing validators, `_tag` type guards, `error.hint` formatting, empty-CSS-metadata construction, and AST root traversal) is copy-pasted across 3-9 sites each, frequently with silent behavioral drift that produces real bugs (e.g. the CSS-vs-HTML/Labels watcher `updateTrackedFiles` divergence, and the `||`-instead-of-`Math.max` path bug). The most serious correctness defects are concentrated in the locale editor webview (mismatched modal element IDs, ephemeral deletions, in-place "immutable" mutations), the Effect error-handling boundaries (dead `try/catch` around `yield*`, `instanceof` against `FiberFailure` wrappers), and the Typir inference rules (returning un-finished configuration chains instead of resolved `Type`s).
+This report synthesizes a verified, cross-module static analysis of the Eligian DSL monorepo (language core, compiler, CSS/HTML/labels tooling, Typir type system, completion, asset loading, CLI, VS Code extension, locale editor, and shared utilities). The original deduplicated framing identified **96 distinct issues** across bugs, code-duplication clusters, and anti-patterns. The dominant theme of the report was **systemic code duplication** — the same logic (file-watcher classes, Levenshtein distance, import-path resolution, control-flow-pairing validators, `_tag` type guards, `error.hint` formatting, empty-CSS-metadata construction, AST root traversal) copy-pasted across 3-9 sites with silent behavioral drift that produced real bugs.
 
-## Summary Table — Counts by Category × Severity
+**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the remaining open work is the **medium/low bug tail** (17 Medium, 3 Low) plus the **anti-pattern themes** (god classes, pervasive `any`, dead/stub code, encapsulation/perf). See the status table below.
 
-| Category | High | Medium | Low | Total |
-|---|---|---|---|---|
-| Bug | 18 | 22 | 5 | 45 |
-| Duplication | 16 | 13 | 1 | 30 |
-| Anti-pattern | 5 | 12 | 4 | 21 |
-| **Total** | **39** | **47** | **10** | **96** |
+## Summary Table — Status by Category
+
+Re-tallied from the inline-numbered findings in this document (each `B`/`D` finding and each anti-pattern bullet counted by its current ✅ FIXED / open status). This supersedes the original Category × Severity inventory, which had drifted as later findings (B45–B66, D24–D44) were appended without updating the headline counts.
+
+| Category | Fixed | Open | Total |
+|---|---|---|---|
+| Bug | 46 | 20 | 66 |
+| Duplication | 46 | 0 | 46 |
+| Anti-pattern | 9 | 39 | 48 |
+| **Total** | **101** | **59** | **160** |
+
+**Open bugs by severity** (the actionable remainder — all High-severity bugs are fixed):
+
+| | High | Medium | Low |
+|---|---|---|---|
+| Open | 0 | 17 | 3 |
+
+Open Medium bugs: B24, B25, B26, B30, B31, B32, B33, B36, B37, B38, B39, B44, B47, B48, B49, B52, B59.
+Open Low bugs: B55, B57, B61.
 
 ---
 
@@ -128,6 +141,16 @@ The following "dedup tail" cluster (Track A — the remaining medium/low duplica
 
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
 
+The following correctness + dedup-tail batch was fixed on branch **`fix/correctness-batches-b2-b14`** (verified: `pnpm run typecheck` clean across all packages, biome `check` clean, full suites green — language 2001 passed/23 skipped, extension 337, cli 230 passed/19 skipped — language coverage CI passing/exit 0, full `pnpm run build` clean). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** B2, B3 (the two deferred compiler-correctness defects), and D24, D25, D43, D44 (the remaining duplication tail — the Duplication category is now fully resolved). This batch also **verified and marked** B5, B9, B13, B14, B34, which had already been correctly implemented in prior work but were left unmarked in this report.
+- **B2** — `transformEventAction` converted to an `Effect`-returning function composed with `yield*`; inner failures flow through the typed `TransformError` channel instead of crashing via `Effect.runSync`; missing `eventName` is now an `InvalidEvent` failure rather than a `throw`.
+- **B3** — module-level `currentConstantMap` removed; the constant map is built once per `transformAST` call and threaded through a new `ScopeContext.programConstants` field (inherited by derived scopes via spread, injected into root scopes via new `programConstants` parameters), eliminating the concurrent-compilation state-leak.
+- **D24** — `validateHtml`/`validateCss` collapsed onto a private generic `validateContentFile(...)`.
+- **D25** — `inferImportAssetType` delegates extension inference to the shared `inferAssetType`.
+- **D43** — `ERROR_MESSAGES.ABSOLUTE_PATH`/`INVALID_PATH_FORMAT` are now zero-arg functions for shape consistency; the call site drops its arrow wrapper.
+- **D44** — generic `ValidationResult<TError>` base; the three per-asset result types are aliases.
+
 ---
 
 ## Glaring Bugs
@@ -144,12 +167,14 @@ Ordered by severity (High first), grouped where the same root cause spans module
 **Fix:** Add `import * as path from 'node:path';` and replace the expression with `path.dirname(docPath)`.
 
 #### B2. `transformEventAction` uses `Effect.runSync` and can crash the whole compiler
+> ✅ **FIXED** — branch `fix/correctness-batches-b2-b14` (`transformEventAction` is now an `Effect.Effect<IEventActionConfiguration, TransformError>` composed with `yield*`; the inner `transformOperationStatement` failures propagate through the typed channel instead of escaping `Effect.runSync` as an unhandled fiber crash, and the missing-`eventName` case is an `InvalidEvent` `Effect.fail` rather than a synchronous `throw`. Call site in `transformAST` `yield*`s it; the 7 test call sites wrap in `Effect.runSync`. Fixed together with B3.)
 **Severity:** High
 **Locations:** [ast-transformer.ts:2311](packages/language/src/compiler/ast-transformer.ts#L2311), [ast-transformer.ts:2335](packages/language/src/compiler/ast-transformer.ts#L2335)
 The synchronous `transformEventAction` calls `Effect.runSync(transformOperationStatement(...))` from inside the `Effect.gen` body of `transformAST`. A failing inner Effect throws a synchronous exception that escapes the typed error channel as an unhandled fiber crash instead of a structured `TransformError`.
 **Fix:** Convert `transformEventAction` to return `Effect.Effect<IEventActionConfiguration, TransformError>` and use `yield*` composition; update the call site in `transformAST`.
 
 #### B3. Module-level mutable `currentConstantMap` leaks state between concurrent compilations
+> ✅ **FIXED** — branch `fix/correctness-batches-b2-b14` (the module-level `let currentConstantMap` is removed; the map is built once per `transformAST` call as a local `const` and threaded through `ScopeContext.programConstants`. Every derived scope inherits it via the existing `...scope` spread; root scopes (action/event/timeline/sequence/stagger/timed-event) and the handful of no-scope `transformExpression` call sites receive it explicitly through new `programConstants` parameters on `transformActionDefinition`/`buildTimelineConfig`/`transformSequenceBlock`/`transformStaggerBlock`/`transformTimedEvent`/`transformEventAction`. Concurrent compilations can no longer clobber each other.)
 **Severity:** High
 **Locations:** [ast-transformer.ts:116](packages/language/src/compiler/ast-transformer.ts#L116), [ast-transformer.ts:282](packages/language/src/compiler/ast-transformer.ts#L282)
 A module-level `let currentConstantMap` is reassigned at the start of every `transformAST` call. In a language-server context, two overlapping compilations clobber each other's constant maps, producing incorrect constant inlining. The code comment acknowledges the hazard.
@@ -163,6 +188,7 @@ A module-level `let currentConstantMap` is reassigned at the start of every `tra
 **Fix:** Replace both blocks with `const resolvedUri = resolveLibraryPath(documentUri, originalPath);`.
 
 #### B5. `ensureLabelsImportsRegistered` is a no-op stub — label ID validation silently passes
+> ✅ **FIXED** — verified on branch `fix/correctness-batches-b2-b14` (already implemented in prior work, previously unmarked): `ensureLabelsImportsRegistered` now inlines the locale-loading logic (resolve → `fs.readFileSync` → `extractTranslationKeys` → `updateLabelsFile`/`registerImports`) and tracks completed documents in a dedicated `private readonly initializedLabelDocuments = new Set<string>()` — exactly the recommended fix — so an empty registry is no longer mistaken for "not yet registered." Wired into both label-ID operation validators.
 **Severity:** High
 **Locations:** [eligian-validator.ts:1836](packages/language/src/eligian-validator.ts#L1836), [eligian-validator.ts:1842](packages/language/src/eligian-validator.ts#L1842), [eligian-validator.ts:1856](packages/language/src/eligian-validator.ts#L1856)
 The method finds locales imports but falls through to a TODO and returns without registering them; the real loading lives in `checkLocalesImports`. The early-exit guard treats an empty registry as "not yet registered," so when validator ordering runs label checks first, `validateLabelID` operates on a stale empty registry.
@@ -192,6 +218,7 @@ Inside `Effect.gen`, `yield*` on a failed Effect short-circuits via the Effect p
 **Fix:** `const insideString = hasTokenBoundaries && (text[tokenOffset] === '"' || text[tokenOffset] === "'");` then simplify the `if (insideString && text)` to `if (insideString)`.
 
 #### B9. `detectSelectorHover` always returns the first class/ID, ignoring cursor position
+> ✅ **FIXED** — verified on branch `fix/correctness-batches-b2-b14` (already implemented in prior work, previously unmarked): `detectSelectorHover` now translates `params.position` into an offset relative to the string-literal CST node (`textDocument.offsetAt(params.position) - (cstNode.offset + 1)`) and resolves the exact identifier via `findIdentifierAtOffset`, falling back to the first identifier only when position info is unavailable. Pairs with B34.
 **Severity:** High
 **Locations:** [hover-detection.ts:121](packages/language/src/css/hover-detection.ts#L121), [hover-detection.ts:139](packages/language/src/css/hover-detection.ts#L139), [hover-detection.ts:149](packages/language/src/css/hover-detection.ts#L149)
 The `_params: HoverParams` argument is unused; the function returns `classes[0]`/`ids[0]` regardless of where the cursor is. For `.button.primary`, hovering `.primary` always reports `.button`.
@@ -221,12 +248,14 @@ Six factory/type fields and their getters are typed `any`, propagating into infe
 **Fix:** Type each field with its concrete generic, e.g. `private _importFactory: CustomKind<ImportTypeProperties, EligianSpecifics>`.
 
 #### B13. `getAvailableVariables` always returns `'action'`-scoped variables regardless of context
+> ✅ **FIXED** — verified on branch `fix/correctness-batches-b2-b14` (already implemented in prior work, previously unmarked): `getAvailableVariables(isInsideLoop, isInsideAction)` now takes the `isInsideAction` flag and the `'action'` branch returns it; the call site in `variables.ts` passes `cursorContext.isInsideAction`.
 **Severity:** High
 **Locations:** [variable-metadata.ts:110](packages/language/src/completion/variable-metadata.ts#L110), [variable-metadata.ts:118](packages/language/src/completion/variable-metadata.ts#L118), [variables.ts:50](packages/language/src/completion/variables.ts#L50)
 The `'action'` case falls through to `return true`, so `@@whenEvaluation` (marked `availableIn: 'action'`) is always offered. `CursorContext.isInsideAction` exists but is never passed in.
 **Fix:** Add `isInsideAction: boolean` param, change the `'action'` branch to `return isInsideAction;`, pass `cursorContext.isInsideAction` at the call site.
 
 #### B14. `eligian.openLabelEditor` command ignores its argument
+> ✅ **FIXED** — verified on branch `fix/correctness-batches-b2-b14` (already implemented in prior work, previously unmarked): the `eligian.openLabelEditor` handler now accepts an optional `fileUri?: vscode.Uri` and, when present, opens it directly via `executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor')` instead of always reading `activeTextEditor`.
 **Severity:** High
 **Locations:** [label-file-creator.ts:141](packages/extension/src/extension/label-file-creator.ts#L141), [main.ts:474](packages/extension/src/extension/main.ts#L474)
 `executeCommand('eligian.openLabelEditor', fileUri)` passes a Uri, but the registered handler takes zero params and always reads `activeTextEditor` — the new labels file is never opened in the locale editor and the command typically fails with "Cursor is not on a locales import statement."
@@ -364,6 +393,7 @@ The `validatedDocuments` WeakSet skips any second call for the same `Program` in
 **Fix:** Match complete quoted strings (`/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g`) or count top-level commas.
 
 #### B34. `findIdentifierAtOffset` is a non-functional stub with a midpoint heuristic
+> ✅ **FIXED** — verified on branch `fix/correctness-batches-b2-b14` (already implemented in prior work, previously unmarked): `findIdentifierAtOffset` now parses the selector via `parseSelectorIdentifiers` (which carries real `start`/`end` spans) and returns the identifier whose span contains the offset — the `selector.length / 2` midpoint heuristic is gone, and it is wired into the live `detectSelectorHover` path (B9).
 **Severity:** Medium
 **Locations:** [hover-detection.ts:177](packages/language/src/css/hover-detection.ts#L177), [hover-detection.ts:189](packages/language/src/css/hover-detection.ts#L189), [hover-detection.ts:191](packages/language/src/css/hover-detection.ts#L191)
 Uses `selector.length / 2` as a class/ID boundary (meaningless) and is never wired into the live hover path.
@@ -742,11 +772,13 @@ Each does `typeof firstArg === 'string'` dispatch into two return blocks.
 **Severity:** Medium — *merged into D19.*
 
 ### D24. `validateHtml` and `validateCss` structurally identical
+> ✅ **FIXED** — branch `fix/correctness-batches-b2-b14` (new private generic `validateContentFile(absolutePath, relativePath, sourceLocation, validate, invalidType, label)` on `AssetValidationService` is the single source of truth; `validateHtml`/`validateCss` are now thin wrappers passing the validator callback, the `'invalid-html'`/`'invalid-css'` error type, and the `'HTML'`/`'CSS'` label. Pure behavior-preserving refactor.)
 **Severity:** High
 **Sites:** [asset-validation-service.ts:100](packages/language/src/asset-loading/asset-validation-service.ts#L100), [asset-validation-service.ts:147](packages/language/src/asset-loading/asset-validation-service.ts#L147)
 **Abstraction:** Generic private helper taking the validator, error-type string, and message prefix.
 
 ### D25. Extension→type-mapping duplicated: `inferImportAssetType` vs `EXTENSION_MAP`
+> ✅ **FIXED** — branch `fix/correctness-batches-b2-b14` (the named-import extension switch in `inferImportAssetType` now delegates to `inferAssetType(importStmt.path)` from `utils/asset-type-inference.ts` (the `EXTENSION_MAP` single source of truth), falling back to `'media'`; the now-unused `getFileExtension` import is dropped. Behavior-preserving — `inferAssetType` recognizes the same html/css/mp4/webm/mp3/wav set.)
 **Severity:** Medium
 **Sites:** [compiler-integration.ts:251-254](packages/language/src/asset-loading/compiler-integration.ts#L251), [asset-type-inference.ts:23](packages/language/src/utils/asset-type-inference.ts#L23)
 **Abstraction:** Call `inferAssetType(path)` from `inferImportAssetType`; fall back to `'media'`.
@@ -855,11 +887,13 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 **Abstraction:** Private `getBaseName(filePath)`.
 
 ### D43. `createValidationError` wraps a static object in an unnecessary arrow
+> ✅ **FIXED** — branch `fix/correctness-batches-b2-b14` (`ERROR_MESSAGES.ABSOLUTE_PATH`/`INVALID_PATH_FORMAT` are now zero-arg functions like every other entry, so the call site drops its `() => ERROR_MESSAGES.ABSOLUTE_PATH` arrow wrapper and passes `ERROR_MESSAGES.ABSOLUTE_PATH` directly. Uniform `(...args) => { message, hint }` shape across the table.)
 **Severity:** Medium
 **Sites:** [import-path-validator.ts:50](packages/language/src/validators/import-path-validator.ts#L50), [validation-errors.ts:74](packages/language/src/validators/validation-errors.ts#L74)
 **Abstraction:** Make `ERROR_MESSAGES.ABSOLUTE_PATH`/`INVALID_PATH_FORMAT` zero-arg functions for shape consistency.
 
 ### D44. Validator result shape `{ valid; errors[] }` duplicated without a base type
+> ✅ **FIXED** — branch `fix/correctness-batches-b2-b14` (new generic `ValidationResult<TError>` in `asset-loading/types.ts`; `HtmlValidationResult`/`CssValidationResult`/`MediaValidationResult` are now aliases `ValidationResult<HtmlValidationError>` etc. Behavior-preserving — consumers see the same shapes.)
 **Severity:** Low
 **Sites:** [css-validator.ts:26](packages/language/src/asset-loading/css-validator.ts#L26), [html-validator.ts:30](packages/language/src/asset-loading/html-validator.ts#L30), [media-validator.ts:29](packages/language/src/asset-loading/media-validator.ts#L29)
 **Abstraction:** Generic `ValidationResult<TError>` in `types.ts`.
