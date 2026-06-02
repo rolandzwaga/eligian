@@ -77,8 +77,11 @@ function calculateLanguagesTypeName(props: LanguagesTypeProperties): string {
 /**
  * T053: Calculate unique type identifier for caching
  *
- * Generates cache keys in format: "Languages:{count}:{defaultLanguage}"
- * This ensures types with same configuration reuse cached instances.
+ * Generates cache keys in format: "Languages:{count}:{defaultLanguage}:{allLanguages}"
+ * This ensures types with same configuration reuse cached instances. `allLanguages`
+ * is part of the key because two blocks can share the same count and default
+ * language yet declare different language sets — omitting it would alias them
+ * onto a single cached type.
  *
  * @param props - LanguagesType properties
  * @returns Unique identifier string
@@ -86,11 +89,11 @@ function calculateLanguagesTypeName(props: LanguagesTypeProperties): string {
  * @example
  * ```typescript
  * calculateLanguagesTypeIdentifier({ languageCount: 3, defaultLanguage: 'nl-NL', allLanguages: ['nl-NL', 'en-US', 'fr-FR'] })
- * // Returns: "Languages:3:nl-NL"
+ * // Returns: "Languages:3:nl-NL:nl-NL,en-US,fr-FR"
  * ```
  */
 function calculateLanguagesTypeIdentifier(props: LanguagesTypeProperties): string {
-  return `Languages:${props.languageCount}:${props.defaultLanguage}`;
+  return `Languages:${props.languageCount}:${props.defaultLanguage}:${props.allLanguages.join(',')}`;
 }
 
 /**

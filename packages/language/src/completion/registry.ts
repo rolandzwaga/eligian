@@ -71,10 +71,13 @@ export function loadOperationRegistry(): OperationMetadata[] {
 }
 
 /**
- * Get all operations (sorted, filtered)
+ * Get all operations (sorted)
  *
- * Returns the complete list of operations, excluding those handled by DSL keywords.
- * Operations are already sorted alphabetically by name and filtered in the generated file.
+ * Returns the registry's operations. This performs NO runtime filtering —
+ * keyword-handled operations are already excluded from `OPERATIONS` at code
+ * generation time (see the generated metadata file and `isFilteredOperation`).
+ * This function merely returns the merged, alphabetically-sorted registry
+ * (generated operations + synthetic DSL operations).
  *
  * @returns Array of operation metadata
  */

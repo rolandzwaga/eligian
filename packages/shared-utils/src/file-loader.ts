@@ -42,10 +42,13 @@ function mapFileSystemError(
   error: unknown,
   path: string
 ): FileNotFoundError | PermissionError | ReadError {
-  const nodeError = error as NodeJS.ErrnoException;
+  // Only Node.js Error objects carry a `code`; guard before casting so a
+  // non-Error throwable (string, object, etc.) falls through to the generic
+  // read error instead of dereferencing an arbitrary value.
+  const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
 
   // Map specific error codes to typed errors
-  switch (nodeError.code) {
+  switch (code) {
     case 'ENOENT':
       return createFileNotFoundError(path);
 

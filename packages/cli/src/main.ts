@@ -18,8 +18,21 @@ import { AssetError, CompilationError, compileFile, IOError, ParseError } from '
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const packagePath = path.resolve(__dirname, '..', 'package.json');
-const packageContent = await fs.readFile(packagePath, 'utf-8');
-const packageJson = JSON.parse(packageContent);
+
+/**
+ * Read the CLI version from package.json. Falls back to '0.0.0' if the file is
+ * missing or unreadable so a packaging issue cannot crash the CLI at startup.
+ */
+async function readPackageVersion(): Promise<string> {
+  try {
+    const packageContent = await fs.readFile(packagePath, 'utf-8');
+    return JSON.parse(packageContent).version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
+const packageVersion = await readPackageVersion();
 
 /**
  * Exit codes
@@ -217,7 +230,7 @@ export default function main(): void {
   program
     .name('eligian')
     .description('Eligian DSL compiler - compile .eligian files to Eligius JSON')
-    .version(packageJson.version);
+    .version(packageVersion);
 
   // Compile command (default)
   program

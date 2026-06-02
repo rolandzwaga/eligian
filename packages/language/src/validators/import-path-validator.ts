@@ -11,7 +11,7 @@
  * @module import-path-validator
  */
 
-import { createValidationError } from '../utils/error-builder.js';
+import { buildValidationError } from '../utils/error-builder.js';
 import type { PathError } from './validation-errors.js';
 import { ERROR_MESSAGES } from './validation-errors.js';
 
@@ -47,7 +47,7 @@ export function validateImportPath(path: string): PathError | undefined {
     return undefined; // Valid
   }
 
-  return createValidationError('ABSOLUTE_PATH', ERROR_MESSAGES.ABSOLUTE_PATH, []);
+  return buildValidationError('ABSOLUTE_PATH', ERROR_MESSAGES.ABSOLUTE_PATH, []);
 }
 
 /**

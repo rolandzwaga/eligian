@@ -80,6 +80,9 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
   // Current configuration state per document (keyed by document URI)
   private documentConfigs = new Map<string, ILocalesConfiguration>();
 
+  // Cached raw HTML template (static file, read lazily on first webview open)
+  private htmlTemplate?: string;
+
   /**
    * Apply a webview-originated edit while flagging the document so the
    * onDidChangeTextDocument listener does not treat it as an external change.
@@ -97,6 +100,32 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
         this.applyingWebviewEdits.delete(key);
       }
     );
+  }
+
+  /**
+   * Save the document, reporting failure as `false` rather than letting the
+   * thenable reject unobserved.
+   */
+  private async trySaveDocument(document: vscode.TextDocument): Promise<boolean> {
+    try {
+      return await document.save();
+    } catch (error) {
+      console.error('Failed to save locale document:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Show a modal warning, swallowing any rejection (returns `undefined` so the
+   * caller treats it as "not confirmed").
+   */
+  private async tryShowWarning(message: string): Promise<string | undefined> {
+    try {
+      return await vscode.window.showWarningMessage(message, { modal: true }, 'Delete');
+    } catch (error) {
+      console.error('Failed to show confirmation dialog:', error);
+      return undefined;
+    }
   }
 
   constructor(
@@ -180,7 +209,9 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
 
     // 3. Set up message handler
     webviewPanel.webview.onDidReceiveMessage((message: ToExtensionMessage) => {
-      this.handleWebviewMessage(message, document, webviewPanel);
+      // Fire-and-forget: the handler awaits its own I/O internally and reports
+      // failures back to the webview, so a rejection here cannot go unhandled.
+      void this.handleWebviewMessage(message, document, webviewPanel);
     });
 
     // 4. Set up TextDocument change listener (Microsoft pattern: ONLY update on EXTERNAL changes)
@@ -280,11 +311,11 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
    * @param document - The document being edited
    * @param webviewPanel - The webview panel
    */
-  private handleWebviewMessage(
+  private async handleWebviewMessage(
     message: LocaleToExtensionMessage | ToExtensionMessage,
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel
-  ): void {
+  ): Promise<void> {
     switch (message.type) {
       case 'ready':
         // Parse document and send initialize message
@@ -420,13 +451,12 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
               };
               webviewPanel.webview.postMessage(errorMessage);
             } else {
-              document.save().then(success => {
-                const saveMessage: LocaleToWebviewMessage = {
-                  type: 'save-complete',
-                  success,
-                };
-                webviewPanel.webview.postMessage(saveMessage);
-              });
+              const success = await this.trySaveDocument(document);
+              const saveMessage: LocaleToWebviewMessage = {
+                type: 'save-complete',
+                success,
+              };
+              webviewPanel.webview.postMessage(saveMessage);
             }
           } else {
             // Legacy format
@@ -439,13 +469,12 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
               };
               webviewPanel.webview.postMessage(errorMessage);
             } else {
-              document.save().then(success => {
-                const saveMessage: ToWebviewMessage = {
-                  type: 'save-complete',
-                  success,
-                };
-                webviewPanel.webview.postMessage(saveMessage);
-              });
+              const success = await this.trySaveDocument(document);
+              const saveMessage: ToWebviewMessage = {
+                type: 'save-complete',
+                success,
+              };
+              webviewPanel.webview.postMessage(saveMessage);
             }
           }
         }
@@ -465,67 +494,63 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
         break;
 
       case 'check-usage':
-        // Query label/key usage in .eligian files
-        {
-          const key = 'key' in message ? message.key : (message as any).groupId;
-          this.checkLabelUsage(key).then(usageFiles => {
-            if ('key' in message) {
-              // New format
-              const usageMessage: LocaleToWebviewMessage = {
-                type: 'usage-check-response',
-                key: message.key,
-                usageFiles,
-              };
-              webviewPanel.webview.postMessage(usageMessage);
-            } else {
-              // Legacy format
-              const usageMessage: ToWebviewMessage = {
-                type: 'usage-check-response',
-                groupId: (message as any).groupId,
-                usageFiles,
-              };
-              webviewPanel.webview.postMessage(usageMessage);
-            }
-          });
+        // Query label/key usage in .eligian files.
+        // The two protocols share this `type`; `'key' in message` is the
+        // discriminator — the new protocol carries `key`, the legacy one `groupId`.
+        if ('key' in message) {
+          // New format
+          const usageFiles = await this.checkLabelUsage(message.key);
+          const usageMessage: LocaleToWebviewMessage = {
+            type: 'usage-check-response',
+            key: message.key,
+            usageFiles,
+          };
+          webviewPanel.webview.postMessage(usageMessage);
+        } else {
+          // Legacy format
+          const usageFiles = await this.checkLabelUsage(message.groupId);
+          const usageMessage: ToWebviewMessage = {
+            type: 'usage-check-response',
+            groupId: message.groupId,
+            usageFiles,
+          };
+          webviewPanel.webview.postMessage(usageMessage);
         }
         break;
 
       case 'request-delete':
-        // Show VS Code native confirmation dialog
-        {
-          if ('key' in message) {
-            // New format
-            let confirmMsg = `Delete translation key '${message.key}'?`;
-            if (message.usageFiles.length > 0) {
-              confirmMsg = `Key '${message.key}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
-            }
+        // Show VS Code native confirmation dialog.
+        // `'key' in message` discriminates the new protocol (key) from the
+        // legacy one (groupId/index).
+        if ('key' in message) {
+          // New format
+          let confirmMsg = `Delete translation key '${message.key}'?`;
+          if (message.usageFiles.length > 0) {
+            confirmMsg = `Key '${message.key}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
+          }
 
-            vscode.window.showWarningMessage(confirmMsg, { modal: true }, 'Delete').then(choice => {
-              if (choice === 'Delete') {
-                const confirmMessage: LocaleToWebviewMessage = {
-                  type: 'delete-confirmed',
-                  key: message.key,
-                };
-                webviewPanel.webview.postMessage(confirmMessage);
-              }
-            });
-          } else {
-            // Legacy format
-            const legacyMessage = message as ToExtensionMessage & { type: 'request-delete' };
-            let confirmMsg = `Delete label group '${legacyMessage.groupId}'?`;
-            if (legacyMessage.usageFiles.length > 0) {
-              confirmMsg = `Label '${legacyMessage.groupId}' is used in ${legacyMessage.usageFiles.length} file(s):\n${legacyMessage.usageFiles.join('\n')}\n\nDelete anyway?`;
-            }
+          const choice = await this.tryShowWarning(confirmMsg);
+          if (choice === 'Delete') {
+            const confirmMessage: LocaleToWebviewMessage = {
+              type: 'delete-confirmed',
+              key: message.key,
+            };
+            webviewPanel.webview.postMessage(confirmMessage);
+          }
+        } else {
+          // Legacy format
+          let confirmMsg = `Delete label group '${message.groupId}'?`;
+          if (message.usageFiles.length > 0) {
+            confirmMsg = `Label '${message.groupId}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
+          }
 
-            vscode.window.showWarningMessage(confirmMsg, { modal: true }, 'Delete').then(choice => {
-              if (choice === 'Delete') {
-                const confirmMessage: ToWebviewMessage = {
-                  type: 'delete-confirmed',
-                  index: legacyMessage.index,
-                };
-                webviewPanel.webview.postMessage(confirmMessage);
-              }
-            });
+          const choice = await this.tryShowWarning(confirmMsg);
+          if (choice === 'Delete') {
+            const confirmMessage: ToWebviewMessage = {
+              type: 'delete-confirmed',
+              index: message.index,
+            };
+            webviewPanel.webview.postMessage(confirmMessage);
           }
         }
         break;
@@ -642,17 +667,21 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
    * @returns HTML string with interpolated URIs
    */
   private getHtmlForWebview(webview: vscode.Webview): string {
-    // Load HTML template
-    const templatePath = path.join(
-      this.extensionUri.fsPath,
-      'src',
-      'extension',
-      'locale-editor',
-      'templates',
-      'locale-editor.html'
-    );
+    // Load the HTML template once and cache it — the file is static, so reading
+    // it synchronously on every editor open needlessly blocks the extension host.
+    if (this.htmlTemplate === undefined) {
+      const templatePath = path.join(
+        this.extensionUri.fsPath,
+        'src',
+        'extension',
+        'locale-editor',
+        'templates',
+        'locale-editor.html'
+      );
+      this.htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    }
 
-    let html = fs.readFileSync(templatePath, 'utf8');
+    let html = this.htmlTemplate;
 
     // Get webview script URI
     const scriptUri = webview.asWebviewUri(

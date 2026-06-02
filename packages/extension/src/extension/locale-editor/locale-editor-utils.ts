@@ -121,7 +121,7 @@ function getAtPath(data: TLocaleData, path: string[]): string | TLocaleData | un
  * Set value at a dot-notation path in locale data.
  * Creates intermediate objects as needed.
  */
-function setAtPath(data: TLocaleData, path: string[], value: string): void {
+function setAtPath(data: TLocaleData, path: string[], value: string | TLocaleData): void {
   let current: TLocaleData = data;
 
   for (let i = 0; i < path.length - 1; i++) {
@@ -305,10 +305,14 @@ export function renameKeyInConfig(
     const data = entry as TLocaleData;
     const value = getAtPath(data, oldPath);
 
-    if (value !== undefined && typeof value === 'string') {
+    // getAtPath already returns undefined for function (parameterized) values,
+    // so any defined value here is either a string leaf or a branch object.
+    // Both must be renamed — previously only string leaves were moved, which
+    // silently dropped renames of intermediate (branch) keys.
+    if (value !== undefined) {
       // Delete old key
       deleteAtPath(data, oldPath);
-      // Set at new key
+      // Set at new key (string leaf or nested branch object)
       setAtPath(data, newPath, value);
     }
   }

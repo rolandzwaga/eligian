@@ -80,6 +80,11 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
    * Public getters for factories and services (used by inference/validation modules)
    */
   get typirServices(): TypirLangiumServices<EligianSpecifics> {
+    if (this._typirServices === undefined) {
+      throw new Error(
+        'EligianTypeSystem.typirServices accessed before onInitialize() ran — Typir services are not yet available.'
+      );
+    }
     return this._typirServices;
   }
 
@@ -216,6 +221,10 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         return this.stringType;
       }
 
+      // Single-type constraint: when an operation parameter declares multiple
+      // accepted types, only the first is modelled. Typir parameters carry a
+      // single type here; the broader set is not yet represented as a union, so
+      // additional declared types are intentionally ignored.
       const paramType = paramTypes[0];
       const typeString = String(paramType).replace('ParameterType:', '');
 
