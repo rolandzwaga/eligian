@@ -46,7 +46,7 @@ type-system-typir/
 │   ├── control-flow-validation.ts # Control flow validation (US4)
 │   └── timeline-validation.ts  # Timeline validation (US5)
 └── utils/                  # Utility functions
-    ├── time-parser.ts      # Parse time literals (0s, 100ms)
+    ├── time-expression.ts  # Parse time-literal AST nodes (0s, 100ms)
     └── asset-type-inferrer.ts # Infer asset types from extensions
 ```
 

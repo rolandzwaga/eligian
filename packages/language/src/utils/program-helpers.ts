@@ -19,6 +19,7 @@ import type {
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
+import { isTimeline, isVariableDeclaration } from '../generated/ast.js';
 import {
   isActionDefinition,
   isEventActionDefinition,
@@ -55,7 +56,7 @@ export function getElements(program: Program): ProgramElement[] {
  * @returns Array of timeline nodes
  */
 export function getTimelines(program: Program): Timeline[] {
-  return getElements(program).filter(el => el.$type === 'Timeline') as Timeline[];
+  return getElements(program).filter(isTimeline);
 }
 
 /**
@@ -75,9 +76,7 @@ export function getActions(program: Program): ActionDefinition[] {
  * @returns Array of variable declaration nodes
  */
 export function getVariables(program: Program): VariableDeclaration[] {
-  return getElements(program).filter(
-    el => el.$type === 'VariableDeclaration'
-  ) as VariableDeclaration[];
+  return getElements(program).filter(isVariableDeclaration);
 }
 
 /**

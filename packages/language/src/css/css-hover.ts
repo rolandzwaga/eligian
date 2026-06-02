@@ -152,11 +152,11 @@ export class CSSHoverProvider {
  * @param propertyGetter - Function to extract locations/rules maps from metadata
  * @returns Object with name and files array
  */
-function buildCSSIdentifierInfo(
+function buildCSSIdentifierInfo<M>(
   name: string,
   cssFileUris: string[],
-  getMetadata: (uri: string) => any | undefined,
-  propertyGetter: (metadata: any) => {
+  getMetadata: (uri: string) => M | undefined,
+  propertyGetter: (metadata: M) => {
     locations: Map<string, CSSSourceLocation>;
     rules: Map<string, string>;
   }

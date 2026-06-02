@@ -526,30 +526,6 @@ export const compile = (
   });
 
 /**
- * T079: Compile from file path
- *
- * Helper that reads a file and compiles it.
- * Note: Requires FileSystem effect service (not yet implemented).
- * For now, this is a placeholder that expects source to be pre-read.
- */
-export const compileFile = (
-  _filePath: string,
-  _options: CompileOptions = {}
-): Effect.Effect<IEngineConfiguration, CompileError> =>
-  Effect.gen(function* (_) {
-    // TODO: Read file via FileSystem service
-    // For now, this is a placeholder
-    return yield* _(
-      Effect.fail({
-        _tag: 'ParseError' as const,
-        message: 'compileFile not yet implemented - use compile() with source string',
-        location: { line: 1, column: 1, length: 0 },
-        hint: 'Read file externally and pass source to compile()',
-      })
-    );
-  });
-
-/**
  * T080: Compile from string
  *
  * Alias for compile() for API consistency.

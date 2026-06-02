@@ -56,7 +56,7 @@ export function detectHoverTarget(node: AstNode, params: HoverParams): HoverTarg
 
   // Check if it's a className operation
   if (CLASS_NAME_OPERATIONS.has(operationName)) {
-    return detectClassNameHover(node, operationCall);
+    return detectClassNameHover(node);
   }
 
   // Check if it's a selector operation
@@ -73,10 +73,9 @@ export function detectHoverTarget(node: AstNode, params: HoverParams): HoverTarg
  * For addClass("button"), hovering over "button" returns { type: 'class', name: 'button' }
  *
  * @param node - AST node at hover position
- * @param operationCall - The operation call containing the node
  * @returns Hover target or undefined
  */
-function detectClassNameHover(node: AstNode, _operationCall: any): HoverTarget | undefined {
+function detectClassNameHover(node: AstNode): HoverTarget | undefined {
   // Find the string literal argument
   const stringLiteral = AstUtils.getContainerOfType(node, isStringLiteral);
   if (!stringLiteral?.value) {
