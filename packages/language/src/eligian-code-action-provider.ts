@@ -27,6 +27,7 @@ import type {
   MissingLabelIDData,
   MissingLabelsFileData,
 } from './types/code-actions.js';
+import { uriToFsPath } from './utils/path-utils.js';
 /**
  * Eligian-specific code action provider
  *
@@ -69,11 +70,8 @@ export class EligianCodeActionProvider implements CodeActionProvider {
 
       // Create a readFile function that uses the workspace file system
       const readFile = async (uri: string): Promise<string> => {
-        // Convert URI to path and read using Node.js fs
-        // Handle both encoded (file:///c%3A/...) and unencoded (file:///c:/...) URIs
-        let path = uri.replace('file:///', '');
-        path = decodeURIComponent(path); // Decode URL-encoded characters
-        return await fs.readFile(path, 'utf-8');
+        // Convert URI to path and read using Node.js fs (handles encoding/platform)
+        return await fs.readFile(uriToFsPath(uri), 'utf-8');
       };
 
       const cssActions = await this.cssCodeActionProvider.provideCodeActions(
@@ -295,10 +293,8 @@ export class EligianCodeActionProvider implements CodeActionProvider {
       return undefined;
     }
 
-    // Convert labels file URI to file path
-    // Handle both encoded (file:///c%3A/...) and unencoded (file:///c:/...) URIs
-    let labelsFilePath = data.labelsFileUri.replace('file:///', '');
-    labelsFilePath = decodeURIComponent(labelsFilePath);
+    // Convert labels file URI to file path (handles encoding/platform)
+    const labelsFilePath = uriToFsPath(data.labelsFileUri);
 
     // Create command arguments
     const commandArgs: CreateLabelEntryCommand = {

@@ -93,26 +93,7 @@ export function createCSSClassEdit(
   className: string,
   cssFileContent: string
 ): WorkspaceEdit {
-  // Calculate the line count in the CSS file
-  const lines = cssFileContent.split('\n');
-  const lastLineNumber = lines.length - 1;
-  const lastLineLength = lines[lastLineNumber]?.length ?? 0;
-
-  // Create the new CSS rule text
-  const newClassRule = `\n.${className} {\n  /* TODO: Add styles */\n}\n`;
-
-  // Create text edit at end of file
-  const textEdit: TextEdit = TextEditCreator.insert(
-    { line: lastLineNumber, character: lastLineLength },
-    newClassRule
-  );
-
-  // Create workspace edit
-  return {
-    changes: {
-      [cssFileUri]: [textEdit],
-    },
-  };
+  return createCSSIdentifierEdit(cssFileUri, className, cssFileContent, 'class');
 }
 
 /**
@@ -130,18 +111,41 @@ export function createCSSIDEdit(
   idName: string,
   cssFileContent: string
 ): WorkspaceEdit {
+  return createCSSIdentifierEdit(cssFileUri, idName, cssFileContent, 'id');
+}
+
+/**
+ * Create a WorkspaceEdit that appends a CSS class or ID rule to a file.
+ *
+ * Single source of truth for `createCSSClassEdit`/`createCSSIDEdit`, which
+ * differ only in the selector prefix (`.` vs `#`). The new rule is inserted at
+ * the end of the file (safest location, no conflicts).
+ *
+ * @param cssFileUri - URI of the CSS file to edit
+ * @param name - Identifier name (without prefix)
+ * @param cssFileContent - Current content of the CSS file (for insert position)
+ * @param type - `'class'` (`.`-prefixed) or `'id'` (`#`-prefixed)
+ * @returns WorkspaceEdit with text insertion
+ */
+export function createCSSIdentifierEdit(
+  cssFileUri: string,
+  name: string,
+  cssFileContent: string,
+  type: 'class' | 'id'
+): WorkspaceEdit {
   // Calculate the line count in the CSS file
   const lines = cssFileContent.split('\n');
   const lastLineNumber = lines.length - 1;
   const lastLineLength = lines[lastLineNumber]?.length ?? 0;
 
   // Create the new CSS rule text
-  const newIDRule = `\n#${idName} {\n  /* TODO: Add styles */\n}\n`;
+  const prefix = type === 'class' ? '.' : '#';
+  const newRule = `\n${prefix}${name} {\n  /* TODO: Add styles */\n}\n`;
 
   // Create text edit at end of file
   const textEdit: TextEdit = TextEditCreator.insert(
     { line: lastLineNumber, character: lastLineLength },
-    newIDRule
+    newRule
   );
 
   // Create workspace edit

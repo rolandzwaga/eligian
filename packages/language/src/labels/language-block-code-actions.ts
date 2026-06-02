@@ -3,6 +3,7 @@ import type { CodeAction, CodeActionParams } from 'vscode-languageserver-protoco
 import { CodeActionKind, TextEdit } from 'vscode-languageserver-protocol';
 import type { Program } from '../generated/ast.js';
 import { isDefaultImport } from '../generated/ast.js';
+import { uriToFsPath } from '../utils/path-utils.js';
 import { FilePositionHelper } from './file-position-helper.js';
 import { LabelsParser } from './labels-parser.js';
 import { LanguageBlockGenerator } from './language-block-generator.js';
@@ -62,10 +63,7 @@ export class LanguageBlockCodeActionProvider {
     }
 
     // Get source directory for resolving relative paths
-    // Convert URI to path (handle both encoded and unencoded URIs)
-    let sourceFilePath = documentUri.replace('file:///', '');
-    sourceFilePath = decodeURIComponent(sourceFilePath);
-    const sourceDir = dirname(sourceFilePath);
+    const sourceDir = dirname(uriToFsPath(documentUri));
 
     // Parse all locales files and collect language codes
     const allLanguageCodes = await this.collectLanguageCodes(localesFilePaths, sourceDir, readFile);

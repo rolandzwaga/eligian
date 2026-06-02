@@ -32,15 +32,14 @@ const FILTERED_OPERATIONS = new Set([
 ]);
 
 /**
- * Convert IOperationMetadata to our simplified structure
+ * Extract the simplified parameter list from an operation/controller metadata's
+ * `properties` map. Shared by `convertOperationMetadata` and
+ * `convertControllerMetadata`, which previously inlined identical loops.
  */
-function convertOperationMetadata(name: string, metadataFn: () => IOperationMetadata<any>) {
-  const metadata = metadataFn();
-
-  // Extract parameters from properties
+function extractParameters(properties: Record<string, TPropertyMetadata | undefined> | undefined) {
   const parameters = [];
-  if (metadata.properties) {
-    for (const [paramName, paramMeta] of Object.entries(metadata.properties)) {
+  if (properties) {
+    for (const [paramName, paramMeta] of Object.entries(properties)) {
       const propMeta = paramMeta as TPropertyMetadata;
 
       // Handle both simple string types and complex objects
@@ -61,25 +60,30 @@ function convertOperationMetadata(name: string, metadataFn: () => IOperationMeta
       });
     }
   }
+  return parameters;
+}
 
-  // Extract dependencies
-  const dependencies = (metadata.dependentProperties as string[]) || [];
+/**
+ * Extract the output-property names from an operation metadata's
+ * `outputProperties` map.
+ */
+function extractOutputs(outputProperties: Record<string, unknown> | undefined): string[] {
+  return outputProperties ? Object.keys(outputProperties) : [];
+}
 
-  // Extract outputs from outputProperties
-  const outputs = [];
-  if (metadata.outputProperties) {
-    for (const outputName of Object.keys(metadata.outputProperties)) {
-      outputs.push(outputName);
-    }
-  }
+/**
+ * Convert IOperationMetadata to our simplified structure
+ */
+function convertOperationMetadata(name: string, metadataFn: () => IOperationMetadata<any>) {
+  const metadata = metadataFn();
 
   return {
     name,
     description: metadata.description || '',
     category: metadata.category || 'Uncategorized',
-    parameters,
-    dependencies,
-    outputs,
+    parameters: extractParameters(metadata.properties),
+    dependencies: (metadata.dependentProperties as string[]) || [],
+    outputs: extractOutputs(metadata.outputProperties),
   };
 }
 
@@ -89,39 +93,11 @@ function convertOperationMetadata(name: string, metadataFn: () => IOperationMeta
 function convertControllerMetadata(name: string, metadataFn: () => IControllerMetadata<any>) {
   const metadata = metadataFn();
 
-  // Extract parameters from properties
-  const parameters = [];
-  if (metadata.properties) {
-    for (const [paramName, paramMeta] of Object.entries(metadata.properties)) {
-      const propMeta = paramMeta as TPropertyMetadata;
-
-      // Handle both simple string types and complex objects
-      const paramType = typeof propMeta === 'string' ? propMeta : propMeta.type;
-      const required = typeof propMeta === 'object' && propMeta.required === true;
-      const defaultValue =
-        typeof propMeta === 'object' && 'defaultValue' in propMeta
-          ? propMeta.defaultValue
-          : undefined;
-      const description = typeof propMeta === 'object' ? propMeta.description : undefined;
-
-      parameters.push({
-        name: paramName,
-        type: paramType,
-        required,
-        defaultValue,
-        description,
-      });
-    }
-  }
-
-  // Extract dependencies
-  const dependencies = (metadata.dependentProperties as string[]) || [];
-
   return {
     name,
     description: metadata.description || '',
-    parameters,
-    dependencies,
+    parameters: extractParameters(metadata.properties),
+    dependencies: (metadata.dependentProperties as string[]) || [],
   };
 }
 

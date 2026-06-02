@@ -41,6 +41,27 @@ export interface CSSParseResult {
 }
 
 /**
+ * Construct an empty {@link CSSParseResult} (no classes/IDs/locations/rules).
+ *
+ * Single source of truth for the "empty CSS metadata" object literal that was
+ * previously hand-rolled at every CSS-registry-clear site (deleted/errored CSS
+ * files, error-only notifications, and the compiler's missing-file fallback).
+ *
+ * @param errors - Optional parse/IO errors to attach (defaults to `[]`)
+ */
+export function createEmptyCSSMetadata(errors: CSSParseError[] = []): CSSParseResult {
+  return {
+    classes: new Set(),
+    ids: new Set(),
+    classLocations: new Map(),
+    idLocations: new Map(),
+    classRules: new Map(),
+    idRules: new Map(),
+    errors,
+  };
+}
+
+/**
  * Parse CSS content and extract classes, IDs, locations, and rules.
  *
  * Uses PostCSS to parse CSS files and postcss-selector-parser to extract

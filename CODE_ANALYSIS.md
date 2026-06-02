@@ -113,6 +113,19 @@ The following cluster was fixed on branch **`refactor/cli-bundler-cluster-d31`**
 
 > Note: **B40** (NaN guard on `--inline-threshold`) was already present in the code at HEAD (`Number.isNaN` check at `main.ts` after `parseInt`) and required no change. **B57** (`outputHelp()` reachability, Low) was left as-is. **B6** was already fixed in `6b1c52a`.
 
+The following "dedup tail" cluster (Track A — the remaining medium/low duplication clusters left after the high-severity sweep) was fixed on branch **`refactor/dedup-tail-track-a`** (verified: `pnpm run typecheck` clean across all packages, biome `check` clean, full suites green — language 2001 passed/23 skipped, extension 337, cli 230 passed/19 skipped, shared-utils 87 — language coverage CI passing/exit 0). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D9, D40, D10, B60, D13, D16, D26, D35, D39, D2c, D41. A single behavior-preserving PR consolidating the remaining mechanical clusters:
+- **D9/D40** — new `createEmptyCSSMetadata(errors?)` in `css/css-parser.ts` (barrel-exported); the four hand-rolled empty-`CSSParseResult` literals (compiler pipeline error-fallback, extension `CSS_UPDATED` catch, `CSS_ERROR` handler, and the `processImports` `createEmptyMetadata` thunk) delegate to it.
+- **D10/B60** — new `uriToFsPath(uri)` in `utils/path-utils.ts` (barrel-exported) delegating to `URI.parse(uri).fsPath`; the three `.replace('file:///','')` + `decodeURIComponent` sites (`language-block-code-actions.ts`, two in `eligian-code-action-provider.ts`) now use it, fixing the B60 leading-slash/authority bug.
+- **D13** — new `createCSSIdentifierEdit(uri, name, content, type)` in `css/code-action-helpers.ts`; `createCSSClassEdit`/`createCSSIDEdit` are now thin wrappers passing `'class'`/`'id'`.
+- **D16** — new `buildActionCallOperations(actionName, actionOperationData, sourceLocation, verb)` in `ast-transformer.ts`; the four hand-coded `requestAction` + (`startAction`|`endAction`) triplets (sequence items, stagger items, timeline action calls, inline operation statements) delegate to it.
+- **D26** — `extractParameters(properties)` and `extractOutputs(outputProperties)` extracted in `completion/generate-metadata.ts`; `convertOperationMetadata`/`convertControllerMetadata` delegate.
+- **D35** — extracted the shared resolve-path → cycle-check → `getDocument` → `isLibrary` step into a private `resolveLibraryDocument(fromUri, importPath, visited)`; `resolveImports` and `resolveLibraryImports` delegate. *(Conservative scope: their divergent action-collection semantics — selective+alias vs whole-library — are intentionally left intact, since merging them would risk changing compilation output.)*
+- **D39** — `locale-serializer.ts` was already removed in earlier work (no longer tracked/present); no action required.
+- **D2c** — new generic `debounce<K>(timers, key, delay, fn)` in `extension/debounce-util.ts`; `FileImportWatcherManager.debounceChange` (the D1 base) and the preview `FileWatcher` now delegate, replacing their hand-rolled clear-timer/setTimeout/delete-on-fire blocks.
+- **D41** — `jsdoc-formatter.ts` `formatJSDocAsMarkdown` now builds via `MarkdownBuilder` instead of the manual `lines.push`/`join` array (output byte-identical).
+
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
 
 ---
@@ -525,6 +538,7 @@ Unlike the double-quote branch, the single-quote branch can return text past the
 **Fix:** `Math.min(singleQuoteIndex + 1 + relativeOffset, closeQuoteIndex)`.
 
 #### B60. URI-to-path conversion fragile/cross-platform broken (`.replace('file:///','')`)
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (resolved as part of the D10 `uriToFsPath` extraction; all sites now use `URI.parse(uri).fsPath`.)
 **Severity:** Medium *(part of D10 cluster)*
 **Locations:** [language-block-code-actions.ts:66](packages/language/src/labels/language-block-code-actions.ts#L66), [language-block-code-actions.ts:67](packages/language/src/labels/language-block-code-actions.ts#L67), [eligian-code-action-provider.ts:74](packages/language/src/eligian-code-action-provider.ts#L74), [eligian-code-action-provider.ts:75](packages/language/src/eligian-code-action-provider.ts#L75), [eligian-code-action-provider.ts:300](packages/language/src/eligian-code-action-provider.ts#L300), [eligian-code-action-provider.ts:301](packages/language/src/eligian-code-action-provider.ts#L301)
 Stripping `file:///` drops the leading slash on POSIX and ignores authority components.
@@ -585,6 +599,7 @@ Identical `startsWith('file://')` → parse → dirname → strip `./` → join 
 ~17 lines × 3. Subsumed by D1; otherwise extract `disposeWatcherResources(state)`.
 
 #### D2c. `FileWatcher` re-implements the 300ms debounce + `Map<string, Timeout>` pattern
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (new generic `debounce<K>(timers, key, delay, fn)` in `extension/debounce-util.ts`; the D1 base `FileImportWatcherManager.debounceChange` and the preview `FileWatcher` both delegate.)
 **Severity:** Low
 **Sites:** [FileWatcher.ts:33](packages/extension/src/extension/preview/FileWatcher.ts#L33), [FileWatcher.ts:92](packages/extension/src/extension/preview/FileWatcher.ts#L92), and the three watchers ([css-watcher.ts:299](packages/extension/src/extension/css-watcher.ts#L299), [html-watcher.ts:250](packages/extension/src/extension/html-watcher.ts#L250), [labels-watcher.ts:259](packages/extension/src/extension/labels-watcher.ts#L259))
 **Abstraction:** `debounce<K>(timers, key, delay, fn)` utility in `extension/debounce-util.ts`.
@@ -632,12 +647,14 @@ Identical `for...getDocument(URI.parse)...update([URI.parse], [])` across succes
 **Abstraction:** `triggerRevalidation(documentUris: string[])` that parses each URI once — also resolves B51.
 
 ### D9. Empty CSS metadata object literal constructed inline 4×
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (new `createEmptyCSSMetadata(errors?)` in `css/css-parser.ts`; all four sites delegate. Subsumes D40.)
 **Severity:** Medium
 **Sites:** [language/main.ts:64](packages/extension/src/language/main.ts#L64), [language/main.ts:96](packages/extension/src/language/main.ts#L96), [language/main.ts:224](packages/extension/src/language/main.ts#L224), [pipeline.ts:343](packages/language/src/compiler/pipeline.ts#L343)
 The `{ classes/ids: Set, *Locations/*Rules: Map, errors: [...] }` shape (differing only in `errors`).
 **Abstraction:** `createEmptyCSSMetadata(errors?: CSSParseError[])` exported from `packages/language/src/css/`.
 
 ### D10. URI-to-fsPath decoding duplicated across 3 code-action sites
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (new `uriToFsPath(uri)` in `utils/path-utils.ts` via `URI.parse(uri).fsPath`; all three sites delegate, fixing B60.)
 **Severity:** Medium
 **Sites:** [language-block-code-actions.ts:66](packages/language/src/labels/language-block-code-actions.ts#L66), [eligian-code-action-provider.ts:74](packages/language/src/eligian-code-action-provider.ts#L74), [eligian-code-action-provider.ts:300](packages/language/src/eligian-code-action-provider.ts#L300)
 `.replace('file:///','')` + `decodeURIComponent` with identical comments (also bug B60).
@@ -657,6 +674,7 @@ The `{ classes/ids: Set, *Locations/*Rules: Map, errors: [...] }` shape (differi
 **Abstraction:** Shared `css/css-operations.ts` exporting both Sets.
 
 ### D13. `createCSSClassEdit` / `createCSSIDEdit` near-identical (~50 lines)
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (new `createCSSIdentifierEdit(uri, name, content, type)`; both functions are now thin `'class'`/`'id'` wrappers.)
 **Severity:** Medium
 **Sites:** [code-action-helpers.ts:91](packages/language/src/css/code-action-helpers.ts#L91), [code-action-helpers.ts:128](packages/language/src/css/code-action-helpers.ts#L128)
 Differ only by `.` vs `#` prefix and a local var name.
@@ -676,6 +694,7 @@ Character-identical including JSDoc and TODOs.
 **Abstraction:** Private `resolveTypirPrimitiveType(typeName): Type`; delegate from all three.
 
 ### D16. `requestAction + startAction/endAction` triplet hand-coded in 4 places
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (new `buildActionCallOperations(actionName, actionOperationData, sourceLocation, verb)`; all four sites delegate.)
 **Severity:** Medium
 **Sites:** [ast-transformer.ts:1262](packages/language/src/compiler/ast-transformer.ts#L1262), [ast-transformer.ts:930](packages/language/src/compiler/ast-transformer.ts#L930), [ast-transformer.ts:1066](packages/language/src/compiler/ast-transformer.ts#L1066), [ast-transformer.ts:1722](packages/language/src/compiler/ast-transformer.ts#L1722)
 **Abstraction:** `buildActionCallOperations(actionName, actionOperationData, sourceLocation, isEnd): OperationConfigIR[]`.
@@ -733,6 +752,7 @@ Each does `typeof firstArg === 'string'` dispatch into two return blocks.
 **Abstraction:** Call `inferAssetType(path)` from `inferImportAssetType`; fall back to `'media'`.
 
 ### D26. `convertOperationMetadata` / `convertControllerMetadata` duplicate property extraction
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (extracted `extractParameters(properties)` + `extractOutputs(outputProperties)`; both converters delegate.)
 **Severity:** Medium
 **Sites:** [generate-metadata.ts:42](packages/language/src/completion/generate-metadata.ts#L42), [generate-metadata.ts:95](packages/language/src/completion/generate-metadata.ts#L95)
 **Abstraction:** `extractParameters(properties)` (+ `extractOutputs` for operations).
@@ -787,6 +807,7 @@ Identical normalize→dir→parse→`getDocument`→null-check (also the B4 ad-h
 **Abstraction:** `printFormattedErrors(header, formatted)`.
 
 ### D35. `resolveImports` vs `resolveLibraryImports` near-identical recursion
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (extracted the shared resolve-path → cycle-check → `getDocument` → `isLibrary` step into private `resolveLibraryDocument(fromUri, importPath, visited)`; both functions delegate. Their divergent action-collection semantics — selective+alias vs whole-library — were intentionally left intact to avoid changing compilation output.)
 **Severity:** Medium *(also anti-pattern)*
 **Sites:** [ast-transformer.ts:144](packages/language/src/compiler/ast-transformer.ts#L144), [ast-transformer.ts:213](packages/language/src/compiler/ast-transformer.ts#L213)
 **Abstraction:** `collectImportedActions(importStatements, visited, currentUri)`.
@@ -811,15 +832,18 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 **Abstraction:** Shared private helper returning raw match data; each caller post-processes.
 
 ### D39. `locale-serializer.ts` duplicates `key-tree-builder.ts` tree logic and is unused
+> ✅ **FIXED** — `locale-serializer.ts` was already removed in earlier work (no longer tracked/present); confirmed on branch `refactor/dedup-tail-track-a`. No action required.
 **Severity:** Medium
 **Sites:** [locale-serializer.ts](packages/extension/src/extension/locale-editor/locale-serializer.ts), [key-tree-builder.ts:289-309](packages/extension/src/extension/locale-editor/key-tree-builder.ts#L289)
 **Abstraction:** Remove `locale-serializer.ts` (only a test imports it) and migrate the test, or have `key-tree-builder` delegate.
 
 ### D40. CSS error-metadata construction duplicated (notification paths)
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (resolved by the D9 `createEmptyCSSMetadata` extraction; the notification-path sites delegate to it.)
 **Severity:** Medium — *subset of D9; same `createEmptyCSSMetadata` fix.*
 **Sites:** [language/main.ts:63-79](packages/extension/src/language/main.ts#L63), [language/main.ts:96-104](packages/extension/src/language/main.ts#L96), [language/main.ts:221-232](packages/extension/src/language/main.ts#L221)
 
 ### D41. `jsdoc-formatter` manual `lines.push/join` instead of `MarkdownBuilder`
+> ✅ **FIXED** — branch `refactor/dedup-tail-track-a` (`formatJSDocAsMarkdown` now builds via `MarkdownBuilder`; output byte-identical.)
 **Severity:** Medium
 **Sites:** [jsdoc-formatter.ts:18](packages/language/src/jsdoc/jsdoc-formatter.ts#L18), [jsdoc-formatter.ts:48](packages/language/src/jsdoc/jsdoc-formatter.ts#L48)
 **Abstraction:** Refactor `formatJSDocAsMarkdown` to use `MarkdownBuilder` (the pattern it was built to replace).

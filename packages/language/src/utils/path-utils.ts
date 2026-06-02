@@ -120,3 +120,25 @@ export function resolveImportPathToUri(documentUri: string, rawPath: string): st
   const docDir = dirname(URI.parse(documentUri).fsPath);
   return URI.file(join(docDir, cleanPath)).toString();
 }
+
+/**
+ * Converts a `file://` URI string to an absolute filesystem path.
+ *
+ * Single source of truth for the URI→path decoding that was previously
+ * hand-rolled as `uri.replace('file:///', '')` + `decodeURIComponent(...)`.
+ * That manual idiom drops the leading slash on POSIX paths and ignores
+ * authority components; delegating to `URI.parse(uri).fsPath` handles
+ * percent-encoding and platform-specific drive letters / slashes correctly.
+ *
+ * @param uri - A `file://` URI string (possibly percent-encoded)
+ * @returns The decoded absolute filesystem path
+ *
+ * @example
+ * ```typescript
+ * uriToFsPath('file:///c%3A/proj/styles.css') // → 'c:\\proj\\styles.css' (Windows)
+ * uriToFsPath('file:///home/user/a.css')      // → '/home/user/a.css' (POSIX)
+ * ```
+ */
+export function uriToFsPath(uri: string): string {
+  return URI.parse(uri).fsPath;
+}
