@@ -7,6 +7,7 @@ import {
   type CSSErrorParams,
   type CSSUpdatedParams,
   createEligianServices,
+  createEmptyCSSMetadata,
   extractTranslationKeys,
   findActionBelow,
   generateJSDocContent,
@@ -73,22 +74,17 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
   } catch (error) {
     // File might be deleted or have errors - clear CSS and trigger re-validation
     const cssRegistry = Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile(cssFileUri, {
-      classes: new Set(),
-      ids: new Set(),
-      classLocations: new Map(),
-      idLocations: new Map(),
-      classRules: new Map(),
-      idRules: new Map(),
-      errors: [
+    cssRegistry.updateCSSFile(
+      cssFileUri,
+      createEmptyCSSMetadata([
         {
           message: error instanceof Error ? error.message : String(error),
           filePath: cssFileUri,
           line: 0,
           column: 0,
         },
-      ],
-    });
+      ])
+    );
 
     // Trigger re-validation to show "file not found" or CSS errors
     triggerRevalidation(documentUris);
@@ -100,15 +96,7 @@ connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) => {
 
   // Store error metadata in CSS registry with empty classes/IDs
   const cssRegistry = Eligian.css.CSSRegistry;
-  cssRegistry.updateCSSFile(cssFileUri, {
-    classes: new Set(),
-    ids: new Set(),
-    classLocations: new Map(),
-    idLocations: new Map(),
-    classRules: new Map(),
-    idRules: new Map(),
-    errors,
-  });
+  cssRegistry.updateCSSFile(cssFileUri, createEmptyCSSMetadata(errors));
 });
 
 // Register labels notification handlers
@@ -206,15 +194,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
       const cssConfig: ImportProcessorConfig<ReturnType<typeof parseCSS>> = {
         importType: 'styles',
         parseFile: (content, filePath) => parseCSS(content, filePath),
-        createEmptyMetadata: () => ({
-          classes: new Set(),
-          ids: new Set(),
-          classLocations: new Map(),
-          idLocations: new Map(),
-          classRules: new Map(),
-          idRules: new Map(),
-          errors: [],
-        }),
+        createEmptyMetadata: () => createEmptyCSSMetadata(),
         registry: {
           updateFile: (uri, metadata) => cssRegistry.updateCSSFile(uri, metadata),
           registerImports: (docUri, fileUris) =>

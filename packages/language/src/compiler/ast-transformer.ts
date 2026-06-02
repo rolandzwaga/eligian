@@ -141,6 +141,41 @@ function createEmptyScope(): ScopeContext {
  * @param program - Program AST node with potential library imports
  * @returns Array of ActionDefinition nodes (with aliases applied where necessary)
  */
+/**
+ * Resolve a library import path to its loaded {@link Library} document, applying
+ * cycle detection.
+ *
+ * Shared by {@link resolveImports} and {@link resolveLibraryImports}, which both
+ * performed the identical resolve-path → cycle-check → `getDocument` → `isLibrary`
+ * sequence before diverging in how they collect actions. Returns `undefined`
+ * when the target has already been visited, the document is not loaded, or it is
+ * not a library — matching the skip semantics of both call sites.
+ *
+ * @param fromUri - URI of the document/library doing the importing
+ * @param importPath - The library import's path string
+ * @param visited - Set of already-visited library fsPaths (cycle guard)
+ * @returns The resolved library and its URI, or `undefined` to skip
+ */
+function resolveLibraryDocument(
+  fromUri: URI,
+  importPath: string,
+  visited: Set<string>
+): { library: Library; uri: URI } | undefined {
+  const libraryUri = resolveLibraryPath(fromUri, importPath);
+  if (visited.has(libraryUri.fsPath)) {
+    return undefined;
+  }
+
+  const services = getOrCreateServices();
+  const libraryDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
+  const value = libraryDoc?.parseResult.value;
+  if (!value || !isLibrary(value)) {
+    return undefined;
+  }
+
+  return { library: value, uri: libraryUri };
+}
+
 function resolveImports(
   program: Program,
   visited: Set<string> = new Set()
@@ -157,20 +192,13 @@ function resolveImports(
 
     for (const libraryImport of libraryImports) {
       // Feature 032 US3: Get the library document to recursively collect its imports
-      const libraryUri = currentUri
-        ? resolveLibraryPath(currentUri, libraryImport.path)
-        : undefined;
-
-      if (libraryUri && !visited.has(libraryUri.fsPath)) {
-        // Recursively collect actions from this library's imports
-        const services = getOrCreateServices();
-        const libraryDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
-
-        if (libraryDoc?.parseResult.value && isLibrary(libraryDoc.parseResult.value)) {
-          const library = libraryDoc.parseResult.value;
-
+      if (currentUri) {
+        const resolved = resolveLibraryDocument(currentUri, libraryImport.path, visited);
+        if (resolved) {
           // Recursively collect actions from library's imports
-          const nestedActions = yield* _(resolveLibraryImports(library, visited, libraryUri));
+          const nestedActions = yield* _(
+            resolveLibraryImports(resolved.library, visited, resolved.uri)
+          );
           importedActions.push(...nestedActions);
         }
       }
@@ -227,27 +255,15 @@ function resolveLibraryImports(
     for (const libraryImport of libraryImports) {
       if (!isLibraryImport(libraryImport)) continue;
 
-      // Resolve nested library
-      const nestedLibraryUri = resolveLibraryPath(libraryUri, libraryImport.path);
+      // Resolve nested library (path resolution + cycle check + library document lookup)
+      const resolved = resolveLibraryDocument(libraryUri, libraryImport.path, visited);
+      if (!resolved) continue;
 
-      // Skip if already visited (circular dependency)
-      if (visited.has(nestedLibraryUri.fsPath)) {
-        continue;
-      }
-
-      // Get nested library document
-      const services = getOrCreateServices();
-      const nestedLibraryDoc =
-        services.shared.workspace.LangiumDocuments.getDocument(nestedLibraryUri);
-
-      if (!nestedLibraryDoc?.parseResult.value) continue;
-      if (!isLibrary(nestedLibraryDoc.parseResult.value)) continue;
-
-      const nestedLibrary = nestedLibraryDoc.parseResult.value;
+      const nestedLibrary = resolved.library;
 
       // Recursively collect actions from nested library's imports
       const transitiveActions = yield* _(
-        resolveLibraryImports(nestedLibrary, visited, nestedLibraryUri)
+        resolveLibraryImports(nestedLibrary, visited, resolved.uri)
       );
       importedActions.push(...transitiveActions);
 
@@ -927,39 +943,18 @@ const transformSequenceBlock = (
       }
 
       // Build start and end operations for this sequence item
-      const startOperations: OperationConfigIR[] = [
-        {
-          id: crypto.randomUUID(),
-          systemName: 'requestAction',
-          operationData: { systemName: actionName },
-          sourceLocation: getSourceLocation(item),
-        },
-        {
-          id: crypto.randomUUID(),
-          systemName: 'startAction',
-          operationData: actionOperationData ? { actionOperationData } : {},
-          sourceLocation: getSourceLocation(item),
-        },
-      ];
+      const itemLocation = getSourceLocation(item);
+      const startOperations: OperationConfigIR[] = buildActionCallOperations(
+        actionName,
+        actionOperationData,
+        itemLocation,
+        'startAction'
+      );
 
       // End operations: Only generate for endable actions
-      const endOperations: OperationConfigIR[] = [];
-      if (isEndableAction) {
-        endOperations.push(
-          {
-            id: crypto.randomUUID(),
-            systemName: 'requestAction',
-            operationData: { systemName: actionName },
-            sourceLocation: getSourceLocation(item),
-          },
-          {
-            id: crypto.randomUUID(),
-            systemName: 'endAction',
-            operationData: actionOperationData ? { actionOperationData } : {},
-            sourceLocation: getSourceLocation(item),
-          }
-        );
-      }
+      const endOperations: OperationConfigIR[] = isEndableAction
+        ? buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
+        : [];
 
       // Create timeline action for this sequence item
       actions.push({
@@ -1063,39 +1058,18 @@ const transformStaggerBlock = (
         }
 
         // Build start and end operations
-        const startOperations: OperationConfigIR[] = [
-          {
-            id: crypto.randomUUID(),
-            systemName: 'requestAction',
-            operationData: { systemName: actionName },
-            sourceLocation: getSourceLocation(stagger),
-          },
-          {
-            id: crypto.randomUUID(),
-            systemName: 'startAction',
-            operationData: actionOperationData ? { actionOperationData } : {},
-            sourceLocation: getSourceLocation(stagger),
-          },
-        ];
+        const staggerLocation = getSourceLocation(stagger);
+        const startOperations: OperationConfigIR[] = buildActionCallOperations(
+          actionName,
+          actionOperationData,
+          staggerLocation,
+          'startAction'
+        );
 
         // End operations: Only generate for endable actions
-        const endOperations: OperationConfigIR[] = [];
-        if (isEndableAction) {
-          endOperations.push(
-            {
-              id: crypto.randomUUID(),
-              systemName: 'requestAction',
-              operationData: { systemName: actionName },
-              sourceLocation: getSourceLocation(stagger),
-            },
-            {
-              id: crypto.randomUUID(),
-              systemName: 'endAction',
-              operationData: actionOperationData ? { actionOperationData } : {},
-              sourceLocation: getSourceLocation(stagger),
-            }
-          );
-        }
+        const endOperations: OperationConfigIR[] = isEndableAction
+          ? buildActionCallOperations(actionName, actionOperationData, staggerLocation, 'endAction')
+          : [];
 
         actions.push({
           id: crypto.randomUUID(),
@@ -1258,41 +1232,18 @@ const transformTimedEvent = (
         }
       }
 
-      // Step 1: Request the action instance
-      startOperations.push({
-        id: crypto.randomUUID(),
-        systemName: 'requestAction',
-        operationData: {
-          systemName: callName,
-        },
-        sourceLocation: getSourceLocation(action),
-      });
-
-      // Step 2: Start the action
-      startOperations.push({
-        id: crypto.randomUUID(),
-        systemName: 'startAction',
-        operationData: actionOperationData ? { actionOperationData } : {},
-        sourceLocation: getSourceLocation(action),
-      });
+      // Expand to requestAction + startAction (and requestAction + endAction for
+      // endable actions)
+      const actionLocation = getSourceLocation(action);
+      startOperations.push(
+        ...buildActionCallOperations(callName, actionOperationData, actionLocation, 'startAction')
+      );
 
       // End operations: Only for endable actions
       if (isEndableAction) {
-        endOperations.push({
-          id: crypto.randomUUID(),
-          systemName: 'requestAction',
-          operationData: {
-            systemName: callName,
-          },
-          sourceLocation: getSourceLocation(action),
-        });
-
-        endOperations.push({
-          id: crypto.randomUUID(),
-          systemName: 'endAction',
-          operationData: actionOperationData ? { actionOperationData } : {},
-          sourceLocation: getSourceLocation(action),
-        });
+        endOperations.push(
+          ...buildActionCallOperations(callName, actionOperationData, actionLocation, 'endAction')
+        );
       }
     } else if (action.$type === 'ForStatement') {
       // T056: US3 - ForStatement in timeline context
@@ -1717,28 +1668,16 @@ const transformOperationStatement = (
             }
           }
 
-          const operations: OperationConfigIR[] = [];
-
-          // requestAction
-          operations.push({
-            id: crypto.randomUUID(),
-            systemName: 'requestAction',
-            operationData: { systemName: operationName },
-            sourceLocation: getSourceLocation(stmt),
-          });
-
           // startAction or endAction (depending on context and action type)
           const isEndableAction = actionDef.$type === 'EndableActionDefinition';
           const actionOperation = isEndOperation && isEndableAction ? 'endAction' : 'startAction';
 
-          operations.push({
-            id: crypto.randomUUID(),
-            systemName: actionOperation,
-            operationData: actionOperationData ? { actionOperationData } : {},
-            sourceLocation: getSourceLocation(stmt),
-          });
-
-          return operations;
+          return buildActionCallOperations(
+            operationName,
+            actionOperationData,
+            getSourceLocation(stmt),
+            actionOperation
+          );
         }
 
         // Not an action - treat as normal operation
@@ -2484,6 +2423,44 @@ function getSourceLocation(node: any): SourceLocation {
     column: 1,
     length: 0,
   };
+}
+
+/**
+ * Build the `requestAction` + (`startAction` | `endAction`) operation pair that
+ * a custom-action call expands to.
+ *
+ * Single source of truth for the four hand-coded copies of this triplet across
+ * the transformer (sequence items, stagger items, timeline action calls, and
+ * inline operation statements). Each call produces a fresh pair with new UUIDs:
+ * a `requestAction` (carrying the action's `systemName`) followed by the given
+ * `verb` (`startAction` for start operations, `endAction` for endable-action end
+ * operations), both stamped with the same source location.
+ *
+ * @param actionName - The custom action's name (→ `requestAction.systemName`)
+ * @param actionOperationData - Mapped argument data, or `undefined` for no args
+ * @param sourceLocation - Source location to stamp on both operations
+ * @param verb - `'startAction'` or `'endAction'`
+ */
+function buildActionCallOperations(
+  actionName: string,
+  actionOperationData: Record<string, JsonValue> | undefined,
+  sourceLocation: SourceLocation,
+  verb: 'startAction' | 'endAction'
+): OperationConfigIR[] {
+  return [
+    {
+      id: crypto.randomUUID(),
+      systemName: 'requestAction',
+      operationData: { systemName: actionName },
+      sourceLocation,
+    },
+    {
+      id: crypto.randomUUID(),
+      systemName: verb,
+      operationData: actionOperationData ? { actionOperationData } : {},
+      sourceLocation,
+    },
+  ];
 }
 
 /**

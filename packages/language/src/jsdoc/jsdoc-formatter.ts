@@ -5,6 +5,7 @@
  * Preserves markdown formatting from the original JSDoc (bold, italic, code, links).
  */
 
+import { MarkdownBuilder } from '../utils/markdown-builder.js';
 import type { JSDocComment } from './jsdoc-parser.js';
 
 /**
@@ -15,35 +16,28 @@ import type { JSDocComment } from './jsdoc-parser.js';
  * @returns Formatted markdown string
  */
 export function formatJSDocAsMarkdown(jsdoc: JSDocComment, actionName: string): string {
-  const lines: string[] = [];
-
   // Action name header
-  lines.push(`### ${actionName}`);
-  lines.push('');
+  const builder = new MarkdownBuilder().heading(3, actionName).blank();
 
   // Description (if present)
   if (jsdoc.description && jsdoc.description.trim().length > 0) {
-    lines.push(jsdoc.description);
-    lines.push('');
+    builder.text(jsdoc.description).blank();
   }
 
   // Parameters section (if present)
   if (jsdoc.params.length > 0) {
-    lines.push('**Parameters:**');
+    builder.text('**Parameters:**');
 
-    for (const param of jsdoc.params) {
+    // Format each param as `name` (`type`) - description (description omitted if absent)
+    const items = jsdoc.params.map(param => {
       const type = param.type || 'unknown';
       const name = param.name;
-
-      // Format: - `name` (`type`) - description
-      // If no description, omit the dash
-      if (param.description && param.description.trim().length > 0) {
-        lines.push(`- \`${name}\` (\`${type}\`) - ${param.description}`);
-      } else {
-        lines.push(`- \`${name}\` (\`${type}\`)`);
-      }
-    }
+      return param.description && param.description.trim().length > 0
+        ? `\`${name}\` (\`${type}\`) - ${param.description}`
+        : `\`${name}\` (\`${type}\`)`;
+    });
+    builder.list(items);
   }
 
-  return lines.join('\n');
+  return builder.build();
 }

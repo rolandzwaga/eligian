@@ -20,6 +20,7 @@ import * as path from 'node:path';
 import { resolveImportPathToUri } from '@eligian/language';
 import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
+import { debounce } from './debounce-util.js';
 
 /**
  * Callback invoked when a watched file changes after debouncing.
@@ -284,14 +285,7 @@ export abstract class FileImportWatcherManager {
    * @param filePath - Absolute path to the file that changed
    */
   private debounceChange(filePath: string): void {
-    const existingTimer = this.debounceTimers.get(filePath);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    const timer = setTimeout(() => {
-      this.debounceTimers.delete(filePath);
-
+    debounce(this.debounceTimers, filePath, this.debounceDelay, () => {
       const fileUri = vscode.Uri.file(filePath).toString();
       this.notifyFileChanged(fileUri);
 
@@ -299,9 +293,7 @@ export abstract class FileImportWatcherManager {
       Promise.resolve(this.onChange(filePath)).catch(_error => {
         // Error in onChange callback - silently ignore.
       });
-    }, this.debounceDelay);
-
-    this.debounceTimers.set(filePath, timer);
+    });
   }
 
   /**

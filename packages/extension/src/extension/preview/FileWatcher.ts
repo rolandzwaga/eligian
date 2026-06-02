@@ -10,6 +10,7 @@
  */
 
 import * as vscode from 'vscode';
+import { debounce } from '../debounce-util.js';
 
 /**
  * Watches files for changes with debouncing.
@@ -88,21 +89,11 @@ export class FileWatcher {
 
     console.log('[FileWatcher] Document saved, starting debounce:', document.uri.fsPath);
 
-    // Clear existing timer for this document
-    const existingTimer = this.debounceTimers.get(key);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      console.log('[FileWatcher] Cleared previous debounce timer');
-    }
-
-    // Set new debounce timer
-    const timer = setTimeout(() => {
+    // Debounce per document; coalesces rapid successive saves into one callback.
+    debounce(this.debounceTimers, key, FileWatcher.DEBOUNCE_DELAY, () => {
       console.log('[FileWatcher] Debounce complete, triggering callback');
-      this.debounceTimers.delete(key);
       callback();
-    }, FileWatcher.DEBOUNCE_DELAY);
-
-    this.debounceTimers.set(key, timer);
+    });
   }
 
   /**

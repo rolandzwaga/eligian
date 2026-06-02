@@ -27,7 +27,7 @@ import {
   type AssetLoadingResult,
   loadProgramAssets,
 } from '../asset-loading/compiler-integration.js';
-import { parseCSS } from '../css/css-parser.js';
+import { createEmptyCSSMetadata, parseCSS } from '../css/css-parser.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { EmitError, ParseError, TransformError, TypeError } from '../errors/index.js';
 import { isLibrary, isLibraryImport, type Library, type Program } from '../generated/ast.js';
@@ -405,22 +405,17 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
                 cssRegistry.updateCSSFile(cssFileUri, parseResult);
               } catch (error) {
                 // Register error in registry
-                cssRegistry.updateCSSFile(cssFileUri, {
-                  classes: new Set(),
-                  ids: new Set(),
-                  classLocations: new Map(),
-                  idLocations: new Map(),
-                  classRules: new Map(),
-                  idRules: new Map(),
-                  errors: [
+                cssRegistry.updateCSSFile(
+                  cssFileUri,
+                  createEmptyCSSMetadata([
                     {
                       message: error instanceof Error ? error.message : 'Unknown error',
                       filePath: cssFileUri,
                       line: 0,
                       column: 0,
                     },
-                  ],
-                });
+                  ])
+                );
               }
             }
 
