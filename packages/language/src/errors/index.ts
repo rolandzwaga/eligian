@@ -55,6 +55,7 @@ export type {
   CssImportError,
   CssParseError,
   HtmlImportError,
+  LocalesImportError,
   MediaImportError,
 } from './asset-errors.js';
 
@@ -63,6 +64,7 @@ export {
   createCssImportError,
   createCssParseError,
   createHtmlImportError,
+  createLocalesImportError,
   createMediaImportError,
 } from './asset-errors.js';
 
@@ -145,6 +147,7 @@ export {
   isFileNotFoundError,
   isHtmlImportError,
   isIOError,
+  isLocalesImportError,
   isMediaImportError,
   isOptimizationError,
   isParseError,

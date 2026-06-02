@@ -23,6 +23,7 @@ import {
   createCssParseError,
   createEmitError,
   createHtmlImportError,
+  createLocalesImportError,
   createMediaImportError,
   createOptimizationError,
   createParseError,
@@ -68,6 +69,8 @@ function formatAssetError(error: AssetError): string {
       return `CSS Parse (${error.line}:${error.column}): ${error.message}`;
     case 'MediaImportError':
       return `Media Import: ${error.filePath} - ${error.message}`;
+    case 'LocalesImportError':
+      return `Locales Import: ${error.filePath} - ${error.message}`;
     // NO default case - TypeScript checks exhaustiveness
   }
 }
@@ -113,7 +116,8 @@ function formatAllErrors(error: AllErrors): string {
     error._tag === 'HtmlImportError' ||
     error._tag === 'CssImportError' ||
     error._tag === 'CssParseError' ||
-    error._tag === 'MediaImportError'
+    error._tag === 'MediaImportError' ||
+    error._tag === 'LocalesImportError'
   ) {
     return formatAssetError(error);
   }
@@ -231,6 +235,16 @@ describe('Exhaustive Pattern Matching', () => {
       });
       expect(formatAssetError(error)).toBe('Media Import: ./video.mp4 - Media file not found');
     });
+
+    test('handles LocalesImportError', () => {
+      const error = createLocalesImportError({
+        filePath: './labels.json',
+        absolutePath: '/abs/labels.json',
+        message: 'Invalid locale code',
+        location: { line: 4, column: 1 },
+      });
+      expect(formatAssetError(error)).toBe('Locales Import: ./labels.json - Invalid locale code');
+    });
   });
 
   describe('IOError exhaustiveness', () => {
@@ -309,6 +323,12 @@ describe('Exhaustive Pattern Matching', () => {
           absolutePath: '/abs/video.mp4',
           message: 'Media',
           location: { line: 3, column: 1 },
+        }),
+        createLocalesImportError({
+          filePath: './labels.json',
+          absolutePath: '/abs/labels.json',
+          message: 'Locales',
+          location: { line: 4, column: 1 },
         }),
       ];
 

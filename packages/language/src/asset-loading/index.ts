@@ -13,7 +13,6 @@ export type { IAssetLoader } from './interfaces.js';
 // Implementations
 
 // Type definitions
-export type {
-  AssetError,
-  SourceLocation,
-} from './types.js';
+// Note: the asset-error discriminated union lives in the unified errors namespace
+// (`../errors`). Import `AssetError` from there, not from this module.
+export type { SourceLocation } from './types.js';

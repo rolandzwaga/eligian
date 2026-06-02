@@ -59,14 +59,6 @@ function resolvePaths(baseDir: string, relativePath: string): string {
 }
 
 /**
- * Result of path resolution.
- */
-export type PathResolutionResult = {
-  readonly success: true;
-  readonly absolutePath: string;
-};
-
-/**
  * Normalizes a file path to use forward slashes and resolve . and .. segments.
  *
  * This ensures cross-platform consistency by converting Windows-style paths
@@ -111,28 +103,28 @@ export function normalizePath(filePath: string): string {
  *
  * @param relativePath - Relative path from `.eligian` source (Unix-style, must start with "./" or "../")
  * @param baseDir - Absolute path to the `.eligian` file's directory
- * @returns Resolution result with absolute path
+ * @returns Normalized absolute path (Unix-style, forward slashes)
  *
  * @example
  * ```typescript
  * // Resolve import relative to .eligian file's directory
  * resolvePath('./header.html', '/project/src')
- * // => { success: true, absolutePath: '/project/src/header.html' }
+ * // => '/project/src/header.html'
  *
  * // Subdirectory - allowed
  * resolvePath('./components/button.tsx', '/project/src')
- * // => { success: true, absolutePath: '/project/src/components/button.tsx' }
+ * // => '/project/src/components/button.tsx'
  *
  * // Parent directory - allowed
  * resolvePath('../shared/styles.css', '/project/src')
- * // => { success: true, absolutePath: '/project/shared/styles.css' }
+ * // => '/project/shared/styles.css'
  *
  * // Multiple parent levels - allowed
  * resolvePath('../../templates/header.html', '/project/src/features')
- * // => { success: true, absolutePath: '/project/templates/header.html' }
+ * // => '/project/templates/header.html'
  * ```
  */
-export function resolvePath(relativePath: string, baseDir: string): PathResolutionResult {
+export function resolvePath(relativePath: string, baseDir: string): string {
   // Normalize baseDir first to ensure consistent comparison
   const normalizedBaseDir = normalizePath(baseDir);
 
@@ -141,10 +133,5 @@ export function resolvePath(relativePath: string, baseDir: string): PathResoluti
   const absolutePath = resolvePaths(normalizedBaseDir, relativePath);
 
   // Normalize to Unix-style path (forward slashes)
-  const normalizedPath = normalizePath(absolutePath);
-
-  return {
-    success: true,
-    absolutePath: normalizedPath,
-  };
+  return normalizePath(absolutePath);
 }
