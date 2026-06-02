@@ -1,20 +1,18 @@
-import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
   type CSSImportsDiscoveredParams,
-  compile,
-  formatErrors,
   HTML_IMPORTS_DISCOVERED_NOTIFICATION,
   type HTMLImportsDiscoveredParams,
   LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
   type LabelsImportsDiscoveredParams,
 } from '@eligian/language';
-import { Effect } from 'effect';
-import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import { disposeCompilerOutputChannel, registerCompileCommand } from './commands/compile.js';
+import { registerGenerateJSDocCommand, registerJSDocAutoCompletion } from './commands/jsdoc.js';
+import { registerOpenLocaleEditorCommand } from './commands/locale.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
@@ -29,16 +27,6 @@ import { PreviewManager } from './preview/PreviewManager.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
-// B49: created once and reused/disposed via context.subscriptions instead of a
-// fresh channel allocated on every failed compile.
-let compilerOutputChannel: vscode.OutputChannel | null = null;
-
-function getCompilerOutputChannel(): vscode.OutputChannel {
-  if (!compilerOutputChannel) {
-    compilerOutputChannel = vscode.window.createOutputChannel('Eligian Compiler');
-  }
-  return compilerOutputChannel;
-}
 // T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
 // This watcher is independent of preview panels and exists for the lifetime of the extension
 let validationCSSWatcher: CSSWatcherManager | null = null;
@@ -155,7 +143,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(registerGenerateJSDocCommand(client));
 
   // Register JSDoc auto-completion on /** typing
-  context.subscriptions.push(registerJSDocAutoCompletion(client));
+  context.subscriptions.push(registerJSDocAutoCompletion());
 
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
@@ -165,7 +153,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push({ dispose: () => PreviewManager.disposeInstance() });
 
   // B49: dispose the shared compiler output channel if it was ever created.
-  context.subscriptions.push({ dispose: () => compilerOutputChannel?.dispose() });
+  context.subscriptions.push({ dispose: () => disposeCompilerOutputChannel() });
 
   // Release the block-label-detector's lazily-created Langium services (pairs
   // with B47) so they do not outlive the extension host.
@@ -263,291 +251,4 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
   await client.start();
 
   return client;
-}
-
-/**
- * Register the compile command
- */
-function registerCompileCommand(): any {
-  return vscode.commands.registerCommand('eligian.compile', async () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage('No active editor');
-      return;
-    }
-
-    const document = editor.document;
-    if (document.languageId !== 'eligian') {
-      vscode.window.showErrorMessage('Not an Eligian file');
-      return;
-    }
-
-    // Show compilation in progress
-    await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: 'Compiling Eligian file...',
-        cancellable: false,
-      },
-      async (_progress: vscode.Progress<{ message?: string; increment?: number }>) => {
-        try {
-          const sourceCode = document.getText();
-          const sourceUri = document.uri;
-
-          // Compile the document
-          const compileEffect = compile(sourceCode, {
-            optimize: true,
-            minify: false,
-            sourceUri: sourceUri.fsPath,
-          });
-
-          let result: IEngineConfiguration | undefined;
-          try {
-            result = await Effect.runPromise(compileEffect);
-          } catch (error) {
-            // Handle compilation errors
-            // Effect.runPromise wraps errors in a FiberFailure structure with nested cause
-            let compilerError: any = error;
-
-            // Unwrap Effect's FiberFailure -> Cause -> failure structure
-            // Effect errors have a toJSON() method that returns the actual structure
-            if (typeof compilerError.toJSON === 'function') {
-              compilerError = compilerError.toJSON();
-            }
-
-            // Now unwrap the JSON structure
-            if (compilerError?._id === 'FiberFailure' && compilerError.cause) {
-              compilerError = compilerError.cause;
-            }
-            if (compilerError?._tag === 'Fail' && compilerError.failure) {
-              compilerError = compilerError.failure;
-            }
-
-            const formatted = formatErrors([compilerError], sourceCode);
-
-            // Show errors in the shared output channel (B49: reused, not
-            // re-created on every failure).
-            const outputChannel = getCompilerOutputChannel();
-            outputChannel.clear();
-            outputChannel.appendLine('Compilation failed:\n');
-
-            for (const err of formatted) {
-              outputChannel.appendLine(err.message);
-
-              if (err.codeSnippet) {
-                outputChannel.appendLine(`\n${err.codeSnippet}`);
-              }
-
-              if (err.hint) {
-                outputChannel.appendLine(`\n💡 ${err.hint}`);
-              }
-
-              outputChannel.appendLine(''); // blank line
-            }
-
-            outputChannel.show();
-            throw new Error('Compilation failed');
-          }
-
-          // Generate output JSON
-          const outputJson = JSON.stringify(result, null, 2);
-
-          // Determine output file path
-          const inputPath = sourceUri.fsPath;
-          const outputPath = inputPath.replace(/\.eligian$/, '.json');
-
-          // Write output file
-          await fs.writeFile(outputPath, outputJson, 'utf-8');
-
-          vscode.window.showInformationMessage(`✓ Compiled to ${path.basename(outputPath)}`);
-
-          // Open the output file
-          const outputUri = vscode.Uri.file(outputPath);
-          const outputDoc = await vscode.workspace.openTextDocument(outputUri);
-          await vscode.window.showTextDocument(outputDoc, {
-            preview: false,
-            viewColumn: vscode.ViewColumn.Beside,
-          });
-        } catch (error) {
-          if (error instanceof Error && error.message !== 'Compilation failed') {
-            vscode.window.showErrorMessage(`Compilation error: ${error.message}`);
-          }
-        }
-      }
-    );
-  });
-}
-
-/**
- * Register the JSDoc generation command
- * This command is called AFTER the JSDoc completion is inserted
- */
-function registerGenerateJSDocCommand(client: LanguageClient): any {
-  return vscode.commands.registerCommand('eligian.generateJSDoc', async () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      return;
-    }
-
-    const document = editor.document;
-    if (document.languageId !== 'eligian') {
-      return;
-    }
-
-    // Get current cursor position (should be inside /** */ after Step 1)
-    const position = editor.selection.active;
-
-    // Request JSDoc generation from language server
-    const params = {
-      textDocument: { uri: document.uri.toString() },
-      position: { line: position.line, character: position.character },
-    };
-
-    try {
-      const jsdocContent = await client.sendRequest('eligian/generateJSDoc', params);
-
-      if (jsdocContent && typeof jsdocContent === 'string') {
-        // Replace the placeholder ${1} with the JSDoc content
-        await editor.edit((editBuilder: any) => {
-          // Find the /** */ block and replace the content between
-          const line = document.lineAt(position.line);
-          const lineText = line.text;
-
-          // Find /** and */ positions
-          const jsdocStart = lineText.indexOf('/**');
-          const jsdocEnd = lineText.indexOf('*/');
-
-          if (jsdocStart !== -1 && jsdocEnd !== -1) {
-            // Replace the content between /** and */
-            const startPos = new vscode.Position(position.line, jsdocStart + 3);
-            const endPos = new vscode.Position(position.line, jsdocEnd);
-            editBuilder.replace(new vscode.Range(startPos, endPos), `\n${jsdocContent}\n `);
-          }
-        });
-      }
-    } catch (_error) {
-      // Silently fail - no JSDoc generation available
-    }
-  });
-}
-
-/**
- * Register JSDoc auto-completion on slash-star-star typing
- * Automatically inserts closing and triggers JSDoc generation
- */
-function registerJSDocAutoCompletion(_client: LanguageClient): any {
-  return vscode.workspace.onDidChangeTextDocument(async (event: vscode.TextDocumentChangeEvent) => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || event.document !== editor.document) {
-      return;
-    }
-
-    // Only process eligian files
-    if (event.document.languageId !== 'eligian') {
-      return;
-    }
-
-    // Only process single character changes (user typing)
-    if (event.contentChanges.length !== 1) {
-      return;
-    }
-
-    const change = event.contentChanges[0];
-    const text = change.text;
-
-    // Check if user just typed the second *
-    if (text === '*') {
-      const position = new vscode.Position(change.range.end.line, change.range.end.character + 1);
-
-      const document = event.document;
-
-      // Get text before cursor (including the just-typed *)
-      const textBeforeCursor = document.getText(
-        new vscode.Range(new vscode.Position(0, 0), position)
-      );
-
-      // Check if it ends with /**
-      if (textBeforeCursor.trimEnd().endsWith('/**')) {
-        // Insert the closing */ and position cursor
-        await editor.edit(
-          (editBuilder: any) => {
-            editBuilder.insert(position, ' */');
-          },
-          { undoStopBefore: false, undoStopAfter: false }
-        );
-
-        // Move cursor to between /** and */
-        const newPosition = position.translate(0, 1);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-
-        // Trigger JSDoc generation command
-        await vscode.commands.executeCommand('eligian.generateJSDoc');
-      }
-    }
-  });
-}
-
-/**
- * Register the "Edit Labels" command (T018 - Feature 036 - User Story 1)
- * Opens locale JSON files in the custom Locale Editor
- */
-function registerOpenLocaleEditorCommand(): vscode.Disposable {
-  return vscode.commands.registerCommand(
-    'eligian.openLabelEditor',
-    async (fileUri?: vscode.Uri) => {
-      // If invoked with an explicit file URI (e.g. from label-file creation),
-      // open that file directly instead of inferring from the active editor.
-      if (fileUri) {
-        try {
-          await vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
-        } catch (error) {
-          vscode.window.showErrorMessage(`Failed to open locale file: ${error}`);
-        }
-        return;
-      }
-
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showErrorMessage('No active editor');
-        return;
-      }
-
-      const document = editor.document;
-      if (document.languageId !== 'eligian') {
-        vscode.window.showErrorMessage('Not an Eligian file');
-        return;
-      }
-
-      // Get cursor position
-      const position = editor.selection.active;
-      const line = document.lineAt(position).text;
-
-      // Check if line matches locales import pattern
-      const pattern = /locales\s+"([^"]+)"/;
-      const match = pattern.exec(line);
-
-      if (!match) {
-        vscode.window.showErrorMessage('Cursor is not on a locales import statement');
-        return;
-      }
-
-      // Extract file path
-      const relativePath = match[1];
-
-      // Resolve relative path to absolute URI
-      try {
-        const documentDir = vscode.Uri.joinPath(document.uri, '..');
-        const labelFileUri = vscode.Uri.joinPath(documentDir, relativePath);
-
-        // Open with custom editor
-        await vscode.commands.executeCommand(
-          'vscode.openWith',
-          labelFileUri,
-          'eligian.localeEditor'
-        );
-      } catch (error) {
-        vscode.window.showErrorMessage(`Failed to open locale file: ${error}`);
-      }
-    }
-  );
 }
