@@ -108,15 +108,43 @@ export type MediaImportError = FileImportErrorBase & {
 };
 
 // ============================================================================
+// Locales Import Errors
+// ============================================================================
+
+/**
+ * Locales import error - locales/labels JSON file validation failures
+ *
+ * Occurs when an imported `locales` JSON file is missing, unreadable, or fails
+ * schema validation (invalid locale codes, missing required fields, etc.).
+ * The optional {@link LocalesImportError.details} carries the structured schema
+ * detail (e.g. AJV path) that the locale validator produces.
+ *
+ * @example
+ * ```eligian
+ * locales "./labels.json"  // LocalesImportError: invalid locale code "en_US"
+ * ```
+ */
+export type LocalesImportError = FileImportErrorBase & {
+  readonly _tag: 'LocalesImportError';
+  readonly details?: string; // Structured detail from schema validation
+};
+
+// ============================================================================
 // Asset Error Union
 // ============================================================================
 
 /**
  * Union of all asset validation errors
  *
- * These errors occur when validating imported assets (HTML layouts, CSS stylesheets, media files).
+ * These errors occur when validating imported assets (HTML layouts, CSS stylesheets,
+ * media files, locales JSON).
  */
-export type AssetError = HtmlImportError | CssImportError | CssParseError | MediaImportError;
+export type AssetError =
+  | HtmlImportError
+  | CssImportError
+  | CssParseError
+  | MediaImportError
+  | LocalesImportError;
 
 // ============================================================================
 // Constructor Functions (Feature 018 - US1)
@@ -212,4 +240,21 @@ export function createMediaImportError(params: {
   hint?: string;
 }): MediaImportError {
   return makeImportError('MediaImportError', params);
+}
+
+/**
+ * Create a LocalesImportError
+ *
+ * @param params - Error parameters
+ * @returns LocalesImportError object
+ */
+export function createLocalesImportError(params: {
+  filePath: string;
+  absolutePath: string;
+  message: string;
+  location: SourceLocation;
+  details?: string;
+  hint?: string;
+}): LocalesImportError {
+  return makeImportError('LocalesImportError', params);
 }

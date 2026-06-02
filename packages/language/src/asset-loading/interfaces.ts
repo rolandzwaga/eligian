@@ -4,12 +4,8 @@
  * Core interfaces for asset loading and validation.
  */
 
-import type {
-  AssetError,
-  CssValidationResult,
-  HtmlValidationResult,
-  MediaValidationResult,
-} from './types.js';
+import type { AssetError } from '../errors/index.js';
+import type { CssValidationResult, HtmlValidationResult, MediaValidationResult } from './types.js';
 
 /**
  * Asset Loader Interface

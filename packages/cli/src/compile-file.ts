@@ -8,6 +8,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import {
+  type AssetError as AssetValidationError,
   type CompilerError,
   compile,
   formatErrors,
@@ -90,6 +91,55 @@ export class AssetError extends CompileError {
     super(message, 'asset', errors);
     this.name = 'AssetError';
   }
+}
+
+/**
+ * Adapt an asset-validation discriminated-union member ({@link AssetValidationError})
+ * to the flat shape the CLI's {@link AssetError} class (and `printAssetErrors`)
+ * consume. Centralizes all knowledge of the union's per-`_tag` shape so the CLI
+ * error class and its formatter stay unchanged.
+ */
+function toCliAssetError(err: AssetValidationError): {
+  message: string;
+  filePath: string;
+  absolutePath: string;
+  sourceLocation: { file: string; line: number; column: number };
+  hint?: string;
+  details?: string;
+} {
+  // CssParseError carries its location as filePath + line/column (no separate
+  // relative/absolute path or `location` object).
+  if (err._tag === 'CssParseError') {
+    return {
+      message: err.message,
+      filePath: err.filePath,
+      absolutePath: err.filePath,
+      sourceLocation: { file: err.filePath, line: err.line, column: err.column },
+      hint: err.hint,
+      details: `Line ${err.line}, Column ${err.column}`,
+    };
+  }
+
+  // Remaining members share FileImportErrorBase (filePath/absolutePath/location).
+  let details: string | undefined;
+  if (err._tag === 'LocalesImportError') {
+    details = err.details;
+  } else if (err._tag === 'HtmlImportError' && err.line !== undefined && err.column !== undefined) {
+    details = `Line ${err.line}, Column ${err.column}`;
+  }
+
+  return {
+    message: err.message,
+    filePath: err.filePath,
+    absolutePath: err.absolutePath,
+    sourceLocation: {
+      file: err.location.file ?? '',
+      line: err.location.line,
+      column: err.location.column,
+    },
+    hint: err.hint,
+    details,
+  };
 }
 
 /**
@@ -203,14 +253,7 @@ export async function compileFile(
     if (assetResult.errors.length > 0) {
       throw new AssetError(
         `Asset validation failed with ${assetResult.errors.length} error(s)`,
-        assetResult.errors.map(err => ({
-          message: err.message,
-          filePath: err.filePath,
-          absolutePath: err.absolutePath,
-          sourceLocation: err.sourceLocation,
-          hint: err.hint,
-          details: err.details,
-        }))
+        assetResult.errors.map(toCliAssetError)
       );
     }
 

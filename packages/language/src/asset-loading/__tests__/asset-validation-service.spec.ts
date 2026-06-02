@@ -46,17 +46,23 @@ describe('Asset Validation Service', () => {
       const errors = service.validateAsset('html', htmlPath, sourcePath, './missing.html');
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].type).toBe('missing-file');
-      expect(errors[0].filePath).toBe('./missing.html');
-      expect(errors[0].absolutePath).toBe(htmlPath);
+      const error = errors[0];
+      expect(error._tag).toBe('HtmlImportError');
+      expect(error.filePath).toBe('./missing.html');
+      if (error._tag === 'HtmlImportError') {
+        expect(error.absolutePath).toBe(htmlPath);
+      }
     });
 
     it('should provide source location in errors', () => {
       const htmlPath = resolve(fixturesDir, 'missing.html');
       const errors = service.validateAsset('html', htmlPath, sourcePath, './missing.html');
 
-      expect(errors[0].sourceLocation).toBeDefined();
-      expect(errors[0].sourceLocation.file).toBe(sourcePath);
+      const error = errors[0];
+      if (error._tag === 'HtmlImportError') {
+        expect(error.location).toBeDefined();
+        expect(error.location.file).toBe(sourcePath);
+      }
     });
 
     it('should provide helpful hints', () => {
@@ -64,7 +70,7 @@ describe('Asset Validation Service', () => {
       const errors = service.validateAsset('html', htmlPath, sourcePath, './missing.html');
 
       expect(errors[0].hint).toBeTruthy();
-      expect(errors[0].hint.length).toBeGreaterThan(0);
+      expect((errors[0].hint ?? '').length).toBeGreaterThan(0);
     });
   });
 
@@ -81,7 +87,7 @@ describe('Asset Validation Service', () => {
       const errors = service.validateAsset('css', cssPath, sourcePath, './missing.css');
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].type).toBe('missing-file');
+      expect(errors[0]._tag).toBe('CssImportError');
       expect(errors[0].filePath).toBe('./missing.css');
     });
 
@@ -120,7 +126,7 @@ describe('Asset Validation Service', () => {
       const errors = service.validateAsset('media', imagePath, sourcePath, './missing.png');
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].type).toBe('missing-file');
+      expect(errors[0]._tag).toBe('MediaImportError');
     });
   });
 
@@ -129,19 +135,19 @@ describe('Asset Validation Service', () => {
       const htmlPath = resolve(fixturesDir, 'missing.html');
       const errors = service.validateAsset('html', htmlPath, sourcePath, './missing.html');
 
-      expect(errors[0]).toHaveProperty('type');
+      expect(errors[0]).toHaveProperty('_tag');
       expect(errors[0]).toHaveProperty('filePath');
       expect(errors[0]).toHaveProperty('absolutePath');
-      expect(errors[0]).toHaveProperty('sourceLocation');
+      expect(errors[0]).toHaveProperty('location');
       expect(errors[0]).toHaveProperty('message');
       expect(errors[0]).toHaveProperty('hint');
     });
 
-    it('should use correct error type for missing files', () => {
+    it('should use correct error tag for missing files', () => {
       const htmlPath = resolve(fixturesDir, 'missing.html');
       const errors = service.validateAsset('html', htmlPath, sourcePath, './missing.html');
 
-      expect(errors[0].type).toBe('missing-file');
+      expect(errors[0]._tag).toBe('HtmlImportError');
     });
 
     it('should include clear error messages', () => {

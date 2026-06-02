@@ -8,36 +8,14 @@
  *
  * Migration guide:
  * ```typescript
- * // Before:
- * import { AssetError } from './asset-loading/types.js';
- *
- * // After:
+ * // The legacy flat `AssetError` interface has been removed. Use the
+ * // discriminated union from the unified namespace instead:
  * import { AssetError, CssImportError, HtmlImportError } from '@eligian/language/errors';
  * ```
  *
- * This file maintains backwards compatibility with old-style interfaces.
- * It will be removed in a future version.
+ * The remaining types here (validation results, SourceLocation) are still in
+ * use; they will be migrated to the unified namespace in a future version.
  */
-
-// ============================================================================
-// Legacy Asset Error Interface (deprecated)
-// ============================================================================
-
-/**
- * @deprecated Use the new AssetError union type from '@eligian/language/errors' instead.
- *
- * This interface represents the old-style asset error format.
- * New code should use the discriminated union types from the unified namespace.
- */
-export interface AssetError {
-  type: 'missing-file' | 'invalid-html' | 'invalid-css' | 'load-error' | 'validation-error';
-  filePath: string; // Relative path from source
-  absolutePath: string; // Resolved absolute path
-  sourceLocation: SourceLocation;
-  message: string;
-  hint: string;
-  details?: string;
-}
 
 // ============================================================================
 // Validation Result Types (still in use)

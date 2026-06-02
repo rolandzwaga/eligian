@@ -10,6 +10,13 @@
 
 import { dirname, resolve } from 'node:path';
 import type { ILocalesConfiguration } from 'eligius';
+import type { AssetError, SourceLocation } from '../errors/index.js';
+import {
+  createCssImportError,
+  createHtmlImportError,
+  createLocalesImportError,
+  createMediaImportError,
+} from '../errors/index.js';
 import type { Program } from '../generated/ast.js';
 import { inferAssetType } from '../utils/asset-type-inference.js';
 import { isDefaultImport, isNamedImport } from '../utils/ast-helpers.js';
@@ -18,7 +25,7 @@ import { validateLocalesJSON } from '../validators/locale-import-validator.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
 import { HtmlValidator } from './html-validator.js';
-import type { AssetError, IAssetLoader, SourceLocation } from './index.js';
+import type { IAssetLoader } from './index.js';
 import { MediaValidator } from './media-validator.js';
 import { NodeAssetLoader } from './node-asset-loader.js';
 
@@ -83,6 +90,31 @@ export function createAssetValidationService(): AssetValidationService {
     new CssValidator(),
     new MediaValidator()
   );
+}
+
+/**
+ * Build the discriminated-union member for an unexpected asset-load failure,
+ * keyed on the import's inferred asset type so consumers can branch on `_tag`.
+ */
+function buildLoadError(importInfo: ImportInfo, absolutePath: string, message: string): AssetError {
+  const params = {
+    filePath: importInfo.path,
+    absolutePath,
+    location: importInfo.sourceLocation,
+    message: `Failed to load asset: ${message}`,
+    hint: 'Check file path and permissions',
+  };
+
+  switch (importInfo.assetType) {
+    case 'html':
+      return createHtmlImportError(params);
+    case 'css':
+      return createCssImportError(params);
+    case 'json':
+      return createLocalesImportError(params);
+    default:
+      return createMediaImportError(params);
+  }
 }
 
 /**
@@ -186,15 +218,16 @@ export function loadProgramAssets(
             // structurally invalid-but-parseable files are rejected.
             const localeError = validateLocalesJSON(content, importInfo.path);
             if (localeError) {
-              result.errors.push({
-                type: 'validation-error',
-                filePath: importInfo.path,
-                absolutePath,
-                sourceLocation: importInfo.sourceLocation,
-                message: localeError.message,
-                hint: localeError.hint,
-                ...(localeError.details ? { details: localeError.details } : {}),
-              });
+              result.errors.push(
+                createLocalesImportError({
+                  filePath: importInfo.path,
+                  absolutePath,
+                  location: importInfo.sourceLocation,
+                  message: localeError.message,
+                  hint: localeError.hint,
+                  ...(localeError.details ? { details: localeError.details } : {}),
+                })
+              );
             } else {
               // Schema validation guarantees this parses successfully.
               result.locales = JSON.parse(content) as ILocalesConfiguration;
@@ -212,14 +245,9 @@ export function loadProgramAssets(
     } catch (error) {
       // Handle unexpected errors
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      result.errors.push({
-        type: 'load-error',
-        filePath: importInfo.path,
-        absolutePath: resolve(sourceDir, importInfo.path),
-        sourceLocation: importInfo.sourceLocation,
-        message: `Failed to load asset: ${errorMessage}`,
-        hint: 'Check file path and permissions',
-      });
+      result.errors.push(
+        buildLoadError(importInfo, resolve(sourceDir, importInfo.path), errorMessage)
+      );
     }
   }
 

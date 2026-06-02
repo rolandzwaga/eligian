@@ -4,6 +4,14 @@
  * Orchestrates HTML, CSS, and media file validation.
  */
 
+import type { AssetError, SourceLocation } from '../errors/index.js';
+import {
+  createCssImportError,
+  createCssParseError,
+  createHtmlImportError,
+  createLocalesImportError,
+  createMediaImportError,
+} from '../errors/index.js';
 import type {
   IAssetLoader,
   IAssetValidationService,
@@ -11,7 +19,6 @@ import type {
   IHtmlValidator,
   IMediaValidator,
 } from './interfaces.js';
-import type { AssetError, SourceLocation } from './types.js';
 
 /**
  * Asset Validation Service
@@ -42,8 +49,6 @@ export class AssetValidationService implements IAssetValidationService {
     sourcePath: string,
     relativePath: string
   ): AssetError[] {
-    const errors: AssetError[] = [];
-
     // Create source location for error reporting
     const sourceLocation: SourceLocation = {
       file: sourcePath,
@@ -53,15 +58,7 @@ export class AssetValidationService implements IAssetValidationService {
 
     // Check if file exists
     if (!this.assetLoader.fileExists(absolutePath)) {
-      errors.push({
-        type: 'missing-file',
-        filePath: relativePath,
-        absolutePath,
-        sourceLocation,
-        message: `Asset file not found: ${relativePath}`,
-        hint: 'Check that the file path is correct and the file exists',
-      });
-      return errors;
+      return [this.buildMissingFileError(assetType, relativePath, absolutePath, sourceLocation)];
     }
 
     // Validate based on asset type
@@ -76,21 +73,54 @@ export class AssetValidationService implements IAssetValidationService {
         return this.validateMedia(absolutePath, relativePath, sourceLocation);
 
       case 'json':
-        // JSON validation is handled separately by label-import-validator
-        // Just verify file exists (already done above)
-        return errors;
+        // JSON validation (locales schema) is handled by loadProgramAssets /
+        // label-import-validator. Existence was already checked above.
+        return [];
 
       default:
-        // Unknown asset type
-        errors.push({
-          type: 'load-error',
-          filePath: relativePath,
-          absolutePath,
-          sourceLocation,
-          message: `Unknown asset type: ${assetType}`,
-          hint: 'Asset type must be html, css, media, or json',
-        });
-        return errors;
+        // Unknown asset type (unreachable for the typed union, kept defensive)
+        return [
+          createMediaImportError({
+            filePath: relativePath,
+            absolutePath,
+            message: `Unknown asset type: ${assetType}`,
+            location: sourceLocation,
+            hint: 'Asset type must be html, css, media, or json',
+          }),
+        ];
+    }
+  }
+
+  /**
+   * Build the per-asset-type "file not found" import error.
+   *
+   * The missing-file check is shared across all asset types, but each type maps
+   * to its own discriminated-union member so downstream consumers can branch on
+   * `_tag`.
+   */
+  private buildMissingFileError(
+    assetType: 'html' | 'css' | 'media' | 'json',
+    relativePath: string,
+    absolutePath: string,
+    location: SourceLocation
+  ): AssetError {
+    const base = {
+      filePath: relativePath,
+      absolutePath,
+      location,
+      message: `Asset file not found: ${relativePath}`,
+      hint: 'Check that the file path is correct and the file exists',
+    };
+
+    switch (assetType) {
+      case 'html':
+        return createHtmlImportError(base);
+      case 'css':
+        return createCssImportError(base);
+      case 'json':
+        return createLocalesImportError(base);
+      default:
+        return createMediaImportError(base);
     }
   }
 
@@ -104,11 +134,25 @@ export class AssetValidationService implements IAssetValidationService {
   ): AssetError[] {
     return this.validateContentFile(
       absolutePath,
-      relativePath,
-      sourceLocation,
       content => this.htmlValidator.validate(content),
-      'invalid-html',
-      'HTML'
+      validationError =>
+        createHtmlImportError({
+          filePath: relativePath,
+          absolutePath,
+          location: sourceLocation,
+          message: `HTML validation error: ${validationError.message}`,
+          hint: validationError.hint,
+          line: validationError.line,
+          column: validationError.column,
+        }),
+      message =>
+        createHtmlImportError({
+          filePath: relativePath,
+          absolutePath,
+          location: sourceLocation,
+          message: `Failed to load HTML file: ${message}`,
+          hint: 'Check file permissions and encoding (should be UTF-8)',
+        })
     );
   }
 
@@ -122,11 +166,24 @@ export class AssetValidationService implements IAssetValidationService {
   ): AssetError[] {
     return this.validateContentFile(
       absolutePath,
-      relativePath,
-      sourceLocation,
       content => this.cssValidator.validate(content),
-      'invalid-css',
-      'CSS'
+      // CSS syntax/validation failures carry line/column → CssParseError.
+      validationError =>
+        createCssParseError({
+          filePath: absolutePath,
+          message: `CSS validation error: ${validationError.message}`,
+          hint: validationError.hint,
+          line: validationError.line,
+          column: validationError.column,
+        }),
+      message =>
+        createCssImportError({
+          filePath: relativePath,
+          absolutePath,
+          location: sourceLocation,
+          message: `Failed to load CSS file: ${message}`,
+          hint: 'Check file permissions and encoding (should be UTF-8)',
+        })
     );
   }
 
@@ -134,25 +191,28 @@ export class AssetValidationService implements IAssetValidationService {
    * Validate a text-based asset file (HTML or CSS).
    *
    * D24: the HTML and CSS validation paths were byte-for-byte identical apart
-   * from the validator invoked, the emitted error `type`, and the human-readable
-   * label in the messages. This generic helper is the single source of truth;
-   * {@link validateHtml}/{@link validateCss} are thin wrappers selecting those
-   * three values.
+   * from the validator invoked and the union member emitted. This generic helper
+   * is the single source of truth; {@link validateHtml}/{@link validateCss} are
+   * thin wrappers supplying the validator and the two error builders (one for a
+   * content-validation failure, one for a file-load failure).
    *
    * @param validate - The content validator (HTML or CSS) to run
-   * @param invalidType - AssetError `type` for content-validation failures
-   * @param label - Human-readable asset label used in error messages
+   * @param buildContentError - Builds the union member for a validation failure
+   * @param buildLoadError - Builds the union member for a file-load failure
    */
   private validateContentFile(
     absolutePath: string,
-    relativePath: string,
-    sourceLocation: SourceLocation,
     validate: (content: string) => {
       valid: boolean;
       errors: ReadonlyArray<{ message: string; hint: string; line: number; column: number }>;
     },
-    invalidType: 'invalid-html' | 'invalid-css',
-    label: string
+    buildContentError: (validationError: {
+      message: string;
+      hint: string;
+      line: number;
+      column: number;
+    }) => AssetError,
+    buildLoadError: (message: string) => AssetError
   ): AssetError[] {
     const errors: AssetError[] = [];
 
@@ -162,28 +222,13 @@ export class AssetValidationService implements IAssetValidationService {
 
       if (!result.valid) {
         for (const validationError of result.errors) {
-          errors.push({
-            type: invalidType,
-            filePath: relativePath,
-            absolutePath,
-            sourceLocation,
-            message: `${label} validation error: ${validationError.message}`,
-            hint: validationError.hint,
-            details: `Line ${validationError.line}, Column ${validationError.column}`,
-          });
+          errors.push(buildContentError(validationError));
         }
       }
     } catch (error) {
       // File load error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      errors.push({
-        type: 'load-error',
-        filePath: relativePath,
-        absolutePath,
-        sourceLocation,
-        message: `Failed to load ${label} file: ${errorMessage}`,
-        hint: 'Check file permissions and encoding (should be UTF-8)',
-      });
+      errors.push(buildLoadError(errorMessage));
     }
 
     return errors;
@@ -203,16 +248,17 @@ export class AssetValidationService implements IAssetValidationService {
     const result = this.mediaValidator.validate(absolutePath);
 
     if (!result.valid) {
-      // Convert media validation errors to AssetErrors
+      // Convert media validation errors to MediaImportErrors
       for (const mediaError of result.errors) {
-        errors.push({
-          type: 'missing-file',
-          filePath: relativePath,
-          absolutePath: mediaError.absolutePath,
-          sourceLocation,
-          message: mediaError.message,
-          hint: mediaError.hint,
-        });
+        errors.push(
+          createMediaImportError({
+            filePath: relativePath,
+            absolutePath: mediaError.absolutePath,
+            location: sourceLocation,
+            message: mediaError.message,
+            hint: mediaError.hint,
+          })
+        );
       }
     }
 

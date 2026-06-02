@@ -211,11 +211,11 @@ export class MediaResolver {
 
     // Use shared-utils to resolve path relative to document directory
     // Parent directory navigation (../) is allowed
-    const result = resolvePath(mediaPath, this.documentUri.fsPath);
+    const absolutePath = resolvePath(mediaPath, this.documentUri.fsPath);
 
     // Convert resolved absolute path to webview URI
     try {
-      const fileUri = vscode.Uri.file(result.absolutePath);
+      const fileUri = vscode.Uri.file(absolutePath);
       return this.webview.asWebviewUri(fileUri);
     } catch (error) {
       console.warn(`[MediaResolver] Failed to convert to webview URI: ${mediaPath}`, error);

@@ -39,9 +39,7 @@ export function resolveHTMLPath(
   const sourceDir = path.dirname(sourceFilePath);
 
   // Use shared-utils path resolver (parent directory navigation is allowed)
-  const result = resolvePath(importPath, sourceDir);
-
-  return result.absolutePath;
+  return resolvePath(importPath, sourceDir);
 }
 
 /**

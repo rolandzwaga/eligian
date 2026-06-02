@@ -371,7 +371,7 @@ describe('Compiler Integration', () => {
 
       // Should have error
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].type).toBe('missing-file');
+      expect(result.errors[0]._tag).toBe('HtmlImportError');
       expect(result.errors[0].filePath).toBe('./missing.html');
       expect(result.errors[0].message).toContain('not found');
 
@@ -395,7 +395,7 @@ describe('Compiler Integration', () => {
 
       // Should have error
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].type).toBe('missing-file');
+      expect(result.errors[0]._tag).toBe('CssImportError');
       expect(result.errors[0].filePath).toBe('./missing.css');
 
       // Should not populate cssFiles
@@ -418,7 +418,7 @@ describe('Compiler Integration', () => {
 
       // Should have error
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].type).toBe('missing-file');
+      expect(result.errors[0]._tag).toBe('MediaImportError');
       expect(result.errors[0].filePath).toBe('./missing.mp4');
 
       // Should not populate importMap
@@ -441,7 +441,7 @@ describe('Compiler Integration', () => {
 
       // Should have error
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].type).toBe('missing-file');
+      expect(result.errors[0]._tag).toBe('HtmlImportError');
       expect(result.errors[0].filePath).toBe('./missing.html');
 
       // Should not populate importMap
@@ -469,7 +469,7 @@ describe('Compiler Integration', () => {
 
         // Should have error
         expect(result.errors.length).toBeGreaterThan(0);
-        expect(result.errors[0].type).toBe('invalid-html');
+        expect(result.errors[0]._tag).toBe('HtmlImportError');
         expect(result.errors[0].message).toContain('validation error');
 
         // Should not populate layoutTemplate
@@ -528,15 +528,15 @@ describe('Compiler Integration', () => {
       // Check each error
       const layoutError = result.errors.find(e => e.filePath === './missing-layout.html');
       expect(layoutError).toBeDefined();
-      expect(layoutError!.type).toBe('missing-file');
+      expect(layoutError!._tag).toBe('HtmlImportError');
 
       const stylesError = result.errors.find(e => e.filePath === './missing-styles.css');
       expect(stylesError).toBeDefined();
-      expect(stylesError!.type).toBe('missing-file');
+      expect(stylesError!._tag).toBe('CssImportError');
 
       const providerError = result.errors.find(e => e.filePath === './missing-video.mp4');
       expect(providerError).toBeDefined();
-      expect(providerError!.type).toBe('missing-file');
+      expect(providerError!._tag).toBe('MediaImportError');
     });
 
     it('should include source location in errors', async () => {
@@ -553,11 +553,15 @@ describe('Compiler Integration', () => {
 
       const result = loadProgramAssets(program, sourcePath);
 
-      // Error should have source location
-      expect(result.errors[0].sourceLocation).toBeDefined();
-      expect(result.errors[0].sourceLocation.file).toBe(sourcePath);
-      expect(result.errors[0].sourceLocation.line).toBeGreaterThanOrEqual(0);
-      expect(result.errors[0].sourceLocation.column).toBeGreaterThanOrEqual(0);
+      // Error should have source location (layout → HtmlImportError carries `location`)
+      const error = result.errors[0];
+      expect(error._tag).toBe('HtmlImportError');
+      if (error._tag === 'HtmlImportError') {
+        expect(error.location).toBeDefined();
+        expect(error.location.file).toBe(sourcePath);
+        expect(error.location.line).toBeGreaterThanOrEqual(0);
+        expect(error.location.column).toBeGreaterThanOrEqual(0);
+      }
     });
   });
 });

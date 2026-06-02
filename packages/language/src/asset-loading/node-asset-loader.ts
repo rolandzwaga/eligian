@@ -86,8 +86,6 @@ export class NodeAssetLoader implements IAssetLoader {
     const sourceDir = dirname(sourcePath);
 
     // Use shared-utils path resolver (parent directory navigation is allowed)
-    const result = resolvePath(relativePath, sourceDir);
-
-    return result.absolutePath;
+    return resolvePath(relativePath, sourceDir);
   }
 }

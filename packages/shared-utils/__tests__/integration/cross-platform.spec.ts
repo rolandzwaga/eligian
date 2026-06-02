@@ -64,9 +64,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/src/components/button.tsx');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/src/components/button.tsx');
       }
     });
 
@@ -76,9 +76,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/src/components/forms/input/index.tsx');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/src/components/forms/input/index.tsx');
       }
     });
 
@@ -89,8 +89,8 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      expect(result.absolutePath).toBe('/project/outside/file.txt');
+      expect(result).toBeDefined();
+      expect(result).toBe('/project/outside/file.txt');
     });
 
     it('should handle Windows drive letters in baseDir (normalized)', () => {
@@ -100,11 +100,11 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('F:/projects/eligian/examples/demo.eligian');
-        expect(result.absolutePath).toContain('/'); // Unix-style separators
-        expect(result.absolutePath).not.toContain('\\'); // No backslashes
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('F:/projects/eligian/examples/demo.eligian');
+        expect(result).toContain('/'); // Unix-style separators
+        expect(result).not.toContain('\\'); // No backslashes
       }
     });
 
@@ -115,10 +115,10 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/home/user/projects/eligian/examples/demo.eligian');
-        expect(result.absolutePath).toContain('/'); // Unix-style separators
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/home/user/projects/eligian/examples/demo.eligian');
+        expect(result).toContain('/'); // Unix-style separators
       }
     });
 
@@ -129,11 +129,11 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
+      expect(result).toBeDefined();
+      if (result) {
         // Output should be Unix-style
-        expect(result.absolutePath).toBe('F:/projects/eligian/examples/demo.eligian');
-        expect(result.absolutePath).not.toContain('\\'); // No backslashes in output
+        expect(result).toBe('F:/projects/eligian/examples/demo.eligian');
+        expect(result).not.toContain('\\'); // No backslashes in output
       }
     });
 
@@ -144,11 +144,11 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
+      expect(result).toBeDefined();
+      if (result) {
         // Output should be Unix-style
-        expect(result.absolutePath).toBe('/project/src/components/button.tsx');
-        expect(result.absolutePath).not.toContain('\\'); // No backslashes
+        expect(result).toBe('/project/src/components/button.tsx');
+        expect(result).not.toContain('\\'); // No backslashes
       }
     });
   });
@@ -160,8 +160,8 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      expect(result.absolutePath).toBe('/etc/passwd');
+      expect(result).toBeDefined();
+      expect(result).toBe('/etc/passwd');
     });
 
     it('should allow path traversal with Windows-style separators', () => {
@@ -170,9 +170,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
       // Path is normalized to Unix-style
-      expect(result.absolutePath).toBe('/Windows/System32/config');
+      expect(result).toBe('/Windows/System32/config');
     });
 
     it('should allow path traversal with mixed separators', () => {
@@ -181,8 +181,8 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      expect(result.absolutePath).toBe('/outside/sensitive/data.txt');
+      expect(result).toBeDefined();
+      expect(result).toBe('/outside/sensitive/data.txt');
     });
 
     it('should allow same-directory paths on all platforms', () => {
@@ -190,15 +190,15 @@ describe('Cross-Platform Path Handling', () => {
 
       // Unix-style
       const result1 = resolvePath('./file.css', baseDir);
-      expect(result1.success).toBe(true);
+      expect(result1).toBeDefined();
 
       // Windows-style (normalized)
       const result2 = resolvePath('.\\file.css', baseDir);
-      expect(result2.success).toBe(true);
+      expect(result2).toBeDefined();
 
       // Both should resolve to same path
-      if (result1.success && result2.success) {
-        expect(result1.absolutePath).toBe(result2.absolutePath);
+      if (result1 && result2) {
+        expect(result1).toBe(result2);
       }
     });
 
@@ -207,15 +207,15 @@ describe('Cross-Platform Path Handling', () => {
 
       // Unix-style
       const result1 = resolvePath('./components/button.tsx', baseDir);
-      expect(result1.success).toBe(true);
+      expect(result1).toBeDefined();
 
       // Windows-style (normalized)
       const result2 = resolvePath('.\\components\\button.tsx', baseDir);
-      expect(result2.success).toBe(true);
+      expect(result2).toBeDefined();
 
       // Both should resolve to same path
-      if (result1.success && result2.success) {
-        expect(result1.absolutePath).toBe(result2.absolutePath);
+      if (result1 && result2) {
+        expect(result1).toBe(result2);
       }
     });
   });
@@ -225,9 +225,9 @@ describe('Cross-Platform Path Handling', () => {
       const baseDir = '/project/src';
       const result = resolvePath('', baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/src');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/src');
       }
     });
 
@@ -235,9 +235,9 @@ describe('Cross-Platform Path Handling', () => {
       const baseDir = '/project/src';
       const result = resolvePath('.', baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/src');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/src');
       }
     });
 
@@ -247,9 +247,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/src/文字化け/ファイル.css');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/src/文字化け/ファイル.css');
       }
     });
 
@@ -259,9 +259,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/My Project/src/My Components/My Button.tsx');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/My Project/src/My Components/My Button.tsx');
       }
     });
 
@@ -271,9 +271,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('/project/src/components/button-v2.0_final[1].tsx');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/project/src/components/button-v2.0_final[1].tsx');
       }
     });
   });
@@ -287,10 +287,10 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe('F:/projects/eligian/examples/styles/main.css');
-        expect(result.absolutePath).not.toContain('\\');
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('F:/projects/eligian/examples/styles/main.css');
+        expect(result).not.toContain('\\');
       }
     });
 
@@ -302,11 +302,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe(
-          '/Users/developer/projects/eligian/examples/styles/main.css'
-        );
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/Users/developer/projects/eligian/examples/styles/main.css');
       }
     });
 
@@ -318,11 +316,9 @@ describe('Cross-Platform Path Handling', () => {
 
       const result = resolvePath(relativePath, baseDir);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.absolutePath).toBe(
-          '/home/developer/projects/eligian/examples/styles/main.css'
-        );
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result).toBe('/home/developer/projects/eligian/examples/styles/main.css');
       }
     });
 
@@ -338,20 +334,20 @@ describe('Cross-Platform Path Handling', () => {
       const resultLinux = resolvePath(relativePath, '/home/dev/projects/myapp/src');
 
       // All should succeed
-      expect(resultWindows.success).toBe(true);
-      expect(resultMacOS.success).toBe(true);
-      expect(resultLinux.success).toBe(true);
+      expect(resultWindows).toBeDefined();
+      expect(resultMacOS).toBeDefined();
+      expect(resultLinux).toBeDefined();
 
       // All should use Unix-style separators
-      if (resultWindows.success) {
-        expect(resultWindows.absolutePath).toContain('/');
-        expect(resultWindows.absolutePath).not.toContain('\\');
+      if (resultWindows) {
+        expect(resultWindows).toContain('/');
+        expect(resultWindows).not.toContain('\\');
       }
-      if (resultMacOS.success) {
-        expect(resultMacOS.absolutePath).toContain('/');
+      if (resultMacOS) {
+        expect(resultMacOS).toContain('/');
       }
-      if (resultLinux.success) {
-        expect(resultLinux.absolutePath).toContain('/');
+      if (resultLinux) {
+        expect(resultLinux).toContain('/');
       }
     });
   });

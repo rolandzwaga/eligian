@@ -111,6 +111,7 @@ function formatMessage(error: AllErrors): string {
     case 'HtmlImportError':
     case 'CssImportError':
     case 'MediaImportError':
+    case 'LocalesImportError':
       return `${baseMessage} (${error.filePath})`;
 
     default:

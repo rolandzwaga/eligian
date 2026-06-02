@@ -23,6 +23,7 @@ import type {
   EmitError,
   HtmlImportError,
   IOError,
+  LocalesImportError,
   MediaImportError,
   OptimizationError,
   ParseError,
@@ -249,6 +250,23 @@ export function isMediaImportError(error: unknown): error is MediaImportError {
 }
 
 /**
+ * Check if error is a LocalesImportError
+ *
+ * @param error - Error to check
+ * @returns True if error is LocalesImportError
+ *
+ * @example
+ * ```typescript
+ * if (isLocalesImportError(error)) {
+ *   console.log(`Locales file invalid: ${error.filePath}`);
+ * }
+ * ```
+ */
+export function isLocalesImportError(error: unknown): error is LocalesImportError {
+  return hasTag(error, 'LocalesImportError');
+}
+
+/**
  * Check if error is any AssetError
  *
  * @param error - Error to check
@@ -267,7 +285,8 @@ export function isAssetError(error: unknown): error is AssetError {
     isHtmlImportError(error) ||
     isCssImportError(error) ||
     isCssParseError(error) ||
-    isMediaImportError(error)
+    isMediaImportError(error) ||
+    isLocalesImportError(error)
   );
 }
 
