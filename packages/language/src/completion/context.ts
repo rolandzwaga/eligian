@@ -381,10 +381,15 @@ function detectControllerContext(
     return { isInControllerName: false };
   }
 
-  // Determine which parameter index by counting strings before cursor
-  // Count string literals before cursor (each string = one parameter)
-  const stringMatches = textInCall.match(/["']/g) || [];
-  const parameterIndex = Math.floor(stringMatches.length / 2); // Each param has 2 quotes
+  // Determine which parameter index by counting the COMPLETE quoted-string
+  // arguments before the cursor. B33: counting raw quote characters and halving
+  // (`match(/["']/g)`) miscounts when a string contains an embedded or escaped
+  // quote — e.g. addController("O'Brien", | counts 4 quotes → index 2 instead of
+  // 1. Matching whole string literals (with escape handling) instead means each
+  // closed string is exactly one consumed parameter, and the in-progress string
+  // (the unterminated trailing quote) is correctly not counted.
+  const completedStrings = textInCall.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g) || [];
+  const parameterIndex = completedStrings.length;
 
   // First parameter (index 0) is controller name
   const isInControllerName = parameterIndex === 0;

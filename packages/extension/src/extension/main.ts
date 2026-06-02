@@ -18,15 +18,27 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
+import { disposeServices as disposeBlockLabelServices } from './decorations/block-label-detector.js';
 import { HTMLWatcherManager } from './html-watcher.js';
 import { createLabelEntry } from './label-entry-creator.js';
 import { createLabelsFile } from './label-file-creator.js';
 import { LabelsWatcherManager } from './labels-watcher.js';
 import { LocaleEditorProvider } from './locale-editor/LocaleEditorProvider.js';
 import { LocaleLinkProvider } from './locale-link-provider.js';
+import { PreviewManager } from './preview/PreviewManager.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 
 let client: LanguageClient;
+// B49: created once and reused/disposed via context.subscriptions instead of a
+// fresh channel allocated on every failed compile.
+let compilerOutputChannel: vscode.OutputChannel | null = null;
+
+function getCompilerOutputChannel(): vscode.OutputChannel {
+  if (!compilerOutputChannel) {
+    compilerOutputChannel = vscode.window.createOutputChannel('Eligian Compiler');
+  }
+  return compilerOutputChannel;
+}
 // T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
 // This watcher is independent of preview panels and exists for the lifetime of the extension
 let validationCSSWatcher: CSSWatcherManager | null = null;
@@ -82,9 +94,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   client.onNotification(
     LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
     (params: LabelsImportsDiscoveredParams) => {
-      console.error(
-        `[Extension] Received LABELS_IMPORTS_DISCOVERED: doc=${params.documentUri}, labels=${params.labelsFileUri}`
-      );
       validationLabelsWatcher?.registerImport(params.documentUri, params.labelsFileUri);
     }
   );
@@ -150,6 +159,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
+
+  // B48: tear down the lazily-created PreviewManager singleton on deactivation
+  // (it owns all open preview panels and an active-editor listener).
+  context.subscriptions.push({ dispose: () => PreviewManager.disposeInstance() });
+
+  // B49: dispose the shared compiler output channel if it was ever created.
+  context.subscriptions.push({ dispose: () => compilerOutputChannel?.dispose() });
+
+  // Release the block-label-detector's lazily-created Langium services (pairs
+  // with B47) so they do not outlive the extension host.
+  context.subscriptions.push({ dispose: () => disposeBlockLabelServices() });
 
   // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
   context.subscriptions.push(registerOpenLocaleEditorCommand());
@@ -305,8 +325,9 @@ function registerCompileCommand(): any {
 
             const formatted = formatErrors([compilerError], sourceCode);
 
-            // Show errors in output channel
-            const outputChannel = vscode.window.createOutputChannel('Eligian Compiler');
+            // Show errors in the shared output channel (B49: reused, not
+            // re-created on every failure).
+            const outputChannel = getCompilerOutputChannel();
             outputChannel.clear();
             outputChannel.appendLine('Compilation failed:\n');
 

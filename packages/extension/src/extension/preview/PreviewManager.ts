@@ -107,6 +107,17 @@ export class PreviewManager {
   }
 
   /**
+   * Dispose the singleton instance if one exists.
+   *
+   * B48: the lazily-created singleton was never torn down on deactivation,
+   * leaking all open preview panels and the active-editor listener. This is the
+   * safe entry point to push into `context.subscriptions` so VS Code disposes it.
+   */
+  public static disposeInstance(): void {
+    PreviewManager.instance?.dispose();
+  }
+
+  /**
    * Dispose all preview panels.
    * Called on extension deactivation.
    */

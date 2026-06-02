@@ -14,6 +14,7 @@ import type { Program } from '../generated/ast.js';
 import { inferAssetType } from '../utils/asset-type-inference.js';
 import { isDefaultImport, isNamedImport } from '../utils/ast-helpers.js';
 import { getImports } from '../utils/program-helpers.js';
+import { validateLocalesJSON } from '../validators/locale-import-validator.js';
 import { AssetValidationService } from './asset-validation-service.js';
 import { CssValidator } from './css-validator.js';
 import { HtmlValidator } from './html-validator.js';
@@ -163,42 +164,49 @@ export function loadProgramAssets(
 
       // If validation passed, load content
       if (errors.length === 0) {
-        const content = loader.loadFile(absolutePath);
-
-        // Store based on import type
-        if (importInfo.type === 'layout') {
-          result.layoutTemplate = content;
-          result.importMap.layout = content;
-        } else if (importInfo.type === 'styles') {
-          // CSS paths stay relative
-          result.cssFiles.push(importInfo.path);
-          result.importMap.styles = content;
-        } else if (importInfo.type === 'provider') {
-          // Provider path stays relative
+        // B37: provider imports only need the relative path; reading the
+        // (potentially large, binary) media file into memory as a UTF-8 string
+        // is wasteful and the content is immediately discarded.
+        if (importInfo.type === 'provider') {
           result.importMap.provider = importInfo.path;
-        } else if (importInfo.type === 'locales') {
-          // Parse and store locales JSON
-          // TODO: Add locale validation in Phase 3 (US1)
-          try {
-            result.locales = JSON.parse(content) as ILocalesConfiguration;
-            result.importMap.locales = content;
-          } catch (parseError) {
-            const errorMessage = parseError instanceof Error ? parseError.message : 'Invalid JSON';
-            result.errors.push({
-              type: 'validation-error',
-              filePath: importInfo.path,
-              absolutePath,
-              sourceLocation: importInfo.sourceLocation,
-              message: `Invalid JSON syntax in locale file: ${errorMessage}`,
-              hint: 'Check for missing commas, unclosed brackets, or trailing commas',
-            });
-          }
-        } else if (importInfo.type === 'named' && importInfo.name) {
-          // Named imports
-          if (importInfo.assetType === 'css') {
+        } else {
+          const content = loader.loadFile(absolutePath);
+
+          // Store based on import type
+          if (importInfo.type === 'layout') {
+            result.layoutTemplate = content;
+            result.importMap.layout = content;
+          } else if (importInfo.type === 'styles') {
+            // CSS paths stay relative
             result.cssFiles.push(importInfo.path);
+            result.importMap.styles = content;
+          } else if (importInfo.type === 'locales') {
+            // B39: validate against the locales JSON schema (locale-code format,
+            // required fields, minProperties) — not just JSON.parse — so that
+            // structurally invalid-but-parseable files are rejected.
+            const localeError = validateLocalesJSON(content, importInfo.path);
+            if (localeError) {
+              result.errors.push({
+                type: 'validation-error',
+                filePath: importInfo.path,
+                absolutePath,
+                sourceLocation: importInfo.sourceLocation,
+                message: localeError.message,
+                hint: localeError.hint,
+                ...(localeError.details ? { details: localeError.details } : {}),
+              });
+            } else {
+              // Schema validation guarantees this parses successfully.
+              result.locales = JSON.parse(content) as ILocalesConfiguration;
+              result.importMap.locales = content;
+            }
+          } else if (importInfo.type === 'named' && importInfo.name) {
+            // Named imports
+            if (importInfo.assetType === 'css') {
+              result.cssFiles.push(importInfo.path);
+            }
+            result.importMap[importInfo.name] = content;
           }
-          result.importMap[importInfo.name] = content;
         }
       }
     } catch (error) {
@@ -275,8 +283,11 @@ function extractImports(program: Program, sourceFilePath: string): ImportInfo[] 
     // Get source location
     const sourceLocation: SourceLocation = {
       file: sourceFilePath,
-      line: importStmt.$cstNode?.range.start.line ?? 0,
-      column: importStmt.$cstNode?.range.start.character ?? 0,
+      // Langium CST ranges are 0-based; SourceLocation is 1-indexed (matches
+      // getSourceLocation in ast-transformer.ts). Add 1, defaulting to line/col 1
+      // when no CST node is available.
+      line: (importStmt.$cstNode?.range.start.line ?? 0) + 1,
+      column: (importStmt.$cstNode?.range.start.character ?? 0) + 1,
     };
 
     // Process default imports (layout, styles, provider, locales)
