@@ -18,6 +18,23 @@
  */
 'use strict';
 
+/**
+ * Detect a PowerShell here-string in a bash command, tightly enough to avoid
+ * matching prose that merely mentions the markers.
+ *
+ * Only flags the markers when they sit at a TOKEN boundary — i.e. the opener
+ * @' begins a word (start of command or right after whitespace), and the
+ * closer '@ ends a word (end of command or right before whitespace). That is
+ * exactly the shape of the real mistake (`git commit -m @'...'@`) while a
+ * commit message or comment that contains "@'" or "'@" mid-text no longer
+ * trips it.
+ */
+function isPowerShellHereString(command) {
+  const openerAtTokenStart = /(^|\s)@'/.test(command); // word starts with @'
+  const closerAtTokenEnd = /'@(\s|$)/.test(command); // word ends with '@
+  return openerAtTokenStart || closerAtTokenEnd;
+}
+
 let raw = '';
 process.stdin.on('data', (chunk) => {
   raw += chunk;
@@ -38,7 +55,7 @@ process.stdin.on('end', () => {
   if (tool === 'PowerShell') {
     reason =
       'The PowerShell tool is disabled on this machine (project policy: use the Bash tool exclusively). Re-issue this as a Bash command.';
-  } else if (tool === 'Bash' && (command.includes("@'") || command.includes("'@"))) {
+  } else if (tool === 'Bash' && isPowerShellHereString(command)) {
     reason =
       "PowerShell here-string syntax (@'...'@) was detected inside a Bash command. " +
       'In bash this is NOT a here-string — it injects a literal @ and corrupts git commit subjects. ' +
