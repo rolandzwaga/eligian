@@ -228,7 +228,7 @@ async function fileExistsAsync(absolutePath: string): Promise<boolean> {
  * - CSS className validation (Feature 013)
  */
 export class EligianValidator {
-  private services?: EligianServices;
+  private services: EligianServices;
 
   /**
    * Tracks document URIs whose locales imports have already been loaded into the
@@ -238,7 +238,7 @@ export class EligianValidator {
    */
   private readonly initializedLabelDocuments = new Set<string>();
 
-  constructor(services?: EligianServices) {
+  constructor(services: EligianServices) {
     this.services = services;
   }
   /**

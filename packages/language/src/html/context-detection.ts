@@ -16,7 +16,7 @@
  * - None: Not in a createElement context
  */
 
-import { AstUtils, CstUtils } from 'langium';
+import { type AstNode, AstUtils, CstUtils } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { isObjectLiteral, isObjectProperty, isOperationCall } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
@@ -145,7 +145,7 @@ export function detectHTMLCompletionContext(context: CompletionContext): HTMLCom
  * @param text - Full document text
  * @returns Element name string or undefined
  */
-function extractElementName(arg: any, text: string): string | undefined {
+function extractElementName(arg: AstNode | undefined, text: string): string | undefined {
   if (!arg?.$cstNode) {
     return undefined;
   }

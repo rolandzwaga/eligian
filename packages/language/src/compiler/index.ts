@@ -77,7 +77,6 @@ export {
 export {
   type CompileError,
   compile,
-  compileFile,
   compileString,
   compileToIR,
   compileToJSON,

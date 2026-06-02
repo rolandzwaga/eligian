@@ -5,9 +5,14 @@
  * based on cursor position and document structure.
  */
 
-import type { LangiumDocument } from 'langium';
+import type { AstNode, LangiumDocument } from 'langium';
 import type { Position } from 'vscode-languageserver-protocol';
-import { type ActionDefinition, isActionDefinition } from '../generated/ast.js';
+import {
+  type ActionDefinition,
+  isActionDefinition,
+  isLibrary,
+  isProgram,
+} from '../generated/ast.js';
 
 /**
  * Find an action definition on the line below the given position
@@ -30,19 +35,19 @@ export function findActionBelow(
     character: 0,
   });
 
-  const root: any = document.parseResult.value;
+  const root = document.parseResult.value;
 
   // Handle the EligianFile union entry rule (Feature 023)
-  // The root can be: Program ($type = 'Program'), Library ($type = 'Library'),
-  // or neither (parse failed). We need to extract the appropriate list of items.
-  let items: any[] = [];
+  // The root can be: Program, Library, or neither (parse failed). We need to
+  // extract the appropriate list of items.
+  let items: AstNode[];
 
-  if (root.$type === 'Program') {
+  if (isProgram(root)) {
     // Program has statements (which can include ActionDefinitions)
-    items = root.statements || [];
-  } else if (root.$type === 'Library') {
+    items = root.statements;
+  } else if (isLibrary(root)) {
     // Library has actions (which are ActionDefinitions)
-    items = root.actions || [];
+    items = root.actions;
   } else {
     // Parse failed or unexpected root type
     return undefined;

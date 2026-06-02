@@ -1,0 +1,30 @@
+# Normalize line endings to LF in the repository AND the working tree.
+# `eol=lf` is explicit so a local `core.autocrlf=true` (common on Windows)
+# does not check files out as CRLF — which the Biome formatter (default
+# lineEnding: lf) would then flag as format errors.
+* text=auto eol=lf
+
+# Binary assets — never apply text/eol conversion.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.bmp   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.mp3   binary
+*.wav   binary
+*.ogg   binary
+*.flac  binary
+*.mp4   binary
+*.webm  binary
+*.mov   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.vsix  binary

@@ -9,12 +9,12 @@
 import type { LangiumDocument, MaybePromise } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
-import type {
-  CancellationToken,
-  CompletionItem,
+import {
+  type CancellationToken,
+  type CompletionItem,
   CompletionItemKind,
-  CompletionList,
-  CompletionParams,
+  type CompletionList,
+  type CompletionParams,
 } from 'vscode-languageserver';
 import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
@@ -190,17 +190,18 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
 
         // Filter out operations and actions when inside operation arguments (expression position)
         if (isInsideArguments) {
-          // CompletionItemKind.Function (3) = operations
-          // CompletionItemKind.Method (2) = custom actions
-          if (item.kind === 3 || item.kind === 2) {
+          // Function = operations, Method = custom actions
+          if (
+            item.kind === CompletionItemKind.Function ||
+            item.kind === CompletionItemKind.Method
+          ) {
             return; // Skip operations/actions in expression position
           }
 
           // Push literals (true, false, null) to the bottom when inside arguments
-          // CompletionItemKind.Constant (14) or CompletionItemKind.Value (12)
           if (
-            item.kind === 14 ||
-            item.kind === 12 ||
+            item.kind === CompletionItemKind.Constant ||
+            item.kind === CompletionItemKind.Value ||
             item.label === 'true' ||
             item.label === 'false' ||
             item.label === 'null'
@@ -210,9 +211,9 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
           }
 
           // Parameters from default provider (e.g., 'items' from action parameters)
-          // CompletionItemKind.Reference (18) = parameters from default provider
-          // Override their sortText to put them between variables and literals
-          if (item.kind === 18 && item.detail === 'Parameter') {
+          // Reference = parameters from default provider; override their sortText
+          // to put them between variables and literals
+          if (item.kind === CompletionItemKind.Reference && item.detail === 'Parameter') {
             item.sortText = `2_${item.sortText || ''}`; // Parameters go between @@vars (0_,1_) and literals (9_)
           }
         }
