@@ -4,7 +4,7 @@
 
 This report synthesizes a verified, cross-module static analysis of the Eligian DSL monorepo (language core, compiler, CSS/HTML/labels tooling, Typir type system, completion, asset loading, CLI, VS Code extension, locale editor, and shared utilities). The original deduplicated framing identified **96 distinct issues** across bugs, code-duplication clusters, and anti-patterns. The dominant theme of the report was **systemic code duplication** — the same logic (file-watcher classes, Levenshtein distance, import-path resolution, control-flow-pairing validators, `_tag` type guards, `error.hint` formatting, empty-CSS-metadata construction, AST root traversal) copy-pasted across 3-9 sites with silent behavioral drift that produced real bugs.
 
-**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the medium/low bug tail has been substantially drained — **11 Medium bugs were closed** in the four co-located cleanup batches (asset-loading correctness, extension resource leaks, validator performance, completion correctness). The remaining open work is a **smaller medium/low bug tail** (6 Medium, 3 Low) plus the **anti-pattern themes** (god classes, pervasive `any`, dead/stub code, encapsulation/perf). See the status table below.
+**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the medium/low bug tail has now been drained to almost nothing — the four co-located cleanup batches closed 11 Mediums, and a follow-up `fix/bug-tail-final` batch closed **7 more bugs** (B31, B44, B52, B59 Medium; B55, B57, B61 Low) plus the phantom-test-CSS production-leak anti-pattern. The remaining open bug work is just **2 Medium bugs** — **B30** (investigated and deliberately left in place: removing its WeakSet doubles duplicate-import diagnostics, exposing a typir-langium double-invocation that is the real fix) and **B47** (the deferred extension-host→LSP bracket-detection migration). The bulk of the remaining work is the **anti-pattern themes** (god classes, pervasive `any`, dead/stub code, encapsulation/perf). See the status table below.
 
 ## Summary Table — Status by Category
 
@@ -12,19 +12,19 @@ Re-tallied from the inline-numbered findings in this document (each `B`/`D` find
 
 | Category | Fixed | Open | Total |
 |---|---|---|---|
-| Bug | 57 | 9 | 66 |
+| Bug | 64 | 2 | 66 |
 | Duplication | 46 | 0 | 46 |
-| Anti-pattern | 11 | 37 | 48 |
-| **Total** | **114** | **46** | **160** |
+| Anti-pattern | 12 | 36 | 48 |
+| **Total** | **122** | **38** | **160** |
 
 **Open bugs by severity** (the actionable remainder — all High-severity bugs are fixed):
 
 | | High | Medium | Low |
 |---|---|---|---|
-| Open | 0 | 6 | 3 |
+| Open | 0 | 2 | 0 |
 
-Open Medium bugs: B30, B31, B44, B47, B52, B59.
-Open Low bugs: B55, B57, B61.
+Open Medium bugs: B30 (investigated — WeakSet load-bearing; real fix is the typir-langium double-invocation), B47 (deferred LSP-migration).
+Open Low bugs: none.
 
 > **B47 note:** the resource-leak half (the undisposed singleton `EligianServices` in `block-label-detector`) is fixed; the remaining open work is the architectural migration of bracket-position detection from the extension host to a custom LSP request (deferred to its own PR — it crosses the LSP boundary, needs version-sync handling, and would require redesigning the existing `findBlockLabels` test suite).
 
@@ -166,6 +166,16 @@ The following correctness + dedup-tail batch was fixed on branch **`fix/correctn
 - **D25** — `inferImportAssetType` delegates extension inference to the shared `inferAssetType`.
 - **D43** — `ERROR_MESSAGES.ABSOLUTE_PATH`/`INVALID_PATH_FORMAT` are now zero-arg functions for shape consistency; the call site drops its arrow wrapper.
 - **D44** — generic `ValidationResult<TError>` base; the three per-asset result types are aliases.
+
+The following "bug-tail final" batch was fixed on branch **`fix/bug-tail-final`** (verified: `pnpm run typecheck` clean across all packages, biome `check` clean — only the 4 pre-existing `useOptionalChain` warnings remain in the untouched `eligian-scope-provider.ts` — full suites green at baseline: language 2001 passed/23 skipped, extension 337, cli 230 passed/19 skipped, shared-utils 87). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** B31, B44, B52, B55, B57, B59, B61 — the last seven straightforward bugs in the tail, grouped by module:
+- **Batch A — Typir validation:** **B31** (relaxed `isValidCSSSelector` to accept whitespace/commas/combinators/attribute/pseudo selectors so `#app .container` and selector lists validate; added empty-selector guard + broader error message). *(B30 in the same module was investigated and **reverted** — see its inline note: removing the WeakSet doubles duplicate-import diagnostics, exposing a typir-langium double-invocation that is the real fix.)*
+- **Batch B — language pure-logic:** **B59** (single-quote branch of `extractPartialText` now clamps to the closing quote like the double-quote branch), **B55** (`getVisibleVariables` collects globals from top-level `program.statements` only, no longer leaking other actions' locals via `streamAst`), **B61** (`extractLocalesFilePaths` uses a `DefaultImport` type-predicate filter, dropping the unreachable double-guard / `''` branch / dead trailing filter).
+- **Batch C — shared-utils + CLI:** **B44** (`resolvePaths` Windows branch uses `path.win32.resolve` to resolve `../`/`.` in-place instead of relying on downstream normalization), **B57** (removed the unreachable `outputHelp()` fallback — Commander exits on the missing required `<input>` arg during `parse()`).
+- **Batch D — extension:** **B52** (`import-processor` one-to-one path registers/notifies the first occurrence and `console.warn`s on multiples, ending the silent drop of all-but-the-last).
+
+**Also fixed (anti-pattern):** the **`getOrCreateServices()` phantom-test-CSS production leak** — the fixture class/ID seeding is extracted into `registerTestCSSFixtures()` and gated behind `process.env.VITEST`, so real user documents compiled in production no longer pass CSS-class validation against classes their stylesheets never define.
 
 ---
 
@@ -388,12 +398,14 @@ The optional `services?: any` falls back to `{ References: {} }`, so `services.d
 **Fix:** Add `'json'` to `AssetType`/`ImportTypeProperties.assetType` (or model locales differently) and type the factory concretely.
 
 #### B30. `import-validation` WeakSet deduplication can skip re-validation
+> ⚠️ **INVESTIGATED — NOT APPLIED** (branch `fix/bug-tail-final`). Removing the WeakSet was attempted and **reverted**: it doubled the duplicate-import diagnostics (3 → 6 in `validation.spec.ts`), proving the Typir `Program` validation rule is invoked **twice per validation cycle** in this typir-langium integration. The WeakSet is keyed by `Program` instance — a fresh instance is parsed on every document edit (and old ones are GC'd), so it does **not** suppress re-validation of changed documents; it only collapses the redundant second invocation within one cycle. The B30 "can skip re-validation" concern is therefore theoretical. The real fix is the double-invocation inside typir-langium (needs dedicated investigation); the guard now carries an explanatory comment and stays in place.
 **Severity:** Medium
 **Locations:** [import-validation.ts:34](packages/language/src/type-system-typir/validation/import-validation.ts#L34), [import-validation.ts:54](packages/language/src/type-system-typir/validation/import-validation.ts#L54), [import-validation.ts:57](packages/language/src/type-system-typir/validation/import-validation.ts#L57)
 The `validatedDocuments` WeakSet skips any second call for the same `Program` instance and misunderstands Typir's once-per-node-per-cycle contract.
 **Fix:** Remove the WeakSet guard; rely on Typir's built-in guarantee. Investigate the root cause if duplicate calls are actually observed.
 
 #### B31. `isValidCSSSelector` regex rejects valid compound/descendant selectors
+> ✅ **FIXED** — branch `fix/bug-tail-final` (relaxed the allowed-character pattern to permit whitespace, commas, combinators `> + ~`, the universal `*`, attribute-selector chars, and pseudo-function parens — so `#app .container` and selector lists now validate; added an empty/whitespace-only guard and broadened the error message to no longer claim only `#id`/`.class`/`element` are accepted)
 **Severity:** Medium
 **Locations:** [timeline-validation.ts:33](packages/language/src/type-system-typir/validation/timeline-validation.ts#L33), [timeline-validation.ts:38](packages/language/src/type-system-typir/validation/timeline-validation.ts#L38)
 `/^[#.\w\-:[\]]+$/` forbids spaces, commas, and combinators, producing false positives for `#app .container` and selector lists.
@@ -486,6 +498,7 @@ The OS error detail is stored in `cause` as a string; `message` stays generic, d
 **Fix:** Pass the raw error object as `cause`, or add a separate message-override parameter.
 
 #### B44. `resolvePaths` Windows branch does not handle `../` (relies on downstream normalize)
+> ✅ **FIXED** — branch `fix/bug-tail-final` (the Windows-absolute branch now uses `path.win32.resolve(baseDir, relativePath)` — resolving `../` and `.` segments in-place — then converts backslashes to forward slashes, instead of stripping leading `./` and concatenating and relying on a downstream `normalizePath`. Empty/`.` segments still map to `baseDir`.)
 **Severity:** Medium
 **Locations:** [path-resolver.ts:44](packages/shared-utils/src/path-resolver.ts#L44), [path-resolver.ts:52](packages/shared-utils/src/path-resolver.ts#L52), [path-resolver.ts:53](packages/shared-utils/src/path-resolver.ts#L53), [path-resolver.ts:54](packages/shared-utils/src/path-resolver.ts#L54)
 Only strips leading `./` and concatenates; correctness depends on an undocumented downstream `normalizePath`.
@@ -541,6 +554,7 @@ The case only toggles container visibility (and a misleading comment hides the e
 **Fix:** Parse once per iteration (folds into the D8 `triggerRevalidation` helper).
 
 #### B52. `import-processor` silently drops all but the last one-to-one import
+> ✅ **FIXED** — branch `fix/bug-tail-final` (for `'one'`-cardinality imports the processor now registers and notifies the **first** occurrence, and emits a `console.warn` naming the kept file and the count ignored when multiple are present — the silent data loss is gone. Well-formed documents still have exactly one, flagged as an error by the validator otherwise.)
 **Severity:** Medium
 **Locations:** [import-processor.ts:152-154](packages/extension/src/language/import-processor.ts#L152), [import-processor.ts:163-165](packages/extension/src/language/import-processor.ts#L163)
 For `'one'`-cardinality types, multiple imports are parsed but only the last is registered/watched — silent data loss.
@@ -563,6 +577,7 @@ Ten `console.error` informational traces (absent in css/html watchers) spam the 
 ### Low Severity
 
 #### B55. `getVisibleVariables` collects locals from other action bodies as "global"
+> ✅ **FIXED** — branch `fix/bug-tail-final` (global variables are now collected from top-level `program.statements` filtered by `isVariableDeclaration` (guarded by `isProgram`), instead of `AstUtils.streamAst(program)` which descended into every action body and leaked their locals into the global scope)
 **Severity:** Low
 **Locations:** [eligian-scope-provider.ts:343](packages/language/src/eligian-scope-provider.ts#L343)
 `AstUtils.streamAst(program).filter(isVariableDeclaration)` descends into all action bodies, leaking action B's locals into action A's scope.
@@ -576,6 +591,7 @@ Hard-coded two leading spaces before `</div>` yield four-space indentation in ou
 **Fix:** Remove the leading spaces on the closing tag.
 
 #### B57. `outputHelp()` after `program.parse()` — reachability ambiguity
+> ✅ **FIXED** — branch `fix/bug-tail-final` (confirmed the `<input>` argument is required, so Commander prints its usage error and `process.exit(1)`s during `parse()` when no input is supplied — the `if (process.argv.length <= 2) program.outputHelp()` fallback was unreachable dead code and is removed, with a comment documenting why)
 **Severity:** Low
 **Locations:** [main.ts:273](packages/cli/src/main.ts#L273), [main.ts:276-278](packages/cli/src/main.ts#L276)
 Dead/unreachable depending on Commander's required-arg handling.
@@ -589,6 +605,7 @@ A synchronous throw before the first `await` escapes as an unhandled rejection.
 **Fix:** `.catch(err => console.error(...))` on the returned promise.
 
 #### B59. `extractPartialText` single-quote branch lacks upper-bound clamping
+> ✅ **FIXED** — branch `fix/bug-tail-final` (the single-quote branch now clamps the slice end with `Math.min(singleQuoteIndex + 1 + relativeOffset, closeQuoteIndex)`, mirroring the double-quote branch, so a cursor past the closing quote no longer returns text beyond the string)
 **Severity:** Medium *(listed low-block by module; clamping bug)*
 **Locations:** [context-detection.ts:229](packages/language/src/html/context-detection.ts#L229), [context-detection.ts:234](packages/language/src/html/context-detection.ts#L234)
 Unlike the double-quote branch, the single-quote branch can return text past the closing quote.
@@ -602,6 +619,7 @@ Stripping `file:///` drops the leading slash on POSIX and ignores authority comp
 **Fix:** Use `URI.parse(uri).fsPath` via a shared `uriToFsPath` helper (see D10).
 
 #### B61. `extractLocalesFilePaths` double-guards `isDefaultImport` (unreachable fallback)
+> ✅ **FIXED** — branch `fix/bug-tail-final` (the `.filter` now uses a `stmt is DefaultImport` type predicate so `.map` accesses `stmt.path` directly; the redundant in-`.map` `isDefaultImport` re-check, the `''` fallback branch, and the trailing dead `.filter` are removed)
 **Severity:** Low
 **Locations:** [language-block-code-actions.ts:137-140](packages/language/src/labels/language-block-code-actions.ts#L137)
 Re-checks `isDefaultImport` inside `.map`, making the `''` branch and the trailing `.filter` dead.
@@ -944,7 +962,7 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 - **Manual `getProgram`/`getLibrary` parent-walk instead of `AstUtils.getContainerOfType`.** [eligian-validator.ts:1376](packages/language/src/eligian-validator.ts#L1376), [eligian-validator.ts:1391](packages/language/src/eligian-validator.ts#L1391). ✅ **FIXED** — branch `refactor/consolidate-program-root-traversal-d6` (both helpers now delegate to `AstUtils.getContainerOfType`; fixed alongside D6).
 
 ### Theme: Test/dev artifacts leaking into production
-- **`getOrCreateServices()` registers test CSS classes in the production singleton.** [pipeline.ts:64](packages/language/src/compiler/pipeline.ts#L64), [pipeline.ts:72](packages/language/src/compiler/pipeline.ts#L72). Phantom classes (`test-container`, `invalid1`…) make user docs pass CSS validation incorrectly. **Remove** the test metadata; inject in tests only.
+- **`getOrCreateServices()` registers test CSS classes in the production singleton.** [pipeline.ts:64](packages/language/src/compiler/pipeline.ts#L64), [pipeline.ts:72](packages/language/src/compiler/pipeline.ts#L72). Phantom classes (`test-container`, `invalid1`…) make user docs pass CSS validation incorrectly. ✅ **FIXED** — branch `fix/bug-tail-final` (extracted the fixture seeding into `registerTestCSSFixtures()` and gated it behind `process.env.VITEST`, so the shared production singleton no longer injects phantom classes into real user documents — the false-negative in CSS-class validation is gone. The whole suite relies on the seeding, so it is gated to test runs rather than deleted outright.)
 - **Debug `console.log/trace` in webview (29 calls).** [media/locale-editor.ts:462-463](packages/extension/media/locale-editor.ts#L462), [media/locale-editor.ts:224-268](packages/extension/media/locale-editor.ts#L224). Remove or gate behind a debug flag.
 - **`labels-watcher` debug `console.error`** (see B54). ✅ **FIXED** — `6b1c52a`
 - **Dead `.orig` file committed.** [error-reporter.ts.orig](packages/language/src/compiler/error-reporter.ts.orig). Delete and add `*.orig` to `.gitignore`. ✅ **FIXED** — `6b1c52a`

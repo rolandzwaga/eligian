@@ -142,11 +142,22 @@ export function processImports<TMetadata>(
     }
   }
 
+  // For one-to-one imports, only a single file is meaningful. A well-formed
+  // document has exactly one (duplicates are flagged as errors by the
+  // validator), but if several slip through, register/notify the FIRST
+  // occurrence and warn rather than silently dropping all but the last.
+  if (config.cardinality === 'one' && fileUris.length > 1) {
+    console.warn(
+      `Multiple '${config.importType}' imports found in ${documentUri}; ` +
+        `using the first ('${fileUris[0]}') and ignoring ${fileUris.length - 1} other(s).`
+    );
+  }
+
   // Register imports with registry
   if (fileUris.length > 0) {
     if (config.cardinality === 'one') {
-      // One-to-one: register single file URI (take last one if multiple)
-      config.registry.registerImports(documentUri, fileUris[fileUris.length - 1]);
+      // One-to-one: register the first file URI
+      config.registry.registerImports(documentUri, fileUris[0]);
     } else {
       // One-to-many: register all file URIs
       config.registry.registerImports(documentUri, fileUris);
@@ -157,7 +168,7 @@ export function processImports<TMetadata>(
   if (fileUris.length > 0 && isNewImport) {
     const params =
       config.cardinality === 'one'
-        ? config.notification.createParams(documentUri, fileUris[fileUris.length - 1])
+        ? config.notification.createParams(documentUri, fileUris[0])
         : config.notification.createParams(documentUri, fileUris);
 
     connection.sendNotification(config.notification.type, params);

@@ -339,9 +339,11 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       current = current.$container;
     }
 
-    // Get global variables from program root
+    // Get global variables from program root. Only top-level statements count
+    // as globals — descending into the whole AST (streamAst) would leak other
+    // actions' local variable declarations into this scope.
     const program = AstUtils.getDocument(node).parseResult.value;
-    const globalVars = AstUtils.streamAst(program).filter(isVariableDeclaration).toArray();
+    const globalVars = isProgram(program) ? program.statements.filter(isVariableDeclaration) : [];
 
     for (const varDecl of globalVars) {
       if (!seenNames.has(varDecl.name)) {

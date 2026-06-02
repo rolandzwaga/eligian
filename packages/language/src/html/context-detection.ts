@@ -231,7 +231,10 @@ function extractPartialText(
     if (closeQuoteIndex === -1) {
       return argText.substring(singleQuoteIndex + 1);
     }
-    return argText.substring(singleQuoteIndex + 1, singleQuoteIndex + 1 + relativeOffset);
+    // Clamp to the closing quote so a cursor past the string end never
+    // returns text beyond it (mirrors the double-quote branch below).
+    const endPos = Math.min(singleQuoteIndex + 1 + relativeOffset, closeQuoteIndex);
+    return argText.substring(singleQuoteIndex + 1, endPos);
   }
 
   // Calculate relative position within the string

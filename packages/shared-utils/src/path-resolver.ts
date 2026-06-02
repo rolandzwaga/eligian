@@ -42,16 +42,16 @@ function isWindowsAbsolutePath(filePath: string): boolean {
  * drive letters as absolute paths.
  */
 function resolvePaths(baseDir: string, relativePath: string): string {
-  // If baseDir is a Windows absolute path, we need custom handling
+  // If baseDir is a Windows absolute path, use path.win32.resolve so that
+  // parent navigation ('../') and '.' segments are resolved here rather than
+  // relying on a downstream normalizePath() call. posix.resolve doesn't
+  // recognize drive letters as absolute, hence the dedicated branch.
   if (isWindowsAbsolutePath(baseDir)) {
-    // Manually join the paths since posix.resolve doesn't understand drive letters
-    if (relativePath === '' || relativePath === '.') {
-      return baseDir;
-    }
-    // Remove leading ./ from relative path
-    const cleanRelative = relativePath.replace(/^\.\//, '');
-    // Join with /
-    return `${baseDir}/${cleanRelative}`;
+    // win32.resolve falls back to process.cwd() for an empty segment, so map
+    // ''/'.' to baseDir explicitly to preserve the prior behavior.
+    const resolved = path.win32.resolve(baseDir, relativePath === '' ? '.' : relativePath);
+    // Convert to forward slashes for cross-platform consistency.
+    return resolved.replace(/\\/g, '/');
   }
 
   // For Unix absolute paths, use posix.resolve

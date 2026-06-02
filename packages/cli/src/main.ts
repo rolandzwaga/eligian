@@ -265,11 +265,8 @@ export default function main(): void {
       }
     });
 
-  // Parse arguments
+  // Parse arguments. The '<input>' argument is required, so Commander prints
+  // its usage error and exits during parse() when no input is supplied — no
+  // manual "show help if no arguments" fallback is needed (it was unreachable).
   program.parse(process.argv);
-
-  // Show help if no arguments
-  if (process.argv.length <= 2) {
-    program.outputHelp();
-  }
 }
