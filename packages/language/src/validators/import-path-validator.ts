@@ -47,7 +47,7 @@ export function validateImportPath(path: string): PathError | undefined {
     return undefined; // Valid
   }
 
-  return createValidationError('ABSOLUTE_PATH', () => ERROR_MESSAGES.ABSOLUTE_PATH, []);
+  return createValidationError('ABSOLUTE_PATH', ERROR_MESSAGES.ABSOLUTE_PATH, []);
 }
 
 /**

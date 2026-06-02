@@ -102,43 +102,14 @@ export class AssetValidationService implements IAssetValidationService {
     relativePath: string,
     sourceLocation: SourceLocation
   ): AssetError[] {
-    const errors: AssetError[] = [];
-
-    try {
-      // Load HTML content
-      const htmlContent = this.assetLoader.loadFile(absolutePath);
-
-      // Validate HTML syntax
-      const result = this.htmlValidator.validate(htmlContent);
-
-      if (!result.valid) {
-        // Convert HTML validation errors to AssetErrors
-        for (const htmlError of result.errors) {
-          errors.push({
-            type: 'invalid-html',
-            filePath: relativePath,
-            absolutePath,
-            sourceLocation,
-            message: `HTML validation error: ${htmlError.message}`,
-            hint: htmlError.hint,
-            details: `Line ${htmlError.line}, Column ${htmlError.column}`,
-          });
-        }
-      }
-    } catch (error) {
-      // File load error
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      errors.push({
-        type: 'load-error',
-        filePath: relativePath,
-        absolutePath,
-        sourceLocation,
-        message: `Failed to load HTML file: ${errorMessage}`,
-        hint: 'Check file permissions and encoding (should be UTF-8)',
-      });
-    }
-
-    return errors;
+    return this.validateContentFile(
+      absolutePath,
+      relativePath,
+      sourceLocation,
+      content => this.htmlValidator.validate(content),
+      'invalid-html',
+      'HTML'
+    );
   }
 
   /**
@@ -149,26 +120,56 @@ export class AssetValidationService implements IAssetValidationService {
     relativePath: string,
     sourceLocation: SourceLocation
   ): AssetError[] {
+    return this.validateContentFile(
+      absolutePath,
+      relativePath,
+      sourceLocation,
+      content => this.cssValidator.validate(content),
+      'invalid-css',
+      'CSS'
+    );
+  }
+
+  /**
+   * Validate a text-based asset file (HTML or CSS).
+   *
+   * D24: the HTML and CSS validation paths were byte-for-byte identical apart
+   * from the validator invoked, the emitted error `type`, and the human-readable
+   * label in the messages. This generic helper is the single source of truth;
+   * {@link validateHtml}/{@link validateCss} are thin wrappers selecting those
+   * three values.
+   *
+   * @param validate - The content validator (HTML or CSS) to run
+   * @param invalidType - AssetError `type` for content-validation failures
+   * @param label - Human-readable asset label used in error messages
+   */
+  private validateContentFile(
+    absolutePath: string,
+    relativePath: string,
+    sourceLocation: SourceLocation,
+    validate: (content: string) => {
+      valid: boolean;
+      errors: ReadonlyArray<{ message: string; hint: string; line: number; column: number }>;
+    },
+    invalidType: 'invalid-html' | 'invalid-css',
+    label: string
+  ): AssetError[] {
     const errors: AssetError[] = [];
 
     try {
-      // Load CSS content
-      const cssContent = this.assetLoader.loadFile(absolutePath);
-
-      // Validate CSS syntax
-      const result = this.cssValidator.validate(cssContent);
+      const content = this.assetLoader.loadFile(absolutePath);
+      const result = validate(content);
 
       if (!result.valid) {
-        // Convert CSS validation errors to AssetErrors
-        for (const cssError of result.errors) {
+        for (const validationError of result.errors) {
           errors.push({
-            type: 'invalid-css',
+            type: invalidType,
             filePath: relativePath,
             absolutePath,
             sourceLocation,
-            message: `CSS validation error: ${cssError.message}`,
-            hint: cssError.hint,
-            details: `Line ${cssError.line}, Column ${cssError.column}`,
+            message: `${label} validation error: ${validationError.message}`,
+            hint: validationError.hint,
+            details: `Line ${validationError.line}, Column ${validationError.column}`,
           });
         }
       }
@@ -180,7 +181,7 @@ export class AssetValidationService implements IAssetValidationService {
         filePath: relativePath,
         absolutePath,
         sourceLocation,
-        message: `Failed to load CSS file: ${errorMessage}`,
+        message: `Failed to load ${label} file: ${errorMessage}`,
         hint: 'Check file permissions and encoding (should be UTF-8)',
       });
     }

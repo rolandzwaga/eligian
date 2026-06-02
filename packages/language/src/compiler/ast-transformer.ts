@@ -102,28 +102,34 @@ interface ScopeContext {
   loopVariableName?: string;
   /** Action-scoped constants (for inlining within the current scope) */
   scopedConstants: ConstantMap;
+  /**
+   * Program-level constants for the compilation in progress (B3).
+   *
+   * Carried on the scope — rather than a module-level singleton — so that
+   * concurrent `transformAST` calls (e.g. overlapping language-server
+   * compilations) never clobber each other's constant maps. Every derived
+   * scope copies this reference from its parent; root scopes receive the map
+   * built once per `transformAST` invocation.
+   */
+  programConstants: ConstantMap;
   /** Event action parameter indices (Feature 028 - T019) */
   eventActionParameters?: Map<string, number>;
 }
 
 /**
- * Module-level constant map for the current program being transformed.
- * Set at the start of transformAST and used throughout transformation.
+ * Create an empty scope context.
  *
- * Note: This is safe because transformAST is called sequentially per program.
- * For concurrent compilation, this would need to be thread-local or passed through context.
+ * @param programConstants - Program-level constant map for this compilation
+ *   (B3). Defaults to an empty map for the rare call sites that transform
+ *   expressions with no enclosing program (and for tests).
  */
-let currentConstantMap: ConstantMap = new Map();
-
-/**
- * Create an empty scope context
- */
-function createEmptyScope(): ScopeContext {
+function createEmptyScope(programConstants: ConstantMap = new Map()): ScopeContext {
   return {
     inActionBody: false,
     actionParameters: [],
     loopVariableName: undefined,
     scopedConstants: new Map(),
+    programConstants,
   };
 }
 
@@ -294,8 +300,10 @@ export const transformAST = (
 ): Effect.Effect<EligiusIR, TransformError> =>
   Effect.gen(function* (_) {
     // CONSTANT FOLDING (T008): Build constant map FIRST
-    // This map will be used throughout transformation to inline constant values
-    currentConstantMap = buildConstantMap(program);
+    // This map will be used throughout transformation to inline constant values.
+    // B3: kept local and threaded through scopes (no module-level state) so
+    // concurrent compilations cannot clobber each other.
+    const constantMap = buildConstantMap(program);
 
     // Find all timelines (validation ensures at least one exists)
     const timelineNodes = getTimelines(program);
@@ -313,9 +321,7 @@ export const transformAST = (
     // Extract program-level variable declarations (T182: Global variables)
     // CONSTANT FOLDING (T008): Filter out constants - they will be inlined, not stored in globalData
     // FEATURE 015: HTML imports are treated as constants (loaded in buildConstantMap, inlined during transformation)
-    const variableDeclarations = getVariables(program).filter(
-      el => !currentConstantMap.has(el.name)
-    );
+    const variableDeclarations = getVariables(program).filter(el => !constantMap.has(el.name));
 
     // Transform program-level variables to initActions
     // T274: initActions must be IEndableActionConfiguration[], not IOperationConfiguration[]
@@ -325,7 +331,7 @@ export const transformAST = (
 
       // Add regular variable declarations (non-constants)
       for (const varDecl of variableDeclarations) {
-        const value = yield* _(transformExpression(varDecl.value));
+        const value = yield* _(transformExpression(varDecl.value, createEmptyScope(constantMap)));
         properties[`globaldata.${varDecl.name}`] = value;
       }
 
@@ -369,14 +375,16 @@ export const transformAST = (
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
     for (const actionDef of actionDefinitions) {
-      const action = yield* _(transformActionDefinition(actionDef, program, actionDefinitions));
+      const action = yield* _(
+        transformActionDefinition(actionDef, program, actionDefinitions, constantMap)
+      );
       actions.push(action);
     }
     // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
     const eventActionNodes = getEventActions(program);
     const eventActions: IEventActionConfiguration[] = [];
     for (const eventActionDef of eventActionNodes) {
-      const eventAction = transformEventAction(eventActionDef);
+      const eventAction = yield* _(transformEventAction(eventActionDef, constantMap));
       eventActions.push(eventAction);
     }
 
@@ -384,7 +392,7 @@ export const transformAST = (
     const timelines: TimelineConfigIR[] = [];
     for (const timelineNode of timelineNodes) {
       const timelineConfig = yield* _(
-        buildTimelineConfig(timelineNode, program, actionDefinitions)
+        buildTimelineConfig(timelineNode, program, actionDefinitions, constantMap)
       );
       timelines.push(timelineConfig);
     }
@@ -791,7 +799,8 @@ function generateTimelineProviderSettings(
 const buildTimelineConfig = (
   timeline: Timeline,
   program: Program,
-  allActions: ActionDefinition[]
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
 ): Effect.Effect<TimelineConfigIR, TransformError> =>
   Effect.gen(function* (_) {
     // T189/T190: Transform timeline events to TimelineActionIR with relative time support
@@ -804,7 +813,7 @@ const buildTimelineConfig = (
       if (event.$type === 'SequenceBlock') {
         // Transform sequence block into multiple timeline actions
         const sequenceActions = yield* _(
-          transformSequenceBlock(event, previousEventEndTime, program, allActions)
+          transformSequenceBlock(event, previousEventEndTime, program, allActions, programConstants)
         );
         timelineActions.push(...sequenceActions);
 
@@ -819,7 +828,7 @@ const buildTimelineConfig = (
       } else if (event.$type === 'StaggerBlock') {
         // T192: Transform stagger block into multiple timeline actions with incremental delays
         const staggerActions = yield* _(
-          transformStaggerBlock(event, previousEventEndTime, program, allActions)
+          transformStaggerBlock(event, previousEventEndTime, program, allActions, programConstants)
         );
         timelineActions.push(...staggerActions);
 
@@ -834,7 +843,7 @@ const buildTimelineConfig = (
       } else {
         // TimedEvent: regular "at start..end { ... }" event
         const timelineAction = yield* _(
-          transformTimedEvent(event, previousEventEndTime, program, allActions)
+          transformTimedEvent(event, previousEventEndTime, program, allActions, programConstants)
         );
         timelineActions.push(timelineAction);
 
@@ -894,7 +903,8 @@ const transformSequenceBlock = (
   sequence: SequenceBlock,
   previousEventEndTime: number,
   _program: Program,
-  allActions: ActionDefinition[]
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* (_) {
     const actions: TimelineActionIR[] = [];
@@ -937,7 +947,9 @@ const transformSequenceBlock = (
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* _(transformExpression(args[i]));
+          const argValue = yield* _(
+            transformExpression(args[i], createEmptyScope(programConstants))
+          );
           actionOperationData[paramName] = argValue;
         }
       }
@@ -990,7 +1002,8 @@ const transformStaggerBlock = (
   stagger: StaggerBlock,
   previousEventEndTime: number,
   program: Program,
-  allActions: ActionDefinition[]
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* (_) {
     const actions: TimelineActionIR[] = [];
@@ -1004,7 +1017,9 @@ const transformStaggerBlock = (
     const duration = evaluateTimeExpression(durationExpr);
 
     // Transform items array
-    const itemsValue = yield* _(transformExpression(stagger.items));
+    const itemsValue = yield* _(
+      transformExpression(stagger.items, createEmptyScope(programConstants))
+    );
 
     // Items must be an array
     if (!Array.isArray(itemsValue)) {
@@ -1051,7 +1066,9 @@ const transformStaggerBlock = (
             const args = actionCall.args || [];
             for (let j = 0; j < args.length && j + 1 < parameters.length; j++) {
               const paramName = parameters[j + 1].name;
-              const argValue = yield* _(transformExpression(args[j]));
+              const argValue = yield* _(
+                transformExpression(args[j], createEmptyScope(programConstants))
+              );
               actionOperationData[paramName] = argValue;
             }
           }
@@ -1094,6 +1111,7 @@ const transformStaggerBlock = (
           actionParameters: [],
           loopVariableName: 'item', // Default variable name for stagger items
           scopedConstants: new Map(), // No scoped constants in stagger blocks
+          programConstants,
         };
 
         const startOperations: OperationConfigIR[] = [];
@@ -1143,7 +1161,8 @@ const transformTimedEvent = (
   event: TimedEvent,
   previousEventEndTime: number,
   program: Program,
-  allActions: ActionDefinition[]
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
 ): Effect.Effect<TimelineActionIR, TransformError> =>
   Effect.gen(function* (_) {
     const timeRange = event.timeRange;
@@ -1174,13 +1193,25 @@ const transformTimedEvent = (
       // Inline endable action: [ ... ] [ ... ]
       for (const opStmt of action.startOperations) {
         const ops = yield* _(
-          transformOperationStatement(opStmt, createEmptyScope(), false, program, allActions)
+          transformOperationStatement(
+            opStmt,
+            createEmptyScope(programConstants),
+            false,
+            program,
+            allActions
+          )
         );
         startOperations.push(...ops);
       }
       for (const opStmt of action.endOperations) {
         const ops = yield* _(
-          transformOperationStatement(opStmt, createEmptyScope(), true, program, allActions)
+          transformOperationStatement(
+            opStmt,
+            createEmptyScope(programConstants),
+            true,
+            program,
+            allActions
+          )
         );
         endOperations.push(...ops);
       }
@@ -1227,7 +1258,9 @@ const transformTimedEvent = (
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* _(transformExpression(action.args[i]));
+          const argValue = yield* _(
+            transformExpression(action.args[i], createEmptyScope(programConstants))
+          );
           actionOperationData[paramName] = argValue;
         }
       }
@@ -1249,13 +1282,15 @@ const transformTimedEvent = (
       // T056: US3 - ForStatement in timeline context
       // Transform the for loop body and add to startOperations
       const forOps = yield* _(
-        transformForStatement(action, createEmptyScope(), program, allActions)
+        transformForStatement(action, createEmptyScope(programConstants), program, allActions)
       );
       startOperations.push(...forOps);
     } else if (action.$type === 'IfStatement') {
       // T057: US3 - IfStatement in timeline context
       // Transform the if/else branches and add to startOperations
-      const ifOps = yield* _(transformIfStatement(action, createEmptyScope(), program, allActions));
+      const ifOps = yield* _(
+        transformIfStatement(action, createEmptyScope(programConstants), program, allActions)
+      );
       startOperations.push(...ifOps);
     }
 
@@ -1347,7 +1382,8 @@ const validateOperationSequence = (
 const transformActionDefinition = (
   actionDef: EndableActionDefinition | RegularActionDefinition,
   program: Program,
-  allActions: ActionDefinition[]
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
 ): Effect.Effect<EndableActionIR, TransformError> =>
   Effect.gen(function* (_) {
     const startOperations: OperationConfigIR[] = [];
@@ -1359,6 +1395,7 @@ const transformActionDefinition = (
       actionParameters: (actionDef.parameters || []).map(p => p.name),
       loopVariableName: undefined,
       scopedConstants: new Map(), // Start with empty map for action-scoped constants
+      programConstants,
     };
 
     if (actionDef.$type === 'EndableActionDefinition') {
@@ -1933,7 +1970,7 @@ const transformVariableDeclaration = (
     // ACTION-SCOPED CONSTANT FOLDING: Try to evaluate at compile time
     // Build a combined constant map: global constants + action-scoped constants
     const combinedConstants = new Map([
-      ...currentConstantMap.entries(),
+      ...scope.programConstants.entries(),
       ...scope.scopedConstants.entries(),
     ]);
 
@@ -2056,8 +2093,8 @@ const transformExpression = (
         }
 
         // Check global constants
-        if (currentConstantMap.has(varName)) {
-          const constant = currentConstantMap.get(varName)!;
+        if (scope.programConstants.has(varName)) {
+          const constant = scope.programConstants.get(varName)!;
           return constant.value; // Inline global constant
         }
 
@@ -2247,54 +2284,68 @@ export function createParameterContext(params: string[]): EventActionContext {
  * @param eventAction - EventActionDefinition AST node
  * @returns IEventActionConfiguration JSON
  */
-export function transformEventAction(
-  eventAction: EventActionDefinition
-): IEventActionConfiguration {
-  // Guard: eventName is required for transformation (grammar allows optional for completion)
-  if (!eventAction.eventName) {
-    throw new Error(`Event action "${eventAction.name}" is missing event name`);
-  }
-
-  // T021: Create parameter context for this event action
-  const parameterNames = eventAction.parameters.map(p => p.name);
-  const parameterContext = createParameterContext(parameterNames);
-
-  // Create scope with event action parameter indices
-  const eventActionScope: ScopeContext = {
-    inActionBody: true,
-    actionParameters: parameterNames,
-    loopVariableName: undefined,
-    scopedConstants: new Map(),
-    eventActionParameters: parameterContext.parameters, // T021: Pass parameter indices
-  };
-
-  // Transform each operation using the full pipeline
-  const startOperations: IOperationConfiguration<TOperationData>[] = [];
-  for (const opStmt of eventAction.operations) {
-    const operationIRs = Effect.runSync(
-      transformOperationStatement(opStmt, eventActionScope, false, undefined, undefined)
-    );
-
-    // Convert OperationConfigIR[] to IOperationConfiguration[]
-    for (const opIR of operationIRs) {
-      startOperations.push({
-        id: opIR.id,
-        systemName: opIR.systemName,
-        operationData: opIR.operationData,
-      });
+export const transformEventAction = (
+  eventAction: EventActionDefinition,
+  programConstants: ConstantMap = new Map()
+): Effect.Effect<IEventActionConfiguration, TransformError> =>
+  Effect.gen(function* (_) {
+    // Guard: eventName is required for transformation (grammar allows optional for completion).
+    // B2: surfaced through the typed error channel instead of a synchronous throw, so a
+    // missing eventName produces a structured TransformError rather than crashing the compiler.
+    if (!eventAction.eventName) {
+      return yield* _(
+        Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidEvent' as const,
+          message: `Event action "${eventAction.name}" is missing event name`,
+          location: getSourceLocation(eventAction),
+        })
+      );
     }
-  }
 
-  // Build IEventActionConfiguration
-  return {
-    id: crypto.randomUUID(), // UUID v4 per Constitution Principle VII
-    name: eventAction.name,
-    eventName: eventAction.eventName, // Safe: guarded above
-    eventTopic: eventAction.eventTopic, // undefined if not present
-    startOperations,
-    // Note: No endOperations property - event actions don't have end operations
-  };
-}
+    // T021: Create parameter context for this event action
+    const parameterNames = eventAction.parameters.map(p => p.name);
+    const parameterContext = createParameterContext(parameterNames);
+
+    // Create scope with event action parameter indices
+    const eventActionScope: ScopeContext = {
+      inActionBody: true,
+      actionParameters: parameterNames,
+      loopVariableName: undefined,
+      scopedConstants: new Map(),
+      programConstants,
+      eventActionParameters: parameterContext.parameters, // T021: Pass parameter indices
+    };
+
+    // Transform each operation using the full pipeline.
+    // B2: composed with `yield*` so inner failures propagate as TransformError through
+    // the Effect channel instead of escaping `Effect.runSync` as an unhandled fiber crash.
+    const startOperations: IOperationConfiguration<TOperationData>[] = [];
+    for (const opStmt of eventAction.operations) {
+      const operationIRs = yield* _(
+        transformOperationStatement(opStmt, eventActionScope, false, undefined, undefined)
+      );
+
+      // Convert OperationConfigIR[] to IOperationConfiguration[]
+      for (const opIR of operationIRs) {
+        startOperations.push({
+          id: opIR.id,
+          systemName: opIR.systemName,
+          operationData: opIR.operationData,
+        });
+      }
+    }
+
+    // Build IEventActionConfiguration
+    return {
+      id: crypto.randomUUID(), // UUID v4 per Constitution Principle VII
+      name: eventAction.name,
+      eventName: eventAction.eventName, // Safe: guarded above
+      eventTopic: eventAction.eventTopic, // undefined if not present
+      startOperations,
+      // Note: No endOperations property - event actions don't have end operations
+    };
+  });
 
 const transformTimeExpression = (
   expr: AstTimeExpression,

@@ -79,20 +79,27 @@ export interface SourceLocation {
 }
 
 /**
+ * Generic validation result shape (D24/D44).
+ *
+ * The HTML, CSS, and media validators all returned a structurally identical
+ * `{ valid: boolean; errors: TError[] }` object. This generic is the single
+ * source of truth; the per-asset result types below are aliases that only fix
+ * the error element type.
+ */
+export interface ValidationResult<TError> {
+  valid: boolean;
+  errors: TError[];
+}
+
+/**
  * HTML validation result
  */
-export interface HtmlValidationResult {
-  valid: boolean;
-  errors: HtmlValidationError[];
-}
+export type HtmlValidationResult = ValidationResult<HtmlValidationError>;
 
 /**
  * CSS validation result
  */
-export interface CssValidationResult {
-  valid: boolean;
-  errors: CssValidationError[];
-}
+export type CssValidationResult = ValidationResult<CssValidationError>;
 
 /**
  * Media validation error
@@ -106,7 +113,4 @@ export interface MediaValidationError {
 /**
  * Media validation result
  */
-export interface MediaValidationResult {
-  valid: boolean;
-  errors: MediaValidationError[];
-}
+export type MediaValidationResult = ValidationResult<MediaValidationError>;
