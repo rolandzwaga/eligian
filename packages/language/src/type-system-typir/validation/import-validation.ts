@@ -30,7 +30,14 @@ import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
  * ```
  */
 export function registerImportValidation(typir: TypirLangiumServices<EligianSpecifics>): void {
-  // Track which documents have already been validated to prevent duplicate validation
+  // The Typir Program validation rule is invoked twice per validation cycle in
+  // this integration (verified by validation.spec.ts: removing this guard
+  // doubles the duplicate-import diagnostics from 3 to 6). The WeakSet dedups
+  // per Program instance — a fresh instance is parsed on every document edit
+  // (and old ones are GC'd), so it does NOT suppress re-validation of changed
+  // documents; it only collapses the redundant second invocation within a
+  // single cycle. See CODE_ANALYSIS.md B30 — the underlying double-invocation
+  // in typir-langium is the real fix and is tracked separately.
   const validatedDocuments = new WeakSet<Program>();
 
   typir.validation.Collector.addValidationRulesForAstNodes({
@@ -50,7 +57,8 @@ export function registerImportValidation(typir: TypirLangiumServices<EligianSpec
      * ```
      */
     Program: (node: Program, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
-      // Guard: Skip if this document has already been validated
+      // Guard: Skip if this Program instance has already been validated this
+      // cycle (see the WeakSet rationale above).
       if (validatedDocuments.has(node)) {
         return;
       }

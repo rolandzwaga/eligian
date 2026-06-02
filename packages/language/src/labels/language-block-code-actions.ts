@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import type { CodeAction, CodeActionParams } from 'vscode-languageserver-protocol';
 import { CodeActionKind, TextEdit } from 'vscode-languageserver-protocol';
-import type { Program } from '../generated/ast.js';
+import type { DefaultImport, Program } from '../generated/ast.js';
 import { isDefaultImport } from '../generated/ast.js';
 import { uriToFsPath } from '../utils/path-utils.js';
 import { FilePositionHelper } from './file-position-helper.js';
@@ -133,9 +133,8 @@ export class LanguageBlockCodeActionProvider {
     }
 
     return program.statements
-      .filter(stmt => isDefaultImport(stmt) && stmt.type === 'locales')
-      .map(stmt => (isDefaultImport(stmt) ? stmt.path : ''))
-      .filter((path): path is string => path.length > 0);
+      .filter((stmt): stmt is DefaultImport => isDefaultImport(stmt) && stmt.type === 'locales')
+      .map(stmt => stmt.path);
   }
 
   /**

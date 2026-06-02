@@ -19,23 +19,33 @@ import type { Timeline } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 
 /**
- * Validate CSS selector syntax (basic check)
+ * Validate CSS selector syntax (basic character-set check)
  *
- * Validates that selector:
- * - Starts with # (ID), . (class), or letter (element)
- * - Doesn't contain invalid characters
+ * Accepts the common selector shapes: IDs (`#id`), classes (`.class`),
+ * elements, the universal selector (`*`), attribute selectors (`[attr="x"]`),
+ * pseudo-classes/functions (`:hover`, `:nth-child(2)`), compound selectors
+ * (`.button.primary`), descendant/child/sibling combinators
+ * (`#app .container`, `.a > .b`, `.a + .b`, `.a ~ .b`) and selector lists
+ * (`.a, .b`).
  *
- * This is a basic regex check - full CSS selector parsing would be more complex.
+ * This is a permissive allowed-character check, not a full CSS parser: it
+ * rejects clearly-invalid characters (`!`, `@`, `{`, `}`, etc.) and empty
+ * selectors, but does not verify structural correctness.
  *
  * @param selector - CSS selector string
  * @returns true if valid, false otherwise
  */
 function isValidCSSSelector(selector: string): boolean {
-  // Basic CSS selector pattern:
-  // - Starts with #id, .class, element, *, or [attribute]
-  // - Can contain letters, numbers, hyphens, underscores, dots, colons, #
-  // - No spaces or special characters like !, $, @, etc.
-  const cssSelectorPattern = /^[#.\w\-:[\]]+$/;
+  // Reject empty / whitespace-only selectors (the quantifier below would
+  // otherwise match a string of pure whitespace).
+  if (selector.trim().length === 0) {
+    return false;
+  }
+  // Allowed characters: identifiers (`\w`, `-`), `#`/`.` prefixes, `*`,
+  // attribute selectors (`[ ] = " ' | ^ $ ~ *`), pseudo selectors (`:` and
+  // function parens), combinators (`> + ~` and whitespace), and selector
+  // list separators (`,`).
+  const cssSelectorPattern = /^[#.\w\-:[\]=~|^$*"'()\s,>+]+$/;
   return cssSelectorPattern.test(selector);
 }
 
@@ -109,7 +119,7 @@ export function registerTimelineValidation(typir: TypirLangiumServices<EligianSp
       if (!isValidCSSSelector(node.containerSelector)) {
         accept({
           severity: 'error',
-          message: `Invalid CSS selector: '${node.containerSelector}'. Expected format: #id, .class, or element`,
+          message: `Invalid CSS selector: '${node.containerSelector}'. Expected a CSS selector such as #id, .class, element, or a combination (e.g. '#app .container')`,
           languageNode: node,
           languageProperty: 'containerSelector',
         });
