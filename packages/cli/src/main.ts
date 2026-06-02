@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { Effect } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import { BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
 import { AssetError, CompilationError, compileFile, IOError, ParseError } from './compile-file.js';
@@ -44,12 +44,16 @@ interface CLIOptions {
 }
 
 /**
- * Format and print parse errors to console
+ * Format and print a list of formatted compiler errors (parse or compilation)
+ * to the console, under the given header.
  */
-function printParseErrors(error: ParseError): void {
-  console.error(chalk.red('\nParse failed:\n'));
+function printFormattedErrors(
+  header: string,
+  formatted: Array<{ message: string; codeSnippet?: string; hint?: string }>
+): void {
+  console.error(chalk.red(`\n${header}\n`));
 
-  for (const err of error.formatted) {
+  for (const err of formatted) {
     console.error(err.message);
 
     if (err.codeSnippet) {
@@ -86,27 +90,6 @@ function printAssetErrors(error: AssetError): void {
 
     if (err.details) {
       console.error(chalk.gray(`  Details: ${err.details}`));
-    }
-
-    console.error(); // blank line
-  }
-}
-
-/**
- * Format and print compilation errors to console
- */
-function printCompilationErrors(error: CompilationError): void {
-  console.error(chalk.red('\nCompilation failed:\n'));
-
-  for (const err of error.formatted) {
-    console.error(err.message);
-
-    if (err.codeSnippet) {
-      console.error(`\n${err.codeSnippet}`);
-    }
-
-    if (err.hint) {
-      console.error(`\n${chalk.yellow(`💡 ${err.hint}`)}`);
     }
 
     console.error(); // blank line
@@ -156,7 +139,7 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
     }
   } catch (error) {
     if (error instanceof ParseError) {
-      printParseErrors(error);
+      printFormattedErrors('Parse failed:', error.formatted);
       process.exit(EXIT_COMPILE_ERROR);
     }
 
@@ -166,7 +149,7 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
     }
 
     if (error instanceof CompilationError) {
-      printCompilationErrors(error);
+      printFormattedErrors('Compilation failed:', error.formatted);
       process.exit(EXIT_COMPILE_ERROR);
     }
 
@@ -185,44 +168,44 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
  * Create a standalone bundle from CLI
  */
 async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> {
-  try {
-    if (options.verbose) {
-      console.log(chalk.gray(`Bundling ${inputPath}...`));
-    }
+  if (options.verbose) {
+    console.log(chalk.gray(`Bundling ${inputPath}...`));
+  }
 
-    const result = await Effect.runPromise(
-      createBundle(inputPath, {
-        outputDir: options.output,
-        minify: options.minify,
-        inlineThreshold: options.inlineThreshold,
-        sourcemap: options.sourcemap,
-        force: options.force,
-      })
-    );
+  // Use runPromiseExit so we can inspect the Cause directly: a failed Effect
+  // rejects runPromise with an opaque FiberFailure wrapper, against which
+  // `instanceof BundleError` always returns false. Cause.failureOption recovers
+  // the typed error (BundleError and its subclasses like OutputExistsError).
+  const exit = await Effect.runPromiseExit(
+    createBundle(inputPath, {
+      outputDir: options.output,
+      minify: options.minify,
+      inlineThreshold: options.inlineThreshold,
+      sourcemap: options.sourcemap,
+      force: options.force,
+    })
+  );
 
+  if (Exit.isSuccess(exit)) {
+    const result = exit.value;
     if (!options.quiet) {
       console.log(chalk.green(`✓ Bundle created: ${result.outputDir}`));
       console.log(chalk.gray(`  Files: ${result.stats.fileCount}`));
       console.log(chalk.gray(`  Size: ${(result.stats.totalSize / 1024).toFixed(1)} KB`));
       console.log(chalk.gray(`  Time: ${result.stats.bundleTime}ms`));
     }
-  } catch (error) {
-    if (error instanceof BundleError) {
-      console.error(chalk.red(`\nBundle failed: ${error.message}`));
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    // Check for Effect FiberFailure wrapper
-    const errorStr = String(error);
-    if (errorStr.includes('BundleError') || errorStr.includes('OutputExistsError')) {
-      console.error(chalk.red(`\nBundle failed: ${errorStr}`));
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    // Unknown error
-    console.error(chalk.red('Unexpected error:'), error);
-    process.exit(EXIT_IO_ERROR);
+    return;
   }
+
+  const failure = Cause.failureOption(exit.cause);
+  if (Option.isSome(failure) && failure.value instanceof BundleError) {
+    console.error(chalk.red(`\nBundle failed: ${failure.value.message}`));
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  // Defect or interruption (not a typed BundleError failure)
+  console.error(chalk.red('Unexpected error:'), Cause.pretty(exit.cause));
+  process.exit(EXIT_IO_ERROR);
 }
 
 /**

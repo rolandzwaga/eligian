@@ -101,6 +101,18 @@ The following combined cluster was fixed on branch **`refactor/errors-module-ded
 
 > ⚠️ One auto-proposed fix (compose `isIOError` from leaf guards, type-guards.ts) was **reverted** — it broke 20 tests with a `ReferenceError`; the code at HEAD was already correct. *(Superseded: D19 above recomposes `isIOError` via the imported `hasTag` instead of the re-exported leaf guards, sidestepping the binding problem.)*
 
+The following cluster was fixed on branch **`refactor/cli-bundler-cluster-d31`** (verified: tsgo typecheck clean, biome clean, CLI suite green at 230 passed/19 skipped, esbuild + tsgo build clean). Marked **✅ FIXED** inline below.
+
+**Fixed (numbered):** D31, D32, D34, B7, B41, B42. A single PR consolidating the CLI bundler duplication clusters plus the co-located Effect error-handling bugs:
+- **D31** — new `packages/cli/src/bundler/url-utils.ts` is the single source of truth for `isExternalUrl`/`isDataUri`/`resolveAssetPath`; the byte-identical private copies in `asset-collector.ts`, `css-processor.ts`, and `html-generator.ts` are deleted (css-processor's `resolveUrl` and html-generator's `resolveAssetPath` were the same `dirname`+`resolve` logic). `asset-collector.ts` re-exports `resolveAssetPath` to preserve its existing test import. `html-generator.ts` no longer imports `node:path`.
+- **D32** — new private `tryAppendAssetSource(assets, absolutePath, source)` in `asset-collector.ts`; the three `collectAssets` upsert blocks (CSS / config / layout-template) now build the `AssetSource` once, early-`continue` on an existing entry, and otherwise fall through to entry creation. Behavior-preserving: files are still read/inlined only for new assets (the early return preserves the original laziness), and the `has`+`get!` double-lookup is removed.
+- **D34** — new `printFormattedErrors(header, formatted)` in `main.ts`; `printParseErrors` and `printCompilationErrors` (byte-identical) are deleted and their two call sites pass the header string. `printAssetErrors` (different shape) is unchanged.
+- **B7** — `bundleCLI` now uses `Effect.runPromiseExit` + `Cause.failureOption`; the typed `BundleError` (and its `OutputExistsError` subclass) is recovered from the `Cause` instead of `instanceof` against the `FiberFailure` wrapper, and the fragile `String(error).includes(...)` fallback is gone. Defects/interruptions print via `Cause.pretty`.
+- **B42** — `extractEffectError`'s `JSON.stringify` round-trip is replaced by `causeToError(cause)` (= `Cause.failureOption` with a `Cause.squash` fallback for defects); both the parse and compile blocks in `compile-file.ts` use `runPromiseExit` and recover the typed `CompilerError` from the `Cause`.
+- **B41** — the temp-dir cleanup `Effect.catchAll` in `bundler/index.ts` and the entry-point cleanup in `runtime-bundler.ts` now `console.warn` the failure instead of silently swallowing it.
+
+> Note: **B40** (NaN guard on `--inline-threshold`) was already present in the code at HEAD (`Number.isNaN` check at `main.ts` after `parseInt`) and required no change. **B57** (`outputHelp()` reachability, Low) was left as-is. **B6** was already fixed in `6b1c52a`.
+
 The high-severity report-only items deliberately **not** auto-applied (require real refactors / control-flow changes): **B2** (`Effect.runSync` crash path), **B3** (module-level `currentConstantMap` state leak), and all duplication-cluster refactors (D1, etc.).
 
 ---
@@ -152,6 +164,7 @@ Inside `Effect.gen`, `yield*` on a failed Effect short-circuits via the Effect p
 **Research notes:** Confirmed via Effect-ts docs — `Effect.gen` uses a generator adapter where `yield*` communicates failures through the Effect channel, not by throwing.
 
 #### B7. `bundleCLI` checks `instanceof BundleError` after `Effect.runPromise` — always misses FiberFailure
+> ✅ **FIXED** — branch `refactor/cli-bundler-cluster-d31` (`bundleCLI` now uses `runPromiseExit` + `Cause.failureOption`; the typed `BundleError`/`OutputExistsError` is recovered from the `Cause`, and the `String(error).includes(...)` fallback is removed)
 **Severity:** High
 **Locations:** [main.ts:192](packages/cli/src/main.ts#L192), [main.ts:209](packages/cli/src/main.ts#L209), [main.ts:214-219](packages/cli/src/main.ts#L214)
 `Effect.runPromise` rejects with a `FiberFailure` wrapper, not the raw `BundleError`, so `instanceof BundleError` is always false and the code falls back to fragile string matching. `OutputExistsError` cannot be distinguished and structured error data is lost.
@@ -376,18 +389,21 @@ Only `JSON.parse` is used; the existing AJV `validateLocalesJSON` (locale-code f
 **Fix:** Call `validateLocalesJSON(content, importInfo.path)` and map its error to an `AssetError`.
 
 #### B40. `parseInt` on `--inline-threshold` with no NaN guard silently disables inlining
+> ✅ **ALREADY FIXED** — the `Number.isNaN(inlineThreshold)` guard (exit with an error) is already present in `main.ts` at HEAD; no change needed in branch `refactor/cli-bundler-cluster-d31`
 **Severity:** Medium
 **Locations:** [main.ts:260](packages/cli/src/main.ts#L260), [asset-collector.ts:321](packages/cli/src/bundler/asset-collector.ts#L321)
 NaN flows to `size <= threshold`, which is always false, disabling all inlining without warning.
 **Fix:** Add `Number.isNaN` check after `parseInt` and exit with an error (or use Commander `.argParser`).
 
 #### B41. Cleanup errors silently swallowed in temp/entry-point removal
+> ✅ **FIXED** — branch `refactor/cli-bundler-cluster-d31` (both cleanup `Effect.catchAll` sites now `console.warn` the failure instead of returning `Effect.succeed(undefined)`)
 **Severity:** Medium
 **Locations:** [bundler/index.ts:180-183](packages/cli/src/bundler/index.ts#L180), [runtime-bundler.ts:262-266](packages/cli/src/bundler/runtime-bundler.ts#L262)
 `Effect.catchAll(() => Effect.succeed(undefined))` hides all cleanup I/O errors; temp files accumulate invisibly.
 **Fix:** Log a warning: `Effect.catchAll(e => Effect.sync(() => console.warn('Cleanup failed:', e)))`.
 
 #### B42. `extractEffectError` uses `JSON.stringify` round-trip on FiberFailure
+> ✅ **FIXED** — branch `refactor/cli-bundler-cluster-d31` (`extractEffectError` replaced by `causeToError` using `Cause.failureOption` + `Cause.squash`; parse and compile blocks in `compile-file.ts` use `runPromiseExit`)
 **Severity:** Medium
 **Locations:** [compile-file.ts:125-138](packages/cli/src/compile-file.ts#L125), [compile-file.ts:195](packages/cli/src/compile-file.ts#L195)
 Relies on Effect's undocumented FiberFailure serialization; `JSON.stringify` of an `Error` yields `{}` (non-enumerable props), so defect failures fall through and an opaque FiberFailure is unsoundly cast to `CompilerError`.
@@ -747,11 +763,13 @@ Identical normalize→dir→parse→`getDocument`→null-check (also the B4 ad-h
 **Abstraction:** Private resolver returning the library document or `undefined`; fix B4 here at the same time.
 
 ### D31. CLI `isExternalUrl`/`isDataUri` and `resolveAssetPath`/`resolveUrl` triplicated
+> ✅ **FIXED** — branch `refactor/cli-bundler-cluster-d31` (new `cli/src/bundler/url-utils.ts` exports `isExternalUrl`/`isDataUri`/`resolveAssetPath` as the single source of truth; the byte-identical private copies in `asset-collector.ts`/`css-processor.ts`/`html-generator.ts` are deleted — css-processor's `resolveUrl` and html-generator's `resolveAssetPath` collapse into the shared `resolveAssetPath`. `asset-collector.ts` re-exports `resolveAssetPath` for its existing test import; `html-generator.ts` drops its now-unused `node:path` import.)
 **Severity:** High
 **Sites:** [asset-collector.ts:73-82](packages/cli/src/bundler/asset-collector.ts#L73), [css-processor.ts:43-52](packages/cli/src/bundler/css-processor.ts#L43), [html-generator.ts:129-138](packages/cli/src/bundler/html-generator.ts#L129) (url helpers); [asset-collector.ts:242-245](packages/cli/src/bundler/asset-collector.ts#L242), [css-processor.ts:61-64](packages/cli/src/bundler/css-processor.ts#L61), [html-generator.ts:147-150](packages/cli/src/bundler/html-generator.ts#L147) (path resolution)
 **Abstraction:** Shared `cli/src/bundler/url-utils.ts` with `isExternalUrl`, `isDataUri`, and a single `resolveAssetPath`.
 
 ### D32. Asset-Map upsert pattern duplicated 3× in `collectAssets`
+> ✅ **FIXED** — branch `refactor/cli-bundler-cluster-d31` (new private `tryAppendAssetSource(assets, absolutePath, source)`; the three upsert blocks build the `AssetSource` once, early-`continue` on an existing entry, then fall through to entry creation. Preserves laziness — files are read/inlined only for new assets — and removes the `has`+`get!` double-lookup.)
 **Severity:** Medium
 **Sites:** [asset-collector.ts:471-508](packages/cli/src/bundler/asset-collector.ts#L471), [asset-collector.ts:527-551](packages/cli/src/bundler/asset-collector.ts#L527), [asset-collector.ts:571-606](packages/cli/src/bundler/asset-collector.ts#L571)
 **Abstraction:** `upsertAsset(assets, absolutePath, source, entry)`.
@@ -763,6 +781,7 @@ Identical normalize→dir→parse→`getDocument`→null-check (also the B4 ad-h
 **Abstraction:** `const fileType = getFileType(ext)` once.
 
 ### D34. `printParseErrors` / `printCompilationErrors` byte-identical
+> ✅ **FIXED** — branch `refactor/cli-bundler-cluster-d31` (new `printFormattedErrors(header, formatted)` in `main.ts`; both byte-identical printers deleted, the two call sites pass `'Parse failed:'` / `'Compilation failed:'`. `printAssetErrors` left unchanged — different shape.)
 **Severity:** Medium
 **Sites:** [main.ts:48-64](packages/cli/src/main.ts#L48), [main.ts:97-113](packages/cli/src/main.ts#L97)
 **Abstraction:** `printFormattedErrors(header, formatted)`.

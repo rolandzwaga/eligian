@@ -255,11 +255,13 @@ export function bundleRuntime(
       },
     });
 
-    // Clean up temporary entry point file
+    // Clean up temporary entry point file (non-fatal: warn but don't abort)
     yield* Effect.tryPromise({
       try: () => fs.unlink(entryPointPath),
       catch: () => new RuntimeBundleError('Failed to clean up temp file'),
-    }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+    }).pipe(
+      Effect.catchAll(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`)))
+    );
 
     // Get bundled content
     if (!result.outputFiles || result.outputFiles.length === 0) {

@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { Effect } from 'effect';
 import * as esbuild from 'esbuild';
 import { type AssetManifest, CSSProcessError } from './types.js';
+import { isDataUri, isExternalUrl, resolveAssetPath } from './url-utils.js';
 
 /**
  * Options for CSS processing
@@ -35,32 +36,6 @@ export async function minifyCSS(css: string): Promise<string> {
     minify: true,
   });
   return result.code;
-}
-
-/**
- * Check if a URL is external (http:// or https://)
- */
-function isExternalUrl(url: string): boolean {
-  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
-}
-
-/**
- * Check if a URL is a data URI
- */
-function isDataUri(url: string): boolean {
-  return url.startsWith('data:');
-}
-
-/**
- * Resolve a URL reference relative to a CSS file path
- *
- * @param urlRef - The URL reference from the CSS (e.g., "./images/hero.png")
- * @param cssFilePath - Absolute path to the CSS file
- * @returns Absolute path to the referenced asset
- */
-function resolveUrl(urlRef: string, cssFilePath: string): string {
-  const cssDir = path.dirname(cssFilePath);
-  return path.resolve(cssDir, urlRef);
 }
 
 /**
@@ -95,7 +70,7 @@ export function rewriteCSSUrls(
     }
 
     // Resolve the URL to an absolute path
-    const resolvedPath = resolveUrl(trimmedUrl, cssFilePath);
+    const resolvedPath = resolveAssetPath(trimmedUrl, cssFilePath);
 
     // Look up in manifest
     const asset = manifest.assets.get(resolvedPath);
