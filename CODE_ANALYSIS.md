@@ -1073,6 +1073,48 @@ The locale-code regex also diverges (`{2,3}` in core vs `{2}` inline at locale-e
 
 ---
 
+## Follow-up Worklist (not yet tracked as findings)
+
+These items are **out of scope** of the 160 numbered findings above — they were
+either created by an earlier fix (the validator decomposition relocated bulk
+into a new large file) or were never flagged by the original god-class theme at
+all. They are recorded here so they can be turned into tasks later; none is a
+correctness defect, all are size/maintainability concerns. Verify line counts
+before scheduling — they drift.
+
+### W1. `operation-call-validator.ts` is a new god class (~1038 lines)
+**Location:** [operation-call-validator.ts](packages/language/src/validators/operation-call-validator.ts)
+The `EligianValidator` decomposition (god-class anti-pattern, ✅ FIXED) split the
+3077-line monolith into seven concern-grouped sub-validators. One of them,
+`OperationCallValidator`, absorbed the largest concern (operation-call argument/
+type/label/CSS checks) and is itself now ~1038 lines in a single class — bigger
+than several files that *were* flagged. **Suggested task:** split by check family
+(e.g. parameter-count, label-ID, CSS-class/selector, control-flow-pairing) into
+collaborating validators or free functions, keeping the one registered class as a
+thin delegator. Lower priority than the original because responsibility is already
+focused (one AST node type) and it is independently testable.
+
+### W2. `ast-transformer.ts` is the largest file in the repo (~2535 lines)
+**Location:** [ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts)
+Never flagged by the god-class theme (which only named `EligianValidator` and
+`extension/main.ts`), but at ~2535 lines / ~22 top-level functions it is the
+single biggest source file. **Suggested task:** extract per-construct transformers
+(timeline / action / operation / control-flow / asset) into a `transformers/`
+directory behind the existing public entry points, mirroring the validator
+decomposition. Higher risk than W1 — it sits on the compile path and changing it
+can alter JSON output, so it needs strong snapshot coverage first.
+
+### W3. Other oversized modules worth a sizing pass (lower priority)
+Recorded for completeness; decompose only if they keep growing:
+- [pipeline.ts](packages/language/src/compiler/pipeline.ts) — ~880 lines (compiler orchestration)
+- [LocaleEditorProvider.ts](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts) — ~749 lines
+- [compiler/operations/validator.ts](packages/language/src/compiler/operations/validator.ts) — ~695 lines
+- [eligian-hover-provider.ts](packages/language/src/eligian-hover-provider.ts) — ~627 lines
+- [eligian-completion-provider.ts](packages/language/src/eligian-completion-provider.ts) — ~625 lines
+- [program-validator.ts](packages/language/src/validators/program-validator.ts) — ~515 lines (also a decomposition product)
+
+---
+
 ## Recommended Safe Auto-Fixes
 
 The following subset is judged mechanical and behavior-preserving (pure deletions of dead code, comment dedup, named-constant substitution, type-guard composition, slash-direction/`Math.max` corrections with no control-flow change, and stateful-`/g` regex relocation). All refactors that introduce shared abstractions, change public APIs, or alter control flow are intentionally excluded and left for manual review.
