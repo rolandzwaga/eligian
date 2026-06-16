@@ -10,7 +10,6 @@ import {
 import {
   createTypirLangiumServices,
   initializeLangiumTypirServices,
-  registerTypirValidationChecks,
   type TypirLangiumServices,
 } from 'typir-langium';
 import { CSSRegistryService } from './css/css-registry.js';
@@ -121,11 +120,17 @@ export function createEligianServices(context: DefaultSharedModuleContext): {
   const Eligian = inject(createDefaultModule({ shared }), EligianGeneratedModule, EligianModule);
   shared.ServiceRegistry.register(Eligian);
 
-  // Initialize Typir services AFTER service creation
+  // Initialize Typir services AFTER service creation.
+  // NOTE: initializeLangiumTypirServices() already registers the Typir
+  // validation checks with the Langium ValidationRegistry (it calls
+  // registerTypirValidationChecks internally). Do NOT call
+  // registerTypirValidationChecks again here — doing so registers the Typir
+  // validator twice under the 'AstNode' key, causing every Typir validation
+  // rule (e.g. the duplicate-import Program rule) to fire twice per cycle.
+  // See CODE_ANALYSIS.md B30.
   initializeLangiumTypirServices(Eligian, Eligian.typir);
 
   registerValidationChecks(Eligian);
-  registerTypirValidationChecks(Eligian, Eligian.typir);
   if (!context.connection) {
     // We don't run inside a language server
     // Therefore, initialize the configuration provider instantly
