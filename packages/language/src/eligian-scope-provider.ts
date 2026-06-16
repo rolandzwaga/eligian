@@ -17,6 +17,7 @@ import {
   EMPTY_SCOPE,
   type ReferenceInfo,
   type Scope,
+  WorkspaceCache,
 } from 'langium';
 import { resolveLibraryPath } from './compiler/pipeline.js';
 import type { EligianServices } from './eligian-module.js';
@@ -41,9 +42,27 @@ import { getElements } from './utils/program-helpers.js';
 export class EligianScopeProvider extends DefaultScopeProvider {
   private eligianServices: EligianServices;
 
+  /**
+   * Memoizes {@link getImportedActions} per document URI.
+   *
+   * `getImportedActions` was previously recomputed up to 3× per `OperationCall`
+   * during validation (plus once per scope resolution), each time re-resolving
+   * and re-walking every transitively imported library AST.
+   *
+   * A `WorkspaceCache` is the correct invalidation strategy here: the result
+   * depends on *other* documents (the imported libraries), so it must be evicted
+   * whenever any document in the workspace is added, changed, or deleted —
+   * exactly `WorkspaceCache`'s contract. A naive `Map` would hold stale library
+   * AST nodes across rebuilds (a correctness hazard), and a `DocumentCache`
+   * keyed on the importing document would miss changes to the libraries it
+   * imports.
+   */
+  private readonly importedActionsCache: WorkspaceCache<string, ActionDefinition[]>;
+
   constructor(services: EligianServices) {
     super(services);
     this.eligianServices = services;
+    this.importedActionsCache = new WorkspaceCache(services.shared);
   }
 
   override getScope(context: ReferenceInfo): Scope {
@@ -132,6 +151,27 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     programOrLibrary: any,
     visited: Set<string> = new Set()
   ): ActionDefinition[] {
+    // Only the top-level invocation is memoized. Recursive calls carry a
+    // non-empty `visited` set, and their result depends on that cycle-cutoff
+    // state, so caching them by URI alone would be unsound. External callers
+    // always start with an empty set, so `visited.size === 0` reliably
+    // identifies the cacheable top-level call.
+    if (visited.size === 0) {
+      const cacheKey = AstUtils.getDocument(programOrLibrary).uri?.toString();
+      if (cacheKey) {
+        return this.importedActionsCache.get(cacheKey, () =>
+          this.computeImportedActions(programOrLibrary, visited)
+        );
+      }
+    }
+    return this.computeImportedActions(programOrLibrary, visited);
+  }
+
+  /**
+   * Recursively collects all transitively imported library actions.
+   * See {@link getImportedActions} (the memoizing entry point) for caching.
+   */
+  private computeImportedActions(programOrLibrary: any, visited: Set<string>): ActionDefinition[] {
     const importedActions: ActionDefinition[] = [];
 
     // Get current document URI for cycle detection

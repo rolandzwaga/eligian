@@ -56,8 +56,14 @@ export class AssetValidationService implements IAssetValidationService {
       column: 0,
     };
 
-    // Check if file exists
-    if (!this.assetLoader.fileExists(absolutePath)) {
+    // Check if file exists.
+    //
+    // Media is excluded here: MediaValidator (invoked by validateMedia) performs
+    // its own existence + is-file check, so running fileExists for media too
+    // would stat the file twice. The content-based assets (html/css/json) have
+    // no such validator — their validators load file contents and assume the
+    // file already exists — so they keep this guard.
+    if (assetType !== 'media' && !this.assetLoader.fileExists(absolutePath)) {
       return [this.buildMissingFileError(assetType, relativePath, absolutePath, sourceLocation)];
     }
 
