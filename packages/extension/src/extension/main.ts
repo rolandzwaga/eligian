@@ -16,7 +16,6 @@ import { registerOpenLocaleEditorCommand } from './commands/locale.js';
 import { registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
-import { disposeServices as disposeBlockLabelServices } from './decorations/block-label-detector.js';
 import { HTMLWatcherManager } from './html-watcher.js';
 import { createLabelEntry } from './label-entry-creator.js';
 import { createLabelsFile } from './label-file-creator.js';
@@ -155,10 +154,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // B49: dispose the shared compiler output channel if it was ever created.
   context.subscriptions.push({ dispose: () => disposeCompilerOutputChannel() });
 
-  // Release the block-label-detector's lazily-created Langium services (pairs
-  // with B47) so they do not outlive the extension host.
-  context.subscriptions.push({ dispose: () => disposeBlockLabelServices() });
-
   // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
   context.subscriptions.push(registerOpenLocaleEditorCommand());
 
@@ -180,8 +175,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  // Initialize block label decoration provider
-  blockLabelProvider = new BlockLabelDecorationProvider();
+  // Initialize block label decoration provider (B47: requests bracket
+  // positions from the language server instead of re-parsing in the host)
+  blockLabelProvider = new BlockLabelDecorationProvider(client);
   context.subscriptions.push(blockLabelProvider);
 
   // Update decorations for active editor

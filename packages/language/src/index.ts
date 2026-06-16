@@ -54,6 +54,8 @@ export {
 export { extractTranslationKeys } from './locales/translation-key-extractor.js';
 // Shared asset notification base types (D7)
 export * from './lsp/asset-notifications.js';
+// Block-label detection (parse-free core + LSP request contract)
+export * from './lsp/block-labels.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // HTML validation exports

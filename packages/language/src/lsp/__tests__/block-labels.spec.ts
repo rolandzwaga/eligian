@@ -1,16 +1,29 @@
 /**
- * Tests for block label detection
+ * Tests for the parse-free block-label extraction core.
  *
- * Verifies that we can find the positions of '[' brackets for:
- * 1. EndableActionDefinition - endable action ... [] []
- * 2. InlineEndableAction - at 0s..4s [] []
+ * Verifies that `extractBlockLabels` finds the positions of the '[' / ']'
+ * brackets for:
+ * 1. EndableActionDefinition - `endable action ... [] []`
+ * 2. InlineEndableAction     - `at 0s..4s [] []`
  */
 
-import { describe, expect, it } from 'vitest';
-import { createTestDocument } from '../../../language/test-helpers.js';
-import { findBlockLabels } from '../block-label-detector.js';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
+import type { Program } from '../../generated/ast.js';
+import { extractBlockLabels } from '../block-labels.js';
 
-describe('Block Label Detection', () => {
+describe('extractBlockLabels', () => {
+  let ctx: TestContext;
+
+  beforeAll(() => {
+    ctx = createTestContext();
+  });
+
+  async function labelsFor(source: string) {
+    const document = await ctx.parse(source);
+    return extractBlockLabels(document.parseResult.value as Program);
+  }
+
   describe('EndableActionDefinition', () => {
     it('should find start and end bracket positions for endable action', async () => {
       const source = `
@@ -22,8 +35,7 @@ endable action fadeIn(selector: string, duration) [
 ]
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('action');
@@ -40,8 +52,7 @@ endable action fadeIn(selector: string, duration) [
     it('should handle empty start and end blocks', async () => {
       const source = `endable action test() [] []`;
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('action');
@@ -55,8 +66,7 @@ endable action fadeIn() [] []
 endable action fadeOut() [] []
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(2);
       expect(labels[0].type).toBe('action');
@@ -76,8 +86,7 @@ timeline "Test" in "#container" using raf {
 }
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('timeline');
@@ -96,8 +105,7 @@ timeline "Test" in "#container" using raf {
 }
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].type).toBe('timeline');
@@ -111,8 +119,7 @@ timeline "Test" in "#container" using raf {
 }
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(2);
       expect(labels[0].type).toBe('timeline');
@@ -138,8 +145,7 @@ timeline "Test" in "#container" using raf {
 }
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(2);
       expect(labels[0].type).toBe('action');
@@ -157,8 +163,7 @@ action regularAction() [
 endable action endableAction() [] []
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       // Should only find the endable action, not the regular one
       expect(labels).toHaveLength(1);
@@ -171,8 +176,7 @@ endable action endableAction() [] []
     it('should handle single-line endable actions', async () => {
       const source = `endable action test() [log("a")] [log("b")]`;
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(1);
       expect(labels[0].startBracketPosition.line).toBe(0);
@@ -190,8 +194,7 @@ timeline "Test" in "#container" using raf {
 }
       `.trim();
 
-      const document = await createTestDocument(source);
-      const labels = await findBlockLabels(document);
+      const labels = await labelsFor(source);
 
       expect(labels).toHaveLength(0);
     });
