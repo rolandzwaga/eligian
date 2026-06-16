@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+  BLOCK_LABELS_REQUEST,
+  type BlockLabelsParams,
   CSS_ERROR_NOTIFICATION,
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
   CSS_UPDATED_NOTIFICATION,
@@ -8,6 +10,7 @@ import {
   type CSSUpdatedParams,
   createEligianServices,
   createEmptyCSSMetadata,
+  extractBlockLabels,
   extractTranslationKeys,
   findActionBelow,
   generateJSDocContent,
@@ -299,6 +302,19 @@ connection.onRequest('eligian/generateJSDoc', async params => {
 
   // No action found, return null (no JSDoc generation)
   return null;
+});
+
+// Block-label decoration positions (B47)
+// The extension host requests bracket positions instead of re-parsing the
+// document itself: the server reuses the already-built, cached AST.
+connection.onRequest(BLOCK_LABELS_REQUEST, (params: BlockLabelsParams) => {
+  const document = shared.workspace.LangiumDocuments.getDocument(
+    URI.parse(params.textDocument.uri)
+  );
+  if (!document) {
+    return [];
+  }
+  return extractBlockLabels(document.parseResult.value as Program);
 });
 
 // Start the language server with the shared services

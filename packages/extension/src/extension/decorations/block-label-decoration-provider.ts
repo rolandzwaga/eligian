@@ -6,8 +6,9 @@
  * - Timeline events: at 0s..4s [start] [end]
  */
 
+import { BLOCK_LABELS_REQUEST, type BlockLabel, type BlockLabelsParams } from '@eligian/language';
 import * as vscode from 'vscode';
-import { type BlockLabel, findBlockLabels } from './block-label-detector.js';
+import type { LanguageClient } from 'vscode-languageclient/node.js';
 
 /**
  * Manages decorations for block labels in Eligian files
@@ -17,8 +18,10 @@ export class BlockLabelDecorationProvider {
   private endLabelDecorationType: vscode.TextEditorDecorationType;
   private updateTimeout: NodeJS.Timeout | undefined;
   private readonly debounceMs = 300;
+  private readonly client: LanguageClient;
 
-  constructor() {
+  constructor(client: LanguageClient) {
+    this.client = client;
     // Create decoration type for "start" label
     // Note: VS Code decorations don't support font-size CSS
     // Using Unicode superscript characters for smaller text
@@ -72,19 +75,12 @@ export class BlockLabelDecorationProvider {
     }
 
     try {
-      // Convert VS Code document to TextDocument protocol
-      const textDocument = {
-        uri: document.uri.toString(),
-        languageId: document.languageId,
-        version: document.version,
-        getText: () => document.getText(),
-        positionAt: (offset: number) => document.positionAt(offset),
-        offsetAt: (position: vscode.Position) => document.offsetAt(position),
-        lineCount: document.lineCount,
+      // Ask the language server for bracket positions. It reuses the
+      // already-built, cached AST instead of re-parsing here (B47).
+      const params: BlockLabelsParams = {
+        textDocument: { uri: document.uri.toString() },
       };
-
-      // Find all block labels in the document
-      const labels = await findBlockLabels(textDocument);
+      const labels = await this.client.sendRequest<BlockLabel[]>(BLOCK_LABELS_REQUEST, params);
 
       // Separate decorations for start and end labels
       const startDecorations: vscode.DecorationOptions[] = [];
