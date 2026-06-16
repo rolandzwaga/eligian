@@ -1082,7 +1082,9 @@ all. They are recorded here so they can be turned into tasks later; none is a
 correctness defect, all are size/maintainability concerns. Verify line counts
 before scheduling — they drift.
 
-### W1. `operation-call-validator.ts` is a new god class (~1038 lines)
+**Status:** W1 ✅ FIXED (see below). W2 and W3 remain open.
+
+### W1. `operation-call-validator.ts` is a new god class (~1038 lines) — ✅ FIXED
 **Location:** [operation-call-validator.ts](packages/language/src/validators/operation-call-validator.ts)
 The `EligianValidator` decomposition (god-class anti-pattern, ✅ FIXED) split the
 3077-line monolith into seven concern-grouped sub-validators. One of them,
@@ -1093,6 +1095,33 @@ than several files that *were* flagged. **Suggested task:** split by check famil
 collaborating validators or free functions, keeping the one registered class as a
 thin delegator. Lower priority than the original because responsibility is already
 focused (one AST node type) and it is independently testable.
+
+**Fixed** on branch **`refactor/w1-operation-call-validator-decomposition`** (verified:
+`pnpm exec tsgo --noEmit` clean for the language package, `pnpm run check` clean — only
+the 4 pre-existing `useOptionalChain` warnings remain in the untouched
+`eligian-scope-provider.ts` — full language suite green at 2005 passed/23 skipped,
+`test:coverage:ci` exit 0 with the new `validators/operation-call/` dir at ~84% lines /
+96% funcs, full `pnpm run build` clean). The 1038-line monolith was split by check
+family into four collaborating sub-validators under a new
+[validators/operation-call/](packages/language/src/validators/operation-call/) directory,
+each extending `BaseValidator` and independently testable:
+- **`operation-existence-validator.ts`** — `checkOperationExists` + the unified-syntax
+  `checkTimelineOperationCall` (with its private `isDirectTimelineCall`/`isDescendantOf`).
+- **`parameter-validator.ts`** — `checkParameterCount`/`checkParameterTypes`/`checkDependencies`
+  + private `reportActionParameterCountError` (D28).
+- **`css-parameter-validator.ts`** — `checkClassNameParameter`/`checkSelectorParameter` (Feature 013).
+- **`label-parameter-validator.ts`** — `checkControllerCall`/`checkLabelIDParameter` + the lazy
+  labels-import registration state (`initializedLabelDocuments`/`ensureLabelsImportsRegistered`)
+  and the `reportLabelIDError` D29 helper.
+
+The shared `findImportedActionByNameOrAlias` action-resolution helper (used by both the
+existence and parameter families) was extracted to a free function in
+[validators/operation-call/action-resolution.ts](packages/language/src/validators/operation-call/action-resolution.ts).
+`operation-call-validator.ts` is now a **72-line thin delegator**: it keeps the single
+registered DI surface (`services.validation.EligianValidator.operationCall`), constructs the
+four collaborators, and forwards each registered method one line, so the `OperationCall`
+check map in `registerValidationChecks` is unchanged. All method bodies moved verbatim —
+pure behavior-preserving refactor.
 
 ### W2. `ast-transformer.ts` is the largest file in the repo (~2535 lines)
 **Location:** [ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts)
