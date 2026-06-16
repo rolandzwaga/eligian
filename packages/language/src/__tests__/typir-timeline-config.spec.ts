@@ -130,4 +130,39 @@ describe('US5: Timeline Configuration Validation (Integration)', () => {
     );
     expect(emptyWarnings.length).toBeGreaterThan(0);
   });
+
+  // Regression: an incomplete timeline (mid-edit) has no container selector.
+  // `containerSelector` is mandatory in the grammar, but Langium error-recovery
+  // produces a partial Timeline node with `containerSelector === undefined`.
+  // The Typir selector rule used to call `selector.trim()` on it and throw a
+  // TypeError (aborting the rest of the Timeline validation), and the Langium
+  // CSS validator emitted a spurious "Invalid CSS selector syntax" error.
+  // Both must now skip the CSS check on an absent selector.
+  test('should not throw or emit a CSS error for a timeline missing its container selector', async () => {
+    const code = `
+      timeline "Test" in using raf {
+      }
+    `;
+
+    // Must not throw during validation (the rule previously threw on undefined).
+    const result = await parseAndValidate(code);
+    const { diagnostics } = result;
+
+    // No diagnostic should be an internal crash leaking through.
+    const crashDiagnostics = diagnostics.filter(d =>
+      d.message.includes('Cannot read properties of undefined')
+    );
+    expect(crashDiagnostics).toHaveLength(0);
+
+    // No spurious CSS-selector diagnostic should be reported for the absent selector.
+    const selectorDiagnostics = diagnostics.filter(
+      d =>
+        d.message.includes('Invalid CSS selector') ||
+        d.message.includes('selector syntax') ||
+        (typeof d.data === 'object' &&
+          d.data !== null &&
+          (d.data as { code?: string }).code === 'invalid_css_selector_syntax')
+    );
+    expect(selectorDiagnostics).toHaveLength(0);
+  });
 });

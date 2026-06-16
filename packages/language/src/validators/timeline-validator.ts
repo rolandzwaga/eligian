@@ -78,6 +78,14 @@ export class TimelineValidator extends BaseValidator {
     // Note: If no CSS files are imported (empty sets), we still validate.
     // With no CSS imported, ALL classes/IDs are invalid since there's no external CSS in Eligian.
 
+    // Guard against incomplete parses: `containerSelector` is mandatory in the
+    // grammar, but Langium error-recovery yields partial Timeline nodes with an
+    // undefined selector mid-edit. Skip here (the missing token is already a
+    // syntax error) rather than emitting a spurious "invalid selector" diagnostic.
+    if (timeline.containerSelector === undefined) {
+      return;
+    }
+
     // Parse timeline container selector
     const { classes, ids, valid, error } = parseSelector(timeline.containerSelector);
 
