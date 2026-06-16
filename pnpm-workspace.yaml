@@ -1,2 +1,31 @@
 packages:
   - 'packages/*'
+
+# Allow esbuild's postinstall to run (pnpm 11 requires explicit opt-in)
+allowBuilds:
+  esbuild: true
+
+# Workspace settings migrated from .npmrc — pnpm 11 reads these from
+# pnpm-workspace.yaml (camelCase), no longer from .npmrc.
+
+# Link local workspace packages instead of downloading from registry
+linkWorkspacePackages: true
+
+# Use workspace protocol when adding dependencies
+saveWorkspaceProtocol: true
+
+# Include workspace root when running recursive commands
+includeWorkspaceRoot: true
+
+# Share single lockfile for entire workspace (faster installs)
+sharedWorkspaceLockfile: true
+
+# Hoist common dependencies to root node_modules (reduces duplication)
+hoistPattern:
+  - '*eslint*'
+  - '*prettier*'
+  - '*typescript*'
+
+# Enable shamefully-hoist for langium-cli compatibility
+# Langium has many phantom dependencies that need a flat structure
+shamefullyHoist: true
