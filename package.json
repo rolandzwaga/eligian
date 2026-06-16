@@ -24,7 +24,7 @@
     "knip:fix": "knip --fix"
   },
   "dependencies": {
-    "effect": "3.21.2",
+    "effect": "3.21.3",
     "eligius": "2.2.1"
   },
   "devDependencies": {
