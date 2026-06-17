@@ -4,52 +4,34 @@ Found 2026-06-17 while building `examples/eligian-tour/` (first serious end-user
 of the CLI). Each entry has a minimal repro, expected vs actual, root cause with
 `file:line`, and a suggested fix. Severity: 🔴 critical · 🟠 high · 🟡 medium · ⚪ low.
 
-> How these were verified: because of **B1** the `eligian` binary produces no
-> output at all, so validation was done by calling the programmatic API
-> (`compileFile` from `packages/cli/dist/index.mjs`) directly. The compiler
-> itself works — the binary is the problem.
-
 ---
 
-## 🔴 B1 — The CLI binary is a complete no-op (`main()` is never called)
+## ❌ B1 — RETRACTED (my error): the CLI is NOT a no-op
 
-**Summary:** Every invocation of the `eligian` binary exits 0 and produces **no
-output, no file, and no messages** — including `--version`, `--help`, and the
-no-argument case. The CLI does nothing.
-
-**Repro:**
+**This entry was wrong.** The CLI works. Run via its real launcher
+[bin/cli.js](bin/cli.js) — which imports `main` from `dist/cli.mjs` and calls it —
+every mode behaves correctly:
 ```bash
-node packages/cli/dist/cli.mjs --version            # (silent) exit 0
-node packages/cli/dist/cli.mjs --help               # (silent) exit 0
-node packages/cli/dist/cli.mjs                       # (silent) exit 0  (should be a usage error)
-node packages/cli/dist/cli.mjs some.eligian          # (silent) exit 0, writes no some.json
-node packages/cli/dist/cli.mjs some.eligian --check  # (silent) exit 0
-node packages/cli/dist/cli.mjs some.eligian -o -     # (silent) exit 0, 0 bytes on stdout
-node packages/cli/dist/cli.mjs some.eligian -o out.json   # exit 0, out.json NOT created
+node packages/cli/bin/cli.js --version                    # 0.0.1
+node packages/cli/bin/cli.js some.eligian --check         # ✓ ... is valid
+node packages/cli/bin/cli.js some.eligian                 # writes some.json, prints ✓
 ```
+I originally ran `node packages/cli/dist/cli.mjs` **directly**. That file is the
+esbuild *bundle*: it defines and `export`s `main` as default but does not
+self-invoke — it is meant to be imported by `bin/cli.js`. I never looked in `bin/`,
+assumed the bundle was the entry point, and "confirmed" it with a grep piped into
+`head` (so I read `head`'s exit code, not grep's). Wrong method, wrong conclusion.
 
-**Expected:** compile/validate, write `<input>.json` (or stdout for `-o -`),
-print success/error messages, set exit code per README (0/1/3).
+### B1b — possibly real, smaller: `package.json` `bin` points at the bundle, not the launcher
 
-**Actual:** nothing happens; always exit 0.
-
-**Root cause:** [src/main.ts:227](src/main.ts#L227) declares
-`export default function main() { … }` but **nothing ever calls `main()`**.
-[esbuild.mjs:33](esbuild.mjs#L33) bundles `src/main.ts` directly as the bin
-(`dist/cli.mjs`), so the built binary just defines the function and exits. Grep
-of `dist/cli.mjs` confirms there is no top-level `main()` call.
-
-**Suggested fix:** invoke `main()` at the end of `src/main.ts` (it's the bundled
-entry), then rebuild:
-```ts
-// end of src/main.ts
-main();
-```
-…and re-verify every mode below, since B-items B?-via-B1 are masked by this.
-
-**Consequence — dangerous:** because the process always exits 0, `--check` in CI
-**passes regardless of validity** — a broken/invalid `.eligian` file looks green.
-Silent false-success.
+`package.json` `"bin"` maps `eligian`/`eligian-cli` → `./dist/cli.mjs` (the
+non-self-invoking bundle), and `bin/cli.js` is **not** in the `files` allowlist
+(`["dist","out"]`). Observed: `pnpm exec eligian --version` produces no output
+(rc 0), i.e. the *configured* command runs the bundle directly and does nothing.
+Running `node bin/cli.js` works. So **for local/installed use the `bin` field
+likely should point to `bin/cli.js`** (or `dist/cli.mjs` should call `main()`
+itself), and `bin/` should be in `files`. Flagging for the maintainer to confirm
+intent — not asserting it as definitely broken, given B1 above.
 
 ---
 
