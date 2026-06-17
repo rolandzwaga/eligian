@@ -16,6 +16,11 @@ import type { OperationSignature } from '../compiler/operations/types.js';
 import { EligianHoverProvider } from '../eligian-hover-provider.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { Timeline } from '../generated/ast.js';
+import {
+  buildOperationHoverMarkdown,
+  formatOutputType,
+  formatParameterType,
+} from '../hover/hover-builders.js';
 
 describe('EligianHoverProvider', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;
@@ -42,7 +47,7 @@ describe('EligianHoverProvider', () => {
       };
 
       // Access private method via type assertion for testing
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('### selectElement');
       expect(markdown).toContain('Selects a DOM element by CSS selector');
@@ -71,7 +76,7 @@ describe('EligianHoverProvider', () => {
         outputs: [],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('**Parameters:**');
       expect(markdown).toContain('`properties`: `object` *(required)*');
@@ -97,7 +102,7 @@ describe('EligianHoverProvider', () => {
         outputs: [],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('`duration`: `number` *(optional)*');
     });
@@ -119,7 +124,7 @@ describe('EligianHoverProvider', () => {
         outputs: [],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('⚠️ *erased after use*');
     });
@@ -137,7 +142,7 @@ describe('EligianHoverProvider', () => {
         outputs: [],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('**Requires:**');
       expect(markdown).toContain('`selectedElement` (`Element`)');
@@ -154,7 +159,7 @@ describe('EligianHoverProvider', () => {
         outputs: [{ name: 'selectedElement', type: 'Element' }],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('**Provides:**');
       expect(markdown).toContain('`selectedElement` (`Element`)');
@@ -170,7 +175,7 @@ describe('EligianHoverProvider', () => {
         outputs: [{ name: 'storedValue', type: 'any', erased: true }],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toContain('⚠️ *erased after use*');
     });
@@ -206,7 +211,7 @@ describe('EligianHoverProvider', () => {
         ],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       // Verify all sections present
       expect(markdown).toContain('### complexOperation');
@@ -219,17 +224,17 @@ describe('EligianHoverProvider', () => {
 
   describe('formatParameterType()', () => {
     it('should format single primitive type', () => {
-      const formatted = (provider as any).formatParameterType(['string']);
+      const formatted = formatParameterType(['string']);
       expect(formatted).toBe('`string`');
     });
 
     it('should format multiple primitive types (union)', () => {
-      const formatted = (provider as any).formatParameterType(['string', 'number']);
+      const formatted = formatParameterType(['string', 'number']);
       expect(formatted).toBe('`string` | `number`');
     });
 
     it('should format enum-like constant values', () => {
-      const formatted = (provider as any).formatParameterType([
+      const formatted = formatParameterType([
         { value: 'linear' },
         { value: 'ease-in' },
         { value: 'ease-out' },
@@ -238,29 +243,29 @@ describe('EligianHoverProvider', () => {
     });
 
     it('should handle empty array as "any"', () => {
-      const formatted = (provider as any).formatParameterType([]);
+      const formatted = formatParameterType([]);
       expect(formatted).toBe('`any`');
     });
 
     it('should handle complex types', () => {
-      const formatted = (provider as any).formatParameterType(['object', 'array', 'Element']);
+      const formatted = formatParameterType(['object', 'array', 'Element']);
       expect(formatted).toBe('`object` | `array` | `Element`');
     });
   });
 
   describe('formatOutputType()', () => {
     it('should format single output type', () => {
-      const formatted = (provider as any).formatOutputType('Element');
+      const formatted = formatOutputType('Element');
       expect(formatted).toBe('`Element`');
     });
 
     it('should format multiple output types (union)', () => {
-      const formatted = (provider as any).formatOutputType(['Element', 'null']);
+      const formatted = formatOutputType(['Element', 'null']);
       expect(formatted).toBe('`Element` | `null`');
     });
 
     it('should format array of types', () => {
-      const formatted = (provider as any).formatOutputType(['string', 'number', 'boolean']);
+      const formatted = formatOutputType(['string', 'number', 'boolean']);
       expect(formatted).toBe('`string` | `number` | `boolean`');
     });
   });
@@ -392,7 +397,7 @@ event test at 0..10 {
         outputs: [{ name: 'animation', type: 'Animation' }],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toMatchSnapshot();
     });
@@ -413,7 +418,7 @@ event test at 0..10 {
         outputs: [],
       };
 
-      const markdown = (provider as any).buildOperationHoverMarkdown(signature);
+      const markdown = buildOperationHoverMarkdown(signature);
 
       expect(markdown).toMatchSnapshot();
     });
