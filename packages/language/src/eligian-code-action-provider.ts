@@ -286,7 +286,7 @@ export class EligianCodeActionProvider implements CodeActionProvider {
   ): CodeAction | undefined {
     // Extract diagnostic data
     const data = diagnostic.data as MissingLabelIDData | undefined;
-    if (!data || data.code !== 'unknown_label_id') return undefined;
+    if (data?.code !== 'unknown_label_id') return undefined;
 
     // Validate required fields
     if (!data.labelId || !data.labelsFileUri || !data.languageCodes?.length) {

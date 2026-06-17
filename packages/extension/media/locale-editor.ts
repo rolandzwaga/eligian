@@ -173,7 +173,7 @@ function sendLocaleMessage(message: LocaleToExtensionMessage): void {
  */
 function saveFocusState(): void {
   const activeElement = document.activeElement as HTMLInputElement | null;
-  if (!activeElement || activeElement.tagName !== 'INPUT') {
+  if (activeElement?.tagName !== 'INPUT') {
     state.focusedElement = null;
     return;
   }

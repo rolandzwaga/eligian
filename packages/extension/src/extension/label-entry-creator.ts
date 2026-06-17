@@ -25,6 +25,18 @@ import {
 const pendingSelections = new Map<string, string>();
 
 /**
+ * Record a pending selection for a file URI.
+ * Set by the quick fix before opening the editor; read once via
+ * {@link consumePendingSelection} when the editor resolves.
+ *
+ * @param fileUri - File URI string the selection applies to
+ * @param labelId - Label ID to select once the editor opens
+ */
+export function setPendingSelection(fileUri: string, labelId: string): void {
+  pendingSelections.set(fileUri, labelId);
+}
+
+/**
  * Get and clear the pending selection for a file URI.
  * Called by LabelEditorProvider when resolving a custom editor.
  *
@@ -40,6 +52,21 @@ export function consumePendingSelection(fileUri: string): string | undefined {
 }
 
 /**
+ * Whether a pending selection is currently recorded for a file URI.
+ */
+export function hasPendingSelection(fileUri: string): boolean {
+  return pendingSelections.has(fileUri);
+}
+
+/**
+ * Clear all pending selections. Primarily for deterministic test isolation of
+ * this module-level store.
+ */
+export function clearPendingSelections(): void {
+  pendingSelections.clear();
+}
+
+/**
  * Open the label editor for a file and select a specific label.
  *
  * @param fileUri - URI of the labels file to open
@@ -47,7 +74,7 @@ export function consumePendingSelection(fileUri: string): string | undefined {
  */
 async function openLabelEditorWithSelection(fileUri: vscode.Uri, labelId: string): Promise<void> {
   // Store the pending selection
-  pendingSelections.set(fileUri.toString(), labelId);
+  setPendingSelection(fileUri.toString(), labelId);
 
   // Open the locale editor
   await vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');

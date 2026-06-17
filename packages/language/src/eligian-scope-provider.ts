@@ -198,7 +198,7 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       const documents = this.eligianServices.shared.workspace.LangiumDocuments;
       const libraryDoc = documents.getDocument(resolvedUri);
 
-      if (!libraryDoc || !libraryDoc.parseResult.value) continue;
+      if (!libraryDoc?.parseResult.value) continue;
 
       const library = libraryDoc.parseResult.value;
       if (!isLibrary(library)) continue;
@@ -468,7 +468,7 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     const documents = this.eligianServices.shared.workspace.LangiumDocuments;
     const libraryDoc = documents.getDocument(resolvedUri);
 
-    if (!libraryDoc || !libraryDoc.parseResult.value) {
+    if (!libraryDoc?.parseResult.value) {
       // Library file not found or has parse errors (validation will handle this)
       return EMPTY_SCOPE;
     }

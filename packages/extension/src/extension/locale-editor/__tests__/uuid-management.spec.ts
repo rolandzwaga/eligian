@@ -8,7 +8,8 @@
  * - T035: Never display UUID values in the UI
  *
  * These tests verify the UUID handling logic in LocaleValidation.ts
- * and the LocaleEditorProvider's parseLabels method.
+ * and the production parseLabels function (locale-config-validation.ts),
+ * exercised directly rather than via a copied implementation.
  */
 
 import * as fs from 'node:fs';
@@ -16,10 +17,22 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { generateUUID, validateUUID } from '../LocaleValidation.js';
+import { parseLabels } from '../locale-config-validation.js';
 import type { LabelGroup } from '../types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Adapter over the production {@link parseLabels} (which takes raw JSON text and
+ * mutates the freshly-parsed result). Serializing the input gives parseLabels a
+ * fresh object to auto-fix, so the original `labels` is left untouched — exactly
+ * what these tests assert against. This is a thin adapter, NOT a reimplementation:
+ * the UUID auto-fix logic lives only in parseLabels.
+ */
+function parseLabelsWithAutoFix(labels: LabelGroup[]): LabelGroup[] {
+  return parseLabels(JSON.stringify(labels));
+}
 
 describe('Locale Editor UUID Management (Feature 036, User Story 3)', () => {
   describe('T033: Generate valid UUID v4 for new translations', () => {
@@ -58,28 +71,6 @@ describe('Locale Editor UUID Management (Feature 036, User Story 3)', () => {
   });
 
   describe('T034: Auto-fix missing or invalid UUIDs on document load', () => {
-    /**
-     * Simulates the parseLabels logic from LocaleEditorProvider
-     * This tests the auto-fix behavior without requiring VS Code dependencies
-     */
-    function parseLabelsWithAutoFix(labels: LabelGroup[]): LabelGroup[] {
-      // Clone to avoid mutating input
-      const result = JSON.parse(JSON.stringify(labels)) as LabelGroup[];
-
-      for (const group of result) {
-        if (group.labels && Array.isArray(group.labels)) {
-          for (const translation of group.labels) {
-            // Check if UUID is missing or invalid
-            if (!translation.id || !validateUUID(translation.id)) {
-              translation.id = generateUUID();
-            }
-          }
-        }
-      }
-
-      return result;
-    }
-
     it('should auto-generate UUID for translations with missing id', () => {
       const labels: LabelGroup[] = [
         {
@@ -167,22 +158,6 @@ describe('Locale Editor UUID Management (Feature 036, User Story 3)', () => {
   });
 
   describe('T034: Preserve existing valid UUIDs when editing', () => {
-    function parseLabelsWithAutoFix(labels: LabelGroup[]): LabelGroup[] {
-      const result = JSON.parse(JSON.stringify(labels)) as LabelGroup[];
-
-      for (const group of result) {
-        if (group.labels && Array.isArray(group.labels)) {
-          for (const translation of group.labels) {
-            if (!translation.id || !validateUUID(translation.id)) {
-              translation.id = generateUUID();
-            }
-          }
-        }
-      }
-
-      return result;
-    }
-
     it('should preserve existing valid UUID v4', () => {
       const validUUID = 'a1b2c3d4-e5f6-4789-a012-3456789abcde';
       const labels: LabelGroup[] = [
