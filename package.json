@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
+    "@effect/language-service": "^0.86.2",
     "@types/node": "25.9.3",
     "@typescript/native-preview": "7.0.0-dev.20260603.1",
     "@vitest/coverage-v8": "4.1.8",

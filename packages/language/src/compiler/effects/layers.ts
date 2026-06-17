@@ -51,7 +51,7 @@ export const FileSystemLive = Layer.succeed(FileSystemService, {
 export const FileSystemTest = Layer.succeed(FileSystemService, {
   readFile: (path: string) => Effect.succeed(`// Mock content for ${path}`),
 
-  writeFile: (_path: string, _content: string) => Effect.succeed(undefined),
+  writeFile: (_path: string, _content: string) => Effect.void,
 
   fileExists: (_path: string) => Effect.succeed(true),
 
@@ -94,11 +94,11 @@ export const LoggerLive = Layer.succeed(LoggerService, {
  * Test Logger implementation (silent - no output)
  */
 export const LoggerTest = Layer.succeed(LoggerService, {
-  debug: (_message: string) => Effect.succeed(undefined),
-  info: (_message: string) => Effect.succeed(undefined),
-  warn: (_message: string) => Effect.succeed(undefined),
-  error: (_message: string) => Effect.succeed(undefined),
-  log: (_level: LogLevel, _message: string) => Effect.succeed(undefined),
+  debug: (_message: string) => Effect.void,
+  info: (_message: string) => Effect.void,
+  warn: (_message: string) => Effect.void,
+  error: (_message: string) => Effect.void,
+  log: (_level: LogLevel, _message: string) => Effect.void,
 });
 
 /**

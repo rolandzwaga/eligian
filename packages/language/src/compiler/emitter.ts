@@ -24,7 +24,7 @@ import type { EligiusIR } from './types/eligius-ir.js';
  * Constitution VII: UUIDs are preserved from transformer (no regeneration).
  */
 export const emitJSON = (ir: EligiusIR): Effect.Effect<IEngineConfiguration, EmitError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // T282: The transformer already built IEngineConfiguration for us!
     // Just add $schema for JSON Schema validation and IDE support
     const config = {

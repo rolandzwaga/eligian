@@ -16,7 +16,8 @@
     "declarationMap": true,
     "composite": true,
     "incremental": true,
-    "skipDefaultLibCheck": true
+    "skipDefaultLibCheck": true,
+    "plugins": [{ "name": "@effect/language-service" }]
   },
   "exclude": [
     "**/lib/**/*",

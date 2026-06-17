@@ -161,6 +161,14 @@ interface SourceLocation {
  * Base class for bundle errors
  */
 export class BundleError extends Error {
+  readonly _tag:
+    | 'BundleError'
+    | 'AssetNotFoundError'
+    | 'OutputExistsError'
+    | 'RuntimeBundleError'
+    | 'CSSProcessError'
+    | 'ImageInlineError' = 'BundleError';
+
   constructor(message: string) {
     super(message);
     this.name = 'BundleError';
@@ -171,6 +179,8 @@ export class BundleError extends Error {
  * Asset not found during bundling
  */
 export class AssetNotFoundError extends BundleError {
+  override readonly _tag = 'AssetNotFoundError';
+
   constructor(
     public readonly assetPath: string,
     public readonly sourceFile: string,
@@ -185,6 +195,8 @@ export class AssetNotFoundError extends BundleError {
  * Output directory already exists
  */
 export class OutputExistsError extends BundleError {
+  override readonly _tag = 'OutputExistsError';
+
   constructor(public readonly outputDir: string) {
     super(`Output directory already exists: ${outputDir}. Use --force to overwrite.`);
     this.name = 'OutputExistsError';
@@ -195,6 +207,8 @@ export class OutputExistsError extends BundleError {
  * esbuild bundle failure
  */
 export class RuntimeBundleError extends BundleError {
+  override readonly _tag = 'RuntimeBundleError';
+
   constructor(
     message: string,
     public readonly esbuildErrors?: string[]
@@ -208,6 +222,8 @@ export class RuntimeBundleError extends BundleError {
  * CSS processing error
  */
 export class CSSProcessError extends BundleError {
+  override readonly _tag = 'CSSProcessError';
+
   constructor(
     message: string,
     public readonly cssFile?: string,
@@ -223,6 +239,8 @@ export class CSSProcessError extends BundleError {
  * Image inlining error
  */
 export class ImageInlineError extends BundleError {
+  override readonly _tag = 'ImageInlineError';
+
   constructor(
     message: string,
     public readonly imagePath: string

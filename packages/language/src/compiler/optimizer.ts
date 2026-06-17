@@ -23,12 +23,12 @@ import type { EligiusIR } from './types/eligius-ir.js';
  * Note: Optimizations cannot fail, so error type is `never`.
  */
 export const optimize = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // Run optimization passes in sequence
     let optimizedIR = ir;
 
     // SA005c: Dead code elimination for timeline actions
-    optimizedIR = yield* _(eliminateDeadCode(optimizedIR));
+    optimizedIR = yield* eliminateDeadCode(optimizedIR);
 
     // SA005c: Constant folding (durations are already numbers, so this is a no-op for now)
     // Future: Could optimize operation data, merge adjacent actions, etc.
