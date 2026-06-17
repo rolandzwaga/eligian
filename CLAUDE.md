@@ -90,6 +90,32 @@ This is the exact reason why we want to create the DSL: we need a language that 
 - **Familiar**: Borrow conventions from existing languages (JS/TS where sensible)
 - **Completable**: Full IDE support with autocompletion for Eligius APIs
 
+## Code Navigation & Editing: Prefer Serena (MCP)
+
+**This project has the Serena MCP server configured** (semantic code-intelligence backed by a language server). For any work on **code files**, prefer Serena's symbolic tools over `grep`/`Read`/`Edit`. They are token-efficient and structure-aware; raw text search is a last resort.
+
+### Session startup (do this once, before code work)
+1. Serena is user-scoped and activates by working directory. If `get_current_config` reports no active project, call `activate_project` with this repo path (`F:\projects\eligius\eligian`).
+2. Call `initial_instructions` **once per session** to load Serena's manual before editing code.
+3. Serena's per-project data lives in `.serena/` (gitignored). Project memories: `list_memories` / `read_memory`.
+4. **Serena line numbers are 0-based** (unlike most other tools).
+
+### For code DISCOVERY (understanding/navigating code)
+- `get_symbols_overview` — top-level symbols of a file (start here instead of reading the whole file).
+- `find_symbol` (with `include_body=true` only when you need the source) — locate a class/function/method by name path.
+- `find_referencing_symbols` — who calls/uses a symbol (call-graph questions).
+- `get_diagnostics_for_file` — LSP diagnostics for a file.
+- `Grep`/`Glob` are acceptable **only** for: file existence checks, counting occurrences, scanning non-code/plain-text files (md/json/config), or a quick literal check. Any follow-up that needs to understand code should switch to Serena.
+
+### For code EDITS
+- `replace_symbol_body` — replace a whole function/method/class.
+- `insert_after_symbol` / `insert_before_symbol` — add new code relative to a symbol.
+- `rename_symbol` — LSP-aware rename across all references.
+- `replace_content` — regex (Python `re`, DOTALL+MULTILINE) or literal replacement for sub-symbol edits; the go-to for precise, targeted changes. Prefer this over the built-in `Edit` for code.
+
+### Known limitation (don't fight it)
+`replace_content` uses Python `re`, which has **no recursive/balanced matching**. For transforms that require paren/brace balancing (e.g. unwrapping `_(expr)` adapter calls), regex is unsafe — use a proper **AST codemod** (TypeScript compiler API) instead. (Markdown/docs like this file are not code symbols; the built-in `Edit` is fine there.)
+
 ## Package Manager
 
 **CRITICAL**: This project uses **pnpm** as the package manager, NOT npm or yarn.
@@ -97,15 +123,22 @@ This is the exact reason why we want to create the DSL: we need a language that 
 - ✅ Use: `pnpm install`, `pnpm run build`, `pnpm test`
 - ❌ Never use: `npm install`, `yarn install`, etc.
 
-**Rationale**: The project is configured with `"packageManager": "pnpm@10.19.0"` in package.json. All scripts use pnpm workspace commands (`pnpm -r`, `pnpm --filter`). Using npm or yarn will cause workspace resolution failures and dependency conflicts.
+**Rationale**: The project is configured with `"packageManager": "pnpm@11.7.0"` in package.json. All scripts use pnpm workspace commands (`pnpm -r`, `pnpm --filter`). Using npm or yarn will cause workspace resolution failures and dependency conflicts.
 
 ## Development Commands
-- `pnpm run build`: Compile TypeScript to JavaScript
-- `pnpm run dev`: Run development extension
-- `pnpm run test`: Run all tests (language package)
-- `pnpm run clean`: Remove build artifacts
 
-**Note**: While `npm run <script>` will work for running scripts (npm delegates to the configured package manager), always use `pnpm install` for dependency management and `pnpm` commands for workspace operations.
+Root `package.json` scripts (run from repo root):
+- `pnpm build`: Recursive build across all packages (`pnpm -r build`)
+- `pnpm watch`: Incremental build watch (`tsgo -b tsconfig.build.json --watch`)
+- `pnpm typecheck`: Type-check via `tsgo -b tsconfig.build.json` (NOT `tsc`)
+- `pnpm test`: Run all package tests (`pnpm -r test`) — note: no coverage in this path
+- `pnpm test:coverage:ci`: Tests with coverage + thresholds
+- `pnpm clean` / `pnpm build:clean`: Remove build artifacts / clean rebuild
+- `pnpm langium:generate`: Regenerate Langium artifacts after editing `eligian.langium`
+- `pnpm check` / `pnpm lint` / `pnpm format` / `pnpm ci`: Biome (see below)
+- `pnpm knip` / `pnpm knip:fix`: Detect/fix unused exports and deps
+
+**Note**: While `npm run <script>` will work for running scripts (npm delegates to the configured package manager), always use `pnpm install` for dependency management and `pnpm` commands for workspace operations. There is no `dev` script; the VS Code extension is launched via its debug/launch configuration.
 
 ### Code Quality with Biome (REQUIRED)
 
@@ -139,7 +172,7 @@ pnpm test  # All tests must pass
 
 #### Biome Configuration (`biome.json`)
 
-The project uses Biome v2.2.6+ with the following configuration:
+The project uses Biome v2.4.16 with the following configuration:
 
 **Enabled Rules**:
 - `recommended: true` - All recommended rules enabled
@@ -289,7 +322,7 @@ type-system-typir/
 └── utils/          # Shared utilities (time parsing, asset type inference)
 ```
 
-**Test Coverage**: 1462 tests passing (1323+ existing + 139 new), 81.72% overall coverage
+**Test Coverage**: See `pnpm test:coverage:ci` for current numbers (exact counts drift; don't hard-code them here).
 
 **Documentation**: See `packages/language/src/type-system-typir/README.md`
 
@@ -304,61 +337,67 @@ type-system-typir/
 - **Follow the project constitution**: All development must comply with `.specify/memory/constitution.md` principles
 
 ### Documentation Requirements
-- **Comprehensive Understanding**: Always create detailed documentation of technical analysis and understanding for project continuity
-- **Progress Tracking**: Maintain `PROJECT_PROGRESS.md` with current status, completed tasks, and next steps
-- **Break/Resume Workflow**: Structure documentation to enable easy project resumption after breaks
+- **Comprehensive Understanding**: Document non-obvious technical analysis for project continuity
 - **Technical Context**: Document architectural decisions, implementation strategies, and design rationale
+- **Feature docs**: Per-feature specs live under `specs/<NNN-feature-name>/` (spec.md, plan.md, tasks.md, quickstart.md)
 
-Key documentation files:
-- `ELIGIUS_UNDERSTANDING.md`: Complete technical analysis of the Eligius library
+Key documentation files / locations:
+- `CLAUDE.md`: This file — project guidance and requirements
+- `specs/`: Spec-kit feature specifications (the authoritative per-feature documentation)
+- `.specify/memory/constitution.md`: Project constitution (governs all development)
+- Per-subsystem `README.md` files (e.g. `packages/language/src/type-system-typir/README.md`, `packages/language/src/css/README.md`)
 - `../eligius/`: The Eligius library source repository (sibling directory) - **FOR RESEARCH ONLY**
   - ⚠️ **CRITICAL**: This directory is for understanding Eligius internals ONLY. NEVER import types or code directly from `../eligius/src/`. Always import from the installed `eligius` npm package: `import type { ... } from 'eligius';`
   - **Overview**: Start with `../eligius/README.md` (global functionality overview)
   - **JSON Schema**: Start with `../eligius/jsonschema/eligius-configuration.json` (entry point for config structure)
   - **API Documentation**: Explore `../eligius/docs/` (API reference documentation)
-- `PROJECT_PROGRESS.md`: Current status, next steps, and planning information
-- `CLAUDE.md`: This file - project guidance and requirements
+
+> NOTE: `PROJECT_PROGRESS.md` and `ELIGIUS_UNDERSTANDING.md` referenced in older revisions of this file no longer exist — current status lives in the `specs/` folders and git history.
 
 ## Project Structure
 
 ```
 packages/
-├── language/                 # Langium grammar and language server
+├── language/                 # Langium grammar, language server, AND the compiler
 │   ├── src/
-│   │   ├── eligian.langium          # DSL grammar definition
-│   │   ├── eligian-validator.ts     # Semantic validation rules
-│   │   ├── eligian-scope.ts         # Name resolution and scoping
-│   │   └── __tests__/               # Language package tests
-│   │       ├── parsing.spec.ts      # Grammar and parsing tests
-│   │       └── validation.spec.ts   # Semantic validation tests
-│   └── package.json
-│
-├── compiler/                 # DSL → Eligius JSON compiler (Effect-based)
-│   ├── src/
-│   │   ├── pipeline.ts              # Main compilation pipeline
-│   │   ├── ast-transformer.ts       # AST to Eligius config transformation
-│   │   ├── optimizer.ts             # Config optimization passes
-│   │   ├── type-checker.ts          # Type checking and validation
-│   │   ├── error-reporter.ts        # Compilation error handling
-│   │   ├── effects/                 # Effect services and layers
-│   │   │   ├── FileSystem.ts        # File I/O effects
-│   │   │   ├── Compiler.ts          # Compilation effects
-│   │   │   └── Logger.ts            # Logging effects
-│   │   └── __tests__/               # Compiler package tests
-│   │       ├── pipeline.spec.ts     # Full pipeline tests
-│   │       ├── transformer.spec.ts  # AST transformation tests
-│   │       ├── optimizer.spec.ts    # Optimization tests
-│   │       └── __fixtures__/        # Test fixtures and snapshots
-│   │           ├── valid/           # Valid DSL programs
-│   │           ├── invalid/         # Invalid DSL programs
-│   │           └── snapshots/       # Expected JSON outputs
-│   └── package.json
+│   │   ├── eligian.langium               # DSL grammar definition
+│   │   ├── eligian-validator.ts          # Semantic validation rules (+ validators/)
+│   │   ├── eligian-scope-provider.ts     # Name resolution / scoping
+│   │   ├── eligian-scope-computation.ts  # Scope computation
+│   │   ├── eligian-hover-provider.ts     # Hover support
+│   │   ├── eligian-completion-provider.ts# Autocompletion
+│   │   ├── compiler/                     # DSL → Eligius JSON compiler (Effect-based)
+│   │   │   ├── ast-transformer.ts        # AST → Eligius config transformation
+│   │   │   └── name-resolver.ts          # Action/operation name resolution
+│   │   ├── type-system-typir/            # Type system (Typir + typir-langium)
+│   │   ├── css/                          # CSS class/selector validation + IDE helpers (PostCSS)
+│   │   ├── asset-loading/                # Asset import handling
+│   │   ├── html/  schemas/  labels/  locales/  errors/  utils/  types/  validators/  completion/
+│   │   ├── jsdoc/                        # JSDoc docs for custom actions
+│   │   ├── lsp/                          # LSP notification types
+│   │   ├── generated/                    # Langium-generated code (do not edit)
+│   │   └── __tests__/                    # Language package tests
+│   │       ├── parsing.spec.ts           # Grammar and parsing tests
+│   │       ├── validation.spec.ts        # Semantic validation tests
+│   │       └── test-helpers.ts           # Shared test utilities
+│   └── package.json                      # @eligian/language
 │
 ├── cli/                      # Command-line compiler
 │   ├── src/
 │   │   ├── main.ts
+│   │   ├── index.ts
+│   │   ├── compile-file.ts
+│   │   ├── bundler/
 │   │   └── __tests__/               # CLI tests
 │   │       └── cli.spec.ts
+│   └── package.json
+│
+├── shared-utils/             # Cross-package helpers
+│   ├── src/
+│   │   ├── errors.ts
+│   │   ├── file-loader.ts
+│   │   ├── path-resolver.ts
+│   │   └── tag-guard.ts
 │   └── package.json
 │
 └── extension/                # VS Code extension
@@ -368,6 +407,14 @@ packages/
     │   └── language/
     │       └── main.ts              # Language server entry point
     └── package.json
+
+# NOTE: There is no top-level packages/compiler. The Effect-based compiler lives
+# inside packages/language/src/compiler/ and is REAL (not aspirational). Its files:
+#   pipeline.ts (exports `compile`), ast-transformer.ts, type-checker.ts,
+#   optimizer.ts, constant-folder.ts, expression-evaluator.ts, emitter.ts,
+#   error-reporter.ts, name-resolver.ts, html-import-utils.ts, constants.ts,
+#   index.ts, effects/ (Compiler.ts, FileSystem.ts, Logger.ts, layers.ts),
+#   operations/, types/ (eligius-ir.ts), utils/, __tests__/ (+ __fixtures__/).
 
 .specify/
 ├── memory/
@@ -442,21 +489,19 @@ for (item in items) {
 
 ### Documentation
 
-- **Example File**: `examples/break-continue-demo.eligian` - Comprehensive usage examples
 - **Feature Spec**: `specs/main/spec.md` - Complete specification
 - **Implementation Plan**: `specs/main/plan.md` - Technical implementation details
 
 ### Implementation
 
-- **Grammar**: Added `BreakStatement` and `ContinueStatement` to `eligian.langium`
-- **Transformer**: Maps to `breakForEach`/`continueForEach` operations in `ast-transformer.ts`
+- **Grammar**: `BreakStatement` and `ContinueStatement` in `eligian.langium`
+- **Transformer**: Maps to `breakForEach`/`continueForEach` operations in `compiler/ast-transformer.ts`
 - **Validation**: Loop context checking in `eligian-validator.ts`
-- **Tests**:
-  - 3 parsing tests in `parsing.spec.ts`
-  - 3 transformer tests in `transformer.spec.ts`
-  - 6 validation tests in `validation.spec.ts`
+- **Tests**: parsing tests in `__tests__/parsing.spec.ts`, transformer tests in `compiler/__tests__/transformer.spec.ts`, validation tests in `__tests__/validation.spec.ts`
 
-## Type System (Phase 18)
+## Type System (user-facing concepts)
+
+> ⚠️ **SUPERSEDED IMPLEMENTATION**: The original standalone `packages/language/src/type-system/` directory described in earlier revisions **no longer exists**. The type system is now built on **Typir** and lives in `packages/language/src/type-system-typir/` (see the "Type System (Typir Integration)" section above). The user-facing concepts below (optional typing, annotations, inference) still hold; only the implementation location/architecture changed.
 
 The Eligian DSL includes an **optional** static type checking system inspired by TypeScript. This system catches type errors at compile time without affecting runtime behavior.
 
@@ -511,15 +556,18 @@ action bad(selector: number) [
 
 ### Architecture
 
-**Location**: `packages/language/src/type-system/`
+**Location**: `packages/language/src/type-system-typir/` (Typir-based — the standalone `type-system/` dir is gone).
 
 **Core Modules**:
-- `types.ts` - Type definitions (EligianType, TypeConstraint, TypeError)
-- `inference.ts` - Type inference engine (constraint collection, unification)
-- `validator.ts` - Type compatibility checking
+- `eligian-type-system.ts` - Typir type system wiring
+- `eligian-specifics.ts` - Eligian-specific type rules
+- `inference/` - Type inference rules per construct
+- `types/` - Custom type factories
+- `validation/` - Validation rules per construct
+- `utils/` - Shared utilities (time parsing, asset type inference)
 - `index.ts` - Public API
 
-**Integration**: Type checking is integrated into `eligian-validator.ts` at the action validation level.
+**Integration**: Type checking is wired through Typir-Langium and surfaces in validation + IDE hover/diagnostics.
 
 ### How Type Inference Works
 
@@ -539,17 +587,10 @@ action fadeIn(selector, duration) [  // No annotations
 
 ### Documentation
 
-- **Type System README**: `packages/language/src/type-system/README.md`
-- **Example Files**:
-  - `examples/type-annotation-test.eligian` - Type annotation syntax
-  - `examples/type-error-demo.eligian` - Type error demonstration
-  - `examples/type-inference-demo.eligian` - Type inference examples
+- **Type System README**: `packages/language/src/type-system-typir/README.md`
+- **Tests**: under `packages/language/src/type-system-typir/__tests__/` and the integration suites in `packages/language/src/__tests__/`
 
-### Testing
-
-- **298 tests** passing (25 type system tests)
-- **Integration tests**: `src/__tests__/type-system.spec.ts`
-- **Validation tests**: `src/__tests__/validation.spec.ts`
+> NOTE: The standalone `examples/type-*.eligian` files referenced in older revisions no longer exist. The `examples/` dir currently holds `demo.eligian` plus supporting `demo-*` assets and a `libraries/` folder.
 
 ## CSS Loading with Live Reload (Features 010-011)
 
@@ -747,13 +788,9 @@ at 0s..5s selectElement("#box")  // ✅ Built-in operation call - identical synt
 - `checkDuplicateActions()` - Prevents duplicate action definitions
 - `checkTimelineOperationCall()` - Validates calls in timeline context
 
-**Transformation** ([ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts:1363-1409)):
+**Transformation** ([ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts)):
 - `transformOperationStatement()` - Expands action calls to requestAction/startAction
 - Works in all contexts: timeline events, control flow, sequences, staggers
-
-### Example
-
-See [examples/unified-action-syntax.eligian](examples/unified-action-syntax.eligian) for comprehensive demonstration.
 
 ## CSS Class and Selector Validation (Feature 013)
 
@@ -895,13 +932,9 @@ clearDocument(documentUri: string): void
 
 ### Validator Integration
 
-**Lazy Initialization Pattern**:
-The validator uses a lazy initialization helper to ensure CSS imports are registered before validation runs, solving the Langium validator ordering issue where child validators run before parent validators complete.
+CSS imports must be registered before per-operation validation runs (Langium can run child validators before parent ones). The current validator methods in `eligian-validator.ts`:
 
 ```typescript
-// Helper method (called from both checkCSSImports and checkClassNameParameter)
-private ensureCSSImportsRegistered(program: Program, documentUri: string): void
-
 // Program-level validator - extracts CSS imports
 checkCSSImports(program: Program, accept: ValidationAcceptor): void
 
@@ -910,27 +943,15 @@ checkClassNameParameter(call: OperationCall, accept: ValidationAcceptor): void
 
 // Operation-level validator - validates selector parameters
 checkSelectorParameter(call: OperationCall, accept: ValidationAcceptor): void
-
-// Program-level validator - validates CSS file errors
-validateCSSFileErrors(program: Program, accept: ValidationAcceptor): void
 ```
+
+> NOTE: Earlier revisions documented `ensureCSSImportsRegistered()` and `validateCSSFileErrors()` helpers — verify against the current `eligian-validator.ts` before relying on those names; CSS service logic has since been refactored (see `css/css-service.ts`).
 
 ### Test Coverage
 
-**Unit Tests** (130 tests):
-- [css-parser.spec.ts](packages/language/src/css/__tests__/css-parser.spec.ts) - 44 tests
-- [levenshtein.spec.ts](packages/language/src/css/__tests__/levenshtein.spec.ts) - 42 tests
-- [css-registry.spec.ts](packages/language/src/css/__tests__/css-registry.spec.ts) - 34 tests
-- [selector-parser.spec.ts](packages/language/src/css/__tests__/selector-parser.spec.ts) - 42 tests (all passing)
+**Unit Tests**: `packages/language/src/css/__tests__/` — `css-parser.spec.ts`, `levenshtein.spec.ts`, `css-registry.spec.ts`, `selector-parser.spec.ts` (and others).
 
-**Integration Tests** (22 tests):
-- [valid-classname.spec.ts](packages/language/src/__tests__/css-classname-validation/) - 3 tests
-- [unknown-classname.spec.ts](packages/language/src/__tests__/css-classname-validation/) - 3 tests
-- [valid-selector.spec.ts](packages/language/src/__tests__/css-selector-validation/) - 6 tests
-- [unknown-selector.spec.ts](packages/language/src/__tests__/css-selector-validation/) - 5 tests
-- [invalid-syntax.spec.ts](packages/language/src/__tests__/css-selector-validation/) - 3 tests
-- [css-registry-update.spec.ts](packages/language/src/__tests__/css-hot-reload/) - 6 tests (hot-reload)
-- [invalid-css.spec.ts](packages/language/src/__tests__/css-invalid-file/) - 6 tests (error handling)
+**Integration Tests**: split across `packages/language/src/__tests__/css-classname-validation/`, `css-selector-validation/`, `css-hot-reload/`, `css-invalid-file/`.
 
 **Test Isolation**: All integration tests are in separate files to prevent workspace contamination (per user directive).
 
@@ -954,24 +975,23 @@ CSS file './styles.css' has syntax errors (line 5, column 10): Unclosed block
 
 ### Implementation Files
 
-**CSS Infrastructure**:
-- `packages/language/src/css/css-parser.ts` - PostCSS-based parser (5,089 bytes)
-- `packages/language/src/css/css-registry.ts` - Registry service (10,500 bytes)
-- `packages/language/src/css/levenshtein.ts` - Distance algorithm (3,938 bytes)
-- `packages/language/src/css/selector-parser.ts` - Selector parsing (2,535 bytes)
+**CSS Infrastructure** (`packages/language/src/css/`):
+- `css-parser.ts` - PostCSS-based parser
+- `css-registry.ts` - Registry service
+- `css-service.ts` - CSS service (registry orchestration / hot-reload entry)
+- `levenshtein.ts` - "Did you mean?" distance algorithm
+- `selector-parser.ts` - Selector parsing
+- `css-completion.ts`, `css-hover.ts`, `css-code-actions.ts`, `css-operations.ts`, `context-detection.ts`, `hover-detection.ts`, `code-action-helpers.ts` - IDE integration helpers
 - `packages/language/src/lsp/css-notifications.ts` - LSP notification types
 
 **Validators**:
-- `packages/language/src/eligian-validator.ts:1176-1307` - CSS validation logic (190 lines)
-  - `ensureCSSImportsRegistered()` - Lazy initialization helper
+- `packages/language/src/eligian-validator.ts` - CSS validation logic:
   - `checkCSSImports()` - Extract and register CSS imports
   - `checkClassNameParameter()` - Validate className parameters
   - `checkSelectorParameter()` - Validate selector parameters
-  - `validateCSSFileErrors()` - Validate CSS file syntax
 
 **Module Integration**:
-- `packages/language/src/eligian-module.ts:36-38` - Service type extension
-- `packages/language/src/eligian-module.ts:66-68` - Service registration
+- `packages/language/src/eligian-module.ts` - Service type extension + registration
 
 **Extension Integration**:
 - `packages/extension/src/extension/css-watcher.ts` - CSS file watching
@@ -1128,20 +1148,15 @@ action processData(items: array, options) [...]
 
 **Integration Points**:
 - **Parser**: Langium's `CommentProvider` automatically captures `/** */` comments
-- **Completion**: [eligian-completion-provider.ts](packages/language/src/eligian-completion-provider.ts:104-147) handles `/**` trigger
-- **Hover**: [eligian-hover-provider.ts](packages/language/src/eligian-hover-provider.ts:83-134) displays formatted JSDoc
+- **Completion**: [eligian-completion-provider.ts](packages/language/src/eligian-completion-provider.ts) handles `/**` trigger
+- **Hover**: [eligian-hover-provider.ts](packages/language/src/eligian-hover-provider.ts) displays formatted JSDoc
 
 ### Testing
 
-**Test Coverage**: 31 tests across 4 test suites
-- **Parser tests** (9 tests): `jsdoc-parser.spec.ts` - Parse JSDoc structure
-- **Extractor tests** (4 tests): `jsdoc-extractor.spec.ts` - Extract from AST nodes
-- **Formatter tests** (15 tests): `jsdoc-formatter.spec.ts` - Format as markdown
-- **Template tests** (6 tests): `jsdoc-template-generator.spec.ts` - Generate templates
-- **Completion tests** (5 tests): `jsdoc-completion.spec.ts` - Auto-generation workflow
-- **Hover tests** (6 tests): `jsdoc-hover.spec.ts` - Hover display integration
+**Unit tests** (`packages/language/src/jsdoc/__tests__/`): `jsdoc-parser.spec.ts`, `jsdoc-extractor.spec.ts`, `jsdoc-formatter.spec.ts`, `jsdoc-template-generator.spec.ts`.
+**Integration tests** (`packages/language/src/__tests__/jsdoc-integration/`): `jsdoc-completion.spec.ts`, `jsdoc-hover.spec.ts`.
 
-**Integration Tests**:
+**Coverage notes**:
 - End-to-end JSDoc workflow in VS Code
 - Type inference integration for untyped parameters
 - Performance validation (<300ms hover, <500ms generation)
@@ -1162,23 +1177,19 @@ action processData(items: array, options) [...]
 
 ### Implementation Files
 
-**Core JSDoc Infrastructure**:
-- `packages/language/src/jsdoc/jsdoc-parser.ts` - Parse JSDoc comments (1,876 bytes)
-- `packages/language/src/jsdoc/jsdoc-extractor.ts` - Extract from AST (996 bytes)
-- `packages/language/src/jsdoc/jsdoc-formatter.ts` - Format as markdown (1,445 bytes)
-- `packages/language/src/jsdoc/jsdoc-template-generator.ts` - Generate templates (2,890 bytes)
+**Core JSDoc Infrastructure** (`packages/language/src/jsdoc/`):
+- `jsdoc-parser.ts` - Parse JSDoc comments
+- `jsdoc-extractor.ts` - Extract from AST
+- `jsdoc-formatter.ts` - Format as markdown
+- `jsdoc-template-generator.ts` - Generate templates
 
 **IDE Integration**:
-- `packages/language/src/eligian-completion-provider.ts:104-147` - Auto-generation trigger
-- `packages/language/src/eligian-hover-provider.ts:83-134` - Hover documentation display
+- `packages/language/src/eligian-completion-provider.ts` - Auto-generation trigger
+- `packages/language/src/eligian-hover-provider.ts` - Hover documentation display
 
-**Test Files** (31 tests total):
-- `packages/language/src/jsdoc/__tests__/jsdoc-parser.spec.ts` - 9 tests
-- `packages/language/src/jsdoc/__tests__/jsdoc-extractor.spec.ts` - 4 tests
-- `packages/language/src/jsdoc/__tests__/jsdoc-formatter.spec.ts` - 15 tests
-- `packages/language/src/jsdoc/__tests__/jsdoc-template-generator.spec.ts` - 6 tests
-- `packages/language/src/__tests__/jsdoc-integration/jsdoc-completion.spec.ts` - 5 tests
-- `packages/language/src/__tests__/jsdoc-integration/jsdoc-hover.spec.ts` - 6 tests
+**Test Files**:
+- `packages/language/src/jsdoc/__tests__/` - parser, extractor, formatter, template-generator specs
+- `packages/language/src/__tests__/jsdoc-integration/` - completion + hover integration specs
 
 ## Testing Strategy
 
@@ -1205,15 +1216,15 @@ Following constitution principle **II. Comprehensive Testing**:
 ### Unit Tests
 - **Grammar tests** (`packages/language/src/__tests__/parsing.spec.ts`): Verify parsing of DSL constructs using Langium test utilities
 - **Validator tests** (`packages/language/src/__tests__/validation.spec.ts`): Test semantic validation rules in isolation
-- **Compiler tests** (`packages/compiler/src/__tests__/*.spec.ts`): Test AST transformation logic, optimizations, and type checking
+- **Compiler tests** (`packages/language/src/compiler/__tests__/*.spec.ts`): Test AST transformation logic, optimizations, and type checking
 
 ### Integration Tests
-- **End-to-end compilation** (`packages/compiler/src/__tests__/pipeline.spec.ts`): Full DSL source → JSON output validation
+- **End-to-end compilation** (`packages/language/src/compiler/__tests__/pipeline.spec.ts`): Full DSL source → JSON output validation
 - **Round-trip tests**: Compile DSL → JSON, verify JSON matches expected Eligius format
-- **CLI tests** (`packages/cli/src/__tests__/cli.spec.ts`): Test command-line interface and file I/O
+- **CLI tests** (`packages/cli/src/__tests__/`): Test command-line interface, bundler, and file I/O
 
 ### Test Fixtures
-- Maintain example DSL programs in `packages/compiler/src/__tests__/__fixtures__/`
+- Maintain example DSL programs in `packages/language/src/compiler/__tests__/__fixtures__/`
 - Organize fixtures by category:
   - `valid/` - Correct DSL programs for successful compilation tests
   - `invalid/` - Malformed DSL for error handling tests
@@ -1268,16 +1279,13 @@ The test helper module provides shared utilities to eliminate boilerplate and im
    const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
    ```
 
-**Metrics** (as of Feature 022 completion):
-- **1,483 tests** passing (12 skipped)
-- **81.72% coverage** (meets baseline target)
-- **1,251 lines saved** (700 from createTestContext, 551 from setupCSSRegistry)
-- **14 test files** using createTestContext()
-- **29 test files** using setupCSSRegistry()
+**Note**: Feature 022 introduced these shared helpers to cut test boilerplate (createTestContext, setupCSSRegistry are now used across most test files). Exact test/coverage counts drift — run `pnpm test:coverage:ci` for current numbers rather than trusting hard-coded figures.
 
 **Documentation**: See `specs/022-test-suite-refactoring/quickstart.md` for comprehensive usage guide
 
 ## Compiler Architecture
+
+> **LOCATION**: The compiler lives in `packages/language/src/compiler/` (NOT a separate `packages/compiler`). `pipeline.ts` exports the `compile` entry point. The Effect services live in `compiler/effects/` (`Compiler.ts`, `FileSystem.ts`, `Logger.ts`, `layers.ts`); the IR type is in `compiler/types/eligius-ir.ts`. The `import` paths in the illustrative code blocks below are conceptual — resolve real modules under `compiler/`.
 
 The compiler is built using **Effect-ts** to provide principled error handling, composable pipelines, and type-safe side effect management. The compiler transforms Langium AST into Eligius JSON configuration through a multi-stage pipeline.
 
@@ -1435,7 +1443,7 @@ export const optimize = (ir: EligiusIR): Effect.Effect<EligiusIR, never> =>
 
 ### CLI Integration
 
-The CLI (`cli/index.ts`) uses Effect runtime to execute compilation:
+The CLI (`packages/cli/src/main.ts`, with `compile-file.ts` and the `bundler/` for asset/CSS bundling) uses the Effect runtime to execute compilation. The example below is illustrative:
 
 ```typescript
 import { Effect, Layer } from "effect"
@@ -1481,7 +1489,7 @@ const compileDocument = (document: TextDocument) =>
 
 ### Compiler Testing Strategy
 
-**Unit Tests** (`packages/compiler/src/__tests__/*.spec.ts`):
+**Unit Tests** (`packages/language/src/compiler/__tests__/*.spec.ts`):
 - Test each pipeline stage independently
 - Mock Effect services for isolation
 - Verify error handling at each stage
@@ -1489,8 +1497,9 @@ const compileDocument = (document: TextDocument) =>
   - `transformer.spec.ts` - AST transformation tests
   - `optimizer.spec.ts` - Optimization pass tests
   - `type-checker.spec.ts` - Type checking tests
+  - `constant-folder.spec.ts`, `emitter.spec.ts`, `expression-evaluator.spec.ts`, `name-resolver.spec.ts`, `library-*.spec.ts`
 
-**Integration Tests** (`packages/compiler/src/__tests__/pipeline.spec.ts`):
+**Integration Tests** (`packages/language/src/compiler/__tests__/pipeline.spec.ts`):
 - Full DSL → JSON compilation
 - Snapshot testing for expected outputs (in `__fixtures__/snapshots/`)
 - Round-trip validation (JSON matches Eligius requirements)
@@ -1601,9 +1610,11 @@ test("compile valid DSL", async () => {
 
 ## Development Workflow
 
-### Phase 1: Understanding (Current)
+> **STATUS**: This phased plan is **historical** — all six phases below are implemented and the project is in active feature development (features 006–022+ shipped: unified call syntax, CSS loading/validation, JSDoc, Typir type system, test-suite refactor, etc.). New work is organized as numbered features under `specs/`. The phases are retained as a record of how the project was built.
+
+### Phase 1: Understanding (done)
 1. Analyze Eligius JSON config format and API
-2. Document findings in `ELIGIUS_UNDERSTANDING.md`
+2. Document findings (originally in `ELIGIUS_UNDERSTANDING.md`, since removed)
 3. Identify common patterns and pain points
 4. Design initial DSL syntax examples
 
@@ -1645,6 +1656,9 @@ test("compile valid DSL", async () => {
 4. Package and test extension
 
 ## Available MCP Resources
-- **effect-docs**: Documentation and examples for Effect-ts usage
-- **ide**: VS Code integration for diagnostics and code execution
+
+Configured MCP servers (verify with `claude mcp list`):
 - **context7**: Always use when needing code generation, setup/configuration steps, or library/API documentation. Automatically use Context7 MCP tools to resolve library ID and get library docs without explicit request.
+- **serena**: Semantic code-intelligence + per-project memories. Activates by working directory; user-scoped (shared across projects). Project files stored in `.serena/` (gitignored). On first use in a session call `initial_instructions` to load its manual.
+
+> NOTE: Older revisions listed `effect-docs` and `ide` MCP servers — these are not currently configured. For Effect-ts docs, use context7.
