@@ -1,0 +1,65 @@
+/**
+ * Eligian Tour — shared presentation library
+ *
+ * The walkthrough machinery. Every chapter drives these actions; the heavy
+ * lifting (fades, clip-sweep "typing", spotlights) is done in tour.css via the
+ * classes toggled here. Names deliberately avoid built-in operation names.
+ */
+library presentation
+
+/**
+ * Reveal a code block: fade it in, then run the CSS clip-sweep "typing" effect.
+ * @param selector CSS selector for the code block
+ */
+action revealBlock(selector: string) [
+  selectElement(selector)
+  addClass("in")
+  addClass("typing")
+]
+
+/**
+ * Spotlight a single code token (caller dims the rest via clearSpots first).
+ * @param selector CSS selector for the token span
+ */
+action spotlight(selector: string) [
+  selectElement(selector)
+  addClass("spot")
+]
+
+/**
+ * Clear every token spotlight.
+ */
+action clearSpots() [
+  selectElement(".tok")
+  removeClass("spot")
+]
+
+/**
+ * Animate an arrow+label callout chip onto a token.
+ * @param selector CSS selector for the callout chip
+ * @param text Label text to show
+ */
+action callout(selector: string, text: string) [
+  selectElement(selector)
+  setElementContent(text)
+  addClass("show")
+]
+
+/**
+ * Swap the narration subtitle line.
+ * @param text Subtitle text for this beat
+ */
+action narrate(text: string) [
+  selectElement("#narration")
+  setElementContent(text)
+]
+
+/**
+ * Run a real effect in the effect pane.
+ * @param selector CSS selector for the effect element to activate
+ */
+action demo(selector: string) [
+  selectElement(selector)
+  addClass("active")
+  animate({ opacity: 1 }, 300)
+]

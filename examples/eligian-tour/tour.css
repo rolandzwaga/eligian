@@ -1,0 +1,142 @@
+/* Eligian Tour — theme + walkthrough animations.
+ *
+ * Every selector/class referenced from the .eligian files must be defined here:
+ * the compiler validates selectors/classes against imported CSS (see B2 in
+ * packages/cli/KNOWN_ISSUES.md). Dark, editor-grade, one accent, restrained motion.
+ */
+
+:root {
+  --bg: #0e1116;
+  --panel: #161b22;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --kw: #ff7b72;
+  --str: #a5d6ff;
+  --num: #d2a8ff;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ---- Stage + chrome ---------------------------------------------------- */
+#stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 1rem;
+  height: 100vh;
+  padding: 1.5rem;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---- Code pane + tokens ----------------------------------------------- */
+#code-ch1,
+#code-at,
+#code-units,
+#code-arith,
+#code-full {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+
+/* token spans */
+.tok {
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+
+#tok-timeline,
+#tok-raf,
+#tok-at,
+#tok-plus {
+  font-weight: 600;
+}
+
+/* ---- Callout chips ----------------------------------------------------- */
+#cl-name,
+#cl-provider,
+#cl-range,
+#cl-units,
+#cl-relative {
+  position: absolute;
+  max-width: 18rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b1320;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+/* ---- Effect pane elements --------------------------------------------- */
+#fx-stage,
+#fx-providers,
+#fx-hero,
+#fx-ruler,
+#fx-chain,
+#fx-endcard {
+  display: grid;
+  place-items: center;
+  background: var(--panel);
+  border-radius: 12px;
+  min-height: 8rem;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+
+/* ---- Narration subtitle ----------------------------------------------- */
+#narration {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+  font-size: 1.05rem;
+  min-height: 1.6em;
+}
+
+/* ---- State classes toggled by the presentation library ---------------- */
+.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing {
+  /* clip-sweep reveal: animate the code in left-to-right */
+  animation: clip-sweep 0.5s var(--ease) both;
+}
+
+.spot {
+  background: rgba(88, 166, 255, 0.22);
+  color: var(--accent);
+}
+
+.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.active {
+  opacity: 1;
+}
+
+@keyframes clip-sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
