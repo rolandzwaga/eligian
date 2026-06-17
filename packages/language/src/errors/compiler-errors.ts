@@ -57,7 +57,8 @@ export type ValidationErrorKind =
   | 'TargetRequired' // Target selector required
   | 'ValidSelector' // CSS selector must be valid
   | 'ActionNotDefined' // Action referenced before definition
-  | 'ParameterArityMismatch'; // Wrong number of arguments
+  | 'ParameterArityMismatch' // Wrong number of arguments
+  | 'SemanticValidation'; // Generic Langium semantic-validation diagnostic (no more specific kind)
 
 /**
  * Validation error - semantic validation failures
