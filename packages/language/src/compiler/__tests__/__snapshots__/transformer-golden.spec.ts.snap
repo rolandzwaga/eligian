@@ -1,0 +1,774 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Transformer — golden output (W2 decomposition guard) > control flow: if/else, for loop, break/continue 1`] = `
+{
+  "actions": [
+    {
+      "endOperations": [],
+      "id": "<uuid-3>",
+      "name": "loopit",
+      "startOperations": [
+        {
+          "id": "<uuid-4>",
+          "operationData": {
+            "collection": "$operationdata.items",
+            "itemName": "item",
+          },
+          "systemName": "forEach",
+        },
+        {
+          "id": "<uuid-5>",
+          "operationData": {
+            "condition": "("$scope.currentItem" == "skip")",
+          },
+          "systemName": "when",
+        },
+        {
+          "id": "<uuid-6>",
+          "operationData": {},
+          "systemName": "continueForEach",
+        },
+        {
+          "id": "<uuid-7>",
+          "operationData": {},
+          "systemName": "endWhen",
+        },
+        {
+          "id": "<uuid-8>",
+          "operationData": {
+            "selector": "$scope.currentItem",
+          },
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-9>",
+          "operationData": {
+            "condition": "("$scope.currentItem" == "stop")",
+          },
+          "systemName": "when",
+        },
+        {
+          "id": "<uuid-10>",
+          "operationData": {},
+          "systemName": "breakForEach",
+        },
+        {
+          "id": "<uuid-11>",
+          "operationData": {},
+          "systemName": "endWhen",
+        },
+        {
+          "id": "<uuid-12>",
+          "operationData": {},
+          "systemName": "endForEach",
+        },
+      ],
+    },
+  ],
+  "availableLanguages": [
+    {
+      "id": "<uuid-2>",
+      "label": "English",
+      "languageCode": "en-US",
+    },
+  ],
+  "containerSelector": "#eligius-container",
+  "cssFiles": [],
+  "engine": {
+    "systemName": "EligiusEngine",
+  },
+  "eventActions": [],
+  "id": "<uuid-1>",
+  "initActions": [],
+  "language": "en-US",
+  "layoutTemplate": "<div id="root"></div>",
+  "locales": undefined,
+  "timelineFlow": undefined,
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource",
+      },
+    },
+  },
+  "timelines": [
+    {
+      "duration": 1,
+      "id": "<uuid-13>",
+      "loop": false,
+      "selector": "#root",
+      "timelineActions": [
+        {
+          "duration": {
+            "end": 1,
+            "start": 0,
+          },
+          "endOperations": [],
+          "id": "<uuid-14>",
+          "name": "timeline-action-0-1",
+          "startOperations": [
+            {
+              "id": "<uuid-15>",
+              "operationData": {
+                "systemName": "loopit",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-16>",
+              "operationData": {
+                "actionOperationData": {
+                  "items": [
+                    "a",
+                    "b",
+                  ],
+                },
+              },
+              "systemName": "startAction",
+            },
+          ],
+        },
+      ],
+      "type": "animation",
+      "uri": "t",
+    },
+  ],
+}
+`;
+
+exports[`AST Transformer — golden output (W2 decomposition guard) > event actions with parameters 1`] = `
+{
+  "actions": [],
+  "availableLanguages": [
+    {
+      "id": "<uuid-2>",
+      "label": "English",
+      "languageCode": "en-US",
+    },
+  ],
+  "containerSelector": "#eligius-container",
+  "cssFiles": [],
+  "engine": {
+    "systemName": "EligiusEngine",
+  },
+  "eventActions": [
+    {
+      "eventName": "click",
+      "eventTopic": undefined,
+      "id": "<uuid-3>",
+      "name": "handleClick",
+      "startOperations": [
+        {
+          "id": "<uuid-4>",
+          "operationData": {
+            "selector": "$operationData.eventArgs[0]",
+          },
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-5>",
+          "operationData": {
+            "properties": {
+              "operationdata.v": "$operationData.eventArgs[1]",
+            },
+          },
+          "systemName": "setData",
+        },
+      ],
+    },
+  ],
+  "id": "<uuid-1>",
+  "initActions": [],
+  "language": "en-US",
+  "layoutTemplate": "<div id="root"></div>",
+  "locales": undefined,
+  "timelineFlow": undefined,
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource",
+      },
+    },
+  },
+  "timelines": [
+    {
+      "duration": 1,
+      "id": "<uuid-6>",
+      "loop": false,
+      "selector": "#root",
+      "timelineActions": [
+        {
+          "duration": {
+            "end": 1,
+            "start": 0,
+          },
+          "endOperations": [],
+          "id": "<uuid-7>",
+          "name": "timeline-action-0-1",
+          "startOperations": [
+            {
+              "id": "<uuid-8>",
+              "operationData": {
+                "selector": "#x",
+              },
+              "systemName": "selectElement",
+            },
+          ],
+        },
+      ],
+      "type": "animation",
+      "uri": "t",
+    },
+  ],
+}
+`;
+
+exports[`AST Transformer — golden output (W2 decomposition guard) > global variables / constant folding and binary expressions 1`] = `
+{
+  "actions": [
+    {
+      "endOperations": [],
+      "id": "<uuid-3>",
+      "name": "compute",
+      "startOperations": [
+        {
+          "id": "<uuid-4>",
+          "operationData": {
+            "selector": "#x",
+          },
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-5>",
+          "operationData": {
+            "properties": {
+              "operationdata.total": 150,
+            },
+          },
+          "systemName": "setData",
+        },
+      ],
+    },
+  ],
+  "availableLanguages": [
+    {
+      "id": "<uuid-2>",
+      "label": "English",
+      "languageCode": "en-US",
+    },
+  ],
+  "containerSelector": "#eligius-container",
+  "cssFiles": [],
+  "engine": {
+    "systemName": "EligiusEngine",
+  },
+  "eventActions": [],
+  "id": "<uuid-1>",
+  "initActions": [],
+  "language": "en-US",
+  "layoutTemplate": "<div id="root"></div>",
+  "locales": undefined,
+  "timelineFlow": undefined,
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource",
+      },
+    },
+  },
+  "timelines": [
+    {
+      "duration": 1,
+      "id": "<uuid-6>",
+      "loop": false,
+      "selector": "#root",
+      "timelineActions": [
+        {
+          "duration": {
+            "end": 1,
+            "start": 0,
+          },
+          "endOperations": [],
+          "id": "<uuid-7>",
+          "name": "timeline-action-0-1",
+          "startOperations": [
+            {
+              "id": "<uuid-8>",
+              "operationData": {
+                "systemName": "compute",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-9>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+      ],
+      "type": "animation",
+      "uri": "t",
+    },
+  ],
+}
+`;
+
+exports[`AST Transformer — golden output (W2 decomposition guard) > languages block and controllers 1`] = `
+{
+  "actions": [
+    {
+      "endOperations": [],
+      "id": "<uuid-4>",
+      "name": "setup",
+      "startOperations": [
+        {
+          "id": "<uuid-5>",
+          "operationData": {
+            "selector": "#nav",
+          },
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-6>",
+          "operationData": {
+            "systemName": "LabelController",
+          },
+          "systemName": "getControllerInstance",
+        },
+        {
+          "id": "<uuid-7>",
+          "operationData": {
+            "translationKey": "nav.home",
+          },
+          "systemName": "addControllerToElement",
+        },
+      ],
+    },
+  ],
+  "availableLanguages": [
+    {
+      "id": "<uuid-2>",
+      "label": "English",
+      "languageCode": "en-US",
+    },
+    {
+      "id": "<uuid-3>",
+      "label": "Nederlands",
+      "languageCode": "nl-NL",
+    },
+  ],
+  "containerSelector": "#eligius-container",
+  "cssFiles": [],
+  "engine": {
+    "systemName": "EligiusEngine",
+  },
+  "eventActions": [],
+  "id": "<uuid-1>",
+  "initActions": [],
+  "language": "en-US",
+  "layoutTemplate": "<div id="root"></div>",
+  "locales": undefined,
+  "timelineFlow": undefined,
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource",
+      },
+    },
+  },
+  "timelines": [
+    {
+      "duration": 1,
+      "id": "<uuid-8>",
+      "loop": false,
+      "selector": "#root",
+      "timelineActions": [
+        {
+          "duration": {
+            "end": 1,
+            "start": 0,
+          },
+          "endOperations": [],
+          "id": "<uuid-9>",
+          "name": "timeline-action-0-1",
+          "startOperations": [
+            {
+              "id": "<uuid-10>",
+              "operationData": {
+                "systemName": "setup",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-11>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+      ],
+      "type": "animation",
+      "uri": "t",
+    },
+  ],
+}
+`;
+
+exports[`AST Transformer — golden output (W2 decomposition guard) > regular + endable actions with parameters and references 1`] = `
+{
+  "actions": [
+    {
+      "endOperations": [],
+      "id": "<uuid-3>",
+      "name": "fadeIn",
+      "startOperations": [
+        {
+          "id": "<uuid-4>",
+          "operationData": undefined,
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-5>",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1,
+            },
+          },
+          "systemName": "animate",
+        },
+      ],
+    },
+    {
+      "endOperations": [
+        {
+          "id": "<uuid-9>",
+          "operationData": undefined,
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-10>",
+          "operationData": {
+            "className": "on",
+          },
+          "systemName": "removeClass",
+        },
+      ],
+      "id": "<uuid-6>",
+      "name": "highlight",
+      "startOperations": [
+        {
+          "id": "<uuid-7>",
+          "operationData": undefined,
+          "systemName": "selectElement",
+        },
+        {
+          "id": "<uuid-8>",
+          "operationData": {
+            "className": "on",
+          },
+          "systemName": "addClass",
+        },
+      ],
+    },
+  ],
+  "availableLanguages": [
+    {
+      "id": "<uuid-2>",
+      "label": "English",
+      "languageCode": "en-US",
+    },
+  ],
+  "containerSelector": "#eligius-container",
+  "cssFiles": [],
+  "engine": {
+    "systemName": "EligiusEngine",
+  },
+  "eventActions": [],
+  "id": "<uuid-1>",
+  "initActions": [],
+  "language": "en-US",
+  "layoutTemplate": "<div id="root"></div>",
+  "locales": undefined,
+  "timelineFlow": undefined,
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource",
+      },
+    },
+  },
+  "timelines": [
+    {
+      "duration": 10,
+      "id": "<uuid-11>",
+      "loop": false,
+      "selector": "#root",
+      "timelineActions": [
+        {
+          "duration": {
+            "end": 5,
+            "start": 0,
+          },
+          "endOperations": [],
+          "id": "<uuid-12>",
+          "name": "timeline-action-0-5",
+          "startOperations": [
+            {
+              "id": "<uuid-13>",
+              "operationData": {
+                "systemName": "fadeIn",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-14>",
+              "operationData": {
+                "actionOperationData": {
+                  "duration": 500,
+                  "selector": "#a",
+                },
+              },
+              "systemName": "startAction",
+            },
+          ],
+        },
+        {
+          "duration": {
+            "end": 10,
+            "start": 5,
+          },
+          "endOperations": [
+            {
+              "id": "<uuid-18>",
+              "operationData": {
+                "systemName": "highlight",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-19>",
+              "operationData": {
+                "actionOperationData": {
+                  "target": "#b",
+                },
+              },
+              "systemName": "endAction",
+            },
+          ],
+          "id": "<uuid-15>",
+          "name": "timeline-action-5-10",
+          "startOperations": [
+            {
+              "id": "<uuid-16>",
+              "operationData": {
+                "systemName": "highlight",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-17>",
+              "operationData": {
+                "actionOperationData": {
+                  "target": "#b",
+                },
+              },
+              "systemName": "startAction",
+            },
+          ],
+        },
+      ],
+      "type": "animation",
+      "uri": "t",
+    },
+  ],
+}
+`;
+
+exports[`AST Transformer — golden output (W2 decomposition guard) > sequence and stagger blocks 1`] = `
+{
+  "actions": [
+    {
+      "endOperations": [],
+      "id": "<uuid-3>",
+      "name": "intro",
+      "startOperations": [
+        {
+          "id": "<uuid-4>",
+          "operationData": {
+            "selector": "#x",
+          },
+          "systemName": "selectElement",
+        },
+      ],
+    },
+    {
+      "endOperations": [],
+      "id": "<uuid-5>",
+      "name": "main",
+      "startOperations": [
+        {
+          "id": "<uuid-6>",
+          "operationData": {
+            "selector": "#y",
+          },
+          "systemName": "selectElement",
+        },
+      ],
+    },
+  ],
+  "availableLanguages": [
+    {
+      "id": "<uuid-2>",
+      "label": "English",
+      "languageCode": "en-US",
+    },
+  ],
+  "containerSelector": "#eligius-container",
+  "cssFiles": [],
+  "engine": {
+    "systemName": "EligiusEngine",
+  },
+  "eventActions": [],
+  "id": "<uuid-1>",
+  "initActions": [],
+  "language": "en-US",
+  "layoutTemplate": "<div id="root"></div>",
+  "locales": undefined,
+  "timelineFlow": undefined,
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource",
+      },
+    },
+  },
+  "timelines": [
+    {
+      "duration": 17.4,
+      "id": "<uuid-7>",
+      "loop": false,
+      "selector": "#root",
+      "timelineActions": [
+        {
+          "duration": {
+            "end": 5,
+            "start": 0,
+          },
+          "endOperations": [],
+          "id": "<uuid-8>",
+          "name": "sequence-intro-0-5",
+          "startOperations": [
+            {
+              "id": "<uuid-9>",
+              "operationData": {
+                "systemName": "intro",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-10>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+        {
+          "duration": {
+            "end": 15,
+            "start": 5,
+          },
+          "endOperations": [],
+          "id": "<uuid-11>",
+          "name": "sequence-main-5-15",
+          "startOperations": [
+            {
+              "id": "<uuid-12>",
+              "operationData": {
+                "systemName": "main",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-13>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+        {
+          "duration": {
+            "end": 17,
+            "start": 15,
+          },
+          "endOperations": [],
+          "id": "<uuid-14>",
+          "name": "stagger-intro-0-15-17",
+          "startOperations": [
+            {
+              "id": "<uuid-15>",
+              "operationData": {
+                "systemName": "intro",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-16>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+        {
+          "duration": {
+            "end": 17.2,
+            "start": 15.2,
+          },
+          "endOperations": [],
+          "id": "<uuid-17>",
+          "name": "stagger-intro-1-15.2-17.2",
+          "startOperations": [
+            {
+              "id": "<uuid-18>",
+              "operationData": {
+                "systemName": "intro",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-19>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+        {
+          "duration": {
+            "end": 17.4,
+            "start": 15.4,
+          },
+          "endOperations": [],
+          "id": "<uuid-20>",
+          "name": "stagger-intro-2-15.4-17.4",
+          "startOperations": [
+            {
+              "id": "<uuid-21>",
+              "operationData": {
+                "systemName": "intro",
+              },
+              "systemName": "requestAction",
+            },
+            {
+              "id": "<uuid-22>",
+              "operationData": {},
+              "systemName": "startAction",
+            },
+          ],
+        },
+      ],
+      "type": "animation",
+      "uri": "t",
+    },
+  ],
+}
+`;
