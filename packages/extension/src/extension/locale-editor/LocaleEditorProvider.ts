@@ -15,35 +15,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ILocalesConfiguration } from 'eligius';
 import * as vscode from 'vscode';
-import { consumePendingSelection } from '../label-entry-creator.js';
 import { buildKeyTree, extractLocales } from './key-tree-builder.js';
 import { LocaleFileWatcher } from './LocaleFileWatcher.js';
 import { searchWorkspace } from './LocaleUsageTracker.js';
-import {
-  generateUUID,
-  validateGroupId,
-  validateLabelFileSchema,
-  validateLabelText,
-  validateLanguageCode,
-  validateUUID,
-} from './LocaleValidation.js';
-import {
-  addKeyToConfig,
-  deleteKeyFromConfig,
-  keyTreeToSerializable,
-  parseLocalesConfiguration,
-  renameKeyInConfig,
-  updateTranslationInConfig,
-} from './locale-editor-utils.js';
-import type {
-  LabelGroup,
-  LocaleToExtensionMessage,
-  LocaleToWebviewMessage,
-  LocaleValidationError,
-  ToExtensionMessage,
-  ToWebviewMessage,
-  ValidationError,
-} from './types.js';
+import { validateLabelFileSchema } from './LocaleValidation.js';
+import { parseLabels } from './locale-config-validation.js';
+import { keyTreeToSerializable, parseLocalesConfiguration } from './locale-editor-utils.js';
+import { handleWebviewMessage } from './locale-message-handler.js';
+import type { LocaleToWebviewMessage, ToExtensionMessage, ToWebviewMessage } from './types.js';
 
 /**
  * Custom text editor provider for locale JSON files.
@@ -211,7 +190,14 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     webviewPanel.webview.onDidReceiveMessage((message: ToExtensionMessage) => {
       // Fire-and-forget: the handler awaits its own I/O internally and reports
       // failures back to the webview, so a rejection here cannot go unhandled.
-      void this.handleWebviewMessage(message, document, webviewPanel);
+      void handleWebviewMessage(message, document, webviewPanel, {
+        documentConfigs: this.documentConfigs,
+        saveConfig: (doc, config) => this.saveConfig(doc, config),
+        applyWebviewEdit: (doc, edit) => this.applyWebviewEdit(doc, edit),
+        trySaveDocument: doc => this.trySaveDocument(doc),
+        tryShowWarning: msg => this.tryShowWarning(msg),
+        checkLabelUsage: id => this.checkLabelUsage(id),
+      });
     });
 
     // 4. Set up TextDocument change listener (Microsoft pattern: ONLY update on EXTERNAL changes)
@@ -245,7 +231,7 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.webview.postMessage(reloadMessage);
       } else {
         // Fallback to legacy format
-        const labels = this.parseLabels(document.getText());
+        const labels = parseLabels(document.getText());
         const reloadMessage: ToWebviewMessage = {
           type: 'reload',
           labels,
@@ -267,297 +253,6 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   /**
-   * Parse JSON text into LabelGroup array.
-   * Handles malformed JSON gracefully.
-   * Auto-fixes missing or invalid UUIDs on translations.
-   *
-   * @param text - Raw JSON text from TextDocument
-   * @returns Parsed label groups or empty array on error
-   */
-  private parseLabels(text: string): LabelGroup[] {
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        const labels = parsed as LabelGroup[];
-
-        // Auto-fix missing or invalid UUIDs (User Story 3)
-        for (const group of labels) {
-          if (group.labels && Array.isArray(group.labels)) {
-            for (const translation of group.labels) {
-              // Check if UUID is missing or invalid
-              if (!translation.id || !validateUUID(translation.id)) {
-                translation.id = generateUUID();
-              }
-            }
-          }
-        }
-
-        // If we auto-fixed UUIDs, the webview will receive updated data
-        // and send an 'update' message to sync the document
-        return labels;
-      }
-      return [];
-    } catch (error) {
-      console.error('Failed to parse label JSON:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Handle messages from the webview.
-   * Supports both new LocaleToExtensionMessage and legacy ToExtensionMessage formats.
-   *
-   * @param message - Message from webview
-   * @param document - The document being edited
-   * @param webviewPanel - The webview panel
-   */
-  private async handleWebviewMessage(
-    message: LocaleToExtensionMessage | ToExtensionMessage,
-    document: vscode.TextDocument,
-    webviewPanel: vscode.WebviewPanel
-  ): Promise<void> {
-    switch (message.type) {
-      case 'ready':
-        // Parse document and send initialize message
-        // Try new ILocalesConfiguration format first
-        {
-          const parseResult = parseLocalesConfiguration(document.getText());
-          if (parseResult.success && parseResult.config) {
-            const config = parseResult.config;
-            this.documentConfigs.set(document.uri.toString(), config);
-            const keyTree = buildKeyTree(config);
-            // Check for pending key selection (Feature 041 - auto-select newly created keys)
-            const selectedKey = consumePendingSelection(document.uri.toString());
-            const initMessage: LocaleToWebviewMessage = {
-              type: 'initialize',
-              locales: extractLocales(config),
-              keyTree: keyTreeToSerializable(keyTree),
-              filePath: document.uri.fsPath,
-              selectedKey,
-            };
-            webviewPanel.webview.postMessage(initMessage);
-          } else {
-            // Fallback to legacy format
-            const labels = this.parseLabels(document.getText());
-            const selectedLabelId = consumePendingSelection(document.uri.toString());
-            const initMessage: ToWebviewMessage = {
-              type: 'initialize',
-              labels,
-              filePath: document.uri.fsPath,
-              selectedLabelId,
-            };
-            webviewPanel.webview.postMessage(initMessage);
-          }
-        }
-        break;
-
-      // New ILocalesConfiguration message handlers (T040-T043)
-      case 'update-translation':
-        // Update a single translation value
-        {
-          const config = this.documentConfigs.get(document.uri.toString());
-          if (config) {
-            const updated = updateTranslationInConfig(
-              config,
-              message.key,
-              message.locale,
-              message.value
-            );
-            this.documentConfigs.set(document.uri.toString(), updated);
-            this.saveConfig(document, updated);
-          }
-        }
-        break;
-
-      case 'add-key':
-        // Add a new translation key
-        {
-          const config = this.documentConfigs.get(document.uri.toString());
-          if (config) {
-            const fullKey = message.parentKey
-              ? `${message.parentKey}.${message.newSegment}`
-              : message.newSegment;
-            const updated = addKeyToConfig(config, fullKey);
-            this.documentConfigs.set(document.uri.toString(), updated);
-            this.saveConfig(document, updated);
-          }
-        }
-        break;
-
-      case 'delete-key':
-        // Delete a translation key
-        {
-          const config = this.documentConfigs.get(document.uri.toString());
-          if (config) {
-            const updated = deleteKeyFromConfig(config, message.key);
-            this.documentConfigs.set(document.uri.toString(), updated);
-            this.saveConfig(document, updated);
-          }
-        }
-        break;
-
-      case 'rename-key':
-        // Rename a translation key
-        {
-          const config = this.documentConfigs.get(document.uri.toString());
-          if (config) {
-            const updated = renameKeyInConfig(config, message.oldKey, message.newKey);
-            this.documentConfigs.set(document.uri.toString(), updated);
-            this.saveConfig(document, updated);
-          }
-        }
-        break;
-
-      case 'add-locale':
-        // Add a new locale to the configuration
-        {
-          const config = this.documentConfigs.get(document.uri.toString());
-          if (config) {
-            // Add empty locale entry
-            const updated: ILocalesConfiguration = {
-              ...config,
-              [message.locale]: {},
-            };
-            this.documentConfigs.set(document.uri.toString(), updated);
-            this.saveConfig(document, updated);
-          }
-        }
-        break;
-
-      // Legacy message handlers (for backward compatibility)
-      case 'update':
-        // Update document (DON'T trigger webview reload - Microsoft pattern)
-        {
-          const legacyMessage = message as ToExtensionMessage & { type: 'update' };
-          const json = JSON.stringify(legacyMessage.labels, null, 2);
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-          this.applyWebviewEdit(document, edit);
-        }
-        break;
-
-      case 'request-save':
-        // Validate and save
-        {
-          // For new format, document is already up-to-date
-          const config = this.documentConfigs.get(document.uri.toString());
-          if (config) {
-            // New format: validate config and save
-            const errors = this.validateLocaleConfig(config);
-            if (errors.length > 0) {
-              const errorMessage: LocaleToWebviewMessage = {
-                type: 'validation-error',
-                errors,
-              };
-              webviewPanel.webview.postMessage(errorMessage);
-            } else {
-              const success = await this.trySaveDocument(document);
-              const saveMessage: LocaleToWebviewMessage = {
-                type: 'save-complete',
-                success,
-              };
-              webviewPanel.webview.postMessage(saveMessage);
-            }
-          } else {
-            // Legacy format
-            const legacyMessage = message as ToExtensionMessage & { type: 'request-save' };
-            const errors = this.validateLabels(legacyMessage.labels);
-            if (errors.length > 0) {
-              const errorMessage: ToWebviewMessage = {
-                type: 'validation-error',
-                errors,
-              };
-              webviewPanel.webview.postMessage(errorMessage);
-            } else {
-              const success = await this.trySaveDocument(document);
-              const saveMessage: ToWebviewMessage = {
-                type: 'save-complete',
-                success,
-              };
-              webviewPanel.webview.postMessage(saveMessage);
-            }
-          }
-        }
-        break;
-
-      case 'validate':
-        // Run validation and send errors (legacy only)
-        {
-          const legacyMessage = message as ToExtensionMessage & { type: 'validate' };
-          const errors = this.validateLabels(legacyMessage.labels);
-          const errorMessage: ToWebviewMessage = {
-            type: 'validation-error',
-            errors,
-          };
-          webviewPanel.webview.postMessage(errorMessage);
-        }
-        break;
-
-      case 'check-usage':
-        // Query label/key usage in .eligian files.
-        // The two protocols share this `type`; `'key' in message` is the
-        // discriminator — the new protocol carries `key`, the legacy one `groupId`.
-        if ('key' in message) {
-          // New format
-          const usageFiles = await this.checkLabelUsage(message.key);
-          const usageMessage: LocaleToWebviewMessage = {
-            type: 'usage-check-response',
-            key: message.key,
-            usageFiles,
-          };
-          webviewPanel.webview.postMessage(usageMessage);
-        } else {
-          // Legacy format
-          const usageFiles = await this.checkLabelUsage(message.groupId);
-          const usageMessage: ToWebviewMessage = {
-            type: 'usage-check-response',
-            groupId: message.groupId,
-            usageFiles,
-          };
-          webviewPanel.webview.postMessage(usageMessage);
-        }
-        break;
-
-      case 'request-delete':
-        // Show VS Code native confirmation dialog.
-        // `'key' in message` discriminates the new protocol (key) from the
-        // legacy one (groupId/index).
-        if ('key' in message) {
-          // New format
-          let confirmMsg = `Delete translation key '${message.key}'?`;
-          if (message.usageFiles.length > 0) {
-            confirmMsg = `Key '${message.key}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
-          }
-
-          const choice = await this.tryShowWarning(confirmMsg);
-          if (choice === 'Delete') {
-            const confirmMessage: LocaleToWebviewMessage = {
-              type: 'delete-confirmed',
-              key: message.key,
-            };
-            webviewPanel.webview.postMessage(confirmMessage);
-          }
-        } else {
-          // Legacy format
-          let confirmMsg = `Delete label group '${message.groupId}'?`;
-          if (message.usageFiles.length > 0) {
-            confirmMsg = `Label '${message.groupId}' is used in ${message.usageFiles.length} file(s):\n${message.usageFiles.join('\n')}\n\nDelete anyway?`;
-          }
-
-          const choice = await this.tryShowWarning(confirmMsg);
-          if (choice === 'Delete') {
-            const confirmMessage: ToWebviewMessage = {
-              type: 'delete-confirmed',
-              index: message.index,
-            };
-            webviewPanel.webview.postMessage(confirmMessage);
-          }
-        }
-        break;
-    }
-  }
-
-  /**
    * Save ILocalesConfiguration to document.
    */
   private saveConfig(document: vscode.TextDocument, config: ILocalesConfiguration): void {
@@ -565,62 +260,6 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
     this.applyWebviewEdit(document, edit);
-  }
-
-  /**
-   * Validate ILocalesConfiguration.
-   */
-  private validateLocaleConfig(config: ILocalesConfiguration): LocaleValidationError[] {
-    const errors: LocaleValidationError[] = [];
-
-    for (const [locale, data] of Object.entries(config)) {
-      // Validate locale code format
-      const langError = validateLanguageCode(locale);
-      if (langError) {
-        errors.push({
-          locale,
-          field: 'locale',
-          message: langError.message,
-          code: langError.code,
-        });
-      }
-
-      // Validate translation values recursively
-      this.validateLocaleData(data, locale, '', errors);
-    }
-
-    return errors;
-  }
-
-  /**
-   * Recursively validate locale data.
-   */
-  private validateLocaleData(
-    data: unknown,
-    locale: string,
-    keyPath: string,
-    errors: LocaleValidationError[]
-  ): void {
-    if (typeof data === 'object' && data !== null && !('$ref' in data)) {
-      for (const [key, value] of Object.entries(data)) {
-        const fullKey = keyPath ? `${keyPath}.${key}` : key;
-
-        if (typeof value === 'string') {
-          const labelError = validateLabelText(value);
-          if (labelError) {
-            errors.push({
-              key: fullKey,
-              locale,
-              field: 'label',
-              message: labelError.message,
-              code: labelError.code,
-            });
-          }
-        } else if (typeof value === 'object' && value !== null) {
-          this.validateLocaleData(value, locale, fullKey, errors);
-        }
-      }
-    }
   }
 
   /**
@@ -648,7 +287,7 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
       webviewPanel.webview.postMessage(reloadMessage);
     } else {
       // Fallback to legacy format
-      const labels = this.parseLabels(document.getText());
+      const labels = parseLabels(document.getText());
       console.log('[LocaleEditorProvider] Parsed labels, count:', labels.length);
       const reloadMessage: ToWebviewMessage = {
         type: 'reload',
@@ -693,45 +332,6 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     html = html.replace(/\$\{cspSource\}/g, webview.cspSource);
 
     return html;
-  }
-
-  /**
-   * Validate labels array
-   */
-  private validateLabels(labels: LabelGroup[]): ValidationError[] {
-    const errors: ValidationError[] = [];
-    const groupIds = labels.map(g => g.id);
-
-    for (const group of labels) {
-      // Validate group ID (pass current group ID to exclude from duplicate check)
-      const groupIdError = validateGroupId(group.id, groupIds, group.id);
-      if (groupIdError) {
-        errors.push({ ...groupIdError, groupId: group.id });
-      }
-
-      // Validate translations
-      for (const translation of group.labels) {
-        const langError = validateLanguageCode(translation.languageCode);
-        if (langError) {
-          errors.push({
-            ...langError,
-            groupId: group.id,
-            translationId: translation.id,
-          });
-        }
-
-        const labelError = validateLabelText(translation.label);
-        if (labelError) {
-          errors.push({
-            ...labelError,
-            groupId: group.id,
-            translationId: translation.id,
-          });
-        }
-      }
-    }
-
-    return errors;
   }
 
   /**
