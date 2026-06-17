@@ -44,7 +44,7 @@ export function handleEventCompletion(
     // Get the EventActionDefinition to replace the entire line
     const eventAction = cursorContext.eventAction;
 
-    if (!eventAction || !eventAction.$cstNode) {
+    if (!eventAction?.$cstNode) {
       // Fallback: provide just event names without skeleton generation
       const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
       const start = document.textDocument.positionAt(stringStartOffset);
