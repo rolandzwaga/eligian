@@ -27,7 +27,7 @@ Research/reference (read-only, do NOT import):
 - **Package manager: pnpm only** (v11.7, pinned in package.json). Never npm/yarn — breaks workspace resolution.
 - **Type-check/build: tsgo** (`@typescript/native-preview`), NOT `tsc`. `pnpm typecheck` = `tsgo -b tsconfig.build.json`.
 - **Lint/format: Biome** (v2.4.16). Bundling: esbuild. Tests: Vitest. Dead-code: knip.
-- **Effect LSP**: `@effect/language-service` plugin is in the root tsconfig (editor diagnostics only; tsgo build ignores it). Run headlessly via scripts: `pnpm effect:check` (both), `pnpm effect:check:language`, `pnpm effect:check:cli`. Goal is **0 errors / 0 warnings / 0 messages**. `quickfixes` previews fixes but can't apply them; some rules (e.g. `effectGenUsesAdapter`) have no autofix — fix by hand or codemod.
+- **Effect LSP**: `@effect/language-service` plugin is in the root tsconfig (editor diagnostics only; tsgo build ignores it). Run headlessly via scripts: `pnpm effect:check` (both), `pnpm effect:check:language`, `pnpm effect:check:cli`. These are `--strict` (errors + warnings exit non-zero) and **CI runs `pnpm effect:check` and fails on findings**. Goal is **0 errors / 0 warnings**. `quickfixes` previews fixes but can't apply them; some rules (e.g. `effectGenUsesAdapter`) have no autofix — fix by hand or codemod.
 
 ### Commands (from repo root)
 - `pnpm build` (`-r build`) · `pnpm typecheck` · `pnpm watch`

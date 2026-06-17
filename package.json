@@ -21,8 +21,8 @@
     "ci": "biome ci .",
     "typecheck": "tsgo -b tsconfig.build.json",
     "effect:check": "pnpm effect:check:language && pnpm effect:check:cli",
-    "effect:check:language": "effect-language-service diagnostics --project packages/language/tsconfig.src.json --format text",
-    "effect:check:cli": "effect-language-service diagnostics --project packages/cli/tsconfig.json --format text"
+    "effect:check:language": "effect-language-service diagnostics --project packages/language/tsconfig.src.json --format text --strict",
+    "effect:check:cli": "effect-language-service diagnostics --project packages/cli/tsconfig.json --format text --strict"
   },
   "dependencies": {
     "effect": "3.21.3",
