@@ -1091,7 +1091,7 @@ all. They are recorded here so they can be turned into tasks later; none is a
 correctness defect, all are size/maintainability concerns. Verify line counts
 before scheduling — they drift.
 
-**Status:** W1 ✅ FIXED, W2 ✅ FIXED (see below). W3 remains open.
+**Status:** W1 ✅ FIXED, W2 ✅ FIXED, W3 ✅ FIXED (see below). The follow-up worklist is now fully drained.
 
 ### W1. `operation-call-validator.ts` is a new god class (~1038 lines) — ✅ FIXED
 **Location:** [operation-call-validator.ts](packages/language/src/validators/operation-call-validator.ts)
@@ -1190,14 +1190,51 @@ The largest products are `operation-transformer.ts` (~626 lines, the cohesive co
 cluster) and `timeline-transformer.ts` (~583); both are focused single-concern modules and
 independently testable, so the original "biggest source file" smell is resolved.
 
-### W3. Other oversized modules worth a sizing pass (lower priority)
-Recorded for completeness; decompose only if they keep growing:
-- [pipeline.ts](packages/language/src/compiler/pipeline.ts) — ~880 lines (compiler orchestration)
-- [LocaleEditorProvider.ts](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts) — ~749 lines
-- [compiler/operations/validator.ts](packages/language/src/compiler/operations/validator.ts) — ~695 lines
-- [eligian-hover-provider.ts](packages/language/src/eligian-hover-provider.ts) — ~627 lines
-- [eligian-completion-provider.ts](packages/language/src/eligian-completion-provider.ts) — ~625 lines
-- [program-validator.ts](packages/language/src/validators/program-validator.ts) — ~515 lines (also a decomposition product)
+### W3. Other oversized modules worth a sizing pass — ✅ FIXED
+Recorded for completeness; the sizing pass was applied to all six modules
+(behavior-preserving, methods/functions moved **verbatim**), each on its own
+commit on branch **`refactor/w3-oversized-module-decomposition`**. Verified
+after every step (tsgo clean, `pnpm check` clean — only the pre-existing
+`useOptionalChain` warnings remain in untouched files — full suites green at
+baseline: shared-utils 87, language 2012 passed/23 skipped, extension 327, cli
+202 passed/19 skipped; `pnpm effect:check` 0/0/0 for both projects; language
+`test:coverage:ci` exit 0 with thresholds held; full `pnpm run build` clean):
+
+- **[pipeline.ts](packages/language/src/compiler/pipeline.ts)** — 845 → **219 lines** (W3.1).
+  Split into a composition root + sibling `compiler/pipeline/` directory:
+  `services.ts` (shared Langium service singleton + test CSS fixtures),
+  `document-errors.ts` (`extractDocumentErrors` + `DocumentErrorHints`),
+  `library-loader.ts` (import extraction / path resolution / recursive load),
+  `parser.ts` (`parseSource` + `validateAST`). pipeline.ts keeps the
+  compile/compileToJSON/compileToIR orchestration and re-exports every
+  previously-public symbol, so the `compiler/index.ts` barrel is unchanged.
+- **[program-validator.ts](packages/language/src/validators/program-validator.ts)** — 515 → **71-line thin delegator** (W3.2).
+  Split by check family into `validators/program/`: `structure-validator.ts`,
+  `duplicate-validator.ts`, `import-name-collision-validator.ts`,
+  `asset-import-validator.ts` (each extends `BaseValidator`). The delegator
+  keeps the single registered DI surface (`EligianValidator.program`), mirroring
+  the W1 operation-call decomposition.
+- **[eligian-completion-provider.ts](packages/language/src/eligian-completion-provider.ts)** — 625 → **333 lines** (W3.3).
+  The large self-contained context branches were moved into
+  `completion/*-completion-handler.ts` (controller / CSS / HTML / event) plus a
+  shared `handler-result.ts` signal; the provider keeps the orchestration and
+  the `super.completionFor` finalization calls.
+- **[eligian-hover-provider.ts](packages/language/src/eligian-hover-provider.ts)** — 627 → **214 lines** (W3.4).
+  The markdown/Hover builders moved into `hover/hover-builders.ts` as exported
+  functions (the registry-backed ones take the registry as an argument); the
+  provider keeps the `getHoverContent` AST-detection orchestration.
+- **[compiler/operations/validator.ts](packages/language/src/compiler/operations/validator.ts)** — 695 → **95-line composition root** (W3.5).
+  Split by validation stage into `operations/validation/`: `errors.ts`,
+  `existence.ts`, `parameter-count.ts`, `parameter-types.ts`, `dependencies.ts`,
+  `control-flow.ts`. validator.ts keeps `validateOperation` + `ValidationResult`
+  and re-exports the rest. The lone pre-existing `useOptionalChain` warning
+  (`inferArgumentType`) was fixed during the move (repo biome warnings 6→5).
+- **[LocaleEditorProvider.ts](packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts)** — 749 → **349 lines** (W3.6).
+  Extracted `locale-config-validation.ts` (pure `parseLabels` / `validateLabels`
+  / `validateLocaleConfig`) and `locale-message-handler.ts` (the ~244-line
+  webview message switch, with instance-coupled operations passed via a
+  `LocaleMessageDeps` object). The provider keeps `resolveCustomTextEditor`,
+  `saveConfig`, `updateWebview`, `getHtmlForWebview`, `checkLabelUsage`.
 
 ---
 
