@@ -4,6 +4,12 @@
  * This is the main completion provider for Eligian DSL. It orchestrates
  * all completion logic based on cursor context, delegating to specialized
  * completion modules for operations, actions, keywords, etc.
+ *
+ * The large self-contained context branches (CSS, HTML, event, and the
+ * string-literal controller/label-ID handling) live in sibling
+ * `completion/*-completion-handler.ts` modules and are invoked here; this class
+ * keeps the orchestration and the `super.completionFor` finalization calls (W3
+ * decomposition).
  */
 
 import type { LangiumDocument, MaybePromise } from 'langium';
@@ -18,20 +24,15 @@ import {
 } from 'vscode-languageserver';
 import { getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
-import { getControllerNameCompletions, getLabelIDCompletions } from './completion/controllers.js';
-import { getEventNameCompletions, getEventTopicCompletions } from './completion/events.js';
+import { resolveStringLiteralCompletion } from './completion/controller-completion-handler.js';
+import { handleCssCompletion } from './completion/css-completion-handler.js';
+import { handleEventCompletion } from './completion/event-completion-handler.js';
+import { handleHtmlCompletion } from './completion/html-completion-handler.js';
 import { HTMLElementCompletionProvider } from './completion/html-elements.js';
 import { getOperationCompletions } from './completion/operations.js';
 import { getVariableCompletions } from './completion/variables.js';
-import {
-  CompletionContextType,
-  detectCompletionContext as detectCSSCompletionContext,
-} from './css/context-detection.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
-import { detectHTMLCompletionContext } from './html/context-detection.js';
-import { HTMLCompletionContextType } from './html/context-types.js';
-import { isOffsetInStringLiteral } from './utils/string-utils.js';
 
 /**
  * Eligian-specific completion provider
@@ -65,57 +66,14 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     params: CompletionParams,
     cancelToken?: CancellationToken
   ): Promise<CompletionList | undefined> {
-    // Detect controller context at cursor position
-    const offset = document.textDocument.offsetAt(params.position);
-    const position = params.position;
-    const cursorContext = detectContext(document, position);
-
-    // If we're in controller name or label ID position, provide custom completions
-    if (cursorContext.isInControllerName) {
-      // Controller name completion: addController("|") or addController("Nav|")
-      // Simply return all controller completions - VS Code will filter by what's typed
-
-      // Determine if we need to include quotes in insertText
-      // Check if cursor is right after opening paren (no quotes yet)
-      const text = document.textDocument.getText();
-      const textBeforeCursor = text.substring(0, offset);
-      const includeQuotes = textBeforeCursor.trimEnd().endsWith('(');
-
-      const controllerCompletions = getControllerNameCompletions(
-        {
-          document,
-          textDocument: document.textDocument,
-          offset,
-          position,
-          tokenOffset: offset,
-          tokenEndOffset: offset,
-          features: [],
-        },
-        includeQuotes
-      );
-
-      return { items: controllerCompletions, isIncomplete: false };
-    } else if (
-      cursorContext.controllerName === 'LabelController' &&
-      cursorContext.controllerParameterIndex === 1
-    ) {
-      // Label ID completion: addController("LabelController", "|")
-      const documentUri = document.uri.toString();
-      const labelRegistry = this.services.labels.LabelRegistry;
-      const labelCompletions = getLabelIDCompletions(documentUri, labelRegistry);
-
-      return { items: labelCompletions, isIncomplete: false };
+    // Controller name / label ID string-literal completions (Feature 035 US3)
+    const stringLiteralCompletion = resolveStringLiteralCompletion(document, params, this.services);
+    if (stringLiteralCompletion !== null) {
+      return stringLiteralCompletion;
     }
 
     // Otherwise, fallback to default Langium completion
     return super.getCompletion(document, params, cancelToken);
-  }
-
-  /**
-   * Check if cursor is inside a string literal
-   */
-  private isCursorInString(text: string, offset: number): boolean {
-    return isOffsetInStringLiteral(text, offset);
   }
 
   /**
@@ -222,291 +180,41 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         acceptor(ctx, item);
       };
 
-      // Check if we're in a CSS completion context (className parameters or selectors)
-      const cssContext = detectCSSCompletionContext(context);
-      if (cssContext !== CompletionContextType.None) {
-        const cssRegistry = this.services.css.CSSRegistry;
-        const documentUri = document.uri.toString();
+      // No-op acceptor used to finalize default completion without adding items.
+      const noOpAcceptor: CompletionAcceptor = () => {
+        /* Don't add any more items */
+      };
 
-        const classes = cssRegistry.getClassesForDocument(documentUri);
-        const ids = cssRegistry.getIDsForDocument(documentUri);
-
-        if (cssContext === CompletionContextType.ClassName) {
-          // Check if cursor is inside quotes or between parens
-          const text = context.document.textDocument.getText();
-          const offset = context.offset;
-          const needsQuotes = !this.isCursorInString(text, offset);
-
-          // ALWAYS add CSS completions when in className context, regardless of next.type
-          // This ensures they're added for ALL Langium completion queries
-          this.cssCompletionProvider.provideCSSClassCompletions(
-            context,
-            classes,
-            acceptor,
-            needsQuotes
-          );
-
-          // ALWAYS return early for className context - don't let super process anything
-          // Calling super seems to clear/filter our completions
-          return;
-        } else if (cssContext === CompletionContextType.SelectorClass) {
-          this.cssCompletionProvider.provideSelectorCompletions(
-            context,
-            classes,
-            ids,
-            'class',
-            acceptor
-          );
-          // Call super with a no-op acceptor to finalize completion without adding more items
-          const noOpAcceptor = () => {
-            /* Don't add any more items */
-          };
-          return super.completionFor(context, next, noOpAcceptor);
-        } else if (cssContext === CompletionContextType.SelectorID) {
-          this.cssCompletionProvider.provideSelectorCompletions(
-            context,
-            classes,
-            ids,
-            'id',
-            acceptor
-          );
-          // Call super with a no-op acceptor to finalize completion without adding more items
-          const noOpAcceptor = () => {
-            /* Don't add any more items */
-          };
-          return super.completionFor(context, next, noOpAcceptor);
-        }
+      // CSS completion context (className parameters or selectors)
+      const cssResult = handleCssCompletion(
+        context,
+        acceptor,
+        this.services,
+        this.cssCompletionProvider
+      );
+      if (cssResult.status === 'done') {
+        return;
+      }
+      if (cssResult.status === 'finalize-noop') {
+        return super.completionFor(context, next, noOpAcceptor);
       }
 
       // NOTE: Feature 035 US3 controller completions are now handled in getCompletion() override
       // (Langium doesn't call completionFor() for string literal positions)
 
       // FEATURE 043: HTML Element Completion for createElement
-      // Check if we're in a createElement context and provide appropriate completions
-      const htmlContext = detectHTMLCompletionContext(context);
-      if (htmlContext.type !== HTMLCompletionContextType.None) {
-        if (htmlContext.type === HTMLCompletionContextType.ElementName) {
-          // Provide HTML element name completions with proper TextEdit for in-string replacement
-          const elementCompletions = this.htmlCompletionProvider.getElementNameCompletions(
-            htmlContext.partialText ?? ''
-          );
-
-          // If we have string boundaries, use TextEdit to replace string content
-          if (
-            htmlContext.stringContentStart !== undefined &&
-            htmlContext.stringContentEnd !== undefined
-          ) {
-            const range = {
-              start: context.textDocument.positionAt(htmlContext.stringContentStart),
-              end: context.textDocument.positionAt(htmlContext.stringContentEnd),
-            };
-
-            for (const item of elementCompletions) {
-              const itemWithEdit: CompletionItem = {
-                ...item,
-                textEdit: {
-                  range,
-                  newText: item.insertText ?? item.label,
-                },
-                filterText: item.label,
-              };
-              acceptor(context, itemWithEdit);
-            }
-          } else {
-            // No string boundaries (cursor between parens with no quotes) - add quotes
-            for (const item of elementCompletions) {
-              const itemWithQuotes: CompletionItem = {
-                ...item,
-                insertText: `"${item.insertText ?? item.label}"`,
-              };
-              acceptor(context, itemWithQuotes);
-            }
-          }
-          return; // Return early - we've provided all completions
-        } else if (htmlContext.type === HTMLCompletionContextType.AttributeName) {
-          // Provide attribute name completions for the element
-          const attrCompletions = this.htmlCompletionProvider.getAttributeNameCompletions(
-            htmlContext.elementName ?? '',
-            ''
-          );
-          for (const item of attrCompletions) {
-            acceptor(context, item);
-          }
-          return; // Return early
-        } else if (htmlContext.type === HTMLCompletionContextType.AttributeValue) {
-          // Provide attribute value completions for enumerated attributes with proper TextEdit
-          const valueCompletions = this.htmlCompletionProvider.getAttributeValueCompletions(
-            htmlContext.elementName ?? '',
-            htmlContext.attributeName ?? '',
-            htmlContext.partialText ?? ''
-          );
-
-          // If we have string boundaries, use TextEdit to replace string content
-          if (
-            htmlContext.stringContentStart !== undefined &&
-            htmlContext.stringContentEnd !== undefined &&
-            valueCompletions.length > 0
-          ) {
-            const range = {
-              start: context.textDocument.positionAt(htmlContext.stringContentStart),
-              end: context.textDocument.positionAt(htmlContext.stringContentEnd),
-            };
-
-            for (const item of valueCompletions) {
-              const itemWithEdit: CompletionItem = {
-                ...item,
-                textEdit: {
-                  range,
-                  newText: item.insertText ?? item.label,
-                },
-                filterText: item.label,
-              };
-              acceptor(context, itemWithEdit);
-            }
-            return;
-          }
-
-          // No string boundaries or no enum values - let default completions handle it
-          for (const item of valueCompletions) {
-            acceptor(context, item);
-          }
-          if (valueCompletions.length > 0) {
-            return;
-          }
-        }
-      }
-
-      // T044: Check if we're completing an event name in EventActionDefinition
-      // FEATURE 030 - Event Action Code Completion
-      //
-      // Scenario 2: Inside event name string (CHECK THIS FIRST - more specific)
-      // Trigger: on event "|<cursor>" or on event "cl|<cursor>"
-      //
-      // Use context detection instead of relying on next.property, since Langium
-      // may not consistently set next.property='eventName' when cursor is inside
-      // an empty string or after deleting text.
-      if (cursorContext.isInEventNameString) {
-        const eventNameCompletions = getEventNameCompletions(context);
-
-        // Get the EventActionDefinition to replace the entire line
-        const eventAction = cursorContext.eventAction;
-
-        if (!eventAction || !eventAction.$cstNode) {
-          // Fallback: provide just event names without skeleton generation
-          const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
-          const start = document.textDocument.positionAt(stringStartOffset);
-          const end = context.position;
-          const fallbackRange = { start, end };
-
-          for (const item of eventNameCompletions) {
-            const simpleItem: CompletionItem = {
-              label: item.label,
-              kind: item.kind,
-              detail: 'Event name only (no skeleton)',
-              documentation: item.documentation,
-              sortText: item.sortText,
-              textEdit: {
-                range: fallbackRange,
-                newText: item.label,
-              },
-            };
-            acceptor(context, simpleItem);
-          }
-          return;
-        }
-
-        // Calculate range INSIDE the string (for VS Code to show completions)
-        const stringStartOffset = context.tokenOffset + 1; // Skip opening quote
-        const stringStart = document.textDocument.positionAt(stringStartOffset);
-        const stringEnd = context.position;
-        const stringRange = { start: stringStart, end: stringEnd };
-
-        // Calculate range for entire EventActionDefinition (to replace with skeleton)
-        const actionStart = eventAction.$cstNode.offset;
-        const actionEnd = eventAction.$cstNode.end;
-        const actionStartPos = document.textDocument.positionAt(actionStart);
-        const actionEndPos = document.textDocument.positionAt(actionEnd);
-
-        // Add completions that replace entire EventActionDefinition with skeleton
-        // Use stringRange for filtering but replace the entire action
-        for (const item of eventNameCompletions) {
-          const fullSkeleton = item.insertText || '';
-
-          const completionItem: CompletionItem = {
-            label: item.label,
-            kind: item.kind,
-            detail: item.detail,
-            documentation: item.documentation,
-            sortText: item.sortText,
-            filterText: item.label, // Match against event name only
-            insertTextFormat: item.insertTextFormat, // Snippet format
-            // Use two separate edits: delete action, insert skeleton
-            additionalTextEdits: [
-              {
-                // Delete the entire EventActionDefinition
-                range: { start: actionStartPos, end: actionEndPos },
-                newText: '',
-              },
-              {
-                // Insert skeleton at action start (without snippet - additionalTextEdits don't support it)
-                range: { start: actionStartPos, end: actionStartPos },
-                newText: fullSkeleton.replace(/\$\d+/g, ''), // Strip snippet placeholders
-              },
-            ],
-            textEdit: {
-              // Delete string content - let additionalTextEdits handle everything
-              range: stringRange,
-              newText: '',
-            },
-          };
-          acceptor(context, completionItem);
-        }
-
-        // Call super with a NO-OP acceptor to trigger Langium's completion finalization
-        // without adding any default completions
-        const noOpAcceptor = () => {
-          /* Block all default completions */
-        };
-        return super.completionFor(context, next, noOpAcceptor);
-      }
-
-      // Scenario 1: After typing "on event" (without quotes)
-      // Trigger: on event |<cursor>
-      // Shows event names and inserts them enclosed in quotes: "event-name"
-      if (cursorContext.isAfterEventKeyword) {
-        const eventNameCompletions = getEventNameCompletions(context);
-
-        // Strip "on event " prefix from skeleton since user already typed it
-        for (const item of eventNameCompletions) {
-          const fullSkeleton = item.insertText || '';
-          // Remove "on event " prefix (9 characters)
-          const skeletonWithoutPrefix = fullSkeleton.replace(/^on event /, '');
-
-          const modifiedItem: CompletionItem = {
-            ...item,
-            insertText: skeletonWithoutPrefix,
-            insertTextFormat: item.insertTextFormat, // Preserve snippet format for $0 placeholder
-          };
-
-          acceptor(context, modifiedItem);
-        }
-
-        // Call super with a NO-OP acceptor to trigger Langium's completion finalization
-        const noOpAcceptor = () => {
-          /* Block all default completions */
-        };
-        return super.completionFor(context, next, noOpAcceptor);
-      }
-
-      // T044: Check if we're completing an event topic in EventActionDefinition
-      // Trigger: topic "|<cursor>" or topic "na|<cursor>"
-      if (next.type === 'EventActionDefinition' && next.property === 'eventTopic') {
-        const topicCompletions = getEventTopicCompletions(context);
-        for (const item of topicCompletions) {
-          acceptor(context, item);
-        }
-        // Return early - we've provided all topic completions
+      const htmlResult = handleHtmlCompletion(context, acceptor, this.htmlCompletionProvider);
+      if (htmlResult.status === 'done') {
         return;
+      }
+
+      // FEATURE 030: Event action completion (event name / keyword / topic)
+      const eventResult = handleEventCompletion(context, next, acceptor, cursorContext);
+      if (eventResult.status === 'done') {
+        return;
+      }
+      if (eventResult.status === 'finalize-noop') {
+        return super.completionFor(context, next, noOpAcceptor);
       }
 
       if (cursorContext.isInsideAction && !isInsideArguments) {
