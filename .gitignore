@@ -12,6 +12,9 @@ packages/extension/syntaxes/
 *.vsix
 /.claude/settings.local.json
 
+# serena
+.serena/
+
 # pnpm
 .pnpm-store/
 .pnpm-debug.log

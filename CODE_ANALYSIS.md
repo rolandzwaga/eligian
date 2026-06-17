@@ -4,7 +4,7 @@
 
 This report synthesizes a verified, cross-module static analysis of the Eligian DSL monorepo (language core, compiler, CSS/HTML/labels tooling, Typir type system, completion, asset loading, CLI, VS Code extension, locale editor, and shared utilities). The original deduplicated framing identified **96 distinct issues** across bugs, code-duplication clusters, and anti-patterns. The dominant theme of the report was **systemic code duplication** — the same logic (file-watcher classes, Levenshtein distance, import-path resolution, control-flow-pairing validators, `_tag` type guards, `error.hint` formatting, empty-CSS-metadata construction, AST root traversal) copy-pasted across 3-9 sites with silent behavioral drift that produced real bugs.
 
-**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the medium/low bug tail has now been drained to almost nothing — the four co-located cleanup batches closed 11 Mediums, and a follow-up `fix/bug-tail-final` batch closed **7 more bugs** (B31, B44, B52, B59 Medium; B55, B57, B61 Low) plus the phantom-test-CSS production-leak anti-pattern. **B30** was then closed by the `fix/b30-typir-double-invocation` batch — the double-invocation turned out to be our own double registration (`createEligianServices` called `registerTypirValidationChecks` a second time after `initializeLangiumTypirServices` had already registered it), so the fix removed the redundant call and deleted the symptom-masking WeakSet. **B47** — the last open bug — was then closed in the same `fix/b30-typir-double-invocation` batch: bracket-position detection was migrated from the extension host to a custom `eligian/blockLabels` LSP request (the server reuses its cached AST via `extractBlockLabels`), and the `langium/test`-parsing `block-label-detector` module was deleted, taking its singleton-services leak with it. **Every bug in this report is now fixed.** The remaining work is the **anti-pattern themes**. The mechanical, behavior-preserving slice of these — the **dead/stub-code removals** and the **`any`-typing cleanups** — was drained by the `refactor/anti-pattern-cleanup-batch-1` batch (10 bullets fixed); the two type migrations it deferred as non-mechanical — **`AssetError`→discriminated union** and **`PathResolutionResult`→`string`** — were then closed by the `refactor/deferred-type-migrations-batch-2` batch (the union gained a `LocalesImportError` member; `resolvePath` now returns a bare `string`). The **encapsulation/API-hygiene, perf-doc, unsafe-cast/silent-failure, and "other" themes** — including the whole locale-editor correctness cluster — were then drained by the `refactor/anti-pattern-tier1-encapsulation-cleanup` batch (16 bullets fixed). The `extension/main.ts` half of the god-class work — including the paired manual-FiberFailure-unwrapping cleanup in `registerCompileCommand` — was then closed by the `refactor/extension-main-god-module-decomposition` batch (compile/JSDoc/locale commands extracted into `commands/*`, `main.ts` down to 254 lines; `registerCompileCommand` now recovers the typed error via `runPromiseExit`/`Cause`). The higher-effort core — the **`EligianValidator` god-class decomposition** — was then closed by the `refactor/eligian-validator-god-class-decomposition` batch (the 3077-line monolith split into an abstract `BaseValidator` plus seven concern-grouped subclasses under `validators/`, each registered via its own `registry.register(map, instance)` call; `eligian-validator.ts` down to 199 lines as a composition root; methods moved verbatim, suite green at baseline 1995/23, coverage CI exit 0). The two previously-deferred perf items were then closed by the `perf/batch-b-getimportedactions-double-filecheck` batch (`getImportedActions` now memoizes its top-level call in a build-cycle-aware `WorkspaceCache`; the redundant top-level media file-existence stat is skipped in favor of `MediaValidator`'s own existence + is-file check). Nothing remains: **all 66 bugs, all 46 duplication clusters, and all 48 anti-pattern bullets are resolved — 160 of 160 findings fixed, 0 open.** See the status table below.
+**Current status:** the duplication track is **fully resolved** (every cluster fixed), **all High-severity bugs are fixed**, and the medium/low bug tail has now been drained to almost nothing — the four co-located cleanup batches closed 11 Mediums, and a follow-up `fix/bug-tail-final` batch closed **7 more bugs** (B31, B44, B52, B59 Medium; B55, B57, B61 Low) plus the phantom-test-CSS production-leak anti-pattern. **B30** was then closed by the `fix/b30-typir-double-invocation` batch — the double-invocation turned out to be our own double registration (`createEligianServices` called `registerTypirValidationChecks` a second time after `initializeLangiumTypirServices` had already registered it), so the fix removed the redundant call and deleted the symptom-masking WeakSet. **B47** — the last open bug — was then closed in the same `fix/b30-typir-double-invocation` batch: bracket-position detection was migrated from the extension host to a custom `eligian/blockLabels` LSP request (the server reuses its cached AST via `extractBlockLabels`), and the `langium/test`-parsing `block-label-detector` module was deleted, taking its singleton-services leak with it. **Every bug in this report is now fixed.** The remaining work is the **anti-pattern themes**. The mechanical, behavior-preserving slice of these — the **dead/stub-code removals** and the **`any`-typing cleanups** — was drained by the `refactor/anti-pattern-cleanup-batch-1` batch (10 bullets fixed); the two type migrations it deferred as non-mechanical — **`AssetError`→discriminated union** and **`PathResolutionResult`→`string`** — were then closed by the `refactor/deferred-type-migrations-batch-2` batch (the union gained a `LocalesImportError` member; `resolvePath` now returns a bare `string`). The **encapsulation/API-hygiene, perf-doc, unsafe-cast/silent-failure, and "other" themes** — including the whole locale-editor correctness cluster — were then drained by the `refactor/anti-pattern-tier1-encapsulation-cleanup` batch (16 bullets fixed). The `extension/main.ts` half of the god-class work — including the paired manual-FiberFailure-unwrapping cleanup in `registerCompileCommand` — was then closed by the `refactor/extension-main-god-module-decomposition` batch (compile/JSDoc/locale commands extracted into `commands/*`, `main.ts` down to 254 lines; `registerCompileCommand` now recovers the typed error via `runPromiseExit`/`Cause`). The higher-effort core — the **`EligianValidator` god-class decomposition** — was then closed by the `refactor/eligian-validator-god-class-decomposition` batch (the 3077-line monolith split into an abstract `BaseValidator` plus seven concern-grouped subclasses under `validators/`, each registered via its own `registry.register(map, instance)` call; `eligian-validator.ts` down to 199 lines as a composition root; methods moved verbatim, suite green at baseline 1995/23, coverage CI exit 0). The two previously-deferred perf items were then closed by the `perf/batch-b-getimportedactions-double-filecheck` batch (`getImportedActions` now memoizes its top-level call in a build-cycle-aware `WorkspaceCache`; the redundant top-level media file-existence stat is skipped in favor of `MediaValidator`'s own existence + is-file check). Nothing remains: **all 67 bugs (B67 was discovered while working follow-up item W1 and fixed on the same branch), all 46 duplication clusters, and all 48 anti-pattern bullets are resolved — 161 of 161 findings fixed, 0 open.** See the status table below.
 
 ## Summary Table — Status by Category
 
@@ -12,10 +12,12 @@ Re-tallied from the inline-numbered findings in this document (each `B`/`D` find
 
 | Category | Fixed | Open | Total |
 |---|---|---|---|
-| Bug | 66 | 0 | 66 |
+| Bug | 67 | 0 | 67 |
 | Duplication | 46 | 0 | 46 |
 | Anti-pattern | 48 | 0 | 48 |
-| **Total** | **160** | **0** | **160** |
+| **Total** | **161** | **0** | **161** |
+
+> **B67** (added 2026-06-17) is a newly-discovered Medium bug found while working follow-up item **W1** — the Timeline validators threw / emitted a spurious diagnostic on a partially-parsed timeline missing its container selector. Fixed on the same branch as W1. See its entry under Medium Severity.
 
 **Open bugs by severity** — **none. Every bug in this report is now fixed.**
 
@@ -408,6 +410,13 @@ Called as `validateGroupId(group.id, groupIds, group.id)`; the check `existingId
 **Fix:** Pick one semantic. The accumulate-without-clearing pattern is correct for multi-document tracking; change `css-watcher` to match (clear only in `dispose()`/`clearDocumentMappings()`). This is the canonical behavioral bug exposed by the watcher-class duplication cluster (D1).
 
 ### Medium Severity
+
+#### B67. Timeline validators crash / emit spurious diagnostic on a container-selector-less partial parse
+> ✅ **FIXED** — branch `refactor/w1-operation-call-validator-decomposition` (guarded both Timeline selector validators against an undefined `containerSelector`; added a regression test in `typir-timeline-config.spec.ts`)
+**Severity:** Medium
+**Locations:** [type-system-typir/validation/timeline-validation.ts:119](packages/language/src/type-system-typir/validation/timeline-validation.ts#L119), [validators/timeline-validator.ts:82](packages/language/src/validators/timeline-validator.ts#L82)
+`containerSelector=STRING` is mandatory in the grammar, so the generated `Timeline` type declares `containerSelector: string`. But Langium's error-recovery produces partial `Timeline` nodes (e.g. while a document is mid-edit: `timeline "x" in using raf { }`) where `containerSelector` is `undefined` at runtime. The Typir rule then called `selector.trim()` and threw `TypeError: Cannot read properties of undefined (reading 'trim')`; Langium's `handleException` swallowed it (no crash, tests stayed green — it surfaced only as stderr noise), but the throw **aborted the rest of the Timeline Typir rule**, so the provider-source and empty-timeline diagnostics for that node were silently lost. The parallel Langium validator (`checkTimelineContainerSelector`) didn't throw — `parseSelector` swallows it — but emitted a spurious `invalid_css_selector_syntax` error on the incomplete node.
+**Fix:** Skip the CSS-selector check when `containerSelector === undefined` in both validators (the missing token is already reported as a syntax error). Locked in with a regression test asserting an incomplete timeline yields neither a leaked-crash diagnostic nor a spurious selector diagnostic.
 
 #### B24. `checkRecursiveActionCalls` DFS has no global visited set (exponential blowup)
 > ✅ **FIXED** — branch `fix/medium-bug-tail-batches` (added a finished-node `visited: Set<string>` to the DFS — white/gray/black coloring where `chain` is the recursion stack and `visited` is the completed set — so a node reachable via N paths is explored once; cycle detection and reporting are preserved, and duplicate diagnostics for diamond-reachable cycles are deduplicated)
@@ -1082,7 +1091,9 @@ all. They are recorded here so they can be turned into tasks later; none is a
 correctness defect, all are size/maintainability concerns. Verify line counts
 before scheduling — they drift.
 
-### W1. `operation-call-validator.ts` is a new god class (~1038 lines)
+**Status:** W1 ✅ FIXED (see below). W2 and W3 remain open.
+
+### W1. `operation-call-validator.ts` is a new god class (~1038 lines) — ✅ FIXED
 **Location:** [operation-call-validator.ts](packages/language/src/validators/operation-call-validator.ts)
 The `EligianValidator` decomposition (god-class anti-pattern, ✅ FIXED) split the
 3077-line monolith into seven concern-grouped sub-validators. One of them,
@@ -1093,6 +1104,33 @@ than several files that *were* flagged. **Suggested task:** split by check famil
 collaborating validators or free functions, keeping the one registered class as a
 thin delegator. Lower priority than the original because responsibility is already
 focused (one AST node type) and it is independently testable.
+
+**Fixed** on branch **`refactor/w1-operation-call-validator-decomposition`** (verified:
+`pnpm exec tsgo --noEmit` clean for the language package, `pnpm run check` clean — only
+the 4 pre-existing `useOptionalChain` warnings remain in the untouched
+`eligian-scope-provider.ts` — full language suite green at 2005 passed/23 skipped,
+`test:coverage:ci` exit 0 with the new `validators/operation-call/` dir at ~84% lines /
+96% funcs, full `pnpm run build` clean). The 1038-line monolith was split by check
+family into four collaborating sub-validators under a new
+[validators/operation-call/](packages/language/src/validators/operation-call/) directory,
+each extending `BaseValidator` and independently testable:
+- **`operation-existence-validator.ts`** — `checkOperationExists` + the unified-syntax
+  `checkTimelineOperationCall` (with its private `isDirectTimelineCall`/`isDescendantOf`).
+- **`parameter-validator.ts`** — `checkParameterCount`/`checkParameterTypes`/`checkDependencies`
+  + private `reportActionParameterCountError` (D28).
+- **`css-parameter-validator.ts`** — `checkClassNameParameter`/`checkSelectorParameter` (Feature 013).
+- **`label-parameter-validator.ts`** — `checkControllerCall`/`checkLabelIDParameter` + the lazy
+  labels-import registration state (`initializedLabelDocuments`/`ensureLabelsImportsRegistered`)
+  and the `reportLabelIDError` D29 helper.
+
+The shared `findImportedActionByNameOrAlias` action-resolution helper (used by both the
+existence and parameter families) was extracted to a free function in
+[validators/operation-call/action-resolution.ts](packages/language/src/validators/operation-call/action-resolution.ts).
+`operation-call-validator.ts` is now a **72-line thin delegator**: it keeps the single
+registered DI surface (`services.validation.EligianValidator.operationCall`), constructs the
+four collaborators, and forwards each registered method one line, so the `OperationCall`
+check map in `registerValidationChecks` is unchanged. All method bodies moved verbatim —
+pure behavior-preserving refactor.
 
 ### W2. `ast-transformer.ts` is the largest file in the repo (~2535 lines)
 **Location:** [ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts)

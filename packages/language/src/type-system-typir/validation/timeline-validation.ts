@@ -116,7 +116,13 @@ export function registerTimelineValidation(typir: TypirLangiumServices<EligianSp
       }
 
       // Rule 2: Container selector syntax
-      if (!isValidCSSSelector(node.containerSelector)) {
+      // Guard against incomplete parses: `containerSelector` is mandatory in the
+      // grammar (so the generated type is `string`), but Langium error-recovery
+      // yields partial Timeline nodes with an undefined selector while the
+      // document is mid-edit. The missing token is already a syntax error, so we
+      // skip the CSS check here instead of throwing inside the validation rule
+      // (which would abort the remaining Timeline diagnostics for this node).
+      if (node.containerSelector !== undefined && !isValidCSSSelector(node.containerSelector)) {
         accept({
           severity: 'error',
           message: `Invalid CSS selector: '${node.containerSelector}'. Expected a CSS selector such as #id, .class, element, or a combination (e.g. '#app .container')`,
