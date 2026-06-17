@@ -195,54 +195,48 @@ const extractDocumentErrors = (
   document: LangiumDocument,
   hints: DocumentErrorHints
 ): Effect.Effect<void, ParseError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     if (document.parseResult.lexerErrors.length > 0) {
       const error = document.parseResult.lexerErrors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: `${hints.lexerMessagePrefix}${error.message}`,
-          location: {
-            line: error.line ?? 1,
-            column: error.column ?? 1,
-            length: error.length ?? 0,
-          },
-          hint: hints.lexerHint,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: `${hints.lexerMessagePrefix}${error.message}`,
+        location: {
+          line: error.line ?? 1,
+          column: error.column ?? 1,
+          length: error.length ?? 0,
+        },
+        hint: hints.lexerHint,
+      });
     }
 
     if (document.parseResult.parserErrors.length > 0) {
       const error = document.parseResult.parserErrors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: error.message,
-          location: {
-            line: error.token.startLine ?? 1,
-            column: error.token.startColumn ?? 1,
-            length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
-          },
-          hint: hints.parserHint,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: error.message,
+        location: {
+          line: error.token.startLine ?? 1,
+          column: error.token.startColumn ?? 1,
+          length: error.token.endOffset ? error.token.endOffset - error.token.startOffset : 0,
+        },
+        hint: hints.parserHint,
+      });
     }
 
     if (document.diagnostics && document.diagnostics.length > 0) {
       const error = document.diagnostics[0];
       const range = error.range;
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: error.message,
-          location: {
-            line: range.start.line + 1, // Langium is 0-based
-            column: range.start.character + 1,
-            length: range.end.character - range.start.character,
-          },
-          hint: hints.diagnosticHint,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: error.message,
+        location: {
+          line: range.start.line + 1, // Langium is 0-based
+          column: range.start.character + 1,
+          length: range.end.character - range.start.character,
+        },
+        hint: hints.diagnosticHint,
+      });
     }
   });
 
@@ -258,7 +252,7 @@ const extractDocumentErrors = (
  * after parsing to prevent memory leaks.
  */
 export const parseSource = (source: string, uri?: string): Effect.Effect<Program, ParseError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // Generate unique URI if not provided
     const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
     const documentUri = URI.parse(uriString);
@@ -272,33 +266,27 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
       const services = getOrCreateServices();
 
       // Create main document
-      mainDocument = yield* _(
-        Effect.sync(() =>
-          services.shared.workspace.LangiumDocumentFactory.fromString<Program>(source, documentUri)
-        )
+      mainDocument = yield* Effect.sync(() =>
+        services.shared.workspace.LangiumDocumentFactory.fromString<Program>(source, documentUri)
       );
 
       // Quick parse to extract imports (no linking/validation yet)
-      yield* _(
-        Effect.promise(() =>
-          services.shared.workspace.DocumentBuilder.build([mainDocument!], {
-            validation: false,
-          })
-        )
+      yield* Effect.promise(() =>
+        services.shared.workspace.DocumentBuilder.build([mainDocument!], {
+          validation: false,
+        })
       );
 
       const tempProgram = mainDocument.parseResult.value;
 
       // Check if user tried to compile a library file directly
       if (isLibrary(tempProgram as any)) {
-        return yield* _(
-          Effect.fail({
-            _tag: 'ParseError' as const,
-            message: 'Cannot compile library files directly',
-            location: { line: 1, column: 1, length: 0 },
-            hint: 'Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.',
-          })
-        );
+        return yield* Effect.fail({
+          _tag: 'ParseError' as const,
+          message: 'Cannot compile library files directly',
+          location: { line: 1, column: 1, length: 0 },
+          hint: 'Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.',
+        });
       }
 
       const importPaths = extractLibraryImports(tempProgram);
@@ -308,7 +296,7 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
         const libraryUri = resolveLibraryPath(documentUri, importPath);
 
         // Recursively load library and all its dependencies with cycle detection
-        const nestedLibraries = yield* _(loadLibraryRecursive(libraryUri, documentUri));
+        const nestedLibraries = yield* loadLibraryRecursive(libraryUri, documentUri);
 
         // Add all nested libraries to the collection (avoiding duplicates)
         for (const libDoc of nestedLibraries) {
@@ -329,137 +317,128 @@ export const parseSource = (source: string, uri?: string): Effect.Effect<Program
       // 1. All docs reach IndexedContent (exports visible)
       // 2. Then all docs reach Linked (imports resolved)
       // Without this, main doc tries to link before libraries are indexed
-      yield* _(
-        Effect.promise(() =>
-          services.shared.workspace.DocumentBuilder.build([mainDocument!, ...libraryDocuments], {
-            validation: false,
-          })
-        )
+      yield* Effect.promise(() =>
+        services.shared.workspace.DocumentBuilder.build([mainDocument!, ...libraryDocuments], {
+          validation: false,
+        })
       );
     }
 
     // Wrap Langium parsing in Effect.tryPromise
-    const result = yield* _(
-      Effect.tryPromise({
-        try: async () => {
-          // Reuse shared Langium services (singleton pattern)
-          const services = getOrCreateServices();
+    const result = yield* Effect.tryPromise({
+      try: async () => {
+        // Reuse shared Langium services (singleton pattern)
+        const services = getOrCreateServices();
 
-          // EXPLICIT STATE RESET: Clear CSS registry for this document before parsing
-          // Why: Singleton service retains state between compilations (state pollution)
-          // Effect: Ensures each compilation is independent and deterministic
-          if (uri) {
-            services.Eligian.css.CSSRegistry.clearDocument(uriString);
+        // EXPLICIT STATE RESET: Clear CSS registry for this document before parsing
+        // Why: Singleton service retains state between compilations (state pollution)
+        // Effect: Ensures each compilation is independent and deterministic
+        if (uri) {
+          services.Eligian.css.CSSRegistry.clearDocument(uriString);
+        }
+
+        // Reuse main document if libraries were loaded, otherwise create new one
+        const document =
+          mainDocument ||
+          services.shared.workspace.LangiumDocumentFactory.fromString<Program>(source, documentUri);
+
+        // Build document (will be a no-op if already built from library loading)
+        await services.shared.workspace.DocumentBuilder.build([document], {
+          validation: false,
+        });
+
+        // CRITICAL: CSS files MUST be loaded BEFORE validateDocument() call
+        // Why: Validators (e.g., CSS class validation) require CSS registry to be populated
+        // Order: parse → load CSS → validate (no race condition, synchronous execution)
+        // This synchronous ordering ensures IDE and compiler validation produce identical results
+        // Accept both file:// URIs and absolute file paths
+
+        const cssRegistry = services.Eligian.css.CSSRegistry;
+
+        // For test documents (no URI provided), CSS imports are automatically registered
+        // by ensureCSSImportsRegistered in the validator, which resolves "./styles.css"
+        // to "file:///memory/styles.css" based on the document's directory.
+        // No manual registration needed here.
+
+        if (uri) {
+          const root = document.parseResult.value;
+
+          // Extract CSS imports from AST
+          const cssFiles: string[] = [];
+          for (const statement of root.statements) {
+            if (isDefaultImport(statement) && statement.type === 'styles') {
+              if (!statement.path) {
+                continue;
+              }
+              const cssPath = statement.path.replace(/^["']|["']$/g, '');
+              cssFiles.push(cssPath);
+            }
           }
 
-          // Reuse main document if libraries were loaded, otherwise create new one
-          const document =
-            mainDocument ||
-            services.shared.workspace.LangiumDocumentFactory.fromString<Program>(
-              source,
-              documentUri
-            );
+          // Parse each CSS file and load into registry
+          const docPath = documentUri.fsPath;
+          const docDir = path.dirname(docPath);
+          const cssFileUris: string[] = [];
+          for (const cssRelativePath of cssFiles) {
+            // Convert relative path to absolute (D4: shared resolution,
+            // path.join handles ./, ., ../). Computed once for both branches.
+            const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
+            // Convert to absolute URI (must match validator format)
+            const cssFileUri = URI.file(cssFilePath).toString();
+            cssFileUris.push(cssFileUri);
 
-          // Build document (will be a no-op if already built from library loading)
-          await services.shared.workspace.DocumentBuilder.build([document], {
-            validation: false,
-          });
+            try {
+              // Read and parse CSS file
+              const cssContent = readFileSync(cssFilePath, 'utf-8');
+              const parseResult = parseCSS(cssContent, cssFilePath);
 
-          // CRITICAL: CSS files MUST be loaded BEFORE validateDocument() call
-          // Why: Validators (e.g., CSS class validation) require CSS registry to be populated
-          // Order: parse → load CSS → validate (no race condition, synchronous execution)
-          // This synchronous ordering ensures IDE and compiler validation produce identical results
-          // Accept both file:// URIs and absolute file paths
-
-          const cssRegistry = services.Eligian.css.CSSRegistry;
-
-          // For test documents (no URI provided), CSS imports are automatically registered
-          // by ensureCSSImportsRegistered in the validator, which resolves "./styles.css"
-          // to "file:///memory/styles.css" based on the document's directory.
-          // No manual registration needed here.
-
-          if (uri) {
-            const root = document.parseResult.value;
-
-            // Extract CSS imports from AST
-            const cssFiles: string[] = [];
-            for (const statement of root.statements) {
-              if (isDefaultImport(statement) && statement.type === 'styles') {
-                if (!statement.path) {
-                  continue;
-                }
-                const cssPath = statement.path.replace(/^["']|["']$/g, '');
-                cssFiles.push(cssPath);
-              }
+              // Update registry with parsed CSS
+              cssRegistry.updateCSSFile(cssFileUri, parseResult);
+            } catch (error) {
+              // Register error in registry
+              cssRegistry.updateCSSFile(
+                cssFileUri,
+                createEmptyCSSMetadata([
+                  {
+                    message: error instanceof Error ? error.message : 'Unknown error',
+                    filePath: cssFileUri,
+                    line: 0,
+                    column: 0,
+                  },
+                ])
+              );
             }
-
-            // Parse each CSS file and load into registry
-            const docPath = documentUri.fsPath;
-            const docDir = path.dirname(docPath);
-            const cssFileUris: string[] = [];
-            for (const cssRelativePath of cssFiles) {
-              // Convert relative path to absolute (D4: shared resolution,
-              // path.join handles ./, ., ../). Computed once for both branches.
-              const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
-              // Convert to absolute URI (must match validator format)
-              const cssFileUri = URI.file(cssFilePath).toString();
-              cssFileUris.push(cssFileUri);
-
-              try {
-                // Read and parse CSS file
-                const cssContent = readFileSync(cssFilePath, 'utf-8');
-                const parseResult = parseCSS(cssContent, cssFilePath);
-
-                // Update registry with parsed CSS
-                cssRegistry.updateCSSFile(cssFileUri, parseResult);
-              } catch (error) {
-                // Register error in registry
-                cssRegistry.updateCSSFile(
-                  cssFileUri,
-                  createEmptyCSSMetadata([
-                    {
-                      message: error instanceof Error ? error.message : 'Unknown error',
-                      filePath: cssFileUri,
-                      line: 0,
-                      column: 0,
-                    },
-                  ])
-                );
-              }
-            }
-
-            // CRITICAL FIX: Register document→CSS mapping (enables validation!)
-            // Without this, cssRegistry.getClassesForDocument() returns empty set
-            cssRegistry.registerImports(uriString, cssFileUris);
-            // DEBUG: Check CSS registry state
           }
 
-          // Now run validation with CSS loaded
-          document.diagnostics =
-            await services.Eligian.validation.DocumentValidator.validateDocument(document);
+          // CRITICAL FIX: Register document→CSS mapping (enables validation!)
+          // Without this, cssRegistry.getClassesForDocument() returns empty set
+          cssRegistry.registerImports(uriString, cssFileUris);
+          // DEBUG: Check CSS registry state
+        }
 
-          return document;
-        },
-        catch: error => ({
-          _tag: 'ParseError' as const,
-          message: error instanceof Error ? error.message : String(error),
-          location: { line: 1, column: 1, length: 0 },
-          hint: 'Unexpected error during parsing',
-        }),
-      })
-    );
+        // Now run validation with CSS loaded
+        document.diagnostics =
+          await services.Eligian.validation.DocumentValidator.validateDocument(document);
+
+        return document;
+      },
+      catch: error => ({
+        _tag: 'ParseError' as const,
+        message: error instanceof Error ? error.message : String(error),
+        location: { line: 1, column: 1, length: 0 },
+        hint: 'Unexpected error during parsing',
+      }),
+    });
 
     const document = result;
 
     // Check for lexer / parser / semantic-validation errors
-    yield* _(
-      extractDocumentErrors(document, {
-        lexerMessagePrefix: 'Lexer error: ',
-        lexerHint: 'Check for invalid characters or tokens',
-        parserHint: 'Check syntax against Eligian grammar',
-        diagnosticHint: 'Semantic validation failed',
-      })
-    );
+    yield* extractDocumentErrors(document, {
+      lexerMessagePrefix: 'Lexer error: ',
+      lexerHint: 'Check for invalid characters or tokens',
+      parserHint: 'Check syntax against Eligian grammar',
+      diagnosticHint: 'Semantic validation failed',
+    });
 
     // Return parsed AST
     return document.parseResult.value;
@@ -485,24 +464,22 @@ export const compile = (
   source: string,
   options: CompileOptions = {}
 ): Effect.Effect<IEngineConfiguration, CompileError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // T076: Parse source to AST
-    const program = yield* _(parseSource(source, options.sourceUri));
+    const program = yield* parseSource(source, options.sourceUri);
 
     // Check if user tried to compile a library file directly
     if (isLibrary(program as any)) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: 'Cannot compile library files directly',
-          location: { line: 1, column: 1, length: 0 },
-          hint: 'Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.',
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: 'Cannot compile library files directly',
+        location: { line: 1, column: 1, length: 0 },
+        hint: 'Library files must be imported by a main program. Create a .eligian file with an "import" statement to use this library.',
+      });
     }
 
     // T077: Validate AST (no-op, done during parsing - libraries already loaded in parseSource)
-    const validatedProgram = yield* _(validateAST(program));
+    const validatedProgram = yield* validateAST(program);
 
     // Load assets (layout HTML, CSS files, media) if sourceUri is provided
     let assets: AssetLoadingResult | undefined;
@@ -511,16 +488,16 @@ export const compile = (
     }
 
     // T050-T059: Transform AST to IR
-    const ir = yield* _(transformAST(validatedProgram, assets));
+    const ir = yield* transformAST(validatedProgram, assets);
 
     // T060-T064: Type check IR
-    const typedIR = yield* _(typeCheck(ir));
+    const typedIR = yield* typeCheck(ir);
 
     // T065-T069: Optimize IR (if enabled)
-    const optimizedIR = options.optimize !== false ? yield* _(optimize(typedIR)) : typedIR;
+    const optimizedIR = options.optimize !== false ? yield* optimize(typedIR) : typedIR;
 
     // T070-T075: Emit JSON configuration
-    const config = yield* _(emitJSON(optimizedIR));
+    const config = yield* emitJSON(optimizedIR);
 
     return config;
   });
@@ -544,8 +521,8 @@ export const compileToJSON = (
   source: string,
   options: CompileOptions = {}
 ): Effect.Effect<string, CompileError> =>
-  Effect.gen(function* (_) {
-    const config = yield* _(compile(source, options));
+  Effect.gen(function* () {
+    const config = yield* compile(source, options);
 
     // Serialize to JSON (minified or pretty)
     const json = options.minify ? JSON.stringify(config) : JSON.stringify(config, null, 2);
@@ -563,21 +540,21 @@ export const compileToIR = (
   source: string,
   options: CompileOptions = {}
 ): Effect.Effect<EligiusIR, ParseError | TransformError | TypeError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // Parse source to AST
-    const program = yield* _(parseSource(source));
+    const program = yield* parseSource(source);
 
     // Validate AST
-    const validatedProgram = yield* _(validateAST(program));
+    const validatedProgram = yield* validateAST(program);
 
     // Transform AST to IR
-    const ir = yield* _(transformAST(validatedProgram));
+    const ir = yield* transformAST(validatedProgram);
 
     // Type check IR
-    const typedIR = yield* _(typeCheck(ir));
+    const typedIR = yield* typeCheck(ir);
 
     // Optimize IR (if enabled)
-    const optimizedIR = options.optimize !== false ? yield* _(optimize(typedIR)) : typedIR;
+    const optimizedIR = options.optimize !== false ? yield* optimize(typedIR) : typedIR;
 
     return optimizedIR;
   });
@@ -696,7 +673,7 @@ export function parseLibraryDocument(
   content: string,
   libraryUri: URI
 ): Effect.Effect<Library, ParseError> {
-  return Effect.gen(function* (_) {
+  return Effect.gen(function* () {
     // Reuse the shared Langium services
     const services = getOrCreateServices();
 
@@ -716,49 +693,43 @@ export function parseLibraryDocument(
 
     // Build document (parse only, NO validation yet)
     // Feature 032 US3: Validation happens later after all nested libraries are loaded
-    yield* _(
-      Effect.tryPromise({
-        try: async () => {
-          await services.shared.workspace.DocumentBuilder.build([document], {
-            validation: false,
-          });
+    yield* Effect.tryPromise({
+      try: async () => {
+        await services.shared.workspace.DocumentBuilder.build([document], {
+          validation: false,
+        });
 
-          // CRITICAL: Add document to workspace so it's accessible for cross-references
-          // This ensures the scope provider can find actions from this library
-          services.shared.workspace.LangiumDocuments.addDocument(document);
+        // CRITICAL: Add document to workspace so it's accessible for cross-references
+        // This ensures the scope provider can find actions from this library
+        services.shared.workspace.LangiumDocuments.addDocument(document);
 
-          return document;
-        },
-        catch: error => ({
-          _tag: 'ParseError' as const,
-          message: `Failed to parse library document: ${error instanceof Error ? error.message : String(error)}`,
-          location: { line: 1, column: 1, length: 0 },
-          hint: 'Check library file syntax',
-        }),
-      })
-    );
+        return document;
+      },
+      catch: error => ({
+        _tag: 'ParseError' as const,
+        message: `Failed to parse library document: ${error instanceof Error ? error.message : String(error)}`,
+        location: { line: 1, column: 1, length: 0 },
+        hint: 'Check library file syntax',
+      }),
+    });
 
     // Check for lexer / parser / semantic-validation errors
-    yield* _(
-      extractDocumentErrors(document, {
-        lexerMessagePrefix: 'Lexer error in library: ',
-        lexerHint: `In library file: ${libraryUri.fsPath}`,
-        parserHint: `In library file: ${libraryUri.fsPath}`,
-        diagnosticHint: `In library file: ${libraryUri.fsPath}`,
-      })
-    );
+    yield* extractDocumentErrors(document, {
+      lexerMessagePrefix: 'Lexer error in library: ',
+      lexerHint: `In library file: ${libraryUri.fsPath}`,
+      parserHint: `In library file: ${libraryUri.fsPath}`,
+      diagnosticHint: `In library file: ${libraryUri.fsPath}`,
+    });
 
     // Validate that parsed content is a Library, not a Program
     const root: any = document.parseResult.value;
     if (!isLibrary(root)) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: `File is not a library (found ${root.$type || 'unknown'} instead)`,
-          location: { line: 1, column: 1, length: 0 },
-          hint: `Library files must start with "library <name>". File: ${libraryUri.fsPath}`,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: `File is not a library (found ${root.$type || 'unknown'} instead)`,
+        location: { line: 1, column: 1, length: 0 },
+        hint: `Library files must start with "library <name>". File: ${libraryUri.fsPath}`,
+      });
     }
 
     return root;
@@ -788,7 +759,7 @@ function loadLibraryRecursive(
   _documentUri: URI,
   loadingStack: Set<string> = new Set()
 ): Effect.Effect<LangiumDocument[], ParseError> {
-  return Effect.gen(function* (_) {
+  return Effect.gen(function* () {
     const uriPath = libraryUri.fsPath;
 
     // T029: Circular dependency detection
@@ -798,14 +769,12 @@ function loadLibraryRecursive(
       chain.push(uriPath);
       const cycleChain = chain.join(' → ');
 
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: `Circular dependency detected: ${cycleChain}`,
-          location: { line: 1, column: 1, length: 0 },
-          hint: 'Remove circular import to break the cycle',
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: `Circular dependency detected: ${cycleChain}`,
+        location: { line: 1, column: 1, length: 0 },
+        hint: 'Remove circular import to break the cycle',
+      });
     }
 
     // Add current library to loading stack
@@ -813,23 +782,21 @@ function loadLibraryRecursive(
     newStack.add(uriPath);
 
     // Load library file content
-    const content = yield* _(loadLibraryFile(libraryUri));
+    const content = yield* loadLibraryFile(libraryUri);
 
     // Parse library document
-    const library = yield* _(parseLibraryDocument(content, libraryUri));
+    const library = yield* parseLibraryDocument(content, libraryUri);
 
     // Get library document from workspace
     const services = getOrCreateServices();
     const libDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
     if (!libDoc) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'ParseError' as const,
-          message: `Failed to retrieve library document from workspace: ${uriPath}`,
-          location: { line: 1, column: 1, length: 0 },
-          hint: 'Internal error - library was parsed but not added to workspace',
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'ParseError' as const,
+        message: `Failed to retrieve library document from workspace: ${uriPath}`,
+        location: { line: 1, column: 1, length: 0 },
+        hint: 'Internal error - library was parsed but not added to workspace',
+      });
     }
 
     // Collect all library documents (self + dependencies)
@@ -843,9 +810,7 @@ function loadLibraryRecursive(
       const nestedLibraryUri = resolveLibraryPath(libraryUri, importPath);
 
       // Recursively load nested library and its dependencies
-      const nestedLibraries = yield* _(
-        loadLibraryRecursive(nestedLibraryUri, libraryUri, newStack)
-      );
+      const nestedLibraries = yield* loadLibraryRecursive(nestedLibraryUri, libraryUri, newStack);
 
       allLibraries.push(...nestedLibraries);
     }

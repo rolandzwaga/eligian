@@ -21,60 +21,52 @@ import type { EligiusIR } from './types/eligius-ir.js';
  * Returns the IR unchanged if all checks pass, or fails with TypeError.
  */
 export const typeCheck = (ir: EligiusIR): Effect.Effect<EligiusIR, TypeError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // T283: Validate configuration basics
     // Access ir.config (IEngineConfiguration) and ir.sourceMap for locations
 
     // Validate configuration id
     if (typeof ir.config.id !== 'string' || ir.config.id.length === 0) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TypeError' as const,
-          message: 'Configuration id must be a non-empty string',
-          location: ir.sourceMap.root,
-          expected: 'string',
-          actual: typeof ir.config.id,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TypeError' as const,
+        message: 'Configuration id must be a non-empty string',
+        location: ir.sourceMap.root,
+        expected: 'string',
+        actual: typeof ir.config.id,
+      });
     }
 
     // Validate containerSelector
     if (typeof ir.config.containerSelector !== 'string') {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TypeError' as const,
-          message: 'containerSelector must be a string',
-          location: ir.sourceMap.root,
-          expected: 'string',
-          actual: typeof ir.config.containerSelector,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TypeError' as const,
+        message: 'containerSelector must be a string',
+        location: ir.sourceMap.root,
+        expected: 'string',
+        actual: typeof ir.config.containerSelector,
+      });
     }
 
     // Validate language
     if (typeof ir.config.language !== 'string') {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TypeError' as const,
-          message: 'language must be a string',
-          location: ir.sourceMap.root,
-          expected: 'string',
-          actual: typeof ir.config.language,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TypeError' as const,
+        message: 'language must be a string',
+        location: ir.sourceMap.root,
+        expected: 'string',
+        actual: typeof ir.config.language,
+      });
     }
 
     // Validate timelines exist
     if (!Array.isArray(ir.config.timelines) || ir.config.timelines.length === 0) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TypeError' as const,
-          message: 'Configuration must have at least one timeline',
-          location: ir.sourceMap.root,
-          expected: 'non-empty array',
-          actual: `array with ${ir.config.timelines?.length || 0} elements`,
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TypeError' as const,
+        message: 'Configuration must have at least one timeline',
+        location: ir.sourceMap.root,
+        expected: 'non-empty array',
+        actual: `array with ${ir.config.timelines?.length || 0} elements`,
+      });
     }
 
     // If all checks pass, return the IR unchanged

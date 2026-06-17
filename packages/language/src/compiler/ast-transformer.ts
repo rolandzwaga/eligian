@@ -186,7 +186,7 @@ function resolveImports(
   program: Program,
   visited: Set<string> = new Set()
 ): Effect.Effect<ActionDefinition[], TransformError, never> {
-  return Effect.gen(function* (_) {
+  return Effect.gen(function* () {
     const libraryImports = getLibraryImports(program);
     const importedActions: ActionDefinition[] = [];
 
@@ -202,8 +202,10 @@ function resolveImports(
         const resolved = resolveLibraryDocument(currentUri, libraryImport.path, visited);
         if (resolved) {
           // Recursively collect actions from library's imports
-          const nestedActions = yield* _(
-            resolveLibraryImports(resolved.library, visited, resolved.uri)
+          const nestedActions = yield* resolveLibraryImports(
+            resolved.library,
+            visited,
+            resolved.uri
           );
           importedActions.push(...nestedActions);
         }
@@ -249,7 +251,7 @@ function resolveLibraryImports(
   visited: Set<string>,
   libraryUri: URI
 ): Effect.Effect<ActionDefinition[], TransformError, never> {
-  return Effect.gen(function* (_) {
+  return Effect.gen(function* () {
     const importedActions: ActionDefinition[] = [];
 
     // Mark this library as visited
@@ -268,9 +270,7 @@ function resolveLibraryImports(
       const nestedLibrary = resolved.library;
 
       // Recursively collect actions from nested library's imports
-      const transitiveActions = yield* _(
-        resolveLibraryImports(nestedLibrary, visited, resolved.uri)
-      );
+      const transitiveActions = yield* resolveLibraryImports(nestedLibrary, visited, resolved.uri);
       importedActions.push(...transitiveActions);
 
       // Feature 032 US3: Add ALL actions from the nested library
@@ -298,7 +298,7 @@ export const transformAST = (
   program: Program,
   assets?: import('../asset-loading/compiler-integration.js').AssetLoadingResult
 ): Effect.Effect<EligiusIR, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // CONSTANT FOLDING (T008): Build constant map FIRST
     // This map will be used throughout transformation to inline constant values.
     // B3: kept local and threaded through scopes (no module-level state) so
@@ -308,14 +308,12 @@ export const transformAST = (
     // Find all timelines (validation ensures at least one exists)
     const timelineNodes = getTimelines(program);
     if (timelineNodes.length === 0) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'InvalidTimeline' as const,
-          message: 'No timeline found in program',
-          location: getSourceLocation(program),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidTimeline' as const,
+        message: 'No timeline found in program',
+        location: getSourceLocation(program),
+      });
     }
 
     // Extract program-level variable declarations (T182: Global variables)
@@ -331,7 +329,7 @@ export const transformAST = (
 
       // Add regular variable declarations (non-constants)
       for (const varDecl of variableDeclarations) {
-        const value = yield* _(transformExpression(varDecl.value, createEmptyScope(constantMap)));
+        const value = yield* transformExpression(varDecl.value, createEmptyScope(constantMap));
         properties[`globaldata.${varDecl.name}`] = value;
       }
 
@@ -365,7 +363,7 @@ export const transformAST = (
     const localActions = getActions(program);
 
     // T044/T045: Resolve library imports and collect imported actions (with aliases applied)
-    const importedActions = yield* _(resolveImports(program));
+    const importedActions = yield* resolveImports(program);
 
     // Merge imported and local actions - imported actions come first, then local actions
     // This ensures local actions can override imported ones if there are name conflicts
@@ -375,8 +373,11 @@ export const transformAST = (
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
     for (const actionDef of actionDefinitions) {
-      const action = yield* _(
-        transformActionDefinition(actionDef, program, actionDefinitions, constantMap)
+      const action = yield* transformActionDefinition(
+        actionDef,
+        program,
+        actionDefinitions,
+        constantMap
       );
       actions.push(action);
     }
@@ -384,15 +385,18 @@ export const transformAST = (
     const eventActionNodes = getEventActions(program);
     const eventActions: IEventActionConfiguration[] = [];
     for (const eventActionDef of eventActionNodes) {
-      const eventAction = yield* _(transformEventAction(eventActionDef, constantMap));
+      const eventAction = yield* transformEventAction(eventActionDef, constantMap);
       eventActions.push(eventAction);
     }
 
     // Build TimelineConfigIR from all timeline nodes
     const timelines: TimelineConfigIR[] = [];
     for (const timelineNode of timelineNodes) {
-      const timelineConfig = yield* _(
-        buildTimelineConfig(timelineNode, program, actionDefinitions, constantMap)
+      const timelineConfig = yield* buildTimelineConfig(
+        timelineNode,
+        program,
+        actionDefinitions,
+        constantMap
       );
       timelines.push(timelineConfig);
     }
@@ -802,7 +806,7 @@ const buildTimelineConfig = (
   allActions: ActionDefinition[],
   programConstants: ConstantMap
 ): Effect.Effect<TimelineConfigIR, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // T189/T190: Transform timeline events to TimelineActionIR with relative time support
     // Track previous event end time for relative time expressions and sequence blocks
     const timelineActions: TimelineActionIR[] = [];
@@ -812,8 +816,12 @@ const buildTimelineConfig = (
       // T190/T192: Check event type (sequence, stagger, or timed)
       if (event.$type === 'SequenceBlock') {
         // Transform sequence block into multiple timeline actions
-        const sequenceActions = yield* _(
-          transformSequenceBlock(event, previousEventEndTime, program, allActions, programConstants)
+        const sequenceActions = yield* transformSequenceBlock(
+          event,
+          previousEventEndTime,
+          program,
+          allActions,
+          programConstants
         );
         timelineActions.push(...sequenceActions);
 
@@ -827,8 +835,12 @@ const buildTimelineConfig = (
         }
       } else if (event.$type === 'StaggerBlock') {
         // T192: Transform stagger block into multiple timeline actions with incremental delays
-        const staggerActions = yield* _(
-          transformStaggerBlock(event, previousEventEndTime, program, allActions, programConstants)
+        const staggerActions = yield* transformStaggerBlock(
+          event,
+          previousEventEndTime,
+          program,
+          allActions,
+          programConstants
         );
         timelineActions.push(...staggerActions);
 
@@ -842,8 +854,12 @@ const buildTimelineConfig = (
         }
       } else {
         // TimedEvent: regular "at start..end { ... }" event
-        const timelineAction = yield* _(
-          transformTimedEvent(event, previousEventEndTime, program, allActions, programConstants)
+        const timelineAction = yield* transformTimedEvent(
+          event,
+          previousEventEndTime,
+          program,
+          allActions,
+          programConstants
         );
         timelineActions.push(timelineAction);
 
@@ -906,13 +922,13 @@ const transformSequenceBlock = (
   allActions: ActionDefinition[],
   programConstants: ConstantMap
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
     let currentTime = previousEventEndTime;
 
     for (const item of sequence.items) {
       // Transform duration expression to number
-      const durationExpr = yield* _(transformTimeExpression(item.duration, currentTime));
+      const durationExpr = yield* transformTimeExpression(item.duration, currentTime);
       const duration = evaluateTimeExpression(durationExpr);
 
       // Calculate time range: start at currentTime, end at currentTime + duration
@@ -934,22 +950,18 @@ const transformSequenceBlock = (
         const args = actionCall.args;
 
         if (args.length !== parameters.length) {
-          return yield* _(
-            Effect.fail({
-              _tag: 'TransformError' as const,
-              kind: 'ValidationError' as const,
-              message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
-              location: getSourceLocation(item),
-            })
-          );
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'ValidationError' as const,
+            message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
+            location: getSourceLocation(item),
+          });
         }
 
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* _(
-            transformExpression(args[i], createEmptyScope(programConstants))
-          );
+          const argValue = yield* transformExpression(args[i], createEmptyScope(programConstants));
           actionOperationData[paramName] = argValue;
         }
       }
@@ -1005,32 +1017,31 @@ const transformStaggerBlock = (
   allActions: ActionDefinition[],
   programConstants: ConstantMap
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
 
     // Transform delay expression to milliseconds
-    const delayExpr = yield* _(transformTimeExpression(stagger.delay, previousEventEndTime));
+    const delayExpr = yield* transformTimeExpression(stagger.delay, previousEventEndTime);
     const delay = evaluateTimeExpression(delayExpr);
 
     // Transform duration expression to milliseconds
-    const durationExpr = yield* _(transformTimeExpression(stagger.duration, previousEventEndTime));
+    const durationExpr = yield* transformTimeExpression(stagger.duration, previousEventEndTime);
     const duration = evaluateTimeExpression(durationExpr);
 
     // Transform items array
-    const itemsValue = yield* _(
-      transformExpression(stagger.items, createEmptyScope(programConstants))
+    const itemsValue = yield* transformExpression(
+      stagger.items,
+      createEmptyScope(programConstants)
     );
 
     // Items must be an array
     if (!Array.isArray(itemsValue)) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message: `Stagger items must be an array, got ${typeof itemsValue}`,
-          location: getSourceLocation(stagger),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `Stagger items must be an array, got ${typeof itemsValue}`,
+        location: getSourceLocation(stagger),
+      });
     }
 
     // Check which form: action call or inline operations
@@ -1066,8 +1077,9 @@ const transformStaggerBlock = (
             const args = actionCall.args || [];
             for (let j = 0; j < args.length && j + 1 < parameters.length; j++) {
               const paramName = parameters[j + 1].name;
-              const argValue = yield* _(
-                transformExpression(args[j], createEmptyScope(programConstants))
+              const argValue = yield* transformExpression(
+                args[j],
+                createEmptyScope(programConstants)
               );
               actionOperationData[paramName] = argValue;
             }
@@ -1118,15 +1130,23 @@ const transformStaggerBlock = (
         const endOperations: OperationConfigIR[] = [];
 
         for (const opStmt of stagger.startOps || []) {
-          const ops = yield* _(
-            transformOperationStatement(opStmt, staggerScope, false, program, allActions)
+          const ops = yield* transformOperationStatement(
+            opStmt,
+            staggerScope,
+            false,
+            program,
+            allActions
           );
           startOperations.push(...ops);
         }
 
         for (const opStmt of stagger.endOps || []) {
-          const ops = yield* _(
-            transformOperationStatement(opStmt, staggerScope, true, program, allActions)
+          const ops = yield* transformOperationStatement(
+            opStmt,
+            staggerScope,
+            true,
+            program,
+            allActions
           );
           endOperations.push(...ops);
         }
@@ -1164,23 +1184,21 @@ const transformTimedEvent = (
   allActions: ActionDefinition[],
   programConstants: ConstantMap
 ): Effect.Effect<TimelineActionIR, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const timeRange = event.timeRange;
     if (!timeRange) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'InvalidEvent' as const,
-          message: 'Timeline event missing time range',
-          location: getSourceLocation(event),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidEvent' as const,
+        message: 'Timeline event missing time range',
+        location: getSourceLocation(event),
+      });
     }
 
     // Transform start and end times to numbers
     // T189: Pass previousEventEndTime for relative time resolution
-    const startExpr = yield* _(transformTimeExpression(timeRange.start, previousEventEndTime));
-    const endExpr = yield* _(transformTimeExpression(timeRange.end, previousEventEndTime));
+    const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime);
+    const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
     const start = evaluateTimeExpression(startExpr);
     const end = evaluateTimeExpression(endExpr);
 
@@ -1192,26 +1210,22 @@ const transformTimedEvent = (
     if (action.$type === 'InlineEndableAction') {
       // Inline endable action: [ ... ] [ ... ]
       for (const opStmt of action.startOperations) {
-        const ops = yield* _(
-          transformOperationStatement(
-            opStmt,
-            createEmptyScope(programConstants),
-            false,
-            program,
-            allActions
-          )
+        const ops = yield* transformOperationStatement(
+          opStmt,
+          createEmptyScope(programConstants),
+          false,
+          program,
+          allActions
         );
         startOperations.push(...ops);
       }
       for (const opStmt of action.endOperations) {
-        const ops = yield* _(
-          transformOperationStatement(
-            opStmt,
-            createEmptyScope(programConstants),
-            true,
-            program,
-            allActions
-          )
+        const ops = yield* transformOperationStatement(
+          opStmt,
+          createEmptyScope(programConstants),
+          true,
+          program,
+          allActions
         );
         endOperations.push(...ops);
       }
@@ -1227,14 +1241,12 @@ const transformTimedEvent = (
 
       if (!actionDef) {
         // Validation should have caught this, but handle defensively
-        return yield* _(
-          Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'ValidationError' as const,
-            message: `Action '${callName}' not found. This should have been caught by validation.`,
-            location: getSourceLocation(action),
-          })
-        );
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message: `Action '${callName}' not found. This should have been caught by validation.`,
+          location: getSourceLocation(action),
+        });
       }
 
       const isEndableAction = actionDef.$type === 'EndableActionDefinition';
@@ -1245,21 +1257,20 @@ const transformTimedEvent = (
         const parameters = actionDef.parameters || [];
 
         if (action.args.length !== parameters.length) {
-          return yield* _(
-            Effect.fail({
-              _tag: 'TransformError' as const,
-              kind: 'ValidationError' as const,
-              message: `Action '${callName}' expects ${parameters.length} arguments but got ${action.args.length}`,
-              location: getSourceLocation(action),
-            })
-          );
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'ValidationError' as const,
+            message: `Action '${callName}' expects ${parameters.length} arguments but got ${action.args.length}`,
+            location: getSourceLocation(action),
+          });
         }
 
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* _(
-            transformExpression(action.args[i], createEmptyScope(programConstants))
+          const argValue = yield* transformExpression(
+            action.args[i],
+            createEmptyScope(programConstants)
           );
           actionOperationData[paramName] = argValue;
         }
@@ -1281,32 +1292,34 @@ const transformTimedEvent = (
     } else if (action.$type === 'ForStatement') {
       // T056: US3 - ForStatement in timeline context
       // Transform the for loop body and add to startOperations
-      const forOps = yield* _(
-        transformForStatement(action, createEmptyScope(programConstants), program, allActions)
+      const forOps = yield* transformForStatement(
+        action,
+        createEmptyScope(programConstants),
+        program,
+        allActions
       );
       startOperations.push(...forOps);
     } else if (action.$type === 'IfStatement') {
       // T057: US3 - IfStatement in timeline context
       // Transform the if/else branches and add to startOperations
-      const ifOps = yield* _(
-        transformIfStatement(action, createEmptyScope(programConstants), program, allActions)
+      const ifOps = yield* transformIfStatement(
+        action,
+        createEmptyScope(programConstants),
+        program,
+        allActions
       );
       startOperations.push(...ifOps);
     }
 
     // T173: Validate dependencies in timeline event operations
-    yield* _(
-      validateOperationSequence(
-        startOperations,
-        `timeline event at ${start}s..${end}s start operations`
-      )
+    yield* validateOperationSequence(
+      startOperations,
+      `timeline event at ${start}s..${end}s start operations`
     );
     if (endOperations.length > 0) {
-      yield* _(
-        validateOperationSequence(
-          endOperations,
-          `timeline event at ${start}s..${end}s end operations`
-        )
+      yield* validateOperationSequence(
+        endOperations,
+        `timeline event at ${start}s..${end}s end operations`
       );
     }
 
@@ -1334,7 +1347,7 @@ const validateOperationSequence = (
   operations: OperationConfigIR[],
   contextName: string
 ): Effect.Effect<void, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const availableOutputs = new Set<string>();
 
     for (const op of operations) {
@@ -1347,19 +1360,17 @@ const validateOperationSequence = (
       const depErrors = validateDependencies(signature, availableOutputs);
       if (depErrors.length > 0) {
         const firstError = depErrors[0];
-        return yield* _(
-          Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'ValidationError' as const,
-            message: `In ${contextName}: ${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
-            location: op.sourceLocation || {
-              file: undefined,
-              line: 1,
-              column: 1,
-              length: 0,
-            },
-          })
-        );
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message: `In ${contextName}: ${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
+          location: op.sourceLocation || {
+            file: undefined,
+            line: 1,
+            column: 1,
+            length: 0,
+          },
+        });
       }
 
       // Track outputs for next operation
@@ -1385,7 +1396,7 @@ const transformActionDefinition = (
   allActions: ActionDefinition[],
   programConstants: ConstantMap
 ): Effect.Effect<EndableActionIR, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const startOperations: OperationConfigIR[] = [];
     const endOperations: OperationConfigIR[] = [];
 
@@ -1401,35 +1412,46 @@ const transformActionDefinition = (
     if (actionDef.$type === 'EndableActionDefinition') {
       // Endable action: has start and end operations
       for (const opStmt of actionDef.startOperations) {
-        const ops = yield* _(
-          transformOperationStatement(opStmt, actionScope, false, program, allActions)
+        const ops = yield* transformOperationStatement(
+          opStmt,
+          actionScope,
+          false,
+          program,
+          allActions
         );
         startOperations.push(...ops);
       }
       for (const opStmt of actionDef.endOperations) {
-        const ops = yield* _(
-          transformOperationStatement(opStmt, actionScope, false, program, allActions)
+        const ops = yield* transformOperationStatement(
+          opStmt,
+          actionScope,
+          false,
+          program,
+          allActions
         );
         endOperations.push(...ops);
       }
     } else {
       // Regular action: only has operations (treated as start operations)
       for (const opStmt of actionDef.operations) {
-        const ops = yield* _(
-          transformOperationStatement(opStmt, actionScope, false, program, allActions)
+        const ops = yield* transformOperationStatement(
+          opStmt,
+          actionScope,
+          false,
+          program,
+          allActions
         );
         startOperations.push(...ops);
       }
     }
 
     // T173: Validate dependencies in operation sequences
-    yield* _(
-      validateOperationSequence(startOperations, `action '${actionDef.name}' start operations`)
+    yield* validateOperationSequence(
+      startOperations,
+      `action '${actionDef.name}' start operations`
     );
     if (endOperations.length > 0) {
-      yield* _(
-        validateOperationSequence(endOperations, `action '${actionDef.name}' end operations`)
-      );
+      yield* validateOperationSequence(endOperations, `action '${actionDef.name}' end operations`);
     }
 
     return {
@@ -1457,7 +1479,7 @@ const transformOperationCall = (
   opCall: OperationCall,
   scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const operationName = getOperationCallName(opCall);
     const args = opCall.args || [];
 
@@ -1465,15 +1487,13 @@ const transformOperationCall = (
     // This is handled in transformOperationStatement which can return multiple operations
     // Here we just validate that addController is not called directly (it should be caught by validation)
     if (operationName === 'addController') {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message:
-            'addController is syntactic sugar and should be transformed by transformOperationStatement',
-          location: getSourceLocation(opCall),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message:
+          'addController is syntactic sugar and should be transformed by transformOperationStatement',
+        location: getSourceLocation(opCall),
+      });
     }
 
     // T218: Validate operation before transforming
@@ -1481,28 +1501,24 @@ const transformOperationCall = (
     if (!validationResult.success) {
       // Collect all validation errors and fail with first error
       const firstError = validationResult.errors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message: `${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
-          location: getSourceLocation(opCall),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
+        location: getSourceLocation(opCall),
+      });
     }
 
     // T223: Use parameter mapper to transform arguments to operationData
     const signature = getOperationSignature(operationName);
     if (!signature) {
       // This should never happen after validation, but handle defensively
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message: `Unknown operation: ${operationName}`,
-          location: getSourceLocation(opCall),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `Unknown operation: ${operationName}`,
+        location: getSourceLocation(opCall),
+      });
     }
 
     // BUG-001 FIX (T322): Transform Expression arguments to JsonValue before mapping
@@ -1510,7 +1526,7 @@ const transformOperationCall = (
     // transformed to their string representations ($scope.*, $operationdata.*)
     const transformedArgs: JsonValue[] = [];
     for (const arg of args) {
-      const value = yield* _(transformExpression(arg, scope));
+      const value = yield* transformExpression(arg, scope);
       transformedArgs.push(value);
     }
 
@@ -1519,14 +1535,12 @@ const transformOperationCall = (
     if (!mappingResult.success) {
       // Mapping failed - return first error
       const firstError = mappingResult.errors[0];
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message: `${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
-          location: getSourceLocation(opCall),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
+        location: getSourceLocation(opCall),
+      });
     }
 
     let operationData = mappingResult.operationData as Record<string, JsonValue>;
@@ -1575,7 +1589,7 @@ const transformOperationStatement = (
   program?: Program,
   allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     switch (stmt.$type) {
       case 'OperationCall': {
         // Feature 035 T011: Transform addController calls
@@ -1589,41 +1603,34 @@ const transformOperationStatement = (
 
           // First argument must be controller name (string literal)
           if (args.length === 0 || args[0].$type !== 'StringLiteral') {
-            return yield* _(
-              Effect.fail({
-                _tag: 'TransformError' as const,
-                kind: 'ValidationError' as const,
-                message:
-                  'addController requires controller name as first argument (string literal)',
-                location: getSourceLocation(stmt),
-              })
-            );
+            return yield* Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'ValidationError' as const,
+              message: 'addController requires controller name as first argument (string literal)',
+              location: getSourceLocation(stmt),
+            });
           }
 
           const controllerName = args[0].value;
 
           // Validate controller exists
           if (!isController(controllerName)) {
-            return yield* _(
-              Effect.fail({
-                _tag: 'TransformError' as const,
-                kind: 'ValidationError' as const,
-                message: `Unknown controller: '${controllerName}'`,
-                location: getSourceLocation(stmt),
-              })
-            );
+            return yield* Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'ValidationError' as const,
+              message: `Unknown controller: '${controllerName}'`,
+              location: getSourceLocation(stmt),
+            });
           }
 
           const controller = getController(controllerName);
           if (!controller) {
-            return yield* _(
-              Effect.fail({
-                _tag: 'TransformError' as const,
-                kind: 'InvalidAction' as const,
-                message: `Failed to get controller metadata for '${controllerName}'`,
-                location: getSourceLocation(stmt),
-              })
-            );
+            return yield* Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidAction' as const,
+              message: `Failed to get controller metadata for '${controllerName}'`,
+              location: getSourceLocation(stmt),
+            });
           }
 
           // Transform remaining arguments (args[1+]) to parameter object
@@ -1633,17 +1640,15 @@ const transformOperationStatement = (
           for (let i = 0; i < paramArgs.length; i++) {
             const param = controller.parameters[i];
             if (!param) {
-              return yield* _(
-                Effect.fail({
-                  _tag: 'TransformError' as const,
-                  kind: 'ValidationError' as const,
-                  message: `Too many parameters for controller '${controllerName}'`,
-                  location: getSourceLocation(stmt),
-                })
-              );
+              return yield* Effect.fail({
+                _tag: 'TransformError' as const,
+                kind: 'ValidationError' as const,
+                message: `Too many parameters for controller '${controllerName}'`,
+                location: getSourceLocation(stmt),
+              });
             }
 
-            const argValue = yield* _(transformExpression(paramArgs[i], scope));
+            const argValue = yield* transformExpression(paramArgs[i], scope);
             parameterData[param.name] = argValue;
           }
 
@@ -1674,7 +1679,7 @@ const transformOperationStatement = (
         // Otherwise, if program is passed, use it; otherwise walk up container chain
         const actionDef = allActions
           ? findActionByName(operationName, allActions)
-          : findActionByName(operationName, program ?? (yield* _(getProgram(stmt))));
+          : findActionByName(operationName, program ?? (yield* getProgram(stmt)));
 
         if (actionDef) {
           // This is an action call - expand to requestAction + startAction/endAction
@@ -1687,20 +1692,18 @@ const transformOperationStatement = (
 
             // Check argument count matches parameter count
             if (stmt.args.length !== parameters.length) {
-              return yield* _(
-                Effect.fail({
-                  _tag: 'TransformError' as const,
-                  kind: 'ValidationError' as const,
-                  message: `Action '${operationName}' expects ${parameters.length} argument(s) but got ${stmt.args.length}. Expected: ${parameters.map(p => p.name).join(', ')}`,
-                  location: getSourceLocation(stmt),
-                })
-              );
+              return yield* Effect.fail({
+                _tag: 'TransformError' as const,
+                kind: 'ValidationError' as const,
+                message: `Action '${operationName}' expects ${parameters.length} argument(s) but got ${stmt.args.length}. Expected: ${parameters.map(p => p.name).join(', ')}`,
+                location: getSourceLocation(stmt),
+              });
             }
 
             actionOperationData = {};
             for (let i = 0; i < parameters.length; i++) {
               const paramName = parameters[i].name;
-              const argValue = yield* _(transformExpression(stmt.args[i], scope));
+              const argValue = yield* transformExpression(stmt.args[i], scope);
               actionOperationData[paramName] = argValue;
             }
           }
@@ -1718,39 +1721,37 @@ const transformOperationStatement = (
         }
 
         // Not an action - treat as normal operation
-        const op = yield* _(transformOperationCall(stmt, scope));
+        const op = yield* transformOperationCall(stmt, scope);
         return [op];
       }
 
       case 'IfStatement':
         // If/else → when/otherwise/endWhen sequence
-        return yield* _(transformIfStatement(stmt, scope, program, allActions));
+        return yield* transformIfStatement(stmt, scope, program, allActions);
 
       case 'ForStatement':
         // For loop → forEach/endForEach sequence
-        return yield* _(transformForStatement(stmt, scope, program, allActions));
+        return yield* transformForStatement(stmt, scope, program, allActions);
 
       case 'VariableDeclaration':
         // Action-scoped variable → setVariable operation
-        return yield* _(transformVariableDeclaration(stmt, scope));
+        return yield* transformVariableDeclaration(stmt, scope);
 
       case 'BreakStatement':
         // break → breakForEach operation
-        return yield* _(transformBreakStatement(stmt, scope));
+        return yield* transformBreakStatement(stmt, scope);
 
       case 'ContinueStatement':
         // continue → continueForEach operation
-        return yield* _(transformContinueStatement(stmt, scope));
+        return yield* transformContinueStatement(stmt, scope);
 
       default:
-        return yield* _(
-          Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'InvalidExpression' as const,
-            message: `Unknown operation statement type: ${(stmt as any).$type}`,
-            location: getSourceLocation(stmt),
-          })
-        );
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: `Unknown operation statement type: ${(stmt as any).$type}`,
+          location: getSourceLocation(stmt),
+        });
     }
   });
 
@@ -1779,11 +1780,11 @@ const transformIfStatement = (
   program?: Program,
   allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
 
     // Transform condition expression
-    const condition = yield* _(transformExpression(stmt.condition, scope));
+    const condition = yield* transformExpression(stmt.condition, scope);
 
     // 1. when(condition)
     operations.push({
@@ -1802,9 +1803,7 @@ const transformIfStatement = (
       scopedConstants: new Map(scope.scopedConstants), // Clone the map
     };
     for (const thenOp of stmt.thenOps) {
-      const ops = yield* _(
-        transformOperationStatement(thenOp, thenScope, false, program, allActions)
-      );
+      const ops = yield* transformOperationStatement(thenOp, thenScope, false, program, allActions);
       operations.push(...ops);
     }
 
@@ -1823,8 +1822,12 @@ const transformIfStatement = (
         scopedConstants: new Map(scope.scopedConstants), // Clone the map
       };
       for (const elseOp of stmt.elseOps) {
-        const ops = yield* _(
-          transformOperationStatement(elseOp, elseScope, false, program, allActions)
+        const ops = yield* transformOperationStatement(
+          elseOp,
+          elseScope,
+          false,
+          program,
+          allActions
         );
         operations.push(...ops);
       }
@@ -1862,11 +1865,11 @@ const transformForStatement = (
   program?: Program,
   allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
 
     // Transform collection expression
-    const collection = yield* _(transformExpression(stmt.collection, scope));
+    const collection = yield* transformExpression(stmt.collection, scope);
 
     // 1. forEach(collection, itemName)
     operations.push({
@@ -1890,9 +1893,7 @@ const transformForStatement = (
     };
 
     for (const bodyOp of stmt.body) {
-      const ops = yield* _(
-        transformOperationStatement(bodyOp, loopScope, false, program, allActions)
-      );
+      const ops = yield* transformOperationStatement(bodyOp, loopScope, false, program, allActions);
       operations.push(...ops);
     }
 
@@ -1966,7 +1967,7 @@ const transformVariableDeclaration = (
   stmt: VariableDeclaration,
   scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // ACTION-SCOPED CONSTANT FOLDING: Try to evaluate at compile time
     // Build a combined constant map: global constants + action-scoped constants
     const combinedConstants = new Map([
@@ -1996,7 +1997,7 @@ const transformVariableDeclaration = (
 
     // Cannot evaluate - treat as regular variable
     // Transform the value expression normally
-    const value = yield* _(transformExpression(stmt.value, scope));
+    const value = yield* transformExpression(stmt.value, scope);
 
     // Create setVariable operation
     const operation: OperationConfigIR = {
@@ -2029,7 +2030,7 @@ const transformExpression = (
   expr: Expression,
   scope: ScopeContext = createEmptyScope()
 ): Effect.Effect<JsonValue, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     switch (expr.$type) {
       case 'StringLiteral':
         return expr.value;
@@ -2047,7 +2048,7 @@ const transformExpression = (
         const obj: Record<string, JsonValue> = {};
         for (const prop of expr.properties) {
           const key = typeof prop.key === 'string' ? prop.key : prop.key;
-          const value = yield* _(transformExpression(prop.value, scope));
+          const value = yield* transformExpression(prop.value, scope);
           obj[key] = value;
         }
         return obj;
@@ -2056,7 +2057,7 @@ const transformExpression = (
       case 'ArrayLiteral': {
         const arr: JsonValue[] = [];
         for (const element of expr.elements) {
-          const value = yield* _(transformExpression(element, scope));
+          const value = yield* transformExpression(element, scope);
           arr.push(value);
         }
         return arr;
@@ -2074,14 +2075,12 @@ const transformExpression = (
         // Variable reference: @varName (T233)
         // CONSTANT FOLDING: Check if this is a constant first
         if (!expr.variable?.ref) {
-          return yield* _(
-            Effect.fail({
-              _tag: 'TransformError' as const,
-              kind: 'InvalidExpression' as const,
-              message: `Undefined variable reference (linking failed)`,
-              location: getSourceLocation(expr),
-            })
-          );
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: `Undefined variable reference (linking failed)`,
+            location: getSourceLocation(expr),
+          });
         }
 
         const varName = expr.variable.ref.name;
@@ -2121,27 +2120,23 @@ const transformExpression = (
         // Compiles to $operationdata.paramName OR $operationdata.eventArgs[n] (Feature 028 - T020)
         // Now uses cross-reference to Parameter
         if (!expr.parameter?.ref) {
-          return yield* _(
-            Effect.fail({
-              _tag: 'TransformError' as const,
-              kind: 'InvalidExpression' as const,
-              message: `Undefined parameter reference (linking failed)`,
-              location: getSourceLocation(expr),
-            })
-          );
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: `Undefined parameter reference (linking failed)`,
+            location: getSourceLocation(expr),
+          });
         }
 
         // Validation: parameter references only valid inside actions
         // (This is now enforced by ScopeProvider, but double-check here)
         if (!scope.inActionBody) {
-          return yield* _(
-            Effect.fail({
-              _tag: 'TransformError' as const,
-              kind: 'InvalidExpression' as const,
-              message: `Parameter reference '${expr.parameter.ref.name}' is only valid inside action bodies`,
-              location: getSourceLocation(expr),
-            })
-          );
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: `Parameter reference '${expr.parameter.ref.name}' is only valid inside action bodies`,
+            location: getSourceLocation(expr),
+          });
         }
 
         const paramName = expr.parameter.ref.name;
@@ -2159,8 +2154,8 @@ const transformExpression = (
       case 'BinaryExpression': {
         // Binary expression: 10 + 5
         // Evaluate at compile time if both sides are literals
-        const left = yield* _(transformExpression(expr.left, scope));
-        const right = yield* _(transformExpression(expr.right, scope));
+        const left = yield* transformExpression(expr.left, scope);
+        const right = yield* transformExpression(expr.right, scope);
 
         // If both are numbers, evaluate
         if (typeof left === 'number' && typeof right === 'number') {
@@ -2198,7 +2193,7 @@ const transformExpression = (
 
       case 'UnaryExpression': {
         // Unary expression: !flag, -value
-        const operand = yield* _(transformExpression(expr.operand, scope));
+        const operand = yield* transformExpression(expr.operand, scope);
 
         switch (expr.op) {
           case '!':
@@ -2209,26 +2204,22 @@ const transformExpression = (
             }
             return `(-${JSON.stringify(operand)})`;
           default:
-            return yield* _(
-              Effect.fail({
-                _tag: 'TransformError' as const,
-                kind: 'InvalidExpression' as const,
-                message: `Unknown unary operator: ${(expr as any).op}`,
-                location: getSourceLocation(expr),
-              })
-            );
+            return yield* Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message: `Unknown unary operator: ${(expr as any).op}`,
+              location: getSourceLocation(expr),
+            });
         }
       }
 
       default:
-        return yield* _(
-          Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'InvalidExpression' as const,
-            message: `Unknown expression type: ${(expr as any).$type}`,
-            location: getSourceLocation(expr),
-          })
-        );
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: `Unknown expression type: ${(expr as any).$type}`,
+          location: getSourceLocation(expr),
+        });
     }
   });
 
@@ -2288,19 +2279,17 @@ export const transformEventAction = (
   eventAction: EventActionDefinition,
   programConstants: ConstantMap = new Map()
 ): Effect.Effect<IEventActionConfiguration, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     // Guard: eventName is required for transformation (grammar allows optional for completion).
     // B2: surfaced through the typed error channel instead of a synchronous throw, so a
     // missing eventName produces a structured TransformError rather than crashing the compiler.
     if (!eventAction.eventName) {
-      return yield* _(
-        Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'InvalidEvent' as const,
-          message: `Event action "${eventAction.name}" is missing event name`,
-          location: getSourceLocation(eventAction),
-        })
-      );
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidEvent' as const,
+        message: `Event action "${eventAction.name}" is missing event name`,
+        location: getSourceLocation(eventAction),
+      });
     }
 
     // T021: Create parameter context for this event action
@@ -2322,8 +2311,12 @@ export const transformEventAction = (
     // the Effect channel instead of escaping `Effect.runSync` as an unhandled fiber crash.
     const startOperations: IOperationConfiguration<TOperationData>[] = [];
     for (const opStmt of eventAction.operations) {
-      const operationIRs = yield* _(
-        transformOperationStatement(opStmt, eventActionScope, false, undefined, undefined)
+      const operationIRs = yield* transformOperationStatement(
+        opStmt,
+        eventActionScope,
+        false,
+        undefined,
+        undefined
       );
 
       // Convert OperationConfigIR[] to IOperationConfiguration[]
@@ -2351,7 +2344,7 @@ const transformTimeExpression = (
   expr: AstTimeExpression,
   previousEventEndTime: number = 0
 ): Effect.Effect<TimeExpression, TransformError> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     switch (expr.$type) {
       case 'TimeLiteral': {
         // Convert time value to seconds based on unit
@@ -2380,8 +2373,8 @@ const transformTimeExpression = (
         };
       }
       case 'BinaryTimeExpression': {
-        const left = yield* _(transformTimeExpression(expr.left, previousEventEndTime));
-        const right = yield* _(transformTimeExpression(expr.right, previousEventEndTime));
+        const left = yield* transformTimeExpression(expr.left, previousEventEndTime);
+        const right = yield* transformTimeExpression(expr.right, previousEventEndTime);
         return {
           kind: 'binary' as const,
           op: expr.op as '+' | '-' | '*' | '/',
@@ -2390,14 +2383,12 @@ const transformTimeExpression = (
         };
       }
       default:
-        return yield* _(
-          Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'InvalidExpression' as const,
-            message: `Unknown time expression type: ${(expr as any).$type}`,
-            location: getSourceLocation(expr),
-          })
-        );
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: `Unknown time expression type: ${(expr as any).$type}`,
+          location: getSourceLocation(expr),
+        });
     }
   });
 
