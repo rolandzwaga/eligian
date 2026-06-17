@@ -8,64 +8,22 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-// Import the actual exported function to test the real implementation
-import { consumePendingSelection } from '../label-entry-creator.js';
-
-/**
- * Local implementation of PendingSelectionStore for testing.
- *
- * WHY LOCAL: The production code's setPendingSelection function uses vscode.Uri which
- * isn't available in the test environment. This local implementation mirrors the
- * production Map-based logic (lines 25-40 of label-entry-creator.ts) to test the
- * get/set/delete behavior in isolation. The actual consumePendingSelection function
- * is tested separately below using the real export.
- */
-class PendingSelectionStore {
-  private pendingSelections = new Map<string, string>();
-
-  /**
-   * Set a pending selection for a file URI
-   */
-  setPendingSelection(fileUri: string, labelId: string): void {
-    this.pendingSelections.set(fileUri, labelId);
-  }
-
-  /**
-   * Get and clear the pending selection for a file URI
-   * Called by LabelEditorProvider when resolving a custom editor
-   */
-  consumePendingSelection(fileUri: string): string | undefined {
-    const labelId = this.pendingSelections.get(fileUri);
-    if (labelId) {
-      this.pendingSelections.delete(fileUri);
-    }
-    return labelId;
-  }
-
-  /**
-   * Check if a pending selection exists (for testing)
-   */
-  hasPendingSelection(fileUri: string): boolean {
-    return this.pendingSelections.has(fileUri);
-  }
-
-  /**
-   * Clear all pending selections (for test isolation)
-   */
-  clear(): void {
-    this.pendingSelections.clear();
-  }
-}
+// Exercise the real pending-selection store — no local reimplementation.
+import {
+  clearPendingSelections,
+  consumePendingSelection,
+  hasPendingSelection,
+  setPendingSelection,
+} from '../label-entry-creator.js';
 
 describe('Label Editor Auto-Select Feature (Feature 041)', () => {
-  let store: PendingSelectionStore;
-
+  // The store is module-level state; clear before and after each test for isolation.
   beforeEach(() => {
-    store = new PendingSelectionStore();
+    clearPendingSelections();
   });
 
   afterEach(() => {
-    store.clear();
+    clearPendingSelections();
   });
 
   describe('Pending Selection Store', () => {
@@ -73,15 +31,15 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
       const fileUri = 'file:///test/labels.json';
       const labelId = 'welcome-message';
 
-      store.setPendingSelection(fileUri, labelId);
+      setPendingSelection(fileUri, labelId);
 
-      expect(store.hasPendingSelection(fileUri)).toBe(true);
+      expect(hasPendingSelection(fileUri)).toBe(true);
     });
 
     test('should return undefined for file URI with no pending selection', () => {
       const fileUri = 'file:///test/labels.json';
 
-      const result = store.consumePendingSelection(fileUri);
+      const result = consumePendingSelection(fileUri);
 
       expect(result).toBeUndefined();
     });
@@ -90,24 +48,24 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
       const fileUri = 'file:///test/labels.json';
       const labelId = 'welcome-message';
 
-      store.setPendingSelection(fileUri, labelId);
-      const result = store.consumePendingSelection(fileUri);
+      setPendingSelection(fileUri, labelId);
+      const result = consumePendingSelection(fileUri);
 
       expect(result).toBe(labelId);
-      expect(store.hasPendingSelection(fileUri)).toBe(false);
+      expect(hasPendingSelection(fileUri)).toBe(false);
     });
 
     test('should return undefined on second consume (one-time use)', () => {
       const fileUri = 'file:///test/labels.json';
       const labelId = 'welcome-message';
 
-      store.setPendingSelection(fileUri, labelId);
+      setPendingSelection(fileUri, labelId);
 
       // First consume returns the label ID
-      expect(store.consumePendingSelection(fileUri)).toBe(labelId);
+      expect(consumePendingSelection(fileUri)).toBe(labelId);
 
       // Second consume returns undefined (already consumed)
-      expect(store.consumePendingSelection(fileUri)).toBeUndefined();
+      expect(consumePendingSelection(fileUri)).toBeUndefined();
     });
 
     test('should handle multiple file URIs independently', () => {
@@ -116,16 +74,16 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
       const labelId1 = 'label-one';
       const labelId2 = 'label-two';
 
-      store.setPendingSelection(fileUri1, labelId1);
-      store.setPendingSelection(fileUri2, labelId2);
+      setPendingSelection(fileUri1, labelId1);
+      setPendingSelection(fileUri2, labelId2);
 
       // Consume first - should not affect second
-      expect(store.consumePendingSelection(fileUri1)).toBe(labelId1);
-      expect(store.hasPendingSelection(fileUri1)).toBe(false);
-      expect(store.hasPendingSelection(fileUri2)).toBe(true);
+      expect(consumePendingSelection(fileUri1)).toBe(labelId1);
+      expect(hasPendingSelection(fileUri1)).toBe(false);
+      expect(hasPendingSelection(fileUri2)).toBe(true);
 
       // Consume second
-      expect(store.consumePendingSelection(fileUri2)).toBe(labelId2);
+      expect(consumePendingSelection(fileUri2)).toBe(labelId2);
     });
 
     test('should allow overwriting pending selection for same file URI', () => {
@@ -133,38 +91,38 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
       const labelId1 = 'first-label';
       const labelId2 = 'second-label';
 
-      store.setPendingSelection(fileUri, labelId1);
-      store.setPendingSelection(fileUri, labelId2);
+      setPendingSelection(fileUri, labelId1);
+      setPendingSelection(fileUri, labelId2);
 
       // Should return the latest selection
-      expect(store.consumePendingSelection(fileUri)).toBe(labelId2);
+      expect(consumePendingSelection(fileUri)).toBe(labelId2);
     });
 
     test('should handle label IDs with special characters', () => {
       const fileUri = 'file:///test/labels.json';
       const labelId = 'welcome-message_v2';
 
-      store.setPendingSelection(fileUri, labelId);
+      setPendingSelection(fileUri, labelId);
 
-      expect(store.consumePendingSelection(fileUri)).toBe(labelId);
+      expect(consumePendingSelection(fileUri)).toBe(labelId);
     });
 
     test('should handle file URIs with special characters', () => {
       const fileUri = 'file:///test/path%20with%20spaces/labels.json';
       const labelId = 'my-label';
 
-      store.setPendingSelection(fileUri, labelId);
+      setPendingSelection(fileUri, labelId);
 
-      expect(store.consumePendingSelection(fileUri)).toBe(labelId);
+      expect(consumePendingSelection(fileUri)).toBe(labelId);
     });
 
     test('should handle Windows-style file URIs', () => {
       const fileUri = 'file:///C:/Users/test/labels.json';
       const labelId = 'windows-label';
 
-      store.setPendingSelection(fileUri, labelId);
+      setPendingSelection(fileUri, labelId);
 
-      expect(store.consumePendingSelection(fileUri)).toBe(labelId);
+      expect(consumePendingSelection(fileUri)).toBe(labelId);
     });
   });
 
@@ -181,26 +139,26 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
       const newLabelId = 'new-label-from-quickfix';
 
       // Step 1-2: Quick fix creates label and sets pending selection
-      store.setPendingSelection(fileUri, newLabelId);
+      setPendingSelection(fileUri, newLabelId);
 
       // Step 3: VS Code opens the editor (mocked - we just verify state)
-      expect(store.hasPendingSelection(fileUri)).toBe(true);
+      expect(hasPendingSelection(fileUri)).toBe(true);
 
       // Step 4: Editor provider consumes pending selection
-      const selectedLabelId = store.consumePendingSelection(fileUri);
+      const selectedLabelId = consumePendingSelection(fileUri);
 
       // Step 5: Verify editor would receive correct label ID
       expect(selectedLabelId).toBe(newLabelId);
 
       // After consumption, selection should be cleared
-      expect(store.hasPendingSelection(fileUri)).toBe(false);
+      expect(hasPendingSelection(fileUri)).toBe(false);
     });
 
     test('should handle case when editor was already open (no pending selection)', () => {
       // If user opens editor without using quick fix, there should be no selection
       const fileUri = 'file:///project/labels.json';
 
-      const selectedLabelId = store.consumePendingSelection(fileUri);
+      const selectedLabelId = consumePendingSelection(fileUri);
 
       expect(selectedLabelId).toBeUndefined();
     });
@@ -211,11 +169,11 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
       const labelId1 = 'first-quick-label';
       const labelId2 = 'second-quick-label';
 
-      store.setPendingSelection(fileUri, labelId1);
-      store.setPendingSelection(fileUri, labelId2);
+      setPendingSelection(fileUri, labelId1);
+      setPendingSelection(fileUri, labelId2);
 
       // Editor should select the most recent label
-      expect(store.consumePendingSelection(fileUri)).toBe(labelId2);
+      expect(consumePendingSelection(fileUri)).toBe(labelId2);
     });
   });
 });
@@ -226,13 +184,8 @@ describe('Label Editor Auto-Select Feature (Feature 041)', () => {
 
 describe('Real consumePendingSelection Function (Feature 041)', () => {
   /**
-   * Tests for the actual exported consumePendingSelection function
-   * from label-entry-creator.ts
-   *
-   * Note: The pendingSelections Map is module-level state, so these tests
-   * verify the actual implementation behavior. Since we can't directly
-   * set pending selections without the vscode-dependent setPendingSelection
-   * function, we test the "no selection" path and document expected behavior.
+   * Focused robustness checks for the "no pending selection" path. The
+   * set→consume→clear behavior is covered above against the same real store.
    */
 
   test('should return undefined when no pending selection exists', () => {
