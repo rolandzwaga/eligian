@@ -27,7 +27,10 @@ Research/reference (read-only, do NOT import):
 - **Package manager: pnpm only** (v11.7, pinned in package.json). Never npm/yarn — breaks workspace resolution.
 - **Type-check/build: tsgo** (`@typescript/native-preview`), NOT `tsc`. `pnpm typecheck` = `tsgo -b tsconfig.build.json`.
 - **Lint/format: Biome** (v2.4.16). Bundling: esbuild. Tests: Vitest. Dead-code: knip.
-- **Effect LSP**: `@effect/language-service` plugin is in the root tsconfig (editor diagnostics only; tsgo build ignores it). CLI: `pnpm exec effect-language-service diagnostics --project <tsconfig>`.
+- **Effect LSP**: `@effect/language-service` plugin is in the root tsconfig (editor diagnostics only; tsgo build ignores it). Run via CLI to catch findings headlessly:
+  - language: `pnpm exec effect-language-service diagnostics --project packages/language/tsconfig.src.json --format text`
+  - cli: `pnpm exec effect-language-service diagnostics --project packages/cli/tsconfig.json --format text`
+  - Goal is **0 errors / 0 warnings / 0 messages**. `quickfixes` previews fixes but can't apply them; some rules (e.g. `effectGenUsesAdapter`) have no autofix — fix by hand or codemod.
 
 ### Commands (from repo root)
 - `pnpm build` (`-r build`) · `pnpm typecheck` · `pnpm watch`
@@ -40,6 +43,7 @@ Research/reference (read-only, do NOT import):
 2. `pnpm check` → 0 errors / 0 warnings
 3. `pnpm test` passes (run `test:coverage:ci` if new code, don't regress thresholds)
 4. `pnpm langium:generate` first if grammar changed
+5. **If you touched Effect code** (compiler or `cli/bundler`): run the Effect LSP diagnostics (above) on the affected project(s) and fix findings to 0/0/0 — these don't show in `tsc`/tsgo or `pnpm check`.
 
 Do NOT offer to open a PR or push (user-only). Ignore CRLF/EOL diff noise.
 
