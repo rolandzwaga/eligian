@@ -29,7 +29,13 @@ import {
   type AssetLoadingResult,
   loadProgramAssets,
 } from '../asset-loading/compiler-integration.js';
-import type { EmitError, ParseError, TransformError, TypeError } from '../errors/index.js';
+import type {
+  EmitError,
+  ParseError,
+  TransformError,
+  TypeError,
+  ValidationError,
+} from '../errors/index.js';
 import { isLibrary } from '../generated/ast.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
@@ -86,7 +92,7 @@ interface CompileOptions {
 /**
  * Union of all possible compilation errors
  */
-export type CompileError = ParseError | TransformError | TypeError | EmitError;
+export type CompileError = ParseError | ValidationError | TransformError | TypeError | EmitError;
 
 /**
  * T078: Main compilation pipeline
@@ -173,7 +179,7 @@ export const compileToJSON = (
 export const compileToIR = (
   source: string,
   options: CompileOptions = {}
-): Effect.Effect<EligiusIR, ParseError | TransformError | TypeError> =>
+): Effect.Effect<EligiusIR, ParseError | ValidationError | TransformError | TypeError> =>
   Effect.gen(function* () {
     // Parse source to AST
     const program = yield* parseSource(source);

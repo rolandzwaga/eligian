@@ -9,7 +9,7 @@
 
 import { Effect } from 'effect';
 import type { LangiumDocument } from 'langium';
-import type { ParseError } from '../../errors/index.js';
+import type { ParseError, ValidationError } from '../../errors/index.js';
 
 /**
  * Per-call message/hint customization for {@link extractDocumentErrors}.
@@ -36,7 +36,7 @@ export interface DocumentErrorHints {
 export const extractDocumentErrors = (
   document: LangiumDocument,
   hints: DocumentErrorHints
-): Effect.Effect<void, ParseError> =>
+): Effect.Effect<void, ParseError | ValidationError> =>
   Effect.gen(function* () {
     if (document.parseResult.lexerErrors.length > 0) {
       const error = document.parseResult.lexerErrors[0];
@@ -66,11 +66,15 @@ export const extractDocumentErrors = (
       });
     }
 
+    // Validation diagnostics are semantic failures, not parse failures: tag them
+    // ValidationError so they format as "Validation Error" (not "Parse Error") and
+    // receive validation hints rather than parse hints (B3/B4 in cli/KNOWN_ISSUES).
     if (document.diagnostics && document.diagnostics.length > 0) {
       const error = document.diagnostics[0];
       const range = error.range;
       return yield* Effect.fail({
-        _tag: 'ParseError' as const,
+        _tag: 'ValidationError' as const,
+        kind: 'SemanticValidation' as const,
         message: error.message,
         location: {
           line: range.start.line + 1, // Langium is 0-based

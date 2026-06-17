@@ -53,13 +53,16 @@ Silent false-success.
 
 ---
 
-## 🟠 B2 — CSS selector/class validation runs even when no `styles` is imported
+## ✅ B2 — NOT A BUG (by design): selectors validated against imported CSS
 
-**Summary:** With **no `styles` import**, the CSS registry is empty, yet the
-validator still checks every `#id`, `.class`, and class-name argument against it —
-so they **all fail**. This makes the language effectively unusable without
-importing a CSS file that defines every selector used (incl. the timeline
-container selector).
+**Resolution (2026-06-17):** Working as intended. Compiling against absent/invalid
+assets would produce JS that throws at runtime, so there is no value in allowing
+it — a selector with no backing CSS is an error worth catching at compile time.
+Authors must import a `styles` CSS that defines every selector/class they use
+(including the timeline container selector). Kept here for the record only.
+
+**Original (mis)report:** With no `styles` import the CSS registry is empty, yet
+the validator still checks every `#id`/`.class`/class-name and they all fail.
 
 **Repro (via API, since B1 blocks the CLI):**
 ```eligian
@@ -89,7 +92,19 @@ unknown selectors.
 
 ---
 
-## 🟡 B3 — Validation/semantic errors are mislabeled as "Parse Error"
+## ✅ B3 — FIXED — Validation/semantic errors were mislabeled as "Parse Error"
+
+**Fixed 2026-06-17.** Langium semantic diagnostics were emitted with
+`_tag: 'ParseError'` in `document-errors.ts`; now tagged `ValidationError`
+(new generic kind `'SemanticValidation'`), so they format as **"Validation
+Error:"**. Cascade: widened error unions in `document-errors.ts`, `parser.ts`
+(`parseSource`), `library-loader.ts`, and `pipeline.ts` (`CompileError`,
+`compileToIR`). At the CLI library boundary, `compile-file.ts` now throws
+`CompilationError` (not `ParseError`) when the parse phase fails with an inner
+`ValidationError`, so the category matches the message. Genuine lexer/parser
+errors remain `ParseError`. Verified: 2012 language + 202 cli tests pass.
+
+### Original report
 
 **Summary:** Non-parse errors (CSS validation, semantic checks) are surfaced as
 `ParseError` and printed under the header **"Parse failed:"** with messages
@@ -111,7 +126,17 @@ and CI can tell a syntax error from a semantic one.
 
 ---
 
-## 🟡 B4 — Wrong hint attached to CSS container-selector error
+## ✅ B4 — FIXED — Wrong hint attached to CSS container-selector error
+
+**Fixed 2026-06-17** (as a consequence of B3). The bogus hint came from
+`generateParseHint()`, which fires the "forget to define a timeline?" hint on any
+message containing the substring "timeline" — including "...timeline container
+selector". Now that these diagnostics are tagged `ValidationError`, they route to
+`generateValidationHint()` instead, which correctly returns no hint here. (The
+`generateParseHint` substring heuristic is still fragile but no longer reachable
+for this case.)
+
+### Original report
 
 **Summary:** The CSS container-selector error carries an unrelated hint.
 
@@ -158,6 +183,19 @@ Both output modes are documented but currently do nothing (subsumed by **B1**).
 Listed separately so they get **re-tested once B1 is fixed** — the write path
 ([src/main.ts:144-152](src/main.ts#L144)) and stdout path look correct on
 inspection but have never actually run.
+
+---
+
+## ⚪ B7 — EOF parser errors report location `NaN:NaN`
+
+A truncated source (e.g. an unclosed `[`) produces:
+```
+Parse Error: Expecting token of type ']' but found ``.
+  at NaN:NaN
+```
+The EOF token has no `startLine`/`startColumn`, so the location computed in
+`document-errors.ts` (parser-error branch) becomes `NaN`. Should fall back to the
+last line/column of the source (or 1:1) instead of `NaN`. Minor; pre-existing.
 
 ---
 

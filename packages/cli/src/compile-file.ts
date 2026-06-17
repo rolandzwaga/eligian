@@ -233,15 +233,18 @@ export async function compileFile(
   const parseExit = await Effect.runPromiseExit(parseSource(sourceCode, absoluteInputPath));
   if (Exit.isFailure(parseExit)) {
     const actualError = causeToError(parseExit.cause) as CompilerError;
-    const formatted = formatErrors([actualError], sourceCode);
-    throw new ParseError(
-      'Failed to parse Eligian source',
-      formatted.map(err => ({
-        message: err.message,
-        codeSnippet: err.codeSnippet,
-        hint: err.hint,
-      }))
-    );
+    const formatted = formatErrors([actualError], sourceCode).map(err => ({
+      message: err.message,
+      codeSnippet: err.codeSnippet,
+      hint: err.hint,
+    }));
+    // parseSource runs both parsing and Langium semantic validation. Surface
+    // validation diagnostics as a CompilationError (not ParseError) so the error
+    // category matches the message ("Validation Error", not "Parse failed").
+    if (actualError._tag === 'ValidationError') {
+      throw new CompilationError('Validation failed', formatted);
+    }
+    throw new ParseError('Failed to parse Eligian source', formatted);
   }
   const program: Program = parseExit.value;
 

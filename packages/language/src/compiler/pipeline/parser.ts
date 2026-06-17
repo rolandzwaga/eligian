@@ -12,7 +12,7 @@ import * as path from 'node:path';
 import { Effect } from 'effect';
 import { type LangiumDocument, URI } from 'langium';
 import { createEmptyCSSMetadata, parseCSS } from '../../css/css-parser.js';
-import type { ParseError } from '../../errors/index.js';
+import type { ParseError, ValidationError } from '../../errors/index.js';
 import { isLibrary, type Program } from '../../generated/ast.js';
 import { isDefaultImport } from '../../utils/ast-helpers.js';
 import { resolveImportRelativePath } from '../../utils/path-utils.js';
@@ -43,7 +43,10 @@ let documentCounter = 0;
  * URI to avoid document conflicts. Documents are removed from the workspace
  * after parsing to prevent memory leaks.
  */
-export const parseSource = (source: string, uri?: string): Effect.Effect<Program, ParseError> =>
+export const parseSource = (
+  source: string,
+  uri?: string
+): Effect.Effect<Program, ParseError | ValidationError> =>
   Effect.gen(function* () {
     // Generate unique URI if not provided
     const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
