@@ -12,6 +12,7 @@ languages {
   * "en-US" "English"
 }
 
+layout "./layout.html"
 styles "./tour.css"
 
 import { revealBlock, spotlight, clearSpots, callout, narrate, demo } from "./presentation.eligian"

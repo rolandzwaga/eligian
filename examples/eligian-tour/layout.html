@@ -1,0 +1,73 @@
+<!--
+  Eligian Tour — stage layout (Chapter 1).
+
+  Rendered into the engine container (#eligius-container) as the layoutTemplate.
+  The timeline operates on #stage. Code is PRE-TOKENIZED here (spans with .tok +
+  an id per highlightable token); the presentation library only toggles classes /
+  sets text at runtime — no runtime tokenizer. Every id/class selected or class
+  toggled by the .eligian must be defined in tour.css (CSS validation).
+-->
+<div id="stage">
+
+  <header id="chrome">
+    <nav id="progress-rail" aria-label="chapters">
+      <span class="dot is-current"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </nav>
+    <span id="chapter-label">01 · Timeline &amp; Time</span>
+  </header>
+
+  <!-- Code pane: one block per beat, revealed in turn -->
+  <section id="code-pane">
+    <pre id="code-ch1" class="code"><code><span class="tok kw" id="tok-timeline">timeline</span> <span class="tok str" id="tok-name">"Tour"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw" id="tok-raf">raf</span> {
+  <span class="tok com">… events …</span>
+}</code></pre>
+
+    <pre id="code-at" class="code"><code><span class="tok kw" id="tok-at">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">revealHero</span>()</code></pre>
+
+    <pre id="code-units" class="code"><code><span class="tok num">42</span>      <span class="tok com">// 42 ms (no unit = ms)</span>
+<span class="tok num">500ms</span>
+<span class="tok num">2s</span>
+<span class="tok num">1.5m</span>
+<span class="tok num">0.5h</span></code></pre>
+
+    <pre id="code-arith" class="code"><code><span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok op" id="tok-plus">+</span> <span class="tok num">2s</span> .. <span class="tok num">10s</span>
+<span class="tok kw">at</span> <span class="tok op">+</span><span class="tok num">0s</span>..<span class="tok op">+</span><span class="tok num">3s</span>  <span class="tok fn">doThing</span>()</code></pre>
+
+    <pre id="code-full" class="code"><code><span class="tok kw">timeline</span> <span class="tok str">"Tour"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
+  <span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">6s</span>  <span class="tok fn">revealBlock</span>(<span class="tok str">"#code-ch1"</span>)
+  <span class="tok kw">at</span> <span class="tok num">6s</span>..<span class="tok num">12s</span> <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-raf"</span>)
+  <span class="tok kw">at</span> <span class="tok num">12s</span>..<span class="tok num">20s</span> <span class="tok fn">revealBlock</span>(<span class="tok str">"#code-at"</span>)
+  <span class="tok com">… and so on …</span>
+}</code></pre>
+  </section>
+
+  <!-- Effect pane: the live result of the beat being explained -->
+  <section id="effect-pane">
+    <div id="fx-stage" class="fx"><span class="fx-frame">#stage</span></div>
+    <div id="fx-providers" class="fx">
+      <span class="fx-chip">raf</span><span class="fx-chip">video</span><span class="fx-chip">audio</span><span class="fx-chip">custom</span>
+    </div>
+    <div id="fx-hero" class="fx"><span class="fx-hero-box">hero</span></div>
+    <div id="fx-ruler" class="fx"><span class="fx-tick">ms</span><span class="fx-tick">s</span><span class="fx-tick">m</span><span class="fx-tick">h</span></div>
+    <div id="fx-chain" class="fx"><span class="fx-bar"></span><span class="fx-bar fx-bar--rel"></span></div>
+    <div id="fx-endcard" class="fx"><span class="fx-done">Chapter 1 ✓</span></div>
+  </section>
+
+  <!-- Narration subtitle (text set at runtime) -->
+  <footer id="narration"></footer>
+
+  <!-- Callout chips, positioned over tokens (text set at runtime) -->
+  <div id="callout-layer">
+    <div id="cl-name" class="callout"></div>
+    <div id="cl-provider" class="callout"></div>
+    <div id="cl-range" class="callout"></div>
+    <div id="cl-units" class="callout"></div>
+    <div id="cl-relative" class="callout"></div>
+  </div>
+
+</div>
