@@ -1091,7 +1091,7 @@ all. They are recorded here so they can be turned into tasks later; none is a
 correctness defect, all are size/maintainability concerns. Verify line counts
 before scheduling — they drift.
 
-**Status:** W1 ✅ FIXED (see below). W2 and W3 remain open.
+**Status:** W1 ✅ FIXED, W2 ✅ FIXED (see below). W3 remains open.
 
 ### W1. `operation-call-validator.ts` is a new god class (~1038 lines) — ✅ FIXED
 **Location:** [operation-call-validator.ts](packages/language/src/validators/operation-call-validator.ts)
@@ -1132,7 +1132,7 @@ four collaborators, and forwards each registered method one line, so the `Operat
 check map in `registerValidationChecks` is unchanged. All method bodies moved verbatim —
 pure behavior-preserving refactor.
 
-### W2. `ast-transformer.ts` is the largest file in the repo (~2535 lines)
+### W2. `ast-transformer.ts` is the largest file in the repo (~2535 lines) — ✅ FIXED
 **Location:** [ast-transformer.ts](packages/language/src/compiler/ast-transformer.ts)
 Never flagged by the god-class theme (which only named `EligianValidator` and
 `extension/main.ts`), but at ~2535 lines / ~22 top-level functions it is the
@@ -1141,6 +1141,54 @@ single biggest source file. **Suggested task:** extract per-construct transforme
 directory behind the existing public entry points, mirroring the validator
 decomposition. Higher risk than W1 — it sits on the compile path and changing it
 can alter JSON output, so it needs strong snapshot coverage first.
+
+**Fixed** on branch **`refactor/w2-ast-transformer-decomposition`** (verified:
+`pnpm exec tsgo --noEmit` clean for the language package, `pnpm run check` clean —
+only the 6 pre-existing `useOptionalChain`/unsafe-fix warnings remain in untouched
+files (`eligian-scope-provider.ts`, `eligian-completion-provider.ts`,
+`eligian-code-action-provider.ts`, locale-editor, compiler `operations/validator.ts`),
+none in the new `transformers/` dir — full suites green: shared-utils 87, language
+2012 passed/23 skipped, extension 327, cli 202 passed/19 skipped; `test:coverage:ci`
+exit 0 (thresholds held); `pnpm effect:check:language` 0 errors / 0 warnings; full
+`pnpm run build` clean).
+
+**Snapshot coverage first (per the warning above):** a new golden suite
+[transformer-golden.spec.ts](packages/language/src/compiler/__tests__/transformer-golden.spec.ts)
+was added *before* the move — it compiles representative sources through `transformAST`
+across every construct (regular/endable actions, unified action calls, if/for/break/
+continue control flow, sequence/stagger blocks, constant folding + binary expressions,
+event actions, languages block, controllers) and snapshots the emitted IR with UUIDs
+and `compiledAt` normalized to stable tokens. The six snapshots were unchanged by the
+refactor, confirming byte-identical structural output (the +6 in the language count is
+exactly these new tests).
+
+The 2526-line monolith was split — methods/functions moved **verbatim** (pure
+behavior-preserving refactor) — into a new
+[compiler/transformers/](packages/language/src/compiler/transformers/) directory, with
+`ast-transformer.ts` reduced to a **246-line composition root** that keeps the public
+`transformAST` entry point and re-exports `transformEventAction`/`createParameterContext`
+so existing importers (tests, `pipeline.ts`) are unchanged. The modules form an acyclic
+layering (leaves → operation cluster → timeline/action → orchestrator):
+- **`scope.ts`** — `ScopeContext`, `createEmptyScope`, `EventActionContext`, `createParameterContext`.
+- **`source-location.ts`** — `getSourceLocation`, `getProgram`.
+- **`action-call-operations.ts`** — `buildActionCallOperations` (the D16 requestAction+startAction/endAction helper).
+- **`expression-transformer.ts`** — `transformExpression`.
+- **`time-transformer.ts`** — `transformTimeExpression`, `evaluateTimeExpression`, `convertTimeToSeconds`.
+- **`operation-transformer.ts`** — the mutually-recursive operation/control-flow cluster
+  (`transformOperationCall`, `transformOperationStatement`, `transformIfStatement`,
+  `transformForStatement`, `transformVariableDeclaration`, `transformBreakStatement`,
+  `transformContinueStatement`, `validateOperationSequence`); kept together because the
+  recursion can't be split without a circular import.
+- **`timeline-transformer.ts`** — `buildTimelineConfig`, `transformSequenceBlock`,
+  `transformStaggerBlock`, `transformTimedEvent`.
+- **`action-transformer.ts`** — `transformActionDefinition`, `transformEventAction`.
+- **`config-builder.ts`** — defaults/layout/provider-settings, source-map build, IR→Eligius
+  strip/convert helpers, `transformLanguagesBlock`, `mapProviderToTimelineType`.
+- **`library-imports.ts`** — `resolveLibraryDocument`, `resolveImports`, `resolveLibraryImports`.
+
+The largest products are `operation-transformer.ts` (~626 lines, the cohesive control-flow
+cluster) and `timeline-transformer.ts` (~583); both are focused single-concern modules and
+independently testable, so the original "biggest source file" smell is resolved.
 
 ### W3. Other oversized modules worth a sizing pass (lower priority)
 Recorded for completeness; decompose only if they keep growing:
