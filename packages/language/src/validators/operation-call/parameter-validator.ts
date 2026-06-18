@@ -8,7 +8,7 @@ import {
 } from '../../compiler/index.js';
 import { findActionByName } from '../../compiler/name-resolver.js';
 import type { EligianScopeProvider } from '../../eligian-scope-provider.js';
-import type { OperationCall } from '../../generated/ast.js';
+import { isStaggerBlock, type OperationCall } from '../../generated/ast.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
@@ -40,14 +40,23 @@ export class ParameterValidator extends BaseValidator {
     parameters: ReadonlyArray<{ name: string }> | undefined,
     argumentCount: number,
     node: AstNode,
-    accept: ValidationAcceptor
+    accept: ValidationAcceptor,
+    implicitArgs = 0
   ): void {
-    const expectedCount = parameters?.length ?? 0;
+    // `implicitArgs` are parameters the call site doesn't supply explicitly — a
+    // `stagger`'s action-call form fills the action's first parameter with the
+    // current item, so callers write `with revealCard()` for a 1-param action.
+    const declared = parameters?.length ?? 0;
+    const expectedCount = Math.max(0, declared - implicitArgs);
     if (argumentCount !== expectedCount) {
-      const paramNames = parameters?.map(p => p.name).join(', ') ?? '';
+      const explicitNames =
+        parameters
+          ?.slice(implicitArgs)
+          .map(p => p.name)
+          .join(', ') ?? '';
       accept(
         'error',
-        `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${paramNames}`,
+        `Action '${opName}' expects ${expectedCount} argument(s) but got ${argumentCount}. Expected: ${explicitNames}`,
         {
           node,
           property: 'args',
@@ -71,6 +80,11 @@ export class ParameterValidator extends BaseValidator {
       return;
     }
 
+    // A `stagger … with action()` call has its first parameter auto-filled with
+    // the current item, so one fewer explicit argument is expected.
+    const implicitArgs =
+      isStaggerBlock(operation.$container) && operation.$containerProperty === 'actionCall' ? 1 : 0;
+
     // Check if this is an action call (local, library, or imported)
     const program = this.getProgram(operation);
     if (program) {
@@ -82,7 +96,8 @@ export class ParameterValidator extends BaseValidator {
           localAction.parameters,
           argumentCount,
           operation,
-          accept
+          accept,
+          implicitArgs
         );
         return;
       }
@@ -99,7 +114,8 @@ export class ParameterValidator extends BaseValidator {
             importedAction.parameters,
             argumentCount,
             operation,
-            accept
+            accept,
+            implicitArgs
           );
           return;
         }
@@ -116,7 +132,8 @@ export class ParameterValidator extends BaseValidator {
           libraryAction.parameters,
           argumentCount,
           operation,
-          accept
+          accept,
+          implicitArgs
         );
         return;
       }

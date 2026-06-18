@@ -23,7 +23,11 @@ import type {
   VariableDeclaration,
   VariableReference,
 } from '../generated/ast.js';
-import { isEndableActionDefinition, isRegularActionDefinition } from '../generated/ast.js';
+import {
+  isEndableActionDefinition,
+  isRegularActionDefinition,
+  isStaggerBlock,
+} from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
 import { registerEventInference } from './inference/event-inference.js';
@@ -416,6 +420,14 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         matching: (call: OperationCall) => {
           // Only match if the call name matches this action
           if (getOperationCallName(call) !== action.name) {
+            return false;
+          }
+
+          // A `stagger … with action()` call auto-fills the action's first
+          // parameter with the current item, so its arity (one fewer explicit
+          // arg) is validated in the Langium parameter validator, which models
+          // that. Skip Typir's strict arg-count/type check here.
+          if (isStaggerBlock(call.$container) && call.$containerProperty === 'actionCall') {
             return false;
           }
 

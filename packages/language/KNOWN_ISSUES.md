@@ -128,6 +128,26 @@ stagger too.
 
 ---
 
+## ✅ C7 — FIXED — `stagger … with action()` rejected the implicit item arg
+
+**Fixed 2026-06-18.** A `stagger delay items with action() for dur` call auto-fills
+the action's **first parameter** with the current item (the transformer does
+this), so the idiomatic call for a 1-parameter action is `with revealCard()` — no
+explicit args. But **two** validators demanded an explicit argument for every
+declared parameter and rejected it: the Langium parameter validator
+(`validators/operation-call/parameter-validator.ts`) and the Typir type system's
+action-call inference rule (`type-system-typir/eligian-type-system.ts`,
+`validateArgumentsOfFunctionCalls: true`). Found building Chapter 4 of the tour.
+
+Fix: the Langium validator now subtracts one implicit argument for a `stagger`
+action-call (`implicitArgs`), and the Typir rule's `matching` skips the stagger
+action-call (its arity is handled in Langium, which models the implicit item).
+Genuine mismatches (e.g. a 2-param action with no explicit arg) still error.
+Regression tests: `__tests__/stagger-validation.spec.ts`. (`sequence` action
+calls are unaffected — they require an exact arg/param match.)
+
+---
+
 ## ✅ T1 — FIXED — eligius 2.2.2 / jquery@4 crashed the whole toolchain in Node
 
 **Fixed 2026-06-18.** The `eligius` 2.2.1 → 2.2.2 upgrade pulled in **jquery@4**,
