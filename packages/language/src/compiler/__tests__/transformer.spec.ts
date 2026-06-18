@@ -329,6 +329,30 @@ describe('AST Transformer', () => {
       );
     });
 
+    // C5 regression: a direct property-chain reference used as a `for` collection
+    // must keep its `$` prefix. Emitting `scope.variables.x` (no `$`) made Eligius
+    // treat it as a plain string, so `forEach` threw at runtime. This is the
+    // dogfooding scenario that surfaced the bug (setVariable + loop over a scope
+    // variable). Covers all three sigils.
+    test('should preserve the $ prefix on property-chain references in a for collection', async () => {
+      for (const sigil of ['$scope.variables.items', '$operationdata.items', '$globaldata.items']) {
+        const code = `
+          action test() [
+            for (p in ${sigil}) {
+              selectElement(@@currentItem)
+            }
+          ]
+          timeline "test" in ".test-container" using raf {}
+        `;
+        const program = await parseDSL(code);
+        const result = await Effect.runPromise(transformAST(program));
+        const forEachOp = result.config.actions[0].startOperations.find(
+          op => op.systemName === 'forEach'
+        );
+        expect(forEachOp?.operationData?.collection).toBe(sigil);
+      }
+    });
+
     test('should evaluate binary expressions with numbers', async () => {
       const code = `
                 action test [
