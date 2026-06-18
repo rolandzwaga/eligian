@@ -6,6 +6,7 @@ import { ActionValidator } from './validators/action-validator.js';
 import { EventActionValidator } from './validators/event-action-validator.js';
 import { ImportValidator } from './validators/import-validator.js';
 import { LanguagesValidator } from './validators/languages-validator.js';
+import { NavigateValidator } from './validators/navigate-validator.js';
 import { OperationCallValidator } from './validators/operation-call-validator.js';
 import { ProgramValidator } from './validators/program-validator.js';
 import { TimelineValidator } from './validators/timeline-validator.js';
@@ -63,6 +64,7 @@ export class EligianValidator {
   readonly action: ActionValidator;
   readonly languages: LanguagesValidator;
   readonly eventAction: EventActionValidator;
+  readonly navigate: NavigateValidator;
 
   constructor(services: EligianServices) {
     this.program = new ProgramValidator(services);
@@ -72,6 +74,7 @@ export class EligianValidator {
     this.action = new ActionValidator(services);
     this.languages = new LanguagesValidator(services);
     this.eventAction = new EventActionValidator(services);
+    this.navigate = new NavigateValidator(services);
   }
 }
 
@@ -196,4 +199,12 @@ export function registerValidationChecks(services: EligianServices) {
     ],
   };
   registry.register(eventActionChecks, v.eventAction);
+
+  const navigateChecks: ValidationChecks<EligianAstType> = {
+    NavigateStatement: [
+      v.navigate.checkNavigateTarget, // navigate target must name an existing timeline
+      v.navigate.checkNavigateSelector, // navigate selector must resolve against imported CSS
+    ],
+  };
+  registry.register(navigateChecks, v.navigate);
 }
