@@ -209,4 +209,42 @@ describe('Action-Scoped Constant Folding', () => {
     // No init actions (GLOBAL is a constant)
     expect(result.config.initActions).toHaveLength(0);
   });
+
+  // C4: an array/object literal const must fold (inline) rather than becoming a
+  // runtime setVariable. A `for (x in @arr)` over a runtime scope variable can't
+  // be read back through forEach's pushed scope ($scope.variables.* unresolved),
+  // so folding the literal is what makes the loop work.
+  test('should inline a literal-array constant into the forEach collection', async () => {
+    const code = `
+      action test() [
+        const points = ["#a", "#b", "#c"]
+        for (p in @points) {
+          selectElement(@@currentItem)
+        }
+      ]
+      timeline "t" in "#root" using raf {}
+    `;
+    const result = await Effect.runPromise(transformAST(await parseDSL(code)));
+    const ops = result.config.actions[0].startOperations;
+
+    // The const must NOT survive as a runtime setVariable.
+    expect(ops.filter(op => op.systemName === 'setVariable')).toHaveLength(0);
+
+    // forEach must receive the literal array directly (not a $scope.variables chain).
+    const forEachOp = ops.find(op => op.systemName === 'forEach');
+    expect(forEachOp?.operationData?.collection).toEqual(['#a', '#b', '#c']);
+  });
+
+  test('should inline a literal-object constant (no setVariable)', async () => {
+    const code = `
+      action test() [
+        const cfg = { a: 1, b: "x" }
+        setData(@cfg)
+      ]
+      timeline "t" in "#root" using raf {}
+    `;
+    const result = await Effect.runPromise(transformAST(await parseDSL(code)));
+    const ops = result.config.actions[0].startOperations;
+    expect(ops.filter(op => op.systemName === 'setVariable')).toHaveLength(0);
+  });
 });

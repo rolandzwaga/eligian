@@ -227,11 +227,39 @@ describe('Expression Evaluator - Edge Cases', () => {
   });
 
   test('should fail gracefully on unsupported expression types', async () => {
-    // Object literals should fail gracefully
-    const expr = await parseExpression('{ x: 5 }');
+    // Runtime references can't be evaluated at compile time.
+    const expr = await parseExpression('$operationdata.foo');
     const result = evaluateExpression(expr, new Map());
 
     expect(result.canEvaluate).toBe(false);
     expect(result.error?.reason).toContain('Cannot evaluate');
+  });
+});
+
+// C4: array/object literals whose elements are all constant must fold, so e.g.
+// `const xs = ["#a", "#b"]` is inlined instead of becoming a runtime setVariable
+// (which the engine can't read back through a forEach's pushed scope).
+describe('Expression Evaluator - Array & Object literals (C4)', () => {
+  test('folds an array of literals', async () => {
+    const result = evaluateExpression(await parseExpression('["#a", "#b", "#c"]'), new Map());
+    expect(result.canEvaluate).toBe(true);
+    expect(result.value).toEqual(['#a', '#b', '#c']);
+  });
+
+  test('folds nested arrays and mixed primitive elements', async () => {
+    const result = evaluateExpression(await parseExpression('[1, "two", [true, 4]]'), new Map());
+    expect(result.canEvaluate).toBe(true);
+    expect(result.value).toEqual([1, 'two', [true, 4]]);
+  });
+
+  test('folds an object literal', async () => {
+    const result = evaluateExpression(await parseExpression('{ a: 1, b: "x" }'), new Map());
+    expect(result.canEvaluate).toBe(true);
+    expect(result.value).toEqual({ a: 1, b: 'x' });
+  });
+
+  test('does NOT fold an array containing a runtime reference', async () => {
+    const result = evaluateExpression(await parseExpression('[$operationdata.x, "#b"]'), new Map());
+    expect(result.canEvaluate).toBe(false);
   });
 });

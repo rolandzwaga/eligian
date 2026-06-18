@@ -884,13 +884,15 @@ describe('AST Transformer', () => {
     });
 
     test('should transform conditional break and continue inside loops', async () => {
+      // Conditions are comparisons (the engine `when` op evaluates LEFT<op>RIGHT;
+      // bare-boolean conditions like `if ($operationdata.skip)` aren't supported).
       const code = `
         action test [
           for (item in ["a", "b", "c"]) {
-            if ($operationdata.skip) {
+            if (@@currentItem == "b") {
               continue
             }
-            if ($operationdata.stop) {
+            if (@@currentItem == "c") {
               break
             }
           }

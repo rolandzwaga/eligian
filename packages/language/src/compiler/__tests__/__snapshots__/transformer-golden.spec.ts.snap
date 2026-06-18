@@ -19,7 +19,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > control fl
         {
           "id": "<uuid-5>",
           "operationData": {
-            "condition": "("$scope.currentItem" == "skip")",
+            "expression": "$scope.currentItem=='skip'",
           },
           "systemName": "when",
         },
@@ -43,7 +43,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > control fl
         {
           "id": "<uuid-9>",
           "operationData": {
-            "condition": "("$scope.currentItem" == "stop")",
+            "expression": "$scope.currentItem=='stop'",
           },
           "systemName": "when",
         },

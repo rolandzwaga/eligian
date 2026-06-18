@@ -17,7 +17,7 @@
 import path from 'node:path';
 import type { Program, VariableDeclaration } from '../generated/ast.js';
 import { getElements, getHTMLImports } from '../utils/program-helpers.js';
-import { evaluateExpression } from './expression-evaluator.js';
+import { constantValueType, evaluateExpression } from './expression-evaluator.js';
 import { loadHTMLFile, resolveHTMLPath } from './html-import-utils.js';
 import type { ConstantMap, ConstantValue } from './types/constant-folding.js';
 
@@ -95,7 +95,7 @@ export function buildConstantMap(program: Program): ConstantMap {
       const constantValue: ConstantValue = {
         name: constDecl.name,
         value: evalResult.value!,
-        type: typeof evalResult.value as 'string' | 'number' | 'boolean',
+        type: constantValueType(evalResult.value!),
         sourceLocation: extractSourceLocation(constDecl),
       };
 

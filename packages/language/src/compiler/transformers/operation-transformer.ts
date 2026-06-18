@@ -14,6 +14,7 @@ import type {
   ActionDefinition,
   BreakStatement,
   ContinueStatement,
+  Expression,
   ForStatement,
   IfStatement,
   NavigateStatement,
@@ -23,7 +24,7 @@ import type {
   VariableDeclaration,
 } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
-import { evaluateExpression } from '../expression-evaluator.js';
+import { constantValueType, evaluateExpression } from '../expression-evaluator.js';
 import { findActionByName } from '../name-resolver.js';
 import { getOperationSignature } from '../operations/index.js';
 import { mapParameters } from '../operations/mapper.js';
@@ -386,6 +387,104 @@ export const transformOperationStatement = (
   });
 
 /**
+ * The comparison operators the engine's `when` operation can evaluate. `when`
+ * parses its `expression` string by splitting on exactly one of these, so a
+ * condition must be a single comparison — logical (`&&`/`||`/`!`), boolean, and
+ * arithmetic conditions cannot be represented and are rejected.
+ */
+const WHEN_COMPARISON_OPS = new Set(['==', '!=', '>=', '<=', '>', '<']);
+
+/**
+ * Serialize one side of a `when` comparison to the engine's expected token: a
+ * bare number, a single-quoted string, or a property chain
+ * (`$operationdata.x` / `$globaldata.x` / `$scope.x` / `$scope.variables.x`).
+ * Constants are inlined to their literal value. Anything else (nested
+ * expression, boolean, null, object/array) can't be a `when` operand → error.
+ */
+const serializeWhenOperand = (
+  expr: Expression,
+  scope: ScopeContext
+): Effect.Effect<string, TransformError> =>
+  Effect.gen(function* () {
+    const e = expr as any;
+    const fail = (message: string) =>
+      Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidExpression' as const,
+        message,
+        location: getSourceLocation(expr),
+      });
+
+    // A literal value usable as a `when` operand (number → bare, string → quoted).
+    const literalToken = (value: JsonValue): Effect.Effect<string, TransformError> => {
+      if (typeof value === 'number') return Effect.succeed(String(value));
+      if (typeof value === 'string') return Effect.succeed(`'${value}'`);
+      return fail(
+        `An 'if' comparison operand must be a number, string, or property/variable reference (got ${typeof value}).`
+      );
+    };
+
+    switch (e.$type) {
+      case 'NumberLiteral':
+        return String(e.value);
+      case 'StringLiteral':
+        return `'${e.value}'`;
+      case 'PropertyChainReference':
+        return `$${e.scope}.${e.properties.join('.')}`;
+      case 'SystemPropertyReference': {
+        const name =
+          scope.loopVariableName && e.name === scope.loopVariableName ? 'currentItem' : e.name;
+        return `$scope.${name}`;
+      }
+      case 'ParameterReference': {
+        if (!e.parameter?.ref) return yield* fail('Undefined parameter reference (linking failed)');
+        return `$operationdata.${e.parameter.ref.name}`;
+      }
+      case 'VariableReference': {
+        if (!e.variable?.ref) return yield* fail('Undefined variable reference (linking failed)');
+        const varName = e.variable.ref.name as string;
+        if (scope.scopedConstants.has(varName)) {
+          return yield* literalToken(scope.scopedConstants.get(varName)!.value);
+        }
+        if (scope.programConstants.has(varName)) {
+          return yield* literalToken(scope.programConstants.get(varName)!.value);
+        }
+        return `$scope.variables.${varName}`;
+      }
+      default:
+        return yield* fail(
+          `An 'if' comparison operand must be a number, string, or property/variable reference (got ${e.$type}).`
+        );
+    }
+  });
+
+/**
+ * Serialize an `if` condition into the `when` op's `expression` string,
+ * e.g. `$scope.variables.count>0` or `2>0`. The engine evaluates a single
+ * comparison `LEFT<op>RIGHT` (no spaces); see {@link WHEN_COMPARISON_OPS}.
+ */
+const serializeWhenExpression = (
+  condition: Expression,
+  scope: ScopeContext
+): Effect.Effect<string, TransformError> =>
+  Effect.gen(function* () {
+    const cond = condition as any;
+    if (cond.$type !== 'BinaryExpression' || !WHEN_COMPARISON_OPS.has(cond.op)) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidExpression' as const,
+        message:
+          "An 'if' condition must be a single comparison (e.g. count > 0, name == 'x'). " +
+          "The engine's 'when' operation cannot evaluate logical (&& || !), boolean, or arithmetic conditions.",
+        location: getSourceLocation(condition),
+      });
+    }
+    const left = yield* serializeWhenOperand(cond.left, scope);
+    const right = yield* serializeWhenOperand(cond.right, scope);
+    return `${left}${cond.op}${right}`;
+  });
+
+/**
  * Transform IfStatement → when/otherwise/endWhen operations (T177)
  *
  * Transforms:
@@ -396,13 +495,15 @@ export const transformOperationStatement = (
  *   }
  *
  * Into:
- *   when(condition)
+ *   when({ expression })
  *   [thenOps...]
  *   otherwise()
  *   [elseOps...]
  *   endWhen()
  *
- * For if-without-else, the otherwise() operation is omitted.
+ * The condition is serialized to the engine `when` op's `expression` string
+ * (`LEFT<op>RIGHT`); only single comparisons are representable (see
+ * {@link serializeWhenExpression}). For if-without-else, otherwise() is omitted.
  */
 export const transformIfStatement = (
   stmt: IfStatement,
@@ -413,15 +514,39 @@ export const transformIfStatement = (
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
 
-    // Transform condition expression
-    const condition = yield* transformExpression(stmt.condition, scope);
+    // Constant-fold a condition that evaluates to a literal boolean at compile
+    // time (e.g. `if (true)`, or `if (@C > 0)` where C is a constant): emit only
+    // the taken branch, with no `when`/`otherwise`/`endWhen`. The engine's `when`
+    // can't evaluate a bare boolean, and there's no point emitting one anyway.
+    const combinedConstants = new Map([
+      ...scope.programConstants.entries(),
+      ...scope.scopedConstants.entries(),
+    ]);
+    const condEval = evaluateExpression(stmt.condition, combinedConstants);
+    if (condEval.canEvaluate && typeof condEval.value === 'boolean') {
+      const takenOps = condEval.value ? stmt.thenOps : stmt.elseOps;
+      const branchScope: ScopeContext = {
+        ...scope,
+        scopedConstants: new Map(scope.scopedConstants),
+      };
+      for (const op of takenOps) {
+        operations.push(
+          ...(yield* transformOperationStatement(op, branchScope, false, program, allActions))
+        );
+      }
+      return operations;
+    }
 
-    // 1. when(condition)
+    // Otherwise the condition is a runtime comparison → serialize it into the
+    // engine `when` op's `expression` string.
+    const expression = yield* serializeWhenExpression(stmt.condition, scope);
+
+    // 1. when({ expression })
     operations.push({
       id: crypto.randomUUID(),
       systemName: 'when',
       operationData: {
-        condition,
+        expression,
       },
       sourceLocation: getSourceLocation(stmt),
     });
@@ -613,7 +738,7 @@ export const transformVariableDeclaration = (
       scope.scopedConstants.set(stmt.name, {
         name: stmt.name,
         value: evalResult.value!,
-        type: typeof evalResult.value as 'string' | 'number' | 'boolean',
+        type: constantValueType(evalResult.value!),
         sourceLocation: {
           line: stmt.$cstNode?.range.start.line ?? 0,
           column: stmt.$cstNode?.range.start.character ?? 0,

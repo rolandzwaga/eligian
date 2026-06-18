@@ -18,12 +18,15 @@
  */
 
 import type {
+  ArrayLiteral,
   BooleanLiteral,
   Expression,
   NumberLiteral,
+  ObjectLiteral,
   StringLiteral,
   VariableReference,
 } from '../generated/ast.js';
+import type { JsonValue } from './types/common.js';
 import type { ConstantMap, ExpressionEvaluationResult } from './types/constant-folding.js';
 
 /**
@@ -76,7 +79,7 @@ function evaluateExpressionInternal(
   expr: Expression,
   constants: ConstantMap,
   evaluating: Set<string>
-): string | number | boolean {
+): JsonValue {
   switch (expr.$type) {
     // Literal values - already constant
     case 'StringLiteral':
@@ -88,16 +91,37 @@ function evaluateExpressionInternal(
     case 'BooleanLiteral':
       return (expr as BooleanLiteral).value;
 
+    case 'NullLiteral':
+      return null;
+
+    // Array literal: [a, b, c] — constant only if every element is constant
+    case 'ArrayLiteral': {
+      const arr = expr as ArrayLiteral;
+      return arr.elements.map(el => evaluateExpressionInternal(el, constants, evaluating));
+    }
+
+    // Object literal: { k: v } — constant only if every value is constant
+    case 'ObjectLiteral': {
+      const obj = expr as ObjectLiteral;
+      const result: { [key: string]: JsonValue } = {};
+      for (const prop of obj.properties) {
+        result[prop.key] = evaluateExpressionInternal(prop.value, constants, evaluating);
+      }
+      return result;
+    }
+
     // Binary expressions: a + b, a && b, etc.
     case 'BinaryExpression': {
-      const left = evaluateExpressionInternal(expr.left, constants, evaluating);
-      const right = evaluateExpressionInternal(expr.right, constants, evaluating);
+      const left = assertPrimitive(evaluateExpressionInternal(expr.left, constants, evaluating));
+      const right = assertPrimitive(evaluateExpressionInternal(expr.right, constants, evaluating));
       return applyBinaryOperator(expr.op, left, right);
     }
 
     // Unary expressions: !flag, -value
     case 'UnaryExpression': {
-      const operand = evaluateExpressionInternal(expr.operand, constants, evaluating);
+      const operand = assertPrimitive(
+        evaluateExpressionInternal(expr.operand, constants, evaluating)
+      );
       return applyUnaryOperator(expr.op, operand);
     }
 
@@ -128,6 +152,33 @@ function evaluateExpressionInternal(
     default:
       throw new Error(`Cannot evaluate expression type: ${expr.$type}`);
   }
+}
+
+/**
+ * Classify a folded constant value into a `ConstantValue['type']` tag.
+ * `typeof` alone is wrong for arrays and null (both report differently than we
+ * want), so this normalizes them.
+ */
+export function constantValueType(
+  value: JsonValue
+): 'string' | 'number' | 'boolean' | 'array' | 'object' | 'null' {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  const t = typeof value;
+  if (t === 'string' || t === 'number' || t === 'boolean') return t;
+  return 'object';
+}
+
+/**
+ * Narrow a JsonValue to a primitive for arithmetic/logical/comparison operators.
+ * Arrays/objects/null can't participate in these, so a non-primitive operand
+ * makes the whole expression non-constant (caught → canEvaluate: false).
+ */
+function assertPrimitive(value: JsonValue): string | number | boolean {
+  if (value === null || typeof value === 'object') {
+    throw new Error('Operator operand is not a primitive value');
+  }
+  return value;
 }
 
 /**
