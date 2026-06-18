@@ -62,11 +62,15 @@ export const transformExpression = (
       }
 
       case 'PropertyChainReference': {
-        // Property chain reference: $scope.currentItem
-        // For now, serialize to string format that Eligius understands
+        // Property chain reference: $scope.currentItem / $operationdata.x / $globaldata.x.
+        // The grammar captures `scope` WITHOUT the leading `$` (the `$` is a literal
+        // token), so it must be re-prepended — Eligius's resolveExternalPropertyChain
+        // only treats a value as a chain when it starts with `$scope.` / `$operationdata.`
+        // / `$globaldata.` (isExternalProperty). Emitting `scope.x` makes the engine
+        // take it as a plain string literal, which breaks at runtime.
         const scope = expr.scope;
         const properties = expr.properties.join('.');
-        return `${scope}.${properties}`;
+        return `$${scope}.${properties}`;
       }
 
       case 'VariableReference': {
