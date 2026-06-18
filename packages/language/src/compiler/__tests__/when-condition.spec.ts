@@ -91,7 +91,7 @@ describe('if → when condition expression (Eligius 3)', () => {
     const document = await parse(`
       const limit = 5
       const mode = "demo"
-      const items = ["a", "b"]
+      const items = [$globaldata.first, "b"]
       action test [
         if ($operationdata.count > @limit && @mode == $globaldata.mode && @items) { log() }
       ]

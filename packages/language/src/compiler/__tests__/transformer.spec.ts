@@ -300,7 +300,7 @@ describe('AST Transformer', () => {
 
     test('should reference program-level (non-constant) variables via $globaldata', async () => {
       const code = `
-                const items = ["a", "b"]
+                const items = [$globaldata.first, "b"]
                 action test [
                     const local = $operationdata.x
                     for (item in @items) {
@@ -315,7 +315,9 @@ describe('AST Transformer', () => {
 
       // Program-level variables are stored via setData as 'globaldata.items'
       const init = result.config.initActions[0].startOperations[0];
-      expect(init.operationData?.properties).toEqual({ 'globaldata.items': ['a', 'b'] });
+      expect(init.operationData?.properties).toEqual({
+        'globaldata.items': ['$globaldata.first', 'b'],
+      });
 
       const ops = result.config.actions[0].startOperations;
       expect(ops.find(op => op.systemName === 'forEach')?.operationData?.collection).toBe(
@@ -954,13 +956,15 @@ describe('AST Transformer', () => {
     });
 
     test('should transform conditional break and continue inside loops', async () => {
+      // Conditions are comparisons (the engine `when` op evaluates LEFT<op>RIGHT;
+      // bare-boolean conditions like `if ($operationdata.skip)` aren't supported).
       const code = `
         action test [
           for (item in ["a", "b", "c"]) {
-            if ($operationdata.skip) {
+            if (@@currentItem == "b") {
               continue
             }
-            if ($operationdata.stop) {
+            if (@@currentItem == "c") {
               break
             }
           }

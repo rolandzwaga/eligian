@@ -68,7 +68,14 @@ const serializeCondition = (
     ]);
     const folded = evaluateExpression(expr, constants);
     if (folded.canEvaluate) {
-      return { kind: 'literal' as const, value: folded.value! };
+      const value = folded.value!;
+      if (typeof value === 'object' && value !== null) {
+        return yield* failCondition(
+          expr,
+          `${Array.isArray(value) ? 'Array' : 'Object'} values cannot be used in conditions`
+        );
+      }
+      return { kind: 'literal' as const, value };
     }
 
     switch (expr.$type) {

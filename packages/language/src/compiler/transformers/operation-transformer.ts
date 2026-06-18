@@ -23,7 +23,7 @@ import type {
   VariableDeclaration,
 } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
-import { evaluateExpression } from '../expression-evaluator.js';
+import { constantValueType, evaluateExpression } from '../expression-evaluator.js';
 import { findActionByName } from '../name-resolver.js';
 import { getOperationSignature } from '../operations/index.js';
 import { mapParameters } from '../operations/mapper.js';
@@ -398,13 +398,14 @@ export const transformOperationStatement = (
  *   }
  *
  * Into:
- *   when(condition)
+ *   when({ expression })
  *   [thenOps...]
  *   otherwise()
  *   [elseOps...]
  *   endWhen()
  *
- * For if-without-else, the otherwise() operation is omitted.
+ * The condition is serialized to the Eligius `when` expression string by
+ * {@link transformCondition}. For if-without-else, otherwise() is omitted.
  */
 export const transformIfStatement = (
   stmt: IfStatement,
@@ -418,7 +419,7 @@ export const transformIfStatement = (
     // Transform condition → Eligius when expression string
     const expression = yield* transformCondition(stmt.condition, scope);
 
-    // 1. when(condition)
+    // 1. when({ expression })
     operations.push({
       id: crypto.randomUUID(),
       systemName: 'when',
@@ -615,7 +616,7 @@ export const transformVariableDeclaration = (
       scope.scopedConstants.set(stmt.name, {
         name: stmt.name,
         value: evalResult.value!,
-        type: typeof evalResult.value as 'string' | 'number' | 'boolean',
+        type: constantValueType(evalResult.value!),
         sourceLocation: {
           line: stmt.$cstNode?.range.start.line ?? 0,
           column: stmt.$cstNode?.range.start.character ?? 0,

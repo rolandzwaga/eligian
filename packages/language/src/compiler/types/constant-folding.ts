@@ -9,6 +9,8 @@
  * Related: data-model.md in feature specification
  */
 
+import type { JsonValue } from './common.js';
+
 /**
  * Represents a resolved constant with its name, value, and type information.
  *
@@ -33,16 +35,17 @@ export interface ConstantValue {
   name: string;
 
   /**
-   * The constant's resolved literal value
-   * Must be a JavaScript primitive (string, number, or boolean)
+   * The constant's resolved literal value.
+   * A JSON value — primitives (string, number, boolean) plus array/object
+   * literals whose elements are themselves constant (e.g. `const xs = [1, 2]`).
    */
-  value: string | number | boolean;
+  value: JsonValue;
 
   /**
    * The constant's type (for type preservation during inlining)
    * Ensures string "5" is not confused with number 5
    */
-  type: 'string' | 'number' | 'boolean';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'null';
 
   /**
    * Source location (for error reporting)
@@ -124,7 +127,7 @@ export interface ExpressionEvaluationResult {
    * The evaluated value (if canEvaluate is true)
    * undefined if evaluation failed
    */
-  value?: string | number | boolean;
+  value?: JsonValue;
 
   /**
    * Error information (if canEvaluate is false)
