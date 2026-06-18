@@ -45,8 +45,14 @@ action ch3ToggleBadge(count) [
 ]
 
 action ch3RevealBullets() [
-  const points = ["#c3-b1", "#c3-b2", "#c3-b3"]
-  for (p in @points) {
+  // setVariable stores the collection as a REAL scope variable — no compile-time
+  // folding, because this is an operation call, not a `const` (a literal `const`
+  // would be inlined). The loop then reads it back as $scope.variables.points:
+  // forEach resolves that chain up the scope chain from inside its own child
+  // scope — the eligius parent-scope fix (>= 2.2.2). Before that fix the loop
+  // couldn't see the parent scope's variable and threw at runtime.
+  setVariable("points", ["#c3-b1", "#c3-b2", "#c3-b3"])
+  for (p in $scope.variables.points) {
     selectElement(@@currentItem)
     addClass("in")
   }
