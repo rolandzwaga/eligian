@@ -58,6 +58,31 @@ action ch3RevealBullets() [
   }
 ]
 
+// Chapter-5 helpers — a REAL eventbus round-trip the chapter wires live. Clicking
+// the button runs ch5BroadcastPing (attached via a DOMEventListenerController),
+// which broadcasts "tour-ping"; the `on event` handler below catches it and reveals
+// the panel. This dogfoods three engine-reach features at once: controllers, the
+// eventbus, and event-driven actions — the same path the `navigate` sugar uses.
+action ch5WireButton() [
+  selectElement("#c5-fx-ping")
+  // addController(name, ...controllerParams) — positional after the name. For
+  // DOMEventListenerController: eventName, then the actions to run on the event.
+  addController("DOMEventListenerController", "click", ["ch5BroadcastPing"])
+]
+
+action ch5BroadcastPing() [
+  // broadcastEvent's params are (eventArgs, eventName) in that order — the array
+  // first. eventArgs[0] ("#c5-fx-panel") becomes the handler's `target` parameter.
+  broadcastEvent(["#c5-fx-panel"], "tour-ping")
+]
+
+// Event-driven action: runs whenever "tour-ping" is broadcast — NOT at a timeline
+// time. Its parameter maps to the event's args by index (target ← eventArgs[0]).
+on event "tour-ping" action ch5OnPing(target) [
+  selectElement(target)
+  addClass("in")
+]
+
 // ===========================================================================
 // Hub — the landing menu. Click a card to jump into a chapter.
 // ===========================================================================
@@ -70,6 +95,7 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-ch2" navigate "Actions"
     on click "#card-ch3" navigate "Logic"
     on click "#card-ch4" navigate "Timeline Power Tools"
+    on click "#card-ch5" navigate "Engine Reach"
   ] [
     hideView("#hub")
   ]
@@ -370,5 +396,83 @@ timeline "Timeline Power Tools" in "#stage" using raf {
     revealBlock("#c4-code-recap")
     spotlight("#c4-tok-recap")
     demo("#c4-fx-done")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 5 — Engine Reach. Reaching past the timeline clock into the engine's
+// runtime services: the eventbus (broadcastEvent), event-driven `on event`
+// actions, and controllers. Beat 3+4 wire a REAL eventbus round-trip — clicking
+// the button reveals the panel through controller → broadcast → on event. Beat 5
+// (i18n / LabelController) is illustrative (no locale assets authored for the tour).
+// ===========================================================================
+timeline "Engine Reach" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch5")
+    showView("#narration")
+    on click "#c5-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch5")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — beyond the clock
+  at 0s..7s [
+    narrate("Everything so far fired on the timeline clock. But a presentation also has to react — that's engine reach.")
+    revealBlock("#c5-code-overview")
+    callout("#c5-cl-over", "three doors past the clock: the eventbus, on event, controllers")
+    demo("#c5-fx-doors")
+  ] []
+
+  // Beat 2 — the eventbus: broadcast vs request
+  at 7s..15s [
+    clearSpots()
+    narrate("broadcastEvent puts a message on the engine's bus. Broadcast reaches every listener; request asks for the one that answers.")
+    revealBlock("#c5-code-eventbus")
+    spotlight("#c5-tok-bcast")
+    callout("#c5-cl-bus", "request-timeline-uri is the request the navigate sugar emits")
+    demo("#c5-fx-bus")
+  ] []
+
+  // Beat 3 ⭐ — on event (real round-trip, half 1: the handler that answers)
+  at 15s..24s [
+    clearSpots()
+    narrate("An on event action runs when its event fires, not at a time. Click the button — it broadcasts, and this handler answers.")
+    revealBlock("#c5-code-onevent")
+    spotlight("#c5-tok-onevent")
+    callout("#c5-cl-on", "params map to the event's args by position: target is eventArgs[0]")
+    demo("#c5-fx-bus")
+  ] []
+
+  // Beat 4 — controllers (real round-trip, half 2: wires the live button)
+  at 24s..32s [
+    clearSpots()
+    narrate("A controller attaches lasting behaviour to an element. The button's click is wired by a DOMEventListenerController — one of eight.")
+    revealBlock("#c5-code-controller")
+    spotlight("#c5-tok-ctrl")
+    callout("#c5-cl-ctrl", "selectElement + addController; this is what navigate desugars to")
+    demo("#c5-fx-bus")
+    ch5WireButton()
+  ] []
+
+  // Beat 5 — i18n / locales (illustrative: no locale assets authored for the tour)
+  at 32s..40s [
+    clearSpots()
+    narrate("Locales make text translatable. A LabelController binds a translation key to an element and re-renders on language-change.")
+    revealBlock("#c5-code-label")
+    spotlight("#c5-tok-loc")
+    callout("#c5-cl-loc", "translationKey resolved via the rosetta locale system")
+    demo("#c5-fx-label")
+  ] []
+
+  // Beat 6 — the chrome was the lesson: recap + the reveal
+  at 40s..48s [
+    clearSpots()
+    narrate("Eventbus, on event, controllers, locales — the navigation and narration you've used were built from exactly these. Click ← Hub for more.")
+    revealBlock("#c5-code-recap")
+    spotlight("#c5-tok-recap")
+    demo("#c5-fx-done")
   ] []
 }

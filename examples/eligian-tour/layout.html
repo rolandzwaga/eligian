@@ -30,7 +30,7 @@
         <li id="card-ch2" class="card"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
         <li id="card-ch3" class="card"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
         <li id="card-ch4" class="card"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
-        <li id="card-ch5" class="card is-soon"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
+        <li id="card-ch5" class="card"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
         <li id="card-ch6" class="card is-soon"><span class="card-num">06</span><span class="card-name">Tooling Magic</span></li>
       </ul>
     </div>
@@ -303,6 +303,69 @@
       <div id="c4-cl-edit" class="callout"></div>
       <div id="c4-cl-stagger" class="callout"></div>
       <div id="c4-cl-inline" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- ====================== CHAPTER 5 · Engine Reach ================= -->
+  <section id="ch5" class="view chapter">
+
+    <header class="chrome">
+      <button id="c5-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span>
+        <span class="dot"></span>
+      </nav>
+      <span class="chapter-label">05 · Engine Reach</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="c5-code-overview" class="code"><code><span class="tok fn">broadcastEvent</span>([args], <span class="tok str">"name"</span>)            <span class="tok com">// 1. the eventbus</span>
+<span class="tok kw">on</span> <span class="tok kw">event</span> <span class="tok str">"name"</span> <span class="tok kw">action</span> <span class="tok fn">H</span>(<span class="tok">p</span>) [ … ]    <span class="tok com">// 2. react to it</span>
+<span class="tok fn">addController</span>(<span class="tok str">"…Controller"</span>, …)        <span class="tok com">// 3. attach behaviour</span></code></pre>
+
+      <pre id="c5-code-eventbus" class="code"><code><span class="tok fn" id="c5-tok-bcast">broadcastEvent</span>([<span class="tok str">"#c5-fx-panel"</span>], <span class="tok str">"tour-ping"</span>)        <span class="tok com">// broadcast: all listeners</span>
+<span class="tok fn">broadcastEvent</span>([<span class="tok str">"Hub"</span>, <span class="tok num">0</span>], <span class="tok str">"request-timeline-uri"</span>)  <span class="tok com">// request: engine answers</span></code></pre>
+
+      <pre id="c5-code-onevent" class="code"><code><span class="tok kw" id="c5-tok-onevent">on</span> <span class="tok kw">event</span> <span class="tok str">"tour-ping"</span> <span class="tok kw">action</span> <span class="tok fn">onTourPing</span>(<span class="tok">target</span>) [
+  <span class="tok fn">selectElement</span>(<span class="tok">target</span>)        <span class="tok com">// target ← eventArgs[0]</span>
+  <span class="tok fn">addClass</span>(<span class="tok str">"in"</span>)
+]</code></pre>
+
+      <pre id="c5-code-controller" class="code"><code><span class="tok fn">selectElement</span>(<span class="tok str">"#c5-fx-ping"</span>)
+<span class="tok fn" id="c5-tok-ctrl">addController</span>(<span class="tok str">"DOMEventListenerController"</span>,
+  <span class="tok str">"click"</span>, [<span class="tok str">"broadcastPing"</span>])   <span class="tok com">// event, then actions to run</span></code></pre>
+
+      <pre id="c5-code-label" class="code"><code><span class="tok kw" id="c5-tok-loc">locales</span> <span class="tok str">"./locales/en.json"</span>
+
+<span class="tok fn">selectElement</span>(<span class="tok str">"#c5-fx-label"</span>)
+<span class="tok fn">addController</span>(<span class="tok str">"LabelController"</span>, <span class="tok str">"tour.greeting"</span>)</code></pre>
+
+      <pre id="c5-code-recap" class="code"><code><span class="tok fn" id="c5-tok-recap">broadcastEvent</span>([<span class="tok str">"Hub"</span>,<span class="tok num">0</span>], <span class="tok str">"request-timeline-uri"</span>)  <span class="tok com">// ← every card you clicked</span>
+<span class="tok fn">addController</span>(<span class="tok str">"DOMEventListenerController"</span>, …)   <span class="tok com">// ← what navigate desugars to</span>
+<span class="tok fn">addController</span>(<span class="tok str">"LabelController"</span>, …)             <span class="tok com">// ← the localized narration</span></code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <div id="c5-fx-doors" class="fx">
+        <span class="fx-chip">eventbus</span><span class="fx-chip">on event</span><span class="fx-chip">controllers</span>
+      </div>
+      <div id="c5-fx-bus" class="fx">
+        <button id="c5-fx-ping" class="ping-btn">broadcast "tour-ping"</button>
+        <div id="c5-fx-panel" class="reveal-panel">handler answered — panel revealed</div>
+      </div>
+      <div id="c5-fx-label" class="fx">
+        <span class="fx-chip">en → Hello</span><span class="fx-chip">nl → Hallo</span>
+      </div>
+      <div id="c5-fx-done" class="fx"><span class="fx-done">Chapter 5 ✓</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="c5-cl-over" class="callout"></div>
+      <div id="c5-cl-bus" class="callout"></div>
+      <div id="c5-cl-on" class="callout"></div>
+      <div id="c5-cl-ctrl" class="callout"></div>
+      <div id="c5-cl-loc" class="callout"></div>
     </div>
   </section>
 
