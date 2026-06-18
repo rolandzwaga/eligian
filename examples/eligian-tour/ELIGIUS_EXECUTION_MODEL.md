@@ -137,6 +137,31 @@ action is driven by the engine as a timeline action (see §7), or via `endAction
   mechanism; a click is wired with `DOMEventListenerController` whose `actions` run
   an action that does `broadcastEvent("request-timeline-uri", [uri, 0])`.
 
+### 7b. There is NO per-timeline init action — the switch lifecycle is the hook
+
+- `configuration.initActions` is a **single global list**, not per-timeline: run
+  once at `engine.init()` (`:387`), end ops run once at shutdown reversed (`:417-419`).
+  A `timeline` config carries only `timelineActions` (`configuration/types.ts:359-373`)
+  — there is no per-timeline init/setup field.
+- **The switch lifecycle gives you per-timeline setup/teardown anyway.**
+  `switchTimeline` first calls `_cleanUpTimeline()` →
+  `_executeRelevantActions(this._getActiveActions, 'end')` (`:700-701`, called `:264`):
+  it runs the **end** ops of the *leaving* timeline's still-**active** actions
+  (an action is "active" once its start fired and it has end ops, `timeline-action.ts:24-38`).
+  Then the incoming timeline's **start** ops fire at position 0 (`_executeStartActions`).
+- **Consequence:** an **endable** timeline action gets *start-on-enter / end-on-leave*
+  for free. A per-view setup action — `[ showView(self) … ] [ hideView(self) ]` — lets
+  each timeline manage **only its own container**: shown when switched in, hidden by the
+  engine's cleanup when switched away. No timeline needs to hide the others (O(1) per
+  chapter, not O(N)).
+- **Caveats:** (1) the setup action's range must be **longer than the chapter's content**
+  (e.g. `0s..3600s`) so its `end` fires only via switch-cleanup, never from the playhead
+  reaching it mid-chapter (raf is non-looping and holds the last frame, so a long range
+  never ends on its own). (2) At init the **first** timeline (hub) shows via the first
+  position tick — `engine.init()` runs only the global `initActions`; the hub's start
+  fires when the provider ticks to 0 (in headless jsdom you must nudge the position to
+  force this tick).
+
 ## 8. Eventbus
 
 `eventbus.ts`: `broadcast(name,args)` calls all `on(name)` handlers (`:115-117,201-225`);
@@ -167,3 +192,10 @@ all use `request`; timeline control and custom events use `broadcast`.
    no name-bridging — matching the name is the contract.)
 6. **Hub↔chapter nav** = `DOMEventListenerController` click → action →
    `broadcastEvent("request-timeline-uri", [uri, 0])`.
+7. **Let each timeline show/hide only its own view via an endable setup action.**
+   There is no per-timeline init action, but the switch lifecycle runs the leaving
+   timeline's `end` ops then the entering timeline's `start` ops (§7b). So a long-range
+   endable action `at 0s..3600s [ showView(self) + nav wiring ] [ hideView(self) ]`
+   gives start-on-enter / end-on-leave — the engine hides the outgoing view for you.
+   Don't make each timeline hide every other view (O(N)); self-manage (O(1)). Keep the
+   range longer than the chapter content so `end` fires only on switch.
