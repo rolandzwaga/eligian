@@ -29,7 +29,7 @@
         <li id="card-ch1" class="card"><span class="card-num">01</span><span class="card-name">Timeline &amp; Time</span></li>
         <li id="card-ch2" class="card"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
         <li id="card-ch3" class="card"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
-        <li id="card-ch4" class="card is-soon"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
+        <li id="card-ch4" class="card"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
         <li id="card-ch5" class="card is-soon"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
         <li id="card-ch6" class="card is-soon"><span class="card-num">06</span><span class="card-name">Tooling Magic</span></li>
       </ul>
@@ -239,6 +239,70 @@
       <div id="c3-cl-if" class="callout"></div>
       <div id="c3-cl-for" class="callout"></div>
       <div id="c3-cl-loopctl" class="callout"></div>
+    </div>
+  </section>
+
+  <section id="ch4" class="view chapter">
+
+    <header class="chrome">
+      <button id="c4-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot"></span>
+      </nav>
+      <span class="chapter-label">04 · Timeline Power Tools</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="c4-code-manual" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>   { <span class="tok fn">intro</span>() }
+<span class="tok kw">at</span> <span class="tok num">5s</span>..<span class="tok num">15s</span>  { <span class="tok fn">main</span>() }     <span class="tok com">// 5 + 10, by hand</span>
+<span class="tok kw">at</span> <span class="tok num">15s</span>..<span class="tok num">18s</span> { <span class="tok fn">outro</span>() }    <span class="tok com">// …and 15 + 3</span></code></pre>
+
+      <pre id="c4-code-sequence" class="code"><code><span class="tok kw" id="c4-tok-seq">sequence</span> {
+  <span class="tok fn">intro</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>
+  <span class="tok fn">main</span>()  <span class="tok kw">for</span> <span class="tok num">10s</span>
+  <span class="tok fn">outro</span>() <span class="tok kw">for</span> <span class="tok num">3s</span>
+}</code></pre>
+
+      <pre id="c4-code-stagger" class="code"><code><span class="tok kw" id="c4-tok-stagger">stagger</span> <span class="tok num">200ms</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>] <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span></code></pre>
+
+      <pre id="c4-code-inline" class="code"><code><span class="tok kw">stagger</span> <span class="tok num">100ms</span> <span class="tok">items</span> <span class="tok kw">for</span> <span class="tok num">1s</span> [
+  <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+] [
+  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>)
+]</code></pre>
+
+      <pre id="c4-code-recap" class="code"><code><span class="tok kw" id="c4-tok-recap">sequence</span> { <span class="tok fn">a</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>  <span class="tok fn">b</span>() <span class="tok kw">for</span> <span class="tok num">10s</span> }   <span class="tok com">// distinct steps, in order</span>
+<span class="tok kw">stagger</span> <span class="tok num">200ms</span> <span class="tok">items</span> <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span>  <span class="tok com">// one effect, many items</span></code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <div id="c4-fx-ruler" class="fx">
+        <span class="fx-chip">intro</span><span class="fx-chip">main</span><span class="fx-chip">outro</span>
+      </div>
+      <div id="c4-fx-seq" class="fx">
+        <span class="fx-chip">0–5</span><span class="fx-chip">5–15</span><span class="fx-chip">15–18</span>
+      </div>
+      <div id="c4-fx-row" class="fx">
+        <ul class="bullet-list">
+          <li id="c4-card-1" class="bullet">card one</li>
+          <li id="c4-card-2" class="bullet">card two</li>
+          <li id="c4-card-3" class="bullet">card three</li>
+        </ul>
+      </div>
+      <div id="c4-fx-cascade" class="fx">
+        <span class="fx-chip">delay 100ms</span><span class="fx-chip">duration 1s</span>
+      </div>
+      <div id="c4-fx-done" class="fx"><span class="fx-done">Chapter 4 ✓</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="c4-cl-manual" class="callout"></div>
+      <div id="c4-cl-seq" class="callout"></div>
+      <div id="c4-cl-edit" class="callout"></div>
+      <div id="c4-cl-stagger" class="callout"></div>
+      <div id="c4-cl-inline" class="callout"></div>
     </div>
   </section>
 
