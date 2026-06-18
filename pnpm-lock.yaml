@@ -12,8 +12,8 @@ importers:
         specifier: 3.21.3
         version: 3.21.3
       eligius:
-        specifier: 2.3.0
-        version: 2.3.0(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.23.7)
+        specifier: 2.3.1
+        version: 2.3.1(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.23.7)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.16
@@ -128,9 +128,6 @@ importers:
         specifier: 0.3.3
         version: 0.3.3
     devDependencies:
-      '@types/jsdom':
-        specifier: 28.0.3
-        version: 28.0.3
       jsdom:
         specifier: 29.1.1
         version: 29.1.1
@@ -797,14 +794,8 @@ packages:
   '@types/jquery@4.0.1':
     resolution: {integrity: sha512-9a59A/tycXgYuPABcp6/3spSShn0NT2UOM4EfHvMumjYi4lJWTsK5SZWjhx3yRm9IHGCeWXdV2YfNsrWrft/CA==, tarball: https://registry.npmjs.org/@types/jquery/-/jquery-4.0.1.tgz}
 
-  '@types/jsdom@28.0.3':
-    resolution: {integrity: sha512-/HQ2uFoetFTXuye8vzIcHw2z6Fwi7Hi/qcgC+RoS9NCyewiqxhVGqlG+ViGB6lkax481R6dmhf1I7lIGlzJStQ==, tarball: https://registry.npmjs.org/@types/jsdom/-/jsdom-28.0.3.tgz}
-
   '@types/node@25.9.3':
     resolution: {integrity: sha512-603BddQMv3pUcr4U2dhujk83N2tTDVr/34wII2B6bJy6g+8WD6yUb11jszNs0gdi4PesVWl7ABt8nYMVpnLUcg==, tarball: https://registry.npmjs.org/@types/node/-/node-25.9.3.tgz}
-
-  '@types/tough-cookie@4.0.5':
-    resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==, tarball: https://registry.npmjs.org/@types/tough-cookie/-/tough-cookie-4.0.5.tgz}
 
   '@types/vscode@1.120.0':
     resolution: {integrity: sha512-feaT4Rst+FkTch5zz/ZbNCxoIvo55YU80Be2kiL7OJcod4+CUYf2lUBPdIJzozNnSEMq1VRTGrWEcCGFB3fBmA==, tarball: https://registry.npmjs.org/@types/vscode/-/vscode-1.120.0.tgz}
@@ -1042,8 +1033,8 @@ packages:
   effect@3.21.3:
     resolution: {integrity: sha512-RqwU7WnJ6CqYhyjpOVJA5vh1Sgkn6eVECO6mnD0EjlbWcC2M3LJaPglXXr13Rdo/Y+B+wTEPzGRYFNL2xKxNeQ==, tarball: https://registry.npmjs.org/effect/-/effect-3.21.3.tgz}
 
-  eligius@2.3.0:
-    resolution: {integrity: sha512-rAMPoz+3B4KhWDfYYMsp3F4HG6u0KC9/oVGxAxo3G3IxUe/fO8/qeILxvwEUQpuojzQFDhtxFoanuDfg5PeZ6g==, tarball: https://registry.npmjs.org/eligius/-/eligius-2.3.0.tgz}
+  eligius@2.3.1:
+    resolution: {integrity: sha512-di3T7WA0KZYG/RMwTu/Sy8UwoiGaZJ9VrtgbOkcXZVQzgeXyn2EBpUCWgM3wLSndT3Qlgok5aRY3UBrEu0xPbg==, tarball: https://registry.npmjs.org/eligius/-/eligius-2.3.1.tgz}
     engines: {node: '>=20'}
     peerDependencies:
       jquery: 4.0.0
@@ -2196,18 +2187,9 @@ snapshots:
 
   '@types/jquery@4.0.1': {}
 
-  '@types/jsdom@28.0.3':
-    dependencies:
-      '@types/node': 25.9.3
-      '@types/tough-cookie': 4.0.5
-      parse5: 8.0.1
-      undici-types: 7.24.6
-
   '@types/node@25.9.3':
     dependencies:
       undici-types: 7.24.6
-
-  '@types/tough-cookie@4.0.5': {}
 
   '@types/vscode@1.120.0': {}
 
@@ -2465,7 +2447,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
 
-  eligius@2.3.0(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.23.7):
+  eligius@2.3.1(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.23.7):
     dependencies:
       hotkeys-js: 4.0.4
       jquery: 4.0.0

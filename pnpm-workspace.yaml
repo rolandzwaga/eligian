@@ -30,6 +30,13 @@ hoistPattern:
 # Langium has many phantom dependencies that need a flat structure
 shamefullyHoist: true
 
+# Exempt our own library from the freshly-published cooldown so a new eligius
+# release doesn't block installs/builds for ~a day after publishing.
+# NOTE: use the BARE package name, not `eligius@<version>`. eligius has peer deps
+# (jquery, lottie-web, video.js), so its lockfile key is peer-decorated
+# (`eligius@2.3.1(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.23.7)`); the
+# verification pass matches the exclude against that decorated key, so a
+# version-pinned entry never matches and the cooldown still fires. Bare name
+# matches by package regardless of version/peers. (pnpm 11.7.0)
 minimumReleaseAgeExclude:
-  - eligius@2.2.2
-  - eligius@2.3.0
+  - eligius
