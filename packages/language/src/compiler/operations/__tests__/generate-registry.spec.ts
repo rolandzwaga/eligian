@@ -5,7 +5,7 @@
  * operation names and categories directly from Eligius metadata.
  */
 
-import { metadata } from 'eligius';
+import { metadata } from 'eligius/metadata';
 import { describe, expect, it } from 'vitest';
 import { OPERATION_REGISTRY } from '../index.js';
 

@@ -29,3 +29,7 @@ hoistPattern:
 # Enable shamefully-hoist for langium-cli compatibility
 # Langium has many phantom dependencies that need a flat structure
 shamefullyHoist: true
+
+minimumReleaseAgeExclude:
+  - eligius@2.2.2
+  - eligius@2.3.0

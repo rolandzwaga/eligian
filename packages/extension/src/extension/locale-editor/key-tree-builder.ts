@@ -7,8 +7,8 @@
  * - serializeToLocalesConfiguration(): KeyTreeNode[] → ILocalesConfiguration
  */
 
+import { isLocaleReference } from '@eligian/shared-utils';
 import type { ILocalesConfiguration, TLanguageCode, TLocaleData, TLocaleEntry } from 'eligius';
-import { isLocaleReference } from 'eligius';
 import type { KeyTreeNode } from './types.js';
 
 /**

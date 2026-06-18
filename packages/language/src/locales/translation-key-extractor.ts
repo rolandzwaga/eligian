@@ -9,8 +9,8 @@
  * @module locales/translation-key-extractor
  */
 
+import { isLocaleReference } from '@eligian/shared-utils';
 import type { ILocalesConfiguration, TLocaleData } from 'eligius';
-import { isLocaleReference } from 'eligius';
 import type { LabelGroupMetadata } from '../type-system-typir/utils/label-registry.js';
 
 /**

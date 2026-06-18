@@ -5,7 +5,7 @@
  * This provides a clean mapping from Eligius-native metadata to our registry types.
  */
 
-import type { metadata } from 'eligius';
+import type { metadata } from 'eligius/metadata';
 
 import type {
   ConstantValue,

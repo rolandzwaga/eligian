@@ -12,7 +12,8 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { metadata } from 'eligius';
+// DOM-free metadata subpath (eligius >= 2.3.0) — see generate-metadata.ts.
+import { metadata } from 'eligius/metadata';
 import { convertMetadata } from './metadata-converter.js';
 import type { OperationRegistry } from './types.js';
 

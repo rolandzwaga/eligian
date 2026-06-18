@@ -46,7 +46,7 @@ variable is created. Regression tests: array/object folding in
 
 ---
 
-## ✅ E1 — FIXED in eligius (pending release) — pushed scopes & parent `$scope.variables`
+## ✅ E1 — FIXED & LIVE (eligius 2.2.2) — pushed scopes & parent `$scope.variables`
 
 A `forEach`/`when` runs in a child scope created by `_pushScope`
 (`eligius src/action/action.ts`), which proxies only `currentIndex`/`eventbus`/
@@ -57,13 +57,75 @@ This is an **engine** issue (lives in `F:\projects\eligius\eligius`, not this re
 C4 sidesteps it for *literal* consts by inlining them; the general case
 (runtime variable used as a loop collection / in a `when`) needed an engine fix.
 
-**Fixed 2026-06-18 in eligius** (branch `fix/scope-var-resolving`, commit
-`7e84c891`): `resolveExternalPropertyChain` now resolves a `$scope` chain against
-the nearest scope (current or ancestor) that declares the chain's head property,
-walking `.parent` — natural lexical shadowing, write semantics unchanged. Unit +
-integration tests added there; all 1091 eligius tests pass. Lands in the eligian
-compiler once eligius is released and the dependency bumped; until then C4's
-literal-const folding keeps the tour working against the installed engine.
+**Fixed in eligius** (branch `fix/scope-var-resolving`, commit `7e84c891`):
+`resolveExternalPropertyChain` now resolves a `$scope` chain against the nearest
+scope (current or ancestor) that declares the chain's head property, walking
+`.parent` — natural lexical shadowing, write semantics unchanged.
+
+**Now LIVE in eligian** — eligius `2.2.2` (with this fix) is installed and the
+dep bumped. The tour exercises it directly: `ch3RevealBullets` does
+`setVariable("points", [..])` then `for (p in $scope.variables.points)`, and the
+`forEach` resolves that collection up the scope chain from inside its own child
+scope. Verified end-to-end in the real engine (jsdom): the three bullets get
+`in`. Note the only DSL path that produces a *working* runtime scope-var loop is
+`setVariable` with a **literal** value (`const` of a literal folds via C4; a
+`const` of a runtime expression stores an *unresolved* chain because `setVariable`
+does not resolve its `value`).
+
+---
+
+## ✅ C5 — FIXED — direct `$scope` / `$operationdata` / `$globaldata` reference dropped its `$`
+
+**Fixed 2026-06-18.** A direct property-chain reference written in the DSL
+(`$scope.variables.x`, `$operationdata.x`, `$globaldata.x`) compiled to
+`scope.variables.x` — **without the leading `$`**. The grammar captures the scope
+name without the `$` (it's a literal token), and the general expression
+transformer emitted ``${scope}.${properties}`` instead of ``$${scope}.…``.
+Eligius's `resolveExternalPropertyChain` only treats a value as a chain when it
+starts with `$scope.` / `$operationdata.` / `$globaldata.` (`isExternalProperty`),
+so the engine took the value as a plain string literal — e.g. a `for` loop over
+`$scope.variables.points` threw *"Expected resolved collection property to be
+array type, string value was probably not resolved correctly"*. (The `when`
+operand serializer already prepended `$` correctly — only the general
+`expression-transformer.ts` path was wrong.) Found by dogfooding the runtime
+scope-var loop in the tour. Fix: prepend `$` in the `PropertyChainReference` case
+of `compiler/transformers/expression-transformer.ts`. Regression tests in
+`compiler/__tests__/transformer.spec.ts` (property-chain assertion corrected +
+a new all-three-sigils `for`-collection test).
+
+---
+
+## ✅ T1 — FIXED — eligius 2.2.2 / jquery@4 crashed the whole toolchain in Node
+
+**Fixed 2026-06-18.** The `eligius` 2.2.1 → 2.2.2 upgrade pulled in **jquery@4**,
+which *throws* `jQuery requires a window with a document` the instant it is
+evaluated in any DOM-less Node context (jquery@3 silently tolerated it). eligius
+ships a single bundle (no DOM-free entry), so importing **any value** from it in
+Node evaluates jquery. The compiler reached it through one tiny value import —
+`isLocaleReference` (a 4-line guard) — in three runtime files, one of which sits
+under the typir type system that `createTestContext()` builds. Blast radius:
+`node bin/cli.js` crashed on load, the extension host would crash, and **80 of
+138 language test files** failed at import.
+
+Fix (two parts):
+- **Runtime decoupling:** inlined `isLocaleReference` into
+  `@eligian/shared-utils` (`locale-guards.ts`, structurally `{ $ref: string }`,
+  no eligius import) and repointed all three call sites
+  (`translation-key-extractor.ts`, `locale-metadata-extractor.ts`, extension
+  `key-tree-builder.ts`). eligius is now **type-only** in all runtime code
+  (types are erased), so jquery is never evaluated in Node.
+- **Build-time DOM shim (interim, now removed):** initially the metadata/registry
+  **generators** (and their two specs) imported a `completion/eligius-dom-shim.ts`
+  that installed a jsdom `window`/`document` (+ no-op canvas `getContext` for the
+  bundled lottie-web) before eligius loaded.
+
+**UPDATE — proper cure landed (eligius 2.3.0).** eligius now ships a DOM-free
+`eligius/metadata` subpath export (eligius commit `aae61175`). The generators,
+`metadata-converter.ts`, and the two generator specs now import from
+`eligius/metadata` and the DOM shim was **deleted**. (`jsdom` + `@types/jsdom`
+are consequently unused in `@eligian/language` and should be dropped from its
+devDeps once pnpm's `minimumReleaseAge` policy stops blocking ops on the
+freshly-published eligius@2.3.0.)
 
 ---
 

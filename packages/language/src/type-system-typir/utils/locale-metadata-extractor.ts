@@ -7,8 +7,8 @@
  * @module type-system-typir/utils/locale-metadata-extractor
  */
 
+import { isLocaleReference } from '@eligian/shared-utils';
 import type { ILocalesConfiguration, TLanguageCode, TLocaleData, TLocaleEntry } from 'eligius';
-import { isLocaleReference } from 'eligius';
 
 /**
  * Metadata about a single locale in the configuration
