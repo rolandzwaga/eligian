@@ -699,15 +699,16 @@ PropertyScope returns string:
  * System Property Reference - Access system scope properties with @@ prefix
  *
  * Examples:
- *   @@currentItem  → $scope.currentItem
- *   @@loopIndex    → $scope.loopIndex
- *   @@loopLength   → $scope.loopLength
- *   @@item         → $scope.currentItem (aliased in for loops)
+ *   @@currentItem        → $scope.currentItem
+ *   @@loopIndex          → $scope.loopIndex
+ *   @@loopLength         → $scope.loopLength
+ *   @@item               → $scope.currentItem (aliased in for loops)
+ *   @@currentItem.label  → $scope.currentItem.label (property access on object items)
  *
- * Compiles to $scope.propertyName string for Eligius runtime.
+ * Compiles to $scope.propertyName(.subProperty)* string for Eligius runtime.
  */
 SystemPropertyReference:
-    '@@' name=ID;
+    '@@' name=ID ('.' properties+=ID)*;
 
 /**
  * Variable Reference - Access action-scoped variables with @ prefix

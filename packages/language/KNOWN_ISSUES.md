@@ -95,6 +95,39 @@ a new all-three-sigils `for`-collection test).
 
 ---
 
+## ✅ C6 — FIXED — inline `stagger` form dropped the per-item value
+
+**Fixed 2026-06-18.** The inline-operations form of `stagger`
+(`stagger 100ms items for 1s [ … ] [ … ]`) generated one timeline action per
+item but **never threaded the item into the ops**. References like
+`selectElement(@@currentItem)` compiled to the *identical* `selector:
+"$scope.currentItem"` for every item — and because `stagger` emits independent
+timeline actions with **no runtime `forEach`**, `$scope.currentItem` is never
+populated, so the selector couldn't resolve at runtime (every item targeted an
+unset value). The action-call form (`… with action() …`) was unaffected (it
+bakes the item into `actionOperationData`). Found while planning Chapter 4 of the
+tour (`sequence`/`stagger`).
+
+Fix in `compiler/transformers/timeline-transformer.ts`: since a `stagger`'s items
+array is compile-time-known, bake the item / index / length directly into each
+generated item's operation data (`bakeStaggerValue` / `bakeStaggerOps`),
+mirroring the action-call form. `$scope.currentItem` → the literal item,
+`$scope.loopIndex` → the index, `$scope.loopLength` → the count, and
+`$scope.currentItem.<prop>` → the item's property for object items. Ops inside a
+**nested `forEach … endForEach`** span are skipped (their `currentItem` belongs
+to the inner loop, populated at runtime). Regression tests in
+`compiler/__tests__/transformer.spec.ts` (baked selector values for both items +
+`@@loopIndex` / object-item-property baking).
+
+**Related enhancement (done):** `@@currentItem.prop` previously didn't parse
+anywhere (loops or stagger) — `SystemPropertyReference` was `'@@' name=ID` with no
+property chain. The grammar now allows `'@@' name=ID ('.' properties+=ID)*`, so
+`@@currentItem.label` compiles to `$scope.currentItem.label` (object-item property
+access, in loops and stagger alike). The C6 baker resolves these for inline
+stagger too.
+
+---
+
 ## ✅ T1 — FIXED — eligius 2.2.2 / jquery@4 crashed the whole toolchain in Node
 
 **Fixed 2026-06-18.** The `eligius` 2.2.1 → 2.2.2 upgrade pulled in **jquery@4**,
