@@ -36,22 +36,26 @@ action clearSpots() [
 
 /**
  * Animate an arrow+label callout chip onto a token.
+ *
+ * NOTE: the content param MUST be named `template` — the DSL wires a built-in
+ * operation's argument by matching the action parameter name to the operation's
+ * input property, and setElementContent reads `template` (not `text`).
  * @param selector CSS selector for the callout chip
- * @param text Label text to show
+ * @param template Label text to show
  */
-action callout(selector: string, text: string) [
+action callout(selector: string, template: string) [
   selectElement(selector)
-  setElementContent(text)
+  setElementContent(template)
   addClass("show")
 ]
 
 /**
  * Swap the narration subtitle line.
- * @param text Subtitle text for this beat
+ * @param template Subtitle text for this beat (named `template` to feed setElementContent)
  */
-action narrate(text: string) [
+action narrate(template: string) [
   selectElement("#narration")
-  setElementContent(text)
+  setElementContent(template)
 ]
 
 /**
