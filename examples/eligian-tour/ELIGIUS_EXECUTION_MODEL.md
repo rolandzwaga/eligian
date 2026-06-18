@@ -159,5 +159,11 @@ all use `request`; timeline control and custom events use `broadcast`.
    `styles` that defines them.
 5. **Sigils are runtime property chains**, resolved per-op: `$operationdata.x`,
    `$globaldata.x`, `$scope.x`/`$scope.variables.x`/`$scope.currentItem`.
+5b. **Name an action parameter after the operation property it feeds.** Params are
+   threaded by name through `operationData`; an operation reads its input by
+   property name. So a param feeding `setElementContent` must be named `template`,
+   one feeding `addClass` must be `className`, one feeding `selectElement` must be
+   `selector`. (Not all operations resolve `$…` chains on value fields, so there's
+   no name-bridging — matching the name is the contract.)
 6. **Hub↔chapter nav** = `DOMEventListenerController` click → action →
    `broadcastEvent("request-timeline-uri", [uri, 0])`.
