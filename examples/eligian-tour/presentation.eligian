@@ -69,6 +69,16 @@ action demo(selector: string) [
 ]
 
 /**
+ * Reveal a single item by selector — used by Chapter 4's `stagger` block, which
+ * passes each staggered item (a card selector) as this action's first argument.
+ * @param selector CSS selector for the item to reveal
+ */
+action revealCard(selector: string) [
+  selectElement(selector)
+  addClass("in")
+]
+
+/**
  * Reveal a top-level view (the hub menu or a chapter). Each timeline shows its
  * own view at its start, so switching timelines swaps what's on screen.
  * @param selector CSS selector for the view container

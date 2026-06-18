@@ -107,7 +107,8 @@
 /* id-registration: navigate selectors */
 #c1-to-hub,
 #c2-to-hub,
-#c3-to-hub {
+#c3-to-hub,
+#c4-to-hub {
   flex: 0 0 auto;
 }
 
@@ -191,7 +192,8 @@
 /* live chapters (navigate targets exist) */
 #card-ch1,
 #card-ch2,
-#card-ch3 {
+#card-ch3,
+#card-ch4 {
   border-color: rgba(88, 166, 255, 0.5);
 }
 
@@ -329,6 +331,21 @@
   top: 12rem;
 }
 #c3-cl-loopctl {
+  top: 15rem;
+}
+#c4-cl-manual {
+  top: 3rem;
+}
+#c4-cl-seq {
+  top: 6rem;
+}
+#c4-cl-edit {
+  top: 9rem;
+}
+#c4-cl-stagger {
+  top: 12rem;
+}
+#c4-cl-inline {
   top: 15rem;
 }
 

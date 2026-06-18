@@ -27,7 +27,7 @@ languages {
 layout "./layout.html"
 styles "./tour.css"
 
-import { revealBlock, spotlight, clearSpots, callout, narrate, demo, showView, hideView } from "./presentation.eligian"
+import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView } from "./presentation.eligian"
 
 // Chapter-3 helpers — the real logic its beats run, so the executed code mirrors
 // the taught snippets. (`const` is scoped inside an action, not inside a timeline
@@ -69,6 +69,7 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-ch1" navigate "Timeline & Time"
     on click "#card-ch2" navigate "Actions"
     on click "#card-ch3" navigate "Logic"
+    on click "#card-ch4" navigate "Timeline Power Tools"
   ] [
     hideView("#hub")
   ]
@@ -294,5 +295,80 @@ timeline "Logic" in "#stage" using raf {
     revealBlock("#c3-code-sigils")
     spotlight("#c3-tok-sigil")
     demo("#c3-fx-sigils")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 4 — Timeline Power Tools. `sequence` (auto consecutive timing) and
+// `stagger` (one delayed event per item). Beat 4's card row is revealed by a
+// REAL `stagger` block — the construct it teaches drives what you see.
+// ===========================================================================
+timeline "Timeline Power Tools" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch4")
+    showView("#narration")
+    on click "#c4-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch4")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — timing by hand is brittle
+  at 0s..7s [
+    narrate("Scheduling a chain of events by hand means recomputing every time you tweak one.")
+    revealBlock("#c4-code-manual")
+    callout("#c4-cl-manual", "change one length and every later time is re-done by hand")
+    demo("#c4-fx-ruler")
+  ] []
+
+  // Beat 2 — sequence: auto consecutive timing
+  at 7s..15s [
+    clearSpots()
+    narrate("'sequence' lays events back-to-back automatically — each runs 'for' a duration.")
+    revealBlock("#c4-code-sequence")
+    spotlight("#c4-tok-seq")
+    callout("#c4-cl-seq", "start = previous end → 0s..5s · 5s..15s · 15s..18s")
+    demo("#c4-fx-seq")
+  ] []
+
+  // Beat 3 — edit one, the rest follow
+  at 15s..22s [
+    clearSpots()
+    narrate("Because starts are computed, changing one duration shifts everything after it.")
+    callout("#c4-cl-edit", "shorten 'main' and 'outro' slides left — no re-numbering")
+    demo("#c4-fx-seq")
+  ] []
+
+  // Beat 4 ⭐ — a REAL stagger reveals the card row (fires at 22s, with the beat).
+  // Placed here so its base time = end of Beat 3 (22s); cards reveal 22s..23.9s.
+  stagger 200ms ["#c4-card-1", "#c4-card-2", "#c4-card-3"] with revealCard() for 1.5s
+
+  at 22s..31s [
+    clearSpots()
+    narrate("'stagger' fans one effect across a collection — each item starts a little after the last.")
+    revealBlock("#c4-code-stagger")
+    spotlight("#c4-tok-stagger")
+    callout("#c4-cl-stagger", "200ms delay between starts · the item feeds the action's first arg")
+    demo("#c4-fx-row")
+  ] []
+
+  // Beat 5 — delay vs duration + the inline form
+  at 31s..39s [
+    clearSpots()
+    narrate("delay is the gap between starts; duration is how long each lasts — they overlap on purpose.")
+    revealBlock("#c4-code-inline")
+    callout("#c4-cl-inline", "inline start/end op blocks instead of 'with <action>'")
+    demo("#c4-fx-cascade")
+  ] []
+
+  // Beat 6 — which tool? recap + the reveal
+  at 39s..47s [
+    clearSpots()
+    narrate("'sequence' for distinct back-to-back steps; 'stagger' for one effect across many items.")
+    revealBlock("#c4-code-recap")
+    spotlight("#c4-tok-recap")
+    demo("#c4-fx-done")
   ] []
 }
