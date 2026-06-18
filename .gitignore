@@ -41,3 +41,6 @@ check-*.mjs
 /nul
 /examples/nul
 /coverage/coverage-final.json
+
+# Eligian Tour — compiled Eligius config (build artifact)
+/examples/eligian-tour/tour.json

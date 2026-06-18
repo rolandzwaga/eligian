@@ -67,3 +67,24 @@ action demo(selector: string) [
   addClass("active")
   animate({ opacity: 1 }, 300)
 ]
+
+/**
+ * Reveal a top-level view (the hub menu or a chapter). Each timeline shows its
+ * own view at its start, so switching timelines swaps what's on screen.
+ * @param selector CSS selector for the view container
+ */
+action showView(selector: string) [
+  selectElement(selector)
+  addClass("is-active")
+]
+
+/**
+ * Hide a top-level view. A timeline hides the views it doesn't own at its start
+ * (start/end ops are independent runs, so each timeline sets up the full visible
+ * state itself — seek-safe).
+ * @param selector CSS selector for the view container
+ */
+action hideView(selector: string) [
+  selectElement(selector)
+  removeClass("is-active")
+]
