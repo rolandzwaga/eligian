@@ -106,7 +106,8 @@
 }
 /* id-registration: navigate selectors */
 #c1-to-hub,
-#c2-to-hub {
+#c2-to-hub,
+#c3-to-hub {
   flex: 0 0 auto;
 }
 
@@ -189,7 +190,8 @@
 }
 /* live chapters (navigate targets exist) */
 #card-ch1,
-#card-ch2 {
+#card-ch2,
+#card-ch3 {
   border-color: rgba(88, 166, 255, 0.5);
 }
 
@@ -314,6 +316,21 @@
 #c2-cl-endable {
   top: 15rem;
 }
+#c3-cl-const {
+  top: 3rem;
+}
+#c3-cl-expr {
+  top: 6rem;
+}
+#c3-cl-if {
+  top: 9rem;
+}
+#c3-cl-for {
+  top: 12rem;
+}
+#c3-cl-loopctl {
+  top: 15rem;
+}
 
 /* ---- Effect-pane panels + illustrative chrome ------------------------ */
 .fx {
@@ -389,6 +406,32 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* Chapter 3 — bullet list revealed one item at a time by a real `for` loop */
+.bullet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+}
+.bullet {
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: #21262d;
+  color: var(--ink);
+  font-size: 0.9rem;
+  /* hidden until the loop adds .in */
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+/* Chapter 3 — badge toggled by a real if/else (selectElement target) */
+#c3-badge {
+  opacity: 0.35;
+  transition: opacity 0.22s var(--ease);
 }
 
 /* ---- Shared narration subtitle (toggled per chapter) ----------------- */

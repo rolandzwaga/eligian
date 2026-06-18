@@ -29,6 +29,29 @@ styles "./tour.css"
 
 import { revealBlock, spotlight, clearSpots, callout, narrate, demo, showView, hideView } from "./presentation.eligian"
 
+// Chapter-3 helpers — the real logic its beats run, so the executed code mirrors
+// the taught snippets. (`const` is scoped inside an action, not inside a timeline
+// inline block, so the loop/conditional live here rather than in the `at` body.)
+action ch3ToggleBadge(count) [
+  // `count` is a runtime parameter, so this emits a real `when` (a constant
+  // condition would instead be folded to the taken branch at compile time).
+  if (count > 0) {
+    selectElement("#c3-badge")
+    addClass("active")
+  } else {
+    selectElement("#c3-badge")
+    removeClass("active")
+  }
+]
+
+action ch3RevealBullets() [
+  const points = ["#c3-b1", "#c3-b2", "#c3-b3"]
+  for (p in @points) {
+    selectElement(@@currentItem)
+    addClass("in")
+  }
+]
+
 // ===========================================================================
 // Hub — the landing menu. Click a card to jump into a chapter.
 // ===========================================================================
@@ -39,6 +62,7 @@ timeline "Hub" in "#stage" using raf {
     showView("#hub")
     on click "#card-ch1" navigate "Timeline & Time"
     on click "#card-ch2" navigate "Actions"
+    on click "#card-ch3" navigate "Logic"
   ] [
     hideView("#hub")
   ]
@@ -187,5 +211,82 @@ timeline "Actions" in "#stage" using raf {
     narrate("Group actions into a library, import what you need. Click ← Hub for more.")
     revealBlock("#c2-code-lib")
     demo("#c2-fx-lib")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 3 — Logic & Data. Conditionals, loops, variables and the data sigils.
+// Self-demonstrating: Beat 4's bullet list is revealed by a real `for` loop.
+// ===========================================================================
+timeline "Logic" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch3")
+    showView("#narration")
+    on click "#c3-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch3")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — const names a value (scope)
+  at 0s..7s [
+    narrate("const names a value. In an action it's a scope variable; at top level it's global.")
+    revealBlock("#c3-code-const")
+    spotlight("#c3-tok-const")
+    callout("#c3-cl-const", "action scope → @name · program scope → $globaldata")
+    demo("#c3-fx-scopes")
+  ] []
+
+  // Beat 2 — expressions and operators
+  at 7s..14s [
+    clearSpots()
+    narrate("Expressions combine values: arithmetic, comparison, logic.")
+    revealBlock("#c3-code-expr")
+    spotlight("#c3-tok-expr")
+    callout("#c3-cl-expr", "+ - * / % **  ·  == != > < >= <=  ·  && || !")
+    demo("#c3-fx-eval")
+  ] []
+
+  // Beat 3 — if / else (a REAL conditional toggles the badge)
+  at 14s..23s [
+    clearSpots()
+    narrate("if / else runs operations conditionally — compiles to when / otherwise / endWhen.")
+    revealBlock("#c3-code-if")
+    spotlight("#c3-tok-if")
+    callout("#c3-cl-if", "each branch is its own operation block")
+    demo("#c3-fx-if")
+    ch3ToggleBadge(2)
+  ] []
+
+  // Beat 4 — for loop reveals the bullets (real forEach over a const array) ⭐
+  at 23s..32s [
+    clearSpots()
+    narrate("for iterates a collection — and this list is being revealed by one right now.")
+    revealBlock("#c3-code-for")
+    spotlight("#c3-tok-for")
+    callout("#c3-cl-for", "@@currentItem is the current item; compiles to forEach / endForEach")
+    demo("#c3-fx-list")
+    ch3RevealBullets()
+  ] []
+
+  // Beat 5 — break / continue steer the loop
+  at 32s..40s [
+    clearSpots()
+    narrate("break exits the loop; continue skips to the next item — only inside a for.")
+    revealBlock("#c3-code-loopctl")
+    spotlight("#c3-tok-break")
+    callout("#c3-cl-loopctl", "continue → continueForEach · break → breakForEach")
+    demo("#c3-fx-loopctl")
+  ] []
+
+  // Beat 6 — sigils recap + the reveal
+  at 40s..48s [
+    clearSpots()
+    narrate("Three places data lives: $operationdata, $globaldata, $scope. Click ← Hub for more.")
+    revealBlock("#c3-code-sigils")
+    spotlight("#c3-tok-sigil")
+    demo("#c3-fx-sigils")
   ] []
 }
