@@ -196,8 +196,8 @@
   <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>)
 }</code></pre>
 
-      <pre id="c3-code-for" class="code"><code><span class="tok kw">const</span> <span class="tok">points</span> <span class="tok op">=</span> [<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>]
-<span class="tok kw" id="c3-tok-for">for</span> (<span class="tok">p</span> <span class="tok kw">in</span> <span class="tok">@points</span>) {
+      <pre id="c3-code-for" class="code"><code><span class="tok fn">setVariable</span>(<span class="tok str">"points"</span>, [<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>])
+<span class="tok kw" id="c3-tok-for">for</span> (<span class="tok">p</span> <span class="tok kw">in</span> <span class="tok">$scope</span>.variables.points) {
   <span class="tok fn">selectElement</span>(<span class="tok">@@currentItem</span>)
   <span class="tok fn">addClass</span>(<span class="tok str">"in"</span>)
 }</code></pre>
