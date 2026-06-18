@@ -7,9 +7,11 @@
  * that click→switch is the `navigate` sugar, which compiles to a
  * DOMEventListenerController that broadcasts `request-timeline-uri`.
  *
- * Every timeline shows its own view at its start (showView/hideView), because
- * start/end operations are independent runs — each timeline sets up the full
- * visible state itself, so seeking and switching are safe.
+ * Each chapter is its own `.view` (#ch1, #ch2, …). Every timeline shows its own
+ * view at its start and hides the others (showView/hideView), because start/end
+ * operations are independent runs — each timeline sets up the full visible state
+ * itself, so seeking and switching are safe. `#narration` is a shared subtitle
+ * bar toggled on while a chapter is active.
  *
  * Snippets in the code pane are hand-authored display assets (pre-tokenized in
  * layout.html); this file is the real machinery driving them.
@@ -29,9 +31,12 @@ import { revealBlock, spotlight, clearSpots, callout, narrate, demo, showView, h
 timeline "Hub" in "#stage" using raf {
 
   at 0s..600s [
-    hideView("#chapter")
+    hideView("#ch1")
+    hideView("#ch2")
+    hideView("#narration")
     showView("#hub")
     on click "#card-ch1" navigate "Timeline & Time"
+    on click "#card-ch2" navigate "Actions"
   ] []
 }
 
@@ -44,8 +49,10 @@ timeline "Timeline & Time" in "#stage" using raf {
   // Beat 1 — enter the chapter, wire the back button, open on the canvas
   at 0s..6s [
     hideView("#hub")
-    showView("#chapter")
-    on click "#to-hub" navigate "Hub"
+    hideView("#ch2")
+    showView("#ch1")
+    showView("#narration")
+    on click "#c1-to-hub" navigate "Hub"
     narrate("An Eligian presentation is one or more timelines. Here's the one you're watching.")
     revealBlock("#code-ch1")
     spotlight("#tok-timeline")
@@ -97,5 +104,74 @@ timeline "Timeline & Time" in "#stage" using raf {
     narrate("That whole sequence? One timeline. Click ← Hub to explore more.")
     revealBlock("#code-full")
     demo("#fx-endcard")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 2 — Actions & Composition. Built entirely from the presentation
+// library it describes; the reveal puts that library's own source on screen.
+// ===========================================================================
+timeline "Actions" in "#stage" using raf {
+
+  // Beat 1 — an action is a named list of operations
+  at 0s..7s [
+    hideView("#hub")
+    hideView("#ch1")
+    showView("#ch2")
+    showView("#narration")
+    on click "#c2-to-hub" navigate "Hub"
+    narrate("An action is a named list of operations. Define once, call anywhere.")
+    revealBlock("#c2-code-def")
+    spotlight("#c2-tok-action")
+    callout("#c2-cl-action", "declares a reusable action; its body runs top-to-bottom")
+    demo("#c2-fx-chain")
+  ] []
+
+  // Beat 2 — parameters and optional types
+  at 7s..14s [
+    clearSpots()
+    narrate("Actions take parameters. Annotate types when you want the compiler's help.")
+    revealBlock("#c2-code-params")
+    spotlight("#c2-tok-param")
+    callout("#c2-cl-param", "optional type — string · number · boolean · object · array")
+    demo("#c2-fx-fade")
+  ] []
+
+  // Beat 3 — unified call syntax
+  at 14s..22s [
+    clearSpots()
+    narrate("Calling your action looks exactly like calling a built-in operation.")
+    revealBlock("#c2-code-call")
+    spotlight("#c2-tok-call")
+    callout("#c2-cl-call", "one syntax; resolved action-first, then built-in op")
+    demo("#c2-fx-call")
+  ] []
+
+  // Beat 4 — params feed operations by name
+  at 22s..30s [
+    clearSpots()
+    narrate("A parameter that feeds a built-in op must be named after that op's input.")
+    revealBlock("#c2-code-byname")
+    spotlight("#c2-tok-template")
+    callout("#c2-cl-name", "selectElement→selector · addClass→className · setElementContent→template")
+    demo("#c2-fx-slot")
+  ] []
+
+  // Beat 5 — endable actions: start and end are independent
+  at 30s..38s [
+    clearSpots()
+    narrate("An endable action has two blocks: set up, then tear down — independently.")
+    revealBlock("#c2-code-endable")
+    spotlight("#c2-tok-endable")
+    callout("#c2-cl-endable", "start & end run fresh; re-select in each — only the DOM persists")
+    demo("#c2-fx-toggle")
+  ] []
+
+  // Beat 6 — libraries & composition, then the reveal
+  at 38s..46s [
+    clearSpots()
+    narrate("Group actions into a library, import what you need. Click ← Hub for more.")
+    revealBlock("#c2-code-lib")
+    demo("#c2-fx-lib")
   ] []
 }

@@ -2,13 +2,21 @@
   Eligian Tour — stage layout (hub + chapters in one config).
 
   Rendered into the engine container (#eligius-container) as the layoutTemplate.
-  Both the hub menu and every chapter live here as sibling ".view" sections; the
-  engine renders this once, and switching timelines just toggles which view is
-  ".is-active" (see showView/hideView in presentation.eligian). Code is
-  PRE-TOKENIZED (spans with .tok + an id per highlightable token); the library
-  only toggles classes / sets text at runtime — no runtime tokenizer. Every
-  id/class selected or class toggled by the .eligian must be defined in tour.css
-  (CSS validation, B2).
+  Structure:
+    #stage
+      #hub        (.view)            landing menu of chapter cards
+      #ch1        (.view .chapter)   Chapter 1 walkthrough
+      #ch2        (.view .chapter)   Chapter 2 walkthrough
+      #narration                     SHARED subtitle bar (toggled per chapter)
+
+  Each chapter is a self-contained view with its own chrome / .code-pane /
+  .effect-pane / .callout-layer. Structural panes are CLASSES shared across
+  chapters; only leaf elements the .eligian selects keep ids (namespaced #cN-…).
+  Switching timelines toggles which view is .is-active (showView / hideView).
+  Code is PRE-TOKENIZED here (spans with .tok + an id per highlightable token);
+  the library only toggles classes / sets text at runtime — no runtime tokenizer.
+  Every id/class selected or class toggled by the .eligian must be defined in
+  tour.css (CSS validation, B2).
 -->
 <div id="stage">
 
@@ -19,7 +27,7 @@
       <p id="hub-tagline">A presentation that teaches the language it is written in.</p>
       <ul id="hub-cards">
         <li id="card-ch1" class="card"><span class="card-num">01</span><span class="card-name">Timeline &amp; Time</span></li>
-        <li id="card-ch2" class="card is-soon"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
+        <li id="card-ch2" class="card"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
         <li id="card-ch3" class="card is-soon"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
         <li id="card-ch4" class="card is-soon"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
         <li id="card-ch5" class="card is-soon"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
@@ -28,24 +36,20 @@
     </div>
   </section>
 
-  <!-- ========================== CHAPTER VIEW ========================== -->
-  <section id="chapter" class="view">
+  <!-- ====================== CHAPTER 1 · Timeline & Time ============== -->
+  <section id="ch1" class="view chapter">
 
-    <header id="chrome">
-      <button id="to-hub">&larr; Hub</button>
-      <nav id="progress-rail" aria-label="chapters">
+    <header class="chrome">
+      <button id="c1-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
         <span class="dot is-current"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
-      <span id="chapter-label">01 · Timeline &amp; Time</span>
+      <span class="chapter-label">01 · Timeline &amp; Time</span>
     </header>
 
-    <!-- Code pane: one block per beat, revealed in turn -->
-    <section id="code-pane">
+    <section class="code-pane">
       <pre id="code-ch1" class="code"><code><span class="tok kw" id="tok-timeline">timeline</span> <span class="tok str" id="tok-name">"Tour"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw" id="tok-raf">raf</span> {
   <span class="tok com">… events …</span>
 }</code></pre>
@@ -69,8 +73,7 @@
 }</code></pre>
     </section>
 
-    <!-- Effect pane: the live result of the beat being explained -->
-    <section id="effect-pane">
+    <section class="effect-pane">
       <div id="fx-stage" class="fx"><span class="fx-frame">#stage</span></div>
       <div id="fx-providers" class="fx">
         <span class="fx-chip">raf</span><span class="fx-chip">video</span><span class="fx-chip">audio</span><span class="fx-chip">custom</span>
@@ -81,18 +84,88 @@
       <div id="fx-endcard" class="fx"><span class="fx-done">Chapter 1 ✓</span></div>
     </section>
 
-    <!-- Narration subtitle (text set at runtime) -->
-    <footer id="narration"></footer>
-
-    <!-- Callout chips, positioned over tokens (text set at runtime) -->
-    <div id="callout-layer">
+    <div class="callout-layer">
       <div id="cl-name" class="callout"></div>
       <div id="cl-provider" class="callout"></div>
       <div id="cl-range" class="callout"></div>
       <div id="cl-units" class="callout"></div>
       <div id="cl-relative" class="callout"></div>
     </div>
-
   </section>
+
+  <!-- ==================== CHAPTER 2 · Actions & Composition ========== -->
+  <section id="ch2" class="view chapter">
+
+    <header class="chrome">
+      <button id="c2-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span>
+        <span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </nav>
+      <span class="chapter-label">02 · Actions &amp; Composition</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="c2-code-def" class="code"><code><span class="tok kw" id="c2-tok-action">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span>) [
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str">"in"</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str">"typing"</span>)
+]</code></pre>
+
+      <pre id="c2-code-params" class="code"><code><span class="tok kw">action</span> <span class="tok fn">fadeIn</span>(<span class="tok">selector</span>, <span class="tok" id="c2-tok-param">duration</span><span class="tok op">:</span> <span class="tok kw">number</span>) [
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
+  <span class="tok fn">animate</span>({ opacity<span class="tok op">:</span> <span class="tok num">1</span> }, <span class="tok">duration</span>)
+]</code></pre>
+
+      <pre id="c2-code-call" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn" id="c2-tok-call">fadeIn</span>(<span class="tok str">"#hero"</span>, <span class="tok num">400</span>)   <span class="tok com">// your action</span>
+<span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>)         <span class="tok com">// built-in op</span></code></pre>
+
+      <pre id="c2-code-byname" class="code"><code><span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok" id="c2-tok-template">template</span>) [
+  <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>)
+  <span class="tok fn">setElementContent</span>(<span class="tok">template</span>)
+]</code></pre>
+
+      <pre id="c2-code-endable" class="code"><code><span class="tok kw" id="c2-tok-endable">endable</span> <span class="tok kw">action</span> <span class="tok fn">highlight</span>(<span class="tok">selector</span>) [
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str">"spot"</span>)
+] [
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// re-select: nothing carries over</span>
+  <span class="tok fn">removeClass</span>(<span class="tok str">"spot"</span>)
+]</code></pre>
+
+      <pre id="c2-code-lib" class="code"><code><span class="tok kw">library</span> <span class="tok fn">presentation</span>
+<span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span>) [ … ]       <span class="tok com">// public</span>
+<span class="tok kw">private</span> <span class="tok kw">action</span> <span class="tok fn">_helper</span>() [ … ]      <span class="tok com">// library-only</span>
+
+<span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span></code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <div id="c2-fx-chain" class="fx">
+        <span class="fx-chip">selectElement</span><span class="fx-chip">addClass</span><span class="fx-chip">addClass</span>
+      </div>
+      <div id="c2-fx-fade" class="fx"><span class="fx-hero-box">fadeIn</span></div>
+      <div id="c2-fx-call" class="fx">
+        <span class="fx-chip">requestAction</span><span class="fx-chip">startAction</span>
+      </div>
+      <div id="c2-fx-slot" class="fx">
+        <span class="fx-chip">template →</span><span class="fx-frame">setElementContent</span>
+      </div>
+      <div id="c2-fx-toggle" class="fx"><span class="fx-hero-box">.spot</span></div>
+      <div id="c2-fx-lib" class="fx"><span class="fx-done">Chapter 2 ✓</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="c2-cl-action" class="callout"></div>
+      <div id="c2-cl-param" class="callout"></div>
+      <div id="c2-cl-call" class="callout"></div>
+      <div id="c2-cl-name" class="callout"></div>
+      <div id="c2-cl-endable" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- Shared narration subtitle (text set at runtime; toggled per chapter) -->
+  <footer id="narration"></footer>
 
 </div>
