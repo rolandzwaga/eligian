@@ -194,7 +194,7 @@ describe('Parameter Reference Resolution (T018)', () => {
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
     expect(operation.systemName).toBe('addClass');
-    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[0]');
+    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.0');
   });
 
   test('should resolve second parameter reference to eventArgs[1]', async () => {
@@ -225,7 +225,7 @@ describe('Parameter Reference Resolution (T018)', () => {
     const eventAction = config.eventActions[0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
-    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[1]');
+    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.1');
   });
 
   test('should resolve third parameter reference to eventArgs[2]', async () => {
@@ -256,7 +256,7 @@ describe('Parameter Reference Resolution (T018)', () => {
     const eventAction = config.eventActions[0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
-    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs[2]');
+    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.2');
   });
 
   test('should leave non-parameter references unchanged', async () => {

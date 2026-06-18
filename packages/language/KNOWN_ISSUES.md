@@ -148,6 +148,52 @@ calls are unaffected — they require an exact arg/param match.)
 
 ---
 
+## ✅ C8 — FIXED — event-action parameter (`eventArgs`) used unresolvable bracket index 🔴
+
+**Fixed 2026-06-18.** An `on event` action's parameter compiled to
+`$operationData.eventArgs[n]` (bracket index). Eligius resolves property chains by
+splitting the string on `.` and doing **plain key access**
+(`get-property-chain-value.ts`) — it has **no bracket parsing**, so `eventArgs[0]`
+looked up the literal key `"eventArgs[0]"` (undefined). Any operation that consumed
+an event parameter (e.g. `selectElement(target)` in a handler) therefore got an
+empty/undefined value and threw at runtime (*"selectElement: selector is either
+empty or not defined"*). Caught running Chapter 5 of the tour in the engine (jsdom);
+the Feature-028 tests only asserted the emitted **string**, never resolved it.
+
+Fix in `compiler/transformers/expression-transformer.ts`: emit dot-index
+`$operationData.eventArgs.${index}` (arrays index by string key, so
+`eventArgs.0` resolves). Verified in-engine: the `on event "tour-ping"` handler
+now reveals its panel from `eventArgs.0`. Regression: updated
+`event-action-transformer.spec.ts`, `event-action-integration.spec.ts`, and the
+`transformer-golden` snapshot to expect dot-index.
+
+> Upstream follow-up (eligius `bracket-parsing` branch, ≥2.3.1): `getPropertyChainValue`
+> now also normalizes bracket array-indices (`eventArgs[0]` → `eventArgs.0`) for **all**
+> chains, so bracket notation is generally resolvable. The eligian dot-index emission is
+> kept as-is (works on any eligius version; the chain is compiler-internal). The two are
+> independent and stack.
+
+---
+
+## ✅ V1 — FIXED — `on event` forbade custom (non-engine) event names 🟠
+
+**Fixed 2026-06-18.** `on event "name"` hard-errored unless `name` was one of the
+known engine events in `TIMELINE_EVENTS` metadata
+(`validators/event-action-validator.ts`, `checkEventNameExists`). But custom
+application events are first-class on the eventbus: the engine's
+`ActionRegistryEventbusListener` registers an action under *whatever* event name it
+was given and dispatches by name — so a button that `broadcastEvent`s a custom
+event an `on event` handler answers is fully supported at runtime. The validator
+blocked that legitimate pattern (needed for Chapter 5's real eventbus round-trip).
+
+Fix: a non-engine event name is now accepted **iff** the same program broadcasts it
+(`broadcastEvent(..., "name")` exists — the event name is the 2nd positional arg).
+This keeps "did you mean?" typo help for genuine engine-event typos while allowing
+deliberate custom events; a custom name that is never broadcast still errors.
+Regression tests added to `__tests__/event-validation/event-name-validation.spec.ts`.
+
+---
+
 ## ✅ T1 — FIXED — eligius 2.2.2 / jquery@4 crashed the whole toolchain in Node
 
 **Fixed 2026-06-18.** The `eligius` 2.2.1 → 2.2.2 upgrade pulled in **jquery@4**,

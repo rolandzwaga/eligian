@@ -1,7 +1,8 @@
-import type { ValidationAcceptor } from 'langium';
+import { AstUtils, type ValidationAcceptor } from 'langium';
 import { TIMELINE_EVENTS } from '../completion/metadata/timeline-events.generated.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
-import type { EventActionDefinition } from '../generated/ast.js';
+import { type EventActionDefinition, isOperationCall, isStringLiteral } from '../generated/ast.js';
+import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
 import { RESERVED_KEYWORDS } from './validation-constants.js';
 
@@ -130,6 +131,16 @@ export class EventActionValidator extends BaseValidator {
       return; // Valid event name
     }
 
+    // Custom application events are first-class: the engine's eventbus dispatches
+    // an action to whatever event name it was registered with. So a name that
+    // isn't a known engine event is still valid if the program broadcasts it
+    // itself — this keeps "did you mean?" typo help for genuine engine-event typos
+    // while allowing deliberate custom events (e.g. a button broadcasting an event
+    // an `on event` handler answers). See actionregistry-eventbus-listener.ts.
+    if (this.isEventBroadcastInProgram(eventAction, eventName)) {
+      return;
+    }
+
     // Event not found - generate suggestions using Levenshtein distance
     const allEventNames = TIMELINE_EVENTS.map((event: { name: string }) => event.name);
     const eventNameSet = new Set(allEventNames);
@@ -148,6 +159,33 @@ export class EventActionValidator extends BaseValidator {
       property: 'eventName',
       code: 'unknown_event_name',
     });
+  }
+
+  /**
+   * Whether any `broadcastEvent(...)` in the same program broadcasts `eventName`.
+   *
+   * The event name is `broadcastEvent`'s SECOND positional argument (the operation
+   * signature orders parameters `eventArgs` then `eventName`). Only string-literal
+   * event names can be matched statically; non-literal names fall through to the
+   * normal unknown-event error.
+   */
+  private isEventBroadcastInProgram(node: EventActionDefinition, eventName: string): boolean {
+    const program = this.getProgram(node);
+    if (!program) {
+      return false;
+    }
+
+    for (const candidate of AstUtils.streamAllContents(program)) {
+      if (!isOperationCall(candidate) || getOperationCallName(candidate) !== 'broadcastEvent') {
+        continue;
+      }
+      const nameArg = candidate.args[1];
+      if (nameArg && isStringLiteral(nameArg) && nameArg.value === eventName) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

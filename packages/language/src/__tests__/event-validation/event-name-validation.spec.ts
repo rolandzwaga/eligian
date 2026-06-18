@@ -133,4 +133,48 @@ describe('Event Name Validation (US1)', () => {
     const eventError = errors.find(e => e.message.includes('Dom-Mutation'));
     expect(eventError).toBeDefined();
   });
+
+  // Custom application events are first-class on the eventbus (the engine's
+  // ActionRegistryEventbusListener dispatches by event name to whatever registered
+  // for it). So a non-engine event name is valid IF the program broadcasts it
+  // itself — keeping typo help for known-event mistakes while allowing deliberate
+  // custom events (e.g. a button broadcasting an event an `on event` answers).
+  test('should accept a custom event name that is broadcast in the same file', async () => {
+    const code = `
+      on event "tour-ping" action OnPing(target) [
+        selectElement(target)
+      ]
+      action ping() [
+        broadcastEvent(["#app"], "tour-ping")
+      ]
+      timeline "t" in "#app" using raf {
+        at 0s..1s ping()
+      }
+    `;
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+    const eventError = errors.find(e => e.message.includes('tour-ping'));
+    expect(eventError).toBeUndefined();
+  });
+
+  // A custom event name that is NEITHER a known engine event NOR broadcast
+  // anywhere in the program is still flagged (it can never fire → almost surely
+  // a typo or dead handler).
+  test('should still reject a custom event name that is never broadcast', async () => {
+    const code = `
+      on event "tour-ping" action OnPing(target) [
+        selectElement(target)
+      ]
+      timeline "t" in "#app" using raf {
+        at 0s..1s selectElement("#app")
+      }
+    `;
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
+    const eventError = errors.find(e => e.message.includes('tour-ping'));
+    expect(eventError).toBeDefined();
+    expect(eventError?.message).toMatch(/unknown event name/i);
+  });
 });
