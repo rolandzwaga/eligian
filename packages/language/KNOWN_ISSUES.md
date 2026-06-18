@@ -24,47 +24,34 @@ operations (eligius `src/operation/start-action.ts`, `end-action.ts`).
 
 ---
 
-## 🟠 C1 — OPEN — a built-in operation argument is only wired if the param NAME matches the operation's input property
+## ✅ C1 — NOT A BUG (by design): action params feed operations BY NAME
 
-**Symptom:** inside an action, calling a built-in operation with a **bare
-parameter reference** as an argument silently does nothing unless the parameter
-happens to be named exactly like the operation's input property.
+**Retracted (2026-06-18) — I wrongly flagged this as a bug.** It's the intended
+parameter-passing contract.
 
-**Example:**
-```eligian
-action narrate(text: string) [
-  selectElement("#narration")
-  setElementContent(text)      // ❌ renders nothing
-]
-action narrate(template: string) [
-  selectElement("#narration")
-  setElementContent(template)  // ✅ works
-]
-```
+An action's parameters arrive as the action's `operationData` keyed by the
+**parameter name** (`startAction` merges `actionOperationData` keyed by name).
+Operations read their inputs by property name off `operationData`. Eligius only
+resolves params by name — there is no positional identity at runtime. Therefore an
+action parameter that feeds a built-in operation **must be named to match that
+operation's input property**:
+- `selectElement` reads `selector`  → param named `selector`
+- `addClass` reads `className`       → param named `className`
+- `setElementContent` reads `template` → param named `template`
 
-**Why:** for a **literal** argument the compiler maps it positionally to the
-operation's input property — `selectElement("#x")` → `operationData: { selector: "#x" }`.
-But for a **parameter-reference** argument it emits the operation with **no
-operationData for that argument**, relying on the parameter already being present in
-`operationData` under a name the operation reads. That only works when the action
-parameter name equals the operation property name:
-- `selectElement` reads `selector` → param must be named `selector`
-- `addClass` reads `className` → param must be named `className`
-- `setElementContent` reads `template` → param must be named `template`
+This is also why a compiler "bridge" (emitting `template: "$operationdata.text"`)
+would **not** work: most operations don't resolve `$…` chains on their value
+fields — `setElementContent`/`addClass` use the value directly (see eligius
+`set-element-content.ts`, `add-class.ts`), so a bridged chain would render the
+literal string. Only operations that explicitly call `resolveExternalPropertyChain`
+(e.g. `selectElement` on `selector`) accept a `$…` value.
 
-So `selectElement(selector)` works by coincidence; `setElementContent(text)`
-silently fails. Inspect a compiled action: the operation appears with the input
-property simply **missing**, no `$operationdata.<param>` bridge.
+So `narrate(text)` failing and `narrate(template)` working is correct behaviour,
+not a defect. **Convention: name action parameters after the operation property
+they feed.** (Documented in `examples/eligian-tour/presentation.eligian` and
+`ELIGIUS_EXECUTION_MODEL.md`.)
 
-**Expected:** a parameter-reference argument should compile to the operation's
-input property as `"$operationdata.<param>"` (bridging any name), the same way a
-literal is mapped — so the argument works regardless of parameter name. This
-needs the positional-arg → operation-property mapping (already used for literals)
-to also apply to parameter references.
-
-**Workaround (in use):** name action parameters to match the consuming
-operation's input property (e.g. `template` for `setElementContent`). Footgunny —
-a typo'd/renamed param silently produces no output with no error.
-
-**Severity:** high — silent, no compile error, easy to hit, affects any action
-that forwards a parameter to a built-in operation whose property name differs.
+**Possible future ergonomics (enhancement, not a bug):** the validator *could*
+warn when an action forwards a parameter to an operation whose required input
+property won't be satisfied — turning today's silent no-op into a compile-time
+hint. Optional.
