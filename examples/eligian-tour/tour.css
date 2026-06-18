@@ -108,7 +108,8 @@
 #c1-to-hub,
 #c2-to-hub,
 #c3-to-hub,
-#c4-to-hub {
+#c4-to-hub,
+#c5-to-hub {
   flex: 0 0 auto;
 }
 
@@ -193,7 +194,8 @@
 #card-ch1,
 #card-ch2,
 #card-ch3,
-#card-ch4 {
+#card-ch4,
+#card-ch5 {
   border-color: rgba(88, 166, 255, 0.5);
 }
 
@@ -224,7 +226,13 @@
 #c2-code-call,
 #c2-code-byname,
 #c2-code-endable,
-#c2-code-lib {
+#c2-code-lib,
+#c5-code-overview,
+#c5-code-eventbus,
+#c5-code-onevent,
+#c5-code-controller,
+#c5-code-label,
+#c5-code-recap {
   min-width: 0;
 }
 
@@ -348,6 +356,21 @@
 #c4-cl-inline {
   top: 15rem;
 }
+#c5-cl-over {
+  top: 3rem;
+}
+#c5-cl-bus {
+  top: 6rem;
+}
+#c5-cl-on {
+  top: 9rem;
+}
+#c5-cl-ctrl {
+  top: 12rem;
+}
+#c5-cl-loc {
+  top: 15rem;
+}
 
 /* ---- Effect-pane panels + illustrative chrome ------------------------ */
 .fx {
@@ -449,6 +472,44 @@
 #c3-badge {
   opacity: 0.35;
   transition: opacity 0.22s var(--ease);
+}
+
+/* Chapter 5 — live eventbus round-trip: a real button (DOMEventListenerController
+   target) whose click broadcasts an event that reveals the panel. */
+.ping-btn {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.ping-btn:hover {
+  background: rgba(88, 166, 255, 0.22);
+  transform: translateY(-1px);
+}
+/* #c5-fx-ping is a direct selectElement() target, so it must be declared here for
+   CSS validation. */
+#c5-fx-ping {
+  margin-bottom: 0.75rem;
+}
+/* The panel the `on event` handler reveals (hidden until it adds .in). */
+.reveal-panel {
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: #21262d;
+  color: var(--ink);
+  font-size: 0.85rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+#c5-fx-panel {
+  min-width: 0;
 }
 
 /* ---- Shared narration subtitle (toggled per chapter) ----------------- */
