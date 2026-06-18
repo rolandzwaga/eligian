@@ -16,6 +16,7 @@ import type {
   ContinueStatement,
   ForStatement,
   IfStatement,
+  NavigateStatement,
   OperationCall,
   OperationStatement,
   Program,
@@ -30,6 +31,11 @@ import { trackOutputs, validateDependencies, validateOperation } from '../operat
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
 import { transformExpression } from './expression-transformer.js';
+import {
+  buildNavigateOperations,
+  resolveNavPosition,
+  syntheticNavActionName,
+} from './navigate-operations.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
 
@@ -356,6 +362,18 @@ export const transformOperationStatement = (
       case 'ContinueStatement':
         // continue → continueForEach operation
         return yield* transformContinueStatement(stmt, scope);
+
+      case 'NavigateStatement': {
+        // on click "#sel" navigate "Target" [at <time>] →
+        //   selectElement + getControllerInstance + addControllerToElement.
+        // The synthetic broadcast action it references is emitted centrally in
+        // transformAST (one per distinct target+position); its name is derived
+        // purely so both sites agree.
+        const navStmt = stmt as NavigateStatement;
+        const position = yield* resolveNavPosition(navStmt.position);
+        const actionName = syntheticNavActionName(navStmt.target, position);
+        return buildNavigateOperations(navStmt.selector, actionName, getSourceLocation(navStmt));
+      }
 
       default:
         return yield* Effect.fail({

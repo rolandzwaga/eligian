@@ -358,7 +358,7 @@ TypeAnnotation returns string:
  * - Variable declarations (const varName = value)
  */
 OperationStatement:
-    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | OperationCall;
+    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | NavigateStatement | OperationCall;
 
 /**
  * If/Else Statement - Syntactic sugar for when/otherwise/endWhen
@@ -428,6 +428,29 @@ BreakStatement:
  */
 ContinueStatement:
     {infer ContinueStatement} 'continue';
+
+/**
+ * Navigate Statement - Click-to-switch-timeline sugar (hub ↔ chapter nav)
+ *
+ * Wires a click handler on an element that switches the engine to another
+ * timeline (by its name/uri). Designed for hub-and-chapter presentations.
+ *
+ * Example:
+ *   on click "#card-ch1" navigate "Timeline & Time"
+ *   on click "#resume" navigate "Timeline & Time" at 5s
+ *
+ * Compiles to:
+ *   selectElement("#card-ch1")
+ *   getControllerInstance("DOMEventListenerController")
+ *   addControllerToElement({ eventName: "click", actions: ["<synthetic action>"] })
+ * plus one synthetic action per distinct (target, position) that does:
+ *   broadcastEvent("request-timeline-uri", ["<target>", <position>])
+ *
+ * Both selector and target must be string literals. The optional `at <time>`
+ * sets the position to switch to (defaults to 0).
+ */
+NavigateStatement:
+    'on' 'click' selector=STRING 'navigate' target=STRING ('at' position=TimeExpression)?;
 
 /**
  * Variable Declaration - Declare a constant variable

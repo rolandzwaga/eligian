@@ -8,18 +8,20 @@
  * These helpers provide backward-compatible access to imports and elements.
  */
 
+import { AstUtils } from 'langium';
 import type {
   ActionDefinition,
   EventActionDefinition,
   ImportStatement,
   LibraryImport,
   NamedImport,
+  NavigateStatement,
   Program,
   ProgramElement,
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
-import { isTimeline, isVariableDeclaration } from '../generated/ast.js';
+import { isNavigateStatement, isTimeline, isVariableDeclaration } from '../generated/ast.js';
 import {
   isActionDefinition,
   isEventActionDefinition,
@@ -113,4 +115,18 @@ export function getLibraryImports(program: Program): LibraryImport[] {
  */
 export function getEventActions(program: Program): EventActionDefinition[] {
   return getElements(program).filter(isEventActionDefinition);
+}
+
+/**
+ * Get all navigate statements anywhere in a program (Feature: navigate sugar).
+ *
+ * Navigate statements nest arbitrarily deep (inside timelines, inline endable
+ * blocks, actions, if/for bodies), so this streams the entire AST rather than
+ * only the top-level elements.
+ *
+ * @param program - Program AST node
+ * @returns Array of navigate statement nodes
+ */
+export function getNavigateStatements(program: Program): NavigateStatement[] {
+  return [...AstUtils.streamAllContents(program)].filter(isNavigateStatement);
 }
