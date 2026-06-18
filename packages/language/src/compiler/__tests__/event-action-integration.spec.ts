@@ -145,15 +145,15 @@ describe('Event Action Integration Tests (T012)', () => {
 
     // First param (userId) → eventArgs[0]
     expect(ops[1].systemName).toBe('setElementContent');
-    expect(ops[1].operationData).toHaveProperty('template', '$operationData.eventArgs[0]');
+    expect(ops[1].operationData).toHaveProperty('template', '$operationData.eventArgs.0');
 
     // Second param (userName) → eventArgs[1]
     expect(ops[3].systemName).toBe('setElementContent');
-    expect(ops[3].operationData).toHaveProperty('template', '$operationData.eventArgs[1]');
+    expect(ops[3].operationData).toHaveProperty('template', '$operationData.eventArgs.1');
 
     // Third param (userRole) → eventArgs[2]
     expect(ops[5].systemName).toBe('setElementContent');
-    expect(ops[5].operationData).toHaveProperty('template', '$operationData.eventArgs[2]');
+    expect(ops[5].operationData).toHaveProperty('template', '$operationData.eventArgs.2');
   });
 
   test('should compile DSL file with event actions using topics (T040)', async () => {
