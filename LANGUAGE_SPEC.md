@@ -2680,7 +2680,7 @@ Expression      := Literal | ObjectLiteral | ArrayLiteral |
 
 PropertyChainRef := '$' Scope ('.' ID)+
 Scope           := 'globaldata' | 'operationdata' | 'scope'
-SystemPropertyRef := '@@' ID
+SystemPropertyRef := '@@' ID ('.' ID)*
 VariableRef     := '@' ID
 ParameterRef    := ID  (cross-reference to Parameter)
 ```

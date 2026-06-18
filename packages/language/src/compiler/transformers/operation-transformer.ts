@@ -434,7 +434,8 @@ const serializeWhenOperand = (
       case 'SystemPropertyReference': {
         const name =
           scope.loopVariableName && e.name === scope.loopVariableName ? 'currentItem' : e.name;
-        return `$scope.${name}`;
+        const suffix = e.properties?.length ? `.${e.properties.join('.')}` : '';
+        return `$scope.${name}${suffix}`;
       }
       case 'ParameterReference': {
         if (!e.parameter?.ref) return yield* fail('Undefined parameter reference (linking failed)');

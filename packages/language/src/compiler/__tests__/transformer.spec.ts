@@ -264,6 +264,27 @@ describe('AST Transformer', () => {
       );
     });
 
+    test('should compile @@currentItem.prop to a $scope property chain', async () => {
+      const code = `
+        action test() [
+          for (item in [{ "sel": "#a", "cls": "on" }]) {
+            selectElement(@@currentItem.sel)
+            addClass(@@currentItem.cls)
+          }
+        ]
+        timeline "test" in ".test-container" using raf {}
+      `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+      const ops = result.config.actions[0].startOperations;
+      const select = ops.find(o => o.systemName === 'selectElement');
+      const add = ops.find(o => o.systemName === 'addClass');
+      // @@<name>.<prop> compiles to $scope.<name>.<prop> (property access on
+      // system scope properties — incl. object loop items).
+      expect((select?.operationData as any)?.selector).toBe('$scope.currentItem.sel');
+      expect((add?.operationData as any)?.className).toBe('$scope.currentItem.cls');
+    });
+
     // C5 regression: a direct property-chain reference used as a `for` collection
     // must keep its `$` prefix. Emitting `scope.variables.x` (no `$`) made Eligius
     // treat it as a plain string, so `forEach` threw at runtime. This is the
@@ -569,13 +590,43 @@ describe('AST Transformer', () => {
       // First item: 0s-1s
       expect(actions[0].duration.start).toBe(0);
       expect(actions[0].duration.end).toBe(1);
-      // Should have operations with @@currentItem reference compiled to scope.currentItem
       expect(actions[0].startOperations).toHaveLength(2);
       expect(actions[0].endOperations).toHaveLength(2);
 
       // Second item: 0.1s-1.1s (100ms delay)
       expect(actions[1].duration.start).toBe(0.1);
       expect(actions[1].duration.end).toBe(1.1);
+
+      // C6 regression: inline stagger has NO runtime forEach to set
+      // $scope.currentItem, so @@currentItem must be baked to the literal item
+      // at compile time (one per generated action), not left as the unresolvable
+      // string "$scope.currentItem".
+      const selectorOf = (op: any) => op.operationData?.selector;
+      expect(selectorOf(actions[0].startOperations[0])).toBe('.box-1');
+      expect(selectorOf(actions[0].endOperations[0])).toBe('.box-1');
+      expect(selectorOf(actions[1].startOperations[0])).toBe('.box-2');
+      expect(selectorOf(actions[1].endOperations[0])).toBe('.box-2');
+    });
+
+    test('should bake @@loopIndex and object-item access into inline stagger ops', async () => {
+      const code = `
+                timeline "test" in ".test-container" using raf {
+                    stagger 100ms [{ "sel": "#a" }, { "sel": "#b" }] for 1s [
+                        selectElement(@@currentItem.sel)
+                        setData({ "i": @@loopIndex })
+                    ] []
+                }
+            `;
+      const program = await parseDSL(code);
+      const result = await Effect.runPromise(transformAST(program));
+      const actions = result.config.timelines[0].timelineActions;
+
+      expect(actions).toHaveLength(2);
+      // @@currentItem.sel → the item's `sel` property; @@loopIndex → the index.
+      expect((actions[0].startOperations[0].operationData as any)?.selector).toBe('#a');
+      expect((actions[0].startOperations[1].operationData as any)?.properties?.i).toBe(0);
+      expect((actions[1].startOperations[0].operationData as any)?.selector).toBe('#b');
+      expect((actions[1].startOperations[1].operationData as any)?.properties?.i).toBe(1);
     });
 
     test('should support stagger after other timeline events', async () => {

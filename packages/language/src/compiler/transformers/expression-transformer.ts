@@ -105,7 +105,8 @@ export const transformExpression = (
 
       case 'SystemPropertyReference': {
         // System property reference: @@varName (T232)
-        // Compiles to $scope.varName
+        // Compiles to $scope.varName, with optional property access:
+        //   @@currentItem.label → $scope.currentItem.label
         // Special case: @@loopVar → @@currentItem (aliased)
         let propertyName = expr.name;
 
@@ -114,7 +115,8 @@ export const transformExpression = (
           propertyName = 'currentItem';
         }
 
-        return `$scope.${propertyName}`;
+        const suffix = expr.properties?.length ? `.${expr.properties.join('.')}` : '';
+        return `$scope.${propertyName}${suffix}`;
       }
 
       case 'ParameterReference': {

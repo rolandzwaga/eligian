@@ -396,6 +396,16 @@ const transformStaggerBlock = (
           endOperations.push(...ops);
         }
 
+        // Bake the compile-time item / index / length into the inline ops.
+        // Unlike a real `for`, a `stagger` emits independent timeline actions with
+        // no runtime `forEach`, so `$scope.currentItem` (what `@@item` /
+        // `@@currentItem` compile to) is never populated — references must be
+        // resolved now. (Ops inside a nested forEach span are skipped: their
+        // currentItem belongs to that inner loop, not the stagger item.)
+        const item = itemsValue[i];
+        bakeStaggerOps(startOperations, item, i, itemsValue.length);
+        bakeStaggerOps(endOperations, item, i, itemsValue.length);
+
         actions.push({
           id: crypto.randomUUID(),
           name: `stagger-inline-${i}-${startTime}-${endTime}`,
@@ -409,6 +419,88 @@ const transformStaggerBlock = (
 
     return actions;
   });
+
+/**
+ * Substitute a stagger item's compile-time value for the `$scope.*` sentinels
+ * that `@@currentItem` / `@@item` / `@@loopIndex` / `@@loopLength` compile to.
+ *
+ * Inline `stagger` blocks have no runtime `forEach`, so those scope properties
+ * are never populated — but the item, index and length are known at compile time
+ * (the items array must be a literal), so they're baked directly here, mirroring
+ * how the action-call form bakes the item into `actionOperationData`.
+ */
+function bakeStaggerValue(
+  value: JsonValue,
+  item: JsonValue,
+  index: number,
+  length: number
+): JsonValue {
+  if (typeof value === 'string') {
+    if (value === '$scope.currentItem') return item;
+    if (value === '$scope.loopIndex') return index;
+    if (value === '$scope.loopLength') return length;
+    if (value.startsWith('$scope.currentItem.')) {
+      // Property access on an object item, e.g. `@@currentItem.label`.
+      const path = value.slice('$scope.currentItem.'.length).split('.');
+      let cur: JsonValue = item;
+      for (const key of path) {
+        if (cur !== null && typeof cur === 'object' && !Array.isArray(cur) && key in cur) {
+          cur = (cur as Record<string, JsonValue>)[key];
+        } else {
+          return value; // can't resolve at compile time — leave untouched
+        }
+      }
+      return cur;
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(v => bakeStaggerValue(v, item, index, length));
+  }
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, JsonValue> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = bakeStaggerValue(v, item, index, length);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Bake stagger item/index/length into a flat operation list, in place.
+ *
+ * Operations inside a nested `forEach … endForEach` span are skipped — their
+ * `$scope.currentItem` belongs to that inner loop (which `forEach` populates at
+ * runtime), not to the stagger item.
+ */
+function bakeStaggerOps(
+  ops: OperationConfigIR[],
+  item: JsonValue,
+  index: number,
+  length: number
+): void {
+  let forEachDepth = 0;
+  for (let k = 0; k < ops.length; k++) {
+    const op = ops[k];
+    if (op.systemName === 'endForEach') {
+      forEachDepth = Math.max(0, forEachDepth - 1);
+      continue;
+    }
+    if (forEachDepth === 0 && op.operationData) {
+      ops[k] = {
+        ...op,
+        operationData: bakeStaggerValue(
+          op.operationData as JsonValue,
+          item,
+          index,
+          length
+        ) as Record<string, JsonValue>,
+      };
+    }
+    if (op.systemName === 'forEach') forEachDepth++;
+  }
+}
 
 /**
  * Transform TimedEvent → TimelineActionIR
