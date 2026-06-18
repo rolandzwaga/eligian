@@ -87,20 +87,26 @@ A beat = (narration swap) + (code reveal / spotlight) + (callout) + (effect tick
 
 ### Beat 4 — "Repeat" / for loops (23s–32s)  ⭐ self-demo
 
-- **Narration:** "`for` iterates a collection — and this list is being built by one right now."
+- **Narration:** "`for` iterates a collection — and this list is being revealed by one right now."
 - **Code** (`#c3-code-for`):
   ```eligian
-  for (point in @points) {
-    // @@currentItem = the current element; @@loopIndex = its position
-    appendBullet(@@currentItem)
+  const points = ["#c3-b1", "#c3-b2", "#c3-b3"]
+  for (p in @points) {
+    selectElement(@@currentItem)   // @@currentItem = the current selector
+    addClass("in")                 // reveal this bullet
   }
   ```
 - **Callouts, click order:**
-  1. `for (point in @points)` → "iterate any collection expression"
+  1. `for (p in @points)` → "iterate any collection expression"
   2. `@@currentItem` → "the current item (`$scope.currentItem`); `@@loopIndex` / `@@loopLength` too"
   3. desugar chip → "compiles to `forEach` / `endForEach`"
-- **Effect pane (REAL):** the three takeaway bullets of this chapter are appended one-by-one into
-  `#c3-fx-list` **by an actual `for` loop** over a `const points = [ … ]`. The list you read *is* the demo.
+- **Effect pane (REAL):** three bullets pre-authored (hidden) in `#c3-fx-list` are revealed one-by-one
+  **by an actual `for` loop** over a `const` array of their selectors. The list you read *is* the demo.
+- **Why reveal-by-selector, not build-by-content (verified):** `selectElement` *resolves* its selector, so
+  `selectElement(@@currentItem)` correctly selects each bullet. The content ops do **not** resolve sigils on
+  their value — `setElementContent`/`createElement`-append of `@@currentItem` would emit the literal string
+  `"$scope.currentItem"` (same contract as the param-by-name rule). So we loop over selectors and toggle a
+  class, which keeps the demo genuine without hitting that pitfall.
 
 ### Beat 5 — "Steer the loop" / break & continue (32s–40s)
 
@@ -156,13 +162,15 @@ A beat = (narration swap) + (code reveal / spotlight) + (callout) + (effect tick
 ```
 examples/eligian-tour/
 ├── layout.html      # + #ch3 view: pre-tokenized Chapter-3 snippets, #c3-cl-* callouts, #c3-fx-* effects,
-│                    #   and a #c3-fx-list target the Beat-4 loop appends into
-├── tour.css         # + Chapter-3 block/callout/effect styles + id-registration rules (validated)
-├── presentation.eligian   # + a small appendBullet(template)-style action for the real loop demo
-│                          #   (selectElement(list) + an append/setElementContent op — exact op a build detail)
+│                    #   and #c3-fx-list containing pre-authored hidden bullets #c3-b1/#c3-b2/#c3-b3
+├── tour.css         # + Chapter-3 block/callout/effect/bullet styles + id-registration rules (validated)
+├── presentation.eligian   # unchanged — Beat 4 reuses selectElement + addClass via the existing library
+│                          #   (no append/content action needed; reveal-by-selector, see Beat 4)
 └── tour.eligian     # + timeline "Logic" (setup action + 6 beats) + wire hub card #card-ch3 → navigate "Logic"
 ```
 
-> Open build question (decide when implementing): which built-in operation appends a bullet per iteration
-> (e.g. an append/clone op vs. building one combined string) — verify the real list grows via `forEach` in
-> the compiled JSON, per acceptance #3.
+> Build question RESOLVED (the §1 Beat-4 check): no append operation is needed. The loop reveals
+> pre-authored bullets via `selectElement(@@currentItem) + addClass("in")` over a `const` array of selectors
+> — `selectElement` resolves the chain; content ops do not. Acceptance #3 still holds (genuine
+> `forEach`/`endForEach` in the compiled JSON). Remember every `#c3-…` id selected by the .eligian (bullets,
+> code blocks, callouts, fx, `#c3-to-hub`) must be registered in `tour.css`.
