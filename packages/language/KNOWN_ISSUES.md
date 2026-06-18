@@ -46,7 +46,7 @@ variable is created. Regression tests: array/object folding in
 
 ---
 
-## 🔴 E1 — OPEN (engine) — pushed scopes don't expose parent `$scope.variables`
+## ✅ E1 — FIXED in eligius (pending release) — pushed scopes & parent `$scope.variables`
 
 A `forEach`/`when` runs in a child scope created by `_pushScope`
 (`eligius src/action/action.ts`), which proxies only `currentIndex`/`eventbus`/
@@ -55,9 +55,15 @@ scope variable set with `setVariable` (e.g. a non-literal `const`, or any runtim
 variable) is **unreadable** via `$scope.variables.X` inside or at a loop/conditional.
 This is an **engine** issue (lives in `F:\projects\eligius\eligius`, not this repo).
 C4 sidesteps it for *literal* consts by inlining them; the general case
-(runtime variable used as a loop collection / in a `when`) still needs an engine
-fix (make `_pushScope` expose the parent's `variables`, or have `$scope`
-resolution walk parents). **To discuss with the maintainer.**
+(runtime variable used as a loop collection / in a `when`) needed an engine fix.
+
+**Fixed 2026-06-18 in eligius** (branch `fix/scope-var-resolving`, commit
+`7e84c891`): `resolveExternalPropertyChain` now resolves a `$scope` chain against
+the nearest scope (current or ancestor) that declares the chain's head property,
+walking `.parent` — natural lexical shadowing, write semantics unchanged. Unit +
+integration tests added there; all 1091 eligius tests pass. Lands in the eligian
+compiler once eligius is released and the dependency bumped; until then C4's
+literal-const folding keeps the tour working against the installed engine.
 
 ---
 
