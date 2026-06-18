@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect, test } from 'vitest';
 import {
   compile,
@@ -63,6 +63,31 @@ describe('Pipeline', () => {
       const result = Effect.runPromise(parseSource(source));
 
       await expect(result).rejects.toThrow('invalidProvider');
+    });
+
+    test('B3 regression: semantic validation diagnostics are tagged ValidationError, not ParseError', async () => {
+      // start (5s) > end (2s) is a semantic validation error (checkValidTimeRange),
+      // surfaced as a Langium document diagnostic — NOT a lexer/parser error.
+      const source = `styles "./styles.css"
+                timeline "test" in ".test-container" using raf {
+                at 5s..2s [
+                    selectElement("#title")
+                ] [
+                ]
+            }`;
+
+      const exit = await Effect.runPromiseExit(parseSource(source));
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      if (Exit.isFailure(exit)) {
+        const error = Option.getOrNull(Cause.failureOption(exit.cause)) as {
+          _tag?: string;
+        } | null;
+        // Regression: previously every diagnostic was tagged 'ParseError', which
+        // made validation errors print as "Parse Error" with parse hints.
+        expect(error?._tag).toBe('ValidationError');
+        expect(error?._tag).not.toBe('ParseError');
+      }
     });
   });
 

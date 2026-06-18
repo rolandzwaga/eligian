@@ -127,13 +127,15 @@ describe('AST Transformer', () => {
       expect(action.startOperations[0].systemName).toBe('requestAction');
       expect(action.startOperations[0].operationData?.systemName).toBe('fadeIn');
       expect(action.startOperations[1].systemName).toBe('startAction');
-      expect(action.startOperations[1].operationData).toEqual({});
+      // Zero-arg call still emits an (empty) actionOperationData object — the
+      // engine requires it (see action-call-operations C2 regression).
+      expect(action.startOperations[1].operationData).toEqual({ actionOperationData: {} });
       // End operations: requestAction + endAction
       expect(action.endOperations).toHaveLength(2);
       expect(action.endOperations[0].systemName).toBe('requestAction');
       expect(action.endOperations[0].operationData?.systemName).toBe('fadeIn');
       expect(action.endOperations[1].systemName).toBe('endAction');
-      expect(action.endOperations[1].operationData).toEqual({});
+      expect(action.endOperations[1].operationData).toEqual({ actionOperationData: {} });
     });
   });
 

@@ -301,7 +301,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > global var
             },
             {
               "id": "<uuid-9>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
@@ -402,7 +404,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > languages 
             },
             {
               "id": "<uuid-11>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
@@ -668,7 +672,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > sequence a
             },
             {
               "id": "<uuid-10>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
@@ -691,7 +697,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > sequence a
             },
             {
               "id": "<uuid-13>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
@@ -714,7 +722,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > sequence a
             },
             {
               "id": "<uuid-16>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
@@ -737,7 +747,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > sequence a
             },
             {
               "id": "<uuid-19>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
@@ -760,7 +772,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > sequence a
             },
             {
               "id": "<uuid-22>",
-              "operationData": {},
+              "operationData": {
+                "actionOperationData": {},
+              },
               "systemName": "startAction",
             },
           ],
