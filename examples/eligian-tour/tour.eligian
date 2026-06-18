@@ -7,11 +7,15 @@
  * that click→switch is the `navigate` sugar, which compiles to a
  * DOMEventListenerController that broadcasts `request-timeline-uri`.
  *
- * Each chapter is its own `.view` (#ch1, #ch2, …). Every timeline shows its own
- * view at its start and hides the others (showView/hideView), because start/end
- * operations are independent runs — each timeline sets up the full visible state
- * itself, so seeking and switching are safe. `#narration` is a shared subtitle
- * bar toggled on while a chapter is active.
+ * VIEW MANAGEMENT — each timeline shows ONLY its own view. The first event in
+ * every timeline is a long-range **endable setup action**:
+ *   start → showView(self) + wire nav      (fires when the timeline is switched IN)
+ *   end   → hideView(self)                  (fires when it is switched AWAY)
+ * The engine's switch lifecycle runs the leaving timeline's `end` ops, then the
+ * entering timeline's `start` ops, so no timeline needs to hide the others. The
+ * range is deliberately huge so `end` fires only on switch, never from the
+ * playhead reaching it. (See ELIGIUS_EXECUTION_MODEL.md §7b.) `#narration` is a
+ * shared subtitle bar each chapter shows/hides alongside its own view.
  *
  * Snippets in the code pane are hand-authored display assets (pre-tokenized in
  * layout.html); this file is the real machinery driving them.
@@ -30,14 +34,14 @@ import { revealBlock, spotlight, clearSpots, callout, narrate, demo, showView, h
 // ===========================================================================
 timeline "Hub" in "#stage" using raf {
 
-  at 0s..600s [
-    hideView("#ch1")
-    hideView("#ch2")
-    hideView("#narration")
+  // setup: show the hub on enter, hide it on leave; wire the cards
+  at 0s..3600s [
     showView("#hub")
     on click "#card-ch1" navigate "Timeline & Time"
     on click "#card-ch2" navigate "Actions"
-  ] []
+  ] [
+    hideView("#hub")
+  ]
 }
 
 // ===========================================================================
@@ -46,13 +50,18 @@ timeline "Hub" in "#stage" using raf {
 // ===========================================================================
 timeline "Timeline & Time" in "#stage" using raf {
 
-  // Beat 1 — enter the chapter, wire the back button, open on the canvas
-  at 0s..6s [
-    hideView("#hub")
-    hideView("#ch2")
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
     showView("#ch1")
     showView("#narration")
     on click "#c1-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch1")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — open on the canvas
+  at 0s..6s [
     narrate("An Eligian presentation is one or more timelines. Here's the one you're watching.")
     revealBlock("#code-ch1")
     spotlight("#tok-timeline")
@@ -113,13 +122,18 @@ timeline "Timeline & Time" in "#stage" using raf {
 // ===========================================================================
 timeline "Actions" in "#stage" using raf {
 
-  // Beat 1 — an action is a named list of operations
-  at 0s..7s [
-    hideView("#hub")
-    hideView("#ch1")
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
     showView("#ch2")
     showView("#narration")
     on click "#c2-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch2")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — an action is a named list of operations
+  at 0s..7s [
     narrate("An action is a named list of operations. Define once, call anywhere.")
     revealBlock("#c2-code-def")
     spotlight("#c2-tok-action")
