@@ -1,0 +1,101 @@
+/**
+ * Eligian Tour — single-file entry (hub + chapters).
+ *
+ * The whole presentation compiles to ONE Eligius config: a hub menu plus every
+ * chapter, each as its own `timeline`. The engine renders the shared layout once
+ * and switches between timelines when a card (or the back button) is clicked —
+ * that click→switch is the `navigate` sugar, which compiles to a
+ * DOMEventListenerController that broadcasts `request-timeline-uri`.
+ *
+ * Every timeline shows its own view at its start (showView/hideView), because
+ * start/end operations are independent runs — each timeline sets up the full
+ * visible state itself, so seeking and switching are safe.
+ *
+ * Snippets in the code pane are hand-authored display assets (pre-tokenized in
+ * layout.html); this file is the real machinery driving them.
+ */
+languages {
+  * "en-US" "English"
+}
+
+layout "./layout.html"
+styles "./tour.css"
+
+import { revealBlock, spotlight, clearSpots, callout, narrate, demo, showView, hideView } from "./presentation.eligian"
+
+// ===========================================================================
+// Hub — the landing menu. Click a card to jump into a chapter.
+// ===========================================================================
+timeline "Hub" in "#stage" using raf {
+
+  at 0s..600s [
+    hideView("#chapter")
+    showView("#hub")
+    on click "#card-ch1" navigate "Timeline & Time"
+  ] []
+}
+
+// ===========================================================================
+// Chapter 1 — Timeline & Time. Six click-paced beats; itself a `timeline` full
+// of `at` events teaching exactly what it shows.
+// ===========================================================================
+timeline "Timeline & Time" in "#stage" using raf {
+
+  // Beat 1 — enter the chapter, wire the back button, open on the canvas
+  at 0s..6s [
+    hideView("#hub")
+    showView("#chapter")
+    on click "#to-hub" navigate "Hub"
+    narrate("An Eligian presentation is one or more timelines. Here's the one you're watching.")
+    revealBlock("#code-ch1")
+    spotlight("#tok-timeline")
+    callout("#cl-name", "its name — also the uri the hub uses to jump here")
+    demo("#fx-stage")
+  ] []
+
+  // Beat 2 — pick a driver (provider)
+  at 6s..12s [
+    clearSpots()
+    narrate("What advances the timeline? Its provider.")
+    spotlight("#tok-raf")
+    callout("#cl-provider", "raf = animation clock; video / audio / custom also available")
+    demo("#fx-providers")
+  ] []
+
+  // Beat 3 — make something happen at a time
+  at 12s..20s [
+    clearSpots()
+    narrate("Inside a timeline, 'at' schedules work over a time range.")
+    revealBlock("#code-at")
+    spotlight("#tok-at")
+    callout("#cl-range", "a time range: start .. end")
+    demo("#fx-hero")
+  ] []
+
+  // Beat 4 — time speaks four units
+  at 20s..27s [
+    clearSpots()
+    narrate("Times take units. No unit means milliseconds.")
+    revealBlock("#code-units")
+    callout("#cl-units", "42 = 42ms · 500ms · 2s · 1.5m · 0.5h")
+    demo("#fx-ruler")
+  ] []
+
+  // Beat 5 — arithmetic and relative time
+  at 27s..35s [
+    clearSpots()
+    narrate("Ranges can compute — and chain off the previous event.")
+    revealBlock("#code-arith")
+    spotlight("#tok-plus")
+    callout("#cl-relative", "relative time — anchored to the previous event's end")
+    demo("#fx-chain")
+  ] []
+
+  // Beat 6 — recap + the reveal, then back to the hub
+  at 35s..42s [
+    clearSpots()
+    narrate("That whole sequence? One timeline. Click ← Hub to explore more.")
+    revealBlock("#code-full")
+    demo("#fx-endcard")
+  ] []
+}
