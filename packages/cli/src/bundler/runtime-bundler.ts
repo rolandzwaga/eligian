@@ -84,6 +84,69 @@ export function extractUsedProviders(config: IEngineConfiguration): TimelineProv
 }
 
 /**
+ * Extract non-operation system entries the engine resolves at runtime.
+ *
+ * The engine's resource importer is asked for more than operations:
+ * - timeline **position sources** / providers, named in `timelineProviderSettings`
+ *   (e.g. `RafPositionSource` for `using raf`);
+ * - **controllers**, named as the `systemName` in `getControllerInstance` operation
+ *   data (e.g. `DOMEventListenerController`, which `navigate`/`addController` emit).
+ *
+ * Each is a named `eligius` export keyed by its systemName, so the bundle must
+ * import it and register it in the importer map — otherwise the engine throws
+ * `Unknown systemName: …` at init/runtime. (These were previously omitted, so any
+ * bundle using a provider or controller rendered blank / crashed.)
+ */
+export function extractUsedSystemEntries(config: IEngineConfiguration): string[] {
+  const entries = new Set<string>();
+
+  // Timeline provider position sources / container providers / playlists.
+  const settings = config.timelineProviderSettings as
+    | Record<string, Record<string, { systemName?: string } | undefined>>
+    | undefined;
+  if (settings) {
+    for (const setting of Object.values(settings)) {
+      if (!setting) continue;
+      for (const key of ['positionSource', 'containerProvider', 'playlist']) {
+        const systemName = setting[key]?.systemName;
+        if (systemName) entries.add(systemName);
+      }
+    }
+  }
+
+  // Controllers, referenced by getControllerInstance(operationData.systemName).
+  function walkControllers(
+    ops: Array<{ systemName?: string; operationData?: { systemName?: string } }> | undefined
+  ) {
+    if (!ops) return;
+    for (const op of ops) {
+      if (op.systemName === 'getControllerInstance' && op.operationData?.systemName) {
+        entries.add(op.operationData.systemName);
+      }
+    }
+  }
+  for (const action of config.initActions ?? []) {
+    walkControllers(action.startOperations);
+    walkControllers(action.endOperations);
+  }
+  for (const action of config.actions ?? []) {
+    walkControllers(action.startOperations);
+    walkControllers(action.endOperations);
+  }
+  for (const eventAction of config.eventActions ?? []) {
+    walkControllers(eventAction.startOperations);
+  }
+  for (const timeline of config.timelines ?? []) {
+    for (const timelineAction of timeline.timelineActions ?? []) {
+      walkControllers(timelineAction.startOperations);
+      walkControllers(timelineAction.endOperations);
+    }
+  }
+
+  return [...entries];
+}
+
+/**
  * Generate the entry point JavaScript content
  *
  * Creates a self-contained entry point that:
@@ -132,6 +195,17 @@ export function generateEntryPoint(
     lines.push('');
   }
 
+  // System entries (timeline position sources, controllers) — resolved by the
+  // engine via the importer map, so they must be imported and registered too.
+  const systemEntries = extractUsedSystemEntries(config).filter(e => !operations.includes(e));
+  if (systemEntries.length > 0) {
+    lines.push('// System entries (position sources, controllers)');
+    for (const entry of systemEntries) {
+      lines.push(`import { ${entry} } from 'eligius';`);
+    }
+    lines.push('');
+  }
+
   // Embedded configuration
   lines.push('// Embedded configuration');
   lines.push(`const CONFIG = ${JSON.stringify(config, null, 2)};`);
@@ -150,6 +224,9 @@ export function generateEntryPoint(
   if (providers.includes('lottie')) {
     lines.push('  LottieTimelineProvider: { LottieTimelineProvider },');
   }
+  for (const entry of systemEntries) {
+    lines.push(`  ${entry}: { ${entry} },`);
+  }
   lines.push('};');
   lines.push('');
 
@@ -167,11 +244,18 @@ export function generateEntryPoint(
   lines.push('');
 
   // Initialization function
+  //
+  // A standalone bundle exists to be viewed, so it must START playback, not just
+  // init(): engine.init() only sets up the position source (it stays INACTIVE),
+  // so the timeline clock never advances and the position-0 actions (e.g. the
+  // first timeline's view setup) never fire — the page would render blank.
+  // engine.start() activates the provider, which emits position 0 immediately and
+  // begins ticking. Returns the engine so callers can drive it (pause/seek/etc.).
   lines.push('// Initialization');
   lines.push('function init(containerOrSelector) {');
   lines.push('  const factory = new EngineFactory(new BundledResourceImporter(), window);');
   lines.push('  const { engine } = factory.createEngine(CONFIG);');
-  lines.push('  return engine.init();');
+  lines.push('  return engine.init().then(() => engine.start()).then(() => engine);');
   lines.push('}');
   lines.push('');
 
