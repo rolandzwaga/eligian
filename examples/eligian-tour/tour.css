@@ -109,7 +109,8 @@
 #c2-to-hub,
 #c3-to-hub,
 #c4-to-hub,
-#c5-to-hub {
+#c5-to-hub,
+#c6-to-hub {
   flex: 0 0 auto;
 }
 
@@ -195,7 +196,8 @@
 #card-ch2,
 #card-ch3,
 #card-ch4,
-#card-ch5 {
+#card-ch5,
+#card-ch6 {
   border-color: rgba(88, 166, 255, 0.5);
 }
 
@@ -371,6 +373,21 @@
 #c5-cl-loc {
   top: 15rem;
 }
+#c6-cl-why {
+  top: 3rem;
+}
+#c6-cl-preview {
+  top: 6rem;
+}
+#c6-cl-css {
+  top: 9rem;
+}
+#c6-cl-complete {
+  top: 12rem;
+}
+#c6-cl-jsdoc {
+  top: 15rem;
+}
 
 /* ---- Effect-pane panels + illustrative chrome ------------------------ */
 .fx {
@@ -510,6 +527,90 @@
 }
 #c5-fx-panel {
   min-width: 0;
+}
+
+/* Chapter 6 — mock-editor reenactments (no live LSP; strings are real). ---- */
+.mock-editor {
+  width: 100%;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.82rem;
+  text-align: left;
+}
+.mock-tab {
+  background: #0b0f14;
+  color: var(--muted);
+  padding: 0.3rem 0.7rem;
+  border-bottom: 1px solid #30363d;
+}
+.mock-body {
+  padding: 0.6rem 0.8rem;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.mock-statusbar {
+  background: var(--accent);
+  color: #0b1320;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+}
+.mock-arrow {
+  color: var(--accent);
+  margin: 0 0.5rem;
+}
+/* red wavy underline on a typo'd token */
+.squiggle {
+  text-decoration: underline wavy #f85149;
+  text-underline-offset: 3px;
+}
+/* a diagnostic / hover tooltip */
+.diagnostic {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--ink);
+  font-size: 0.76rem;
+}
+.lightbulb {
+  margin-top: 0.4rem;
+  color: var(--accent);
+  font-size: 0.76rem;
+}
+/* a completion popup */
+.complete-popup {
+  width: 100%;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  text-align: left;
+}
+.complete-item {
+  padding: 0.3rem 0.7rem;
+  color: var(--ink);
+}
+.complete-item.is-sel {
+  background: rgba(88, 166, 255, 0.18);
+  color: var(--accent);
+}
+.complete-detail {
+  color: var(--muted);
+}
+/* a JSDoc hover card */
+.hover-card {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #0b0f14;
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  text-align: left;
 }
 
 /* ---- Shared narration subtitle (toggled per chapter) ----------------- */
