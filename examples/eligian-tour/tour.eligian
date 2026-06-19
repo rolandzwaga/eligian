@@ -96,6 +96,7 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-ch3" navigate "Logic"
     on click "#card-ch4" navigate "Timeline Power Tools"
     on click "#card-ch5" navigate "Engine Reach"
+    on click "#card-ch6" navigate "Tooling Magic"
   ] [
     hideView("#hub")
   ]
@@ -474,5 +475,85 @@ timeline "Engine Reach" in "#stage" using raf {
     revealBlock("#c5-code-recap")
     spotlight("#c5-tok-recap")
     demo("#c5-fx-done")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 6 — Tooling Magic. The dev-time half of Eligian: compile + live
+// preview, CSS validation, autocomplete, JSDoc hover, semantic validation,
+// CSS hot-reload, locale editor. UNLIKE Chapters 1–5 this teaches VS Code/LSP
+// tooling, which a running timeline can't exercise — so the effect pane REENACTS
+// the editor (mock panels with strings copied verbatim from the real providers).
+// No new actions, no runtime self-demo: the genuine dogfood is historical (this
+// whole tour was authored, validated, autocompleted and compiled by these tools).
+// See storyboards/chapter-06-tooling-magic.md §3.
+// ===========================================================================
+timeline "Tooling Magic" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch6")
+    showView("#narration")
+    on click "#c6-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch6")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — the editor is half the language
+  at 0s..7s [
+    narrate("Eligian isn't just shorter Eligius JSON — it's a typed, tooled way to write it. Everything you've watched was authored with these tools.")
+    revealBlock("#c6-code-why")
+    callout("#c6-cl-why", "concise on the left, type-safe everywhere, live in the preview")
+    demo("#c6-fx-editor")
+  ] []
+
+  // Beat 2 — compile + live preview
+  at 7s..15s [
+    clearSpots()
+    narrate("Preview Timeline compiles your .eligian on the fly, runs it in an embedded engine, and reloads on every save. This tour is what you'd see there.")
+    revealBlock("#c6-code-preview")
+    spotlight("#c6-tok-preview")
+    callout("#c6-cl-preview", "compiles + runs in a webview engine; a FileWatcher reloads on save")
+    demo("#c6-fx-preview")
+  ] []
+
+  // Beat 3 ⭐ — CSS validation + quick-fix (the tour's own safety net)
+  at 15s..24s [
+    clearSpots()
+    narrate("Every class and selector is checked against your imported CSS. Typo one and you get a squiggle, a suggestion, and a one-click fix.")
+    revealBlock("#c6-code-css")
+    spotlight("#c6-tok-css")
+    callout("#c6-cl-css", "CSS class 'buton' is not defined. Did you mean: button?")
+    demo("#c6-fx-squiggle")
+  ] []
+
+  // Beat 4 — autocomplete everywhere
+  at 24s..32s [
+    clearSpots()
+    narrate("Type and the editor knows what fits: operations with their parameters, the eight controllers, label IDs, CSS classes, even an on event skeleton.")
+    revealBlock("#c6-code-complete")
+    spotlight("#c6-tok-complete")
+    callout("#c6-cl-complete", "operations show their signature and docs; controllers list their params")
+    demo("#c6-fx-complete")
+  ] []
+
+  // Beat 5 — JSDoc hover + semantic validation
+  at 32s..40s [
+    clearSpots()
+    narrate("Document an action with @param and the editor hovers those docs at every call — and flags wrong argument counts, unknown ops, bad nav or event names.")
+    revealBlock("#c6-code-jsdoc")
+    spotlight("#c6-tok-jsdoc")
+    callout("#c6-cl-jsdoc", "@param docs on hover; semantic checks catch the rest")
+    demo("#c6-fx-hover")
+  ] []
+
+  // Beat 6 — hot-reload, locales, the whole picture + end card
+  at 40s..48s [
+    clearSpots()
+    narrate("Tweak your CSS and it hot-reloads into the running preview. Edit translations in a dedicated editor. Concise, type-safe, live — that's Eligian. Click ← Hub.")
+    revealBlock("#c6-code-recap")
+    spotlight("#c6-tok-recap")
+    demo("#c6-fx-done")
   ] []
 }

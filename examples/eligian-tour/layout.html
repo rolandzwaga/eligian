@@ -31,7 +31,7 @@
         <li id="card-ch3" class="card"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
         <li id="card-ch4" class="card"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
         <li id="card-ch5" class="card"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
-        <li id="card-ch6" class="card is-soon"><span class="card-num">06</span><span class="card-name">Tooling Magic</span></li>
+        <li id="card-ch6" class="card"><span class="card-num">06</span><span class="card-name">Tooling Magic</span></li>
       </ul>
     </div>
   </section>
@@ -366,6 +366,94 @@
       <div id="c5-cl-on" class="callout"></div>
       <div id="c5-cl-ctrl" class="callout"></div>
       <div id="c5-cl-loc" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- ====================== CHAPTER 6 · Tooling Magic ================ -->
+  <!-- NOTE: the effect pane REENACTS dev-time editor tooling (mock VS Code).
+       Diagnostic / completion / hover text is copied verbatim from the real
+       providers — there is no live LSP at runtime. See the storyboard §3. -->
+  <section id="ch6" class="view chapter">
+
+    <header class="chrome">
+      <button id="c6-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span>
+      </nav>
+      <span class="chapter-label">06 · Tooling Magic</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="c6-code-why" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">fadeIn</span>(<span class="tok str">"#box"</span>)   <span class="tok com">// concise .eligian</span>
+<span class="tok com">↓ compiles to</span>
+{ <span class="tok str">"duration"</span>: { <span class="tok str">"start"</span>: <span class="tok num">0</span>, <span class="tok str">"end"</span>: <span class="tok num">5</span> },
+  <span class="tok str">"operations"</span>: [ <span class="tok com">…verbose JSON…</span> ] }</code></pre>
+
+      <pre id="c6-code-preview" class="code"><code><span class="tok com">&gt;</span> <span class="tok fn" id="c6-tok-preview">Eligian: Preview Timeline</span>      <span class="tok com">(eligian.preview)</span>
+<span class="tok com">&gt;</span> <span class="tok fn">Eligian: Compile Current File</span>  <span class="tok com">(eligian.compile)</span></code></pre>
+
+      <pre id="c6-code-css" class="code"><code><span class="tok kw" id="c6-tok-css">styles</span> <span class="tok str">"./tour.css"</span>
+<span class="tok com">…</span>
+<span class="tok fn">addClass</span>(<span class="tok str">"buton"</span>)        <span class="tok com">// typo → checked vs the CSS</span></code></pre>
+
+      <pre id="c6-code-complete" class="code"><code><span class="tok fn" id="c6-tok-complete">addController</span>(<span class="tok str">"…"</span>)   <span class="tok com">// ← DOMEventListenerController, LabelController…</span>
+<span class="tok fn">fad</span><span class="tok com">…</span>                <span class="tok com">// ← fadeIn, addClass… (+ signatures)</span></code></pre>
+
+      <pre id="c6-code-jsdoc" class="code"><code><span class="tok com" id="c6-tok-jsdoc">/**
+ * @param {string} selector
+ */</span>
+<span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span>: <span class="tok kw">string</span>) [ … ]
+
+<span class="tok fn">revealBlock</span>()        <span class="tok com">// ← expects 1 argument but got 0</span></code></pre>
+
+      <pre id="c6-code-recap" class="code"><code><span class="tok fn" id="c6-tok-recap">compile + preview</span> · <span class="tok fn">validate</span> (CSS + semantics) · <span class="tok fn">autocomplete + hover</span>
+<span class="tok fn">CSS hot-reload</span> · <span class="tok fn">Eligian: Edit Locales</span></code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <!-- Beat 1: a mock editor frame -->
+      <div id="c6-fx-editor" class="fx">
+        <div class="mock-editor">
+          <div class="mock-tab">tour.eligian</div>
+          <div class="mock-body"><span class="tok kw">timeline</span> <span class="tok str">"Tour"</span> … { <span class="tok com">…</span> }</div>
+          <div class="mock-statusbar">Eligian · 0 problems</div>
+        </div>
+      </div>
+      <!-- Beat 2: source ↔ live preview thumbnail -->
+      <div id="c6-fx-preview" class="fx">
+        <span class="fx-chip">tour.eligian</span><span class="mock-arrow">▶</span><span class="fx-frame">live preview</span>
+      </div>
+      <!-- Beat 3: a real diagnostic + quick-fix (strings verbatim from the validator) -->
+      <div id="c6-fx-squiggle" class="fx">
+        <div class="mock-editor">
+          <div class="mock-body"><span class="tok fn">addClass</span>(<span class="tok str">"<span class="squiggle">buton</span>"</span>)</div>
+          <div class="diagnostic">CSS class 'buton' is not defined in any imported CSS files. Did you mean: button?</div>
+          <div class="lightbulb">💡 Create '.buton' in tour.css · Open CSS file</div>
+        </div>
+      </div>
+      <!-- Beat 4: a completion popup -->
+      <div id="c6-fx-complete" class="fx">
+        <div class="complete-popup">
+          <div class="complete-item is-sel">fadeIn <span class="complete-detail">(operation)</span></div>
+          <div class="complete-item">addClass <span class="complete-detail">(operation)</span></div>
+          <div class="complete-item">addController <span class="complete-detail">(operation)</span></div>
+        </div>
+      </div>
+      <!-- Beat 5: a JSDoc hover card + arg-count squiggle -->
+      <div id="c6-fx-hover" class="fx">
+        <div class="hover-card"><strong>revealBlock(selector: string)</strong><br/><span class="tok com">@param selector — CSS selector for the code block</span></div>
+        <div class="diagnostic">Action 'revealBlock' expects 1 argument(s) but got 0.</div>
+      </div>
+      <div id="c6-fx-done" class="fx"><span class="fx-done">Tour ✓ — the whole language</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="c6-cl-why" class="callout"></div>
+      <div id="c6-cl-preview" class="callout"></div>
+      <div id="c6-cl-css" class="callout"></div>
+      <div id="c6-cl-complete" class="callout"></div>
+      <div id="c6-cl-jsdoc" class="callout"></div>
     </div>
   </section>
 
