@@ -52,9 +52,9 @@
     "@eligian/shared-utils": "workspace:*",
     "ajv": "8.20.0",
     "htmlparser2": "12.0.0",
-    "langium": "4.2.4",
+    "langium": "4.3.0",
     "postcss": "8.5.15",
-    "postcss-selector-parser": "7.1.3",
+    "postcss-selector-parser": "7.1.4",
     "typir": "0.3.3",
     "typir-langium": "0.3.3"
   },
