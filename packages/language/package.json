@@ -59,6 +59,6 @@
     "typir-langium": "0.3.3"
   },
   "devDependencies": {
-    "langium-cli": "4.2.1"
+    "langium-cli": "4.3.0"
   }
 }
