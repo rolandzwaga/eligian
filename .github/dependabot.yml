@@ -30,7 +30,29 @@ updates:
     cooldown:
       default-days: 5
       semver-major-days: 7
+    # The langium toolchain must move in lockstep: langium-cli generates code
+    # (src/generated/ast.ts) against the langium *runtime* type definitions, and
+    # the runtime is capped at 4.2.x by typir-langium@0.3.3 (peer `langium ~4.2.0`).
+    # A lone langium-cli 4.3.x bump emits `optional: true` into the AST metadata,
+    # which the 4.2.x `PropertyMetaData` type rejects -> the build breaks.
+    # Block langium-cli minor/major bumps until typir-langium supports langium
+    # 4.3.x; remove this once the whole toolchain can move together.
+    ignore:
+      - dependency-name: "langium-cli"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
     groups:
+      # Keep the langium toolchain in a single PR so the runtime, code generator,
+      # and Typir integration are always reviewed and bumped together. Listed
+      # first so these win over the dependency-type groups below.
+      langium-toolchain:
+        applies-to: version-updates
+        patterns:
+          - "langium"
+          - "langium-cli"
+          - "typir"
+          - "typir-langium"
       # Bundle low-risk minor/patch bumps so they land as a single PR.
       production-minor-patch:
         applies-to: version-updates
