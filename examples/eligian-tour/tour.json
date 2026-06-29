@@ -1,0 +1,4966 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "741b58bf-5c0f-4827-84a1-1fba84618b00",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<!--\n  Eligian Tour — stage layout (hub + chapters in one config).\n\n  Rendered into the engine container (#eligius-container) as the layoutTemplate.\n  Structure:\n    #stage\n      #hub        (.view)            landing menu of chapter cards\n      #ch1        (.view .chapter)   Chapter 1 walkthrough\n      #ch2        (.view .chapter)   Chapter 2 walkthrough\n      #narration                     SHARED subtitle bar (toggled per chapter)\n\n  Each chapter is a self-contained view with its own chrome / .code-pane /\n  .effect-pane / .callout-layer. Structural panes are CLASSES shared across\n  chapters; only leaf elements the .eligian selects keep ids (namespaced #cN-…).\n  Switching timelines toggles which view is .is-active (showView / hideView).\n  Code is PRE-TOKENIZED here (spans with .tok + an id per highlightable token);\n  the library only toggles classes / sets text at runtime — no runtime tokenizer.\n  Every id/class selected or class toggled by the .eligian must be defined in\n  tour.css (CSS validation, B2).\n-->\n<div id=\"stage\">\n\n  <!-- ============================ HUB VIEW ============================ -->\n  <section id=\"hub\" class=\"view\">\n    <div id=\"hub-inner\">\n      <h1 id=\"hub-title\">The Eligian Tour</h1>\n      <p id=\"hub-tagline\">A presentation that teaches the language it is written in.</p>\n      <ul id=\"hub-cards\">\n        <li id=\"card-ch1\" class=\"card\"><span class=\"card-num\">01</span><span class=\"card-name\">Timeline &amp; Time</span></li>\n        <li id=\"card-ch2\" class=\"card\"><span class=\"card-num\">02</span><span class=\"card-name\">Actions &amp; Composition</span></li>\n        <li id=\"card-ch3\" class=\"card\"><span class=\"card-num\">03</span><span class=\"card-name\">Logic &amp; Data</span></li>\n        <li id=\"card-ch4\" class=\"card\"><span class=\"card-num\">04</span><span class=\"card-name\">Timeline Power Tools</span></li>\n        <li id=\"card-ch5\" class=\"card\"><span class=\"card-num\">05</span><span class=\"card-name\">Engine Reach</span></li>\n        <li id=\"card-ch6\" class=\"card\"><span class=\"card-num\">06</span><span class=\"card-name\">Tooling Magic</span></li>\n      </ul>\n    </div>\n  </section>\n\n  <!-- ====================== CHAPTER 1 · Timeline & Time ============== -->\n  <section id=\"ch1\" class=\"view chapter\">\n\n    <header class=\"chrome\">\n      <button id=\"c1-to-hub\" class=\"to-hub\">&larr; Hub</button>\n      <nav class=\"progress-rail\" aria-label=\"chapters\">\n        <span class=\"dot is-current\"></span>\n        <span class=\"dot\"></span><span class=\"dot\"></span>\n        <span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span>\n      </nav>\n      <span class=\"chapter-label\">01 · Timeline &amp; Time</span>\n    </header>\n\n    <section class=\"code-pane\">\n      <pre id=\"code-ch1\" class=\"code\"><code><span class=\"tok kw\" id=\"tok-timeline\">timeline</span> <span class=\"tok str\" id=\"tok-name\">\"Tour\"</span> <span class=\"tok kw\">in</span> <span class=\"tok str\">\"#stage\"</span> <span class=\"tok kw\">using</span> <span class=\"tok kw\" id=\"tok-raf\">raf</span> {\n  <span class=\"tok com\">… events …</span>\n}</code></pre>\n\n      <pre id=\"code-at\" class=\"code\"><code><span class=\"tok kw\" id=\"tok-at\">at</span> <span class=\"tok num\">0s</span>..<span class=\"tok num\">5s</span> <span class=\"tok fn\">revealHero</span>()</code></pre>\n\n      <pre id=\"code-units\" class=\"code\"><code><span class=\"tok num\">42</span>      <span class=\"tok com\">// 42 ms (no unit = ms)</span>\n<span class=\"tok num\">500ms</span>\n<span class=\"tok num\">2s</span>\n<span class=\"tok num\">1.5m</span>\n<span class=\"tok num\">0.5h</span></code></pre>\n\n      <pre id=\"code-arith\" class=\"code\"><code><span class=\"tok kw\">at</span> <span class=\"tok num\">5s</span> <span class=\"tok op\" id=\"tok-plus\">+</span> <span class=\"tok num\">2s</span> .. <span class=\"tok num\">10s</span>\n<span class=\"tok kw\">at</span> <span class=\"tok op\">+</span><span class=\"tok num\">0s</span>..<span class=\"tok op\">+</span><span class=\"tok num\">3s</span>  <span class=\"tok fn\">doThing</span>()</code></pre>\n\n      <pre id=\"code-full\" class=\"code\"><code><span class=\"tok kw\">timeline</span> <span class=\"tok str\">\"Tour\"</span> <span class=\"tok kw\">in</span> <span class=\"tok str\">\"#stage\"</span> <span class=\"tok kw\">using</span> <span class=\"tok kw\">raf</span> {\n  <span class=\"tok kw\">at</span> <span class=\"tok num\">0s</span>..<span class=\"tok num\">6s</span>  <span class=\"tok fn\">revealBlock</span>(<span class=\"tok str\">\"#code-ch1\"</span>)\n  <span class=\"tok kw\">at</span> <span class=\"tok num\">6s</span>..<span class=\"tok num\">12s</span> <span class=\"tok fn\">spotlight</span>(<span class=\"tok str\">\"#tok-raf\"</span>)\n  <span class=\"tok kw\">at</span> <span class=\"tok num\">12s</span>..<span class=\"tok num\">20s</span> <span class=\"tok fn\">revealBlock</span>(<span class=\"tok str\">\"#code-at\"</span>)\n  <span class=\"tok com\">… and so on …</span>\n}</code></pre>\n    </section>\n\n    <section class=\"effect-pane\">\n      <div id=\"fx-stage\" class=\"fx\"><span class=\"fx-frame\">#stage</span></div>\n      <div id=\"fx-providers\" class=\"fx\">\n        <span class=\"fx-chip\">raf</span><span class=\"fx-chip\">video</span><span class=\"fx-chip\">audio</span><span class=\"fx-chip\">custom</span>\n      </div>\n      <div id=\"fx-hero\" class=\"fx\"><span class=\"fx-hero-box\">hero</span></div>\n      <div id=\"fx-ruler\" class=\"fx\"><span class=\"fx-tick\">ms</span><span class=\"fx-tick\">s</span><span class=\"fx-tick\">m</span><span class=\"fx-tick\">h</span></div>\n      <div id=\"fx-chain\" class=\"fx\"><span class=\"fx-bar\"></span><span class=\"fx-bar fx-bar--rel\"></span></div>\n      <div id=\"fx-endcard\" class=\"fx\"><span class=\"fx-done\">Chapter 1 ✓</span></div>\n    </section>\n\n    <div class=\"callout-layer\">\n      <div id=\"cl-name\" class=\"callout\"></div>\n      <div id=\"cl-provider\" class=\"callout\"></div>\n      <div id=\"cl-range\" class=\"callout\"></div>\n      <div id=\"cl-units\" class=\"callout\"></div>\n      <div id=\"cl-relative\" class=\"callout\"></div>\n    </div>\n  </section>\n\n  <!-- ==================== CHAPTER 2 · Actions & Composition ========== -->\n  <section id=\"ch2\" class=\"view chapter\">\n\n    <header class=\"chrome\">\n      <button id=\"c2-to-hub\" class=\"to-hub\">&larr; Hub</button>\n      <nav class=\"progress-rail\" aria-label=\"chapters\">\n        <span class=\"dot\"></span>\n        <span class=\"dot is-current\"></span>\n        <span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span>\n      </nav>\n      <span class=\"chapter-label\">02 · Actions &amp; Composition</span>\n    </header>\n\n    <section class=\"code-pane\">\n      <pre id=\"c2-code-def\" class=\"code\"><code><span class=\"tok kw\" id=\"c2-tok-action\">action</span> <span class=\"tok fn\">revealBlock</span>(<span class=\"tok\">selector</span>) [\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok\">selector</span>)\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"in\"</span>)\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"typing\"</span>)\n]</code></pre>\n\n      <pre id=\"c2-code-params\" class=\"code\"><code><span class=\"tok kw\">action</span> <span class=\"tok fn\">fadeIn</span>(<span class=\"tok\">selector</span>, <span class=\"tok\" id=\"c2-tok-param\">duration</span><span class=\"tok op\">:</span> <span class=\"tok kw\">number</span>) [\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok\">selector</span>)\n  <span class=\"tok fn\">animate</span>({ opacity<span class=\"tok op\">:</span> <span class=\"tok num\">1</span> }, <span class=\"tok\">duration</span>)\n]</code></pre>\n\n      <pre id=\"c2-code-call\" class=\"code\"><code><span class=\"tok kw\">at</span> <span class=\"tok num\">0s</span>..<span class=\"tok num\">5s</span> <span class=\"tok fn\" id=\"c2-tok-call\">fadeIn</span>(<span class=\"tok str\">\"#hero\"</span>, <span class=\"tok num\">400</span>)   <span class=\"tok com\">// your action</span>\n<span class=\"tok kw\">at</span> <span class=\"tok num\">0s</span>..<span class=\"tok num\">5s</span> <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"on\"</span>)         <span class=\"tok com\">// built-in op</span></code></pre>\n\n      <pre id=\"c2-code-byname\" class=\"code\"><code><span class=\"tok kw\">action</span> <span class=\"tok fn\">narrate</span>(<span class=\"tok\" id=\"c2-tok-template\">template</span>) [\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok str\">\"#narration\"</span>)\n  <span class=\"tok fn\">setElementContent</span>(<span class=\"tok\">template</span>)\n]</code></pre>\n\n      <pre id=\"c2-code-endable\" class=\"code\"><code><span class=\"tok kw\" id=\"c2-tok-endable\">endable</span> <span class=\"tok kw\">action</span> <span class=\"tok fn\">highlight</span>(<span class=\"tok\">selector</span>) [\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok\">selector</span>)\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"spot\"</span>)\n] [\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok\">selector</span>)   <span class=\"tok com\">// re-select: nothing carries over</span>\n  <span class=\"tok fn\">removeClass</span>(<span class=\"tok str\">\"spot\"</span>)\n]</code></pre>\n\n      <pre id=\"c2-code-lib\" class=\"code\"><code><span class=\"tok kw\">library</span> <span class=\"tok fn\">presentation</span>\n<span class=\"tok kw\">action</span> <span class=\"tok fn\">revealBlock</span>(<span class=\"tok\">selector</span>) [ … ]       <span class=\"tok com\">// public</span>\n<span class=\"tok kw\">private</span> <span class=\"tok kw\">action</span> <span class=\"tok fn\">_helper</span>() [ … ]      <span class=\"tok com\">// library-only</span>\n\n<span class=\"tok kw\">import</span> { <span class=\"tok fn\">revealBlock</span>, <span class=\"tok fn\">narrate</span> } <span class=\"tok kw\">from</span> <span class=\"tok str\">\"./presentation.eligian\"</span></code></pre>\n    </section>\n\n    <section class=\"effect-pane\">\n      <div id=\"c2-fx-chain\" class=\"fx\">\n        <span class=\"fx-chip\">selectElement</span><span class=\"fx-chip\">addClass</span><span class=\"fx-chip\">addClass</span>\n      </div>\n      <div id=\"c2-fx-fade\" class=\"fx\"><span class=\"fx-hero-box\">fadeIn</span></div>\n      <div id=\"c2-fx-call\" class=\"fx\">\n        <span class=\"fx-chip\">requestAction</span><span class=\"fx-chip\">startAction</span>\n      </div>\n      <div id=\"c2-fx-slot\" class=\"fx\">\n        <span class=\"fx-chip\">template →</span><span class=\"fx-frame\">setElementContent</span>\n      </div>\n      <div id=\"c2-fx-toggle\" class=\"fx\"><span class=\"fx-hero-box\">.spot</span></div>\n      <div id=\"c2-fx-lib\" class=\"fx\"><span class=\"fx-done\">Chapter 2 ✓</span></div>\n    </section>\n\n    <div class=\"callout-layer\">\n      <div id=\"c2-cl-action\" class=\"callout\"></div>\n      <div id=\"c2-cl-param\" class=\"callout\"></div>\n      <div id=\"c2-cl-call\" class=\"callout\"></div>\n      <div id=\"c2-cl-name\" class=\"callout\"></div>\n      <div id=\"c2-cl-endable\" class=\"callout\"></div>\n    </div>\n  </section>\n\n  <!-- ====================== CHAPTER 3 · Logic & Data ================ -->\n  <section id=\"ch3\" class=\"view chapter\">\n\n    <header class=\"chrome\">\n      <button id=\"c3-to-hub\" class=\"to-hub\">&larr; Hub</button>\n      <nav class=\"progress-rail\" aria-label=\"chapters\">\n        <span class=\"dot\"></span><span class=\"dot\"></span>\n        <span class=\"dot is-current\"></span>\n        <span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span>\n      </nav>\n      <span class=\"chapter-label\">03 · Logic &amp; Data</span>\n    </header>\n\n    <section class=\"code-pane\">\n      <pre id=\"c3-code-const\" class=\"code\"><code><span class=\"tok kw\" id=\"c3-tok-const\">const</span> <span class=\"tok\">theme</span> <span class=\"tok op\">=</span> <span class=\"tok str\">\"dark\"</span>      <span class=\"tok com\">// → $globaldata.theme</span>\n\n<span class=\"tok kw\">action</span> <span class=\"tok fn\">greet</span>(<span class=\"tok\">name</span>) [\n  <span class=\"tok kw\">const</span> <span class=\"tok\">greeting</span> <span class=\"tok op\">=</span> <span class=\"tok str\">\"hi\"</span>    <span class=\"tok com\">// → @greeting</span>\n  <span class=\"tok fn\">setElementContent</span>(<span class=\"tok\">greeting</span>)\n]</code></pre>\n\n      <pre id=\"c3-code-expr\" class=\"code\"><code><span class=\"tok\">$operationdata.count</span> <span class=\"tok op\">+</span> <span class=\"tok num\">1</span>\n<span class=\"tok\">$operationdata.count</span> <span class=\"tok op\" id=\"c3-tok-expr\">&gt;=</span> <span class=\"tok num\">3</span> <span class=\"tok op\">&amp;&amp;</span> <span class=\"tok\">@enabled</span>\n<span class=\"tok op\">!</span><span class=\"tok\">$globaldata.muted</span></code></pre>\n\n      <pre id=\"c3-code-if\" class=\"code\"><code><span class=\"tok kw\" id=\"c3-tok-if\">if</span> (<span class=\"tok\">count</span> <span class=\"tok op\">&gt;</span> <span class=\"tok num\">0</span>) {\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"active\"</span>)\n} <span class=\"tok kw\">else</span> {\n  <span class=\"tok fn\">removeClass</span>(<span class=\"tok str\">\"active\"</span>)\n}</code></pre>\n\n      <pre id=\"c3-code-for\" class=\"code\"><code><span class=\"tok fn\">setVariable</span>(<span class=\"tok str\">\"points\"</span>, [<span class=\"tok str\">\"#c3-b1\"</span>, <span class=\"tok str\">\"#c3-b2\"</span>, <span class=\"tok str\">\"#c3-b3\"</span>])\n<span class=\"tok kw\" id=\"c3-tok-for\">for</span> (<span class=\"tok\">p</span> <span class=\"tok kw\">in</span> <span class=\"tok\">$scope</span>.variables.points) {\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok\">@@currentItem</span>)\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"in\"</span>)\n}</code></pre>\n\n      <pre id=\"c3-code-loopctl\" class=\"code\"><code><span class=\"tok kw\">for</span> (<span class=\"tok\">n</span> <span class=\"tok kw\">in</span> <span class=\"tok\">@numbers</span>) {\n  <span class=\"tok kw\">if</span> (<span class=\"tok\">@@currentItem</span> <span class=\"tok op\">==</span> <span class=\"tok num\">0</span>) { <span class=\"tok kw\">continue</span> }\n  <span class=\"tok kw\">if</span> (<span class=\"tok\">@@currentItem</span> <span class=\"tok op\">&gt;</span> <span class=\"tok num\">9</span>) { <span class=\"tok kw\" id=\"c3-tok-break\">break</span> }\n}</code></pre>\n\n      <pre id=\"c3-code-sigils\" class=\"code\"><code><span class=\"tok\" id=\"c3-tok-sigil\">$operationdata</span>.x   <span class=\"tok com\">// this block's data</span>\n<span class=\"tok\">$globaldata</span>.x      <span class=\"tok com\">// program-wide</span>\n<span class=\"tok\">$scope</span>.x           <span class=\"tok com\">// loop / branch scope</span></code></pre>\n    </section>\n\n    <section class=\"effect-pane\">\n      <div id=\"c3-fx-scopes\" class=\"fx\">\n        <span class=\"fx-chip\">$globaldata</span><span class=\"fx-chip\">$scope.variables</span>\n      </div>\n      <div id=\"c3-fx-eval\" class=\"fx\">\n        <span class=\"fx-chip\">2 + 1 → 3</span><span class=\"fx-chip\">3 &gt;= 3 → true</span>\n      </div>\n      <div id=\"c3-fx-if\" class=\"fx\"><span id=\"c3-badge\" class=\"fx-hero-box\">badge</span></div>\n      <div id=\"c3-fx-list\" class=\"fx\">\n        <ul class=\"bullet-list\">\n          <li id=\"c3-b1\" class=\"bullet\">if / else branches</li>\n          <li id=\"c3-b2\" class=\"bullet\">for iterates a collection</li>\n          <li id=\"c3-b3\" class=\"bullet\">break / continue steer it</li>\n        </ul>\n      </div>\n      <div id=\"c3-fx-loopctl\" class=\"fx\">\n        <span class=\"fx-chip\">0</span><span class=\"fx-chip\">3</span><span class=\"fx-chip\">7</span><span class=\"fx-chip\">12</span>\n      </div>\n      <div id=\"c3-fx-sigils\" class=\"fx\"><span class=\"fx-done\">Chapter 3 ✓</span></div>\n    </section>\n\n    <div class=\"callout-layer\">\n      <div id=\"c3-cl-const\" class=\"callout\"></div>\n      <div id=\"c3-cl-expr\" class=\"callout\"></div>\n      <div id=\"c3-cl-if\" class=\"callout\"></div>\n      <div id=\"c3-cl-for\" class=\"callout\"></div>\n      <div id=\"c3-cl-loopctl\" class=\"callout\"></div>\n    </div>\n  </section>\n\n  <section id=\"ch4\" class=\"view chapter\">\n\n    <header class=\"chrome\">\n      <button id=\"c4-to-hub\" class=\"to-hub\">&larr; Hub</button>\n      <nav class=\"progress-rail\" aria-label=\"chapters\">\n        <span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span>\n        <span class=\"dot is-current\"></span>\n        <span class=\"dot\"></span><span class=\"dot\"></span>\n      </nav>\n      <span class=\"chapter-label\">04 · Timeline Power Tools</span>\n    </header>\n\n    <section class=\"code-pane\">\n      <pre id=\"c4-code-manual\" class=\"code\"><code><span class=\"tok kw\">at</span> <span class=\"tok num\">0s</span>..<span class=\"tok num\">5s</span>   { <span class=\"tok fn\">intro</span>() }\n<span class=\"tok kw\">at</span> <span class=\"tok num\">5s</span>..<span class=\"tok num\">15s</span>  { <span class=\"tok fn\">main</span>() }     <span class=\"tok com\">// 5 + 10, by hand</span>\n<span class=\"tok kw\">at</span> <span class=\"tok num\">15s</span>..<span class=\"tok num\">18s</span> { <span class=\"tok fn\">outro</span>() }    <span class=\"tok com\">// …and 15 + 3</span></code></pre>\n\n      <pre id=\"c4-code-sequence\" class=\"code\"><code><span class=\"tok kw\" id=\"c4-tok-seq\">sequence</span> {\n  <span class=\"tok fn\">intro</span>() <span class=\"tok kw\">for</span> <span class=\"tok num\">5s</span>\n  <span class=\"tok fn\">main</span>()  <span class=\"tok kw\">for</span> <span class=\"tok num\">10s</span>\n  <span class=\"tok fn\">outro</span>() <span class=\"tok kw\">for</span> <span class=\"tok num\">3s</span>\n}</code></pre>\n\n      <pre id=\"c4-code-stagger\" class=\"code\"><code><span class=\"tok kw\" id=\"c4-tok-stagger\">stagger</span> <span class=\"tok num\">200ms</span> [<span class=\"tok str\">\"#a\"</span>, <span class=\"tok str\">\"#b\"</span>, <span class=\"tok str\">\"#c\"</span>] <span class=\"tok kw\">with</span> <span class=\"tok fn\">fadeIn</span>() <span class=\"tok kw\">for</span> <span class=\"tok num\">1.5s</span></code></pre>\n\n      <pre id=\"c4-code-inline\" class=\"code\"><code><span class=\"tok kw\">stagger</span> <span class=\"tok num\">100ms</span> <span class=\"tok\">items</span> <span class=\"tok kw\">for</span> <span class=\"tok num\">1s</span> [\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"active\"</span>)\n] [\n  <span class=\"tok fn\">removeClass</span>(<span class=\"tok str\">\"active\"</span>)\n]</code></pre>\n\n      <pre id=\"c4-code-recap\" class=\"code\"><code><span class=\"tok kw\" id=\"c4-tok-recap\">sequence</span> { <span class=\"tok fn\">a</span>() <span class=\"tok kw\">for</span> <span class=\"tok num\">5s</span>  <span class=\"tok fn\">b</span>() <span class=\"tok kw\">for</span> <span class=\"tok num\">10s</span> }   <span class=\"tok com\">// distinct steps, in order</span>\n<span class=\"tok kw\">stagger</span> <span class=\"tok num\">200ms</span> <span class=\"tok\">items</span> <span class=\"tok kw\">with</span> <span class=\"tok fn\">fadeIn</span>() <span class=\"tok kw\">for</span> <span class=\"tok num\">1.5s</span>  <span class=\"tok com\">// one effect, many items</span></code></pre>\n    </section>\n\n    <section class=\"effect-pane\">\n      <div id=\"c4-fx-ruler\" class=\"fx\">\n        <span class=\"fx-chip\">intro</span><span class=\"fx-chip\">main</span><span class=\"fx-chip\">outro</span>\n      </div>\n      <div id=\"c4-fx-seq\" class=\"fx\">\n        <span class=\"fx-chip\">0–5</span><span class=\"fx-chip\">5–15</span><span class=\"fx-chip\">15–18</span>\n      </div>\n      <div id=\"c4-fx-row\" class=\"fx\">\n        <ul class=\"bullet-list\">\n          <li id=\"c4-card-1\" class=\"bullet\">card one</li>\n          <li id=\"c4-card-2\" class=\"bullet\">card two</li>\n          <li id=\"c4-card-3\" class=\"bullet\">card three</li>\n        </ul>\n      </div>\n      <div id=\"c4-fx-cascade\" class=\"fx\">\n        <span class=\"fx-chip\">delay 100ms</span><span class=\"fx-chip\">duration 1s</span>\n      </div>\n      <div id=\"c4-fx-done\" class=\"fx\"><span class=\"fx-done\">Chapter 4 ✓</span></div>\n    </section>\n\n    <div class=\"callout-layer\">\n      <div id=\"c4-cl-manual\" class=\"callout\"></div>\n      <div id=\"c4-cl-seq\" class=\"callout\"></div>\n      <div id=\"c4-cl-edit\" class=\"callout\"></div>\n      <div id=\"c4-cl-stagger\" class=\"callout\"></div>\n      <div id=\"c4-cl-inline\" class=\"callout\"></div>\n    </div>\n  </section>\n\n  <!-- ====================== CHAPTER 5 · Engine Reach ================= -->\n  <section id=\"ch5\" class=\"view chapter\">\n\n    <header class=\"chrome\">\n      <button id=\"c5-to-hub\" class=\"to-hub\">&larr; Hub</button>\n      <nav class=\"progress-rail\" aria-label=\"chapters\">\n        <span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span>\n        <span class=\"dot is-current\"></span>\n        <span class=\"dot\"></span>\n      </nav>\n      <span class=\"chapter-label\">05 · Engine Reach</span>\n    </header>\n\n    <section class=\"code-pane\">\n      <pre id=\"c5-code-overview\" class=\"code\"><code><span class=\"tok fn\">broadcastEvent</span>([args], <span class=\"tok str\">\"name\"</span>)            <span class=\"tok com\">// 1. the eventbus</span>\n<span class=\"tok kw\">on</span> <span class=\"tok kw\">event</span> <span class=\"tok str\">\"name\"</span> <span class=\"tok kw\">action</span> <span class=\"tok fn\">H</span>(<span class=\"tok\">p</span>) [ … ]    <span class=\"tok com\">// 2. react to it</span>\n<span class=\"tok fn\">addController</span>(<span class=\"tok str\">\"…Controller\"</span>, …)        <span class=\"tok com\">// 3. attach behaviour</span></code></pre>\n\n      <pre id=\"c5-code-eventbus\" class=\"code\"><code><span class=\"tok fn\" id=\"c5-tok-bcast\">broadcastEvent</span>([<span class=\"tok str\">\"#c5-fx-panel\"</span>], <span class=\"tok str\">\"tour-ping\"</span>)        <span class=\"tok com\">// broadcast: all listeners</span>\n<span class=\"tok fn\">broadcastEvent</span>([<span class=\"tok str\">\"Hub\"</span>, <span class=\"tok num\">0</span>], <span class=\"tok str\">\"request-timeline-uri\"</span>)  <span class=\"tok com\">// request: engine answers</span></code></pre>\n\n      <pre id=\"c5-code-onevent\" class=\"code\"><code><span class=\"tok kw\" id=\"c5-tok-onevent\">on</span> <span class=\"tok kw\">event</span> <span class=\"tok str\">\"tour-ping\"</span> <span class=\"tok kw\">action</span> <span class=\"tok fn\">onTourPing</span>(<span class=\"tok\">target</span>) [\n  <span class=\"tok fn\">selectElement</span>(<span class=\"tok\">target</span>)        <span class=\"tok com\">// target ← eventArgs[0]</span>\n  <span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"in\"</span>)\n]</code></pre>\n\n      <pre id=\"c5-code-controller\" class=\"code\"><code><span class=\"tok fn\">selectElement</span>(<span class=\"tok str\">\"#c5-fx-ping\"</span>)\n<span class=\"tok fn\" id=\"c5-tok-ctrl\">addController</span>(<span class=\"tok str\">\"DOMEventListenerController\"</span>,\n  <span class=\"tok str\">\"click\"</span>, [<span class=\"tok str\">\"broadcastPing\"</span>])   <span class=\"tok com\">// event, then actions to run</span></code></pre>\n\n      <pre id=\"c5-code-label\" class=\"code\"><code><span class=\"tok kw\" id=\"c5-tok-loc\">locales</span> <span class=\"tok str\">\"./locales/en.json\"</span>\n\n<span class=\"tok fn\">selectElement</span>(<span class=\"tok str\">\"#c5-fx-label\"</span>)\n<span class=\"tok fn\">addController</span>(<span class=\"tok str\">\"LabelController\"</span>, <span class=\"tok str\">\"tour.greeting\"</span>)</code></pre>\n\n      <pre id=\"c5-code-recap\" class=\"code\"><code><span class=\"tok fn\" id=\"c5-tok-recap\">broadcastEvent</span>([<span class=\"tok str\">\"Hub\"</span>,<span class=\"tok num\">0</span>], <span class=\"tok str\">\"request-timeline-uri\"</span>)  <span class=\"tok com\">// ← every card you clicked</span>\n<span class=\"tok fn\">addController</span>(<span class=\"tok str\">\"DOMEventListenerController\"</span>, …)   <span class=\"tok com\">// ← what navigate desugars to</span>\n<span class=\"tok fn\">addController</span>(<span class=\"tok str\">\"LabelController\"</span>, …)             <span class=\"tok com\">// ← the localized narration</span></code></pre>\n    </section>\n\n    <section class=\"effect-pane\">\n      <div id=\"c5-fx-doors\" class=\"fx\">\n        <span class=\"fx-chip\">eventbus</span><span class=\"fx-chip\">on event</span><span class=\"fx-chip\">controllers</span>\n      </div>\n      <div id=\"c5-fx-bus\" class=\"fx\">\n        <button id=\"c5-fx-ping\" class=\"ping-btn\">broadcast \"tour-ping\"</button>\n        <div id=\"c5-fx-panel\" class=\"reveal-panel\">handler answered — panel revealed</div>\n      </div>\n      <div id=\"c5-fx-label\" class=\"fx\">\n        <span class=\"fx-chip\">en → Hello</span><span class=\"fx-chip\">nl → Hallo</span>\n      </div>\n      <div id=\"c5-fx-done\" class=\"fx\"><span class=\"fx-done\">Chapter 5 ✓</span></div>\n    </section>\n\n    <div class=\"callout-layer\">\n      <div id=\"c5-cl-over\" class=\"callout\"></div>\n      <div id=\"c5-cl-bus\" class=\"callout\"></div>\n      <div id=\"c5-cl-on\" class=\"callout\"></div>\n      <div id=\"c5-cl-ctrl\" class=\"callout\"></div>\n      <div id=\"c5-cl-loc\" class=\"callout\"></div>\n    </div>\n  </section>\n\n  <!-- ====================== CHAPTER 6 · Tooling Magic ================ -->\n  <!-- NOTE: the effect pane REENACTS dev-time editor tooling (mock VS Code).\n       Diagnostic / completion / hover text is copied verbatim from the real\n       providers — there is no live LSP at runtime. See the storyboard §3. -->\n  <section id=\"ch6\" class=\"view chapter\">\n\n    <header class=\"chrome\">\n      <button id=\"c6-to-hub\" class=\"to-hub\">&larr; Hub</button>\n      <nav class=\"progress-rail\" aria-label=\"chapters\">\n        <span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span><span class=\"dot\"></span>\n        <span class=\"dot is-current\"></span>\n      </nav>\n      <span class=\"chapter-label\">06 · Tooling Magic</span>\n    </header>\n\n    <section class=\"code-pane\">\n      <pre id=\"c6-code-why\" class=\"code\"><code><span class=\"tok kw\">at</span> <span class=\"tok num\">0s</span>..<span class=\"tok num\">5s</span> <span class=\"tok fn\">fadeIn</span>(<span class=\"tok str\">\"#box\"</span>)   <span class=\"tok com\">// concise .eligian</span>\n<span class=\"tok com\">↓ compiles to</span>\n{ <span class=\"tok str\">\"duration\"</span>: { <span class=\"tok str\">\"start\"</span>: <span class=\"tok num\">0</span>, <span class=\"tok str\">\"end\"</span>: <span class=\"tok num\">5</span> },\n  <span class=\"tok str\">\"operations\"</span>: [ <span class=\"tok com\">…verbose JSON…</span> ] }</code></pre>\n\n      <pre id=\"c6-code-preview\" class=\"code\"><code><span class=\"tok com\">&gt;</span> <span class=\"tok fn\" id=\"c6-tok-preview\">Eligian: Preview Timeline</span>      <span class=\"tok com\">(eligian.preview)</span>\n<span class=\"tok com\">&gt;</span> <span class=\"tok fn\">Eligian: Compile Current File</span>  <span class=\"tok com\">(eligian.compile)</span></code></pre>\n\n      <pre id=\"c6-code-css\" class=\"code\"><code><span class=\"tok kw\" id=\"c6-tok-css\">styles</span> <span class=\"tok str\">\"./tour.css\"</span>\n<span class=\"tok com\">…</span>\n<span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"buton\"</span>)        <span class=\"tok com\">// typo → checked vs the CSS</span></code></pre>\n\n      <pre id=\"c6-code-complete\" class=\"code\"><code><span class=\"tok fn\" id=\"c6-tok-complete\">addController</span>(<span class=\"tok str\">\"…\"</span>)   <span class=\"tok com\">// ← DOMEventListenerController, LabelController…</span>\n<span class=\"tok fn\">fad</span><span class=\"tok com\">…</span>                <span class=\"tok com\">// ← fadeIn, addClass… (+ signatures)</span></code></pre>\n\n      <pre id=\"c6-code-jsdoc\" class=\"code\"><code><span class=\"tok com\" id=\"c6-tok-jsdoc\">/**\n * @param {string} selector\n */</span>\n<span class=\"tok kw\">action</span> <span class=\"tok fn\">revealBlock</span>(<span class=\"tok\">selector</span>: <span class=\"tok kw\">string</span>) [ … ]\n\n<span class=\"tok fn\">revealBlock</span>()        <span class=\"tok com\">// ← expects 1 argument but got 0</span></code></pre>\n\n      <pre id=\"c6-code-recap\" class=\"code\"><code><span class=\"tok fn\" id=\"c6-tok-recap\">compile + preview</span> · <span class=\"tok fn\">validate</span> (CSS + semantics) · <span class=\"tok fn\">autocomplete + hover</span>\n<span class=\"tok fn\">CSS hot-reload</span> · <span class=\"tok fn\">Eligian: Edit Locales</span></code></pre>\n    </section>\n\n    <section class=\"effect-pane\">\n      <!-- Beat 1: a mock editor frame -->\n      <div id=\"c6-fx-editor\" class=\"fx\">\n        <div class=\"mock-editor\">\n          <div class=\"mock-tab\">tour.eligian</div>\n          <div class=\"mock-body\"><span class=\"tok kw\">timeline</span> <span class=\"tok str\">\"Tour\"</span> … { <span class=\"tok com\">…</span> }</div>\n          <div class=\"mock-statusbar\">Eligian · 0 problems</div>\n        </div>\n      </div>\n      <!-- Beat 2: source ↔ live preview thumbnail -->\n      <div id=\"c6-fx-preview\" class=\"fx\">\n        <span class=\"fx-chip\">tour.eligian</span><span class=\"mock-arrow\">▶</span><span class=\"fx-frame\">live preview</span>\n      </div>\n      <!-- Beat 3: a real diagnostic + quick-fix (strings verbatim from the validator) -->\n      <div id=\"c6-fx-squiggle\" class=\"fx\">\n        <div class=\"mock-editor\">\n          <div class=\"mock-body\"><span class=\"tok fn\">addClass</span>(<span class=\"tok str\">\"<span class=\"squiggle\">buton</span>\"</span>)</div>\n          <div class=\"diagnostic\">CSS class 'buton' is not defined in any imported CSS files. Did you mean: button?</div>\n          <div class=\"lightbulb\">💡 Create '.buton' in tour.css · Open CSS file</div>\n        </div>\n      </div>\n      <!-- Beat 4: a completion popup -->\n      <div id=\"c6-fx-complete\" class=\"fx\">\n        <div class=\"complete-popup\">\n          <div class=\"complete-item is-sel\">fadeIn <span class=\"complete-detail\">(operation)</span></div>\n          <div class=\"complete-item\">addClass <span class=\"complete-detail\">(operation)</span></div>\n          <div class=\"complete-item\">addController <span class=\"complete-detail\">(operation)</span></div>\n        </div>\n      </div>\n      <!-- Beat 5: a JSDoc hover card + arg-count squiggle -->\n      <div id=\"c6-fx-hover\" class=\"fx\">\n        <div class=\"hover-card\"><strong>revealBlock(selector: string)</strong><br/><span class=\"tok com\">@param selector — CSS selector for the code block</span></div>\n        <div class=\"diagnostic\">Action 'revealBlock' expects 1 argument(s) but got 0.</div>\n      </div>\n      <div id=\"c6-fx-done\" class=\"fx\"><span class=\"fx-done\">Tour ✓ — the whole language</span></div>\n    </section>\n\n    <div class=\"callout-layer\">\n      <div id=\"c6-cl-why\" class=\"callout\"></div>\n      <div id=\"c6-cl-preview\" class=\"callout\"></div>\n      <div id=\"c6-cl-css\" class=\"callout\"></div>\n      <div id=\"c6-cl-complete\" class=\"callout\"></div>\n      <div id=\"c6-cl-jsdoc\" class=\"callout\"></div>\n    </div>\n  </section>\n\n  <!-- Shared narration subtitle (text set at runtime; toggled per chapter) -->\n  <footer id=\"narration\"></footer>\n\n</div>\n",
+  "cssFiles": [
+    "./tour.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "5952ec4d-cff8-46bd-980e-c88638a916fe",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "fde911f5-7abd-46b7-a599-a4707dfd2acb",
+      "name": "revealBlock",
+      "startOperations": [
+        {
+          "id": "6210b6dc-88c4-4159-a28a-a2d876720b5b",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "c17807f2-7ee2-493a-805d-39d0b1baf865",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "in"
+          }
+        },
+        {
+          "id": "ec7a71de-5308-4d47-9dee-8140198c3e70",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "typing"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "f80d6a6a-0a3a-448e-94f0-88fdb227c641",
+      "name": "spotlight",
+      "startOperations": [
+        {
+          "id": "c259f1c7-8986-420f-9d47-4a6d168a8cf9",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "3e894fcb-4974-4281-a855-9f0887f68e9a",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "spot"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "19639c96-077d-4196-bd78-d7020264dd0b",
+      "name": "clearSpots",
+      "startOperations": [
+        {
+          "id": "2ec17ffd-9d24-46ba-ae8e-4757a5af0a11",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": ".tok"
+          }
+        },
+        {
+          "id": "27e6b9e5-17cd-4c22-bd31-6f7f78192a90",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "spot"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "0129833d-f2d2-47ec-82dc-e516948dcffb",
+      "name": "callout",
+      "startOperations": [
+        {
+          "id": "822dca18-1191-423c-ae92-84395b248388",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "172c5988-2ff5-49ac-b132-3a85f52871ce",
+          "systemName": "setElementContent"
+        },
+        {
+          "id": "8c245054-8cfa-4127-87de-669e199e7600",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "show"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "49f8e598-6be2-41a1-a20c-b75c300e69ab",
+      "name": "narrate",
+      "startOperations": [
+        {
+          "id": "653e44a8-adce-4269-8dd9-b946c738918f",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#narration"
+          }
+        },
+        {
+          "id": "08837d5a-e94a-43e4-80b2-42d48ef0eb67",
+          "systemName": "setElementContent"
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "3f7d50f4-34c2-42fc-b9f2-a16ee01c264f",
+      "name": "demo",
+      "startOperations": [
+        {
+          "id": "17eceb37-575d-4d7d-9385-9df285c02662",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "1a0e0968-20ce-4a9f-a176-4ec72a991b70",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "b6396d2e-1e8d-40b0-a849-403e93cbaf12",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            },
+            "animationDuration": 300
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "cf5250c6-c835-4b1d-993f-a59eac73e8b4",
+      "name": "revealCard",
+      "startOperations": [
+        {
+          "id": "3b8d831c-b236-4d57-9df2-44ca9bc4fa87",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "2d76b86b-471c-40ac-a2f4-36332996fdf1",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "in"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "eb191fe2-55e6-494d-9a7c-8f6f92738e33",
+      "name": "showView",
+      "startOperations": [
+        {
+          "id": "c6ddbab0-8c57-4212-a8ca-271f93c44559",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "3d4575e5-6e91-4412-9b1e-61476e36d161",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "is-active"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "328a40e5-bbb2-4cf0-b44a-86f52713b492",
+      "name": "hideView",
+      "startOperations": [
+        {
+          "id": "0cd79aa5-3391-429c-a9e7-67db3b9d50da",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "465ab202-0798-47a8-867b-6c098e988cda",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "is-active"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "d95accf3-cea4-406c-b298-3df5523affbc",
+      "name": "ch3ToggleBadge",
+      "startOperations": [
+        {
+          "id": "4921538e-4189-4f4f-8aff-392f1efe891b",
+          "systemName": "when",
+          "operationData": {
+            "expression": "$operationdata.count>0"
+          }
+        },
+        {
+          "id": "2431e599-0df1-4f5b-97e5-27016e328663",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#c3-badge"
+          }
+        },
+        {
+          "id": "a30ec092-700e-4a6b-9337-9f2a7b9b7132",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "2af309e7-5958-46fd-8ec8-10f26c8c1622",
+          "systemName": "otherwise",
+          "operationData": {}
+        },
+        {
+          "id": "16e6c37d-61c0-48e5-8b68-06217e3d311f",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#c3-badge"
+          }
+        },
+        {
+          "id": "92f88705-5f80-4705-a7ad-c6ed20745d38",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "id": "d1177913-4ea7-4105-8012-55996d4fe58d",
+          "systemName": "endWhen",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "db7279a9-c24f-4c9c-8142-8be9f839ccd5",
+      "name": "ch3RevealBullets",
+      "startOperations": [
+        {
+          "id": "4f5e2bfe-4c23-4fee-a3e4-b4c649559d20",
+          "systemName": "setVariable",
+          "operationData": {
+            "name": "points",
+            "value": [
+              "#c3-b1",
+              "#c3-b2",
+              "#c3-b3"
+            ]
+          }
+        },
+        {
+          "id": "72b0a965-8f7e-4600-aba7-11b8947e3a01",
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "$scope.variables.points",
+            "itemName": "p"
+          }
+        },
+        {
+          "id": "913da632-f6bd-438a-b194-92589434ac61",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$scope.currentItem"
+          }
+        },
+        {
+          "id": "e7945f6f-4a6c-4d70-998c-479d3a53b6c7",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "in"
+          }
+        },
+        {
+          "id": "3885b689-c498-485e-ab56-94ebff8b6592",
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "65984457-a6f6-40f5-a54c-36d34b0fc0cc",
+      "name": "ch5WireButton",
+      "startOperations": [
+        {
+          "id": "814c32fe-e125-48d8-bba3-22b95064b9f2",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#c5-fx-ping"
+          }
+        },
+        {
+          "id": "6acda691-5653-4548-8065-6526a7689f21",
+          "systemName": "getControllerInstance",
+          "operationData": {
+            "systemName": "DOMEventListenerController"
+          }
+        },
+        {
+          "id": "c5f4102b-eaa4-4b9b-ac58-df25a5d6a1d3",
+          "systemName": "addControllerToElement",
+          "operationData": {
+            "eventName": "click",
+            "actions": [
+              "ch5BroadcastPing"
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "45cafb64-215b-4bf7-a921-9a44e8adcd36",
+      "name": "ch5BroadcastPing",
+      "startOperations": [
+        {
+          "id": "45742b44-8294-4947-9abd-d632762964e7",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventArgs": [
+              "#c5-fx-panel"
+            ],
+            "eventName": "tour-ping"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "220de77b-b162-442c-8ef4-cf5863664845",
+      "name": "__nav__timeline_time",
+      "startOperations": [
+        {
+          "id": "5e48ff7c-9807-44ab-9be5-cd27ce872f64",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Timeline & Time",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "65272fbc-ad26-4928-a3b5-8b42575ff371",
+      "name": "__nav__actions",
+      "startOperations": [
+        {
+          "id": "1f4a5007-89c1-4b51-b592-9fc0383ff5bd",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Actions",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "1755f426-c7de-4dca-87ec-42a14d6ec0f9",
+      "name": "__nav__logic",
+      "startOperations": [
+        {
+          "id": "4c9901be-9fbe-4425-9d15-b801c5863e66",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Logic",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "9ec6045a-e0de-4714-b4d1-2e7ceba60047",
+      "name": "__nav__timeline_power_tools",
+      "startOperations": [
+        {
+          "id": "e91c4baf-8127-4d5e-bb42-13bffd5de8c1",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Timeline Power Tools",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "3caf09f1-0416-4ae5-b556-e9a8f53beef1",
+      "name": "__nav__engine_reach",
+      "startOperations": [
+        {
+          "id": "4b5d6286-e773-48fc-88a6-f14a5437436b",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Engine Reach",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "71defa37-20dc-4a22-b96e-e42e82ff2df8",
+      "name": "__nav__tooling_magic",
+      "startOperations": [
+        {
+          "id": "1f961f9e-c945-43b3-8a8a-f8be5cfd8b7a",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Tooling Magic",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "29df9d37-7145-4d54-988f-53563878843c",
+      "name": "__nav__hub",
+      "startOperations": [
+        {
+          "id": "86729ee1-2c4c-4623-94bf-acdc62b04042",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Hub",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [
+    {
+      "id": "71e11dfe-83d5-431e-af33-21ced83e33aa",
+      "name": "ch5OnPing",
+      "eventName": "tour-ping",
+      "startOperations": [
+        {
+          "id": "ce127c7f-e688-4d7f-b800-9f092e5d9099",
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$operationData.eventArgs.0"
+          }
+        },
+        {
+          "id": "36363435-601b-4001-a04c-b5ed5c7b24b5",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "in"
+          }
+        }
+      ]
+    }
+  ],
+  "timelines": [
+    {
+      "id": "082e7873-c831-43bc-828f-1564f33eaee9",
+      "uri": "Hub",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "94f047a4-1a99-452e-8eec-283b39ec5db6",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "656e0b53-5e2b-4846-a866-b3e84ea49dd0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "ce5f2966-fc23-4e39-94ce-e83f952c0885",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#hub"
+                }
+              }
+            },
+            {
+              "id": "92cdc630-82f1-4979-baa7-42651cc81ae2",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-ch1"
+              }
+            },
+            {
+              "id": "a086c636-1506-4b8b-8567-9329c802b1d1",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "1fd2fa1c-0c94-4576-94c3-43b8c5244bf9",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__timeline_time"
+                ]
+              }
+            },
+            {
+              "id": "dcf46280-3ea6-4374-9a94-3433bccec2ca",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-ch2"
+              }
+            },
+            {
+              "id": "42b67181-f725-491c-b600-c70858b559ce",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "d48e663c-9dab-42f3-a03d-e276cd5a52bd",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__actions"
+                ]
+              }
+            },
+            {
+              "id": "00a49191-4a39-478f-bfc9-5e5d54668be6",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-ch3"
+              }
+            },
+            {
+              "id": "2347ed71-f678-4843-aa66-cd628b391423",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "3fd3f462-21f9-435c-9f11-59924bd113b4",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__logic"
+                ]
+              }
+            },
+            {
+              "id": "7e530b1b-5849-47b4-850d-fe4a4cbb9af9",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-ch4"
+              }
+            },
+            {
+              "id": "0ceb13ab-e61f-49c1-8ed4-6148cb159b27",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "9f3e90ff-50f2-4241-a40f-8b62382ed9eb",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__timeline_power_tools"
+                ]
+              }
+            },
+            {
+              "id": "b1ce5bc2-0603-487d-9d45-0bbd4d28942a",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-ch5"
+              }
+            },
+            {
+              "id": "5f1ce3f3-2efe-4a8c-b455-6406a2c7cc1e",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "1f751648-2cc8-47eb-9790-d4e0e598ff39",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__engine_reach"
+                ]
+              }
+            },
+            {
+              "id": "3d8ca5b6-12c4-423f-bb25-bf9963f7f2ad",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-ch6"
+              }
+            },
+            {
+              "id": "dd7102d3-1abb-4c5d-88eb-ea474f06ada6",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "2725bdff-ffd4-44a2-94ab-7c802b9ea8b3",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__tooling_magic"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "c8cc8c26-8eb3-430f-8c79-4677a0331b3f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "00d49d64-7af7-44e3-ad8f-d059a55ed402",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#hub"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        }
+      ]
+    },
+    {
+      "id": "26cb893c-c7d6-4828-8ae8-4c0d30e87795",
+      "uri": "Timeline & Time",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "66637f50-ecd1-47dc-a504-0d6a64f93a7c",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "202585bf-7b47-4948-b339-a78f6552f3d4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "242bcde7-6e0b-4f35-943e-da9cf74a078e",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch1"
+                }
+              }
+            },
+            {
+              "id": "e872d37f-22d7-4359-9b4d-e872bb7b464f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "4daa972e-af4e-49a5-86cf-7884b3a5efa1",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            },
+            {
+              "id": "f1a7a95a-65c3-4a66-aa95-8e87c858fc0a",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c1-to-hub"
+              }
+            },
+            {
+              "id": "3ef3e029-c7f4-4a92-a7e6-d8631584e061",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "e6a2d0d7-db19-4c50-be83-18064b363919",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "beedc68b-d9c3-4dbc-9e76-a3aec629da9e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "2870fe62-376c-4af1-8f2e-428ae5814474",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch1"
+                }
+              }
+            },
+            {
+              "id": "0556471a-b793-47b7-b969-6aa4a26df425",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "e0a243f0-459c-4ef0-8dc8-9de23535a13d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        },
+        {
+          "id": "95fd2d8c-bc92-47fd-aadb-9b7f491c8589",
+          "name": "timeline-action-0-6",
+          "startOperations": [
+            {
+              "id": "76c2424e-174f-4885-b536-3ac08b230356",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "cf0ae249-e09a-4f28-b6fc-eeb03702918f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "An Eligian presentation is one or more timelines. Here's the one you're watching."
+                }
+              }
+            },
+            {
+              "id": "ce4850e3-91ff-4dc5-aca2-ae0f0a8fb463",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "4413a504-4637-40c9-8c9d-c5a6a5bfbdf0",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#code-ch1"
+                }
+              }
+            },
+            {
+              "id": "83523d1d-d7ab-4f9c-8c07-2e82b5b045a2",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "519c72ad-9055-4101-8ebf-beb33f544f10",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#tok-timeline"
+                }
+              }
+            },
+            {
+              "id": "28fac36c-ccbc-4cad-9b84-212b1f285d97",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "9f25458d-742b-4a99-840a-4b2f8796ef51",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#cl-name",
+                  "template": "its name — also the uri the hub uses to jump here"
+                }
+              }
+            },
+            {
+              "id": "2d06e0fc-e9e8-4554-9232-3fd2a11e00f3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "8ae16e04-cda9-4067-a5be-fcd6933a8483",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#fx-stage"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 6
+          }
+        },
+        {
+          "id": "5e0263d9-1d8d-42e3-be84-479a3c4f4f92",
+          "name": "timeline-action-6-12",
+          "startOperations": [
+            {
+              "id": "ca981ffd-6540-48ba-b852-96b132ecb4d5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "ec699652-2ecc-4ce3-96d8-b7cf3b619247",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "ed03c59b-33b4-4570-97f4-af7e26647130",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "6356bb98-db95-4f84-a6fd-43f0df281e7a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "What advances the timeline? Its provider."
+                }
+              }
+            },
+            {
+              "id": "30c94d50-8987-4af6-aaa2-8c743ad8be33",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "00defbe4-ff54-4796-9136-f64a4ef8262f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#tok-raf"
+                }
+              }
+            },
+            {
+              "id": "e5b15366-34e2-4d55-b711-87b3d14fa9fd",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "1935b945-e336-47e1-8953-05e644982b32",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#cl-provider",
+                  "template": "raf = animation clock; video / audio / custom also available"
+                }
+              }
+            },
+            {
+              "id": "527b73c7-d30f-43fd-aab1-15ba84b4f657",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "aa52850c-b23a-4d6d-9a7f-1f7d11aa7935",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#fx-providers"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 6,
+            "end": 12
+          }
+        },
+        {
+          "id": "2450c80e-c553-4c8c-ba5f-efe8713b45f4",
+          "name": "timeline-action-12-20",
+          "startOperations": [
+            {
+              "id": "f527fa40-2196-4f09-8e7e-056652b33fac",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "8952bda6-0d4f-46a6-bdd5-2772b3811f8e",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "16ac9407-a60b-4b71-8903-bdf57d658f81",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "017808e4-4373-48e1-848e-7f17a4216874",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Inside a timeline, 'at' schedules work over a time range."
+                }
+              }
+            },
+            {
+              "id": "8062e8e3-acfd-4e15-887b-c5ca33875944",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "628336ad-879e-430f-afb9-8a7416070713",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#code-at"
+                }
+              }
+            },
+            {
+              "id": "05c81760-6cf8-43e6-b7a4-db77fb51c660",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "57eac229-984d-42c6-b99a-4f07c2cc2a11",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#tok-at"
+                }
+              }
+            },
+            {
+              "id": "09b09f51-8444-4795-990c-9542f0cc08de",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "40964663-8c22-4639-8ab4-0871f406bd16",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#cl-range",
+                  "template": "a time range: start .. end"
+                }
+              }
+            },
+            {
+              "id": "45e26b1e-9f2e-4b46-a192-e06742012c18",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "a7c04f78-15d9-4a25-974c-7ca527d44f40",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#fx-hero"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 12,
+            "end": 20
+          }
+        },
+        {
+          "id": "4da051de-cbe4-45e3-aeaa-7cee23e20a12",
+          "name": "timeline-action-20-27",
+          "startOperations": [
+            {
+              "id": "54536fbb-75fb-4f7b-9231-35e6a7827e62",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "0a02711e-7aa7-4362-b502-524d14e50e23",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "b2941120-deab-4aa3-a180-cf2b6b1392c1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "b22900cd-4a76-4827-b4a6-315f735dc160",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Times take units. No unit means milliseconds."
+                }
+              }
+            },
+            {
+              "id": "8fcbfb89-7ea2-4d35-9c63-53f5f1ad5a21",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "1f968d62-0cf6-4adf-a086-f270cd518e0f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#code-units"
+                }
+              }
+            },
+            {
+              "id": "08146415-6ca1-4f71-aed4-edd05fc7c2f9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "ccd721a8-bec8-4138-bbd4-4d41f97e44d0",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#cl-units",
+                  "template": "42 = 42ms · 500ms · 2s · 1.5m · 0.5h"
+                }
+              }
+            },
+            {
+              "id": "4b94e703-53b5-438b-8c3c-5c42da04dab3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "80c47ff0-4ea2-4cc2-8c05-e6e4bd2cdf27",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#fx-ruler"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 20,
+            "end": 27
+          }
+        },
+        {
+          "id": "1e1e6d3d-404d-4175-94a4-d200e119226d",
+          "name": "timeline-action-27-35",
+          "startOperations": [
+            {
+              "id": "dfba8f17-fdb7-4969-9bc9-452c36ee7ac5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "900cc730-50cb-46b1-b3e2-f329f2097081",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "840d9498-3de0-4262-8832-ac891e482ad0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "41eca510-2cf9-4f4d-b838-fc7ad80a4a0a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Ranges can compute — and chain off the previous event."
+                }
+              }
+            },
+            {
+              "id": "238c23d5-f378-4391-a3df-d81967922a82",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "41df64e3-1a43-4618-b1ec-d2a121aaaec4",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#code-arith"
+                }
+              }
+            },
+            {
+              "id": "a2a15e8c-89c1-4fcc-972b-db377fa9ec6a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "7a56e3d8-27f6-4b17-aea4-e618b3e27fb5",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#tok-plus"
+                }
+              }
+            },
+            {
+              "id": "2c843c03-73ca-4b28-bcec-6bf3729d549b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "18798480-5910-45f8-87ac-6aee08dc25bb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#cl-relative",
+                  "template": "relative time — anchored to the previous event's end"
+                }
+              }
+            },
+            {
+              "id": "1a663e19-854e-423b-a301-98808bf9276b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "f04398df-c717-40af-9b5b-fe1fc5f29701",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#fx-chain"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 27,
+            "end": 35
+          }
+        },
+        {
+          "id": "5a5fc6ed-c70d-4962-afc2-68ff57f3974b",
+          "name": "timeline-action-35-42",
+          "startOperations": [
+            {
+              "id": "380e6109-c363-4344-a059-cb689c5a095d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "7ab1aadf-2d40-4cd4-b755-64ecf1d3db45",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "6f1449e0-ddbe-42cb-93fb-e832770dd6ff",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "e0a35ed0-706b-4b4e-8f23-b0ec6fb107ce",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "That whole sequence? One timeline. Click ← Hub to explore more."
+                }
+              }
+            },
+            {
+              "id": "7ba181c7-c287-49c6-a983-3ad3474eaa15",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "2a5cbdaa-2544-4ff3-891b-9854fe0ba331",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#code-full"
+                }
+              }
+            },
+            {
+              "id": "c4e1b34b-e236-4ca1-909e-4e709d19cf24",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "73451b9f-6ae1-4124-92ec-2fc581d6088a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#fx-endcard"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 35,
+            "end": 42
+          }
+        }
+      ]
+    },
+    {
+      "id": "48122185-b27b-42a9-b8df-6f6daf9c70a3",
+      "uri": "Actions",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "86bfe2ba-4f69-429c-98df-f7959ccd6223",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "9c73bd3f-ebb5-40bf-872f-98257409f447",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "557a103a-ae5a-4d7e-a1de-2a69b95c45a8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch2"
+                }
+              }
+            },
+            {
+              "id": "a1c53787-8a7a-4249-8375-6eecb08f35d9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "aabfd172-6e6e-4e90-93cb-0c5985767814",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            },
+            {
+              "id": "751af616-3c27-4a07-8ad5-9e8563b6df84",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c2-to-hub"
+              }
+            },
+            {
+              "id": "a1b6d1f6-bfa3-412d-a1ba-d72af055fd2b",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "fe96e9b3-9b51-4dd6-8955-35b90f4f6727",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "f83fba85-2155-46cc-b854-d10b0970bd97",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "87e3b52d-8196-40b0-a871-718086b617a7",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch2"
+                }
+              }
+            },
+            {
+              "id": "9b5aa731-9855-42b3-948d-d09c009d2e55",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "baa812c8-b855-4c81-9ce2-6e7453469108",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        },
+        {
+          "id": "80e56462-2d79-49f9-aa28-78569a872d3e",
+          "name": "timeline-action-0-7",
+          "startOperations": [
+            {
+              "id": "bd382c4d-53e1-48f9-b04e-73bc78b9fb5e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "eb0448f5-58ab-4e00-953c-d4b9b22a61f2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "An action is a named list of operations. Define once, call anywhere."
+                }
+              }
+            },
+            {
+              "id": "961064e9-8509-447d-a502-8e0536aea76b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "e1097bd0-92a2-4108-8a40-e4b9aaf9024c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-code-def"
+                }
+              }
+            },
+            {
+              "id": "6e6d1273-507d-4151-bb1e-981aa8a98eb2",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "752b530a-f4fb-4381-8892-696784570e5f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-tok-action"
+                }
+              }
+            },
+            {
+              "id": "55491465-71da-4885-ae62-b8265bdfaf2d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "b9e29aca-a824-4187-815b-dca496b990ce",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-cl-action",
+                  "template": "declares a reusable action; its body runs top-to-bottom"
+                }
+              }
+            },
+            {
+              "id": "08b2c5ec-f626-4c9e-86ce-ec4bdc4ce09f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "e03626be-c6f6-4a76-a543-24d8ed54413b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-fx-chain"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 7
+          }
+        },
+        {
+          "id": "ed5ad8ac-d599-4480-bd1e-031345026d46",
+          "name": "timeline-action-7-14",
+          "startOperations": [
+            {
+              "id": "2ff07853-c367-4304-b30f-db5e63f967ee",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "a93c45f5-8dea-4807-864e-e9a6f2c1f8ee",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "1f95e12f-4e73-4e71-9259-629b966f06fe",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "a782dab8-8d92-4154-997d-9eb252152808",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Actions take parameters. Annotate types when you want the compiler's help."
+                }
+              }
+            },
+            {
+              "id": "e7d6917a-a29f-4a1f-8834-be96bf08e251",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "e8926971-0c27-4582-b1d0-1d03b4e5f66d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-code-params"
+                }
+              }
+            },
+            {
+              "id": "e116f5ba-3ac9-4093-8de6-9afe003899f9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "e4fcf33d-8a15-487a-9b6d-d7c39330aa22",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-tok-param"
+                }
+              }
+            },
+            {
+              "id": "76378837-b43e-404f-8bad-8127574bd782",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "c8c5d9ac-5e0e-4064-81c2-2c693c4d32e2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-cl-param",
+                  "template": "optional type — string · number · boolean · object · array"
+                }
+              }
+            },
+            {
+              "id": "189da9b0-80cd-426d-94dc-ef36d377d0db",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "7e138534-73f4-4b3c-90e4-f98a2f097a02",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-fx-fade"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 7,
+            "end": 14
+          }
+        },
+        {
+          "id": "4ae6924c-542a-4b82-9e2c-da338a0a51ae",
+          "name": "timeline-action-14-22",
+          "startOperations": [
+            {
+              "id": "de65dfe1-a166-4425-9378-3d8cfbfe1f6a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "071fac98-d374-49f4-9175-2762c6004fa2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "50cc2338-b810-402d-b699-dcb03d44ca1f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "506ec858-4d3e-4f99-9323-a51f1760b129",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Calling your action looks exactly like calling a built-in operation."
+                }
+              }
+            },
+            {
+              "id": "cf7eaf97-47e4-4381-a204-6dad5b4f8865",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "277c708e-e77a-490e-bf2c-e0434810e97b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-code-call"
+                }
+              }
+            },
+            {
+              "id": "5a2e99ea-62c3-4491-8a63-e601256fd2b4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "aa68cb51-63c8-4af4-a195-f452ed945328",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-tok-call"
+                }
+              }
+            },
+            {
+              "id": "2b471591-235d-477b-b5da-b56fa9708fdb",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "365ab2b1-3119-4087-9262-9da3a63645ed",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-cl-call",
+                  "template": "one syntax; resolved action-first, then built-in op"
+                }
+              }
+            },
+            {
+              "id": "780005b6-0a26-4840-a33a-b6217d089159",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "03dc8da0-6aaa-43a1-ad51-0d7ad020955b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-fx-call"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 14,
+            "end": 22
+          }
+        },
+        {
+          "id": "f7a35d7e-862e-4c73-b680-0dab2237b86d",
+          "name": "timeline-action-22-30",
+          "startOperations": [
+            {
+              "id": "1cc36540-24c4-4a90-b55b-fc71ee90aae5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "a9696b26-a766-4ffd-9c49-c8f91bdd312c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "e3349d13-9085-493f-b1ee-62100bd9f641",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "e0a9ca90-59a4-4969-b3e9-9554bd42c1b5",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "A parameter that feeds a built-in op must be named after that op's input."
+                }
+              }
+            },
+            {
+              "id": "05dae323-94e9-4cd9-909c-c3b959747dc9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "f41e7585-8a8f-41a2-ad52-69f08dffc53c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-code-byname"
+                }
+              }
+            },
+            {
+              "id": "376580e5-6a0d-456e-b17d-b7a47d46ef78",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "193df28f-f20a-4a86-a88a-843bc1b5614d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-tok-template"
+                }
+              }
+            },
+            {
+              "id": "566f35e9-b7ea-4154-b75d-50b985533f09",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "213087a1-f889-411c-8319-46a86a4cf378",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-cl-name",
+                  "template": "selectElement→selector · addClass→className · setElementContent→template"
+                }
+              }
+            },
+            {
+              "id": "0d70fb9c-695e-4097-99c8-57a962e81c5b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "7cbc581f-b672-4e22-a1c5-cb0f11203c32",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-fx-slot"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22,
+            "end": 30
+          }
+        },
+        {
+          "id": "f53c7180-d181-41a9-b6b5-cef863ca726c",
+          "name": "timeline-action-30-38",
+          "startOperations": [
+            {
+              "id": "82721482-ad4c-43f5-bc60-3bdbf8d136c8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "f9e071cd-2425-442a-a7c4-5769ad1b8917",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "6285bdc3-ba0a-4e0f-b9f0-8418d5d898d3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "18e268b0-5861-4560-a95e-787253afe624",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "An endable action has two blocks: set up, then tear down — independently."
+                }
+              }
+            },
+            {
+              "id": "aa449de6-4e9d-4538-89c7-741462d4e810",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "6f950ae3-1c82-4eb6-847b-7f6f98cd084f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-code-endable"
+                }
+              }
+            },
+            {
+              "id": "b0a16527-948a-4c45-a26e-0b5e2a21f111",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "19e13c02-f9bb-4227-9024-ac6852625432",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-tok-endable"
+                }
+              }
+            },
+            {
+              "id": "8f219967-bae9-4117-afe4-7a044e989be7",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "56f51604-0116-479a-8196-3b5ae4d0313d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-cl-endable",
+                  "template": "start & end run fresh; re-select in each — only the DOM persists"
+                }
+              }
+            },
+            {
+              "id": "16bcc182-eada-4b01-a774-ed9d6856ffa0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "ec2e12c9-cd4c-4f19-b7bf-0697c8f2e0be",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-fx-toggle"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 30,
+            "end": 38
+          }
+        },
+        {
+          "id": "66dc4a90-04c9-4f64-83d3-0235291fbdc3",
+          "name": "timeline-action-38-46",
+          "startOperations": [
+            {
+              "id": "18f538be-b402-4f62-9943-d469e31f20d7",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "4f2d5e77-88d1-4685-998e-24d904aa3cef",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "75d366e7-98bb-47f3-b87f-290ecba096e3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "c7b9e47d-261a-4e1b-bbde-6e98158adf4b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Group actions into a library, import what you need. Click ← Hub for more."
+                }
+              }
+            },
+            {
+              "id": "1572b577-04e9-4644-bc94-b04f4bf4db57",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "738be175-f6d2-44ce-8851-c941bb5353b2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-code-lib"
+                }
+              }
+            },
+            {
+              "id": "95794976-a46d-4296-be38-fa6a8fff554e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "8212026b-f7a6-44c0-94b2-8cadc4d2f4ee",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-fx-lib"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 38,
+            "end": 46
+          }
+        }
+      ]
+    },
+    {
+      "id": "e14696cc-86fa-46c2-9ba1-b799f8037535",
+      "uri": "Logic",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "cb3ab2a7-79b3-4f4b-8c05-e030add5c959",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "e9f00a4b-00f4-43ce-aafc-71071da9feb3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "ebdaa3f1-ed01-4294-b2f6-3e5f01348850",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch3"
+                }
+              }
+            },
+            {
+              "id": "decafbfd-d7eb-4ced-b75e-1463bba5ef93",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "8337445b-3dea-4774-8a44-1ec61d45aeba",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            },
+            {
+              "id": "2aaa0077-3054-4fc0-aa84-a949ec961a50",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-to-hub"
+              }
+            },
+            {
+              "id": "4deabc5e-8780-49d8-8aa0-dc1eb84c7cb5",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "f0e2ff45-5b38-4a59-92dd-3874292c8499",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "72a247db-ee69-483c-82f2-7333bf4fefdb",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "277066d9-545f-4084-8949-679614e56351",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch3"
+                }
+              }
+            },
+            {
+              "id": "9f9606bf-6b89-478a-9d0d-92c9934f3f3e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "f94a562a-a269-462b-9dca-e83501e516b6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        },
+        {
+          "id": "ff01da2e-972b-4b01-b9d2-d6dc1ec68c19",
+          "name": "timeline-action-0-7",
+          "startOperations": [
+            {
+              "id": "76f877a2-3300-4eac-b498-48233a1aafd8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "01b0bb95-6b85-4279-ac46-fd634b455d24",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "const names a value. In an action it's a scope variable; at top level it's global."
+                }
+              }
+            },
+            {
+              "id": "be732fb2-dc0e-4ae7-a193-de8c8ee9d2f1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "cd22a278-fdf2-4b29-a44e-e26168b1b5cf",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-code-const"
+                }
+              }
+            },
+            {
+              "id": "a2f488a9-2cc0-4035-8e59-bd0d95e4b072",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "34de5c9e-b39c-4b96-a4d1-ae382488bfb3",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-tok-const"
+                }
+              }
+            },
+            {
+              "id": "f535bcf8-1cfa-4491-9619-92fb0db194f5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "b4e11945-2f6f-4c84-abe2-4019011e7119",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-cl-const",
+                  "template": "action scope → @name · program scope → $globaldata"
+                }
+              }
+            },
+            {
+              "id": "0064c67b-a997-457f-887d-c5ad682a0f5f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "52932c33-17e9-4290-9c21-a6aaaf8116f1",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-fx-scopes"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 7
+          }
+        },
+        {
+          "id": "75b91629-0842-400e-a48b-5494f857b86b",
+          "name": "timeline-action-7-14",
+          "startOperations": [
+            {
+              "id": "843bb300-a6d8-4d8e-a534-f6aa7dd8bf56",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "d4bea43c-4aa3-440f-bfe5-866ec74924dc",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "5bd77f87-7498-4450-a17a-4923df14efbd",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "889fa164-891e-47c0-812b-7ebe58c6f575",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Expressions combine values: arithmetic, comparison, logic."
+                }
+              }
+            },
+            {
+              "id": "e5ff3828-31be-4b60-a173-c64535150f33",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "ecbf5095-786e-421f-824f-e75fa9e914ed",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-code-expr"
+                }
+              }
+            },
+            {
+              "id": "46a7ab6f-967f-4182-8434-6e0de9edfbb8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "06b910be-fd32-457e-962a-fdd8b14af457",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-tok-expr"
+                }
+              }
+            },
+            {
+              "id": "ad45b6cb-6dfd-4bc9-940a-0c568a773d85",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "40e5a425-5c8b-4133-b452-12cdd56eceea",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-cl-expr",
+                  "template": "+ - * / % **  ·  == != > < >= <=  ·  && || !"
+                }
+              }
+            },
+            {
+              "id": "345e4da6-7708-4a09-b30d-445ccb59189b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "6af5cf96-f364-46cc-b914-fed16ae2067d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-fx-eval"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 7,
+            "end": 14
+          }
+        },
+        {
+          "id": "2098b5fd-441b-427c-8bce-7a348a4e21f9",
+          "name": "timeline-action-14-23",
+          "startOperations": [
+            {
+              "id": "c4552948-9ff8-401a-869e-bdbbe59c6e41",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "8801093f-65f2-48ba-a9c3-fe89cc6ea22f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "14cc460d-1726-4082-9dcd-0814386ef74a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "e20d03d4-d687-40e4-990c-cd6b7d1f6419",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "if / else runs operations conditionally — compiles to when / otherwise / endWhen."
+                }
+              }
+            },
+            {
+              "id": "87cfab8b-f6c1-448e-8693-3483ce8cc483",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "35d27557-910c-4bfb-939b-9f65c1808331",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-code-if"
+                }
+              }
+            },
+            {
+              "id": "ac5702e9-5729-49e8-a499-a9d6dca44f5f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "1e94ec7e-212c-4148-a4f7-b0eb5120ca98",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-tok-if"
+                }
+              }
+            },
+            {
+              "id": "07e9ebeb-7474-46e8-861e-92386110d120",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "046f0c6b-cff4-4906-8922-6adc3ac22909",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-cl-if",
+                  "template": "each branch is its own operation block"
+                }
+              }
+            },
+            {
+              "id": "fd671cce-4f97-476f-9ea7-29877633b01e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "1eb1197d-25de-48c8-b5b9-1ae6ee41cceb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-fx-if"
+                }
+              }
+            },
+            {
+              "id": "ec3bf609-7165-493c-8f90-35a04eb5c774",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "ch3ToggleBadge"
+              }
+            },
+            {
+              "id": "56421854-644d-4d30-8f60-1e852269f9cb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "count": 2
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 14,
+            "end": 23
+          }
+        },
+        {
+          "id": "93ddb063-7dff-4ef3-8345-cc9a675d75eb",
+          "name": "timeline-action-23-32",
+          "startOperations": [
+            {
+              "id": "663301c1-ca6e-41f9-9e87-d9f52c4580a1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "ddd1df08-1e30-4f50-8bf0-44b0d1c4ee87",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "52a04ae5-7234-4347-8cc5-c4ca7128ba2e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "3d87786c-169d-4590-9641-429801f319d7",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "for iterates a collection — and this list is being revealed by one right now."
+                }
+              }
+            },
+            {
+              "id": "c08cefb5-f09c-4221-9f45-d011d52b7851",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "a691cac5-cb2f-41cd-b47f-1163787a1c38",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-code-for"
+                }
+              }
+            },
+            {
+              "id": "5251dd26-3241-4e5e-8bba-e6f51a4d2f83",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "e3b86f2c-13a9-4f42-aeee-4582996ae41d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-tok-for"
+                }
+              }
+            },
+            {
+              "id": "8a695336-c919-41d5-9125-84b196df1563",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "10623918-0e53-463e-bb93-aa1894b47dd6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-cl-for",
+                  "template": "@@currentItem is the current item; compiles to forEach / endForEach"
+                }
+              }
+            },
+            {
+              "id": "0bb267a2-c880-4262-83eb-954e796d9458",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "5e7bb263-4fa4-4844-9320-2953934dd526",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-fx-list"
+                }
+              }
+            },
+            {
+              "id": "f40f3025-fa51-4efd-a307-9a050b811f7c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "ch3RevealBullets"
+              }
+            },
+            {
+              "id": "05a74707-7dc3-4c33-944b-4fcfe6288d13",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 23,
+            "end": 32
+          }
+        },
+        {
+          "id": "9fd0f5bd-8051-4fcf-9a52-2ff24e01aad7",
+          "name": "timeline-action-32-40",
+          "startOperations": [
+            {
+              "id": "2dea7e5c-68d3-4cfb-ba6b-4e854245d6ac",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "0df2ec18-7a1e-475a-91ec-4b58cc25d7c0",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "499b1d69-6aca-41bc-927f-e969e4084e79",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "8af2c6ef-2f61-415d-a94e-040567a0ee74",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "break exits the loop; continue skips to the next item — only inside a for."
+                }
+              }
+            },
+            {
+              "id": "3ff33aac-4004-42d0-b892-ab449b5080c8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "db15e3ee-f3e1-42b0-87ba-c4c7f9b42b95",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-code-loopctl"
+                }
+              }
+            },
+            {
+              "id": "dd07fb15-fa57-4dd5-8980-0b719f99dd01",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "ae4129f0-90b1-440b-a993-450f53efdff8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-tok-break"
+                }
+              }
+            },
+            {
+              "id": "e34a7443-456b-4c97-93a8-25145c976dc8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "eee48b48-84ed-4d61-aefc-c0918ce81842",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-cl-loopctl",
+                  "template": "continue → continueForEach · break → breakForEach"
+                }
+              }
+            },
+            {
+              "id": "0ee55b15-cf2f-4b68-a558-ee84aa6180f0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "3d45be05-e97e-44d7-9ad8-72e1cf791dbc",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-fx-loopctl"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 32,
+            "end": 40
+          }
+        },
+        {
+          "id": "b38a2290-1bc8-428f-9a12-dee22eaa9a67",
+          "name": "timeline-action-40-48",
+          "startOperations": [
+            {
+              "id": "03dbe4c1-5dcd-4b9b-99f0-09de29e3bbac",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "d1cea80f-4853-4638-8c7a-02e028b46a4b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "799fdc47-3d38-4c23-ba47-d87cc77e7854",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "6cd2a1ca-46fd-49e8-8802-ef2013a0ba41",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Three places data lives: $operationdata, $globaldata, $scope. Click ← Hub for more."
+                }
+              }
+            },
+            {
+              "id": "f8c4ec3a-8f8b-4605-93ab-160d33c29ab3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "81336946-7a86-4c08-90e4-40d434061eea",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-code-sigils"
+                }
+              }
+            },
+            {
+              "id": "0ef13e95-e6d7-42dc-8e60-21ced8da280d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "61da114e-eb7d-4801-8cf7-3a4c1debb514",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-tok-sigil"
+                }
+              }
+            },
+            {
+              "id": "e97b9e7e-7a08-4c82-832b-e692c61f17f1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "d71bf7f6-d61d-47ca-8655-5fecc178dedd",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-fx-sigils"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 40,
+            "end": 48
+          }
+        }
+      ]
+    },
+    {
+      "id": "298b7b3f-a315-4b29-a6dd-4d63963de19e",
+      "uri": "Timeline Power Tools",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "02e5ba7a-e5d4-4406-945d-22e20c204c38",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "bdea63d7-639f-46e8-99f5-fc290fd41c28",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "429df7af-d401-4cc5-8ee0-e310a1db6d62",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch4"
+                }
+              }
+            },
+            {
+              "id": "3b91ca3d-3b68-4eea-acd1-906893a83170",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "f2eae91f-fc90-4fc0-9913-df4d594421ff",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            },
+            {
+              "id": "310211b2-83d1-45e3-a2b6-3c1d8d408a73",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c4-to-hub"
+              }
+            },
+            {
+              "id": "22f73a3d-bb03-4ed1-ba7b-8c6619c6d094",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "64123ba1-5fa1-4748-85f3-98382eb185f8",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "a75da9d6-7f6b-4927-999c-1841ffaf8932",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "3689b42d-1113-408c-ac68-f1fa3e93b750",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch4"
+                }
+              }
+            },
+            {
+              "id": "c20c88de-3b5f-4c7c-a66b-02afba210e0c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "0cc6a85f-37a1-40e5-b302-dc99d95e4693",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        },
+        {
+          "id": "d4e14736-592f-473b-9c01-9cd7221d3d81",
+          "name": "timeline-action-0-7",
+          "startOperations": [
+            {
+              "id": "2d42de21-2c43-4bcb-8185-a9d6b0c520f0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "00785c6f-77af-4758-b7cf-8d30a1d70a05",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Scheduling a chain of events by hand means recomputing every time you tweak one."
+                }
+              }
+            },
+            {
+              "id": "8d799436-be53-4180-bdc4-d629cdf10538",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "bb6adc9e-8068-4b91-96ab-3a0de5332ba9",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-code-manual"
+                }
+              }
+            },
+            {
+              "id": "53eea1bf-bf8d-47dc-9a96-c5fdc497def1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "807bf5c9-16b0-470a-a689-1381410dc688",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-cl-manual",
+                  "template": "change one length and every later time is re-done by hand"
+                }
+              }
+            },
+            {
+              "id": "f66727de-ee80-4aae-abf2-f0bcbf811940",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "f1260b37-f807-446c-9364-571f093c83a9",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-fx-ruler"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 7
+          }
+        },
+        {
+          "id": "d29af195-d77a-4c24-ac8b-1bbc25d69ca8",
+          "name": "timeline-action-7-15",
+          "startOperations": [
+            {
+              "id": "8d30b6bc-9d5c-44b1-aca2-0b95e013e59c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "42597010-29b7-403e-a35f-8f4084729707",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "4d26c83e-26d2-4ceb-a137-34a163650c78",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "218179bb-b5e7-4e8c-afc7-9b8b25139067",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "'sequence' lays events back-to-back automatically — each runs 'for' a duration."
+                }
+              }
+            },
+            {
+              "id": "384b8025-5acf-4255-86c9-0fc464c4bf21",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "96b6027f-6cf9-4920-8048-08e44da3d720",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-code-sequence"
+                }
+              }
+            },
+            {
+              "id": "50015e3d-7b01-4998-95ea-035a807561e5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "01fac1d8-6bcc-456d-b6ea-e1fd7af10333",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-tok-seq"
+                }
+              }
+            },
+            {
+              "id": "c6b965e5-6ea2-4b4a-a3bd-a54c39e1e104",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "2666c306-9921-414f-86bd-f73e88ad88cb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-cl-seq",
+                  "template": "start = previous end → 0s..5s · 5s..15s · 15s..18s"
+                }
+              }
+            },
+            {
+              "id": "b7a376fb-8f11-494b-9bf5-01faba6f692e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "630983fd-fa9a-4de0-b79b-e7b58363c8eb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-fx-seq"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 7,
+            "end": 15
+          }
+        },
+        {
+          "id": "d53c2c67-bd7b-4be4-a0a2-395754905039",
+          "name": "timeline-action-15-22",
+          "startOperations": [
+            {
+              "id": "5cb44437-9c5f-416c-a640-ad48d2042e03",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "c9fa8888-9d98-492c-9a6f-56f9cd30447e",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "09d925e1-e97e-4eaa-a5fd-720e911c9526",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "48ed9b60-acc5-45c4-a830-bc8dae5de2e4",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Because starts are computed, changing one duration shifts everything after it."
+                }
+              }
+            },
+            {
+              "id": "a636ede4-fa7c-402b-bbcf-1a09ea220f46",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "d38a86de-bec0-4a67-b74a-9e91924eb1ee",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-cl-edit",
+                  "template": "shorten 'main' and 'outro' slides left — no re-numbering"
+                }
+              }
+            },
+            {
+              "id": "ae500fa0-9091-4bf4-9d53-693ec9168eba",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "9eb3d447-fb02-4c81-961e-a39094f673c0",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-fx-seq"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 15,
+            "end": 22
+          }
+        },
+        {
+          "id": "69dd7a5a-c8f5-4317-9811-678f3956c064",
+          "name": "stagger-revealCard-0-22-23.5",
+          "startOperations": [
+            {
+              "id": "a4022476-644c-4bd5-9476-e45ccda56463",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealCard"
+              }
+            },
+            {
+              "id": "5f99293d-65c9-4919-9db7-08f1432bac0a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-card-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22,
+            "end": 23.5
+          }
+        },
+        {
+          "id": "961628ae-7e53-4282-936d-6a04b742f359",
+          "name": "stagger-revealCard-1-22.2-23.7",
+          "startOperations": [
+            {
+              "id": "920f5ad8-d7f4-4ad5-9242-d2df0b0283d3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealCard"
+              }
+            },
+            {
+              "id": "2c8e8aab-8e6b-4ebd-bba2-b1ffd8f721ff",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-card-2"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22.2,
+            "end": 23.7
+          }
+        },
+        {
+          "id": "833edf24-6646-4d93-9dcd-46dbf4f6d287",
+          "name": "stagger-revealCard-2-22.4-23.9",
+          "startOperations": [
+            {
+              "id": "1c9df7cc-875d-4875-b4da-53c0b1740f54",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealCard"
+              }
+            },
+            {
+              "id": "f6dbc36e-c245-4e6e-98b2-86d56fed0fbf",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-card-3"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22.4,
+            "end": 23.9
+          }
+        },
+        {
+          "id": "744ae6af-a275-459b-8c98-697a83060495",
+          "name": "timeline-action-22-31",
+          "startOperations": [
+            {
+              "id": "5151916b-61c8-4f25-9252-cdf8cd2ace15",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "e9d989e6-4c9e-44fe-88fb-5aeac965d3e3",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "8abe6226-52a9-4c22-9ac8-edcf493bee84",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "ef210319-6fac-413c-bc19-ab0eaf83ffe4",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "'stagger' fans one effect across a collection — each item starts a little after the last."
+                }
+              }
+            },
+            {
+              "id": "57339a66-d831-4fbb-b2af-972d0234df5c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "be1d7b91-85b2-4d45-9156-88b0b7b49727",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-code-stagger"
+                }
+              }
+            },
+            {
+              "id": "aed630e1-4298-4c2c-bd5f-291a1cb96df9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "c718e1f9-63f3-4035-84ac-5f90de8efbb5",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-tok-stagger"
+                }
+              }
+            },
+            {
+              "id": "0d11a7f2-cac3-4598-b4f8-9e83dd282a73",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "b977ccbd-bf79-4902-8a44-d168c3c38f9c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-cl-stagger",
+                  "template": "200ms delay between starts · the item feeds the action's first arg"
+                }
+              }
+            },
+            {
+              "id": "173f6ee7-6d27-4c17-b77b-fd9a358c9331",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "9fcaa973-bec7-47a8-b762-c34d8e3320a4",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-fx-row"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22,
+            "end": 31
+          }
+        },
+        {
+          "id": "98ef6f81-6fa3-4a07-b6d4-769507eea588",
+          "name": "timeline-action-31-39",
+          "startOperations": [
+            {
+              "id": "b1eaa6ed-5718-4f4f-97e4-e42734bc421c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "da212bd2-bb53-4d40-8a11-9dfe241aa539",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "5cbf79bf-d75b-4f33-b931-89e744257b4c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "979f3df8-af61-41c3-94c8-d7c4817bbc71",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "delay is the gap between starts; duration is how long each lasts — they overlap on purpose."
+                }
+              }
+            },
+            {
+              "id": "aca34b8c-3914-484a-961d-c1df644c4199",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "074096c7-8b85-4ae2-b9d2-e3ada43d1012",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-code-inline"
+                }
+              }
+            },
+            {
+              "id": "9ab1f87e-a4ec-4cae-9ff9-63111512b55b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "91488290-c501-43dc-97e1-e4353d611308",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-cl-inline",
+                  "template": "inline start/end op blocks instead of 'with <action>'"
+                }
+              }
+            },
+            {
+              "id": "0b6f40c8-9322-4ba5-9d75-3265b43bb918",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "56a9b09e-0094-41e5-bdcc-b561be33c251",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-fx-cascade"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 31,
+            "end": 39
+          }
+        },
+        {
+          "id": "37ea6808-9007-4a5e-8975-495f817bbb91",
+          "name": "timeline-action-39-47",
+          "startOperations": [
+            {
+              "id": "ce985c85-012c-4fc6-8370-a6b3dba141e8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "2d9329c8-b571-4f8e-9673-bf329a7aff14",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "3385feb7-8ba4-4f57-ac40-fb7b3bf5a2c2",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "77dedc40-4203-4453-a742-0228fd4a2bcf",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "'sequence' for distinct back-to-back steps; 'stagger' for one effect across many items."
+                }
+              }
+            },
+            {
+              "id": "02655651-4b0c-4aec-8b65-132f0b22871d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "ce3e5e47-e159-4080-a01a-fe964ff5136f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-code-recap"
+                }
+              }
+            },
+            {
+              "id": "180ae3e7-da5e-4d77-98c7-f7fbd2e4c577",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "5c12e97a-27ba-4db4-9f33-6bd5a687cbdd",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-tok-recap"
+                }
+              }
+            },
+            {
+              "id": "7d7d3892-9164-476e-b61b-d9a88202e143",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "ba4b5973-968b-4a57-8c06-ca93fb949247",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-fx-done"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 39,
+            "end": 47
+          }
+        }
+      ]
+    },
+    {
+      "id": "5d7c6433-8033-4c3a-93ce-69152fde6b69",
+      "uri": "Engine Reach",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "195288ec-15ec-4812-8e9f-427c5ef23a21",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "3215cace-85eb-4d2d-b1b3-16c290a56901",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "019d5646-3382-43de-9d8b-a58e771bb7e6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch5"
+                }
+              }
+            },
+            {
+              "id": "db69ccc9-9f8f-40a8-9479-1a4ae12b865d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "8fd9faf6-c113-4a81-9a70-7d058765abe6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            },
+            {
+              "id": "4e7d0229-32fc-4b7c-ae1d-0e5a7413a5df",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c5-to-hub"
+              }
+            },
+            {
+              "id": "c3e0c8a7-a3bd-4649-877a-3cb43c7071aa",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "2aa6ac90-b52b-4782-8927-f97f971ec507",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "296bb0e5-b204-46b1-a95a-3e853b00cabc",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "08d7366f-52dd-4808-97e1-46cbe0d2fe91",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch5"
+                }
+              }
+            },
+            {
+              "id": "6ba2b2e2-4e28-4863-8de3-57a180794dc4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "b8a66295-94f9-442d-95d0-6d24ee55738a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        },
+        {
+          "id": "34cd30f5-bf95-46e9-8733-56f4bcfc024e",
+          "name": "timeline-action-0-7",
+          "startOperations": [
+            {
+              "id": "1538454a-0a9e-4181-aea9-994567af32d3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "7a3e2013-f715-4319-a6a7-d87fe63da534",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Everything so far fired on the timeline clock. But a presentation also has to react — that's engine reach."
+                }
+              }
+            },
+            {
+              "id": "92564269-210c-4b61-a471-c27f40814a50",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "aae3116b-fff7-4892-bc39-4d74e312c0e3",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-code-overview"
+                }
+              }
+            },
+            {
+              "id": "26c4fca5-b119-4649-b7b2-1a5f8dae0cfb",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "9ecaaf67-925d-4179-8f7d-ee1d74d08418",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-cl-over",
+                  "template": "three doors past the clock: the eventbus, on event, controllers"
+                }
+              }
+            },
+            {
+              "id": "8bc974a1-60e1-4e7d-8dde-2a38411c6c33",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "68d85bdf-dee7-4b36-88b2-6b2862b6abcc",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-fx-doors"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 7
+          }
+        },
+        {
+          "id": "92828975-4db8-4d18-acb3-7077d8a9ae05",
+          "name": "timeline-action-7-15",
+          "startOperations": [
+            {
+              "id": "6487f505-8612-4096-b51a-bd94fa74b7c1",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "9a4542ef-24a4-4a0e-a319-d303be7b7ed2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "1350d5ae-ef98-495c-b89a-25b8ded498c0",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "82fbfed4-b3fc-4947-8238-fb4be4ea173c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "broadcastEvent puts a message on the engine's bus. Broadcast reaches every listener; request asks for the one that answers."
+                }
+              }
+            },
+            {
+              "id": "74a3dfff-d0d2-4057-be24-7855e4758ddf",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "69642f0d-a179-4e43-aea3-48e407424a34",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-code-eventbus"
+                }
+              }
+            },
+            {
+              "id": "6d2f09c5-9517-4649-971e-0c01ee8a5cf3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "0f785887-ea73-4dfd-b48a-b505dcf3d31a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-tok-bcast"
+                }
+              }
+            },
+            {
+              "id": "aba1a4bb-e0ae-45d3-b6a8-be602ac65f01",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "7daba2da-a3d9-4b22-b13e-fdf3066cda4f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-cl-bus",
+                  "template": "request-timeline-uri is the request the navigate sugar emits"
+                }
+              }
+            },
+            {
+              "id": "66d23a2c-bad5-44f4-b861-e6072d1c6772",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "ed5f52d1-018f-4ce6-ac1c-bf40ca5ebb09",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-fx-bus"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 7,
+            "end": 15
+          }
+        },
+        {
+          "id": "519cb75e-a897-4677-85a3-419f4015daa8",
+          "name": "timeline-action-15-24",
+          "startOperations": [
+            {
+              "id": "677218d2-5d2e-49be-b5d5-5badc8d0678a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "35404c12-a22e-4415-9605-4d749fd7bf92",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "51b63073-17ae-4d31-95df-7fcab3ab7d73",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "70293929-c3f9-4e2b-b28a-5fdba86f8dd8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "An on event action runs when its event fires, not at a time. Click the button — it broadcasts, and this handler answers."
+                }
+              }
+            },
+            {
+              "id": "643f2be5-7486-461f-b14f-2c0fb77671c9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "fb412347-6d2e-4e41-9a4f-fc60f6e50dd9",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-code-onevent"
+                }
+              }
+            },
+            {
+              "id": "dc6ffad9-bd89-4388-a762-e44b76b3ad9a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "a7b3ca57-c5f1-41ed-a187-5597446c1f18",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-tok-onevent"
+                }
+              }
+            },
+            {
+              "id": "0672e5a7-82e7-412b-9572-1928acec5512",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "14058a75-9f47-4734-a71d-237925244d58",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-cl-on",
+                  "template": "params map to the event's args by position: target is eventArgs[0]"
+                }
+              }
+            },
+            {
+              "id": "eece1586-17e0-4ac0-93fc-1f1d0addb8a4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "0cc8f67a-4462-47e8-bc36-66f64a222f12",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-fx-bus"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 15,
+            "end": 24
+          }
+        },
+        {
+          "id": "80ed85bb-ae2e-4572-bddb-408358020b80",
+          "name": "timeline-action-24-32",
+          "startOperations": [
+            {
+              "id": "d310ebae-9bcc-4881-8ac9-b28bc3d28813",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "1afa51ba-0be7-4c81-b33d-8b1442f1654d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "78bd241f-3c6c-4f0c-93a5-2d3bc73b1d88",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "26f53f5f-670b-45df-80d0-7a6cec56a95b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "A controller attaches lasting behaviour to an element. The button's click is wired by a DOMEventListenerController — one of eight."
+                }
+              }
+            },
+            {
+              "id": "b073b0cb-8ca7-4f11-aecf-fea5394643f5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "54b2c2a8-b22d-4fa7-923d-b37abc307a52",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-code-controller"
+                }
+              }
+            },
+            {
+              "id": "81074c26-ae6b-4068-8b5b-5705fd7d228d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "19966c1d-5c7f-4975-ae5b-50083f9a6af2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-tok-ctrl"
+                }
+              }
+            },
+            {
+              "id": "baa64188-c8d2-4702-91ad-eb58d499f5f6",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "507a0b4e-62d5-4fab-882a-a67d557763a8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-cl-ctrl",
+                  "template": "selectElement + addController; this is what navigate desugars to"
+                }
+              }
+            },
+            {
+              "id": "489237d1-9939-461f-b258-69b3c90507ab",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "909f72fe-fd0e-4cdc-ac06-b782eef71c77",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-fx-bus"
+                }
+              }
+            },
+            {
+              "id": "6b315e82-aed3-480f-9185-ff8d08ae3149",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "ch5WireButton"
+              }
+            },
+            {
+              "id": "a59bd2b4-5385-456d-abeb-7559d54fc072",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 24,
+            "end": 32
+          }
+        },
+        {
+          "id": "40547302-4cde-4292-9603-71eff36526ed",
+          "name": "timeline-action-32-40",
+          "startOperations": [
+            {
+              "id": "e0d85b63-8369-45b7-bfe8-9c6681050a29",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "a34748de-4fd0-48b3-9cb2-97717356dd7a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "add756c7-63c0-437c-8cd4-98b22b400c9f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "22bd9af4-5571-4932-b802-3df8081da602",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Locales make text translatable. A LabelController binds a translation key to an element and re-renders on language-change."
+                }
+              }
+            },
+            {
+              "id": "38653c4f-6d6a-416b-829b-6c175940b192",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "62e96807-e631-48b9-9f06-cd8298b26d8f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-code-label"
+                }
+              }
+            },
+            {
+              "id": "40fea633-d2e1-4bdb-948e-92b35a1871c4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "c044602b-0c1e-4be3-a10b-158de136351d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-tok-loc"
+                }
+              }
+            },
+            {
+              "id": "fb016af0-8bd2-4d30-9dbb-e086bc53d953",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "72553866-193f-4e20-b64c-6272f953a70a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-cl-loc",
+                  "template": "translationKey resolved via the rosetta locale system"
+                }
+              }
+            },
+            {
+              "id": "e2ec827f-c908-48d0-8b0f-fce12bbe92ed",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "95544f24-37b6-4bf1-a524-b5c690388e8a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-fx-label"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 32,
+            "end": 40
+          }
+        },
+        {
+          "id": "1309c3e9-8774-46c8-bfe5-43ee66d36550",
+          "name": "timeline-action-40-48",
+          "startOperations": [
+            {
+              "id": "fe038ff2-9137-454c-8ec5-e9ac9b432673",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "193ba455-57b6-476c-8b0e-935d40882d2b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "9de3741b-5637-4683-8eae-02d9128dd754",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "49ace9ca-8e78-471f-83f2-a293e22188f9",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Eventbus, on event, controllers, locales — the navigation and narration you've used were built from exactly these. Click ← Hub for more."
+                }
+              }
+            },
+            {
+              "id": "d6b865b6-cd9e-4f9e-b651-26d3dc7f80dc",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "c07c0e92-97fc-4951-93c4-b0b1e7dbf3ba",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-code-recap"
+                }
+              }
+            },
+            {
+              "id": "b01bb49c-bd48-4aca-8324-b3991d6d9319",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "024fb149-77d6-4214-b95d-6bf675baeb01",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-tok-recap"
+                }
+              }
+            },
+            {
+              "id": "4d4f7729-d0ca-4dda-b036-925512f4d9e5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "2e6d9f87-c05f-4cf1-a193-26efafbbb65c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c5-fx-done"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 40,
+            "end": 48
+          }
+        }
+      ]
+    },
+    {
+      "id": "564f3a6e-ed97-4e46-9ae3-661edf0c17b5",
+      "uri": "Tooling Magic",
+      "type": "animation",
+      "duration": 3600,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "71cd2755-7f13-40d0-b081-95ad033db545",
+          "name": "timeline-action-0-3600",
+          "startOperations": [
+            {
+              "id": "53848c96-0683-4cc4-91c2-2234805dbf3a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "a19f1170-f3bc-4b40-893d-dab5ad960c69",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch6"
+                }
+              }
+            },
+            {
+              "id": "084cd4bf-33be-4c31-b858-81a968318e68",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "7d0ae8f9-ec32-448b-b749-5cc17cbb93a0",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            },
+            {
+              "id": "f7eca57f-d3aa-4860-bced-69df649f7594",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c6-to-hub"
+              }
+            },
+            {
+              "id": "89725f75-0560-4412-b9a6-7d75ffb233d5",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "8d8eb613-6825-452f-a6e7-01af3cb18362",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "4afb928f-1d37-4bce-8a26-8c623f482fcb",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "7d4b82be-194b-4409-a97c-9d2021391770",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#ch6"
+                }
+              }
+            },
+            {
+              "id": "5df4598a-b3b9-4d5d-8c65-7edc66963dde",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "4bbf2aed-2339-4a37-93c1-8957fe941635",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#narration"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3600
+          }
+        },
+        {
+          "id": "0e66c772-1192-4f13-b77c-fc9e2925831c",
+          "name": "timeline-action-0-7",
+          "startOperations": [
+            {
+              "id": "515f88de-acd3-4e4d-8ff3-55d961a9404e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "8a7b7ab5-1107-4fc2-ab27-a5707d50c682",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Eligian isn't just shorter Eligius JSON — it's a typed, tooled way to write it. Everything you've watched was authored with these tools."
+                }
+              }
+            },
+            {
+              "id": "cc9c6f56-0914-4e17-a673-4f03f8278e0e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "3f0bdf50-d00c-4215-9b4d-8278dc647755",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-code-why"
+                }
+              }
+            },
+            {
+              "id": "6eea91be-7792-4f49-a5ae-1f074bdeebc6",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "81e61b7c-d2e5-42b9-9688-204b51bcff79",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-cl-why",
+                  "template": "concise on the left, type-safe everywhere, live in the preview"
+                }
+              }
+            },
+            {
+              "id": "376c3069-af31-4cf9-be16-a358679fcfa4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "cc7cf499-e47c-458f-8918-f292b5650545",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-fx-editor"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 7
+          }
+        },
+        {
+          "id": "611478eb-2118-4a81-862b-f697ea99df58",
+          "name": "timeline-action-7-15",
+          "startOperations": [
+            {
+              "id": "71cd3566-9242-4d09-97c6-cfe50f8daf40",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "eda3a319-f512-471c-b4d5-5b0c4aa8e8eb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "55eede8e-866d-489b-89bb-bba2d939d96b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "08e47380-959e-4ac1-b383-07b9ff82886c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Preview Timeline compiles your .eligian on the fly, runs it in an embedded engine, and reloads on every save. This tour is what you'd see there."
+                }
+              }
+            },
+            {
+              "id": "456e9cf5-26a6-4e05-b045-640d8a5cfc65",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "99931f3b-55b0-43aa-a380-8a98fd0e6c1d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-code-preview"
+                }
+              }
+            },
+            {
+              "id": "11aa86bf-1ebf-46b9-94a5-8dd20e334d25",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "3fdb4b99-e95f-4e9f-ad4d-96ae8617a963",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-tok-preview"
+                }
+              }
+            },
+            {
+              "id": "18792847-45e8-4ab4-9a9a-35ec4cb26bcb",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "36584695-91bb-4dc5-8437-07b39ec7d814",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-cl-preview",
+                  "template": "compiles + runs in a webview engine; a FileWatcher reloads on save"
+                }
+              }
+            },
+            {
+              "id": "5677aad1-ece3-4b42-967a-83a05647ab41",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "40d35291-179d-4cb9-b7f9-ae05c4a7508b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-fx-preview"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 7,
+            "end": 15
+          }
+        },
+        {
+          "id": "cc0c30a1-0c8a-42c8-a1aa-cae9d2288ded",
+          "name": "timeline-action-15-24",
+          "startOperations": [
+            {
+              "id": "8857bc11-9887-4717-a906-e95f3e9a88ef",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "0e45ddbc-ea80-464b-a847-ba6b69b4a4e8",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "65fa6307-bf5e-4c6a-ae1d-d6f7a932d76b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "ded58043-4b19-4b92-8e2d-22fbe17f624a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Every class and selector is checked against your imported CSS. Typo one and you get a squiggle, a suggestion, and a one-click fix."
+                }
+              }
+            },
+            {
+              "id": "f1bca8e2-f40e-4ae5-b833-5aaa22ca0353",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "e5de41c6-4d5f-4983-8097-602e0381955d",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-code-css"
+                }
+              }
+            },
+            {
+              "id": "d147271a-25d7-40bb-9313-5792fa8f2443",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "2bbe8aec-7173-46d5-8243-9cd54033c573",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-tok-css"
+                }
+              }
+            },
+            {
+              "id": "64c6a015-6ce0-4469-a925-890718b2a9c9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "8d588165-4921-4f17-b55a-a412311fb055",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-cl-css",
+                  "template": "CSS class 'buton' is not defined. Did you mean: button?"
+                }
+              }
+            },
+            {
+              "id": "2e78c409-5ec7-4a74-8635-47db4a9fc5fa",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "8e55af1f-6786-4df2-a62d-24e89a100414",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-fx-squiggle"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 15,
+            "end": 24
+          }
+        },
+        {
+          "id": "5fc26c9b-1087-4958-84b8-810bfb5a5c6a",
+          "name": "timeline-action-24-32",
+          "startOperations": [
+            {
+              "id": "ebcefb68-84b4-48df-a7b3-025952a5db58",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "5148d36d-5d4a-4a01-9e71-1a10e7119776",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "a0a630b2-5c7a-4a11-80e1-83b8a87bd454",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "2610656f-6d23-4f39-a4dd-82d374e44dca",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Type and the editor knows what fits: operations with their parameters, the eight controllers, label IDs, CSS classes, even an on event skeleton."
+                }
+              }
+            },
+            {
+              "id": "24ef6f03-03b6-42e2-a6f8-df41a268bd0b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "963aba84-898b-4a49-a759-8a0e2ad4f88c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-code-complete"
+                }
+              }
+            },
+            {
+              "id": "114bd682-2fb1-47f6-8949-fa79819aaae5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "051b12f6-c110-4141-a616-93e9fe82abe6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-tok-complete"
+                }
+              }
+            },
+            {
+              "id": "b659a3cb-17e7-40ff-95fe-fed558cf33d7",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "6aaa2f0e-16d6-4231-95d7-6de12933f47c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-cl-complete",
+                  "template": "operations show their signature and docs; controllers list their params"
+                }
+              }
+            },
+            {
+              "id": "8e5f0941-225f-4ef6-96fc-e8dbbd89cbe7",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "e6608455-5583-419f-b702-8d87636c18f6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-fx-complete"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 24,
+            "end": 32
+          }
+        },
+        {
+          "id": "35abbb02-2684-494d-8c18-b48a972d8295",
+          "name": "timeline-action-32-40",
+          "startOperations": [
+            {
+              "id": "cd7b82c8-7533-4c07-9634-a713156799f8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "7cf89f9d-7b77-48fa-8eae-1af5e8ffdfae",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "e05c49a6-3549-404a-94a7-a5fffe42af4f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "66e0f7b8-3bc4-403b-a9a6-55dfd2d9cf50",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Document an action with @param and the editor hovers those docs at every call — and flags wrong argument counts, unknown ops, bad nav or event names."
+                }
+              }
+            },
+            {
+              "id": "1fc3519d-c16a-49a1-9e76-5cc91e61d4cb",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "1e55fa96-d721-4e0f-96ba-c18735334eff",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-code-jsdoc"
+                }
+              }
+            },
+            {
+              "id": "4ec59cf7-3763-4259-b633-82366e8508e8",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "86f790fc-74d1-4ab5-bb4d-bae8a9a79a42",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-tok-jsdoc"
+                }
+              }
+            },
+            {
+              "id": "30cc1729-1de7-45d3-ba64-63d668c80441",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "callout"
+              }
+            },
+            {
+              "id": "d4d79d72-3982-4b80-bee4-7945f5bb2140",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-cl-jsdoc",
+                  "template": "@param docs on hover; semantic checks catch the rest"
+                }
+              }
+            },
+            {
+              "id": "42182a64-00a6-4fcf-aa88-cf7fc57796f5",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "146a09ce-3174-49f3-9651-17224be09b9b",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-fx-hover"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 32,
+            "end": 40
+          }
+        },
+        {
+          "id": "be742b42-a33b-4188-8bbf-e37cbbde7a36",
+          "name": "timeline-action-40-48",
+          "startOperations": [
+            {
+              "id": "65e1c123-6afe-4490-ae94-6dcfdd4a7a84",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "68cae59d-d1b4-41d7-9638-843d1723d6f0",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "703553ea-9fea-4582-bb27-f22aacee4908",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "narrate"
+              }
+            },
+            {
+              "id": "b0478ea8-349e-47f1-aa5a-d1586ed91075",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "template": "Tweak your CSS and it hot-reloads into the running preview. Edit translations in a dedicated editor. Concise, type-safe, live — that's Eligian. Click ← Hub."
+                }
+              }
+            },
+            {
+              "id": "c00e223d-4cdb-4317-b5a3-6461df96259c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealBlock"
+              }
+            },
+            {
+              "id": "0c4998ef-7e8e-4824-9263-b2dc30f8f9a6",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-code-recap"
+                }
+              }
+            },
+            {
+              "id": "25642c5a-7c70-4783-892e-1b5d111b434b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "id": "ef1461de-5f03-40a0-9567-79cdbbdb0e20",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-tok-recap"
+                }
+              }
+            },
+            {
+              "id": "9a422733-9353-4060-811e-17d2655f412e",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "demo"
+              }
+            },
+            {
+              "id": "5fc016de-2130-4a19-ad71-30d00f88cbc3",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c6-fx-done"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 40,
+            "end": 48
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource"
+      }
+    }
+  }
+}
