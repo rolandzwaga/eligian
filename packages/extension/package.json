@@ -125,7 +125,7 @@
     "@eligian/shared-utils": "workspace:*",
     "jquery": "4.0.0",
     "lottie-web": "5.13.0",
-    "video.js": "8.23.7",
+    "video.js": "8.23.9",
     "vscode-languageclient": "9.0.1",
     "vscode-languageserver": "9.0.1"
   },

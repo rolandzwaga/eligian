@@ -25,8 +25,8 @@
     "effect:check:cli": "effect-language-service diagnostics --project packages/cli/tsconfig.json --format text --strict"
   },
   "dependencies": {
-    "effect": "3.21.3",
-    "eligius": "2.2.1"
+    "effect": "3.21.4",
+    "eligius": "2.3.2"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
