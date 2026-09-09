@@ -26,8 +26,8 @@
     "effect:patch": "effect-tsgo patch --typescript"
   },
   "dependencies": {
-    "effect": "3.21.3",
-    "eligius": "2.2.1"
+    "effect": "3.22.1",
+    "eligius": "2.3.2"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.5",
