@@ -131,9 +131,9 @@
   },
   "devDependencies": {
     "@types/jquery": "4.0.1",
-    "@types/vscode": "1.125.0",
+    "@types/vscode": "1.136.0",
     "@vitest/ui": "5.0.0",
-    "concurrently": "10.0.3",
+    "concurrently": "10.0.5",
     "jsdom": "30.0.1"
   },
   "vsce": {
