@@ -10,8 +10,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { IControllerMetadata, IOperationMetadata, TPropertyMetadata } from 'eligius';
-import { ctrlmetadata, eventmetadata, metadata } from 'eligius';
+// Import from the DOM-free `eligius/metadata` subpath (eligius >= 2.3.0) so this
+// generator runs in plain Node without a DOM — the main `eligius` entry would
+// evaluate jquery@4 on import and throw.
+import type { IControllerMetadata, IOperationMetadata, TPropertyMetadata } from 'eligius/metadata';
+import { ctrlmetadata, eventmetadata, metadata } from 'eligius/metadata';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
