@@ -8,7 +8,7 @@
  * Task: T006
  */
 
-import { ctrlmetadata } from 'eligius';
+import { ctrlmetadata } from 'eligius/metadata';
 import { describe, expect, test } from 'vitest';
 import { CONTROLLERS, getController, isController } from '../metadata/controllers.generated.js';
 
