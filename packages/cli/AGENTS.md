@@ -11,5 +11,5 @@ Command-line compiler: reads `.eligian`, drives the compiler in `@eligian/langua
 - `__tests__/` — `*.spec.ts`.
 
 ## Gotchas
-- This is Effect code (tagged errors, no thrown exceptions). After edits run `pnpm effect:check:cli` and drive findings to 0/0/0 — they don't surface in tsgo or `pnpm check`.
+- This is Effect code (tagged errors, no thrown exceptions). After edits run `pnpm effect:check:cli` and drive findings to 0/0/0 — they don't surface in plain `tsc` or `pnpm check`.
 - Compiler internals live in `@eligian/language` (`packages/language/src/compiler/`), not here — see that package's `AGENTS.md`.

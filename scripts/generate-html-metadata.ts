@@ -10,7 +10,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as ts from 'typescript';
+// TypeScript 7 ships no JS compiler API; the TS 6 API lives in the compat package.
+import * as ts from '@typescript/typescript6';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

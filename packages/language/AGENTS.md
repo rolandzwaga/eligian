@@ -17,5 +17,5 @@ The core package: Langium grammar + LSP (validation, scoping, hover, completion)
 
 ## Gotchas
 - Grammar change → `pnpm langium:generate` first, then build.
-- Compiler is Effect code: after edits run `pnpm effect:check:language` and drive findings to 0/0/0 — they don't surface in tsgo or `pnpm check`.
+- Compiler is Effect code: after edits run `pnpm effect:check:language` and drive findings to 0/0/0 — they don't surface in plain `tsc` or `pnpm check`.
 - Effect idioms (tagged errors with `_tag`, `Effect.fail`, no thrown exceptions, no `Effect.gen` adapter) — see root AGENTS.md.

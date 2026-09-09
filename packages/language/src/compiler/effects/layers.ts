@@ -36,7 +36,7 @@ export const FileSystemLive = Layer.succeed(FileSystemService, {
         return true;
       },
       catch: () => new IOError(`Cannot access file: ${path}`, path),
-    }).pipe(Effect.catchAll(() => Effect.succeed(false))),
+    }).pipe(Effect.orElseSucceed(() => false)),
 
   readDir: (path: string) =>
     Effect.tryPromise({
