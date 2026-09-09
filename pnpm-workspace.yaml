@@ -29,3 +29,17 @@ hoistPattern:
 # Enable shamefully-hoist for langium-cli compatibility
 # Langium has many phantom dependencies that need a flat structure
 shamefullyHoist: true
+
+# @effect/tsgo tracks TypeScript `next` and releases often; don't let the
+# freshly-published cooldown block it or its platform binaries. Bare names /
+# globs match regardless of version.
+minimumReleaseAgeExclude:
+  - '@effect/tsgo'
+  - '@effect/tsgo-*'
+
+# jsonschema (used by langium-cli to validate langium-config.json) resolves $refs
+# against the opaque base URL 'thismessage::/'. Node >= 24.20 parses URLs per
+# WHATWG spec and throws "Invalid URL", which breaks `langium generate`. The patch
+# switches the base to the hierarchical 'thismessage:/' (only .hash is consumed).
+patchedDependencies:
+  jsonschema@1.5.0: patches/jsonschema@1.5.0.patch

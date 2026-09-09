@@ -52,6 +52,33 @@ pnpm run build
 pnpm run test
 ```
 
+### Editor Setup (TypeScript 7)
+
+The repo type-checks with TypeScript 7 (the native Go compiler — the `tsc` bin in
+`node_modules` *is* tsgo) and uses [`@effect/tsgo`](https://github.com/Effect-TS/tsgo)
+for Effect diagnostics. To get the same diagnostics in VS Code:
+
+1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`, in the
+   workspace recommendations) — until VS Code ships TS 7 built in.
+2. `.vscode/settings.json` is gitignored; add these settings locally so the editor
+   uses the workspace TypeScript:
+
+   ```json
+   {
+     "js/ts.experimental.useTsgo": true,
+     "js/ts.tsdk.path": "./node_modules/typescript/bin",
+     "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+     "js/ts.tsdk.additionalLocations": ["./node_modules/typescript/bin"]
+   }
+   ```
+
+3. Run `pnpm effect:patch` to swap the workspace `tsc` binary for the Effect-patched
+   one (needed for the Effect plugin in the editor; re-run after every `pnpm install`).
+
+`pnpm effect:check` (CI) does **not** need the patch — it runs `effect-tsgo diagnostics`
+directly. TypeScript 7 has no JavaScript compiler API; the one script that needs it
+(`scripts/generate-html-metadata.ts`) imports the TS 6 API from `@typescript/typescript6`.
+
 ### Project Structure
 
 This is a monorepo with multiple packages:

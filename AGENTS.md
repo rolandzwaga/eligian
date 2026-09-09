@@ -27,9 +27,9 @@ Research/reference (read-only, do NOT import):
 ## Tooling
 
 - **Package manager: pnpm only** (v11.7, pinned in package.json). Never npm/yarn — breaks workspace resolution.
-- **Type-check/build: tsgo** (`@typescript/native-preview`), NOT `tsc`. `pnpm typecheck` = `tsgo -b tsconfig.build.json`.
+- **Type-check/build: TypeScript 7** (`typescript@7`, the native Go compiler; the `tsc` bin IS tsgo). `pnpm typecheck` = `tsc -b tsconfig.build.json`. TS 7 has no JS compiler API — the one script that needs it (`scripts/generate-html-metadata.ts`) imports the TS 6 API from `@typescript/typescript6`.
 - **Lint/format: Biome** (v2.4.16). Bundling: esbuild. Tests: Vitest. Dead-code: knip.
-- **Effect LSP**: `@effect/language-service` plugin is in the root tsconfig (editor diagnostics only; tsgo build ignores it). Run headlessly via scripts: `pnpm effect:check` (both), `pnpm effect:check:language`, `pnpm effect:check:cli`. These are `--strict` (errors + warnings exit non-zero) and **CI runs `pnpm effect:check` and fails on findings**. Goal is **0 errors / 0 warnings**. `quickfixes` previews fixes but can't apply them; some rules (e.g. `effectGenUsesAdapter`) have no autofix — fix by hand or codemod.
+- **Effect LSP**: `@effect/tsgo` (Effect language service compiled into tsgo; plugin name in tsconfig stays `@effect/language-service`). Run headlessly via scripts: `pnpm effect:check` (both), `pnpm effect:check:language`, `pnpm effect:check:cli` (= `effect-tsgo diagnostics --strict`). `--strict` = errors + warnings exit non-zero (messages don't) and **CI runs `pnpm effect:check` and fails on findings**. Goal is **0 errors / 0 warnings**. Plain `tsc` does NOT run Effect rules; `pnpm effect:patch` swaps the workspace `tsc` binary for the Effect-patched one (editor + `tsc -b` then report Effect diagnostics) — re-run after `pnpm install`. No autofix for some rules (e.g. `effectGenUsesAdapter`) — fix by hand or codemod.
 
 ### Commands (from repo root)
 - `pnpm build` (`-r build`) · `pnpm typecheck` · `pnpm watch`
@@ -43,7 +43,7 @@ Research/reference (read-only, do NOT import):
 2. `pnpm check` → 0 errors / 0 warnings
 3. `pnpm test` passes (run `test:coverage:ci` if new code, don't regress thresholds)
 4. `pnpm langium:generate` first if grammar changed
-5. **If you touched Effect code** (compiler or `cli/bundler`): run `pnpm effect:check` (or the per-project variant) and fix findings to 0/0/0 — these don't show in tsgo or `pnpm check`.
+5. **If you touched Effect code** (compiler or `cli/bundler`): run `pnpm effect:check` (or the per-project variant) and fix findings to 0/0/0 — these don't show in plain `tsc` or `pnpm check`.
 
 ### Commit / PR rules
 - Do NOT offer to open a PR or push — these are user-only actions.
