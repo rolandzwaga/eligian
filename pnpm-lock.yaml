@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  jsonschema@1.5.0: e1472ad3a97efa0171a1f9afd459b7542bc4cbd1449d04c05665d867aeb889c8
+
 importers:
 
   .:
@@ -2947,14 +2950,14 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  jsonschema@1.5.0: {}
+  jsonschema@1.5.0(patch_hash=e1472ad3a97efa0171a1f9afd459b7542bc4cbd1449d04c05665d867aeb889c8): {}
 
   langium-cli@4.2.1:
     dependencies:
       chalk: 5.6.2
       commander: 14.0.3
       fs-extra: 11.3.5
-      jsonschema: 1.5.0
+      jsonschema: 1.5.0(patch_hash=e1472ad3a97efa0171a1f9afd459b7542bc4cbd1449d04c05665d867aeb889c8)
       langium: 4.2.4
       langium-railroad: 4.2.0
       lodash: 4.18.1

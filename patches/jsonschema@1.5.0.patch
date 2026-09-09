@@ -1,0 +1,15 @@
+diff --git a/lib/validator.js b/lib/validator.js
+index cca5e9c2216fd72d5da7eb63a38cebdf025e366e..a62389ae6021eb8ed07ee64340d3e97a79461834 100644
+--- a/lib/validator.js
++++ b/lib/validator.js
+@@ -260,7 +260,9 @@ Validator.prototype.resolve = function resolve (schema, switchSchema, ctx) {
+     return {subschema: ctx.schemas[switchSchema], switchSchema: switchSchema};
+   }
+   // Else try walking the property pointer
+-  let parsed = new URL(switchSchema,'thismessage::/');
++  // Base must be hierarchical: Node >= 24.20 (stricter WHATWG URL parsing) rejects
++  // resolving '/x' against the opaque-path base 'thismessage::/'. Only .hash is used.
++  let parsed = new URL(switchSchema,'thismessage:/');
+   let fragment = parsed.hash;
+   var document = fragment && fragment.length && switchSchema.substr(0, switchSchema.length - fragment.length);
+   if (!document || !ctx.schemas[document]) {
