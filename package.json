@@ -30,9 +30,9 @@
     "eligius": "2.3.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.12",
-    "@effect/tsgo": "0.44.0",
-    "@types/node": "26.4.1",
+    "@biomejs/biome": "2.5.13",
+    "@effect/tsgo": "0.45.0",
+    "@types/node": "26.5.1",
     "@typescript/typescript6": "6.0.2",
     "@vitest/coverage-v8": "5.0.0",
     "esbuild": "0.28.2",
