@@ -30,17 +30,17 @@
     "eligius": "2.3.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
+    "@biomejs/biome": "2.5.14",
     "@effect/tsgo": "0.45.0",
-    "@types/node": "26.5.1",
+    "@types/node": "26.6.1",
     "@typescript/typescript6": "6.0.2",
-    "@vitest/coverage-v8": "5.0.0",
+    "@vitest/coverage-v8": "5.0.1",
     "esbuild": "0.28.2",
     "shx": "0.4.0",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
     "vite-tsconfig-paths": "6.1.1",
-    "vitest": "5.0.0"
+    "vitest": "5.0.1"
   },
   "packageManager": "pnpm@11.9.0+sha512.bd682d5d03fe525ef7c9fd6780c6884d1e756ac4c9c9fe00c538782824310dcf90e3ddc4f53835f06dfaebd5085e41855e0bcbb3b60de2ac5bbab89e5036f03b"
 }
