@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-Claude Code-specific guidance. **Shared, tool-agnostic rules live in [AGENTS.md](AGENTS.md)** (imported above) — project overview, Windows path rule, import bans, tooling, commands, task-completion checklist, conventions, architecture, DSL features, testing. This file adds only what is specific to Claude Code (Serena/MCP, memory).
+Claude Code-specific guidance. **Shared, tool-agnostic rules live in [AGENTS.md](AGENTS.md)** (imported above) — project overview, Windows path rule, import bans, tooling, commands, task-completion checklist, conventions, architecture, DSL features, testing. This file adds only what is specific to Claude Code (Serena, typegraph-mcp, other MCP servers).
 
 > Reminder: the Windows path rule in AGENTS.md applies to Serena tools too — use Windows backslash paths, expand `~`.
 

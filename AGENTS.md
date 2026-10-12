@@ -26,16 +26,17 @@ Research/reference (read-only, do NOT import):
 
 ## Tooling
 
-- **Package manager: pnpm only** (v11.7, pinned in package.json). Never npm/yarn — breaks workspace resolution.
+- **Package manager: pnpm only** (version pinned via `packageManager` in package.json; currently 11.9). Never npm/yarn — breaks workspace resolution.
 - **Type-check/build: TypeScript 7** (`typescript@7`, the native Go compiler; the `tsc` bin IS tsgo). `pnpm typecheck` = `tsc -b tsconfig.build.json`. TS 7 has no JS compiler API — the one script that needs it (`scripts/generate-html-metadata.ts`) imports the TS 6 API from `@typescript/typescript6`.
-- **Lint/format: Biome** (v2.4.16). Bundling: esbuild. Tests: Vitest. Dead-code: knip.
+- **Lint/format: Biome** (v2.5). Bundling: esbuild. Tests: Vitest. One-off scripts in `scripts/` and `tools/` run via `tsx`.
 - **Effect LSP**: `@effect/tsgo` (Effect language service compiled into tsgo; plugin name in tsconfig stays `@effect/language-service`). Run headlessly via scripts: `pnpm effect:check` (both), `pnpm effect:check:language`, `pnpm effect:check:cli` (= `effect-tsgo diagnostics --strict`). `--strict` = errors + warnings exit non-zero (messages don't) and **CI runs `pnpm effect:check` and fails on findings**. Goal is **0 errors / 0 warnings**. Plain `tsc` does NOT run Effect rules; `pnpm effect:patch` swaps the workspace `tsc` binary for the Effect-patched one (editor + `tsc -b` then report Effect diagnostics) — re-run after `pnpm install`. No autofix for some rules (e.g. `effectGenUsesAdapter`) — fix by hand or codemod.
 
 ### Commands (from repo root)
 - `pnpm build` (`-r build`) · `pnpm typecheck` · `pnpm watch`
 - `pnpm test` (`-r test`, no coverage) · `pnpm test:coverage:ci` (coverage + thresholds)
 - `pnpm check` (Biome format+lint, autofix — run after each task) · `pnpm lint` · `pnpm ci` (no writes)
-- `pnpm langium:generate` (after editing `eligian.langium`)
+- `pnpm langium:generate` (after editing `eligian.langium`) · `pnpm generate:html-metadata` (regenerates HTML completion metadata)
+- `pnpm test:coverage` (local pruned coverage report via `tools/pruned-coverage.ts`)
 - `pnpm effect:check` (Effect LSP diagnostics; also `:language` / `:cli`) — see Effect LSP above
 
 ### Task completion checklist
@@ -52,7 +53,7 @@ Research/reference (read-only, do NOT import):
 ## Conventions
 
 - **Functional:** external immutability, internal mutation allowed for performance.
-- **Biome:** 2-space indent, 100 cols, single quotes, semicolons, ES5 trailing commas. Excluded: `out/`, `dist/`, `generated/`, `*.generated.ts`, `*.d.ts`. Notable overrides OFF: `noExplicitAny` (Langium), `noNonNullAssertion`, `useYield` (Effect.gen), `noParameterAssign`, `noAccumulatingSpread`. `unusedVars`/`unusedImports`/`useConst` = warn.
+- **Biome:** 2-space indent, 100 cols, LF, single quotes, semicolons, ES5 trailing commas, arrow parens as needed. Scope is `packages/**/*.{ts,json}` only (`scripts/`, `tools/` are not checked). Excluded: `fixtures/`, `specs/`, `coverage/`, `out/`, `dist/`, `generated/`; lint+format disabled for `*.generated.ts`, `*.d.ts`, test-fixture JSON. Notable overrides OFF: `noExplicitAny` (Langium), `noNonNullAssertion`, `useYield` (Effect.gen), `noParameterAssign`, `noAccumulatingSpread`, `noShadowRestrictedNames`, `noAssignInExpressions`. `unusedVars`/`unusedImports`/`useConst` = warn.
 - **Fixing TS errors:** never use `sed` with line numbers from compiler errors (they mark the symptom, not the fix — corrupts files). Navigate to the real site and edit by string/symbol match.
 - **Effect idioms:** no thrown exceptions in the pipeline — `Effect.fail` with tagged-union errors carrying source location; services via `Context.Tag`, composed with `Layer`. Don't use the obsolete `Effect.gen(function* (_))` adapter (it's a no-op alias of pipe); use `Effect.void` over `Effect.succeed(undefined)`. Tagged errors need a `_tag` discriminant or the Effect LSP flags them as untagged global `Error`.
 
@@ -64,15 +65,16 @@ packages/
 │   └── src/
 │       ├── eligian.langium                 # grammar
 │       ├── eligian-validator.ts (+ validators/)   # semantic validation
-│       ├── eligian-scope-{provider,computation}.ts, eligian-{hover,completion}-provider.ts
+│       ├── eligian-scope-{provider,computation}.ts, eligian-{hover,completion,code-action}-provider.ts
+│       ├── eligian-module.ts (DI wiring), eligian-formatter.ts, eligian-document-validator.ts, operation-data-tracker.ts
 │       ├── compiler/                        # Effect-based DSL→Eligius JSON compiler (see below)
 │       ├── type-system-typir/               # type system (Typir + typir-langium)
 │       ├── css/                             # CSS class/selector validation + IDE helpers (PostCSS)
-│       ├── jsdoc/ asset-loading/ lsp/ completion/ html/ labels/ locales/ errors/ utils/ types/ schemas/
+│       ├── jsdoc/ hover/ asset-loading/ lsp/ completion/ html/ labels/ locales/ errors/ utils/ types/ schemas/
 │       ├── generated/                       # Langium-generated (do not edit)
 │       └── __tests__/                       # incl. test-helpers.ts
 ├── cli/        CLI compiler — main.ts, compile-file.ts, bundler/ (asset/CSS bundling, tagged errors)
-├── shared-utils/  errors.ts, file-loader.ts, path-resolver.ts, tag-guard.ts
+├── shared-utils/  errors.ts, file-loader.ts, path-resolver.ts, tag-guard.ts, locale-guards.ts
 └── extension/  VS Code extension (LSP client + webview preview)
 
 .specify/memory/constitution.md  — governs all development (read it)
@@ -81,7 +83,7 @@ packages/
 See each package's own `AGENTS.md` for local detail.
 
 ### Compiler (`packages/language/src/compiler/`)
-Effect-ts pipeline: parse → validate → type-check → transform → optimize → emit. `pipeline.ts` exports `compile`. Real modules include `ast-transformer.ts`, `type-checker.ts`, `optimizer.ts`, `constant-folder.ts`, `expression-evaluator.ts`, `emitter.ts`, `error-reporter.ts`, `name-resolver.ts`; `effects/` (`Compiler.ts`, `FileSystem.ts`, `Logger.ts`, `layers.ts`); `types/eligius-ir.ts`; tests + `__fixtures__` in `__tests__/`. (There is no top-level `packages/compiler`.)
+Effect-ts pipeline: parse → validate → type-check → transform → optimize → emit. `pipeline.ts` exports `compile`. Real modules include `ast-transformer.ts`, `type-checker.ts`, `optimizer.ts`, `constant-folder.ts`, `expression-evaluator.ts`, `emitter.ts`, `error-reporter.ts`, `name-resolver.ts`; `effects/` (`Compiler.ts`, `FileSystem.ts`, `Logger.ts`, `layers.ts`); `types/eligius-ir.ts`; `constants.ts`, `html-import-utils.ts`. Subdirs: `pipeline/` (parser, services, library-loader, document-errors), `transformers/` (per-construct transformers: action, timeline, operation, expression, time, config-builder, library-imports, scope, source-location), `operations/` (operation registry — `registry.generated.ts` is produced by `generate-registry.ts`, do not hand-edit — plus mapper/validator), `utils/`. Tests + `__fixtures__` in `__tests__/`. (There is no top-level `packages/compiler`.)
 
 ### Type system
 Typir-based, in `type-system-typir/` (the old standalone `type-system/` dir was removed). Optional/opt-in static typing: annotations (`action f(x: string)`), inference from operation usage, `unknown` = opt-out. Types: string, number, boolean, object, array, unknown. README in that dir.
@@ -90,9 +92,14 @@ Typir-based, in `type-system-typir/` (the old standalone `type-system/` dir was 
 
 - **Unified call syntax**: actions and built-in operations are called identically (`at 0s..5s fadeIn("#box")`); compiler resolves action-first then operation. Action names can't collide with operations. Action calls expand to `requestAction`+`startAction`. (`name-resolver.ts`, `ast-transformer.ts`)
 - **break / continue**: loop-control sugar → `breakForEach`/`continueForEach`; only valid inside `for` loops (else compile error).
-- **CSS loading + live reload**: `styles "./x.css"` → `config.cssFiles[]`; extension hot-reloads CSS into the preview without restarting the timeline. (extension `css-*.ts`)
+- **CSS loading + live reload**: `styles "./x.css"` → `config.cssFiles[]`; extension hot-reloads CSS into the preview without restarting the timeline. (`packages/extension/src/extension/css-loader.ts`, `css-watcher.ts`, `webview-css-injector.ts`)
 - **CSS class/selector validation**: validates className/selector args against imported CSS (PostCSS), with Levenshtein "did you mean?" suggestions; hot-reloads. (`css/`, spec 013)
 - **JSDoc for actions**: `/** @param */` comments → hover docs + auto-generated templates. (`jsdoc/`, spec 020)
+- **Imports**: default imports `layout | styles | provider | locales "./path"` (one of each per document); named asset imports `import name from "./file" (as html|css|...)?` with type inferred from extension. Paths must be relative. (specs 009/010)
+- **Library files + action imports**: `library name` files contain only actions (`private` hides them); consumers use `import { a, b } from "./lib.eligian"`. (specs 023/032)
+- **Event actions**: `on event "name" (topic "t")? action handler(params) [ ... ]` — Eligius event listeners declared as actions. (spec 028)
+- **Endable actions**: `endable action name(...)` with start + end operation lists for timed ranges. Timelines: `timeline "name" in "#selector" using <provider> (from "src")?`.
+- **Languages + locales**: `languages { * "en-US" "English" ... }` block plus `locales "./file"` import for typed labels; `locales` is the keyword (not `labels`). (specs 037/045)
 
 ## Testing
 
