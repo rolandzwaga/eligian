@@ -9,8 +9,10 @@ Small cross-package utilities. Keep it dependency-light — it's imported by `la
 - `file-loader.ts` — file reading helpers.
 - `path-resolver.ts` — path resolution (mind the Windows path rule in root AGENTS.md).
 - `tag-guard.ts` — tagged-union type guards.
+- `locale-guards.ts` — `isLocaleReference` etc., inlined from eligius (see gotcha below).
 - `index.ts` — package exports.
 
 ## Gotchas
 - Changes here ripple to all consumers — run a full `pnpm build` + `pnpm test`, not just this package.
 - Error types feed the Effect pipeline; keep them tagged or the Effect LSP flags them as untagged global `Error`.
+- **Never import a runtime value from `eligius` here or in any Node-side consumer** (compiler, LSP server, extension host, tests). eligius ≥ 2.2.2 bundles jquery@4, which throws `jQuery requires a window with a document` on load in DOM-less Node. Type-only imports are fine (erased at build). That is why `locale-guards.ts` exists.
