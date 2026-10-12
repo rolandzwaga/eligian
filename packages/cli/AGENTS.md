@@ -8,7 +8,7 @@ Command-line compiler: reads `.eligian`, drives the compiler in `@eligian/langua
 - `main.ts` — CLI entry point. `index.ts` — package exports. `compile-file.ts` — single-file compile orchestration.
 - `bundler/` — asset & output bundling:
   - `asset-collector.ts`, `css-processor.ts`, `html-generator.ts`, `runtime-bundler.ts`, `inline-overhead.ts`, `url-utils.ts`, `types.ts`, `index.ts`.
-- `__tests__/` — `*.spec.ts`.
+- `__tests__/` — `*.spec.ts` (`cli`, `cli-library`, `cli-library-errors`), `bundler/` tests, `__fixtures__/`.
 
 ## Gotchas
 - This is Effect code (tagged errors, no thrown exceptions). After edits run `pnpm effect:check:cli` and drive findings to 0/0/0 — they don't surface in plain `tsc` or `pnpm check`.
