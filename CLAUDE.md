@@ -20,3 +20,4 @@ Serena MCP (LSP-backed code intelligence) is configured. For **code files**, pre
 
 - **context7** — fetch up-to-date library/API docs (use proactively for any library question, incl. Effect-ts).
 - **serena** — code intelligence + project memories (see Serena section above).
+- **typegraph-mcp** — TS7/tsgo semantic `ts_*` tools (references, blast radius, type info, Effect diagnostics). Registered in `.mcp.json`; skills in `.claude/skills/`. Usage rules live in AGENTS.md ("TypeScript Navigation"). Use it for *queries*; keep Serena for symbolic *edits*. Verify with `pnpm exec typegraph-mcp check --project-root .`.
