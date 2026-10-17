@@ -279,12 +279,12 @@ timeline "Eligian Demo" in "#container" using raf {
  * Handle language change events
  * @param languageCode The new language code (e.g., "en-US", "nl-NL")
  *
- * Eligius types this argument as TLanguageCode, which has no DSL annotation,
- * so the parameter is left untyped (type annotations are opt-in).
+ * Eligius types this argument as TLanguageCode, which maps to the DSL
+ * `string` annotation.
  *
  * Example: Type "on event " + Ctrl+Space, select "language-change"
  */
-on event "language-change" action handleLanguageChange(languageCode) [
+on event "language-change" action handleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")

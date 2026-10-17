@@ -10,6 +10,7 @@
 - Locales import requires a `languages` block
 - Translation keys are referenced in dot-notation via `LabelController`
 - Event names MUST be one of the 43 Eligius events (Feature 029); custom names are compile errors
+- Event argument types map to DSL annotations (`TLanguageCode` → `string`, `T[]` → `array`); `any` and callback arguments cannot be annotated
 - Duplicate event handlers are warnings, not errors; the compiler treats every diagnostic as fatal
 - Corrected the valid event list in section 5.10 (previous list contained non-existent events)
 
@@ -1262,10 +1263,9 @@ Where:
 /**
  * Handle language change events
  * @param languageCode The new language code (e.g., "en-US", "nl-NL").
- *   Eligius types this as TLanguageCode, which has no DSL annotation, so the
- *   parameter stays untyped.
+ *   Eligius types this as TLanguageCode, which maps to the DSL `string` annotation.
  */
-on event "language-change" action HandleLanguageChange(languageCode) [
+on event "language-change" action HandleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
@@ -1448,9 +1448,9 @@ on event "timeline-seeked" action HandleSeeked(position: number, duration: numbe
 
 **For Loops**:
 ```eligian
-// request-label-collections passes (labelIds: string[], callback); untyped
-// parameters because neither argument type has a DSL annotation
-on event "request-label-collections" action HandleLabelCollections(labelIds, callback) [
+// request-label-collections passes (labelIds: string[], callback): string[] maps to
+// the `array` annotation; the callback has no DSL annotation and stays untyped
+on event "request-label-collections" action HandleLabelCollections(labelIds: array, callback) [
   for (id in labelIds) {
     selectElement(".label-template")
     setElementContent(@@id)
@@ -1461,7 +1461,7 @@ on event "request-label-collections" action HandleLabelCollections(labelIds, cal
 
 **Break/Continue**:
 ```eligian
-on event "request-label-collections" action HandleLabelCollections(labelIds, callback) [
+on event "request-label-collections" action HandleLabelCollections(labelIds: array, callback) [
   for (id in labelIds) {
     if (@@id == "") {
       continue
@@ -1492,7 +1492,7 @@ Event actions compile to `IEventActionConfiguration` objects in the Eligius JSON
 
 **Input** (Eligian):
 ```eligian
-on event "language-change" topic "settings" action HandleLanguageChange(languageCode) [
+on event "language-change" topic "settings" action HandleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
 ]
@@ -1539,7 +1539,7 @@ The compiler validates event names against the 43 events exported by Eligius (`e
 **Validation Features**:
 - Unknown event names are errors with "Did you mean?" suggestions (Levenshtein distance ≤ 2)
 - Argument count: a warning when the parameter count differs from the event's argument count
-- Type annotations (opt-in): an error when an annotated parameter type differs from the event argument type. Types are compared as strings, so arguments typed by Eligius as `TLanguageCode`, `any` or a callback cannot be annotated; leave those parameters untyped.
+- Type annotations (opt-in): the Eligius argument type is mapped to its DSL annotation (`string`, `number`, `boolean` as-is; `TLanguageCode` → `string`; `T[]` / `Array<T>` → `array`; `Record<...>` and object literal types → `object`) and compared with the declared annotation. Arguments typed `any` or as callbacks have no DSL annotation; annotating them is an error, leave them untyped.
 
 **Example - Invalid Event Name**:
 ```eligian
@@ -1559,8 +1559,11 @@ on event "before-request-video-url" action HandleVideoURL(index: number, positio
 
 **Example - Type Mismatch**:
 ```eligian
-// ❌ ERROR: Type mismatch for parameter 'language': declared as 'string' but event provides 'TLanguageCode'
-on event "language-change" action HandleLanguageChange(language: string) [...]
+// ❌ ERROR: Type mismatch for parameter 'language': declared as 'number' but event provides 'TLanguageCode' (annotate as 'string')
+on event "language-change" action HandleLanguageChange(language: number) [...]
+
+// ❌ ERROR: Type mismatch for parameter 'payload': declared as 'object' but event provides 'any', which has no Eligian type annotation. Remove the annotation.
+on event "dom-mutation" action HandleMutation(payload: object) [...]
 ```
 
 **Valid Eligius Events** (all 43, arguments in parentheses):
@@ -1613,7 +1616,7 @@ The VS Code extension provides intelligent code completion for event actions, au
 - Dropdown list of all 43 Eligius events with descriptions
 - Selecting an event auto-generates a complete action skeleton:
   - Action name in camelCase convention (e.g., `handleLanguageChange`)
-  - Parameters named after the event arguments, annotated only where the Eligius type is a valid DSL annotation (`string`, `number`, `boolean`, `object`, `array`); arguments typed `TLanguageCode`, `any`, `string[]` or as callbacks are emitted untyped
+  - Parameters named after the event arguments, annotated with the DSL equivalent of the Eligius type (`TLanguageCode` → `string`, `string[]` → `array`); arguments typed `any` or as callbacks are emitted untyped
   - Empty operation body with the cursor placed inside
 
 **Example Workflow**:
@@ -1622,14 +1625,14 @@ The VS Code extension provides intelligent code completion for event actions, au
 on event "|"
 
 // 2. Dropdown shows 43 events:
-//    - language-change: Fires when language changes (param: language: TLanguageCode)
+//    - language-change: Fires when language changes (param: language: string)
 //    - timeline-complete: Fires when timeline finishes ()
 //    - before-request-video-url: Fires before video URL request (params: index: number, ...)
 //    ... 40 more ...
 
 // 3. Select "language-change" and get (cursor inside the brackets;
-//    TLanguageCode has no DSL annotation, so the parameter is untyped):
-on event "language-change" action handleLanguageChange(language) [
+//    TLanguageCode maps to the string annotation):
+on event "language-change" action handleLanguageChange(language: string) [
 
 ]
 

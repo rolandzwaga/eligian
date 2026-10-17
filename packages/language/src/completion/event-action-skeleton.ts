@@ -7,6 +7,7 @@
 
 import type { CompletionItem } from 'vscode-languageserver';
 import { CompletionItemKind, InsertTextFormat } from 'vscode-languageserver';
+import { eligiusTypeToDslAnnotation } from '../utils/event-arg-types.js';
 import type {
   EventArgMetadata,
   TimelineEventMetadata,
@@ -49,40 +50,31 @@ export function generateActionName(eventName: string): string {
 }
 
 /**
- * Type annotations the Eligian grammar accepts (`TypeAnnotation` rule).
- *
- * Eligius event metadata also carries TypeScript types such as
- * `TLanguageCode`, `any`, `string[]` or callback signatures. Those have no
- * DSL equivalent and would not parse, and the event validator compares
- * annotations to the metadata type verbatim, so a substitute such as `array`
- * for `string[]` would be flagged as a mismatch. Parameters with such types
- * are therefore emitted without an annotation (typing is opt-in).
- */
-const DSL_TYPE_ANNOTATIONS: ReadonlySet<string> = new Set([
-  'string',
-  'number',
-  'boolean',
-  'object',
-  'array',
-]);
-
-/**
  * Generate parameter list from event metadata
+ *
+ * Eligius argument types are mapped to DSL annotations with
+ * `eligiusTypeToDslAnnotation` (the same mapping the event action validator
+ * uses). Types without a DSL equivalent (`any`, callbacks) are emitted as a
+ * bare parameter name, since typing is opt-in.
  *
  * Examples:
  * - [] → ""
  * - [{name: "position", type: "number"}] → "position: number"
- * - [{name: "index", type: "number"}, {name: "position", type: "number"}] → "index: number, position: number"
- * - [{name: "language", type: "TLanguageCode"}] → "language" (no DSL annotation for that type)
+ * - [{name: "language", type: "TLanguageCode"}] → "language: string"
+ * - [{name: "labelIds", type: "string[]"}] → "labelIds: array"
+ * - [{name: "callback", type: "(fn: any) => void"}] → "callback"
  *
  * @param args - Event argument metadata (optional)
- * @returns Parameter list string; annotated only where the type is a valid DSL annotation
+ * @returns Parameter list string
  */
 export function generateParameters(args: EventArgMetadata[] | undefined): string {
   if (!args || args.length === 0) return '';
 
   return args
-    .map(arg => (DSL_TYPE_ANNOTATIONS.has(arg.type) ? `${arg.name}: ${arg.type}` : arg.name))
+    .map(arg => {
+      const annotation = eligiusTypeToDslAnnotation(arg.type);
+      return annotation ? `${arg.name}: ${annotation}` : arg.name;
+    })
     .join(', ');
 }
 

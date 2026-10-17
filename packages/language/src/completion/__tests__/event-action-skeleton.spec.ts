@@ -81,10 +81,12 @@ describe('generateParameters', () => {
     expect(generateParameters(args)).toBe('index: number, position: number');
   });
 
-  test('omits the annotation for types the DSL cannot express', () => {
-    expect(generateParameters([{ name: 'language', type: 'TLanguageCode' }])).toBe('language');
+  test('maps Eligius types to DSL annotations and omits the rest', () => {
+    expect(generateParameters([{ name: 'language', type: 'TLanguageCode' }])).toBe(
+      'language: string'
+    );
+    expect(generateParameters([{ name: 'labelIds', type: 'string[]' }])).toBe('labelIds: array');
     expect(generateParameters([{ name: 'payload', type: 'any' }])).toBe('payload');
-    expect(generateParameters([{ name: 'labelIds', type: 'string[]' }])).toBe('labelIds');
     expect(generateParameters([{ name: 'callback', type: '(position: number) => void' }])).toBe(
       'callback'
     );
@@ -95,7 +97,7 @@ describe('generateParameters', () => {
       { name: 'labelIds', type: 'string[]' },
       { name: 'callback', type: '(collections: any) => void' },
     ];
-    expect(generateParameters(args)).toBe('labelIds, callback');
+    expect(generateParameters(args)).toBe('labelIds: array, callback');
     expect(
       generateParameters([
         { name: 'systemName', type: 'string' },
@@ -239,7 +241,7 @@ describe('createSkeletonCompletionItem', () => {
 
     const item = createSkeletonCompletionItem(metadata);
     expect(item.insertText).toBe(
-      'on event "language-change" action handleLanguageChange(language) [\n\t$0\n]'
+      'on event "language-change" action handleLanguageChange(language: string) [\n\t$0\n]'
     );
   });
 
