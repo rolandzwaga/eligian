@@ -185,10 +185,9 @@ async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> 
     console.log(chalk.gray(`Bundling ${inputPath}...`));
   }
 
-  // Use runPromiseExit so we can inspect the Cause directly: a failed Effect
-  // rejects runPromise with an opaque FiberFailure wrapper, against which
-  // `instanceof BundleError` always returns false. Cause.failureOption recovers
-  // the typed error (BundleError and its subclasses like OutputExistsError).
+  // Use runPromiseExit so we can inspect the Cause directly and distinguish a
+  // typed BundleError failure from a defect/interruption. Cause.findErrorOption
+  // recovers the typed error (BundleError and its subclasses like OutputExistsError).
   const exit = await Effect.runPromiseExit(
     createBundle(inputPath, {
       outputDir: options.output,
@@ -210,7 +209,7 @@ async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> 
     return;
   }
 
-  const failure = Cause.failureOption(exit.cause);
+  const failure = Cause.findErrorOption(exit.cause);
   if (Option.isSome(failure) && failure.value instanceof BundleError) {
     console.error(chalk.red(`\nBundle failed: ${failure.value.message}`));
     process.exit(EXIT_COMPILE_ERROR);

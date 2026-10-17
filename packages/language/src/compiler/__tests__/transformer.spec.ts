@@ -716,8 +716,11 @@ describe('AST Transformer', () => {
 
       const result = Effect.runPromise(transformAST(program));
 
-      // Effect wraps errors in FiberFailure, so check the message
-      await expect(result).rejects.toThrow('InvalidTimeline');
+      // Effect 4 rejects with the typed error itself (no FiberFailure wrapper)
+      await expect(result).rejects.toMatchObject({
+        _tag: 'TransformError',
+        kind: 'InvalidTimeline',
+      });
     });
 
     test('should include error location in transform errors', async () => {
@@ -732,9 +735,10 @@ describe('AST Transformer', () => {
         await Effect.runPromise(transformAST(program));
         fail('Should have thrown');
       } catch (error: any) {
-        // Effect wraps errors, check the message contains our error
-        expect(error.message).toContain('TransformError');
-        expect(error.message).toContain('InvalidTimeline');
+        // Effect 4 rejects with the typed error itself
+        expect(error._tag).toBe('TransformError');
+        expect(error.kind).toBe('InvalidTimeline');
+        expect(error.location).toBeDefined();
       }
     });
   });

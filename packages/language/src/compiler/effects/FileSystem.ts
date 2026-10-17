@@ -27,7 +27,7 @@ export class IOError {
  *
  * Provides typed file operations that return Effects.
  */
-export class FileSystemService extends Context.Tag('FileSystem')<
+export class FileSystemService extends Context.Service<
   FileSystemService,
   {
     /**
@@ -50,4 +50,4 @@ export class FileSystemService extends Context.Tag('FileSystem')<
      */
     readonly readDir: (path: string) => Effect.Effect<string[], IOError>;
   }
->() {}
+>()('FileSystem') {}

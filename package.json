@@ -26,12 +26,12 @@
     "effect:patch": "effect-tsgo patch --typescript"
   },
   "dependencies": {
-    "effect": "3.22.2",
+    "effect": "4.0.5",
     "eligius": "2.3.2"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@effect/tsgo": "0.51.1",
+    "@effect/tsgo": "0.53.3",
     "@types/node": "26.6.5",
     "@typescript/typescript6": "6.0.2",
     "@vitest/coverage-v8": "5.0.4",

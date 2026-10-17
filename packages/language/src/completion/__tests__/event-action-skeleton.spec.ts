@@ -81,9 +81,39 @@ describe('generateParameters', () => {
     expect(generateParameters(args)).toBe('index: number, position: number');
   });
 
-  test('handles complex type names', () => {
-    const args = [{ name: 'language', type: 'TLanguageCode' }];
-    expect(generateParameters(args)).toBe('language: TLanguageCode');
+  test('maps Eligius types to DSL annotations and omits the rest', () => {
+    expect(generateParameters([{ name: 'language', type: 'TLanguageCode' }])).toBe(
+      'language: string'
+    );
+    expect(generateParameters([{ name: 'labelIds', type: 'string[]' }])).toBe('labelIds: array');
+    expect(generateParameters([{ name: 'payload', type: 'any' }])).toBe('payload');
+    expect(generateParameters([{ name: 'callback', type: '(position: number) => void' }])).toBe(
+      'callback'
+    );
+  });
+
+  test('mixes annotated and unannotated parameters', () => {
+    const args = [
+      { name: 'labelIds', type: 'string[]' },
+      { name: 'callback', type: '(collections: any) => void' },
+    ];
+    expect(generateParameters(args)).toBe('labelIds: array, callback');
+    expect(
+      generateParameters([
+        { name: 'systemName', type: 'string' },
+        { name: 'callback', type: '(fn: any) => void' },
+      ])
+    ).toBe('systemName: string, callback');
+  });
+
+  test('keeps every valid DSL annotation', () => {
+    const args = ['string', 'number', 'boolean', 'object', 'array'].map(type => ({
+      name: `p_${type}`,
+      type,
+    }));
+    expect(generateParameters(args)).toBe(
+      'p_string: string, p_number: number, p_boolean: boolean, p_object: object, p_array: array'
+    );
   });
 
   test('formats three parameters correctly', () => {
@@ -211,7 +241,7 @@ describe('createSkeletonCompletionItem', () => {
 
     const item = createSkeletonCompletionItem(metadata);
     expect(item.insertText).toBe(
-      'on event "language-change" action handleLanguageChange(language: TLanguageCode) [\n\t$0\n]'
+      'on event "language-change" action handleLanguageChange(language: string) [\n\t$0\n]'
     );
   });
 

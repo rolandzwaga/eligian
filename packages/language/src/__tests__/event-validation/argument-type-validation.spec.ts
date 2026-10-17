@@ -171,4 +171,68 @@ describe('Argument Type Compatibility Validation (US3)', () => {
     );
     expect(typeError).toBeDefined();
   });
+
+  // Eligius types are mapped to DSL annotations (utils/event-arg-types.ts)
+  test('should accept string for a TLanguageCode argument', async () => {
+    const code = eventActionProgram('language-change', 'HandleLanguage', [
+      { name: 'language', type: 'string' },
+    ]);
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const typeErrors = diagnostics.filter(
+      d =>
+        d.severity === DiagnosticSeverity.Error && d.message.toLowerCase().includes('type mismatch')
+    );
+
+    expect(typeErrors).toHaveLength(0);
+  });
+
+  test('should hint the expected annotation when a mapped type mismatches', async () => {
+    const code = eventActionProgram('language-change', 'HandleLanguage', [
+      { name: 'language', type: 'number' },
+    ]);
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const typeError = diagnostics.find(
+      d => d.severity === DiagnosticSeverity.Error && d.message.includes('Type mismatch')
+    );
+
+    expect(typeError).toBeDefined();
+    expect(typeError?.message).toContain("event provides 'TLanguageCode'");
+    expect(typeError?.message).toContain("annotate as 'string'");
+  });
+
+  test('should accept array for a string[] argument', async () => {
+    const code = eventActionProgram('request-label-collections', 'HandleCollections', [
+      { name: 'labelIds', type: 'array' },
+      { name: 'callback' },
+    ]);
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const typeErrors = diagnostics.filter(
+      d =>
+        d.severity === DiagnosticSeverity.Error && d.message.toLowerCase().includes('type mismatch')
+    );
+
+    expect(typeErrors).toHaveLength(0);
+  });
+
+  test('should reject an annotation on an argument that has no Eligian type', async () => {
+    const code = eventActionProgram('request-label-collections', 'HandleCollections', [
+      { name: 'labelIds', type: 'array' },
+      { name: 'callback', type: 'object' },
+    ]);
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const typeError = diagnostics.find(
+      d =>
+        d.severity === DiagnosticSeverity.Error &&
+        d.message.includes('callback') &&
+        d.message.includes('Type mismatch')
+    );
+
+    expect(typeError).toBeDefined();
+    expect(typeError?.message).toContain('no Eligian type annotation');
+    expect(typeError?.message).toContain('Remove the annotation');
+  });
 });

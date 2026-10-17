@@ -2,6 +2,7 @@ import type { ValidationAcceptor } from 'langium';
 import { TIMELINE_EVENTS } from '../completion/metadata/timeline-events.generated.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import type { EventActionDefinition } from '../generated/ast.js';
+import { eligiusTypeToDslAnnotation } from '../utils/event-arg-types.js';
 import { BaseValidator } from './base-validator.js';
 import { RESERVED_KEYWORDS } from './validation-constants.js';
 
@@ -251,11 +252,24 @@ export class EventActionValidator extends BaseValidator {
         continue;
       }
 
-      // Compare types (case-sensitive string comparison)
-      if (param.type !== eventArg.type) {
+      // Compare the annotation with the DSL equivalent of the Eligius argument type
+      // (e.g. TLanguageCode -> string, string[] -> array). Arguments typed `any` or
+      // as callbacks have no DSL annotation and must stay untyped.
+      const expected = eligiusTypeToDslAnnotation(eventArg.type);
+      if (expected === undefined) {
         accept(
           'error',
-          `Type mismatch for parameter '${param.name}': declared as '${param.type}' but event provides '${eventArg.type}'`,
+          `Type mismatch for parameter '${param.name}': declared as '${param.type}' but event provides '${eventArg.type}', which has no Eligian type annotation. Remove the annotation.`,
+          {
+            node: param,
+            property: 'type',
+            code: 'event_type_mismatch',
+          }
+        );
+      } else if (param.type !== expected) {
+        accept(
+          'error',
+          `Type mismatch for parameter '${param.name}': declared as '${param.type}' but event provides '${eventArg.type}' (annotate as '${expected}')`,
           {
             node: param,
             property: 'type',

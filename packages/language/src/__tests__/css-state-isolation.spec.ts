@@ -27,12 +27,12 @@ describe('CSS State Isolation', () => {
 
       // First compilation: FileA
       const resultA = await Effect.runPromise(
-        Effect.either(parseSource(sourceA, 'file:///fileA.eligian'))
+        Effect.result(parseSource(sourceA, 'file:///fileA.eligian'))
       );
 
       // Second compilation: FileB (should be completely independent)
       const resultB = await Effect.runPromise(
-        Effect.either(parseSource(sourceB, 'file:///fileB.eligian'))
+        Effect.result(parseSource(sourceB, 'file:///fileB.eligian'))
       );
 
       // Both compilations should produce the same result (state isolation verified)
@@ -51,7 +51,7 @@ describe('CSS State Isolation', () => {
       const results = [];
       for (let i = 0; i < sources.length; i++) {
         const result = await Effect.runPromise(
-          Effect.either(parseSource(sources[i], `file:///file${i + 1}.eligian`))
+          Effect.result(parseSource(sources[i], `file:///file${i + 1}.eligian`))
         );
         results.push(result);
       }
@@ -76,21 +76,21 @@ describe('CSS State Isolation', () => {
 
       // First compilation
       const result1 = await Effect.runPromise(
-        Effect.either(parseSource(source, 'file:///test.eligian'))
+        Effect.result(parseSource(source, 'file:///test.eligian'))
       );
 
       // Second compilation (same file)
       const result2 = await Effect.runPromise(
-        Effect.either(parseSource(source, 'file:///test.eligian'))
+        Effect.result(parseSource(source, 'file:///test.eligian'))
       );
 
       // Both should produce identical errors
       expect(result1._tag).toBe(result2._tag);
 
-      if (result1._tag === 'Left' && result2._tag === 'Left') {
-        expect(result1.left.message).toBe(result2.left.message);
-        expect(result1.left.location.line).toBe(result2.left.location.line);
-        expect(result1.left.location.column).toBe(result2.left.location.column);
+      if (result1._tag === 'Failure' && result2._tag === 'Failure') {
+        expect(result1.failure.message).toBe(result2.failure.message);
+        expect(result1.failure.location.line).toBe(result2.failure.location.line);
+        expect(result1.failure.location.column).toBe(result2.failure.location.column);
       }
     });
 
@@ -110,7 +110,7 @@ describe('CSS State Isolation', () => {
 
       for (let i = 0; i < compilations; i++) {
         const result = await Effect.runPromise(
-          Effect.either(parseSource(source, 'file:///test.eligian'))
+          Effect.result(parseSource(source, 'file:///test.eligian'))
         );
         results.push(result);
       }
@@ -139,11 +139,11 @@ describe('CSS State Isolation', () => {
       `;
 
       // Compile FileA
-      await Effect.runPromise(Effect.either(parseSource(sourceA, 'file:///fileA.eligian')));
+      await Effect.runPromise(Effect.result(parseSource(sourceA, 'file:///fileA.eligian')));
 
       // Compile FileB
       const resultB = await Effect.runPromise(
-        Effect.either(parseSource(sourceB, 'file:///fileB.eligian'))
+        Effect.result(parseSource(sourceB, 'file:///fileB.eligian'))
       );
 
       // FileB should not see FileA's CSS classes (state isolation verified)
@@ -158,11 +158,11 @@ describe('CSS State Isolation', () => {
 
       // Compile with different URIs but same content
       const result1 = await Effect.runPromise(
-        Effect.either(parseSource(source, 'file:///path1/test.eligian'))
+        Effect.result(parseSource(source, 'file:///path1/test.eligian'))
       );
 
       const result2 = await Effect.runPromise(
-        Effect.either(parseSource(source, 'file:///path2/test.eligian'))
+        Effect.result(parseSource(source, 'file:///path2/test.eligian'))
       );
 
       // Both should produce identical results (state isolation verified)
@@ -182,11 +182,11 @@ describe('CSS State Isolation', () => {
       `;
 
       // Compile with CSS import
-      await Effect.runPromise(Effect.either(parseSource(sourceWithCSS, 'file:///test1.eligian')));
+      await Effect.runPromise(Effect.result(parseSource(sourceWithCSS, 'file:///test1.eligian')));
 
       // Compile without CSS import (should be independent, not see test1's CSS)
       const result2 = await Effect.runPromise(
-        Effect.either(parseSource(sourceWithoutCSS, 'file:///test2.eligian'))
+        Effect.result(parseSource(sourceWithoutCSS, 'file:///test2.eligian'))
       );
 
       // State isolation verified - test2 doesn't see test1's CSS state

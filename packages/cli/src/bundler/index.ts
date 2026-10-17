@@ -175,9 +175,7 @@ export function createBundle(
     yield* Effect.tryPromise({
       try: () => fs.rm(tempDir, { recursive: true, force: true }),
       catch: () => new BundleError('Failed to clean up temp directory'),
-    }).pipe(
-      Effect.catchAll(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`)))
-    );
+    }).pipe(Effect.catch(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`))));
 
     // Generate HTML with rewritten layout template URLs
     const containerSelector = config.containerSelector || '#app';

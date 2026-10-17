@@ -1,72 +1,44 @@
-[
-  {
-    "id": "welcome-title",
-    "labels": [
-      {
-        "id": "welcome-title-en",
-        "languageCode": "en-US",
-        "label": "Welcome to Eligian Language Demo"
-      },
-      {
-        "id": "welcome-title-nl",
-        "languageCode": "nl-NL",
-        "label": "Welkom bij Eligian Taal Demo"
-      }
-    ]
+{
+  "en-US": {
+    "welcome": {
+      "title": "Welcome to Eligian Language Demo"
+    },
+    "feature": {
+      "showcase": "Feature Showcase"
+    },
+    "button": {
+      "text": "Click Here"
+    },
+    "status": {
+      "message": "Timeline is running..."
+    }
   },
-  {
-    "id": "feature-showcase",
-    "labels": [
-      {
-        "id": "feature-showcase-en",
-        "languageCode": "en-US",
-        "label": "Feature Showcase"
-      },
-      {
-        "id": "feature-showcase-nl",
-        "languageCode": "nl-NL",
-        "label": "Functie Showcase"
-      },
-      {
-        "id": "feature-showcase-fr",
-        "languageCode": "fr-FR",
-        "label": "Présentation des fonctionnalités"
-      }
-    ]
+  "nl-NL": {
+    "welcome": {
+      "title": "Welkom bij Eligian Taal Demo"
+    },
+    "feature": {
+      "showcase": "Functie Showcase"
+    },
+    "button": {
+      "text": "Klik hier"
+    },
+    "status": {
+      "message": "Tijdlijn is actief..."
+    }
   },
-  {
-    "id": "button-text",
-    "labels": [
-      {
-        "id": "button-text-en",
-        "languageCode": "en-US",
-        "label": "Click Here"
-      },
-      {
-        "id": "button-text-nl",
-        "languageCode": "nl-NL",
-        "label": "Klik hier"
-      },
-      {
-        "id": "button-text-de",
-        "languageCode": "de-DE",
-        "label": "Hier klicken"
-      }
-    ]
-  },
-  {
-    "id": "status-message",
-    "labels": [
-      {
-        "id": "status-message-en",
-        "languageCode": "en-US",
-        "label": "Timeline is running..."
-      },
-      {
-        "id": "status-message-nl",
-        "languageCode": "nl-NL",
-        "label": "Tijdlijn is actief..."
-      }
-    ]
+  "fr-FR": {
+    "welcome": {
+      "title": "Bienvenue dans la démo du langage Eligian"
+    },
+    "feature": {
+      "showcase": "Présentation des fonctionnalités"
+    },
+    "button": {
+      "text": "Cliquez ici"
+    },
+    "status": {
+      "message": "La timeline est en cours..."
+    }
   }
-]
+}

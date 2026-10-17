@@ -7,6 +7,7 @@
 
 import type { CompletionItem } from 'vscode-languageserver';
 import { CompletionItemKind, InsertTextFormat } from 'vscode-languageserver';
+import { eligiusTypeToDslAnnotation } from '../utils/event-arg-types.js';
 import type {
   EventArgMetadata,
   TimelineEventMetadata,
@@ -51,18 +52,30 @@ export function generateActionName(eventName: string): string {
 /**
  * Generate parameter list from event metadata
  *
+ * Eligius argument types are mapped to DSL annotations with
+ * `eligiusTypeToDslAnnotation` (the same mapping the event action validator
+ * uses). Types without a DSL equivalent (`any`, callbacks) are emitted as a
+ * bare parameter name, since typing is opt-in.
+ *
  * Examples:
  * - [] → ""
- * - [{name: "language", type: "string"}] → "language: string"
- * - [{name: "index", type: "number"}, {name: "position", type: "number"}] → "index: number, position: number"
+ * - [{name: "position", type: "number"}] → "position: number"
+ * - [{name: "language", type: "TLanguageCode"}] → "language: string"
+ * - [{name: "labelIds", type: "string[]"}] → "labelIds: array"
+ * - [{name: "callback", type: "(fn: any) => void"}] → "callback"
  *
  * @param args - Event argument metadata (optional)
- * @returns Parameter list string with type annotations
+ * @returns Parameter list string
  */
 export function generateParameters(args: EventArgMetadata[] | undefined): string {
   if (!args || args.length === 0) return '';
 
-  return args.map(arg => `${arg.name}: ${arg.type}`).join(', ');
+  return args
+    .map(arg => {
+      const annotation = eligiusTypeToDslAnnotation(arg.type);
+      return annotation ? `${arg.name}: ${annotation}` : arg.name;
+    })
+    .join(', ');
 }
 
 /**

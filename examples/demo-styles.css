@@ -160,3 +160,34 @@ h3 {
 .nav-item.active {
   background: #4c6ef5;
 }
+
+/* Sections referenced by the timeline */
+#features,
+#demo-section,
+#outro {
+  opacity: 0;
+}
+
+.closing {
+  font-weight: bold;
+}
+
+/* Event handler targets */
+#mutation-log,
+#current-slide,
+#target-slide,
+#nav-direction {
+  font-family: monospace;
+}
+
+.mutation-detected {
+  outline: 1px dashed #ffd43b;
+}
+
+.nav-forward {
+  color: #51cf66;
+}
+
+.nav-back {
+  color: #ff6b6b;
+}
