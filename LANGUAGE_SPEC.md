@@ -1613,10 +1613,8 @@ The VS Code extension provides intelligent code completion for event actions, au
 - Dropdown list of all 43 Eligius events with descriptions
 - Selecting an event auto-generates a complete action skeleton:
   - Action name in camelCase convention (e.g., `handleLanguageChange`)
-  - Parameters with the argument names and types from event metadata, copied verbatim
+  - Parameters named after the event arguments, annotated only where the Eligius type is a valid DSL annotation (`string`, `number`, `boolean`, `object`, `array`); arguments typed `TLanguageCode`, `any`, `string[]` or as callbacks are emitted untyped
   - Empty operation body with the cursor placed inside
-
-**Caveat**: argument types are copied from Eligius as-is. Only `string`, `number`, `boolean`, `object` and `array` are valid DSL annotations, so a generated `language: TLanguageCode`, `payload: any` or callback type must be removed by hand before the file parses.
 
 **Example Workflow**:
 ```eligian
@@ -1629,13 +1627,14 @@ on event "|"
 //    - before-request-video-url: Fires before video URL request (params: index: number, ...)
 //    ... 40 more ...
 
-// 3. Select "language-change" and get (cursor inside the brackets):
-on event "language-change" action handleLanguageChange(language: TLanguageCode) [
+// 3. Select "language-change" and get (cursor inside the brackets;
+//    TLanguageCode has no DSL annotation, so the parameter is untyped):
+on event "language-change" action handleLanguageChange(language) [
 
 ]
 
-// 4. Remove the TLanguageCode annotation so the file parses:
-on event "language-change" action handleLanguageChange(language) [
+// Selecting "timeline-seek" yields fully annotated parameters:
+on event "timeline-seek" action handleTimelineSeek(seekPosition: number, currentPosition: number, duration: number) [
 
 ]
 ```

@@ -49,20 +49,41 @@ export function generateActionName(eventName: string): string {
 }
 
 /**
+ * Type annotations the Eligian grammar accepts (`TypeAnnotation` rule).
+ *
+ * Eligius event metadata also carries TypeScript types such as
+ * `TLanguageCode`, `any`, `string[]` or callback signatures. Those have no
+ * DSL equivalent and would not parse, and the event validator compares
+ * annotations to the metadata type verbatim, so a substitute such as `array`
+ * for `string[]` would be flagged as a mismatch. Parameters with such types
+ * are therefore emitted without an annotation (typing is opt-in).
+ */
+const DSL_TYPE_ANNOTATIONS: ReadonlySet<string> = new Set([
+  'string',
+  'number',
+  'boolean',
+  'object',
+  'array',
+]);
+
+/**
  * Generate parameter list from event metadata
  *
  * Examples:
  * - [] → ""
- * - [{name: "language", type: "string"}] → "language: string"
+ * - [{name: "position", type: "number"}] → "position: number"
  * - [{name: "index", type: "number"}, {name: "position", type: "number"}] → "index: number, position: number"
+ * - [{name: "language", type: "TLanguageCode"}] → "language" (no DSL annotation for that type)
  *
  * @param args - Event argument metadata (optional)
- * @returns Parameter list string with type annotations
+ * @returns Parameter list string; annotated only where the type is a valid DSL annotation
  */
 export function generateParameters(args: EventArgMetadata[] | undefined): string {
   if (!args || args.length === 0) return '';
 
-  return args.map(arg => `${arg.name}: ${arg.type}`).join(', ');
+  return args
+    .map(arg => (DSL_TYPE_ANNOTATIONS.has(arg.type) ? `${arg.name}: ${arg.type}` : arg.name))
+    .join(', ');
 }
 
 /**
