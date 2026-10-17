@@ -1,10 +1,19 @@
 # Eligian Language Specification
 
-**Version**: 1.6.0
-**Last Updated**: 2025-01-23
+**Version**: 1.7.0
+**Last Updated**: 2026-10-17
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.6.0):
+**Recent Changes** (v1.7.0):
+- `labels` import replaced by `locales` import (Feature 045); the `labels` keyword no longer exists
+- Locales JSON uses the Eligius 2.2 nested format keyed by locale code; compiles to `config.locales`
+- Locales import requires a `languages` block
+- Translation keys are referenced in dot-notation via `LabelController`
+- Event names MUST be one of the 43 Eligius events (Feature 029); custom names are compile errors
+- Duplicate event handlers are warnings, not errors; the compiler treats every diagnostic as fatal
+- Corrected the valid event list in section 5.10 (previous list contained non-existent events)
+
+**Previous Changes** (v1.6.0):
 - Added languages declaration syntax (Feature 037)
 - Languages block declares available presentation languages and default language
 - Single language: implicit default (no `*` marker required)
@@ -169,7 +178,7 @@ Reserved keywords that cannot be used as identifiers:
 ```
 action      at          timeline    for         if
 else        break       continue    from        as
-import      layout      styles      provider    labels
+import      layout      styles      provider    locales
 true        false       on          event       topic
 endable     library     private     sequence    stagger
 in          using       with        const       null
@@ -179,7 +188,7 @@ in          using       with        const       null
 - **Action keywords**: `action`, `endable`, `private`
 - **Control flow**: `for`, `if`, `else`, `break`, `continue`, `in`
 - **Timeline keywords**: `timeline`, `at`, `sequence`, `stagger`, `using`, `with`
-- **Import keywords**: `import`, `layout`, `styles`, `provider`, `labels`, `library`, `from`, `as`
+- **Import keywords**: `import`, `layout`, `styles`, `provider`, `locales`, `library`, `from`, `as`
 - **Event keywords**: `on`, `event`, `topic`
 - **Declaration keywords**: `const`
 - **Literals**: `true`, `false`, `null`
@@ -343,14 +352,14 @@ Default imports automatically assign assets to specific configuration properties
 layout "<path>"
 styles "<path>"
 provider "<path>"
-labels "<path>"
+locales "<path>"
 ```
 
 **Import Types**:
 - `layout` - HTML layout file (auto-assigned to `layoutTemplate`)
 - `styles` - CSS stylesheet file (registered for CSS validation/completion)
 - `provider` - Media file (auto-assigned to timeline provider source)
-- `labels` - Labels JSON file (auto-assigned to `labels` property, validated against schema)
+- `locales` - Locales JSON file (auto-assigned to `locales` property, validated against schema; requires a `languages` block)
 
 **Examples**:
 
@@ -359,7 +368,7 @@ labels "<path>"
 layout "./layout.html"      // Assigns to layoutTemplate property
 styles "./main.css"         // Registers CSS for completions
 provider "./video.mp4"      // Assigns to timelineProvider.source
-labels "./labels.json"      // Assigns to labels property (internationalization)
+locales "./locales.json"    // Assigns to locales property (internationalization)
 ```
 
 **Restrictions**:
@@ -420,105 +429,83 @@ Import paths must be **relative paths** only:
 
 **Reserved Names**: Import names cannot be reserved keywords (`action`, `timeline`, `const`, `for`, `if`, etc.)
 
-#### 3.2.4 Labels Import (Feature 033)
+#### 3.2.4 Locales Import (Feature 045)
 
-Labels imports provide internationalization support by loading multi-language translations from JSON files.
+Locales imports provide internationalization support by loading translations from a JSON file. This replaces the earlier `labels` import (Feature 033): the `labels` keyword no longer exists and the old array-of-label-groups file format is rejected.
 
 **Syntax**:
 ```eligian
-labels "<path-to-json-file>"
+locales "<path-to-json-file>"
 ```
 
-**Purpose**: Import label translations for multiple languages to support internationalized presentations. The labels JSON is validated against a schema and assigned to the Eligius configuration's `labels` property.
+**Purpose**: Import translations for every declared language. The JSON is validated against a schema and assigned to the Eligius configuration's `locales` property (`ILocalesConfiguration`, Eligius 2.2+).
 
-**JSON Format**: The labels file must be a JSON array of label groups, where each group contains translations in multiple languages.
+**Prerequisite**: A `languages` block (section 3.3 Languages Declaration) must be present. Importing locales without one is an error.
 
-**Example Labels File** (`labels.json`):
+**JSON Format**: An object keyed by locale code (`xx-XX`). Each value is a nested object of translation keys whose leaves are strings. Nested objects form dot-notation keys (`nav.home`). A locale value may instead be `{ "$ref": "./other.json" }` to load that locale from another file.
+
+**Example Locales File** (`locales.json`):
 ```json
-[
-  {
-    "id": "welcome-title",
-    "labels": [
-      {
-        "id": "welcome-title-en",
-        "languageCode": "en-US",
-        "label": "Welcome to Eligian Language Demo"
-      },
-      {
-        "id": "welcome-title-nl",
-        "languageCode": "nl-NL",
-        "label": "Welkom bij Eligian Taal Demo"
-      }
-    ]
+{
+  "en-US": {
+    "welcome": { "title": "Welcome" },
+    "nav": { "home": "Home", "about": "About" }
   },
-  {
-    "id": "button-text",
-    "labels": [
-      {
-        "id": "button-text-en",
-        "languageCode": "en-US",
-        "label": "Click Here"
-      },
-      {
-        "id": "button-text-de",
-        "languageCode": "de-DE",
-        "label": "Hier klicken"
-      }
-    ]
+  "nl-NL": {
+    "welcome": { "title": "Welkom" },
+    "nav": { "home": "Thuis", "about": "Over" }
   }
-]
+}
 ```
 
 **Example Usage**:
 ```eligian
-// Import labels
-labels "./labels.json"
+languages {
+  * "en-US" "English"
+    "nl-NL" "Nederlands"
+}
 
-// Import other assets
+locales "./locales.json"
 layout "./layout.html"
 styles "./styles.css"
 
-// Timeline can use labels via Eligius runtime
 timeline "Multi-Language Demo" in "#app" using raf {
   at 0s..5s [
     selectElement("#title")
-    // Label selection handled by Eligius runtime based on current language
-    setElementContent($globaldata.labels["welcome-title"])
-  ]
+    // LabelController renders the translation for the active language
+    addController("LabelController", "welcome.title")
+  ] []
 }
 ```
 
-**Schema Validation**:
-The compiler validates the labels JSON against a JSON Schema (Draft 2020-12):
+**Translation Keys**: The second argument of `addController("LabelController", ...)` is validated against the imported keys, with code completion and "Did you mean?" suggestions (section 5.12).
 
-**Required Fields**:
-- **Label Group**: `id` (string), `labels` (array with at least 1 item)
-- **Translation**: `id` (string), `languageCode` (string, min 2 chars), `label` (string)
+**Schema Validation**: The compiler validates the file against `packages/language/src/schemas/locales-schema.json` (Draft 2020-12):
+- Root must be an object with at least one locale
+- Locale codes must match `^[a-z]{2,3}-[A-Z]{2,3}$` (e.g. `en-US`)
+- Values are nested objects whose leaves are strings, or a `$ref` object
 
 **Validation Errors**:
-The compiler catches and reports validation errors with actionable messages:
-
 ```eligian
-// Missing required field
-labels "./invalid-labels.json"
-// ❌ ERROR: Missing required property "languageCode" at /0/labels/0
+locales "./locales.json"
+// ❌ ERROR: Locales import requires a languages block to declare available languages.
 
-// Empty label group
-labels "./empty-labels.json"
-// ❌ ERROR: Label group "welcome-title" must have at least one translation
+locales "./array-format.json"
+// ❌ ERROR: Property "root" must be a object. See schema documentation for required fields and types
 
-// Invalid JSON syntax
-labels "./broken-labels.json"
-// ❌ ERROR: Invalid JSON syntax in './broken-labels.json': Unexpected token } in JSON at position 45
+locales "./bad-code.json"
+// ❌ ERROR: Invalid locale code "en". Use format like "en-US" or "nl-NL"
+
+locales "./missing.json"
+// ❌ ERROR: Locales file not found: ./missing.json
 ```
 
 **Restrictions**:
-- Only ONE labels import allowed per program
+- Only ONE locales import allowed per program
 - Path must be relative (not absolute)
-- JSON file must be valid UTF-8
-- JSON must conform to labels schema (see `packages/language/src/schemas/labels-schema.json`)
+- Requires a `languages` block
 
-**Compilation**: Labels are loaded, validated, and assigned to `config.labels` in the compiled Eligius configuration.
+**Compilation**: The file content is assigned verbatim to `config.locales` in the compiled Eligius configuration.
 
 ### 3.3 Library Import Statements (Feature 023)
 
@@ -1255,14 +1242,14 @@ on event <eventName> (topic <topicName>)? action <ActionName> ( <parameters>? ) 
 ```
 
 Where:
-- `<eventName>` is a string literal (e.g., `"language-change"`, `"click"`)
+- `<eventName>` is a string literal naming one of the 43 Eligius events (e.g., `"language-change"`, `"timeline-play"`); see section 5.10
 - `(topic <topicName>)?` is optional - use parentheses to indicate optionality in BNF
 - `<ActionName>` is an identifier starting with an uppercase letter
 - `<parameters>?` is an optional comma-separated parameter list
 - `[` and `]` are **literal square brackets** in the Eligian syntax (not EBNF notation)
 
 **Components**:
-- **eventName**: String literal - the event name to listen for (e.g., "click", "language-change", "timeline-complete")
+- **eventName**: String literal - the Eligius event to listen for (e.g., "timeline-play", "language-change", "timeline-complete"). Unknown names are compile errors.
 - **topicName**: Optional string literal - namespace for the event (allows multiple handlers for same event name in different contexts)
 - **ActionName**: Identifier - name of the event action (should start with uppercase letter per convention)
 - **parameters**: Optional parameter list - receives data from `eventArgs` array at runtime
@@ -1274,9 +1261,11 @@ Where:
 ```eligian
 /**
  * Handle language change events
- * @param languageCode The new language code (e.g., "en", "fr", "de")
+ * @param languageCode The new language code (e.g., "en-US", "nl-NL").
+ *   Eligius types this as TLanguageCode, which has no DSL annotation, so the
+ *   parameter stays untyped.
  */
-on event "language-change" action HandleLanguageChange(languageCode: string) [
+on event "language-change" action HandleLanguageChange(languageCode) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
@@ -1297,25 +1286,21 @@ on event "<eventName>" topic "<topicName>" action <ActionName>(<parameters>) [
 
 **Example**:
 ```eligian
-// Handle click events in navigation context
-on event "click" topic "navigation" action HandleNavClick(targetId: string) [
-  selectAll(".nav-item")
+// Handle seek requests in the navigation context
+on event "timeline-seek-request" topic "navigation" action HandleNavSeek(position: number) [
+  selectElement(".nav-item")
   removeClass("active")
-  selectElement(targetId)
-  addClass("active")
+  selectElement("#nav-position")
+  setElementContent(position)
 ]
 
-// Handle click events in form context - same event, different topic
-on event "click" topic "form" action HandleFormClick(formId: string, buttonType: string) [
-  selectElement(formId)
-  if (buttonType == "submit") {
-    addClass("submitting")
-    selectElement("#form-status")
-    setElementContent("Submitting...")
-  } else if (buttonType == "cancel") {
-    removeClass("editing")
-    selectElement("#form-status")
-    setElementContent("Cancelled")
+// Handle seek requests in the scrubber context - same event, different topic
+on event "timeline-seek-request" topic "scrubber" action HandleScrubberSeek(position: number) [
+  selectElement("#scrubber-status")
+  if (position == 0) {
+    setElementContent("Start")
+  } else {
+    setElementContent(position)
   }
 ]
 ```
@@ -1323,7 +1308,7 @@ on event "click" topic "form" action HandleFormClick(formId: string, buttonType:
 **Key Points**:
 - **Optional**: Topics are optional - omit the `topic "<name>"` clause for global event handlers
 - **Same event, multiple handlers**: Multiple event actions can listen to the same event name if they use different topics
-- **Topic collision**: Two event actions with the same event name AND same topic (or both no topic) is an error
+- **Topic collision**: Two event actions with the same event name AND same topic (or both no topic) produce a warning (section 5.6)
 - **Dispatching**: At runtime, events can be fired with or without a topic - only matching handlers execute
 
 ### 5.3 Parameter Mapping
@@ -1333,23 +1318,23 @@ Event action parameters map to the `eventArgs` array passed when the event is fi
 **Parameter Position Mapping**:
 ```eligian
 // Event action definition
-on event "user-login" action HandleUserLogin(userId: string, userName: string, userRole: string) [
-  // userId = eventArgs[0]
-  // userName = eventArgs[1]
-  // userRole = eventArgs[2]
-  selectElement("#user-id")
-  setElementContent(userId)
-  selectElement("#user-name")
-  setElementContent(userName)
-  selectElement("#user-role")
-  setElementContent(userRole)
+on event "timeline-seek" action HandleSeek(seekPosition: number, currentPosition: number, duration: number) [
+  // seekPosition    = eventArgs[0]
+  // currentPosition = eventArgs[1]
+  // duration        = eventArgs[2]
+  selectElement("#seek-target")
+  setElementContent(seekPosition)
+  selectElement("#seek-from")
+  setElementContent(currentPosition)
+  selectElement("#seek-duration")
+  setElementContent(duration)
 ]
 ```
 
 **Runtime Dispatch**:
 ```javascript
 // JavaScript code that fires the event
-eventbus.broadcast("user-login", ["user123", "John Doe", "admin"]);
+eventbus.broadcast("timeline-seek", [12, 4, 60]);
 ```
 
 **Zero-Parameter Events**:
@@ -1372,35 +1357,34 @@ on event "timeline-complete" action HandleTimelineComplete() [
 
 ```eligian
 // ✅ Good - PascalCase for event actions
-on event "click" action HandleClick() [...]
-on event "data-sync" action HandleDataSync() [...]
+on event "timeline-play" action HandlePlay() [...]
+on event "timeline-pause" action HandlePause() [...]
 
 // ⚠️ Discouraged - lowercase (but not an error)
-on event "click" action handleClick() [...]
+on event "timeline-play" action handlePlay() [...]
 ```
 
 **Rationale**: This convention makes it clear at a glance which actions are event-driven vs. explicitly called in timelines.
 
-### 5.5 Common Event Names
+### 5.5 Event Names
 
-The following events are commonly used with Eligius:
+Event names are **restricted** to the 43 events Eligius fires (full list in section 5.10). Any other name is a compile error with "Did you mean?" suggestions. Use a `topic` to give the same event several handlers for different contexts.
 
-**Timeline Events** (fired by Eligius engine):
-- `timeline-play` - Timeline starts playing
-- `timeline-pause` - Timeline is paused
-- `timeline-stop` - Timeline is stopped
-- `timeline-complete` - Timeline completes playback
-- `timeline-seek` - Timeline position changes
+Commonly used events:
 
-**Application Events** (fired by application code):
-- `language-change` - Application language changes
-- `user-login` / `user-logout` - User authentication
-- `data-sync` - Data synchronization completes
-- `click` - Custom click event (often used with topics)
-- `hover` - Custom hover event
-- `submit` - Custom submit event
+**Timeline** (fired by the Eligius engine):
+- `timeline-play`, `timeline-pause`, `timeline-stop`, `timeline-restart`, `timeline-complete`
+- `timeline-seek` (seekPosition, currentPosition, duration), `timeline-seeked` (position, duration), `timeline-time` (position)
 
-**Note**: Event names are not restricted - you can fire and handle any custom event names your application requires.
+**Navigation**:
+- `before-request-video-url` (index, requestedVideoPosition, isHistoryRequest)
+- `navigate-to-video-url` (index, requestedVideoPosition), `video-complete` (index)
+
+**Language Manager**:
+- `language-change` (language: TLanguageCode)
+
+**Controller**:
+- `dom-mutation` (payload)
 
 ### 5.6 Validation Rules
 
@@ -1412,28 +1396,30 @@ on event "" action HandleEmpty() [...]
 
 **Empty Topic String**:
 ```eligian
-on event "click" topic "" action HandleClick() [...]
+on event "timeline-play" topic "" action HandlePlay() [...]
 // ❌ ERROR: Event topic cannot be an empty string. Either provide a topic name or omit the topic clause entirely.
 ```
 
-**Duplicate Event Action**:
+**Duplicate Event Action** (warning, reported on every duplicate):
 ```eligian
-on event "click" action HandleClick() [...]
-on event "click" action HandleClickAgain() [...]
-// ❌ ERROR: Event action for event 'click' (no topic) already defined
+on event "timeline-play" action HandlePlay() [...]
+on event "timeline-play" action HandlePlayAgain() [...]
+// ⚠️ WARNING: Multiple handlers defined for event 'timeline-play'. This may cause unexpected behavior.
 ```
 
-**Topic Collision**:
+**Topic Collision** (warning):
 ```eligian
-on event "click" topic "nav" action HandleNavClick() [...]
-on event "click" topic "nav" action AnotherNavClick() [...]
-// ❌ ERROR: Event action for event 'click' topic 'nav' already defined
+on event "timeline-play" topic "nav" action HandleNavPlay() [...]
+on event "timeline-play" topic "nav" action AnotherNavPlay() [...]
+// ⚠️ WARNING: Multiple handlers defined for event 'timeline-play' with topic 'nav'. This may cause unexpected behavior.
 ```
+
+**Note**: The compiler (CLI and extension compile command) fails on the first diagnostic of any severity, so a warning still blocks compilation. The IDE shows it as a warning.
 
 **Name Collision with Built-in Operations**:
 Event actions cannot have names that conflict with built-in operations:
 ```eligian
-on event "click" action selectElement() [...]
+on event "timeline-play" action selectElement() [...]
 // ❌ ERROR: Event action name 'selectElement' conflicts with built-in operation
 ```
 
@@ -1443,15 +1429,15 @@ Event actions support the full set of control flow statements:
 
 **If/Else**:
 ```eligian
-on event "data-sync" action HandleDataSync(syncStatus: string, itemCount: number) [
-  selectElement("#sync-status")
-  setElementContent(syncStatus)
-  if (syncStatus == "success") {
-    selectElement("#sync-indicator")
+on event "timeline-seeked" action HandleSeeked(position: number, duration: number) [
+  selectElement("#seek-status")
+  setElementContent(position)
+  if (position == duration) {
+    selectElement("#seek-indicator")
     addClass("success")
     removeClass("error")
-    selectElement("#sync-count")
-    setElementContent(itemCount)
+    selectElement("#seek-count")
+    setElementContent(duration)
   } else {
     selectElement("#sync-indicator")
     addClass("error")
@@ -1462,11 +1448,12 @@ on event "data-sync" action HandleDataSync(syncStatus: string, itemCount: number
 
 **For Loops**:
 ```eligian
-on event "items-loaded" action HandleItemsLoaded(items: array) [
-  for (item in items) {
-    selectElement(".template")
-    clone()
-    setElementContent(@@currentItem.name)
+// request-label-collections passes (labelIds: string[], callback); untyped
+// parameters because neither argument type has a DSL annotation
+on event "request-label-collections" action HandleLabelCollections(labelIds, callback) [
+  for (id in labelIds) {
+    selectElement(".label-template")
+    setElementContent(@@id)
     addClass("loaded")
   }
 ]
@@ -1474,16 +1461,16 @@ on event "items-loaded" action HandleItemsLoaded(items: array) [
 
 **Break/Continue**:
 ```eligian
-on event "batch-process" action HandleBatchProcess(items: array) [
-  for (item in items) {
-    if (@@currentItem.skip) {
+on event "request-label-collections" action HandleLabelCollections(labelIds, callback) [
+  for (id in labelIds) {
+    if (@@id == "") {
       continue
     }
-    if (@@currentItem.error) {
-      log("Error encountered, stopping batch")
+    if (@@id == "stop") {
+      log("Stop marker encountered, ending loop")
       break
     }
-    processItem(@@currentItem)
+    processLabel(@@id)
   }
 ]
 ```
@@ -1505,7 +1492,7 @@ Event actions compile to `IEventActionConfiguration` objects in the Eligius JSON
 
 **Input** (Eligian):
 ```eligian
-on event "language-change" topic "settings" action HandleLanguageChange(languageCode: string) [
+on event "language-change" topic "settings" action HandleLanguageChange(languageCode) [
   selectElement("#language-display")
   setElementContent(languageCode)
 ]
@@ -1547,54 +1534,74 @@ on event "language-change" topic "settings" action HandleLanguageChange(language
 
 ### 5.10 Event Name Validation (Feature 029)
 
-The Eligian compiler performs compile-time validation of event names against a registry of 43 known Eligius events. This catches typos and undefined event names before runtime.
+The compiler validates event names against the 43 events exported by Eligius (`eventmetadata` from the `eligius` package, generated into `packages/language/src/completion/metadata/timeline-events.generated.ts`). This catches typos and undefined event names before runtime.
 
 **Validation Features**:
-- Event names are validated against metadata from `@eligius/event-metadata` package
-- Invalid event names produce compile errors with "Did you mean?" suggestions using Levenshtein distance
-- Argument count validation: ensures event action parameter count matches event metadata
-- Type annotation validation: verifies parameter types match event argument types
+- Unknown event names are errors with "Did you mean?" suggestions (Levenshtein distance ≤ 2)
+- Argument count: a warning when the parameter count differs from the event's argument count
+- Type annotations (opt-in): an error when an annotated parameter type differs from the event argument type. Types are compared as strings, so arguments typed by Eligius as `TLanguageCode`, `any` or a callback cannot be annotated; leave those parameters untyped.
 
 **Example - Invalid Event Name**:
 ```eligian
-// ❌ ERROR: Unknown event name 'langauge-change' (Did you mean: 'language-change'?)
-on event "langauge-change" action HandleLanguageChange(languageCode: string) [
-  log(languageCode)
+// ❌ ERROR: Unknown event name: 'langauge-change' (Did you mean: language-change?)
+on event "langauge-change" action HandleLanguageChange(language) [
+  log(language)
 ]
 ```
 
 **Example - Argument Count Mismatch**:
 ```eligian
-// ❌ ERROR: Event 'before-request-video-url' expects 3 arguments, but action has 2 parameters
+// ⚠️ WARNING: event provides 3 arguments, action declares 2 parameters
 on event "before-request-video-url" action HandleVideoURL(index: number, position: number) [
   log("Video request")
 ]
 ```
 
-**Valid Eligius Events** (43 total - selection shown):
+**Example - Type Mismatch**:
+```eligian
+// ❌ ERROR: Type mismatch for parameter 'language': declared as 'string' but event provides 'TLanguageCode'
+on event "language-change" action HandleLanguageChange(language: string) [...]
 ```
-Timeline Events:
-  timeline-play, timeline-pause, timeline-complete, timeline-reset
 
-Video Events:
-  before-request-video-url, video-loaded, video-error, video-play, video-pause
+**Valid Eligius Events** (all 43, arguments in parentheses):
+```
+Timeline:
+  before-request-timeline-uri, timeline-complete, timeline-firstframe,
+  timeline-pause, timeline-pause-request, timeline-play, timeline-play-request,
+  timeline-play-toggle-request, timeline-resize, timeline-resize-request,
+  timeline-restart, timeline-stop, timeline-stop-request,
+  timeline-container-request (callback), timeline-current-timeline-change (timelineUri),
+  timeline-duration (getDuration), timeline-duration-request (callback),
+  timeline-seek (seekPosition, currentPosition, duration),
+  timeline-seek-request (position), timeline-seeked (position, duration),
+  timeline-time (position)
 
-Navigation Events:
-  slide-navigation, before-slide-navigation, after-slide-navigation
+Navigation:
+  before-request-video-url (index, requestedVideoPosition, isHistoryRequest),
+  highlight-navigation (videoUrlIndex), navigate-to-video-url (index, requestedVideoPosition),
+  push-history-state (state), request-current-navigation (callback),
+  request-current-video-position (callback), request-video-cleanup,
+  request-video-url (videoUrlIndex, requestedVideoPosition, fromRouting),
+  video-complete (index)
 
-System Events:
-  language-change, theme-change, resize, orientation-change
+Engine Request:
+  request-action (actionName, callback), request-current-language (callback),
+  request-current-timeline-position (callback), request-engine-root (callback),
+  request-function (systemName, callback), request-instance (instanceName, callback),
+  request-label-collection (language, callback), request-label-collections (labelIds, callback),
+  request-timeline-cleanup, request-timeline-uri (uri, position),
+  timeline-request-current-timeline (callback)
 
-Custom Events:
-  click, focus, blur, submit, change, input, keydown, keyup, scroll
-  (and 20+ more...)
+Language Manager:
+  language-change (language: TLanguageCode)
+
+Controller:
+  dom-mutation (payload)
 ```
 
 **Implementation Details**:
-- Validation occurs in `eligian-validator.ts:checkEventActionEventName()`
-- Event metadata loaded from `packages/language/src/completion/metadata/timeline-events.generated.ts`
-- Levenshtein distance ≤ 2 generates "Did you mean?" suggestions
-- Error code: `'unknown_event_name'`
+- Validation in `packages/language/src/validators/event-action-validator.ts` (`checkEventNameExists`, argument count and type checks)
+- Error codes: `unknown_event_name`, `empty_event_name`, `event_type_mismatch`, `unnecessary_type_annotation`
 
 ### 5.11 IDE Support and Code Completion (Feature 030)
 
@@ -1606,9 +1613,10 @@ The VS Code extension provides intelligent code completion for event actions, au
 - Dropdown list of all 43 Eligius events with descriptions
 - Selecting an event auto-generates a complete action skeleton:
   - Action name in camelCase convention (e.g., `handleLanguageChange`)
-  - Parameters with inferred types from event metadata
-  - Empty operation body ready for implementation
-  - JSDoc comment placeholder for documentation
+  - Parameters with the argument names and types from event metadata, copied verbatim
+  - Empty operation body with the cursor placed inside
+
+**Caveat**: argument types are copied from Eligius as-is. Only `string`, `number`, `boolean`, `object` and `array` are valid DSL annotations, so a generated `language: TLanguageCode`, `payload: any` or callback type must be removed by hand before the file parses.
 
 **Example Workflow**:
 ```eligian
@@ -1616,18 +1624,19 @@ The VS Code extension provides intelligent code completion for event actions, au
 on event "|"
 
 // 2. Dropdown shows 43 events:
-//    - language-change: Fires when language changes (param: languageCode: string)
+//    - language-change: Fires when language changes (param: language: TLanguageCode)
 //    - timeline-complete: Fires when timeline finishes ()
 //    - before-request-video-url: Fires before video URL request (params: index: number, ...)
 //    ... 40 more ...
 
-// 3. Select "language-change" and get:
-/**
- * Handle language-change event
- * @param languageCode
- */
-on event "language-change" action handleLanguageChange(languageCode: string) [
-  // TODO: Implement event handler
+// 3. Select "language-change" and get (cursor inside the brackets):
+on event "language-change" action handleLanguageChange(language: TLanguageCode) [
+
+]
+
+// 4. Remove the TLanguageCode annotation so the file parses:
+on event "language-change" action handleLanguageChange(language) [
+
 ]
 ```
 
@@ -1672,7 +1681,7 @@ Type `addController(` and press **Ctrl+Space** (or Cmd+Space on macOS) to see al
 For the second parameter of `LabelController`, autocomplete suggests imported label IDs:
 
 ```eligian
-labels "./translations.json"  // Import labels first
+locales "./translations.json"  // Import locales first
 
 timeline "demo" in "#app" using raf {
   at 0s selectElement("#title") {
@@ -2417,9 +2426,9 @@ action highlight(selector: string) [
 
 The compiler validates complex CSS selectors used in element selection operations.
 
-**Validated Operations**:
-- `selectElement("<selector>")`
-- `selectAll("<selector>")`
+**Validated Locations**:
+- `selectElement("<selector>")` (the only selector-taking operation in the registry; the validator set also lists `selectElements`, `querySelector` and `querySelectorAll` for forward compatibility)
+- The timeline container selector: `timeline "name" in "<selector>" using raf`
 
 **Selector Parsing**:
 - Handles combinators: `.parent > .child`, `.sibling + .next`, `.general ~ .sibling`
@@ -2629,7 +2638,7 @@ ProgramElement  := ActionDefinition | EventActionDefinition | Timeline | Variabl
 Library         := 'library' ID ActionDefinition*
 
 ImportStatement := DefaultImport | NamedImport | LibraryImport
-DefaultImport   := ('layout' | 'styles' | 'provider' | 'labels') STRING
+DefaultImport   := ('layout' | 'styles' | 'provider' | 'locales') STRING
 NamedImport     := 'import' ID 'from' STRING ('as' AssetType)?
 LibraryImport   := 'import' '{' ActionImport (',' ActionImport)* '}' 'from' STRING
 ActionImport    := ID ('as' ID)?
@@ -2707,6 +2716,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.7.0 | 2026-10-17 | **Feature 045 - Locales Import**: `labels` import replaced by `locales` (section 3.2.4); nested JSON format keyed by locale code, compiles to `config.locales`, requires a `languages` block; translation keys referenced via `LabelController`. **Feature 029 corrections**: event names are restricted to the 43 Eligius events (sections 5.5, 5.10); the previous event list contained non-existent events. Duplicate event handlers documented as warnings; noted that the compiler fails on any diagnostic. Keyword list and grammar summary updated. |
 | 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |
 | 1.5.0 | 2025-11-13 | **Major Update**: Fixed critical syntax notation issues, added complete documentation for 10+ missing features: Event name validation (Feature 029), event action code completion (Feature 030), CSS class/selector validation (Feature 013), preview CSS support with hot-reload (Feature 011), expanded JSDoc documentation (Feature 020), Typir integration details (Feature 021), comprehensive library file validation (Feature 023). Updated keyword list to include all 11 missing keywords. Verified 1,758 tests passing, 81.72% coverage. Added new sections 5.10, 5.11, 12, 13. |
