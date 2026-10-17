@@ -43,7 +43,7 @@ export const defaultCompileOptions: CompileOptions = {
  *
  * Provides the core compilation pipeline operations.
  */
-export class CompilerService extends Context.Tag('Compiler')<
+export class CompilerService extends Context.Service<
   CompilerService,
   {
     /**
@@ -66,4 +66,4 @@ export class CompilerService extends Context.Tag('Compiler')<
      */
     readonly validate: (ir: EligiusIR) => Effect.Effect<EligiusIR, CompilerError>;
   }
->() {}
+>()('Compiler') {}

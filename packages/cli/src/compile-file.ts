@@ -172,13 +172,13 @@ export class IOError extends CompileError {
 /**
  * Recover the underlying error from an Effect failure Cause.
  *
- * Prefers the typed failure (Cause.failureOption); for defects/interruptions it
+ * Prefers the typed failure (Cause.findErrorOption); for defects/interruptions it
  * falls back to Cause.squash, which surfaces the original thrown value. This
  * replaces a fragile JSON.stringify round-trip that relied on FiberFailure's
  * undocumented serialization and silently dropped defects.
  */
 function causeToError<E>(cause: Cause.Cause<E>): E {
-  return Option.getOrElse(Cause.failureOption(cause), () => Cause.squash(cause) as E);
+  return Option.getOrElse(Cause.findErrorOption(cause), () => Cause.squash(cause) as E);
 }
 
 /**

@@ -39,13 +39,13 @@ export function disposeCompilerOutputChannel(): void {
 /**
  * Recover the underlying error from an Effect failure Cause.
  *
- * Prefers the typed failure (`Cause.failureOption`); for defects/interruptions
+ * Prefers the typed failure (`Cause.findErrorOption`); for defects/interruptions
  * it falls back to `Cause.squash`, which surfaces the original thrown value.
  * This replaces the previous manual `toJSON()` -> `_id`/`_tag` unwrapping that
  * relied on FiberFailure's undocumented serialization (pairs with B7/B42).
  */
 function causeToError<E>(cause: Cause.Cause<E>): E {
-  return Option.getOrElse(Cause.failureOption(cause), () => Cause.squash(cause) as E);
+  return Option.getOrElse(Cause.findErrorOption(cause), () => Cause.squash(cause) as E);
 }
 
 /**
@@ -106,8 +106,7 @@ export function registerCompileCommand(): vscode.Disposable {
         const sourceUri = document.uri;
 
         // Compile the document. Use runPromiseExit so the typed CompileError is
-        // recovered from the Cause rather than the opaque FiberFailure wrapper
-        // that Effect.runPromise rejects with.
+        // recovered from the Cause and defects/interruptions are handled too.
         const exit = await Effect.runPromiseExit(
           compile(sourceCode, {
             optimize: true,

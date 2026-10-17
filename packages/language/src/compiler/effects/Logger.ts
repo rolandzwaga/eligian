@@ -19,7 +19,7 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
  *
  * Provides typed logging operations that return Effects.
  */
-export class LoggerService extends Context.Tag('Logger')<
+export class LoggerService extends Context.Service<
   LoggerService,
   {
     /**
@@ -47,4 +47,4 @@ export class LoggerService extends Context.Tag('Logger')<
      */
     readonly log: (level: LogLevel, message: string) => Effect.Effect<void>;
   }
->() {}
+>()('Logger') {}

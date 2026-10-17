@@ -259,9 +259,7 @@ export function bundleRuntime(
     yield* Effect.tryPromise({
       try: () => fs.unlink(entryPointPath),
       catch: () => new RuntimeBundleError('Failed to clean up temp file'),
-    }).pipe(
-      Effect.catchAll(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`)))
-    );
+    }).pipe(Effect.catch(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`))));
 
     // Get bundled content
     if (!result.outputFiles || result.outputFiles.length === 0) {
