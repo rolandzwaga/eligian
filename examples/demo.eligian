@@ -27,7 +27,7 @@ languages {
 
 styles "./demo-styles.css"
 layout "./demo-layout.html"
-labels "./demo-labels.json"
+locales "./demo-labels.json"
 
 import { fadeIn, fadeOut, slideInLeft } from "./libraries/animations.eligian"
 import { safeRemoveClass } from "./libraries/utils.eligian"
@@ -139,11 +139,20 @@ action checkValue(value: number) [
 ]
 
 /**
- * Private helper action (not exported from library)
+ * Helper action (the `private` modifier is only allowed in library files)
  */
-private action resetAll() [
+action resetAll() [
   safeRemoveClass(".slide", "active")
   safeRemoveClass(".item", "visible")
+]
+
+/**
+ * Logs a message. Operations cannot be called directly from timeline
+ * control flow, so the timeline calls this action instead of log().
+ * @param message Text to log (untyped so loop variables such as @@slide can be passed)
+ */
+action logMessage(message) [
+  log(message)
 ]
 
 // ============================================================================
@@ -155,7 +164,7 @@ timeline "Eligian Demo" in "#container" using raf {
   // === Inline Endable Action with start and end blocks ===
   at 0s..5s [
     selectElement("#intro")
-    setElementContent({template: title})
+    setElementContent({template: @title})
     addClass("fade-in")
     animate({opacity: 1}, 1000)
   ] [
@@ -165,16 +174,16 @@ timeline "Eligian Demo" in "#container" using raf {
   ]
 
   // === Call custom action (operation call) ===
-  at 1s..1s showSlide("title", 1000)
+  at 1s..2s showSlide("title", 1000)
 
   // === For loop in timeline ===
-  at 3s..3s for (slide in slides) {
-    log("Processing slide: " + @@slide)
+  at 3s..4s for (slide in @slides) {
+    logMessage("Processing next slide")
   }
 
   // === If statement in timeline ===
-  at 4s..4s if (autoPlay) {
-    log("Auto-play is enabled")
+  at 4s..5s if (@autoPlay) {
+    logMessage("Auto-play is enabled")
   }
 
   // === Feature showcase ===
@@ -188,11 +197,17 @@ timeline "Eligian Demo" in "#container" using raf {
     removeClass("visible")
   ]
 
-  // === Stagger block with action call ===
-  stagger 200ms ["feat1", "feat2", "feat3", "feat4", "feat5"] with fadeIn(@@staggerItem, 400) for 0.5s
+  // === Stagger block: one timeline action per item, @@currentItem is the current item ===
+  stagger 200ms ["#feat1", "#feat2", "#feat3", "#feat4", "#feat5"] for 0.5s [
+    selectElement(@@currentItem)
+    addClass("visible")
+  ] [
+    selectElement(@@currentItem)
+    removeClass("visible")
+  ]
 
   // === Action call without time range (uses stagger/sequence context) ===
-  at 6s..6s showItems(["feat1", "feat2", "feat3", "feat4", "feat5"])
+  at 6s..7s showItems(["feat1", "feat2", "feat3", "feat4", "feat5"])
 
   // === Interactive demo section ===
   at 15s..25s [
@@ -205,7 +220,7 @@ timeline "Eligian Demo" in "#container" using raf {
   ]
 
   // === Multiple action calls in sequence ===
-  at 17s..17s [
+  at 17s..18s [
     validateInput("")
     wait(500)
     validateInput("Valid input")
@@ -220,12 +235,12 @@ timeline "Eligian Demo" in "#container" using raf {
   ] []
 
   // === Action with break/continue ===
-  at 27s..27s searchItems(["apple", "banana", "", "cherry", "date"], "cherry")
+  at 27s..28s searchItems(["apple", "banana", "", "cherry", "date"], "cherry")
 
   // === Nested for with if ===
-  at 30s..30s for (item in slides) {
+  at 30s..31s for (item in @slides) {
     if (@@item == "demo") {
-      log("Found demo slide")
+      logMessage("Found demo slide")
       break
     }
   }
@@ -243,10 +258,10 @@ timeline "Eligian Demo" in "#container" using raf {
   ]
 
   // === Final if/else check ===
-  at 40s..40s if (autoPlay) {
-    log("Looping presentation...")
+  at 40s..41s if (@autoPlay) {
+    logMessage("Looping presentation...")
   } else {
-    log("Presentation complete")
+    logMessage("Presentation complete")
   }
 }
 
@@ -262,12 +277,14 @@ timeline "Eligian Demo" in "#container" using raf {
 
 /**
  * Handle language change events
- * @param languageCode The new language code (e.g., "en", "fr", "de")
+ * @param languageCode The new language code (e.g., "en-US", "nl-NL")
+ *
+ * Eligius types this argument as TLanguageCode, which has no DSL annotation,
+ * so the parameter is left untyped (type annotations are opt-in).
  *
  * Example: Type "on event " + Ctrl+Space, select "language-change"
- * Auto-generates: on event "language-change" action handleLanguageChange(languageCode: TLanguageCode) [ ... ]
  */
-on event "language-change" action handleLanguageChange(languageCode: string) [
+on event "language-change" action handleLanguageChange(languageCode) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
@@ -304,51 +321,42 @@ on event "before-request-video-url" action handleBeforeRequestVideoUrl(index: nu
 ]
 
 /**
- * Handle navigation clicks
- * Topic: "navigation" - Demonstrates topic namespacing
+ * Handle play in the navigation context
+ * Topic: "navigation" - Demonstrates topic namespacing: the same event name
+ * can have several handlers as long as their topics differ
  */
-on event "click" topic "navigation" action handleNavClick(targetId: string) [
-  selectAll(".nav-item")
+on event "timeline-play" topic "navigation" action handleNavPlay() [
+  selectElement(".nav-item")
   removeClass("active")
-  selectElement(targetId)
-  addClass("active")
   selectElement("#nav-state")
-  setElementContent(targetId)
+  setElementContent("Playing")
 ]
 
 /**
- * Handle form clicks
+ * Handle play in the form context
  * Topic: "form" - Same event, different topic
  */
-on event "click" topic "form" action HandleFormClick(formId: string, buttonType: string) [
-  selectElement(formId)
-  if (buttonType == "submit") {
-    addClass("submitting")
-    selectElement("#form-status")
-    setElementContent("Submitting...")
-  } else {
-    if (buttonType == "cancel") {
-      removeClass("editing")
-      selectElement("#form-status")
-      setElementContent("Cancelled")
-    }
-  }
+on event "timeline-play" topic "form" action handleFormPlay() [
+  selectElement("#form-status")
+  removeClass("editing")
+  addClass("submitting")
+  setElementContent("Submitting...")
 ]
 
 /**
- * Handle data sync with conditional logic
- * @param syncStatus Sync status (success, error, pending)
- * @param itemCount Number of items synced
+ * Handle seek completion with conditional logic
+ * @param position Timeline position after the seek (seconds)
+ * @param duration Total timeline duration (seconds)
  */
-on event "data-sync" action HandleDataSync(syncStatus: string, itemCount: number) [
+on event "timeline-seeked" action HandleSeeked(position: number, duration: number) [
   selectElement("#sync-status")
-  setElementContent(syncStatus)
-  if (syncStatus == "success") {
+  setElementContent(position)
+  if (position == duration) {
     selectElement("#sync-indicator")
     addClass("success")
     removeClass("error")
     selectElement("#sync-count")
-    setElementContent(itemCount)
+    setElementContent(duration)
   } else {
     selectElement("#sync-indicator")
     addClass("error")
@@ -374,63 +382,27 @@ on event "dom-mutation" action HandleDOMMutation(payload) [
   addClass("mutation-detected")
 ]
 
-/**
- * Handle timeline complete with valid zero-parameter event
- */
-on event "timeline-complete" action HandleCompletion() [
-  selectElement("#completion-status")
-  setElementContent("Done!")
-  addClass("complete")
-]
-
-// US2: Correct argument counts - these match event metadata
-/**
- * Handle video URL requests with correct 3-parameter count
- * @param index Video index
- * @param position Playback position
- * @param isHistory Whether this is a history request
- */
-on event "before-request-video-url" action HandleVideoURL(index: number, position: number, isHistory: boolean) [
-  selectElement("#video-info")
-  setElementContent("Loading video " + index)
-  if (isHistory) {
-    addClass("history-request")
-  }
-  log("Position: " + position)
-]
+// US2: Correct argument counts - see handleBeforeRequestVideoUrl in the Feature 028 section above
 
 // US3: Type annotations match event arg types
 /**
- * Handle data sync with type-safe parameters
- * @param syncStatus Sync status string (success, error, pending)
- * @param itemCount Number of items synced
+ * Handle seek requests with type validation
+ * @param seekPosition Requested position (seconds)
+ * @param currentPosition Position before the seek (seconds)
+ * @param duration Total timeline duration (seconds)
  */
-on event "data-sync" action HandleDataSyncTyped(syncStatus: string, itemCount: number) [
-  selectElement("#sync-display")
-  setElementContent(syncStatus + ": " + itemCount + " items")
-  if (syncStatus == "success") {
-    addClass("sync-success")
-  }
-]
-
-/**
- * Handle navigation with type validation
- * @param currentSlideIndex Current slide number
- * @param targetSlideIndex Target slide number
- * @param direction Navigation direction (forward or backward)
- */
-on event "slide-navigation" action HandleNavigation(
-  currentSlideIndex: number,
-  targetSlideIndex: number,
-  direction: string
+on event "timeline-seek" action HandleNavigation(
+  seekPosition: number,
+  currentPosition: number,
+  duration: number
 ) [
   selectElement("#current-slide")
-  setElementContent(currentSlideIndex)
+  setElementContent(currentPosition)
   selectElement("#target-slide")
-  setElementContent(targetSlideIndex)
+  setElementContent(seekPosition)
   selectElement("#nav-direction")
-  setElementContent(direction)
-  if (direction == "forward") {
+  setElementContent(duration)
+  if (seekPosition > currentPosition) {
     addClass("nav-forward")
   } else {
     addClass("nav-back")
