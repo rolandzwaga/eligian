@@ -131,10 +131,10 @@
   },
   "devDependencies": {
     "@types/jquery": "4.0.1",
-    "@types/vscode": "1.138.0",
-    "@vitest/ui": "5.0.3",
-    "concurrently": "10.0.5",
-    "jsdom": "30.1.1"
+    "@types/vscode": "1.140.0",
+    "@vitest/ui": "5.0.4",
+    "concurrently": "10.0.6",
+    "jsdom": "30.1.2"
   },
   "vsce": {
     "dependencies": false
