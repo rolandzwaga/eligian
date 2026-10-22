@@ -6,13 +6,11 @@ import {
   validateParameterCount,
   validateParameterTypes,
 } from '../../compiler/index.js';
-import { findActionByName } from '../../compiler/name-resolver.js';
-import type { EligianScopeProvider } from '../../eligian-scope-provider.js';
 import { isStaggerBlock, type OperationCall } from '../../generated/ast.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
-import { findImportedActionByNameOrAlias } from './action-resolution.js';
+import { findCallableActionByName } from './action-resolution.js';
 
 /**
  * Validates operation/action call argument counts, parameter types, and
@@ -85,58 +83,19 @@ export class ParameterValidator extends BaseValidator {
     const implicitArgs =
       isStaggerBlock(operation.$container) && operation.$containerProperty === 'actionCall' ? 1 : 0;
 
-    // Check if this is an action call (local, library, or imported)
-    const program = this.getProgram(operation);
-    if (program) {
-      // Check local action
-      const localAction = findActionByName(opName, program);
-      if (localAction) {
-        this.reportActionParameterCountError(
-          opName,
-          localAction.parameters,
-          argumentCount,
-          operation,
-          accept,
-          implicitArgs
-        );
-        return;
-      }
-
-      // Check imported action
-      // Feature 032 Fix: Must check aliases as well as original action names
-      if (this.services) {
-        const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
-        const importedActions = scopeProvider.getImportedActions(program);
-        const importedAction = findImportedActionByNameOrAlias(opName, program, importedActions);
-        if (importedAction) {
-          this.reportActionParameterCountError(
-            opName,
-            importedAction.parameters,
-            argumentCount,
-            operation,
-            accept,
-            implicitArgs
-          );
-          return;
-        }
-      }
-    }
-
-    // Check library action (for library files themselves)
-    const library = this.getLibrary(operation);
-    if (library) {
-      const libraryAction = library.actions?.find(a => a.name === opName);
-      if (libraryAction) {
-        this.reportActionParameterCountError(
-          opName,
-          libraryAction.parameters,
-          argumentCount,
-          operation,
-          accept,
-          implicitArgs
-        );
-        return;
-      }
+    // Check if this is an action call (local, library, or imported by name or
+    // alias), in Program and Library files alike
+    const action = findCallableActionByName(this.services, opName, operation);
+    if (action) {
+      this.reportActionParameterCountError(
+        opName,
+        action.parameters,
+        argumentCount,
+        operation,
+        accept,
+        implicitArgs
+      );
+      return;
     }
 
     // Only validate built-in operations if not an action

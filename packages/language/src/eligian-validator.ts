@@ -4,6 +4,7 @@ import type { EligianServices } from './eligian-module.js';
 import type { EligianAstType } from './generated/ast.js';
 import { ActionValidator } from './validators/action-validator.js';
 import { EventActionValidator } from './validators/event-action-validator.js';
+import { ExpressionValidator } from './validators/expression-validator.js';
 import { ImportValidator } from './validators/import-validator.js';
 import { LanguagesValidator } from './validators/languages-validator.js';
 import { NavigateValidator } from './validators/navigate-validator.js';
@@ -49,9 +50,9 @@ export function isValidLanguageCode(code: string): boolean {
 /**
  * Implementation of custom validations for Eligian DSL.
  *
- * Composition root: holds the seven focused validator instances grouped by
+ * Composition root: holds the focused validator instances grouped by
  * AST-node concern (program, imports, timeline, operation calls, actions,
- * languages, event actions). Each sub-validator extends `BaseValidator` and is
+ * languages, event actions, navigate, expressions). Each sub-validator extends `BaseValidator` and is
  * registered separately by {@link registerValidationChecks}. This keeps the DI
  * entry `services.validation.EligianValidator` resolvable while distributing the
  * `check*` rules across focused classes.
@@ -65,6 +66,7 @@ export class EligianValidator {
   readonly languages: LanguagesValidator;
   readonly eventAction: EventActionValidator;
   readonly navigate: NavigateValidator;
+  readonly expression: ExpressionValidator;
 
   constructor(services: EligianServices) {
     this.program = new ProgramValidator(services);
@@ -75,6 +77,7 @@ export class EligianValidator {
     this.languages = new LanguagesValidator(services);
     this.eventAction = new EventActionValidator(services);
     this.navigate = new NavigateValidator(services);
+    this.expression = new ExpressionValidator(services);
   }
 }
 
@@ -110,6 +113,7 @@ export function registerValidationChecks(services: EligianServices) {
     Library: [
       v.imports.checkLibraryContent, // T021-T024: US1 - Validate library content constraints
       v.imports.checkLibraryDuplicateActions, // T025: US1 - Duplicate action detection
+      v.imports.checkLibraryImportNameCollisions, // Imports vs own actions / each other
     ],
     LibraryImport: [
       v.imports.checkImportFileExists, // T041: US2 - Validate library file exists
@@ -131,7 +135,8 @@ export function registerValidationChecks(services: EligianServices) {
       v.timeline.checkSourceRequired,
       v.timeline.checkTimelineContainerSelector, // Feature 013: Validate timeline container selector against CSS
     ],
-    TimelineEvent: [v.timeline.checkValidTimeRange, v.timeline.checkNonNegativeTimes],
+    // TimelineEvent time ranges are validated by the Typir rules
+    // (type-system-typir/validation/event-validation.ts), not here.
   };
   registry.register(timelineChecks, v.timeline);
 
@@ -207,4 +212,9 @@ export function registerValidationChecks(services: EligianServices) {
     ],
   };
   registry.register(navigateChecks, v.navigate);
+
+  const expressionChecks: ValidationChecks<EligianAstType> = {
+    UnaryExpression: v.expression.checkRuntimeNegation, // `!` on a runtime value outside an if condition
+  };
+  registry.register(expressionChecks, v.expression);
 }

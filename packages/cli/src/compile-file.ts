@@ -12,6 +12,7 @@ import {
   type CompilerError,
   compile,
   formatErrors,
+  getProgramWarnings,
   hasImports,
   type IEngineConfiguration,
   loadProgramAssets,
@@ -31,6 +32,21 @@ export interface CompileOptions {
 }
 
 /**
+ * A non-fatal diagnostic (warning / info / hint) reported for a successfully
+ * compiled file. Only Error-severity diagnostics fail compilation.
+ */
+export interface CompileWarning {
+  severity: 'warning' | 'info' | 'hint';
+  message: string;
+  /** Path of the file the diagnostic belongs to (as passed to compileFile) */
+  file: string;
+  /** 1-based line */
+  line: number;
+  /** 1-based column */
+  column: number;
+}
+
+/**
  * Result of a successful compilation
  */
 export interface CompileResult {
@@ -40,6 +56,8 @@ export interface CompileResult {
   json: string;
   /** Number of assets validated (if any imports) */
   assetCount: number;
+  /** Non-fatal diagnostics (warnings / info / hints), in document order */
+  warnings: CompileWarning[];
 }
 
 /**
@@ -188,6 +206,7 @@ function causeToError<E>(cause: Cause.Cause<E>): E {
  * - Does NOT call process.exit()
  * - Does NOT write to console
  * - Returns the result or throws typed errors
+ * - Returns non-fatal diagnostics (warnings / info / hints) in `result.warnings`
  *
  * @param inputPath - Path to the .eligian file
  * @param options - Compilation options
@@ -248,6 +267,15 @@ export async function compileFile(
   }
   const program: Program = parseExit.value;
 
+  // Non-error diagnostics never fail the build; collect them for the caller.
+  const warnings: CompileWarning[] = getProgramWarnings(program).map(w => ({
+    severity: w.severity,
+    message: w.message,
+    file: inputPath,
+    line: w.location.line,
+    column: w.location.column,
+  }));
+
   // Validate and load assets if imports exist
   let assetCount = 0;
   if (hasImports(program)) {
@@ -291,5 +319,5 @@ export async function compileFile(
   // Generate output JSON
   const json = minify ? JSON.stringify(config) : JSON.stringify(config, null, 2);
 
-  return { config, json, assetCount };
+  return { config, json, assetCount, warnings };
 }

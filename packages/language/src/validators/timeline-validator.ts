@@ -1,7 +1,7 @@
 import type { ValidationAcceptor } from 'langium';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import { parseSelector } from '../css/selector-parser.js';
-import type { Timeline, TimelineEvent } from '../generated/ast.js';
+import type { Timeline } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
 
 /**
@@ -131,75 +131,10 @@ export class TimelineValidator extends BaseValidator {
     }
   }
 
-  /**
-   * Validate that timeline event start time is less than end time.
-   *
-   * Events must have a valid duration (start < end).
-   * Note: Only applies to TimedEvent, not SequenceBlock.
-   */
-  checkValidTimeRange(event: TimelineEvent, accept: ValidationAcceptor): void {
-    // SequenceBlock and StaggerBlock don't have timeRange, only TimedEvent does
-    if (event.$type === 'SequenceBlock' || event.$type === 'StaggerBlock') return;
-
-    const timeRange = event.timeRange;
-    if (!timeRange) return;
-
-    // Check if both start and end are time literals (we can validate at compile time)
-    const start = timeRange.start;
-    const end = timeRange.end;
-
-    // Defensive: ensure start and end exist before checking $type
-    if (!start || !end) return;
-
-    if (start.$type === 'TimeLiteral' && end.$type === 'TimeLiteral') {
-      if (start.value > end.value) {
-        accept(
-          'error',
-          `Timeline event start time (${start.value}) must be less than or equal to end time (${end.value})`,
-          {
-            node: timeRange,
-            property: 'start',
-          }
-        );
-      }
-    }
-  }
-
-  /**
-   * Validate that timeline event times are non-negative.
-   *
-   * Negative times don't make sense in a timeline context.
-   * Note: Only applies to TimedEvent, not SequenceBlock.
-   */
-  checkNonNegativeTimes(event: TimelineEvent, accept: ValidationAcceptor): void {
-    // SequenceBlock and StaggerBlock don't have timeRange, only TimedEvent does
-    if (event.$type === 'SequenceBlock' || event.$type === 'StaggerBlock') return;
-
-    const timeRange = event.timeRange;
-    if (!timeRange) return;
-
-    // Check start time
-    if (timeRange.start && timeRange.start.$type === 'TimeLiteral') {
-      if (timeRange.start.value < 0) {
-        accept(
-          'error',
-          `Timeline event start time cannot be negative (got ${timeRange.start.value})`,
-          {
-            node: timeRange,
-            property: 'start',
-          }
-        );
-      }
-    }
-
-    // Check end time
-    if (timeRange.end && timeRange.end.$type === 'TimeLiteral') {
-      if (timeRange.end.value < 0) {
-        accept('error', `Timeline event end time cannot be negative (got ${timeRange.end.value})`, {
-          node: timeRange,
-          property: 'end',
-        });
-      }
-    }
-  }
+  // Time-range validation (start < end, non-negative start, positive durations and
+  // delays) lives in exactly one place: the Typir rules in
+  // type-system-typir/validation/event-validation.ts, which are unit-aware and
+  // understand relative and property-chain times. The former checkValidTimeRange /
+  // checkNonNegativeTimes rules here compared raw literal values (ignoring units)
+  // and duplicated those diagnostics, so they were removed.
 }

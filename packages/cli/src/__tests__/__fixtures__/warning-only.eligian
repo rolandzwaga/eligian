@@ -1,0 +1,15 @@
+// Valid program whose only diagnostic is a WARNING (provider 'raf' ignores a source).
+// Warnings must not fail compilation (audit 2026-10-22 High finding).
+styles "./test.css"
+
+endable action showElement [
+  selectElement("#test")
+  addClass("visible")
+] [
+  selectElement("#test")
+  removeClass("visible")
+]
+
+timeline "test" in "#app" using raf from "x.mp4" {
+  at 0s..5s showElement()
+}

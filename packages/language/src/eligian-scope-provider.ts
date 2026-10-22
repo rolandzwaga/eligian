@@ -37,17 +37,23 @@ import {
   type NamedImport,
   type VariableDeclaration,
 } from './generated/ast.js';
-import { getElements } from './utils/program-helpers.js';
+import {
+  type CallableAction,
+  findCallableAction,
+  getActionScopeRoot,
+  getCallableActions,
+  type LibraryResolver,
+} from './utils/action-scope.js';
 
 export class EligianScopeProvider extends DefaultScopeProvider {
   private eligianServices: EligianServices;
 
   /**
-   * Memoizes {@link getImportedActions} per document URI.
+   * Memoizes {@link getCallableActions} per document URI.
    *
-   * `getImportedActions` was previously recomputed up to 3× per `OperationCall`
-   * during validation (plus once per scope resolution), each time re-resolving
-   * and re-walking every transitively imported library AST.
+   * The callable set was previously recomputed for every `OperationCall`
+   * during scoping and validation, each time re-resolving the imported
+   * libraries.
    *
    * A `WorkspaceCache` is the correct invalidation strategy here: the result
    * depends on *other* documents (the imported libraries), so it must be evicted
@@ -57,12 +63,12 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    * keyed on the importing document would miss changes to the libraries it
    * imports.
    */
-  private readonly importedActionsCache: WorkspaceCache<string, ActionDefinition[]>;
+  private readonly callableActionsCache: WorkspaceCache<string, readonly CallableAction[]>;
 
   constructor(services: EligianServices) {
     super(services);
     this.eligianServices = services;
-    this.importedActionsCache = new WorkspaceCache(services.shared);
+    this.callableActionsCache = new WorkspaceCache(services.shared);
   }
 
   override getScope(context: ReferenceInfo): Scope {
@@ -91,165 +97,70 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   }
 
   /**
-   * Get scope for action references in OperationCall nodes (Feature 007 + Feature 023).
+   * Get scope for action references in OperationCall nodes (Feature 007, 023, 032).
    *
-   * Returns all ActionDefinition nodes from the document. The reference will:
-   * - Resolve to an ActionDefinition if an action with that name exists
+   * Returns the actions callable from the document the call is in (see
+   * {@link getCallableActions}). The reference will:
+   * - Resolve to an ActionDefinition if an action with that name is in scope
    * - Remain unresolved (ref = undefined) if it's a built-in operation
    *
-   * This enables "Go to Definition" for custom action calls while allowing
-   * built-in operation calls to work normally.
-   *
-   * Feature 023: Now handles both Program and Library files, plus imported actions (User Story 4).
+   * This enables "Go to Definition" and hover for custom action calls while
+   * allowing built-in operation calls to work normally.
    */
   private getScopeForActionReference(context: ReferenceInfo): Scope {
-    // Get the document containing this OperationCall
-    const document = AstUtils.getDocument(context.container);
-    const model = document.parseResult.value;
-
-    // Get all ActionDefinition nodes - works for both Program and Library
-    let actionDefinitions: ActionDefinition[] = [];
-
-    if (isProgram(model)) {
-      // Program: get actions from program elements
-      actionDefinitions = getElements(model).filter(isActionDefinition);
-
-      // Feature 023 US4: Also include imported actions from library files
-      const importedActions = this.getImportedActions(model);
-      actionDefinitions.push(...importedActions);
-    } else if (isLibrary(model)) {
-      // Library: get actions directly from library.actions array
-      actionDefinitions = model.actions || [];
-    }
-
-    if (actionDefinitions.length === 0) {
-      // No actions defined in document
+    const callables = this.getCallableActions(context.container);
+    if (callables.length === 0) {
       return EMPTY_SCOPE;
     }
 
-    // Create AstNodeDescription for each action
-    // For imported actions, use the alias name if provided, otherwise use original name
-    const actionDescriptions = actionDefinitions.map(action => {
-      const name = this.getActionNameForScope(action, model);
-      // Get the document where the action is defined (might be a library file)
-      const actionDoc = AstUtils.getDocument(action);
-      return this.descriptions.createDescription(action, name, actionDoc);
-    });
-
-    // Return scope with all available actions
+    // Imported actions are described under the name they are called by (their
+    // alias, when aliased) and point at the document that defines them.
+    const actionDescriptions = callables.map(({ name, action }) =>
+      this.descriptions.createDescription(action, name, AstUtils.getDocument(action))
+    );
     return this.createScope(actionDescriptions);
   }
 
   /**
-   * Get all actions imported from library files (Feature 024, Feature 032 US3).
-   * Used for validation and code completion.
+   * The actions callable by name from the Program or Library containing
+   * `node`: its own actions (for a library, private ones included) plus the
+   * actions it imports directly, under their alias when aliased. Imports are
+   * not re-exported, so a program never sees a library's private helpers or
+   * the actions that library imports.
    *
-   * Collects actions from all LibraryImport statements in the program or library,
-   * resolving the library file and retrieving the action definitions.
+   * Shared with the operation-call validators so resolution, validation and
+   * the compiler (`resolveActionScopes`) agree.
    */
-  public getImportedActions(
-    programOrLibrary: any,
-    visited: Set<string> = new Set()
-  ): ActionDefinition[] {
-    // Only the top-level invocation is memoized. Recursive calls carry a
-    // non-empty `visited` set, and their result depends on that cycle-cutoff
-    // state, so caching them by URI alone would be unsound. External callers
-    // always start with an empty set, so `visited.size === 0` reliably
-    // identifies the cacheable top-level call.
-    if (visited.size === 0) {
-      const cacheKey = AstUtils.getDocument(programOrLibrary).uri?.toString();
-      if (cacheKey) {
-        return this.importedActionsCache.get(cacheKey, () =>
-          this.computeImportedActions(programOrLibrary, visited)
-        );
-      }
+  public getCallableActions(node: AstNode): readonly CallableAction[] {
+    const root = getActionScopeRoot(node);
+    if (!root) {
+      return [];
     }
-    return this.computeImportedActions(programOrLibrary, visited);
+    const cacheKey = AstUtils.getDocument(root).uri?.toString();
+    if (!cacheKey) {
+      return getCallableActions(root, this.resolveLibrary);
+    }
+    return this.callableActionsCache.get(cacheKey, () =>
+      getCallableActions(root, this.resolveLibrary)
+    );
   }
 
   /**
-   * Recursively collects all transitively imported library actions.
-   * See {@link getImportedActions} (the memoizing entry point) for caching.
+   * Find the action called `name` from inside the Program or Library containing
+   * `node` (local, library-internal or imported, alias-aware).
    */
-  private computeImportedActions(programOrLibrary: any, visited: Set<string>): ActionDefinition[] {
-    const importedActions: ActionDefinition[] = [];
-
-    // Get current document URI for cycle detection
-    const currentUri = AstUtils.getDocument(programOrLibrary).uri;
-    if (!currentUri) return importedActions;
-
-    const currentPath = currentUri.fsPath;
-
-    // Prevent infinite recursion from circular imports
-    if (visited.has(currentPath)) {
-      return importedActions;
-    }
-    visited.add(currentPath);
-
-    // Get all LibraryImport statements (from Program.statements or Library.imports)
-    const statements = programOrLibrary.statements || programOrLibrary.imports || [];
-    const libraryImports = statements.filter(isLibraryImport);
-
-    for (const libraryImport of libraryImports) {
-      const importPath = libraryImport.path;
-      const resolvedUri = resolveLibraryPath(currentUri, importPath);
-
-      // Load library document
-      const documents = this.eligianServices.shared.workspace.LangiumDocuments;
-      const libraryDoc = documents.getDocument(resolvedUri);
-
-      if (!libraryDoc?.parseResult.value) continue;
-
-      const library = libraryDoc.parseResult.value;
-      if (!isLibrary(library)) continue;
-
-      // Feature 032 US3: Recursively collect actions from nested library imports
-      // Libraries can now import other libraries, so we need to gather all transitively imported actions
-      const nestedActions = this.getImportedActions(library, visited);
-      importedActions.push(...nestedActions);
-
-      // Add each imported action from THIS library to the list
-      for (const actionImport of libraryImport.actions) {
-        const actionName = actionImport.action.$refText || '';
-        const action = library.actions?.find(a => a.name === actionName);
-
-        if (action) {
-          importedActions.push(action);
-        }
-      }
-    }
-
-    return importedActions;
+  public findCallableAction(name: string, node: AstNode): ActionDefinition | undefined {
+    return findCallableAction(name, this.getCallableActions(node))?.action;
   }
 
-  /**
-   * Get the name to use for an action in the scope (Feature 023 - User Story 4).
-   *
-   * For imported actions with aliases, use the alias name.
-   * Otherwise, use the original action name.
-   */
-  private getActionNameForScope(action: ActionDefinition, model: any): string {
-    // If model is not a Program, just use the action name
-    if (!isProgram(model)) {
-      return action.name;
-    }
-
-    // Check if this action is imported with an alias
-    const statements = model.statements || [];
-    const libraryImports = statements.filter(isLibraryImport);
-
-    for (const libraryImport of libraryImports) {
-      for (const actionImport of libraryImport.actions) {
-        // Check if this actionImport references the same action
-        if (actionImport.action.ref === action && actionImport.alias) {
-          return actionImport.alias;
-        }
-      }
-    }
-
-    // No alias found, use original name
-    return action.name;
-  }
+  /** Resolve a library import path against this workspace's documents. */
+  private readonly resolveLibrary: LibraryResolver = (fromUri, importPath) => {
+    const libraryUri = resolveLibraryPath(fromUri, importPath);
+    const value =
+      this.eligianServices.shared.workspace.LangiumDocuments.getDocument(libraryUri)?.parseResult
+        .value;
+    return value && isLibrary(value) ? value : undefined;
+  };
 
   /**
    * Get scope for parameter references (bare identifiers in action bodies).

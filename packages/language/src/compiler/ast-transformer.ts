@@ -25,7 +25,6 @@ import { Effect } from 'effect';
 import type { TransformError } from '../errors/index.js';
 import type { Program } from '../generated/ast.js';
 import {
-  getActions,
   getEventActions,
   getNavigateStatements,
   getTimelines,
@@ -46,7 +45,7 @@ import {
   transformLanguagesBlock,
 } from './transformers/config-builder.js';
 import { transformExpression } from './transformers/expression-transformer.js';
-import { resolveImports } from './transformers/library-imports.js';
+import { resolveActionScopes } from './transformers/library-imports.js';
 import {
   buildNavTargetAction,
   resolveNavPosition,
@@ -147,25 +146,22 @@ export const transformAST = (
       });
     }
 
-    // T046: Extract local action definitions (both regular and endable)
-    const localActions = getActions(program);
-
-    // T044/T045: Resolve library imports and collect imported actions (with aliases applied)
-    const importedActions = yield* resolveImports(program);
-
-    // Merge imported and local actions - imported actions come first, then local actions
-    // This ensures local actions can override imported ones if there are name conflicts
-    // (though validation should prevent this)
-    const actionDefinitions = [...importedActions, ...localActions];
+    // T044-T046 (Feature 023 FR-010, Feature 032 US3): resolve the local and
+    // imported actions the program can call, plus every library action they
+    // reach. Each action body is compiled against the scope of the document
+    // that defines it, so library actions can call their own (private)
+    // helpers and the actions their library imports.
+    const { programScope, actionsToEmit } = yield* resolveActionScopes(program);
 
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
-    for (const actionDef of actionDefinitions) {
+    for (const { definition, scope, systemNames } of actionsToEmit) {
       const action = yield* transformActionDefinition(
-        actionDef,
+        definition,
         program,
-        actionDefinitions,
-        constantMap
+        scope,
+        constantMap,
+        systemNames
       );
       actions.push(action);
     }
@@ -201,7 +197,7 @@ export const transformAST = (
       const timelineConfig = yield* buildTimelineConfig(
         timelineNode,
         program,
-        actionDefinitions,
+        programScope,
         constantMap
       );
       timelines.push(timelineConfig);

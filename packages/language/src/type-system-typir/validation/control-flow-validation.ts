@@ -15,7 +15,7 @@
  */
 
 import type { ValidationProblemAcceptor } from 'typir';
-import { isType } from 'typir';
+import { isBottomType, isType } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { ForStatement, IfStatement } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
@@ -61,7 +61,8 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
     IfStatement: (node: IfStatement, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
       // Check condition type
       const conditionTypeResult = typir.Inference.inferType(node.condition);
-      if (isType(conditionTypeResult)) {
+      // Runtime-only values (bottom type, e.g. `$globaldata.x`) have no static type to check
+      if (isType(conditionTypeResult) && !isBottomType(conditionTypeResult)) {
         const typeName = conditionTypeResult.getName();
         // Warn if condition is not boolean type
         if (typeName !== 'boolean') {
@@ -119,7 +120,8 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
     ForStatement: (node: ForStatement, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
       // Check collection type
       const collectionTypeResult = typir.Inference.inferType(node.collection);
-      if (isType(collectionTypeResult)) {
+      // Runtime-only values (bottom type, e.g. `$globaldata.items`) have no static type to check
+      if (isType(collectionTypeResult) && !isBottomType(collectionTypeResult)) {
         const typeName = collectionTypeResult.getName();
         // Error if collection is not array type
         if (typeName !== 'array') {

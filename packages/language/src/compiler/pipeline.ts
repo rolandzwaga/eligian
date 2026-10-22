@@ -36,14 +36,16 @@ import type {
   TypeError,
   ValidationError,
 } from '../errors/index.js';
-import { isLibrary } from '../generated/ast.js';
+import { isLibrary, type Program } from '../generated/ast.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
 import { optimize } from './optimizer.js';
+import { type DocumentWarning, extractDocumentWarnings } from './pipeline/document-errors.js';
 import { parseSource, validateAST } from './pipeline/parser.js';
 import { typeCheck } from './type-checker.js';
 import type { EligiusIR } from './types/eligius-ir.js';
 
+export type { DocumentWarning } from './pipeline/document-errors.js';
 export {
   extractLibraryImports,
   extractLibraryImportsFromLibrary,
@@ -88,6 +90,14 @@ interface CompileOptions {
    */
   target?: string;
 }
+
+/**
+ * Non-fatal diagnostics (warning / info / hint) of a program returned by
+ * {@link parseSource}. Only Error-severity diagnostics abort compilation; these
+ * are returned so callers (e.g. the CLI) can report them without failing.
+ */
+export const getProgramWarnings = (program: Program): ReadonlyArray<DocumentWarning> =>
+  extractDocumentWarnings(program.$document);
 
 /**
  * Union of all possible compilation errors

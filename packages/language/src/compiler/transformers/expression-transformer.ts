@@ -7,6 +7,7 @@
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
 import { type Expression, isProgram } from '../../generated/ast.js';
+import { evaluateExpression, resolveConstant } from '../expression-evaluator.js';
 import type { JsonValue } from '../types/eligius-ir.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
@@ -84,16 +85,14 @@ export const transformExpression = (
 
         const varName = expr.variable.ref.name;
 
-        // Check action-scoped constants first (more specific scope)
-        if (scope.scopedConstants.has(varName)) {
-          const constant = scope.scopedConstants.get(varName)!;
-          return constant.value; // Inline action-scoped constant
-        }
-
-        // Check global constants
-        if (scope.programConstants.has(varName)) {
-          const constant = scope.programConstants.get(varName)!;
-          return constant.value; // Inline global constant
+        // Inline a constant only if it is the declaration this reference links
+        // to: action-scoped constants first (more specific scope), then global
+        // ones. A non-foldable local that shadows a global const of the same
+        // name is not in either map under its own declaration, so it falls
+        // through to a runtime variable instead of inlining the global's value.
+        const constant = resolveConstant(expr, scope.scopedConstants, scope.programConstants);
+        if (constant) {
+          return constant.value;
         }
 
         // Program-level variables are stored in global data (see the setData
@@ -209,8 +208,29 @@ export const transformExpression = (
         const operand = yield* transformExpression(expr.operand, scope);
 
         switch (expr.op) {
-          case '!':
-            return !operand;
+          case '!': {
+            // Fold only compile-time constants. The transformed operand cannot
+            // tell us that: a runtime reference becomes a non-empty
+            // property-chain string ('$operationdata.flag'), and JS `!` on it is
+            // always `false`. Ask the constant evaluator instead, which resolves
+            // literals and constant references by their actual declaration.
+            const folded = evaluateExpression(
+              expr.operand,
+              new Map([...scope.programConstants.entries(), ...scope.scopedConstants.entries()])
+            );
+            if (folded.canEvaluate) {
+              return !folded.value;
+            }
+            // Eligius has no runtime negation outside conditions, so emitting
+            // anything here would be silently wrong.
+            return yield* Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message:
+                'Negation of runtime values (parameters, variables, system properties) is only supported inside if/when conditions',
+              location: getSourceLocation(expr),
+            });
+          }
           case '-':
             if (typeof operand === 'number') {
               return -operand;

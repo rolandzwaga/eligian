@@ -1,165 +1,265 @@
 /**
- * Library import resolution for the AST transformer.
+ * Library import resolution for the AST transformer (Feature 023, Feature 032 US3).
  *
- * Extracted verbatim from `ast-transformer.ts` as part of the W2 decomposition
- * (CODE_ANALYSIS).
+ * Works out, for a program, which action definitions must be emitted into
+ * `config.actions`, the name each one is emitted under, and which call scope
+ * each one's body is compiled against.
+ *
+ * Scoping is shared with the LSP scope provider (see `utils/action-scope.ts`):
+ * - The program's timelines and local actions call its local actions plus the
+ *   actions it imports, under their alias when aliased.
+ * - A library action's body calls the actions of ITS OWN library (private
+ *   helpers included, FR-010) plus the actions that library imports.
+ *
+ * Library actions are emitted when they are reachable from the program: every
+ * action the program can call, plus every action those bodies call,
+ * transitively.
+ *
+ * Eligius resolves `requestAction` by name in ONE global action namespace, so
+ * every emitted name must be unique:
+ * - An action the program can call is emitted under the name the program calls
+ *   it by (its local name, or its import alias).
+ * - Every other library action (private helpers, siblings and nested imports
+ *   the program does not import itself) is emitted under a name qualified by
+ *   its library: `<library>.<action>`. Action names cannot contain `.`, so a
+ *   qualified name never collides with a program-level name, and the helpers of
+ *   different libraries never collide with each other (spec 023 US3: renaming
+ *   or adding a private helper never breaks a consumer).
+ * The `requestAction` calls in each library body are rewritten to these
+ * emitted names (see {@link ActionToEmit.systemNames}).
  */
 import { Effect } from 'effect';
-import { AstUtils, type URI } from 'langium';
+import { AstUtils } from 'langium';
 import type { TransformError } from '../../errors/index.js';
 import type { ActionDefinition, Library, Program } from '../../generated/ast.js';
-import { isLibrary, isLibraryImport } from '../../generated/ast.js';
-import { getLibraryImports } from '../../utils/program-helpers.js';
+import { isLibrary, isLibraryImport, isOperationCall } from '../../generated/ast.js';
+import {
+  type ActionScopeRoot,
+  type CallableAction,
+  findCallableAction,
+  getActionScopeRoot,
+  getCallableActions,
+  type LibraryResolver,
+} from '../../utils/action-scope.js';
+import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { getOrCreateServices, resolveLibraryPath } from '../pipeline.js';
+import { getSourceLocation } from './source-location.js';
 
-/**
- * Resolve a library import path to its loaded {@link Library} document, applying
- * cycle detection.
- *
- * Shared by {@link resolveImports} and {@link resolveLibraryImports}, which both
- * performed the identical resolve-path → cycle-check → `getDocument` → `isLibrary`
- * sequence before diverging in how they collect actions. Returns `undefined`
- * when the target has already been visited, the document is not loaded, or it is
- * not a library — matching the skip semantics of both call sites.
- *
- * @param fromUri - URI of the document/library doing the importing
- * @param importPath - The library import's path string
- * @param visited - Set of already-visited library fsPaths (cycle guard)
- * @returns The resolved library and its URI, or `undefined` to skip
- */
-function resolveLibraryDocument(
-  fromUri: URI,
-  importPath: string,
-  visited: Set<string>
-): { library: Library; uri: URI } | undefined {
-  const libraryUri = resolveLibraryPath(fromUri, importPath);
-  if (visited.has(libraryUri.fsPath)) {
-    return undefined;
-  }
+/** An action definition to emit, with the call scope its body is compiled against. */
+export interface ActionToEmit {
+  /** The definition, renamed to the name it is emitted (and requested) under. */
+  readonly definition: ActionDefinition;
+  /** The actions callable from this action's body (named as they are called there). */
+  readonly scope: ActionDefinition[];
+  /**
+   * For each name callable from this action's body, the name the target is
+   * emitted under (the `requestAction` systemName). Names absent from the map
+   * are emitted under the name they are called by.
+   */
+  readonly systemNames: ReadonlyMap<string, string>;
+}
 
-  const services = getOrCreateServices();
-  const libraryDoc = services.shared.workspace.LangiumDocuments.getDocument(libraryUri);
-  const value = libraryDoc?.parseResult.value;
-  if (!value || !isLibrary(value)) {
-    return undefined;
-  }
-
-  return { library: value, uri: libraryUri };
+/** Result of {@link resolveActionScopes}. */
+export interface ResolvedActionScopes {
+  /** The actions callable from the program's timelines and other program-level code. */
+  readonly programScope: ActionDefinition[];
+  /** Every action to emit into `config.actions`, in emission order. */
+  readonly actionsToEmit: ActionToEmit[];
 }
 
 /**
- * T044: Resolve library imports and collect imported actions (Feature 023 - User Story 2)
+ * Resolve library documents through the shared compiler services, which is
+ * where `parseSource` loads them. Library documents are linked before the
+ * libraries they import are loaded, so their import references can be
+ * unresolved; path + name lookup does not depend on that linking.
+ */
+const resolveCompilerLibrary: LibraryResolver = (fromUri, importPath) => {
+  const libraryUri = resolveLibraryPath(fromUri, importPath);
+  const value =
+    getOrCreateServices().shared.workspace.LangiumDocuments.getDocument(libraryUri)?.parseResult
+      .value;
+  return value && isLibrary(value) ? value : undefined;
+};
+
+/** `definition` renamed to `name` (a copy when the names differ). */
+function renamed(definition: ActionDefinition, name: string): ActionDefinition {
+  return name === definition.name ? definition : { ...definition, name };
+}
+
+/**
+ * The import entry in `program` that makes `name` callable, for error
+ * locations that belong in the program rather than in a library file.
+ */
+function findProgramImportNode(program: Program, name: string) {
+  for (const libraryImport of program.statements.filter(isLibraryImport)) {
+    const entry = libraryImport.actions.find(
+      actionImport => (actionImport.alias ?? actionImport.action.$refText) === name
+    );
+    if (entry) {
+      return entry;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * T044/T045: Resolve the program's action scopes (Feature 023 US2, FR-010; Feature 032 US3).
  *
- * This function processes all LibraryImport statements in a program and collects the imported actions.
- * It handles aliasing - if an action is imported with an alias, it returns the action with the alias name
- * applied so that downstream compilation uses the alias.
+ * Walks from the actions the program can call through every action call in
+ * their bodies, resolving each call in the scope of the document that defines
+ * the calling action. Unresolved names are left alone: they are built-in
+ * operations, or unknown operations the operation transformer reports.
  *
- * Note: This relies on Langium's cross-reference resolution to already have resolved ActionImport.action
- * references to actual ActionDefinition nodes from library files. If references are unresolved,
- * those imports will be skipped (validation should have caught these errors).
+ * Program-callable actions keep the program's name for them; every other
+ * reachable library action gets a library-qualified name (see module docs).
+ *
+ * Fails with a TransformError only when two different definitions would still
+ * be emitted under one name, which validation rules out (duplicate actions in
+ * one document, or an import colliding with a local action).
  *
  * @param program - Program AST node with potential library imports
- * @returns Array of ActionDefinition nodes (with aliases applied where necessary)
+ * @param resolveLibrary - How to find imported library documents (defaults to the compiler services)
  */
-export function resolveImports(
+export function resolveActionScopes(
   program: Program,
-  visited: Set<string> = new Set()
-): Effect.Effect<ActionDefinition[], TransformError, never> {
+  resolveLibrary: LibraryResolver = resolveCompilerLibrary
+): Effect.Effect<ResolvedActionScopes, TransformError, never> {
   return Effect.gen(function* () {
-    const libraryImports = getLibraryImports(program);
-    const importedActions: ActionDefinition[] = [];
-
-    // Track visited libraries to prevent infinite recursion
-    const currentUri = AstUtils.getDocument(program).uri;
-    if (currentUri) {
-      visited.add(currentUri.fsPath);
-    }
-
-    for (const libraryImport of libraryImports) {
-      // Feature 032 US3: Get the library document to recursively collect its imports
-      if (currentUri) {
-        const resolved = resolveLibraryDocument(currentUri, libraryImport.path, visited);
-        if (resolved) {
-          // Recursively collect actions from library's imports
-          const nestedActions = yield* resolveLibraryImports(
-            resolved.library,
-            visited,
-            resolved.uri
-          );
-          importedActions.push(...nestedActions);
-        }
+    const callablesByRoot = new Map<ActionScopeRoot, CallableAction[]>();
+    const callablesOf = (root: ActionScopeRoot): CallableAction[] => {
+      let callables = callablesByRoot.get(root);
+      if (!callables) {
+        callables = getCallableActions(root, resolveLibrary);
+        callablesByRoot.set(root, callables);
       }
+      return callables;
+    };
 
-      for (const actionImport of libraryImport.actions) {
-        // Get the resolved ActionDefinition from the reference
-        // If the reference is unresolved (undefined), skip it - validation should have caught this
-        const actionDef = actionImport.action.ref;
-        if (!actionDef) {
-          // Reference not resolved - skip (validation error should exist)
-          continue;
-        }
+    const programCallables = callablesOf(program);
 
-        // T045: Handle aliasing - if action has alias, create a modified action with alias name
-        if (actionImport.alias) {
-          // Create a new action object with the alias name
-          // We need to preserve all other properties but change the name
-          const aliasedAction: ActionDefinition = {
-            ...actionDef,
-            name: actionImport.alias,
-          };
-          importedActions.push(aliasedAction);
-        } else {
-          importedActions.push(actionDef);
-        }
+    // The name the program calls each definition it can call by (first wins).
+    const programNameOf = new Map<ActionDefinition, string>();
+    for (const { name, action } of programCallables) {
+      if (!programNameOf.has(action)) {
+        programNameOf.set(action, name);
       }
     }
 
-    return importedActions;
-  });
-}
+    // One unique qualifier per library document (its name, suffixed on clashes).
+    const qualifierByLibrary = new Map<Library, string>();
+    const usedQualifiers = new Set<string>();
+    const qualifierOf = (library: Library): string => {
+      let qualifier = qualifierByLibrary.get(library);
+      if (!qualifier) {
+        const base = library.name || 'library';
+        qualifier = base;
+        for (let n = 2; usedQualifiers.has(qualifier); n++) {
+          qualifier = `${base}${n}`;
+        }
+        usedQualifiers.add(qualifier);
+        qualifierByLibrary.set(library, qualifier);
+      }
+      return qualifier;
+    };
 
-/**
- * Feature 032 US3: Recursively resolve library imports
- *
- * Collects all actions from a library's imports, including nested library imports.
- * This ensures that actions defined in libraries can call actions from libraries
- * that those libraries import.
- */
-function resolveLibraryImports(
-  library: Library,
-  visited: Set<string>,
-  libraryUri: URI
-): Effect.Effect<ActionDefinition[], TransformError, never> {
-  return Effect.gen(function* () {
-    const importedActions: ActionDefinition[] = [];
+    /** The name `callable` is emitted under when called from `callerRoot`. */
+    const systemNameOf = (callable: CallableAction, callerRoot: ActionScopeRoot): string => {
+      if (callerRoot === program) {
+        return callable.name;
+      }
+      const programName = programNameOf.get(callable.action);
+      if (programName !== undefined) {
+        return programName;
+      }
+      const definingRoot = getActionScopeRoot(callable.action);
+      return definingRoot && isLibrary(definingRoot)
+        ? `${qualifierOf(definingRoot)}.${callable.action.name}`
+        : callable.action.name;
+    };
 
-    // Mark this library as visited
-    visited.add(libraryUri.fsPath);
+    const scopesByRoot = new Map<
+      ActionScopeRoot,
+      { scope: ActionDefinition[]; systemNames: Map<string, string> }
+    >();
+    const scopeOf = (root: ActionScopeRoot) => {
+      let entry = scopesByRoot.get(root);
+      if (!entry) {
+        const callables = callablesOf(root);
+        const systemNames = new Map<string, string>();
+        for (const callable of callables) {
+          if (!systemNames.has(callable.name)) {
+            systemNames.set(callable.name, systemNameOf(callable, root));
+          }
+        }
+        entry = {
+          scope: callables.map(callable => renamed(callable.action, callable.name)),
+          systemNames,
+        };
+        scopesByRoot.set(root, entry);
+      }
+      return entry;
+    };
 
-    // Get library's imports
-    const libraryImports = library.imports || [];
+    const programScope = scopeOf(program).scope;
 
-    for (const libraryImport of libraryImports) {
-      if (!isLibraryImport(libraryImport)) continue;
-
-      // Resolve nested library (path resolution + cycle check + library document lookup)
-      const resolved = resolveLibraryDocument(libraryUri, libraryImport.path, visited);
-      if (!resolved) continue;
-
-      const nestedLibrary = resolved.library;
-
-      // Recursively collect actions from nested library's imports
-      const transitiveActions = yield* resolveLibraryImports(nestedLibrary, visited, resolved.uri);
-      importedActions.push(...transitiveActions);
-
-      // Feature 032 US3: Add ALL actions from the nested library
-      // This ensures library A can use actions from library B (like slideAndFade)
-      // Library A's actions are transformed with access to all of B's actions
-      for (const action of nestedLibrary.actions || []) {
-        importedActions.push(action);
+    const actionsToEmit: ActionToEmit[] = [];
+    const emittedByName = new Map<string, ActionDefinition>();
+    const queue: { callable: CallableAction; systemName: string }[] = [];
+    const queued = new Set<string>();
+    const enqueue = (callable: CallableAction, callerRoot: ActionScopeRoot) => {
+      queue.push({ callable, systemName: systemNameOf(callable, callerRoot) });
+    };
+    for (const callable of programCallables) {
+      if (!queued.has(callable.name)) {
+        queued.add(callable.name); // a shadowed duplicate is never callable
+        enqueue(callable, program);
       }
     }
 
-    return importedActions;
+    for (let i = 0; i < queue.length; i++) {
+      const { callable, systemName } = queue[i];
+      const existing = emittedByName.get(systemName);
+      if (existing === callable.action) {
+        continue; // already emitted under this name
+      }
+      if (existing) {
+        const where = (action: ActionDefinition) =>
+          AstUtils.getDocument(action).uri?.toString() ?? 'the program';
+        const programDocument = AstUtils.getDocument(program);
+        const inProgram = [callable.action, existing].find(
+          action => AstUtils.getDocument(action) === programDocument
+        );
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message: `Action name '${systemName}' is used by two different actions (in ${where(existing)} and ${where(callable.action)}). Eligius action names are global, so every emitted action needs a unique name. Rename one of them.`,
+          location: getSourceLocation(
+            inProgram ?? findProgramImportNode(program, systemName) ?? program
+          ),
+        });
+      }
+      emittedByName.set(systemName, callable.action);
+
+      // A library action's body is compiled against its own library's scope;
+      // a program action's against the program's.
+      const root = getActionScopeRoot(callable.action) ?? program;
+      const { scope, systemNames } = scopeOf(root);
+      actionsToEmit.push({
+        definition: renamed(callable.action, systemName),
+        scope,
+        systemNames,
+      });
+
+      // Follow the actions this body calls (resolved in its own scope).
+      const rootCallables = callablesOf(root);
+      for (const call of AstUtils.streamAst(callable.action).filter(isOperationCall)) {
+        const target = findCallableAction(getOperationCallName(call), rootCallables);
+        if (target) {
+          enqueue(target, root);
+        }
+      }
+    }
+
+    return { programScope, actionsToEmit };
   });
 }

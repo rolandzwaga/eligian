@@ -11,8 +11,8 @@
 import type { ValidationProblemAcceptor } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { DefaultImport, NamedImport, Program } from '../../generated/ast.js';
+import { inferAssetType } from '../../utils/asset-type-inference.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
-import { inferAssetTypeFromExtension } from '../utils/asset-type-inferrer.js';
 
 /**
  * Register import validation rules with Typir
@@ -96,10 +96,12 @@ export function registerImportValidation(typir: TypirLangiumServices<EligianSpec
       }
 
       // Infer type from file extension
-      const inferredType = inferAssetTypeFromExtension(node.path);
+      // Single source of truth: returns undefined for unknown/ambiguous extensions (e.g. .scss,
+      // .mov, .ogg), where the explicit 'as' type is the only way to classify the file.
+      const inferredType = inferAssetType(node.path);
 
       // Check if explicit type matches inferred type
-      if (node.assetType !== inferredType) {
+      if (inferredType !== undefined && node.assetType !== inferredType) {
         // Report warning about type mismatch
         accept({
           severity: 'warning',

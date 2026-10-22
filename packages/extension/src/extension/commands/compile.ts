@@ -76,6 +76,24 @@ function reportCompilationFailure(errors: CompilerError[], sourceCode: string): 
 }
 
 /**
+ * Compute the output path for a compiled source file: same directory, same base
+ * name, `.json` extension (whatever the case of the original extension).
+ *
+ * Returns `undefined` when the result would be the source file itself (e.g. a
+ * source named `x.json` that was switched to the Eligian language mode), so the
+ * caller can refuse instead of overwriting the user's source.
+ */
+export function resolveCompileOutputPath(inputPath: string): string | undefined {
+  const parsed = path.parse(inputPath);
+  const outputPath = path.join(parsed.dir, `${parsed.name}.json`);
+  const normalize = (p: string) => {
+    const resolved = path.resolve(p);
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+  };
+  return normalize(outputPath) === normalize(inputPath) ? undefined : outputPath;
+}
+
+/**
  * Register the compile command.
  *
  * @returns Disposable for the registered command
@@ -91,6 +109,20 @@ export function registerCompileCommand(): vscode.Disposable {
     const document = editor.document;
     if (document.languageId !== 'eligian') {
       vscode.window.showErrorMessage('Not an Eligian file');
+      return;
+    }
+
+    // The output is written next to the source, so the document must live on disk.
+    if (document.uri.scheme !== 'file') {
+      vscode.window.showErrorMessage('Save the file to disk before compiling it');
+      return;
+    }
+
+    const outputPath = resolveCompileOutputPath(document.uri.fsPath);
+    if (!outputPath) {
+      vscode.window.showErrorMessage(
+        'Cannot compile: the output file would overwrite the source file. Rename the source file.'
+      );
       return;
     }
 
@@ -125,10 +157,6 @@ export function registerCompileCommand(): vscode.Disposable {
 
         // Generate output JSON
         const outputJson = JSON.stringify(result, null, 2);
-
-        // Determine output file path
-        const inputPath = sourceUri.fsPath;
-        const outputPath = inputPath.replace(/\.eligian$/, '.json');
 
         // Write output file
         try {

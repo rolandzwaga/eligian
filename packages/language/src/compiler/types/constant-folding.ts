@@ -9,6 +9,7 @@
  * Related: data-model.md in feature specification
  */
 
+import type { AstNode } from 'langium';
 import type { JsonValue } from './common.js';
 
 /**
@@ -46,6 +47,18 @@ export interface ConstantValue {
    * Ensures string "5" is not confused with number 5
    */
   type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'null';
+
+  /**
+   * The AST node that declared this constant (a VariableDeclaration, or a
+   * NamedImport for HTML imports).
+   *
+   * The map is keyed by name, but names can be shadowed (an action-local
+   * `const x` that cannot be folded shadows a global `const x` that can).
+   * A reference may only fold to this constant when it links to this exact
+   * declaration — see `resolveConstant`. Optional so hand-built maps (tests)
+   * keep matching by name alone.
+   */
+  declaration?: AstNode;
 
   /**
    * Source location (for error reporting)

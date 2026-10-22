@@ -1,52 +1,30 @@
-import type { ActionDefinition, Program } from '../../generated/ast.js';
-import { isLibraryImport } from '../../generated/ast.js';
+import type { AstNode } from 'langium';
+import type { EligianServices } from '../../eligian-module.js';
+import type { EligianScopeProvider } from '../../eligian-scope-provider.js';
+import type { ActionDefinition } from '../../generated/ast.js';
 
 /**
- * Feature 032 Fix: Find imported action by name or alias.
+ * Find the action an operation call named `callName` refers to, from inside the
+ * Program or Library containing `node`.
  *
- * Checks if the given name matches either:
- * - The original action name (from library)
- * - An alias used when importing the action
+ * Resolves against the same callable-action scope the scope provider uses for
+ * linking (and the compiler uses for emission): the document's own actions (a
+ * library's private helpers included) plus the actions it imports directly,
+ * under their alias when aliased. Works for both Program and Library roots, so
+ * a library calling an action it imports is recognised (Feature 032 US3).
  *
- * Shared by {@link OperationExistenceValidator} and {@link ParameterValidator}
- * (extracted from the former `OperationCallValidator` so both check families can
- * resolve action calls without duplicating the alias-map walk).
+ * Shared by {@link OperationExistenceValidator} and {@link ParameterValidator}.
  *
- * @param callName - Name used in OperationCall (could be alias)
- * @param program - Program containing import statements
- * @param importedActions - List of imported action definitions
- * @returns ActionDefinition if found, undefined otherwise
+ * @param services - Eligian services (for the scope provider)
+ * @param callName - Name used in the OperationCall (could be an alias)
+ * @param node - The call node (any node inside the calling document)
+ * @returns The ActionDefinition if the name is a callable action, undefined otherwise
  */
-export function findImportedActionByNameOrAlias(
+export function findCallableActionByName(
+  services: EligianServices,
   callName: string,
-  program: Program,
-  importedActions: ActionDefinition[]
+  node: AstNode
 ): ActionDefinition | undefined {
-  // Build a map of all import aliases: alias → action
-  const aliasMap = new Map<string, ActionDefinition>();
-
-  // Get all library imports from the program
-  const statements = program.statements || [];
-  const libraryImports = statements.filter(isLibraryImport);
-
-  for (const libraryImport of libraryImports) {
-    for (const actionImport of libraryImport.actions) {
-      const action = actionImport.action.ref;
-      if (!action) continue;
-
-      // Register the alias if present
-      if (actionImport.alias) {
-        aliasMap.set(actionImport.alias, action);
-      }
-    }
-  }
-
-  // First, check if callName is an alias
-  const actionByAlias = aliasMap.get(callName);
-  if (actionByAlias) {
-    return actionByAlias;
-  }
-
-  // Otherwise, check if callName matches an original action name
-  return importedActions.find(action => action.name === callName);
+  const scopeProvider = services.references.ScopeProvider as EligianScopeProvider;
+  return scopeProvider.findCallableAction(callName, node);
 }

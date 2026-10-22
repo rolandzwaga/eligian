@@ -7,6 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { Effect } from 'effect';
 import { type LangiumDocument, URI } from 'langium';
 import type { ParseError, ValidationError } from '../../errors/index.js';
@@ -58,34 +59,54 @@ export function extractLibraryImportsFromLibrary(library: Library): string[] {
 /**
  * T013: Resolve library path to absolute URI
  *
- * Converts a relative library import path to an absolute URI based on
- * the current document's location.
+ * Converts a relative library import path to an absolute `file://` URI based
+ * on the current document's location.
  *
  * Handles:
- * - Relative paths with ./ and ../
+ * - Relative paths with ./ and ../ (`.` and `..` segments are collapsed, so a
+ *   file always resolves to the same canonical URI regardless of the route
+ *   taken to reach it; cycle detection in loadLibraryRecursive relies on this)
  * - Platform-specific path separators (Windows \ vs Unix /)
+ * - Windows drive letters (kept, and `..` never climbs above the drive root)
  * - Normalization to file:// URIs
  */
 export function resolveLibraryPath(currentDocUri: URI, importPath: string): URI {
-  // Get the directory of the current document
-  const currentPath = currentDocUri.fsPath;
-  const separator = currentPath.includes('\\') ? '\\' : '/';
-  const lastSepIndex = Math.max(currentPath.lastIndexOf('\\'), currentPath.lastIndexOf('/'));
-  const currentDir = currentPath.substring(0, lastSepIndex);
+  // Work on the URI path (always forward slashes, drive encoded as `/c:`)
+  // rather than the platform fsPath, so the result never depends on the
+  // process's current working directory or drive.
+  const docPath = currentDocUri.path.startsWith('/')
+    ? currentDocUri.path
+    : `/${currentDocUri.path}`;
+  const currentDir = path.posix.dirname(docPath);
 
-  // Normalize import path to use forward slashes
+  // Keep a Windows drive prefix (`/c:`) as the resolution root.
+  const drive = /^\/[a-zA-Z]:(?=\/|$)/.exec(currentDir)?.[0] ?? '';
+  const dirWithinDrive = currentDir.slice(drive.length) || '/';
+
+  // Import paths are written with forward slashes; tolerate backslashes.
   const normalizedImportPath = importPath.replace(/\\/g, '/');
 
-  // Remove ./ prefix if present
-  const cleanPath = normalizedImportPath.startsWith('./')
-    ? normalizedImportPath.substring(2)
-    : normalizedImportPath;
+  // posix.resolve collapses `.`/`..` segments. dirWithinDrive is absolute,
+  // so process.cwd() is never consulted.
+  const resolvedPath = drive + path.posix.resolve(dirWithinDrive, normalizedImportPath);
 
-  // Resolve relative path
-  const absolutePath = `${currentDir}${separator}${cleanPath}`;
+  return URI.from({
+    scheme: 'file',
+    authority: currentDocUri.scheme === 'file' ? currentDocUri.authority : '',
+    path: resolvedPath,
+  });
+}
 
-  // Convert to URI
-  return URI.file(absolutePath);
+/**
+ * Canonical key for a library file, used for circular-dependency detection.
+ *
+ * Normalizes `.`/`..` segments and separators and, on Windows (case-insensitive
+ * filesystem), lowercases the path so different spellings of the same file
+ * compare equal.
+ */
+export function libraryPathKey(libraryUri: URI): string {
+  const normalized = path.normalize(libraryUri.fsPath);
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
 /**
@@ -206,21 +227,24 @@ export function parseLibraryDocument(
  *
  * @param libraryUri - URI of library file to load
  * @param documentUri - URI of document importing this library (for path resolution)
- * @param loadingStack - Stack of currently loading library paths (for cycle detection)
+ * @param loadingStack - Libraries currently being loaded, keyed by
+ *   {@link libraryPathKey} with the display path as value (for cycle detection)
  * @returns Effect with array of all library documents (self + dependencies)
  */
 export function loadLibraryRecursive(
   libraryUri: URI,
   _documentUri: URI,
-  loadingStack: Set<string> = new Set()
+  loadingStack: ReadonlyMap<string, string> = new Map()
 ): Effect.Effect<LangiumDocument[], ParseError | ValidationError> {
   return Effect.gen(function* () {
     const uriPath = libraryUri.fsPath;
+    const key = libraryPathKey(libraryUri);
 
-    // T029: Circular dependency detection
-    if (loadingStack.has(uriPath)) {
+    // T029: Circular dependency detection, on the canonical key so routes
+    // through `..` or differently-cased spellings cannot evade it
+    if (loadingStack.has(key)) {
       // Build cycle chain for error message
-      const chain = Array.from(loadingStack);
+      const chain = Array.from(loadingStack.values());
       chain.push(uriPath);
       const cycleChain = chain.join(' → ');
 
@@ -233,8 +257,8 @@ export function loadLibraryRecursive(
     }
 
     // Add current library to loading stack
-    const newStack = new Set(loadingStack);
-    newStack.add(uriPath);
+    const newStack = new Map(loadingStack);
+    newStack.set(key, uriPath);
 
     // Load library file content
     const content = yield* loadLibraryFile(libraryUri);

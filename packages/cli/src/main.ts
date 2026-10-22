@@ -14,7 +14,14 @@ import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
 import { BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
-import { AssetError, CompilationError, compileFile, IOError, ParseError } from './compile-file.js';
+import {
+  AssetError,
+  CompilationError,
+  type CompileWarning,
+  compileFile,
+  IOError,
+  ParseError,
+} from './compile-file.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const packagePath = path.resolve(__dirname, '..', 'package.json');
@@ -82,6 +89,18 @@ function printFormattedErrors(
 }
 
 /**
+ * Print non-fatal diagnostics (warnings / info / hints) to stderr. They never
+ * change the exit code; stderr keeps `-o -` JSON output on stdout clean.
+ */
+function printWarnings(warnings: ReadonlyArray<CompileWarning>): void {
+  for (const w of warnings) {
+    const label = w.severity === 'warning' ? 'Warning' : w.severity === 'info' ? 'Info' : 'Hint';
+    console.error(chalk.yellow(`${label}: ${w.message}`));
+    console.error(chalk.gray(`  at ${w.file}:${w.line}:${w.column}`));
+  }
+}
+
+/**
  * Format and print asset errors to console
  */
 function printAssetErrors(error: AssetError): void {
@@ -122,6 +141,10 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
       minify: options.minify,
       optimize: options.optimize,
     });
+
+    if (!options.quiet) {
+      printWarnings(result.warnings);
+    }
 
     if (options.verbose) {
       if (result.assetCount > 0) {

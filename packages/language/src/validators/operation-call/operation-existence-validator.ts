@@ -1,12 +1,10 @@
 import type { ValidationAcceptor } from 'langium';
 import { hasOperation, validateOperationExists } from '../../compiler/index.js';
-import { findActionByName } from '../../compiler/name-resolver.js';
-import type { EligianScopeProvider } from '../../eligian-scope-provider.js';
 import type { OperationCall, TimedEvent } from '../../generated/ast.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
-import { findImportedActionByNameOrAlias } from './action-resolution.js';
+import { findCallableActionByName } from './action-resolution.js';
 
 /**
  * Validates that an operation call resolves to a known operation or action, and
@@ -26,40 +24,12 @@ export class OperationExistenceValidator extends BaseValidator {
   checkOperationExists(operation: OperationCall, accept: ValidationAcceptor): void {
     const opName = getOperationCallName(operation);
 
-    // T020: Skip operation validation if this is an action call
-    // (Action calls are validated by checkTimelineOperationCall for direct timeline calls,
-    //  or allowed in InlineEndableAction blocks)
-    //
-    // Feature 023: Also check for Library files
-    const program = this.getProgram(operation);
-    if (program) {
-      const action = findActionByName(opName, program);
-      if (action) {
-        // This is a valid action call - skip operation validation
-        return;
-      }
-    }
-
-    // Feature 023: Check if operation is in a Library file
-    const library = this.getLibrary(operation);
-    if (library) {
-      const action = library.actions?.find(a => a.name === opName);
-      if (action) {
-        // This is a valid action call within the library - skip operation validation
-        return;
-      }
-    }
-
-    // Feature 024: Check if operation is an IMPORTED action
-    // Feature 032 Fix: Must check aliases as well as original action names
-    if (program && this.services) {
-      const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
-      const importedActions = scopeProvider.getImportedActions(program);
-      const importedAction = findImportedActionByNameOrAlias(opName, program, importedActions);
-      if (importedAction) {
-        // This is a valid imported action call - skip operation validation
-        return;
-      }
+    // T020: Skip operation validation if this is an action call: a local
+    // action, a library action (private helpers included, Feature 023 FR-010)
+    // or an imported action by name or alias (Feature 024/032), in Program
+    // and Library files alike.
+    if (findCallableActionByName(this.services, opName, operation)) {
+      return;
     }
 
     // Use compiler validation logic
@@ -95,31 +65,14 @@ export class OperationExistenceValidator extends BaseValidator {
     // Direct timeline call - must be an action call, NOT an operation
     const callName = getOperationCallName(call);
 
-    // Get the program to search for actions
-    const program = this.getProgram(call);
-    if (!program) {
+    // Timeline events only exist in programs
+    if (!this.getProgram(call)) {
       return; // Can't validate without program context
     }
 
-    // Check if it's a defined action (local)
-    const action = findActionByName(callName, program);
-    if (action) {
-      // Valid local action call - success
+    // Valid local or imported (by name or alias) action call
+    if (findCallableActionByName(this.services, callName, call)) {
       return;
-    }
-
-    // Feature 024: Check if it's an IMPORTED action
-    // Feature 032 Fix: Must check aliases as well as original action names
-    if (this.services) {
-      const scopeProvider = this.services.references.ScopeProvider as EligianScopeProvider;
-      const importedActions = scopeProvider.getImportedActions(program);
-
-      // Check if callName matches an imported action's name OR its alias
-      const importedAction = findImportedActionByNameOrAlias(callName, program, importedActions);
-      if (importedAction) {
-        // Valid imported action call - success
-        return;
-      }
     }
 
     // Check if it's an operation (ERROR - operations not allowed as direct timeline actions)

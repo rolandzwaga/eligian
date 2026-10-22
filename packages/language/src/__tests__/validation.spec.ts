@@ -159,23 +159,23 @@ describe('Eligian Grammar - Validation', () => {
       const code = loadFixture('invalid-time-range.eligian');
       const { errors } = await ctx.parseAndValidate(code);
 
-      expect(errors.length).toBeGreaterThan(0);
-      expect(
-        errors.some(
-          e =>
-            e.message.includes('start time') && e.message.includes('must be less than or equal to')
-        )
-      ).toBe(true);
+      // Exactly one rule (Typir TimedEvent validation) reports an inverted range
+      const timeRangeErrors = errors.filter(
+        e => e.message.includes('end time') && e.message.includes('must be greater than')
+      );
+      expect(timeRangeErrors).toHaveLength(1);
+      expect(timeRangeErrors[0].message).toContain('(5s)');
+      expect(timeRangeErrors[0].message).toContain('(10s)');
     });
 
-    test('should accept valid time range (start <= end)', async () => {
+    test('should accept valid time range (start < end)', async () => {
       const code = `
                 timeline "test" in ".test-container" using raf {
                     at 0s..10s [
                         selectElement("#el")
                     ] [
                     ]
-                    at 5s..5s [
+                    at 500ms..2s [
                         selectElement("#el2")
                     ] [
                     ]
@@ -185,7 +185,7 @@ describe('Eligian Grammar - Validation', () => {
 
       // Should not have time range errors
       const timeRangeErrors = errors.filter(
-        e => e.message.includes('start time') && e.message.includes('must be less than')
+        e => e.message.includes('start time') || e.message.includes('end time')
       );
       expect(timeRangeErrors.length).toBe(0);
     });

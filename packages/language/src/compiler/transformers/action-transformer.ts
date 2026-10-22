@@ -39,7 +39,8 @@ export const transformActionDefinition = (
   actionDef: EndableActionDefinition | RegularActionDefinition,
   program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  actionSystemNames?: ReadonlyMap<string, string>
 ): Effect.Effect<EndableActionIR, TransformError> =>
   Effect.gen(function* () {
     const startOperations: OperationConfigIR[] = [];
@@ -52,6 +53,7 @@ export const transformActionDefinition = (
       loopVariableName: undefined,
       scopedConstants: new Map(), // Start with empty map for action-scoped constants
       programConstants,
+      actionSystemNames,
     };
 
     if (actionDef.$type === 'EndableActionDefinition') {

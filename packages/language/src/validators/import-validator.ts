@@ -3,10 +3,12 @@ import { hasOperation } from '../compiler/index.js';
 import { resolveLibraryPath } from '../compiler/pipeline.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import type { DefaultImport, Library, LibraryImport, NamedImport } from '../generated/ast.js';
+import { isLibraryImport } from '../generated/ast.js';
 import { formatValidationMessage } from '../utils/error-builder.js';
 import { validateAssetType } from './asset-type-validator.js';
 import { BaseValidator } from './base-validator.js';
 import { validateImportPath } from './import-path-validator.js';
+import { reportImportNameCollisions } from './program/import-name-collision-validator.js';
 
 /**
  * Validations for library imports and import statements (Feature 009/023).
@@ -61,6 +63,24 @@ export class ImportValidator extends BaseValidator {
       action =>
         `Duplicate action definition '${action.name}'. Action already defined in this library.`,
       'library_duplicate_action',
+      accept
+    );
+  }
+
+  /**
+   * Library imports must not collide with the library's own actions or with
+   * each other (same rule as for programs, `import_name_collision`). Without
+   * this, a library that defines `fade` and also imports `fade` would silently
+   * resolve its own calls to one of the two.
+   */
+  checkLibraryImportNameCollisions(library: Library, accept: ValidationAcceptor): void {
+    const libraryImports = (library.imports ?? []).filter(isLibraryImport);
+    if (libraryImports.length === 0) {
+      return;
+    }
+    reportImportNameCollisions(
+      libraryImports,
+      new Set((library.actions ?? []).map(action => action.name)),
       accept
     );
   }

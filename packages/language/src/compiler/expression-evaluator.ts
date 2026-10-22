@@ -27,7 +27,11 @@ import type {
   VariableReference,
 } from '../generated/ast.js';
 import type { JsonValue } from './types/common.js';
-import type { ConstantMap, ExpressionEvaluationResult } from './types/constant-folding.js';
+import type {
+  ConstantMap,
+  ConstantValue,
+  ExpressionEvaluationResult,
+} from './types/constant-folding.js';
 
 /**
  * Evaluate a constant expression at compile time
@@ -119,10 +123,13 @@ function evaluateExpressionInternal(
 
     // Unary expressions: !flag, -value
     case 'UnaryExpression': {
-      const operand = assertPrimitive(
-        evaluateExpressionInternal(expr.operand, constants, evaluating)
-      );
-      return applyUnaryOperator(expr.op, operand);
+      const operand = evaluateExpressionInternal(expr.operand, constants, evaluating);
+      // `!` is defined for every JSON value (`!null` → true, `![]` → false);
+      // only `-` needs a primitive operand.
+      if (expr.op === '!') {
+        return !operand;
+      }
+      return applyUnaryOperator(expr.op, assertPrimitive(operand));
     }
 
     // Variable reference: @varName
@@ -139,12 +146,13 @@ function evaluateExpressionInternal(
         throw new Error(`Circular dependency detected: ${varName}`);
       }
 
-      // Check if this constant is in the map
-      if (!constants.has(varName)) {
+      // Check if this constant is in the map (for the declaration the
+      // reference actually links to — a same-named constant may be shadowed)
+      const constant = resolveConstant(varRef, constants);
+      if (!constant) {
         throw new Error(`Undefined constant: ${varName}`);
       }
 
-      const constant = constants.get(varName)!;
       return constant.value;
     }
 
@@ -152,6 +160,34 @@ function evaluateExpressionInternal(
     default:
       throw new Error(`Cannot evaluate expression type: ${expr.$type}`);
   }
+}
+
+/**
+ * Look up the constant a variable reference folds to, or `undefined` when the
+ * reference is not a compile-time constant.
+ *
+ * Constant maps are keyed by name, but a name can be shadowed: an action-local
+ * `const x = $operationdata.foo` (not foldable, so not in any map) shadows a
+ * global `const x = 1` (in the program map). The reference links to the local
+ * declaration, so it must not pick up the global's value. When the map entry
+ * records its declaration, it only matches a reference that links to that
+ * exact node; entries without one (hand-built maps) match by name.
+ */
+export function resolveConstant(
+  varRef: VariableReference,
+  ...constantMaps: ConstantMap[]
+): ConstantValue | undefined {
+  const declaration = varRef.variable?.ref;
+  if (!declaration) {
+    return undefined;
+  }
+  for (const constants of constantMaps) {
+    const constant = constants.get(declaration.name);
+    if (constant && (constant.declaration === undefined || constant.declaration === declaration)) {
+      return constant;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -253,9 +289,6 @@ function applyUnaryOperator(
   operand: string | number | boolean
 ): string | number | boolean {
   switch (op) {
-    case '!':
-      return !operand;
-
     case '-':
       return -(operand as number);
 

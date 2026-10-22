@@ -333,7 +333,8 @@ export const transformOperationStatement = (
           const actionOperation = isEndOperation && isEndableAction ? 'endAction' : 'startAction';
 
           return buildActionCallOperations(
-            operationName,
+            // Library helpers are emitted under library-qualified names
+            scope.actionSystemNames?.get(operationName) ?? operationName,
             actionOperationData,
             getSourceLocation(stmt),
             actionOperation
@@ -617,6 +618,7 @@ export const transformVariableDeclaration = (
         name: stmt.name,
         value: evalResult.value!,
         type: constantValueType(evalResult.value!),
+        declaration: stmt,
         sourceLocation: {
           line: stmt.$cstNode?.range.start.line ?? 0,
           column: stmt.$cstNode?.range.start.character ?? 0,

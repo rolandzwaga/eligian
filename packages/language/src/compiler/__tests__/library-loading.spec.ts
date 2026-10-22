@@ -134,9 +134,8 @@ describe('Library Loading (T006-T010)', () => {
 
       const resolved = resolveLibraryPath(currentUri, importPath);
 
-      // Note: URI.Utils.joinPath preserves .. segments rather than normalizing
-      expect(resolved.path).toContain('libs/utils.eligian');
-      expect(resolved.path).toContain('..');
+      // `..` segments are collapsed so cycle detection sees canonical paths
+      expect(resolved.path).toBe('/project/libs/utils.eligian');
     });
 
     it('should resolve deep relative paths', () => {
@@ -145,8 +144,7 @@ describe('Library Loading (T006-T010)', () => {
 
       const resolved = resolveLibraryPath(currentUri, importPath);
 
-      // Note: URI.Utils.joinPath preserves .. segments rather than normalizing
-      expect(resolved.path).toContain('libs/animations.eligian');
+      expect(resolved.path).toBe('/project/src/libs/animations.eligian');
     });
 
     it('should handle paths without leading ./', () => {

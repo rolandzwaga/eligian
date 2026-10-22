@@ -217,14 +217,29 @@ describe('Import Validation Rules (Unit)', () => {
       expect(duplicateErrors.length).toBe(0);
     });
 
+    it('should not warn for explicit css/media on extensions without a known inference', async () => {
+      // Regression: unknown extensions used to infer as 'html', so following the
+      // "add 'as css'/'as media'" advice produced a contradictory conflict warning.
+      const code = programWithImports(`
+        import theme from './theme.scss' as css
+        import clip from './intro.mov' as media
+        import track from './track.ogg' as media
+        import sound from './sound.m4a' as media
+      `);
+      const { warnings } = await parseAndValidate(code);
+
+      const mismatchWarnings = warnings.filter(w => w.message.includes('conflicts with inferred'));
+      expect(mismatchWarnings).toEqual([]);
+    });
+
     it('should handle unknown file extension gracefully', async () => {
-      // Unknown extensions default to 'html' in inferAssetTypeFromExtension
+      // Unknown extensions have no inferred type, so no conflict can be reported
       const code = programWithImports(`
         import data from './data.xyz' as html
       `);
       const { warnings } = await parseAndValidate(code);
 
-      // Should not warn because unknown extensions infer as 'html'
+      // Should not warn because unknown extensions have no inferred type
       const mismatchWarnings = warnings.filter(w => w.message.includes('conflicts with inferred'));
       expect(mismatchWarnings.length).toBe(0);
     });

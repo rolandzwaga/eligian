@@ -8,6 +8,7 @@
     "npm": ">=10.2.3"
   },
   "files": [
+    "bin",
     "dist",
     "out"
   ],
@@ -20,14 +21,15 @@
     }
   },
   "bin": {
-    "eligian": "./dist/cli.mjs",
-    "eligian-cli": "./dist/cli.mjs"
+    "eligian": "./bin/cli.js",
+    "eligian-cli": "./bin/cli.js"
   },
   "scripts": {
     "clean": "shx rm -fr *.tsbuildinfo out dist",
     "build": "node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
     "build:clean": "pnpm run clean && pnpm run build",
     "test": "vitest run",
+    "test:coverage:ci": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {

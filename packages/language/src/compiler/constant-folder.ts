@@ -69,6 +69,7 @@ export function buildConstantMap(program: Program): ConstantMap {
         name: htmlImport.name,
         value: htmlContent,
         type: 'string',
+        declaration: htmlImport,
         sourceLocation: extractSourceLocation(htmlImport),
       };
 
@@ -96,6 +97,7 @@ export function buildConstantMap(program: Program): ConstantMap {
         name: constDecl.name,
         value: evalResult.value!,
         type: constantValueType(evalResult.value!),
+        declaration: constDecl,
         sourceLocation: extractSourceLocation(constDecl),
       };
 

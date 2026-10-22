@@ -38,6 +38,13 @@ export interface ScopeContext {
   programConstants: ConstantMap;
   /** Event action parameter indices (Feature 028 - T019) */
   eventActionParameters?: Map<string, number>;
+  /**
+   * Called action name → the name that action is emitted under (the
+   * `requestAction` systemName). Set for library action bodies, whose helpers
+   * are emitted under library-qualified names; names absent from the map are
+   * requested by the name they are called by.
+   */
+  actionSystemNames?: ReadonlyMap<string, string>;
 }
 
 /**

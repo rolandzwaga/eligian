@@ -117,6 +117,7 @@
     "build:clean": "pnpm run clean && pnpm run build",
     "watch": "pnpm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\"",
     "test": "vitest run",
+    "test:coverage:ci": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
   },

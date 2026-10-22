@@ -13,7 +13,12 @@
 
 import type { ValidationProblemAcceptor } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
-import type { SequenceBlock, StaggerBlock, TimedEvent } from '../../generated/ast.js';
+import type {
+  SequenceBlock,
+  StaggerBlock,
+  TimedEvent,
+  TimeExpression,
+} from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 import { extractTimeValue, parseTimeRange } from '../utils/time-expression.js';
 
@@ -50,23 +55,27 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
      * ```
      */
     TimedEvent: (node: TimedEvent, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
-      const [startTime, endTime] = parseTimeRange(node.timeRange);
+      const { start, end, duration } = parseTimeRange(node.timeRange);
 
-      // Check for negative start time
-      if (startTime < 0) {
+      // Check for negative start time (only when statically known)
+      if (start !== undefined && start < 0) {
         accept({
           severity: 'error',
-          message: `Timeline event start time cannot be negative (got ${startTime}s)`,
+          message: `Timeline event start time cannot be negative (got ${start}s)`,
           languageNode: node,
           languageProperty: 'timeRange',
         });
       }
 
-      // Check for end time before start time
-      if (endTime <= startTime) {
+      // Check for end time not after start time. `duration` is known for absolute
+      // ranges and for ranges whose ends are both relative (`+0s..+5s`); ranges with
+      // a property-chain or mixed absolute/relative end are left to runtime.
+      if (duration !== undefined && duration <= 0) {
+        const endText = describeTime(end, node.timeRange?.end);
+        const startText = describeTime(start, node.timeRange?.start);
         accept({
           severity: 'error',
-          message: `Timeline event end time (${endTime}s) must be greater than start time (${startTime}s)`,
+          message: `Timeline event end time (${endText}) must be greater than start time (${startText})`,
           languageNode: node,
           languageProperty: 'timeRange',
         });
@@ -93,7 +102,8 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
       for (const item of node.items) {
         const duration = extractTimeValue(item.duration);
 
-        if (duration <= 0) {
+        // Skip durations that are not statically known (relative / property chain)
+        if (duration !== undefined && duration <= 0) {
           accept({
             severity: 'error',
             message: `Sequence item duration must be positive (got ${duration}s)`,
@@ -122,8 +132,8 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
       const delay = extractTimeValue(node.delay);
       const duration = extractTimeValue(node.duration);
 
-      // Check for non-positive delay
-      if (delay <= 0) {
+      // Check for non-positive delay (skipped when not statically known)
+      if (delay !== undefined && delay <= 0) {
         accept({
           severity: 'error',
           message: `Stagger delay must be greater than 0 (got ${delay}s)`,
@@ -132,8 +142,8 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
         });
       }
 
-      // Check for non-positive duration
-      if (duration <= 0) {
+      // Check for non-positive duration (skipped when not statically known)
+      if (duration !== undefined && duration <= 0) {
         accept({
           severity: 'error',
           message: `Stagger duration must be positive (got ${duration}s)`,
@@ -143,4 +153,15 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
       }
     },
   });
+}
+
+/**
+ * Render a time for a diagnostic: seconds when statically known, otherwise the
+ * source text (e.g. `+5s` for a relative time).
+ */
+function describeTime(seconds: number | undefined, expr: TimeExpression | undefined): string {
+  if (seconds !== undefined) {
+    return `${seconds}s`;
+  }
+  return expr?.$cstNode?.text ?? 'unknown';
 }

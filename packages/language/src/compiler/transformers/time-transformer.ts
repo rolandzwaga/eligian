@@ -7,6 +7,7 @@
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
 import type { TimeExpression as AstTimeExpression } from '../../generated/ast.js';
+import { convertTimeToSeconds } from '../../utils/time-units.js';
 import type { TimeExpression } from '../types/eligius-ir.js';
 import { getSourceLocation } from './source-location.js';
 
@@ -66,28 +67,6 @@ export const transformTimeExpression = (
         });
     }
   });
-
-/**
- * Helper: Convert time value to seconds based on unit
- *
- * Supports: ms (milliseconds), s (seconds), m (minutes), h (hours)
- * Default unit is seconds if not specified.
- */
-function convertTimeToSeconds(value: number, unit?: string): number {
-  if (!unit || unit === 's') {
-    return value;
-  }
-  switch (unit) {
-    case 'ms':
-      return value / 1000;
-    case 'm':
-      return value * 60;
-    case 'h':
-      return value * 3600;
-    default:
-      return value; // Default to seconds
-  }
-}
 
 /**
  * Helper: Evaluate TimeExpression to a numeric value

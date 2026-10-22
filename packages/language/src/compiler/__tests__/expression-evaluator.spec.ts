@@ -199,6 +199,58 @@ describe('Expression Evaluator - Constant References', () => {
     expect(result.canEvaluate).toBe(false);
     expect(result.error?.reason).toContain('Undefined constant');
   });
+
+  // Audit 2026-10-22 (high): a same-named constant from another declaration
+  // (e.g. a global shadowed by a non-foldable local) must not be used.
+  test('should not resolve a reference against a same-named constant of another declaration', async () => {
+    const document = await parseDocument(
+      services,
+      `
+      const x = 1
+
+      action a() [
+        const x = $operationdata.foo
+        const y = @x + 10
+      ]
+    `
+    );
+    const program = document.parseResult.value as Program;
+    const globalX = getElements(program)[0];
+    const action = getElements(program)[1];
+    if (globalX.$type !== 'VariableDeclaration' || action.$type !== 'RegularActionDefinition') {
+      throw new Error('Unexpected program shape');
+    }
+    const yDecl = action.operations[1];
+    if (yDecl.$type !== 'VariableDeclaration') {
+      throw new Error('Expected VariableDeclaration');
+    }
+
+    const constantMap: ConstantMap = new Map([
+      ['x', { name: 'x', value: 1, type: 'number', declaration: globalX }],
+    ]);
+
+    const result = evaluateExpression(yDecl.value, constantMap);
+
+    expect(result.canEvaluate).toBe(false);
+  });
+
+  test('should resolve a reference whose declaration matches the constant', async () => {
+    const document = await parseDocument(services, 'const A = 5; const B = @A + 3;');
+    const program = document.parseResult.value as Program;
+    const [aDecl, bDecl] = getElements(program);
+    if (aDecl.$type !== 'VariableDeclaration' || bDecl.$type !== 'VariableDeclaration') {
+      throw new Error('Expected VariableDeclarations');
+    }
+
+    const constantMap: ConstantMap = new Map([
+      ['A', { name: 'A', value: 5, type: 'number', declaration: aDecl }],
+    ]);
+
+    const result = evaluateExpression(bDecl.value, constantMap);
+
+    expect(result.canEvaluate).toBe(true);
+    expect(result.value).toBe(8);
+  });
 });
 
 describe('Expression Evaluator - Edge Cases', () => {

@@ -1,9 +1,12 @@
 import type { AstNode } from 'langium';
 import {
+  type BottomType,
   type CustomKind,
   InferenceRuleNotApplicable,
+  isType,
   type PrimitiveType,
   type TopType,
+  type Type,
 } from 'typir';
 import type { LangiumTypeSystemDefinition, TypirLangiumServices } from 'typir-langium';
 import { OPERATION_REGISTRY } from '../compiler/operations/registry.generated.js';
@@ -11,15 +14,21 @@ import type { ConstantValue, ParameterType } from '../compiler/operations/types.
 import { isConstantValueArray } from '../compiler/operations/types.js';
 import type {
   ArrayLiteral,
+  BinaryExpression,
   BooleanLiteral,
   EndableActionDefinition,
+  Expression,
+  NullLiteral,
   NumberLiteral,
   ObjectLiteral,
   OperationCall,
   Parameter,
   ParameterReference,
+  PropertyChainReference,
   RegularActionDefinition,
   StringLiteral,
+  SystemPropertyReference,
+  UnaryExpression,
   VariableDeclaration,
   VariableReference,
 } from '../generated/ast.js';
@@ -74,6 +83,13 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   private objectType!: PrimitiveType;
   private arrayType!: PrimitiveType;
   private unknownType!: TopType;
+  /**
+   * Type of values that are only known at runtime (`null`, `$globaldata.x`, `@@currentItem`,
+   * expressions whose result type cannot be determined statically). Modelled as Typir's
+   * Bottom type, which is a sub-type of (and therefore assignable to) every other type, so
+   * such arguments never produce a type mismatch: the type system opts out for them.
+   */
+  private dynamicType!: BottomType;
   // Custom type factories
   private _importFactory!: CustomKind<ImportTypeProperties, EligianSpecifics>; // Initialized in onInitialize() for US1
   private _languagesFactory!: CustomKind<LanguagesTypeProperties, EligianSpecifics>; // Initialized in onInitialize() for Feature 037 US5
@@ -160,6 +176,9 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
     // Unknown type (top type - compatible with everything)
     this.unknownType = typir.factory.Top.create({}).finish();
+
+    // Runtime-only values (bottom type - assignable to everything, see `dynamicType`)
+    this.dynamicType = typir.factory.Bottom.create({}).finish();
 
     // ═══════════════════════════════════════════════════════════════════
     // STEP 1.5: User Story 1 - Import Type Checking (T020)
@@ -298,6 +317,18 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
         const decl = paramRef.parameter?.ref;
         return decl ? decl : this.unknownType;
       },
+
+      // Values only known at runtime: never a static type mismatch
+      NullLiteral: (_node: NullLiteral) => this.dynamicType,
+      PropertyChainReference: (_node: PropertyChainReference) => this.dynamicType,
+      SystemPropertyReference: (_node: SystemPropertyReference) => this.dynamicType,
+
+      // Unary: `-x` is numeric negation, `!x` is logical negation
+      UnaryExpression: (node: UnaryExpression) =>
+        node.op === '!' ? this.booleanType : this.numberType,
+
+      // Binary: result type follows JavaScript semantics where it is statically known
+      BinaryExpression: (node: BinaryExpression) => this.inferBinaryExpressionType(node),
     });
 
     // ═══════════════════════════════════════════════════════════════════
@@ -307,6 +338,66 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
     // Note: Variables don't have type annotations in Eligian grammar
     // Operation argument validation is handled automatically by Typir
     // via validateArgumentsOfFunctionCalls: true in operation function types
+  }
+
+  /**
+   * Infer the result type of a binary expression.
+   *
+   * - Comparison/equality operators always yield `boolean`.
+   * - `-`, `*`, `/`, `%`, `**` always yield `number`.
+   * - `+` yields `string` when either operand is a string (concatenation), `number` when both
+   *   operands are numbers, and the dynamic type otherwise (e.g. `$globaldata.x + 1`).
+   * - `&&` / `||` return one of their operands in JavaScript, so they yield `boolean` only
+   *   when both operands are booleans, and the dynamic type otherwise
+   *   (e.g. `$globaldata.name || "default"`).
+   */
+  private inferBinaryExpressionType(node: BinaryExpression): Type {
+    switch (node.op) {
+      case '==':
+      case '!=':
+      case '<':
+      case '<=':
+      case '>':
+      case '>=':
+        return this.booleanType;
+
+      case '-':
+      case '*':
+      case '/':
+      case '%':
+      case '**':
+        return this.numberType;
+
+      case '+': {
+        const left = this.inferExpressionType(node.left);
+        const right = this.inferExpressionType(node.right);
+        if (left === this.stringType || right === this.stringType) {
+          return this.stringType;
+        }
+        if (left === this.numberType && right === this.numberType) {
+          return this.numberType;
+        }
+        return this.dynamicType;
+      }
+
+      case '&&':
+      case '||': {
+        const left = this.inferExpressionType(node.left);
+        const right = this.inferExpressionType(node.right);
+        return left === this.booleanType && right === this.booleanType
+          ? this.booleanType
+          : this.dynamicType;
+      }
+
+      default:
+        return this.dynamicType;
+    }
+  }
+
+  /** Infer an operand's type, or `undefined` when Typir cannot infer it. */
+  private inferExpressionType(expression: Expression): Type | undefined {
+    const result = this.typirServices.Inference.inferType(expression);
+    return isType(result) ? result : undefined;
   }
 
   /**
@@ -459,7 +550,11 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
           return false;
         },
         inputArguments: (call: OperationCall) => call.args,
-        validateArgumentsOfFunctionCalls: true, // Enable type checking for action calls
+        // Type-check action call arguments, but only report a mismatch when every argument
+        // has an inferred type. An argument Typir cannot infer is not evidence of a wrong
+        // type (unknown = opt-out), so it must never surface as a hard call error.
+        validateArgumentsOfFunctionCalls: (call: OperationCall) =>
+          call.args.every(arg => isType(this.typirServices.Inference.inferType(arg))),
       })
       .finish();
   }

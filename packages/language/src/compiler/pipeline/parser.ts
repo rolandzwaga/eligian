@@ -33,6 +33,23 @@ import { getOrCreateServices } from './services.js';
 let documentCounter = 0;
 
 /**
+ * Converts a document location to a Langium URI.
+ *
+ * Callers pass either a URI string (`file:///...`, `memory:...`) or a plain
+ * filesystem path: the CLI and the VS Code extension pass `fsPath`s such as
+ * `C:\proj\a.eligian`. `URI.parse` would read the drive letter `C` as the URI
+ * scheme and drop it from `fsPath`, so every relative import would then
+ * resolve against the process's current drive. Filesystem paths (Windows
+ * drive-letter paths, or anything without a `scheme:` prefix of 2+ chars) are
+ * therefore converted with `URI.file`.
+ */
+export function toDocumentUri(location: string): URI {
+  const isWindowsDrivePath = /^[a-zA-Z]:([\\/]|$)/.test(location);
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]+:/.test(location);
+  return isWindowsDrivePath || !hasScheme ? URI.file(location) : URI.parse(location);
+}
+
+/**
  * T076: Parse DSL source → Langium AST
  *
  * Uses Langium parser to convert source string to AST.
@@ -49,8 +66,9 @@ export const parseSource = (
 ): Effect.Effect<Program, ParseError | ValidationError> =>
   Effect.gen(function* () {
     // Generate unique URI if not provided
-    const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
-    const documentUri = URI.parse(uriString);
+    const documentUri = toDocumentUri(uri ?? `file:///memory/source-${documentCounter++}.eligian`);
+    // Registry key: must match the `document.uri.toString()` the validators use
+    const uriString = documentUri.toString();
 
     // T017: Load library files BEFORE parsing/validation if URI is provided
     // This ensures libraries are in the workspace when scope provider runs
