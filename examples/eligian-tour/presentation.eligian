@@ -27,11 +27,13 @@ action spotlight(selector: string) [
 ]
 
 /**
- * Clear every token spotlight.
+ * Clear every token spotlight and hide the previous beat's callout chip.
  */
 action clearSpots() [
   selectElement(".tok")
   removeClass("spot")
+  selectElement(".callout")
+  removeClass("show")
 ]
 
 /**

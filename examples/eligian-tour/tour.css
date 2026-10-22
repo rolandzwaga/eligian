@@ -277,14 +277,15 @@
 }
 
 /* ---- Callout chips ---------------------------------------------------- */
+/* The layer generates no box, so each chip is positioned against the chapter
+   view, which also contains the code tokens the chips point at. */
 .callout-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+  display: contents;
 }
 .callout {
   position: absolute;
   left: 2rem;
+  z-index: 2;
   max-width: 18rem;
   padding: 0.4rem 0.7rem;
   border-radius: 8px;
@@ -297,96 +298,163 @@
   pointer-events: none;
   transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
 }
-/* id-registration + rough vertical placement (precise positioning = polish) */
-#cl-name {
-  top: 3rem;
+
+/* Anchoring: each chip points at the token spotlighted in the same beat (or,
+   for beats without a spotlight, at the code block the beat reveals). The
+   anchor name is the chip's id, set on the target element. */
+#tok-timeline { anchor-name: --cl-name; }
+#tok-raf { anchor-name: --cl-provider; }
+#tok-at { anchor-name: --cl-range; }
+#code-units { anchor-name: --cl-units; }
+#tok-plus { anchor-name: --cl-relative; }
+#c2-tok-action { anchor-name: --c2-cl-action; }
+#c2-tok-param { anchor-name: --c2-cl-param; }
+#c2-tok-call { anchor-name: --c2-cl-call; }
+#c2-tok-template { anchor-name: --c2-cl-name; }
+#c2-tok-endable { anchor-name: --c2-cl-endable; }
+#c3-tok-const { anchor-name: --c3-cl-const; }
+#c3-tok-expr { anchor-name: --c3-cl-expr; }
+#c3-tok-if { anchor-name: --c3-cl-if; }
+#c3-tok-for { anchor-name: --c3-cl-for; }
+#c3-tok-break { anchor-name: --c3-cl-loopctl; }
+#c4-code-manual { anchor-name: --c4-cl-manual; }
+#c4-tok-seq { anchor-name: --c4-cl-seq; }
+#c4-code-sequence { anchor-name: --c4-cl-edit; }
+#c4-tok-stagger { anchor-name: --c4-cl-stagger; }
+#c4-code-inline { anchor-name: --c4-cl-inline; }
+#c5-code-overview { anchor-name: --c5-cl-over; }
+#c5-tok-bcast { anchor-name: --c5-cl-bus; }
+#c5-tok-onevent { anchor-name: --c5-cl-on; }
+#c5-tok-ctrl { anchor-name: --c5-cl-ctrl; }
+#c5-tok-loc { anchor-name: --c5-cl-loc; }
+#c6-code-why { anchor-name: --c6-cl-why; }
+#c6-tok-preview { anchor-name: --c6-cl-preview; }
+#c6-tok-css { anchor-name: --c6-cl-css; }
+#c6-tok-complete { anchor-name: --c6-cl-complete; }
+#c6-tok-jsdoc { anchor-name: --c6-cl-jsdoc; }
+
+#cl-name { position-anchor: --cl-name; }
+#cl-provider { position-anchor: --cl-provider; }
+#cl-range { position-anchor: --cl-range; }
+#cl-units { position-anchor: --cl-units; }
+#cl-relative { position-anchor: --cl-relative; }
+#c2-cl-action { position-anchor: --c2-cl-action; }
+#c2-cl-param { position-anchor: --c2-cl-param; }
+#c2-cl-call { position-anchor: --c2-cl-call; }
+#c2-cl-name { position-anchor: --c2-cl-name; }
+#c2-cl-endable { position-anchor: --c2-cl-endable; }
+#c3-cl-const { position-anchor: --c3-cl-const; }
+#c3-cl-expr { position-anchor: --c3-cl-expr; }
+#c3-cl-if { position-anchor: --c3-cl-if; }
+#c3-cl-for { position-anchor: --c3-cl-for; }
+#c3-cl-loopctl { position-anchor: --c3-cl-loopctl; }
+#c4-cl-manual { position-anchor: --c4-cl-manual; }
+#c4-cl-seq { position-anchor: --c4-cl-seq; }
+#c4-cl-edit { position-anchor: --c4-cl-edit; }
+#c4-cl-stagger { position-anchor: --c4-cl-stagger; }
+#c4-cl-inline { position-anchor: --c4-cl-inline; }
+#c5-cl-over { position-anchor: --c5-cl-over; }
+#c5-cl-bus { position-anchor: --c5-cl-bus; }
+#c5-cl-on { position-anchor: --c5-cl-on; }
+#c5-cl-ctrl { position-anchor: --c5-cl-ctrl; }
+#c5-cl-loc { position-anchor: --c5-cl-loc; }
+#c6-cl-why { position-anchor: --c6-cl-why; }
+#c6-cl-preview { position-anchor: --c6-cl-preview; }
+#c6-cl-css { position-anchor: --c6-cl-css; }
+#c6-cl-complete { position-anchor: --c6-cl-complete; }
+#c6-cl-jsdoc { position-anchor: --c6-cl-jsdoc; }
+
+@supports (anchor-name: --a) {
+  /* Token chips sit just below their token, with an arrow pointing up at it;
+     when there is no room below they flip above it. */
+  .callout {
+    top: calc(anchor(bottom) + 8px);
+    left: anchor(left);
+    position-try-fallbacks: flip-block;
+    container-type: anchored;
+  }
+  .callout::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 0.8rem;
+    border: 6px solid transparent;
+    border-bottom-color: var(--accent);
+  }
+  /* Flipped above the token: the arrow moves to the bottom edge, pointing down. */
+  @container anchored(fallback: flip-block) {
+    .callout::before {
+      top: 100%;
+      bottom: auto;
+      border-bottom-color: transparent;
+      border-top-color: var(--accent);
+    }
+  }
+  /* Block chips label a whole code block: pinned to its top-right corner. */
+  #cl-units,
+  #c4-cl-manual,
+  #c4-cl-edit,
+  #c4-cl-inline,
+  #c5-cl-over,
+  #c6-cl-why {
+    top: calc(anchor(top) - 0.9rem);
+    left: auto;
+    right: calc(anchor(right) + 1rem);
+    position-try-fallbacks: none;
+  }
+  #cl-units::before,
+  #c4-cl-manual::before,
+  #c4-cl-edit::before,
+  #c4-cl-inline::before,
+  #c5-cl-over::before,
+  #c6-cl-why::before {
+    content: none;
+  }
 }
-#cl-provider {
-  top: 6rem;
-}
-#cl-range {
-  top: 9rem;
-}
-#cl-units {
-  top: 12rem;
-}
-#cl-relative {
-  top: 15rem;
-}
-#c2-cl-action {
-  top: 3rem;
-}
-#c2-cl-param {
-  top: 6rem;
-}
-#c2-cl-call {
-  top: 9rem;
-}
-#c2-cl-name {
-  top: 12rem;
-}
-#c2-cl-endable {
-  top: 15rem;
-}
-#c3-cl-const {
-  top: 3rem;
-}
-#c3-cl-expr {
-  top: 6rem;
-}
-#c3-cl-if {
-  top: 9rem;
-}
-#c3-cl-for {
-  top: 12rem;
-}
-#c3-cl-loopctl {
-  top: 15rem;
-}
-#c4-cl-manual {
-  top: 3rem;
-}
-#c4-cl-seq {
-  top: 6rem;
-}
-#c4-cl-edit {
-  top: 9rem;
-}
-#c4-cl-stagger {
-  top: 12rem;
-}
-#c4-cl-inline {
-  top: 15rem;
-}
-#c5-cl-over {
-  top: 3rem;
-}
-#c5-cl-bus {
-  top: 6rem;
-}
-#c5-cl-on {
-  top: 9rem;
-}
-#c5-cl-ctrl {
-  top: 12rem;
-}
-#c5-cl-loc {
-  top: 15rem;
-}
-#c6-cl-why {
-  top: 3rem;
-}
-#c6-cl-preview {
-  top: 6rem;
-}
-#c6-cl-css {
-  top: 9rem;
-}
-#c6-cl-complete {
-  top: 12rem;
-}
-#c6-cl-jsdoc {
-  top: 15rem;
+
+/* Without anchor positioning: stack the chips down the left edge, each beat
+   at its own height so consecutive chips don't overlap. */
+@supports not (anchor-name: --a) {
+  #cl-name,
+  #c2-cl-action,
+  #c3-cl-const,
+  #c4-cl-manual,
+  #c5-cl-over,
+  #c6-cl-why {
+    top: 3rem;
+  }
+  #cl-provider,
+  #c2-cl-param,
+  #c3-cl-expr,
+  #c4-cl-seq,
+  #c5-cl-bus,
+  #c6-cl-preview {
+    top: 6rem;
+  }
+  #cl-range,
+  #c2-cl-call,
+  #c3-cl-if,
+  #c4-cl-edit,
+  #c5-cl-on,
+  #c6-cl-css {
+    top: 9rem;
+  }
+  #cl-units,
+  #c2-cl-name,
+  #c3-cl-for,
+  #c4-cl-stagger,
+  #c5-cl-ctrl,
+  #c6-cl-complete {
+    top: 12rem;
+  }
+  #cl-relative,
+  #c2-cl-endable,
+  #c3-cl-loopctl,
+  #c4-cl-inline,
+  #c5-cl-loc,
+  #c6-cl-jsdoc {
+    top: 15rem;
+  }
 }
 
 /* ---- Effect-pane panels + illustrative chrome ------------------------ */
