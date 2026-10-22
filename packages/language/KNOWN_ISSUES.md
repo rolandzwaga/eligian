@@ -17,16 +17,17 @@ constant-folded boolean or a parenthesized, JSON-quoted string — unparseable
 either way (`parseExpression(undefined)` / malformed). Found by running a compiled
 chapter in the engine (jsdom); compiler tests never executed `when`.
 
-Fix in `compiler/transformers/operation-transformer.ts`:
-- serialize the condition into the engine `expression` format (`serializeWhenExpression` / `serializeWhenOperand`);
-- **constant-fold** a condition that evaluates to a literal boolean → emit only
-  the taken branch, no `when` (so `if (true)` and `if (@C > 0)` with constant `C`
-  work, instead of emitting a bogus `when`);
-- **hard compile error** for conditions `when` can't represent (logical `&&`/`||`/`!`,
-  bare booleans, arithmetic operands) — the engine simply cannot evaluate them.
+**Superseded by the Eligius 3 fix.** Eligius 3's `when` parses a full condition
+grammar (comparisons, `&&`, `||`, `!`, parentheses), so the single-comparison
+serializer and its compile errors for logical/bare conditions are gone. The
+condition is now serialized by `compiler/transformers/condition-transformer.ts`
+(`transformCondition`): unquoted property chains, single-quoted strings, operators
+as text; a condition that folds to a constant becomes the expression `true` /
+`false`; arithmetic on runtime operands and array/object values remain compile
+errors (Eligius conditions have no arithmetic).
 
-Regression tests: `compiler/__tests__/if-when-expression.spec.ts` (+ updated
-`transformer.spec.ts` and the `transformer-golden` snapshot).
+Regression tests: `compiler/__tests__/if-when-expression.spec.ts` and
+`when-condition.spec.ts` (+ the `transformer-golden` snapshot).
 
 ---
 

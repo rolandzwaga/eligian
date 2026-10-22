@@ -80,7 +80,7 @@ describe('Pipeline', () => {
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
-        const error = Option.getOrNull(Cause.failureOption(exit.cause)) as {
+        const error = Option.getOrNull(Cause.findErrorOption(exit.cause)) as {
           _tag?: string;
         } | null;
         // Regression: previously every diagnostic was tagged 'ParseError', which

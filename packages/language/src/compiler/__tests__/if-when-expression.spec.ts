@@ -103,8 +103,16 @@ timeline "t" in "#root" using raf {}`;
 
   // Logical operators and bare operands are part of the Eligius 3 grammar.
   test.each([
-    ['logical &&', 'count > 0 && count < 9', '$operationdata.count > 0 && $operationdata.count < 9'],
-    ['logical ||', 'count == 1 || count == 2', '$operationdata.count == 1 || $operationdata.count == 2'],
+    [
+      'logical &&',
+      'count > 0 && count < 9',
+      '$operationdata.count > 0 && $operationdata.count < 9',
+    ],
+    [
+      'logical ||',
+      'count == 1 || count == 2',
+      '$operationdata.count == 1 || $operationdata.count == 2',
+    ],
     ['bare operand', 'count', '$operationdata.count'],
     ['negation', '!count', '!$operationdata.count'],
   ])('serializes a %s condition', async (_label, condition, expected) => {
