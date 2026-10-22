@@ -6,7 +6,7 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import type { Expression } from '../../generated/ast.js';
+import { type Expression, isProgram } from '../../generated/ast.js';
 import type { JsonValue } from '../types/eligius-ir.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
@@ -63,10 +63,11 @@ export const transformExpression = (
 
       case 'PropertyChainReference': {
         // Property chain reference: $scope.currentItem
-        // For now, serialize to string format that Eligius understands
+        // The grammar consumes the '$' separately, so restore it: Eligius only
+        // resolves chains starting with $operationdata., $globaldata. or $scope.
         const scope = expr.scope;
         const properties = expr.properties.join('.');
-        return `${scope}.${properties}`;
+        return `$${scope}.${properties}`;
       }
 
       case 'VariableReference': {
@@ -93,6 +94,12 @@ export const transformExpression = (
         if (scope.programConstants.has(varName)) {
           const constant = scope.programConstants.get(varName)!;
           return constant.value; // Inline global constant
+        }
+
+        // Program-level variables are stored in global data (see the setData
+        // init action in ast-transformer.ts)
+        if (isProgram(expr.variable.ref.$container)) {
+          return `$globaldata.${varName}`;
         }
 
         // Otherwise, it's a runtime scope variable

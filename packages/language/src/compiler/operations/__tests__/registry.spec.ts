@@ -4,6 +4,7 @@
  * T224: Validate that all operations are registered with correct signatures
  */
 
+import { PARAMETER_TYPES } from 'eligius/metadata';
 import { describe, expect, it } from 'vitest';
 import {
   getAllOperationNames,
@@ -15,6 +16,8 @@ import {
   validateRegistry,
 } from '../index.js';
 
+const KNOWN_PARAMETER_TYPES: ReadonlySet<string> = new Set(PARAMETER_TYPES);
+
 describe('T224: Operation Registry Tests', () => {
   describe('Registry completeness', () => {
     it('should have all non-deprecated operations registered', () => {
@@ -22,6 +25,40 @@ describe('T224: Operation Registry Tests', () => {
       // Now includes ALL Eligius operations + synthetic operations
       // 79 Eligius operations + 1 synthetic (addController) = 80 total
       expect(allOperations.length).toBe(80);
+    });
+
+    it('should only use parameter types that exist in Eligius TParameterTypes', () => {
+      for (const operation of getAllOperations()) {
+        for (const parameter of operation.parameters) {
+          for (const type of parameter.type) {
+            const name = typeof type === 'string' ? type : null;
+            if (name !== null) {
+              expect(
+                KNOWN_PARAMETER_TYPES.has(name),
+                `${operation.systemName}.${parameter.name}: ${name}`
+              ).toBe(true);
+            }
+          }
+        }
+      }
+    });
+
+    it('should keep Eligius runtime types (RegExp, DOM nodes) as declared', () => {
+      const typeOf = (operation: string, parameter: string) =>
+        getOperationSignature(operation)?.parameters.find(p => p.name === parameter)?.type;
+
+      expect(typeOf('replaceString', 'pattern')).toEqual([
+        'ParameterType:string',
+        'ParameterType:RegExp',
+      ]);
+      expect(typeOf('setElementContent', 'template')).toEqual([
+        'ParameterType:string',
+        'ParameterType:Element',
+        'ParameterType:Text',
+        'ParameterType:Comment',
+        'ParameterType:Document',
+        'ParameterType:DocumentFragment',
+      ]);
     });
 
     it('should have no duplicate operation names', () => {

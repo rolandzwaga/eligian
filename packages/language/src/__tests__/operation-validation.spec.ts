@@ -117,7 +117,7 @@ describe('Operation Validation', () => {
             selectElement("#test")
             addClass("active")
             animate({opacity: 1}, 500)
-            setElementContent({template: "Hello"})
+            setElementContent("Hello")
           ] []
         }
       `);
@@ -133,6 +133,31 @@ describe('Operation Validation', () => {
       }
 
       expect(errors).toHaveLength(0);
+    });
+  });
+
+  describe('Runtime-only parameter types (RegExp, DOM nodes)', () => {
+    test('accepts a string or a runtime reference, rejects an object literal', async () => {
+      const { diagnostics } = await ctx.parseAndValidate(`
+        styles "./test.css"
+
+        action test(node) [
+          selectElement("#test")
+          setElementContent("Hello")
+          setElementContent(node)
+          setElementContent($scope.variables.fragment)
+          setElementContent({nodeType: 1})
+        ]
+
+        timeline "Test" in "#app" using raf {
+          at 0s..1s test("x")
+        }
+      `);
+
+      const errors = diagnostics.filter(d => d.severity === 1);
+      expect(errors.map(e => e.message)).toEqual([
+        expect.stringMatching(/Parameter 'template' expects type .*Element.* but got 'object'/),
+      ]);
     });
   });
 

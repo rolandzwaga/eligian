@@ -254,8 +254,74 @@ describe('AST Transformer', () => {
       const operation = result.config.actions[0].startOperations[0];
       // T223: setData takes 'properties' parameter which contains the object
       expect(operation.operationData?.properties).toBeDefined();
+      // Eligius only resolves chains that keep their '$' prefix
       expect((operation.operationData?.properties as any)?.['operationdata.name']).toBe(
-        'scope.currentItem'
+        '$scope.currentItem'
+      );
+    });
+
+    test('should transform property chains in operation arguments with their $ prefix', async () => {
+      const code = `
+                action test [
+                    selectElement($globaldata.selector)
+                    setVariable("x", $scope.variables.mode)
+                ]
+                timeline "test" in ".test-container" using raf {}
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const [select, setVar] = result.config.actions[0].startOperations;
+      expect(select.operationData?.selector).toBe('$globaldata.selector');
+      expect(setVar.operationData?.value).toBe('$scope.variables.mode');
+    });
+
+    test('should keep action parameters passed under a different operation parameter name', async () => {
+      // Eligius passes one operationData object through the action's operations, and each
+      // operation reads its own key: selectElement reads 'selector'. The action's argument
+      // arrives as 'target', so selectElement needs { selector: '$operationdata.target' }.
+      const code = `
+                action highlight(target) [
+                    selectElement(target)
+                ]
+                timeline "test" in ".test-container" using raf {}
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const select = result.config.actions[0].startOperations[0];
+      expect(select.systemName).toBe('selectElement');
+      expect(select.operationData).toEqual({ selector: '$operationdata.target' });
+    });
+
+    test('should reference program-level (non-constant) variables via $globaldata', async () => {
+      const code = `
+                const items = ["a", "b"]
+                action test [
+                    const local = $operationdata.x
+                    for (item in @items) {
+                        setVariable("y", @local)
+                    }
+                ]
+                timeline "test" in ".test-container" using raf {}
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Program-level variables are stored via setData as 'globaldata.items'
+      const init = result.config.initActions[0].startOperations[0];
+      expect(init.operationData?.properties).toEqual({ 'globaldata.items': ['a', 'b'] });
+
+      const ops = result.config.actions[0].startOperations;
+      expect(ops.find(op => op.systemName === 'forEach')?.operationData?.collection).toBe(
+        '$globaldata.items'
+      );
+      // Action-level variables stay scope variables
+      expect(ops.filter(op => op.systemName === 'setVariable').at(-1)?.operationData?.value).toBe(
+        '$scope.variables.local'
       );
     });
 
@@ -982,15 +1048,14 @@ describe('AST Transformer', () => {
       const selectOp = action.startOperations.find(op => op.systemName === 'selectElement');
       const animateOp = action.startOperations.find(op => op.systemName === 'animate');
 
-      // Inside action bodies, parameter references should NOT be in operationData.
-      // Eligius provides action parameters via startAction's actionOperationData,
-      // so operations inside the action body don't need to re-specify them.
-      // Only literal values (like {opacity: 1}) should be in operationData.
-      expect(selectOp?.operationData).toBeUndefined(); // selector is a param reference
+      // Inside action bodies, a parameter forwarded under its own name is omitted:
+      // Eligius provides action parameters via startAction's actionOperationData.
+      expect(selectOp?.operationData).toBeUndefined(); // selector → selector
 
-      // animate has a literal {opacity: 1} but duration is a param reference
+      // animate reads 'animationDuration', not 'duration', so the reference is kept
       expect(animateOp?.operationData).toEqual({
         animationProperties: { opacity: 1 },
+        animationDuration: '$operationdata.duration',
       });
     });
 
@@ -1012,7 +1077,7 @@ describe('AST Transformer', () => {
       const addClassOp = action.startOperations.find(op => op.systemName === 'addClass');
       const waitOp = action.startOperations.find(op => op.systemName === 'wait');
 
-      // selector is a param reference, should have no operationData
+      // selector forwards the parameter of the same name, so it is omitted
       expect(selectOp?.operationData).toBeUndefined();
 
       // String literal "my-class" should be kept in operationData
@@ -1020,8 +1085,8 @@ describe('AST Transformer', () => {
         className: 'my-class',
       });
 
-      // duration is a param reference, so wait should have no operationData
-      expect(waitOp?.operationData).toBeUndefined();
+      // wait reads 'milliseconds', so the 'duration' reference is kept
+      expect(waitOp?.operationData).toEqual({ milliseconds: '$operationdata.duration' });
     });
   });
 

@@ -19,7 +19,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > control fl
         {
           "id": "<uuid-5>",
           "operationData": {
-            "condition": "("$scope.currentItem" == "skip")",
+            "expression": "$scope.currentItem == 'skip'",
           },
           "systemName": "when",
         },
@@ -43,7 +43,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > control fl
         {
           "id": "<uuid-9>",
           "operationData": {
-            "condition": "("$scope.currentItem" == "stop")",
+            "expression": "$scope.currentItem == 'stop'",
           },
           "systemName": "when",
         },
@@ -431,6 +431,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
         {
           "id": "<uuid-5>",
           "operationData": {
+            "animationDuration": "$operationdata.duration",
             "animationProperties": {
               "opacity": 1,
             },
@@ -443,7 +444,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
       "endOperations": [
         {
           "id": "<uuid-9>",
-          "operationData": undefined,
+          "operationData": {
+            "selector": "$operationdata.target",
+          },
           "systemName": "selectElement",
         },
         {
@@ -459,7 +462,9 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
       "startOperations": [
         {
           "id": "<uuid-7>",
-          "operationData": undefined,
+          "operationData": {
+            "selector": "$operationdata.target",
+          },
           "systemName": "selectElement",
         },
         {

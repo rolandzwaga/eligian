@@ -216,6 +216,9 @@ function generateTimelineEventsMetadata(eventmetadataModule: any) {
 export interface EventArgMetadata {
   name: string;
   type: string;
+  description?: string;
+  /** True when the argument may be left out; absent for required arguments */
+  optional?: boolean;
 }
 
 export interface TimelineEventMetadata {

@@ -29,6 +29,7 @@ import { mapParameters } from '../operations/mapper.js';
 import { trackOutputs, validateDependencies, validateOperation } from '../operations/validator.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
+import { transformCondition } from './condition-transformer.js';
 import { transformExpression } from './expression-transformer.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
@@ -157,14 +158,15 @@ export const transformOperationCall = (
 
     let operationData = mappingResult.operationData as Record<string, JsonValue>;
 
-    // Inside action bodies, parameters that are just forwarding action arguments
-    // (i.e., $operationdata.* references) should be omitted from operationData.
-    // Eligius already provides these via startAction's actionOperationData.
+    // Inside action bodies, a parameter that forwards the action argument of the
+    // same name ($operationdata.<key> for key <key>) is omitted from operationData:
+    // Eligius already provides it via startAction's actionOperationData. An argument
+    // forwarded under a different name (selectElement(target) → selector) must stay,
+    // since the operation reads its own key.
     if (scope.inActionBody) {
       const filteredData: Record<string, JsonValue> = {};
       for (const [key, value] of Object.entries(operationData)) {
-        // Keep only non-forwarded parameters (literals, expressions, etc.)
-        if (typeof value !== 'string' || !value.startsWith('$operationdata.')) {
+        if (value !== `$operationdata.${key}`) {
           filteredData[key] = value;
         }
       }
@@ -395,15 +397,15 @@ export const transformIfStatement = (
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
 
-    // Transform condition expression
-    const condition = yield* transformExpression(stmt.condition, scope);
+    // Transform condition → Eligius when expression string
+    const expression = yield* transformCondition(stmt.condition, scope);
 
     // 1. when(condition)
     operations.push({
       id: crypto.randomUUID(),
       systemName: 'when',
       operationData: {
-        condition,
+        expression,
       },
       sourceLocation: getSourceLocation(stmt),
     });
