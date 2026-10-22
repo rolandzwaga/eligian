@@ -44,7 +44,7 @@ export const transformTimeExpression = (
         const properties = expr.properties.join('.');
         return {
           kind: 'variable' as const,
-          name: `${scope}.${properties}`,
+          name: `$${scope}.${properties}`,
         };
       }
       case 'BinaryTimeExpression': {

@@ -254,8 +254,55 @@ describe('AST Transformer', () => {
       const operation = result.config.actions[0].startOperations[0];
       // T223: setData takes 'properties' parameter which contains the object
       expect(operation.operationData?.properties).toBeDefined();
+      // Eligius only resolves chains that keep their '$' prefix
       expect((operation.operationData?.properties as any)?.['operationdata.name']).toBe(
-        'scope.currentItem'
+        '$scope.currentItem'
+      );
+    });
+
+    test('should transform property chains in operation arguments with their $ prefix', async () => {
+      const code = `
+                action test [
+                    selectElement($globaldata.selector)
+                    setVariable("x", $scope.variables.mode)
+                ]
+                timeline "test" in ".test-container" using raf {}
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      const [select, setVar] = result.config.actions[0].startOperations;
+      expect(select.operationData?.selector).toBe('$globaldata.selector');
+      expect(setVar.operationData?.value).toBe('$scope.variables.mode');
+    });
+
+    test('should reference program-level (non-constant) variables via $globaldata', async () => {
+      const code = `
+                const items = ["a", "b"]
+                action test [
+                    const local = $operationdata.x
+                    for (item in @items) {
+                        setVariable("y", @local)
+                    }
+                ]
+                timeline "test" in ".test-container" using raf {}
+            `;
+      const program = await parseDSL(code);
+
+      const result = await Effect.runPromise(transformAST(program));
+
+      // Program-level variables are stored via setData as 'globaldata.items'
+      const init = result.config.initActions[0].startOperations[0];
+      expect(init.operationData?.properties).toEqual({ 'globaldata.items': ['a', 'b'] });
+
+      const ops = result.config.actions[0].startOperations;
+      expect(ops.find(op => op.systemName === 'forEach')?.operationData?.collection).toBe(
+        '$globaldata.items'
+      );
+      // Action-level variables stay scope variables
+      expect(ops.filter(op => op.systemName === 'setVariable').at(-1)?.operationData?.value).toBe(
+        '$scope.variables.local'
       );
     });
 

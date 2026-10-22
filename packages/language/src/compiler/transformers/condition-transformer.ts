@@ -19,7 +19,7 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import { type Expression, isProgram } from '../../generated/ast.js';
+import type { Expression } from '../../generated/ast.js';
 import { evaluateExpression } from '../expression-evaluator.js';
 import { transformExpression } from './expression-transformer.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
@@ -104,21 +104,7 @@ const serializeCondition = (
         return { kind: 'literal' as const, value: null };
 
       case 'PropertyChainReference':
-        return {
-          kind: 'text' as const,
-          text: `$${expr.scope}.${expr.properties.join('.')}`,
-        };
-
-      case 'VariableReference': {
-        // Program-level variables that are not constants are stored in global data
-        // (see the setData init action in ast-transformer.ts)
-        const declaration = expr.variable?.ref;
-        if (declaration && isProgram(declaration.$container)) {
-          return { kind: 'text' as const, text: `$globaldata.${declaration.name}` };
-        }
-        return yield* referenceChain(expr, scope);
-      }
-
+      case 'VariableReference':
       case 'SystemPropertyReference':
       case 'ParameterReference':
         return yield* referenceChain(expr, scope);
