@@ -29,6 +29,7 @@ import { mapParameters } from '../operations/mapper.js';
 import { trackOutputs, validateDependencies, validateOperation } from '../operations/validator.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
+import { transformCondition } from './condition-transformer.js';
 import { transformExpression } from './expression-transformer.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
@@ -395,15 +396,15 @@ export const transformIfStatement = (
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
 
-    // Transform condition expression
-    const condition = yield* transformExpression(stmt.condition, scope);
+    // Transform condition → Eligius when expression string
+    const expression = yield* transformCondition(stmt.condition, scope);
 
     // 1. when(condition)
     operations.push({
       id: crypto.randomUUID(),
       systemName: 'when',
       operationData: {
-        condition,
+        expression,
       },
       sourceLocation: getSourceLocation(stmt),
     });
