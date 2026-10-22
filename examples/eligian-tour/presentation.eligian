@@ -8,13 +8,15 @@
 library presentation
 
 /**
- * Reveal a code block: fade it in, then run the CSS clip-sweep "typing" effect.
+ * Reveal a code block: fade it in, run the CSS clip-sweep "typing" effect, and
+ * scroll the code pane so the new block is in view.
  * @param selector CSS selector for the code block
  */
 action revealBlock(selector: string) [
   selectElement(selector)
   addClass("in")
   addClass("typing")
+  scrollToElement("smooth", "nearest")
 ]
 
 /**
@@ -52,21 +54,27 @@ action callout(selector: string, template: string) [
 ]
 
 /**
- * Swap the narration subtitle line.
+ * Swap the narration subtitle line and animate the new line in.
  * @param template Subtitle text for this beat (named `template` to feed setElementContent)
  */
 action narrate(template: string) [
   selectElement("#narration")
   setElementContent(template)
+  // restart the CSS entry transition: .fresh is the start state, removing it
+  // after a frame animates the new line into place
+  addClass("fresh")
+  wait(50)
+  removeClass("fresh")
 ]
 
 /**
- * Run a real effect in the effect pane.
+ * Run a real effect in the effect pane, scrolling the pane so it is in view.
  * @param selector CSS selector for the effect element to activate
  */
 action demo(selector: string) [
   selectElement(selector)
   addClass("active")
+  scrollToElement("smooth", "nearest")
   animate({ opacity: 1 }, 300)
 ]
 

@@ -52,12 +52,14 @@
 .chapter {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr;
+  /* minmax(0, …) bounds the pane row to the view, so the panes scroll instead
+     of pushing content below the screen */
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "chrome chrome"
     "code   effect";
   gap: 1rem 1.5rem;
-  padding-bottom: 4.5rem; /* room for the shared narration bar */
+  padding-bottom: 6rem; /* room for the narration plate (up to two lines) */
 }
 
 /* ---- Chrome: back button + progress rail + chapter label ------------- */
@@ -125,9 +127,32 @@
 .effect-pane {
   grid-area: effect;
   display: grid;
-  align-content: center;
+  align-content: start;
   gap: 0.75rem;
   min-width: 0;
+}
+/* Both panes scroll when a chapter's blocks outgrow the screen; revealBlock and
+   demo scroll each new block into view. */
+.code-pane,
+.effect-pane {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+/* Blocks take no space until their beat reveals them. */
+.code:not(.in),
+.fx:not(.active) {
+  display: none;
+}
+@starting-style {
+  .code.in {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .fx.active {
+    opacity: 0;
+  }
 }
 
 /* ---- Hub view: landing menu of chapter cards ------------------------- */
@@ -371,6 +396,7 @@
     top: calc(anchor(bottom) + 8px);
     left: anchor(left);
     position-try-fallbacks: flip-block;
+    position-visibility: anchors-visible;
     container-type: anchored;
   }
   .callout::before {
@@ -682,22 +708,131 @@
 }
 
 /* ---- Shared narration subtitle (toggled per chapter) ----------------- */
+/* The narration is a caption plate: a soft translucent panel that hugs the
+   text, centered above the progress bar. */
 #narration {
   position: absolute;
-  left: 1.5rem;
-  right: 1.5rem;
+  left: 50%;
   bottom: 1.5rem;
+  translate: -50% 0;
+  width: max-content;
+  max-width: min(60rem, calc(100% - 3rem));
+  box-sizing: border-box;
+  padding: 0.45rem 1.1rem;
+  border: 1px solid rgba(88, 166, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(22, 27, 34, 0.78);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
   text-align: center;
-  color: var(--muted);
+  color: var(--ink);
   font-size: 1.05rem;
-  min-height: 1.6em;
+  line-height: 1.45;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.35s var(--ease);
+  transition:
+    opacity 0.35s var(--ease),
+    transform 0.45s var(--ease),
+    color 1.5s var(--ease);
 }
 #narration.is-active {
   opacity: 1;
   visibility: visible;
+}
+/* A new line: narrate adds .fresh (hidden, lowered, accent, no transition) and
+   removes it a moment later, so each beat's line fades in, rises into place
+   and settles from the accent to the normal ink color. */
+#narration.fresh {
+  opacity: 0;
+  transform: translateY(6px);
+  color: var(--accent);
+  transition: none;
+}
+/* "Now speaking" marker */
+#narration::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.65rem;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 0.12em;
+  animation: narration-pulse 2.4s var(--ease) infinite;
+}
+@keyframes narration-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #narration::before {
+    animation: none;
+  }
+  #narration.fresh {
+    transform: none;
+  }
+}
+
+/* ---- Chapter progress bar (under the narration) ----------------------- */
+/* The engine's ProgressbarController can't be used: each chapter timeline runs
+   for 3600s (its setup event keeps the view up until you leave), so position /
+   duration would barely move. Instead the fill animates over the chapter's
+   real length while that chapter is active; re-entering a chapter restarts it,
+   just like its timeline. The lengths mirror each chapter's last beat end in
+   tour.eligian, so update them together. */
+#progress {
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 0.85rem;
+  height: 2px;
+  border-radius: 999px;
+  background: #21262d;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+}
+#progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+#stage:has(.chapter.is-active) #progress {
+  opacity: 1;
+}
+#stage:has(#ch1.is-active) #progress-fill {
+  animation: progress-fill 42s linear forwards;
+}
+#stage:has(#ch2.is-active) #progress-fill {
+  animation: progress-fill 46s linear forwards;
+}
+#stage:has(#ch3.is-active) #progress-fill {
+  animation: progress-fill 48s linear forwards;
+}
+#stage:has(#ch4.is-active) #progress-fill {
+  animation: progress-fill 47s linear forwards;
+}
+#stage:has(#ch5.is-active) #progress-fill {
+  animation: progress-fill 48s linear forwards;
+}
+#stage:has(#ch6.is-active) #progress-fill {
+  animation: progress-fill 48s linear forwards;
+}
+@keyframes progress-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 /* ---- State classes toggled by the presentation library --------------- */

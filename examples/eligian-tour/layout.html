@@ -8,6 +8,7 @@
       #ch1        (.view .chapter)   Chapter 1 walkthrough
       #ch2        (.view .chapter)   Chapter 2 walkthrough
       #narration                     SHARED subtitle bar (toggled per chapter)
+      #progress                      SHARED chapter progress bar (CSS-driven)
 
   Each chapter is a self-contained view with its own chrome / .code-pane /
   .effect-pane / .callout-layer. Structural panes are CLASSES shared across
@@ -459,5 +460,8 @@
 
   <!-- Shared narration subtitle (text set at runtime; toggled per chapter) -->
   <footer id="narration"></footer>
+
+  <!-- Chapter progress, under the narration (pure CSS, see tour.css) -->
+  <div id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
 
 </div>
