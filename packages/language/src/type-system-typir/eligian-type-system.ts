@@ -338,6 +338,12 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
       case 'object':
       case 'jQuery':
+      case 'RegExp':
+      case 'Element':
+      case 'Text':
+      case 'Comment':
+      case 'Document':
+      case 'DocumentFragment':
         return this.objectType;
 
       case 'array':

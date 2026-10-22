@@ -36,7 +36,7 @@ shamefullyHoist: true
 minimumReleaseAgeExclude:
   - '@effect/tsgo'
   - '@effect/tsgo-*'
-  - eligius@3.0.0
+  - eligius@3.0.1
 
 # jsonschema (used by langium-cli to validate langium-config.json) resolves $refs
 # against the opaque base URL 'thismessage::/'. Node >= 24.20 parses URLs per

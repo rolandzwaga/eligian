@@ -31,63 +31,17 @@ function convertParameterType(eligiusType: metadata.TParameterTypes): ParameterT
   // Check if type contains pipe delimiter (multi-type)
   if (eligiusType.includes('|')) {
     // Split on pipe and convert each type
-    const types = eligiusType.split('|').map(type => {
+    return eligiusType.split('|').map(type => {
       const trimmed = type.trim();
       // If it doesn't start with "ParameterType:", add the prefix
-      return toKnownParameterType(
+      return (
         trimmed.startsWith('ParameterType:') ? trimmed : `ParameterType:${trimmed}`
-      );
+      ) as ParameterType;
     });
-    return [...new Set(types)];
   }
 
   // Single type - wrap in array for consistency
-  return [toKnownParameterType(eligiusType)];
-}
-
-/**
- * Every member of Eligius's TParameterTypes. Typed as a Record so TypeScript flags members
- * that Eligius adds or removes.
- */
-const PARAMETER_TYPES: Record<metadata.TParameterTypes, true> = {
-  'ParameterType:htmlElementName': true,
-  'ParameterType:className': true,
-  'ParameterType:selector': true,
-  'ParameterType:string': true,
-  'ParameterType:number': true,
-  'ParameterType:object': true,
-  'ParameterType:boolean': true,
-  'ParameterType:array': true,
-  'ParameterType:eventTopic': true,
-  'ParameterType:eventName': true,
-  'ParameterType:systemName': true,
-  'ParameterType:actionName': true,
-  'ParameterType:controllerName': true,
-  'ParameterType:dimensions': true,
-  'ParameterType:dimensionsModifier': true,
-  'ParameterType:url': true,
-  'ParameterType:htmlContent': true,
-  'ParameterType:labelId': true,
-  'ParameterType:ImagePath': true,
-  'ParameterType:QuadrantPosition': true,
-  'ParameterType:jQuery': true,
-  'ParameterType:expression': true,
-  'ParameterType:mathfunction': true,
-  'ParameterType:cssProperties': true,
-  'ParameterType:function': true,
-  'ParameterType:Date': true,
-  'ParameterType:languagecode': true,
-};
-
-export const KNOWN_PARAMETER_TYPES: ReadonlySet<string> = new Set(Object.keys(PARAMETER_TYPES));
-
-/**
- * Eligius's delimited types may name runtime classes outside TParameterTypes
- * (e.g. 'ParameterType:string|RegExp', '...|Element|DocumentFragment'). Those values are
- * objects at runtime, so map them to 'ParameterType:object'.
- */
-function toKnownParameterType(type: string): ParameterType {
-  return KNOWN_PARAMETER_TYPES.has(type) ? (type as ParameterType) : 'ParameterType:object';
+  return [eligiusType as ParameterType];
 }
 
 /**

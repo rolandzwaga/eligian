@@ -173,8 +173,8 @@ importers:
         specifier: 4.0.5
         version: 4.0.5
       eligius:
-        specifier: 3.0.0
-        version: 3.0.0(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.24.2)
+        specifier: 3.0.1
+        version: 3.0.1(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.24.2)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.15
@@ -1690,8 +1690,8 @@ packages:
   effect@4.0.5:
     resolution: {integrity: sha512-BY4/28NlpOd99yzmV741xbVGmp+1U7tks4oB7F/Png64bTa5tm5eCA6W0RiXsnuLDDoJpjfVSo4Dnq4BZb/89Q==}
 
-  eligius@3.0.0:
-    resolution: {integrity: sha512-IMeF97ZDnpng2gwfHLy9BzaOsJoT+kDNglwmIf25EHQZk4nmk2wnLyaSfUIQYbHdL0wP6DFIxlCKP75tBhqSlQ==}
+  eligius@3.0.1:
+    resolution: {integrity: sha512-NGSlJn17PILngNaPhcdlNjW8bzNh4x+EFy/6FOWsEucngoxuoLqTqJOZXEVvO/4lArL0KToQ/7cU1X//flgSAQ==}
     engines: {node: '>=20'}
     peerDependencies:
       '@types/jquery': ^4.0.1
@@ -3675,7 +3675,7 @@ snapshots:
 
   effect@4.0.5: {}
 
-  eligius@3.0.0(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.24.2):
+  eligius@3.0.1(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.24.2):
     dependencies:
       hotkeys-js: 4.0.8
       jquery: 4.0.0

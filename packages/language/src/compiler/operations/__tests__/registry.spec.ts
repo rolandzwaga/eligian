@@ -4,6 +4,7 @@
  * T224: Validate that all operations are registered with correct signatures
  */
 
+import { PARAMETER_TYPES } from 'eligius/metadata';
 import { describe, expect, it } from 'vitest';
 import {
   getAllOperationNames,
@@ -14,7 +15,8 @@ import {
   OPERATION_REGISTRY,
   validateRegistry,
 } from '../index.js';
-import { KNOWN_PARAMETER_TYPES } from '../metadata-converter.js';
+
+const KNOWN_PARAMETER_TYPES: ReadonlySet<string> = new Set(PARAMETER_TYPES);
 
 describe('T224: Operation Registry Tests', () => {
   describe('Registry completeness', () => {
@@ -41,17 +43,21 @@ describe('T224: Operation Registry Tests', () => {
       }
     });
 
-    it('should map runtime object types (RegExp, Element, ...) to ParameterType:object', () => {
+    it('should keep Eligius runtime types (RegExp, DOM nodes) as declared', () => {
       const typeOf = (operation: string, parameter: string) =>
         getOperationSignature(operation)?.parameters.find(p => p.name === parameter)?.type;
 
       expect(typeOf('replaceString', 'pattern')).toEqual([
         'ParameterType:string',
-        'ParameterType:object',
+        'ParameterType:RegExp',
       ]);
       expect(typeOf('setElementContent', 'template')).toEqual([
         'ParameterType:string',
-        'ParameterType:object',
+        'ParameterType:Element',
+        'ParameterType:Text',
+        'ParameterType:Comment',
+        'ParameterType:Document',
+        'ParameterType:DocumentFragment',
       ]);
     });
 

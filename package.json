@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "effect": "4.0.5",
-    "eligius": "3.0.0"
+    "eligius": "3.0.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
