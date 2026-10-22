@@ -95,19 +95,31 @@ Options:
 
 ## Examples
 
+> Note: a timeline is `timeline "<name>" in "<container>" using <provider>`.
+> Timeline events are `at <start>..<end> <action>`, where `<action>` is either a
+> custom action call or an inline endable block `[ start ops ] [ end ops ]`
+> (built-in operations cannot be placed bare under `at`). CSS selectors and class
+> names are validated against the CSS you import with `styles`, so that import is
+> required for any example that selects elements or toggles classes.
+
 ### Video Annotation
 
 ```eligian
-timeline video from "presentation.mp4" {
-  0..5: {
+styles "./styles.css"   // must define #player, #title, #content, .visible
+
+timeline "annotations" in "#player" using video from "presentation.mp4" {
+  at 0s..5s [
     selectElement("#title")
     addClass("visible")
-  }
+  ] []
 
-  5..10: {
+  at 5s..10s [
     selectElement("#content")
-    fadeIn(1000)
-  }
+    addClass("visible")
+  ] [
+    selectElement("#content")
+    removeClass("visible")
+  ]
 }
 ```
 
@@ -119,19 +131,21 @@ eligian video-annotation.eligian
 ### Presentation
 
 ```eligian
-timeline raf {
-  0..3: {
+styles "./styles.css"   // must define #app, .slide-1, .slide-2, .active
+
+timeline "slides" in "#app" using raf {
+  at 0s..3s [
     selectElement(".slide-1")
     addClass("active")
-  }
-
-  3..6: {
+  ] [
     selectElement(".slide-1")
     removeClass("active")
+  ]
 
+  at 3s..6s [
     selectElement(".slide-2")
     addClass("active")
-  }
+  ] []
 }
 ```
 
@@ -147,20 +161,20 @@ The CLI provides helpful error messages with:
 - Code snippet showing the error
 - Hints for fixing common issues
 
-Example error output:
+Example error output (an unknown CSS class, with a "did you mean?" suggestion):
 
 ```
 Compilation failed:
 
-Parse Error: Expected timeline keyword
-  at 1:1
+Validation Error: Unknown CSS class: 'visble'. Did you mean: visible?
+  at 6:14
 
-> 1 | timelin raf {
-    | ^^^^^^^
-  2 |   0..5: {
-  3 |     selectElement("#title")
-
-💡 Did you forget to define a timeline? Every program needs exactly one timeline.
+  4 |   at 0s..5s [
+  5 |     selectElement("#title")
+> 6 |     addClass("visble")
+                    ^^^^^^^^
+  7 |   ] []
+  8 | }
 ```
 
 ## Programmatic Usage

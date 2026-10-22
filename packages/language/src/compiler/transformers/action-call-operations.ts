@@ -38,8 +38,13 @@ export function buildActionCallOperations(
     },
     {
       id: crypto.randomUUID(),
+      // Both startAction and endAction REQUIRE an actionOperationData object at
+      // runtime (they do mergeOperationData/Object.keys on it). A zero-arg call
+      // must still emit an empty object, not omit it, or the engine throws
+      // "Cannot convert undefined or null to object". (See eligius start-action.ts
+      // / end-action.ts.)
       systemName: verb,
-      operationData: actionOperationData ? { actionOperationData } : {},
+      operationData: { actionOperationData: actionOperationData ?? {} },
       sourceLocation,
     },
   ];

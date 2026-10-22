@@ -127,6 +127,23 @@ describe('T102: Error Reporter Tests', () => {
       expect(formatted.hint).toContain('unique');
     });
 
+    it('B4 regression: a validation message containing "timeline" does NOT get the parse "define a timeline" hint', () => {
+      // The CSS container-selector diagnostic's message contains the word
+      // "timeline"; when it was mis-tagged ParseError it picked up the bogus
+      // parse hint "Did you forget to define a timeline?". As a ValidationError
+      // it must route through generateValidationHint (no such hint).
+      const error = createValidationError({
+        kind: 'SemanticValidation',
+        message: "Unknown CSS ID in timeline container selector: 'stage'",
+        location: createSourceLocation(1, 17),
+      });
+
+      const formatted = formatError(error);
+
+      expect(formatted.message).toContain('Validation Error');
+      expect(formatted.hint ?? '').not.toContain('Did you forget to define a timeline');
+    });
+
     it('should provide helpful hint for time range errors', () => {
       const error = createValidationError({
         kind: 'ValidTimeRange',

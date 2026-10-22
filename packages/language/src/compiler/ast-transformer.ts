@@ -27,6 +27,7 @@ import type { Program } from '../generated/ast.js';
 import {
   getActions,
   getEventActions,
+  getNavigateStatements,
   getTimelines,
   getVariables,
 } from '../utils/program-helpers.js';
@@ -46,6 +47,11 @@ import {
 } from './transformers/config-builder.js';
 import { transformExpression } from './transformers/expression-transformer.js';
 import { resolveImports } from './transformers/library-imports.js';
+import {
+  buildNavTargetAction,
+  resolveNavPosition,
+  syntheticNavActionName,
+} from './transformers/navigate-operations.js';
 import { createEmptyScope, createParameterContext } from './transformers/scope.js';
 import { getSourceLocation } from './transformers/source-location.js';
 import { buildTimelineConfig } from './transformers/timeline-transformer.js';
@@ -163,6 +169,24 @@ export const transformAST = (
       );
       actions.push(action);
     }
+
+    // navigate sugar: emit one synthetic broadcast action per DISTINCT
+    // (target, position). Each `on click … navigate …` call site expands to a
+    // DOMEventListenerController whose `actions` reference these by name (the
+    // name is derived purely from target+position so both sites agree). The
+    // engine resolves them via request-action at runtime.
+    const navStatements = getNavigateStatements(program);
+    const seenNavActions = new Set<string>();
+    for (const navStmt of navStatements) {
+      const position = yield* resolveNavPosition(navStmt.position);
+      const navActionName = syntheticNavActionName(navStmt.target, position);
+      if (seenNavActions.has(navActionName)) {
+        continue;
+      }
+      seenNavActions.add(navActionName);
+      actions.push(buildNavTargetAction(navStmt.target, position, getSourceLocation(navStmt)));
+    }
+
     // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
     const eventActionNodes = getEventActions(program);
     const eventActions: IEventActionConfiguration[] = [];

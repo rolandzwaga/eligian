@@ -1,0 +1,865 @@
+/* Eligian Tour — theme + walkthrough animations.
+ *
+ * Every selector/class referenced from the .eligian files must be defined here:
+ * the compiler validates selectors/classes against imported CSS (see B2 in
+ * packages/cli/KNOWN_ISSUES.md). Dark, editor-grade, one accent, restrained motion.
+ *
+ * Structure: #stage holds stacked ".view"s (hub + per-chapter). Structural panes
+ * are classes (.chrome/.code-pane/.effect-pane/.callout-layer) shared by every
+ * chapter; only leaf elements the .eligian selects keep ids. "Id-registration"
+ * blocks exist solely so each DSL-selected id is declared for CSS validation.
+ */
+
+:root {
+  --bg: #0e1116;
+  --panel: #161b22;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --kw: #ff7b72;
+  --str: #a5d6ff;
+  --num: #d2a8ff;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ---- Stage: holds stacked views (hub + chapters) ---------------------- */
+#stage {
+  position: relative;
+  height: 100vh;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Each top-level view fills the stage; only the active one is visible.
+   Switching timelines toggles .is-active (showView / hideView). */
+.view {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 1.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s var(--ease);
+}
+.view.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ---- Chapter view: the annotated-walkthrough grid --------------------- */
+.chapter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …) bounds the pane row to the view, so the panes scroll instead
+     of pushing content below the screen */
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "chrome chrome"
+    "code   effect";
+  gap: 1rem 1.5rem;
+  padding-bottom: 6rem; /* room for the narration plate (up to two lines) */
+}
+
+/* ---- Chrome: back button + progress rail + chapter label ------------- */
+.chrome {
+  grid-area: chrome;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.progress-rail {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.progress-rail .dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #30363d;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.progress-rail .dot.is-current {
+  background: var(--accent);
+  transform: scale(1.25);
+}
+.chapter-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.to-hub {
+  appearance: none;
+  border: 1px solid #30363d;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+.to-hub:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+/* id-registration: navigate selectors */
+#c1-to-hub,
+#c2-to-hub,
+#c3-to-hub,
+#c4-to-hub,
+#c5-to-hub,
+#c6-to-hub {
+  flex: 0 0 auto;
+}
+
+.code-pane {
+  grid-area: code;
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.effect-pane {
+  grid-area: effect;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+/* Both panes scroll when a chapter's blocks outgrow the screen; revealBlock and
+   demo scroll each new block into view. */
+.code-pane,
+.effect-pane {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+/* Blocks take no space until their beat reveals them. */
+.code:not(.in),
+.fx:not(.active) {
+  display: none;
+}
+@starting-style {
+  .code.in {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .fx.active {
+    opacity: 0;
+  }
+}
+
+/* ---- Hub view: landing menu of chapter cards ------------------------- */
+#hub {
+  display: grid;
+  place-items: center;
+}
+#hub-inner {
+  width: min(56rem, 100%);
+  text-align: center;
+}
+#hub-title {
+  margin: 0;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+#hub-tagline {
+  margin: 0.5rem 0 2.5rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+#hub-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.card {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.25rem 1.25rem;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid #30363d;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.card-num {
+  color: var(--accent);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+.card-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.card.is-soon {
+  cursor: default;
+  opacity: 0.45;
+}
+.card.is-soon:hover {
+  border-color: #30363d;
+  transform: none;
+}
+/* live chapters (navigate targets exist) */
+#card-ch1,
+#card-ch2,
+#card-ch3,
+#card-ch4,
+#card-ch5,
+#card-ch6 {
+  border-color: rgba(88, 166, 255, 0.5);
+}
+
+/* ---- Code blocks ------------------------------------------------------ */
+.code {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+.code code {
+  font-family: inherit;
+  white-space: pre;
+}
+/* id-registration: revealBlock targets */
+#code-ch1,
+#code-at,
+#code-units,
+#code-arith,
+#code-full,
+#c2-code-def,
+#c2-code-params,
+#c2-code-call,
+#c2-code-byname,
+#c2-code-endable,
+#c2-code-lib,
+#c5-code-overview,
+#c5-code-eventbus,
+#c5-code-onevent,
+#c5-code-controller,
+#c5-code-label,
+#c5-code-recap {
+  min-width: 0;
+}
+
+/* ---- Tokens ----------------------------------------------------------- */
+.tok {
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+.tok.kw {
+  color: var(--kw);
+}
+.tok.str {
+  color: var(--str);
+}
+.tok.num {
+  color: var(--num);
+}
+.tok.op {
+  color: var(--accent);
+}
+.tok.fn {
+  color: #e3b341;
+}
+.tok.com {
+  color: var(--muted);
+  font-style: italic;
+}
+/* id-registration: spotlight targets */
+#tok-timeline,
+#tok-raf,
+#tok-at,
+#tok-plus,
+#c2-tok-action,
+#c2-tok-param,
+#c2-tok-call,
+#c2-tok-template,
+#c2-tok-endable {
+  font-weight: 600;
+}
+
+/* ---- Callout chips ---------------------------------------------------- */
+/* The layer generates no box, so each chip is positioned against the chapter
+   view, which also contains the code tokens the chips point at. */
+.callout-layer {
+  display: contents;
+}
+.callout {
+  position: absolute;
+  left: 2rem;
+  z-index: 2;
+  max-width: 18rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b1320;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+/* Anchoring: each chip points at the token spotlighted in the same beat (or,
+   for beats without a spotlight, at the code block the beat reveals). The
+   anchor name is the chip's id, set on the target element. */
+#tok-timeline { anchor-name: --cl-name; }
+#tok-raf { anchor-name: --cl-provider; }
+#tok-at { anchor-name: --cl-range; }
+#code-units { anchor-name: --cl-units; }
+#tok-plus { anchor-name: --cl-relative; }
+#c2-tok-action { anchor-name: --c2-cl-action; }
+#c2-tok-param { anchor-name: --c2-cl-param; }
+#c2-tok-call { anchor-name: --c2-cl-call; }
+#c2-tok-template { anchor-name: --c2-cl-name; }
+#c2-tok-endable { anchor-name: --c2-cl-endable; }
+#c3-tok-const { anchor-name: --c3-cl-const; }
+#c3-tok-expr { anchor-name: --c3-cl-expr; }
+#c3-tok-if { anchor-name: --c3-cl-if; }
+#c3-tok-for { anchor-name: --c3-cl-for; }
+#c3-tok-break { anchor-name: --c3-cl-loopctl; }
+#c4-code-manual { anchor-name: --c4-cl-manual; }
+#c4-tok-seq { anchor-name: --c4-cl-seq; }
+#c4-code-sequence { anchor-name: --c4-cl-edit; }
+#c4-tok-stagger { anchor-name: --c4-cl-stagger; }
+#c4-code-inline { anchor-name: --c4-cl-inline; }
+#c5-code-overview { anchor-name: --c5-cl-over; }
+#c5-tok-bcast { anchor-name: --c5-cl-bus; }
+#c5-tok-onevent { anchor-name: --c5-cl-on; }
+#c5-tok-ctrl { anchor-name: --c5-cl-ctrl; }
+#c5-tok-loc { anchor-name: --c5-cl-loc; }
+#c6-code-why { anchor-name: --c6-cl-why; }
+#c6-tok-preview { anchor-name: --c6-cl-preview; }
+#c6-tok-css { anchor-name: --c6-cl-css; }
+#c6-tok-complete { anchor-name: --c6-cl-complete; }
+#c6-tok-jsdoc { anchor-name: --c6-cl-jsdoc; }
+
+#cl-name { position-anchor: --cl-name; }
+#cl-provider { position-anchor: --cl-provider; }
+#cl-range { position-anchor: --cl-range; }
+#cl-units { position-anchor: --cl-units; }
+#cl-relative { position-anchor: --cl-relative; }
+#c2-cl-action { position-anchor: --c2-cl-action; }
+#c2-cl-param { position-anchor: --c2-cl-param; }
+#c2-cl-call { position-anchor: --c2-cl-call; }
+#c2-cl-name { position-anchor: --c2-cl-name; }
+#c2-cl-endable { position-anchor: --c2-cl-endable; }
+#c3-cl-const { position-anchor: --c3-cl-const; }
+#c3-cl-expr { position-anchor: --c3-cl-expr; }
+#c3-cl-if { position-anchor: --c3-cl-if; }
+#c3-cl-for { position-anchor: --c3-cl-for; }
+#c3-cl-loopctl { position-anchor: --c3-cl-loopctl; }
+#c4-cl-manual { position-anchor: --c4-cl-manual; }
+#c4-cl-seq { position-anchor: --c4-cl-seq; }
+#c4-cl-edit { position-anchor: --c4-cl-edit; }
+#c4-cl-stagger { position-anchor: --c4-cl-stagger; }
+#c4-cl-inline { position-anchor: --c4-cl-inline; }
+#c5-cl-over { position-anchor: --c5-cl-over; }
+#c5-cl-bus { position-anchor: --c5-cl-bus; }
+#c5-cl-on { position-anchor: --c5-cl-on; }
+#c5-cl-ctrl { position-anchor: --c5-cl-ctrl; }
+#c5-cl-loc { position-anchor: --c5-cl-loc; }
+#c6-cl-why { position-anchor: --c6-cl-why; }
+#c6-cl-preview { position-anchor: --c6-cl-preview; }
+#c6-cl-css { position-anchor: --c6-cl-css; }
+#c6-cl-complete { position-anchor: --c6-cl-complete; }
+#c6-cl-jsdoc { position-anchor: --c6-cl-jsdoc; }
+
+@supports (anchor-name: --a) {
+  /* Token chips sit just below their token, with an arrow pointing up at it;
+     when there is no room below they flip above it. */
+  .callout {
+    top: calc(anchor(bottom) + 8px);
+    left: anchor(left);
+    position-try-fallbacks: flip-block;
+    position-visibility: anchors-visible;
+    container-type: anchored;
+  }
+  .callout::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 0.8rem;
+    border: 6px solid transparent;
+    border-bottom-color: var(--accent);
+  }
+  /* Flipped above the token: the arrow moves to the bottom edge, pointing down. */
+  @container anchored(fallback: flip-block) {
+    .callout::before {
+      top: 100%;
+      bottom: auto;
+      border-bottom-color: transparent;
+      border-top-color: var(--accent);
+    }
+  }
+  /* Block chips label a whole code block: pinned to its top-right corner. */
+  #cl-units,
+  #c4-cl-manual,
+  #c4-cl-edit,
+  #c4-cl-inline,
+  #c5-cl-over,
+  #c6-cl-why {
+    top: calc(anchor(top) - 0.9rem);
+    left: auto;
+    right: calc(anchor(right) + 1rem);
+    position-try-fallbacks: none;
+  }
+  #cl-units::before,
+  #c4-cl-manual::before,
+  #c4-cl-edit::before,
+  #c4-cl-inline::before,
+  #c5-cl-over::before,
+  #c6-cl-why::before {
+    content: none;
+  }
+}
+
+/* Without anchor positioning: stack the chips down the left edge, each beat
+   at its own height so consecutive chips don't overlap. */
+@supports not (anchor-name: --a) {
+  #cl-name,
+  #c2-cl-action,
+  #c3-cl-const,
+  #c4-cl-manual,
+  #c5-cl-over,
+  #c6-cl-why {
+    top: 3rem;
+  }
+  #cl-provider,
+  #c2-cl-param,
+  #c3-cl-expr,
+  #c4-cl-seq,
+  #c5-cl-bus,
+  #c6-cl-preview {
+    top: 6rem;
+  }
+  #cl-range,
+  #c2-cl-call,
+  #c3-cl-if,
+  #c4-cl-edit,
+  #c5-cl-on,
+  #c6-cl-css {
+    top: 9rem;
+  }
+  #cl-units,
+  #c2-cl-name,
+  #c3-cl-for,
+  #c4-cl-stagger,
+  #c5-cl-ctrl,
+  #c6-cl-complete {
+    top: 12rem;
+  }
+  #cl-relative,
+  #c2-cl-endable,
+  #c3-cl-loopctl,
+  #c4-cl-inline,
+  #c5-cl-loc,
+  #c6-cl-jsdoc {
+    top: 15rem;
+  }
+}
+
+/* ---- Effect-pane panels + illustrative chrome ------------------------ */
+.fx {
+  display: grid;
+  place-items: center;
+  background: var(--panel);
+  border-radius: 12px;
+  min-height: 8rem;
+  padding: 1rem;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+/* id-registration: demo targets */
+#fx-stage,
+#fx-providers,
+#fx-hero,
+#fx-ruler,
+#fx-chain,
+#fx-endcard,
+#c2-fx-chain,
+#c2-fx-fade,
+#c2-fx-call,
+#c2-fx-slot,
+#c2-fx-toggle,
+#c2-fx-lib {
+  min-width: 0;
+}
+.fx-frame {
+  display: inline-grid;
+  place-items: center;
+  min-width: 60%;
+  height: 4rem;
+  border: 1px dashed #30363d;
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+}
+.fx-chip,
+.fx-tick {
+  display: inline-block;
+  margin: 0.2rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #21262d;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-family: ui-monospace, monospace;
+}
+.fx-hero-box {
+  display: inline-grid;
+  place-items: center;
+  width: 6rem;
+  height: 3rem;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b1320;
+  font-weight: 600;
+}
+.fx-bar {
+  display: block;
+  height: 0.5rem;
+  width: 60%;
+  margin: 0.4rem auto;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.fx-bar--rel {
+  width: 40%;
+  background: var(--num);
+}
+.fx-done {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Chapter 3 — bullet list revealed one item at a time by a real `for` loop */
+.bullet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+}
+.bullet {
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: #21262d;
+  color: var(--ink);
+  font-size: 0.9rem;
+  /* hidden until the loop adds .in */
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+/* Chapter 3 — badge toggled by a real if/else (selectElement target) */
+#c3-badge {
+  opacity: 0.35;
+  transition: opacity 0.22s var(--ease);
+}
+
+/* Chapter 5 — live eventbus round-trip: a real button (DOMEventListenerController
+   target) whose click broadcasts an event that reveals the panel. */
+.ping-btn {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.ping-btn:hover {
+  background: rgba(88, 166, 255, 0.22);
+  transform: translateY(-1px);
+}
+/* #c5-fx-ping is a direct selectElement() target, so it must be declared here for
+   CSS validation. */
+#c5-fx-ping {
+  margin-bottom: 0.75rem;
+}
+/* The panel the `on event` handler reveals (hidden until it adds .in). */
+.reveal-panel {
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: #21262d;
+  color: var(--ink);
+  font-size: 0.85rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+#c5-fx-panel {
+  min-width: 0;
+}
+
+/* Chapter 6 — mock-editor reenactments (no live LSP; strings are real). ---- */
+.mock-editor {
+  width: 100%;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.82rem;
+  text-align: left;
+}
+.mock-tab {
+  background: #0b0f14;
+  color: var(--muted);
+  padding: 0.3rem 0.7rem;
+  border-bottom: 1px solid #30363d;
+}
+.mock-body {
+  padding: 0.6rem 0.8rem;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.mock-statusbar {
+  background: var(--accent);
+  color: #0b1320;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+}
+.mock-arrow {
+  color: var(--accent);
+  margin: 0 0.5rem;
+}
+/* red wavy underline on a typo'd token */
+.squiggle {
+  text-decoration: underline wavy #f85149;
+  text-underline-offset: 3px;
+}
+/* a diagnostic / hover tooltip */
+.diagnostic {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--ink);
+  font-size: 0.76rem;
+}
+.lightbulb {
+  margin-top: 0.4rem;
+  color: var(--accent);
+  font-size: 0.76rem;
+}
+/* a completion popup */
+.complete-popup {
+  width: 100%;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  text-align: left;
+}
+.complete-item {
+  padding: 0.3rem 0.7rem;
+  color: var(--ink);
+}
+.complete-item.is-sel {
+  background: rgba(88, 166, 255, 0.18);
+  color: var(--accent);
+}
+.complete-detail {
+  color: var(--muted);
+}
+/* a JSDoc hover card */
+.hover-card {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #0b0f14;
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+/* ---- Shared narration subtitle (toggled per chapter) ----------------- */
+/* The narration is a caption plate: a soft translucent panel that hugs the
+   text, centered above the progress bar. */
+#narration {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  translate: -50% 0;
+  width: max-content;
+  max-width: min(60rem, calc(100% - 3rem));
+  box-sizing: border-box;
+  padding: 0.45rem 1.1rem;
+  border: 1px solid rgba(88, 166, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(22, 27, 34, 0.78);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.45;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.35s var(--ease),
+    transform 0.45s var(--ease),
+    color 1.5s var(--ease);
+}
+#narration.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+/* A new line: narrate adds .fresh (hidden, lowered, accent, no transition) and
+   removes it a moment later, so each beat's line fades in, rises into place
+   and settles from the accent to the normal ink color. */
+#narration.fresh {
+  opacity: 0;
+  transform: translateY(6px);
+  color: var(--accent);
+  transition: none;
+}
+/* "Now speaking" marker */
+#narration::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.65rem;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 0.12em;
+  animation: narration-pulse 2.4s var(--ease) infinite;
+}
+@keyframes narration-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #narration::before {
+    animation: none;
+  }
+  #narration.fresh {
+    transform: none;
+  }
+}
+
+/* ---- Chapter progress bar (under the narration) ----------------------- */
+/* The engine's ProgressbarController can't be used: each chapter timeline runs
+   for 3600s (its setup event keeps the view up until you leave), so position /
+   duration would barely move. Instead the fill animates over the chapter's
+   real length while that chapter is active; re-entering a chapter restarts it,
+   just like its timeline. The lengths mirror each chapter's last beat end in
+   tour.eligian, so update them together. */
+#progress {
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 0.85rem;
+  height: 2px;
+  border-radius: 999px;
+  background: #21262d;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+}
+#progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+#stage:has(.chapter.is-active) #progress {
+  opacity: 1;
+}
+#stage:has(#ch1.is-active) #progress-fill {
+  animation: progress-fill 42s linear forwards;
+}
+#stage:has(#ch2.is-active) #progress-fill {
+  animation: progress-fill 46s linear forwards;
+}
+#stage:has(#ch3.is-active) #progress-fill {
+  animation: progress-fill 48s linear forwards;
+}
+#stage:has(#ch4.is-active) #progress-fill {
+  animation: progress-fill 47s linear forwards;
+}
+#stage:has(#ch5.is-active) #progress-fill {
+  animation: progress-fill 48s linear forwards;
+}
+#stage:has(#ch6.is-active) #progress-fill {
+  animation: progress-fill 48s linear forwards;
+}
+@keyframes progress-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* ---- State classes toggled by the presentation library --------------- */
+.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+.typing {
+  animation: clip-sweep 0.5s var(--ease) both;
+}
+.spot {
+  background: rgba(88, 166, 255, 0.22);
+  color: var(--accent);
+}
+.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.active {
+  opacity: 1;
+}
+
+@keyframes clip-sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}

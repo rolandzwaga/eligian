@@ -108,7 +108,8 @@ export const transformExpression = (
 
       case 'SystemPropertyReference': {
         // System property reference: @@varName (T232)
-        // Compiles to $scope.varName
+        // Compiles to $scope.varName, with optional property access:
+        //   @@currentItem.label → $scope.currentItem.label
         // Special case: @@loopVar → @@currentItem (aliased)
         let propertyName = expr.name;
 
@@ -117,12 +118,13 @@ export const transformExpression = (
           propertyName = 'currentItem';
         }
 
-        return `$scope.${propertyName}`;
+        const suffix = expr.properties?.length ? `.${expr.properties.join('.')}` : '';
+        return `$scope.${propertyName}${suffix}`;
       }
 
       case 'ParameterReference': {
         // Parameter reference: bare identifier (T231)
-        // Compiles to $operationdata.paramName OR $operationdata.eventArgs[n] (Feature 028 - T020)
+        // Compiles to $operationdata.paramName OR $operationData.eventArgs.n (Feature 028 - T020)
         // Now uses cross-reference to Parameter
         if (!expr.parameter?.ref) {
           return yield* Effect.fail({
@@ -149,7 +151,13 @@ export const transformExpression = (
         // T020: Check if this is an event action parameter (use index instead of name)
         if (scope.eventActionParameters?.has(paramName)) {
           const index = scope.eventActionParameters.get(paramName)!;
-          return `$operationData.eventArgs[${index}]`;
+          // Dot-index, NOT bracket: eligius resolves property chains by splitting
+          // on '.' and doing plain key access (get-property-chain-value.ts) — it
+          // has no bracket parsing, so `eventArgs[0]` looks up the literal key
+          // "eventArgs[0]" (undefined). `eventArgs.0` resolves the array element
+          // (arrays index by string key). Verified in-engine via the tour's
+          // Chapter-5 `on event` round-trip.
+          return `$operationData.eventArgs.${index}`;
         }
 
         // Regular action parameter (use name)

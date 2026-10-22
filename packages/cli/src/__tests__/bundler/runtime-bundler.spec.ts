@@ -19,6 +19,7 @@ import {
   bundleRuntime,
   extractUsedOperations,
   extractUsedProviders,
+  extractUsedSystemEntries,
   generateEntryPoint,
 } from '../../bundler/runtime-bundler.js';
 import type { RuntimeBundleConfig, TimelineProviderType } from '../../bundler/types.js';
@@ -185,6 +186,37 @@ function createLottieProviderConfig() {
   };
 }
 
+/**
+ * Configuration exercising non-operation system entries: a raf position source
+ * (from timelineProviderSettings) and a controller (via getControllerInstance).
+ */
+function createConfigWithSystemEntries() {
+  return {
+    containerSelector: '#app',
+    timelineProviderSettings: {
+      animation: { positionSource: { systemName: 'RafPositionSource' } },
+    },
+    initActions: [],
+    actions: [
+      {
+        name: 'wireButton',
+        startOperations: [
+          { systemName: 'selectElement', operationData: { selector: '#btn' } },
+          {
+            systemName: 'getControllerInstance',
+            operationData: { systemName: 'DOMEventListenerController' },
+          },
+          {
+            systemName: 'addControllerToElement',
+            operationData: { eventName: 'click', actions: ['x'] },
+          },
+        ],
+      },
+    ],
+    timelines: [{ uri: 'main', timelineActions: [] }],
+  };
+}
+
 describe('Runtime Bundler (Feature 040, Phase 3)', () => {
   let tmpdir: string;
 
@@ -287,6 +319,29 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     });
   });
 
+  describe('extractUsedSystemEntries', () => {
+    test('should collect the timeline position source', () => {
+      const config = createConfigWithSystemEntries();
+      const entries = extractUsedSystemEntries(config);
+
+      expect(entries).toContain('RafPositionSource');
+    });
+
+    test('should collect controllers referenced via getControllerInstance', () => {
+      const config = createConfigWithSystemEntries();
+      const entries = extractUsedSystemEntries(config);
+
+      expect(entries).toContain('DOMEventListenerController');
+    });
+
+    test('should return empty array when there are no providers or controllers', () => {
+      const config = createMinimalConfig();
+      const entries = extractUsedSystemEntries(config);
+
+      expect(entries).toEqual([]);
+    });
+  });
+
   describe('generateEntryPoint', () => {
     test('should generate valid JavaScript entry point', () => {
       const config = createMinimalConfig();
@@ -300,6 +355,26 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       expect(entryPoint).toContain('selectElement');
       expect(entryPoint).toContain('CONFIG');
       expect(entryPoint).toContain('#presentation');
+    });
+
+    test('should start playback (init + start), not init alone', () => {
+      // A standalone bundle must start the engine or it renders blank.
+      const config = createMinimalConfig();
+      const entryPoint = generateEntryPoint(config, ['selectElement'], []);
+
+      expect(entryPoint).toContain('engine.start()');
+    });
+
+    test('should import and register position sources and controllers', () => {
+      const config = createConfigWithSystemEntries();
+      const entryPoint = generateEntryPoint(config, ['selectElement'], []);
+
+      // imported from eligius...
+      expect(entryPoint).toContain("import { RafPositionSource } from 'eligius';");
+      expect(entryPoint).toContain("import { DOMEventListenerController } from 'eligius';");
+      // ...and registered in the resource-importer map.
+      expect(entryPoint).toContain('RafPositionSource: { RafPositionSource }');
+      expect(entryPoint).toContain('DOMEventListenerController: { DOMEventListenerController }');
     });
 
     test('should include video.js import for video provider', () => {

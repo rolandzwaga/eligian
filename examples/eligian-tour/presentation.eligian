@@ -1,0 +1,110 @@
+/**
+ * Eligian Tour — shared presentation library
+ *
+ * The walkthrough machinery. Every chapter drives these actions; the heavy
+ * lifting (fades, clip-sweep "typing", spotlights) is done in tour.css via the
+ * classes toggled here. Names deliberately avoid built-in operation names.
+ */
+library presentation
+
+/**
+ * Reveal a code block: fade it in, run the CSS clip-sweep "typing" effect, and
+ * scroll the code pane so the new block is in view.
+ * @param selector CSS selector for the code block
+ */
+action revealBlock(selector: string) [
+  selectElement(selector)
+  addClass("in")
+  addClass("typing")
+  scrollToElement("smooth", "nearest")
+]
+
+/**
+ * Spotlight a single code token (caller dims the rest via clearSpots first).
+ * @param selector CSS selector for the token span
+ */
+action spotlight(selector: string) [
+  selectElement(selector)
+  addClass("spot")
+]
+
+/**
+ * Clear every token spotlight and hide the previous beat's callout chip.
+ */
+action clearSpots() [
+  selectElement(".tok")
+  removeClass("spot")
+  selectElement(".callout")
+  removeClass("show")
+]
+
+/**
+ * Animate an arrow+label callout chip onto a token.
+ *
+ * NOTE: the content param MUST be named `template` — the DSL wires a built-in
+ * operation's argument by matching the action parameter name to the operation's
+ * input property, and setElementContent reads `template` (not `text`).
+ * @param selector CSS selector for the callout chip
+ * @param template Label text to show
+ */
+action callout(selector: string, template: string) [
+  selectElement(selector)
+  setElementContent(template)
+  addClass("show")
+]
+
+/**
+ * Swap the narration subtitle line and animate the new line in.
+ * @param template Subtitle text for this beat (named `template` to feed setElementContent)
+ */
+action narrate(template: string) [
+  selectElement("#narration")
+  setElementContent(template)
+  // restart the CSS entry transition: .fresh is the start state, removing it
+  // after a frame animates the new line into place
+  addClass("fresh")
+  wait(50)
+  removeClass("fresh")
+]
+
+/**
+ * Run a real effect in the effect pane, scrolling the pane so it is in view.
+ * @param selector CSS selector for the effect element to activate
+ */
+action demo(selector: string) [
+  selectElement(selector)
+  addClass("active")
+  scrollToElement("smooth", "nearest")
+  animate({ opacity: 1 }, 300)
+]
+
+/**
+ * Reveal a single item by selector — used by Chapter 4's `stagger` block, which
+ * passes each staggered item (a card selector) as this action's first argument.
+ * @param selector CSS selector for the item to reveal
+ */
+action revealCard(selector: string) [
+  selectElement(selector)
+  addClass("in")
+]
+
+/**
+ * Reveal a top-level view (the hub menu or a chapter). Each timeline shows its
+ * own view at its start, so switching timelines swaps what's on screen.
+ * @param selector CSS selector for the view container
+ */
+action showView(selector: string) [
+  selectElement(selector)
+  addClass("is-active")
+]
+
+/**
+ * Hide a top-level view. A timeline hides the views it doesn't own at its start
+ * (start/end ops are independent runs, so each timeline sets up the full visible
+ * state itself — seek-safe).
+ * @param selector CSS selector for the view container
+ */
+action hideView(selector: string) [
+  selectElement(selector)
+  removeClass("is-active")
+]

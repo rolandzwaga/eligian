@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { Effect } from 'effect';
 import { type LangiumDocument, URI } from 'langium';
-import type { ParseError } from '../../errors/index.js';
+import type { ParseError, ValidationError } from '../../errors/index.js';
 import { isLibrary, isLibraryImport, type Library, type Program } from '../../generated/ast.js';
 import { extractDocumentErrors } from './document-errors.js';
 import { getOrCreateServices } from './services.js';
@@ -127,7 +127,7 @@ export function loadLibraryFile(libraryUri: URI): Effect.Effect<string, ParseErr
 export function parseLibraryDocument(
   content: string,
   libraryUri: URI
-): Effect.Effect<Library, ParseError> {
+): Effect.Effect<Library, ParseError | ValidationError> {
   return Effect.gen(function* () {
     // Reuse the shared Langium services
     const services = getOrCreateServices();
@@ -213,7 +213,7 @@ export function loadLibraryRecursive(
   libraryUri: URI,
   _documentUri: URI,
   loadingStack: Set<string> = new Set()
-): Effect.Effect<LangiumDocument[], ParseError> {
+): Effect.Effect<LangiumDocument[], ParseError | ValidationError> {
   return Effect.gen(function* () {
     const uriPath = libraryUri.fsPath;
 

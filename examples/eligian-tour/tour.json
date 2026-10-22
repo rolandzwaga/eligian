@@ -213,7 +213,7 @@
           "id": "4921538e-4189-4f4f-8aff-392f1efe891b",
           "systemName": "when",
           "operationData": {
-            "expression": "$operationdata.count>0"
+            "expression": "$operationdata.count > 0"
           }
         },
         {

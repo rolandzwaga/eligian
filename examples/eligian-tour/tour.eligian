@@ -1,0 +1,559 @@
+/**
+ * Eligian Tour — single-file entry (hub + chapters).
+ *
+ * The whole presentation compiles to ONE Eligius config: a hub menu plus every
+ * chapter, each as its own `timeline`. The engine renders the shared layout once
+ * and switches between timelines when a card (or the back button) is clicked —
+ * that click→switch is the `navigate` sugar, which compiles to a
+ * DOMEventListenerController that broadcasts `request-timeline-uri`.
+ *
+ * VIEW MANAGEMENT — each timeline shows ONLY its own view. The first event in
+ * every timeline is a long-range **endable setup action**:
+ *   start → showView(self) + wire nav      (fires when the timeline is switched IN)
+ *   end   → hideView(self)                  (fires when it is switched AWAY)
+ * The engine's switch lifecycle runs the leaving timeline's `end` ops, then the
+ * entering timeline's `start` ops, so no timeline needs to hide the others. The
+ * range is deliberately huge so `end` fires only on switch, never from the
+ * playhead reaching it. (See ELIGIUS_EXECUTION_MODEL.md §7b.) `#narration` is a
+ * shared subtitle bar each chapter shows/hides alongside its own view.
+ *
+ * Snippets in the code pane are hand-authored display assets (pre-tokenized in
+ * layout.html); this file is the real machinery driving them.
+ */
+languages {
+  * "en-US" "English"
+}
+
+layout "./layout.html"
+styles "./tour.css"
+
+import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView } from "./presentation.eligian"
+
+// Chapter-3 helpers — the real logic its beats run, so the executed code mirrors
+// the taught snippets. (`const` is scoped inside an action, not inside a timeline
+// inline block, so the loop/conditional live here rather than in the `at` body.)
+action ch3ToggleBadge(count) [
+  // `count` is a runtime parameter, so this emits a real `when` (a constant
+  // condition would instead be folded to the taken branch at compile time).
+  if (count > 0) {
+    selectElement("#c3-badge")
+    addClass("active")
+  } else {
+    selectElement("#c3-badge")
+    removeClass("active")
+  }
+]
+
+action ch3RevealBullets() [
+  // setVariable stores the collection as a REAL scope variable — no compile-time
+  // folding, because this is an operation call, not a `const` (a literal `const`
+  // would be inlined). The loop then reads it back as $scope.variables.points:
+  // forEach resolves that chain up the scope chain from inside its own child
+  // scope — the eligius parent-scope fix (>= 2.2.2). Before that fix the loop
+  // couldn't see the parent scope's variable and threw at runtime.
+  setVariable("points", ["#c3-b1", "#c3-b2", "#c3-b3"])
+  for (p in $scope.variables.points) {
+    selectElement(@@currentItem)
+    addClass("in")
+  }
+]
+
+// Chapter-5 helpers — a REAL eventbus round-trip the chapter wires live. Clicking
+// the button runs ch5BroadcastPing (attached via a DOMEventListenerController),
+// which broadcasts "tour-ping"; the `on event` handler below catches it and reveals
+// the panel. This dogfoods three engine-reach features at once: controllers, the
+// eventbus, and event-driven actions — the same path the `navigate` sugar uses.
+action ch5WireButton() [
+  selectElement("#c5-fx-ping")
+  // addController(name, ...controllerParams) — positional after the name. For
+  // DOMEventListenerController: eventName, then the actions to run on the event.
+  addController("DOMEventListenerController", "click", ["ch5BroadcastPing"])
+]
+
+action ch5BroadcastPing() [
+  // broadcastEvent's params are (eventArgs, eventName) in that order — the array
+  // first. eventArgs[0] ("#c5-fx-panel") becomes the handler's `target` parameter.
+  broadcastEvent(["#c5-fx-panel"], "tour-ping")
+]
+
+// Event-driven action: runs whenever "tour-ping" is broadcast — NOT at a timeline
+// time. Its parameter maps to the event's args by index (target ← eventArgs[0]).
+on event "tour-ping" action ch5OnPing(target) [
+  selectElement(target)
+  addClass("in")
+]
+
+// ===========================================================================
+// Hub — the landing menu. Click a card to jump into a chapter.
+// ===========================================================================
+timeline "Hub" in "#stage" using raf {
+
+  // setup: show the hub on enter, hide it on leave; wire the cards
+  at 0s..3600s [
+    showView("#hub")
+    on click "#card-ch1" navigate "Timeline & Time"
+    on click "#card-ch2" navigate "Actions"
+    on click "#card-ch3" navigate "Logic"
+    on click "#card-ch4" navigate "Timeline Power Tools"
+    on click "#card-ch5" navigate "Engine Reach"
+    on click "#card-ch6" navigate "Tooling Magic"
+  ] [
+    hideView("#hub")
+  ]
+}
+
+// ===========================================================================
+// Chapter 1 — Timeline & Time. Six click-paced beats; itself a `timeline` full
+// of `at` events teaching exactly what it shows.
+// ===========================================================================
+timeline "Timeline & Time" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch1")
+    showView("#narration")
+    on click "#c1-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch1")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — open on the canvas
+  at 0s..6s [
+    narrate("An Eligian presentation is one or more timelines. Here's the one you're watching.")
+    revealBlock("#code-ch1")
+    spotlight("#tok-timeline")
+    callout("#cl-name", "its name — also the uri the hub uses to jump here")
+    demo("#fx-stage")
+  ] []
+
+  // Beat 2 — pick a driver (provider)
+  at 6s..12s [
+    clearSpots()
+    narrate("What advances the timeline? Its provider.")
+    spotlight("#tok-raf")
+    callout("#cl-provider", "raf = animation clock; video / audio / custom also available")
+    demo("#fx-providers")
+  ] []
+
+  // Beat 3 — make something happen at a time
+  at 12s..20s [
+    clearSpots()
+    narrate("Inside a timeline, 'at' schedules work over a time range.")
+    revealBlock("#code-at")
+    spotlight("#tok-at")
+    callout("#cl-range", "a time range: start .. end")
+    demo("#fx-hero")
+  ] []
+
+  // Beat 4 — time speaks four units
+  at 20s..27s [
+    clearSpots()
+    narrate("Times take units. No unit means milliseconds.")
+    revealBlock("#code-units")
+    callout("#cl-units", "42 = 42ms · 500ms · 2s · 1.5m · 0.5h")
+    demo("#fx-ruler")
+  ] []
+
+  // Beat 5 — arithmetic and relative time
+  at 27s..35s [
+    clearSpots()
+    narrate("Ranges can compute — and chain off the previous event.")
+    revealBlock("#code-arith")
+    spotlight("#tok-plus")
+    callout("#cl-relative", "relative time — anchored to the previous event's end")
+    demo("#fx-chain")
+  ] []
+
+  // Beat 6 — recap + the reveal, then back to the hub
+  at 35s..42s [
+    clearSpots()
+    narrate("That whole sequence? One timeline. Click ← Hub to explore more.")
+    revealBlock("#code-full")
+    demo("#fx-endcard")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 2 — Actions & Composition. Built entirely from the presentation
+// library it describes; the reveal puts that library's own source on screen.
+// ===========================================================================
+timeline "Actions" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch2")
+    showView("#narration")
+    on click "#c2-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch2")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — an action is a named list of operations
+  at 0s..7s [
+    narrate("An action is a named list of operations. Define once, call anywhere.")
+    revealBlock("#c2-code-def")
+    spotlight("#c2-tok-action")
+    callout("#c2-cl-action", "declares a reusable action; its body runs top-to-bottom")
+    demo("#c2-fx-chain")
+  ] []
+
+  // Beat 2 — parameters and optional types
+  at 7s..14s [
+    clearSpots()
+    narrate("Actions take parameters. Annotate types when you want the compiler's help.")
+    revealBlock("#c2-code-params")
+    spotlight("#c2-tok-param")
+    callout("#c2-cl-param", "optional type — string · number · boolean · object · array")
+    demo("#c2-fx-fade")
+  ] []
+
+  // Beat 3 — unified call syntax
+  at 14s..22s [
+    clearSpots()
+    narrate("Calling your action looks exactly like calling a built-in operation.")
+    revealBlock("#c2-code-call")
+    spotlight("#c2-tok-call")
+    callout("#c2-cl-call", "one syntax; resolved action-first, then built-in op")
+    demo("#c2-fx-call")
+  ] []
+
+  // Beat 4 — params feed operations by name
+  at 22s..30s [
+    clearSpots()
+    narrate("A parameter that feeds a built-in op must be named after that op's input.")
+    revealBlock("#c2-code-byname")
+    spotlight("#c2-tok-template")
+    callout("#c2-cl-name", "selectElement→selector · addClass→className · setElementContent→template")
+    demo("#c2-fx-slot")
+  ] []
+
+  // Beat 5 — endable actions: start and end are independent
+  at 30s..38s [
+    clearSpots()
+    narrate("An endable action has two blocks: set up, then tear down — independently.")
+    revealBlock("#c2-code-endable")
+    spotlight("#c2-tok-endable")
+    callout("#c2-cl-endable", "start & end run fresh; re-select in each — only the DOM persists")
+    demo("#c2-fx-toggle")
+  ] []
+
+  // Beat 6 — libraries & composition, then the reveal
+  at 38s..46s [
+    clearSpots()
+    narrate("Group actions into a library, import what you need. Click ← Hub for more.")
+    revealBlock("#c2-code-lib")
+    demo("#c2-fx-lib")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 3 — Logic & Data. Conditionals, loops, variables and the data sigils.
+// Self-demonstrating: Beat 4's bullet list is revealed by a real `for` loop.
+// ===========================================================================
+timeline "Logic" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch3")
+    showView("#narration")
+    on click "#c3-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch3")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — const names a value (scope)
+  at 0s..7s [
+    narrate("const names a value. In an action it's a scope variable; at top level it's global.")
+    revealBlock("#c3-code-const")
+    spotlight("#c3-tok-const")
+    callout("#c3-cl-const", "action scope → @name · program scope → $globaldata")
+    demo("#c3-fx-scopes")
+  ] []
+
+  // Beat 2 — expressions and operators
+  at 7s..14s [
+    clearSpots()
+    narrate("Expressions combine values: arithmetic, comparison, logic.")
+    revealBlock("#c3-code-expr")
+    spotlight("#c3-tok-expr")
+    callout("#c3-cl-expr", "+ - * / % **  ·  == != > < >= <=  ·  && || !")
+    demo("#c3-fx-eval")
+  ] []
+
+  // Beat 3 — if / else (a REAL conditional toggles the badge)
+  at 14s..23s [
+    clearSpots()
+    narrate("if / else runs operations conditionally — compiles to when / otherwise / endWhen.")
+    revealBlock("#c3-code-if")
+    spotlight("#c3-tok-if")
+    callout("#c3-cl-if", "each branch is its own operation block")
+    demo("#c3-fx-if")
+    ch3ToggleBadge(2)
+  ] []
+
+  // Beat 4 — for loop reveals the bullets (real forEach over a const array) ⭐
+  at 23s..32s [
+    clearSpots()
+    narrate("for iterates a collection — and this list is being revealed by one right now.")
+    revealBlock("#c3-code-for")
+    spotlight("#c3-tok-for")
+    callout("#c3-cl-for", "@@currentItem is the current item; compiles to forEach / endForEach")
+    demo("#c3-fx-list")
+    ch3RevealBullets()
+  ] []
+
+  // Beat 5 — break / continue steer the loop
+  at 32s..40s [
+    clearSpots()
+    narrate("break exits the loop; continue skips to the next item — only inside a for.")
+    revealBlock("#c3-code-loopctl")
+    spotlight("#c3-tok-break")
+    callout("#c3-cl-loopctl", "continue → continueForEach · break → breakForEach")
+    demo("#c3-fx-loopctl")
+  ] []
+
+  // Beat 6 — sigils recap + the reveal
+  at 40s..48s [
+    clearSpots()
+    narrate("Three places data lives: $operationdata, $globaldata, $scope. Click ← Hub for more.")
+    revealBlock("#c3-code-sigils")
+    spotlight("#c3-tok-sigil")
+    demo("#c3-fx-sigils")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 4 — Timeline Power Tools. `sequence` (auto consecutive timing) and
+// `stagger` (one delayed event per item). Beat 4's card row is revealed by a
+// REAL `stagger` block — the construct it teaches drives what you see.
+// ===========================================================================
+timeline "Timeline Power Tools" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch4")
+    showView("#narration")
+    on click "#c4-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch4")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — timing by hand is brittle
+  at 0s..7s [
+    narrate("Scheduling a chain of events by hand means recomputing every time you tweak one.")
+    revealBlock("#c4-code-manual")
+    callout("#c4-cl-manual", "change one length and every later time is re-done by hand")
+    demo("#c4-fx-ruler")
+  ] []
+
+  // Beat 2 — sequence: auto consecutive timing
+  at 7s..15s [
+    clearSpots()
+    narrate("'sequence' lays events back-to-back automatically — each runs 'for' a duration.")
+    revealBlock("#c4-code-sequence")
+    spotlight("#c4-tok-seq")
+    callout("#c4-cl-seq", "start = previous end → 0s..5s · 5s..15s · 15s..18s")
+    demo("#c4-fx-seq")
+  ] []
+
+  // Beat 3 — edit one, the rest follow
+  at 15s..22s [
+    clearSpots()
+    narrate("Because starts are computed, changing one duration shifts everything after it.")
+    callout("#c4-cl-edit", "shorten 'main' and 'outro' slides left — no re-numbering")
+    demo("#c4-fx-seq")
+  ] []
+
+  // Beat 4 ⭐ — a REAL stagger reveals the card row (fires at 22s, with the beat).
+  // Placed here so its base time = end of Beat 3 (22s); cards reveal 22s..23.9s.
+  stagger 200ms ["#c4-card-1", "#c4-card-2", "#c4-card-3"] with revealCard() for 1.5s
+
+  at 22s..31s [
+    clearSpots()
+    narrate("'stagger' fans one effect across a collection — each item starts a little after the last.")
+    revealBlock("#c4-code-stagger")
+    spotlight("#c4-tok-stagger")
+    callout("#c4-cl-stagger", "200ms delay between starts · the item feeds the action's first arg")
+    demo("#c4-fx-row")
+  ] []
+
+  // Beat 5 — delay vs duration + the inline form
+  at 31s..39s [
+    clearSpots()
+    narrate("delay is the gap between starts; duration is how long each lasts — they overlap on purpose.")
+    revealBlock("#c4-code-inline")
+    callout("#c4-cl-inline", "inline start/end op blocks instead of 'with <action>'")
+    demo("#c4-fx-cascade")
+  ] []
+
+  // Beat 6 — which tool? recap + the reveal
+  at 39s..47s [
+    clearSpots()
+    narrate("'sequence' for distinct back-to-back steps; 'stagger' for one effect across many items.")
+    revealBlock("#c4-code-recap")
+    spotlight("#c4-tok-recap")
+    demo("#c4-fx-done")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 5 — Engine Reach. Reaching past the timeline clock into the engine's
+// runtime services: the eventbus (broadcastEvent), event-driven `on event`
+// actions, and controllers. Beat 3+4 wire a REAL eventbus round-trip — clicking
+// the button reveals the panel through controller → broadcast → on event. Beat 5
+// (i18n / LabelController) is illustrative (no locale assets authored for the tour).
+// ===========================================================================
+timeline "Engine Reach" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch5")
+    showView("#narration")
+    on click "#c5-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch5")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — beyond the clock
+  at 0s..7s [
+    narrate("Everything so far fired on the timeline clock. But a presentation also has to react — that's engine reach.")
+    revealBlock("#c5-code-overview")
+    callout("#c5-cl-over", "three doors past the clock: the eventbus, on event, controllers")
+    demo("#c5-fx-doors")
+  ] []
+
+  // Beat 2 — the eventbus: broadcast vs request
+  at 7s..15s [
+    clearSpots()
+    narrate("broadcastEvent puts a message on the engine's bus. Broadcast reaches every listener; request asks for the one that answers.")
+    revealBlock("#c5-code-eventbus")
+    spotlight("#c5-tok-bcast")
+    callout("#c5-cl-bus", "request-timeline-uri is the request the navigate sugar emits")
+    demo("#c5-fx-bus")
+  ] []
+
+  // Beat 3 ⭐ — on event (real round-trip, half 1: the handler that answers)
+  at 15s..24s [
+    clearSpots()
+    narrate("An on event action runs when its event fires, not at a time. Click the button — it broadcasts, and this handler answers.")
+    revealBlock("#c5-code-onevent")
+    spotlight("#c5-tok-onevent")
+    callout("#c5-cl-on", "params map to the event's args by position: target is eventArgs[0]")
+    demo("#c5-fx-bus")
+  ] []
+
+  // Beat 4 — controllers (real round-trip, half 2: wires the live button)
+  at 24s..32s [
+    clearSpots()
+    narrate("A controller attaches lasting behaviour to an element. The button's click is wired by a DOMEventListenerController — one of eight.")
+    revealBlock("#c5-code-controller")
+    spotlight("#c5-tok-ctrl")
+    callout("#c5-cl-ctrl", "selectElement + addController; this is what navigate desugars to")
+    demo("#c5-fx-bus")
+    ch5WireButton()
+  ] []
+
+  // Beat 5 — i18n / locales (illustrative: no locale assets authored for the tour)
+  at 32s..40s [
+    clearSpots()
+    narrate("Locales make text translatable. A LabelController binds a translation key to an element and re-renders on language-change.")
+    revealBlock("#c5-code-label")
+    spotlight("#c5-tok-loc")
+    callout("#c5-cl-loc", "translationKey resolved via the rosetta locale system")
+    demo("#c5-fx-label")
+  ] []
+
+  // Beat 6 — the chrome was the lesson: recap + the reveal
+  at 40s..48s [
+    clearSpots()
+    narrate("Eventbus, on event, controllers, locales — the navigation and narration you've used were built from exactly these. Click ← Hub for more.")
+    revealBlock("#c5-code-recap")
+    spotlight("#c5-tok-recap")
+    demo("#c5-fx-done")
+  ] []
+}
+
+// ===========================================================================
+// Chapter 6 — Tooling Magic. The dev-time half of Eligian: compile + live
+// preview, CSS validation, autocomplete, JSDoc hover, semantic validation,
+// CSS hot-reload, locale editor. UNLIKE Chapters 1–5 this teaches VS Code/LSP
+// tooling, which a running timeline can't exercise — so the effect pane REENACTS
+// the editor (mock panels with strings copied verbatim from the real providers).
+// No new actions, no runtime self-demo: the genuine dogfood is historical (this
+// whole tour was authored, validated, autocompleted and compiled by these tools).
+// See storyboards/chapter-06-tooling-magic.md §3.
+// ===========================================================================
+timeline "Tooling Magic" in "#stage" using raf {
+
+  // setup: show this chapter + narration on enter, hide on leave; wire back
+  at 0s..3600s [
+    showView("#ch6")
+    showView("#narration")
+    on click "#c6-to-hub" navigate "Hub"
+  ] [
+    hideView("#ch6")
+    hideView("#narration")
+  ]
+
+  // Beat 1 — the editor is half the language
+  at 0s..7s [
+    narrate("Eligian isn't just shorter Eligius JSON — it's a typed, tooled way to write it. Everything you've watched was authored with these tools.")
+    revealBlock("#c6-code-why")
+    callout("#c6-cl-why", "concise on the left, type-safe everywhere, live in the preview")
+    demo("#c6-fx-editor")
+  ] []
+
+  // Beat 2 — compile + live preview
+  at 7s..15s [
+    clearSpots()
+    narrate("Preview Timeline compiles your .eligian on the fly, runs it in an embedded engine, and reloads on every save. This tour is what you'd see there.")
+    revealBlock("#c6-code-preview")
+    spotlight("#c6-tok-preview")
+    callout("#c6-cl-preview", "compiles + runs in a webview engine; a FileWatcher reloads on save")
+    demo("#c6-fx-preview")
+  ] []
+
+  // Beat 3 ⭐ — CSS validation + quick-fix (the tour's own safety net)
+  at 15s..24s [
+    clearSpots()
+    narrate("Every class and selector is checked against your imported CSS. Typo one and you get a squiggle, a suggestion, and a one-click fix.")
+    revealBlock("#c6-code-css")
+    spotlight("#c6-tok-css")
+    callout("#c6-cl-css", "CSS class 'buton' is not defined. Did you mean: button?")
+    demo("#c6-fx-squiggle")
+  ] []
+
+  // Beat 4 — autocomplete everywhere
+  at 24s..32s [
+    clearSpots()
+    narrate("Type and the editor knows what fits: operations with their parameters, the eight controllers, label IDs, CSS classes, even an on event skeleton.")
+    revealBlock("#c6-code-complete")
+    spotlight("#c6-tok-complete")
+    callout("#c6-cl-complete", "operations show their signature and docs; controllers list their params")
+    demo("#c6-fx-complete")
+  ] []
+
+  // Beat 5 — JSDoc hover + semantic validation
+  at 32s..40s [
+    clearSpots()
+    narrate("Document an action with @param and the editor hovers those docs at every call — and flags wrong argument counts, unknown ops, bad nav or event names.")
+    revealBlock("#c6-code-jsdoc")
+    spotlight("#c6-tok-jsdoc")
+    callout("#c6-cl-jsdoc", "@param docs on hover; semantic checks catch the rest")
+    demo("#c6-fx-hover")
+  ] []
+
+  // Beat 6 — hot-reload, locales, the whole picture + end card
+  at 40s..48s [
+    clearSpots()
+    narrate("Tweak your CSS and it hot-reloads into the running preview. Edit translations in a dedicated editor. Concise, type-safe, live — that's Eligian. Click ← Hub.")
+    revealBlock("#c6-code-recap")
+    spotlight("#c6-tok-recap")
+    demo("#c6-fx-done")
+  ] []
+}

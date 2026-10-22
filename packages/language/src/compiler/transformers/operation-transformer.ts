@@ -16,13 +16,14 @@ import type {
   ContinueStatement,
   ForStatement,
   IfStatement,
+  NavigateStatement,
   OperationCall,
   OperationStatement,
   Program,
   VariableDeclaration,
 } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
-import { evaluateExpression } from '../expression-evaluator.js';
+import { constantValueType, evaluateExpression } from '../expression-evaluator.js';
 import { findActionByName } from '../name-resolver.js';
 import { getOperationSignature } from '../operations/index.js';
 import { mapParameters } from '../operations/mapper.js';
@@ -31,6 +32,11 @@ import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
 import { transformCondition } from './condition-transformer.js';
 import { transformExpression } from './expression-transformer.js';
+import {
+  buildNavigateOperations,
+  resolveNavPosition,
+  syntheticNavActionName,
+} from './navigate-operations.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
 
@@ -359,6 +365,18 @@ export const transformOperationStatement = (
         // continue → continueForEach operation
         return yield* transformContinueStatement(stmt, scope);
 
+      case 'NavigateStatement': {
+        // on click "#sel" navigate "Target" [at <time>] →
+        //   selectElement + getControllerInstance + addControllerToElement.
+        // The synthetic broadcast action it references is emitted centrally in
+        // transformAST (one per distinct target+position); its name is derived
+        // purely so both sites agree.
+        const navStmt = stmt as NavigateStatement;
+        const position = yield* resolveNavPosition(navStmt.position);
+        const actionName = syntheticNavActionName(navStmt.target, position);
+        return buildNavigateOperations(navStmt.selector, actionName, getSourceLocation(navStmt));
+      }
+
       default:
         return yield* Effect.fail({
           _tag: 'TransformError' as const,
@@ -380,13 +398,14 @@ export const transformOperationStatement = (
  *   }
  *
  * Into:
- *   when(condition)
+ *   when({ expression })
  *   [thenOps...]
  *   otherwise()
  *   [elseOps...]
  *   endWhen()
  *
- * For if-without-else, the otherwise() operation is omitted.
+ * The condition is serialized to the Eligius `when` expression string by
+ * {@link transformCondition}. For if-without-else, otherwise() is omitted.
  */
 export const transformIfStatement = (
   stmt: IfStatement,
@@ -400,7 +419,7 @@ export const transformIfStatement = (
     // Transform condition → Eligius when expression string
     const expression = yield* transformCondition(stmt.condition, scope);
 
-    // 1. when(condition)
+    // 1. when({ expression })
     operations.push({
       id: crypto.randomUUID(),
       systemName: 'when',
@@ -597,7 +616,7 @@ export const transformVariableDeclaration = (
       scope.scopedConstants.set(stmt.name, {
         name: stmt.name,
         value: evalResult.value!,
-        type: typeof evalResult.value as 'string' | 'number' | 'boolean',
+        type: constantValueType(evalResult.value!),
         sourceLocation: {
           line: stmt.$cstNode?.range.start.line ?? 0,
           column: stmt.$cstNode?.range.start.character ?? 0,

@@ -31,12 +31,13 @@ hoistPattern:
 shamefullyHoist: true
 
 # @effect/tsgo tracks TypeScript `next` and releases often; don't let the
-# freshly-published cooldown block it or its platform binaries. Bare names /
-# globs match regardless of version.
+# freshly-published cooldown block it or its platform binaries. eligius is our
+# own library: exempt it so a new release can be adopted right after publishing.
+# Bare names / globs match regardless of version.
 minimumReleaseAgeExclude:
   - '@effect/tsgo'
   - '@effect/tsgo-*'
-  - eligius@3.0.1
+  - eligius
 
 # jsonschema (used by langium-cli to validate langium-config.json) resolves $refs
 # against the opaque base URL 'thismessage::/'. Node >= 24.20 parses URLs per
