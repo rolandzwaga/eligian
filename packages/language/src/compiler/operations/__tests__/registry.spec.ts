@@ -14,6 +14,7 @@ import {
   OPERATION_REGISTRY,
   validateRegistry,
 } from '../index.js';
+import { KNOWN_PARAMETER_TYPES } from '../metadata-converter.js';
 
 describe('T224: Operation Registry Tests', () => {
   describe('Registry completeness', () => {
@@ -22,6 +23,36 @@ describe('T224: Operation Registry Tests', () => {
       // Now includes ALL Eligius operations + synthetic operations
       // 79 Eligius operations + 1 synthetic (addController) = 80 total
       expect(allOperations.length).toBe(80);
+    });
+
+    it('should only use parameter types that exist in Eligius TParameterTypes', () => {
+      for (const operation of getAllOperations()) {
+        for (const parameter of operation.parameters) {
+          for (const type of parameter.type) {
+            const name = typeof type === 'string' ? type : null;
+            if (name !== null) {
+              expect(
+                KNOWN_PARAMETER_TYPES.has(name),
+                `${operation.systemName}.${parameter.name}: ${name}`
+              ).toBe(true);
+            }
+          }
+        }
+      }
+    });
+
+    it('should map runtime object types (RegExp, Element, ...) to ParameterType:object', () => {
+      const typeOf = (operation: string, parameter: string) =>
+        getOperationSignature(operation)?.parameters.find(p => p.name === parameter)?.type;
+
+      expect(typeOf('replaceString', 'pattern')).toEqual([
+        'ParameterType:string',
+        'ParameterType:object',
+      ]);
+      expect(typeOf('setElementContent', 'template')).toEqual([
+        'ParameterType:string',
+        'ParameterType:object',
+      ]);
     });
 
     it('should have no duplicate operation names', () => {

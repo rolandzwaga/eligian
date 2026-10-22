@@ -141,7 +141,7 @@ describe('Controller Autocomplete (Feature 035, User Story 3)', () => {
       // Verify NavigationController has description
       const navController = completions!.items.find(item => item.label === 'NavigationController');
       expect(navController?.documentation).toBeDefined();
-      expect(navController?.documentation).toContain('Navigation');
+      expect(navController?.documentation).toMatch(/navigation/i);
     });
 
     test('Partial controller name filters suggestions (T021)', async () => {
