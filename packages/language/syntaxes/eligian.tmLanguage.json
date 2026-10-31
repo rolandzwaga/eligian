@@ -100,7 +100,7 @@
         },
         {
           "name": "keyword.control.timeline.eligian",
-          "match": "(?<![\\w.])(?:at|timeline|using|sequence|stagger|with)(?![\\w])"
+          "match": "(?<![\\w.])(?:at|timeline|using|sequence|stagger|with|loop|duration)(?![\\w])"
         },
         {
           "name": "keyword.control.event.eligian",
@@ -128,7 +128,7 @@
         },
         {
           "name": "support.constant.provider.eligian",
-          "match": "(?<![\\w.])(?:video|audio|raf|custom)(?![\\w])"
+          "match": "(?<![\\w.])(?:video|audio|raf|scroll|custom)(?![\\w])"
         },
         {
           "name": "support.constant.asset-type.eligian",

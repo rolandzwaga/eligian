@@ -34,3 +34,7 @@ export function convertTimeToSeconds(value: number, unit?: string): number {
  */
 export const RELATIVE_DURATION_MESSAGE =
   "A duration cannot be a relative time: write 'for 2s', not 'for +2s'";
+
+/** Reported for a `using scroll` timeline without a `duration` header option. */
+export const SCROLL_DURATION_REQUIRED_MESSAGE =
+  'A scroll timeline needs a duration: the scroll range maps onto it (e.g. \'using scroll "#scroller" duration 120s\')';

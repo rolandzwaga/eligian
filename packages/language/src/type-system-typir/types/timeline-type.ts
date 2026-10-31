@@ -5,7 +5,7 @@
  * Represents a timeline with provider, container selector, optional source, and events.
  *
  * Properties:
- * - provider: 'video' | 'audio' | 'raf' | 'custom'
+ * - provider: 'video' | 'audio' | 'raf' | 'scroll' | 'custom'
  * - containerSelector: CSS selector string for timeline container
  * - source: Optional source file path (required for video/audio, not for raf/custom)
  * - events: Array of TimelineEventType (circular dependency handled by Typir)
@@ -32,7 +32,7 @@ import type { EligianSpecifics } from '../eligian-specifics.js';
  */
 export interface TimelineType {
   /** Timeline provider type */
-  provider: 'video' | 'audio' | 'raf' | 'custom';
+  provider: 'video' | 'audio' | 'raf' | 'scroll' | 'custom';
 
   /** CSS selector for timeline container */
   containerSelector: string;

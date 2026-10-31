@@ -29,6 +29,8 @@ import {
   isLanguagesBlock,
   isNamedImport,
   isOperationCall,
+  isTimeline,
+  type Timeline,
 } from './generated/ast.js';
 import {
   buildControllerHover,
@@ -37,6 +39,7 @@ import {
   buildLanguagesHover,
   buildOperationHoverMarkdown,
 } from './hover/hover-builders.js';
+import { buildTimelineHover } from './hover/timeline-hover.js';
 import { extractJSDoc } from './jsdoc/jsdoc-extractor.js';
 import { formatJSDocAsMarkdown } from './jsdoc/jsdoc-formatter.js';
 import type { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
@@ -106,6 +109,17 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
           if (hover) return hover;
         }
       }
+    }
+
+    // 2.4. Timeline header: provider, effective duration, loop (Feature 049)
+    const headerNode = cstNode.astNode;
+    if (
+      isTimeline(headerNode) ||
+      (isTimeline(headerNode.$container) && headerNode.$containerProperty === 'duration')
+    ) {
+      const timeline = isTimeline(headerNode) ? headerNode : (headerNode.$container as Timeline);
+      // Partial headers while typing (no name or provider yet) get no hover
+      if (timeline.name && timeline.provider) return buildTimelineHover(timeline);
     }
 
     // 2.5. Check if we're hovering over a languages block (Feature 037 US5)

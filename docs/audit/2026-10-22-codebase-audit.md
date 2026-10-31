@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3 and #8 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3, #8 and #9 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3445,6 +3445,8 @@ Edit narrate() text in Beat 5 (31s), save → preview recompiles and is paused a
 - **Rationale:** A small change with a large effect on how fast authors can iterate. It uses the same engine commands as #5, so it is cheap once #5 lands, but it can also ship on its own.
 
 ### #9 Timeline header options: `loop`, explicit `duration`, `scroll` provider and a real video selector
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 049: `scroll` provider with ScrollPositionSource, `loop`, explicit `duration`, timeline hover; the video selector was already fixed; the preview does not add a scrollable container)
 
 - **Area:** runtime-integration · **Effort:** S · **Score:** 8.0
 - **Problem:** timeline-transformer.ts hard-codes `loop: false // TODO`. Duration is always inferred from the largest event end. Providers are limited to `video|audio|raf|custom`, and `custom` silently maps to 'animation'. config-builder emits the VideoPositionSource selector as ''. Eligius 3's ScrollPositionSource, the basis of scroll-driven storytelling, cannot be targeted.

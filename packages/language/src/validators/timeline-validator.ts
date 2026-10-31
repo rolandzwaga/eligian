@@ -7,10 +7,21 @@ import {
   isNavigateStatement,
   isSequenceItem,
   isStaggerBlock,
+  isTimedEvent,
+  isTimeline,
   isTimeRange,
   type PropertyChainReference,
   type Timeline,
 } from '../generated/ast.js';
+import {
+  containsRelativeTime,
+  extractTimeValue,
+  parseTimeRange,
+} from '../type-system-typir/utils/time-expression.js';
+import {
+  RELATIVE_DURATION_MESSAGE,
+  SCROLL_DURATION_REQUIRED_MESSAGE,
+} from '../utils/time-units.js';
 import { BaseValidator } from './base-validator.js';
 
 /**
@@ -23,7 +34,7 @@ export class TimelineValidator extends BaseValidator {
    * Valid providers: video, audio, raf (RequestAnimationFrame), custom
    */
   checkValidProvider(timeline: Timeline, accept: ValidationAcceptor): void {
-    const validProviders: string[] = ['video', 'audio', 'raf', 'custom'];
+    const validProviders: string[] = ['video', 'audio', 'raf', 'scroll', 'custom'];
 
     if (!validProviders.includes(timeline.provider)) {
       accept(
@@ -54,6 +65,55 @@ export class TimelineValidator extends BaseValidator {
           property: 'provider',
         }
       );
+    }
+  }
+
+  /**
+   * Header options (Feature 049): `using scroll "<selector>"`, `loop`, `duration <time>`.
+   *
+   * - A scroll timeline needs a duration (its scroll range maps onto it), the
+   *   compiler rejects it otherwise.
+   * - Only scroll timelines take a scroll selector.
+   * - The duration must be a positive, non-relative time.
+   * - Events that end after an explicit duration are never reached: a warning.
+   */
+  checkTimelineOptions(timeline: Timeline, accept: ValidationAcceptor): void {
+    if (timeline.provider === 'scroll' && !timeline.duration) {
+      accept('error', SCROLL_DURATION_REQUIRED_MESSAGE, { node: timeline, property: 'provider' });
+    }
+    if (timeline.scrollSelector !== undefined && timeline.provider !== 'scroll') {
+      accept(
+        'error',
+        `Only scroll timelines take a scroll container selector ('using scroll "<selector>"'); remove it from this '${timeline.provider}' timeline`,
+        { node: timeline, property: 'scrollSelector' }
+      );
+    }
+
+    if (!timeline.duration) return;
+    if (containsRelativeTime(timeline.duration)) {
+      accept('error', RELATIVE_DURATION_MESSAGE, { node: timeline, property: 'duration' });
+      return;
+    }
+    const duration = extractTimeValue(timeline.duration);
+    if (duration === undefined) return; // property chains are reported by checkPropertyChainInTime
+    if (duration <= 0) {
+      accept('error', `Timeline duration must be greater than 0 (got ${duration}s)`, {
+        node: timeline,
+        property: 'duration',
+      });
+      return;
+    }
+
+    for (const event of timeline.events) {
+      if (!isTimedEvent(event)) continue;
+      const { end } = parseTimeRange(event.timeRange);
+      if (end !== undefined && end > duration) {
+        accept(
+          'warning',
+          `This event ends at ${end}s, after the timeline's duration (${duration}s), so its end is never reached`,
+          { node: event, property: 'timeRange' }
+        );
+      }
     }
   }
 
@@ -184,5 +244,6 @@ function isTimeSlot(node: PropertyChainReference): boolean {
   if (isStaggerBlock(container)) return property === 'delay' || property === 'duration';
   if (isSequenceItem(container)) return property === 'duration';
   if (isNavigateStatement(container)) return property === 'position';
+  if (isTimeline(container)) return property === 'duration';
   return false;
 }

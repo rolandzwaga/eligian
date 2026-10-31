@@ -5,6 +5,7 @@
 **Status**: Living Document - Updated with every language feature change
 
 **Recent Changes** (v1.8.0):
+- Timeline header options `using scroll "<selector>"`, `loop` and `duration <time>` (Feature 049, section 6.1)
 - `at <start> for <duration>` and optional end blocks for inline timeline and stagger blocks
   (Feature 048, sections 6.2 and 6.3)
 - Operation-data dependencies use inferred action contracts (Feature 047, section 4.7): a called
@@ -1787,7 +1788,7 @@ timeline "demo" in "#app" using raf {
 ### 6.1 Timeline Declaration
 
 ```eligian
-timeline <name> in <containerSelector> using <provider> [from <source>] {
+timeline <name> in <containerSelector> using <provider> [<scrollSelector>] [from <source>] [loop] [duration <time>] {
   <events>*
 }
 ```
@@ -1797,11 +1798,18 @@ timeline <name> in <containerSelector> using <provider> [from <source>] {
 - `containerSelector`: String literal - CSS selector for container element
 - `provider`: Timeline provider type
 - `source`: (Optional) Source file for video/audio providers
+- `scrollSelector`: (Optional, `scroll` only) the scrollable element; defaults to `containerSelector`
+- `loop`: (Optional) restart the timeline when it ends (Feature 049)
+- `duration <time>`: (Optional) explicit timeline duration; without it, the end of the last event is used.
+  It must be positive and not relative. Events that end after it get a warning (Feature 049)
+
+The options come in the order shown.
 
 **Providers**:
 - `video` - Video element (requires `from` source)
 - `audio` - Audio element (requires `from` source)
 - `raf` - RequestAnimationFrame loop (no source)
+- `scroll` - Scroll-driven: the scroll progress of an element maps onto the timeline duration, which is required (Feature 049). Compiles to an animation timeline with its own `ScrollPositionSource`
 - `custom` - Custom provider (no source)
 
 **Example**:
@@ -1815,7 +1823,19 @@ timeline "presentation" in ".slide-container" using video from "slides.mp4" {
 timeline "animation" in "#canvas" using raf {
   at 0s..2s fadeIn("#box")
 }
+
+timeline "Story" in "#stage" using scroll "#scroller" duration 120s {
+  at 0s for 10s [ selectElement("#intro") addClass("visible") ]
+}
+
+timeline "Ambient" in "#bg" using raf loop duration 30s {
+  at 0s..30s [ selectElement("#bg") addClass("glow") ]
+}
 ```
+
+`loop`, `duration` and `scroll` are contextual keywords: they remain usable as parameter and
+variable names. Hovering a timeline header shows its provider, effective duration and whether it
+loops.
 
 ### 6.2 Timeline Events
 
@@ -2929,7 +2949,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.8.0 | 2026-10-31 | **Feature 048 - `for` durations and optional end blocks** (sections 6.2, 6.3): `at 2s for 3s`, relative starts with durations, inline timeline/stagger blocks without an end block, and a code action converting `a..b` to `a for <length>`. **Feature 047 - Operation-data contracts** (section 4.7): dependencies are checked by one dataflow analysis shared by the editor and the compiler; called actions inherit their caller's state through inferred contracts. **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
+| 1.8.0 | 2026-10-31 | **Feature 049 - Timeline header options** (section 6.1): `scroll` provider (ScrollPositionSource), `loop`, explicit `duration` with a warning for events past it, timeline hover. **Feature 048 - `for` durations and optional end blocks** (sections 6.2, 6.3): `at 2s for 3s`, relative starts with durations, inline timeline/stagger blocks without an end block, and a code action converting `a..b` to `a for <length>`. **Feature 047 - Operation-data contracts** (section 4.7): dependencies are checked by one dataflow analysis shared by the editor and the compiler; called actions inherit their caller's state through inferred contracts. **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
 | 1.7.0 | 2026-10-17 | **Feature 045 - Locales Import**: `labels` import replaced by `locales` (section 3.2.4); nested JSON format keyed by locale code, compiles to `config.locales`, requires a `languages` block; translation keys referenced via `LabelController`. **Feature 029 corrections**: event names are restricted to the 43 Eligius events (sections 5.5, 5.10); the previous event list contained non-existent events. Duplicate event handlers documented as warnings; noted that the compiler fails on any diagnostic. Keyword list and grammar summary updated. |
 | 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |

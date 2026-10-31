@@ -502,17 +502,27 @@ OperationCall:
  * Timeline - Defines the time source and timeline events
  *
  * Syntax:
- *   timeline "main" using video from "video.mp4" {
+ *   timeline "main" in "#stage" using video from "video.mp4" {
  *     at 0s..5s { showThenHide() }
  *     at 2s..4s [ ... ] [ ... ]
  *   }
+ *
+ * Header options (Feature 049), in this order:
+ *   using scroll "#scroller"   scroll-driven timeline; the selector is the scrollable
+ *                              element (defaults to the container selector)
+ *   loop                       restart the timeline when it ends
+ *   duration 30s               explicit timeline duration (required for scroll)
+ *
+ *   timeline "Story" in "#stage" using scroll "#scroller" duration 120s { ... }
+ *   timeline "Ambient" in "#bg" using raf loop duration 30s { ... }
  */
 Timeline:
-    'timeline' name=STRING 'in' containerSelector=STRING 'using' provider=TimelineProvider ('from' source=STRING)?
+    'timeline' name=STRING 'in' containerSelector=STRING 'using' provider=TimelineProvider
+    (scrollSelector=STRING)? ('from' source=STRING)? (loop?='loop')? ('duration' duration=TimeExpression)?
     '{' (events += TimelineEvent)* '}';
 
 TimelineProvider returns string:
-    'video' | 'audio' | 'raf' | 'custom';
+    'video' | 'audio' | 'raf' | 'scroll' | 'custom';
 
 /**
  * Timeline Event - Endable action triggered at specific time range OR sequence block OR stagger block
@@ -845,7 +855,8 @@ Identifier returns string:
     | 'event' | 'from' | 'globaldata' | 'h' | 'html' | 'in' | 'languages'
     | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
-    | 's' | 'scope' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with';
+    | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
+    | 'duration' | 'loop';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:

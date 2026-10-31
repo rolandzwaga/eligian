@@ -539,6 +539,7 @@ export function convertTimelineActionToEligius(
 export function mapProviderToTimelineType(provider: string): 'animation' | 'mediaplayer' {
   switch (provider) {
     case 'raf':
+    case 'scroll': // ScrollPositionSource drives an animation timeline (Feature 049)
       return 'animation';
     case 'video':
     case 'audio':

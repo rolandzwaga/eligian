@@ -17,7 +17,10 @@ import type {
 } from '../../generated/ast.js';
 import { containsRelativeTime } from '../../type-system-typir/utils/time-expression.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
-import { RELATIVE_DURATION_MESSAGE } from '../../utils/time-units.js';
+import {
+  RELATIVE_DURATION_MESSAGE,
+  SCROLL_DURATION_REQUIRED_MESSAGE,
+} from '../../utils/time-units.js';
 import { findActionByName } from '../name-resolver.js';
 import type { ConstantMap } from '../types/constant-folding.js';
 import type {
@@ -139,23 +142,53 @@ export const buildTimelineConfig = (
       }
     }
 
+    // Feature 049: an explicit `duration` header option overrides the inferred one
+    let duration = maxDuration;
+    if (timeline.duration) {
+      if (containsRelativeTime(timeline.duration)) {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidTimeline' as const,
+          message: RELATIVE_DURATION_MESSAGE,
+          location: getSourceLocation(timeline.duration),
+        });
+      }
+      duration = roundTime(
+        evaluateTimeExpression(yield* transformTimeExpression(timeline.duration))
+      );
+    }
+
     // T271: Map provider to Eligius timeline type
     // T272: Generate uri (timeline name for animation, source path for mediaplayer)
     const timelineType = mapProviderToTimelineType(timeline.provider);
     const uri = timelineUri(timeline);
-    const positionSource = mediaPositionSource(
-      timeline.provider,
-      timeline.source,
-      timeline.containerSelector
-    );
+
+    // Feature 049: scroll timelines drive an animation timeline from the scroll
+    // position of an element, through a per-timeline ScrollPositionSource
+    if (timeline.provider === 'scroll' && !timeline.duration) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidTimeline' as const,
+        message: SCROLL_DURATION_REQUIRED_MESSAGE,
+        location: getSourceLocation(timeline),
+      });
+    }
+    const positionSource =
+      timeline.provider === 'scroll'
+        ? {
+            systemName: 'ScrollPositionSource',
+            selector: timeline.scrollSelector ?? timeline.containerSelector,
+            duration,
+          }
+        : mediaPositionSource(timeline.provider, timeline.source, timeline.containerSelector);
 
     return {
       // Constitution VII: UUID v4 for globally unique timeline ID
       id: crypto.randomUUID(),
       uri,
       type: timelineType,
-      duration: maxDuration,
-      loop: false, // TODO: Could add DSL support for loop
+      duration,
+      loop: timeline.loop,
       selector: timeline.containerSelector,
       ...(positionSource ? { positionSource } : {}),
       timelineActions,
