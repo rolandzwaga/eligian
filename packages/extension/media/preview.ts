@@ -36,6 +36,7 @@ import {
   renderDebugEvents,
   renderErrorList,
 } from './preview-dom.js';
+import { scrollContainerProblem, scrollSelectorOf } from './scroll-check.js';
 
 // Make jQuery available globally for Eligius operations
 (window as any).$ = $;
@@ -114,6 +115,9 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
       const timelineUris = (config.timelines ?? []).map(timeline => timeline.uri);
       setPlayheadStatus(await restorePlayhead(engine, snapshot, timelineUris));
     }
+
+    // Scroll timelines: can the container actually scroll in the rendered layout?
+    reportScrollContainer(config);
 
     // Notify extension of successful initialization
     vscode.postMessage({
@@ -458,10 +462,44 @@ function updateControlStates(isPlaying: boolean): void {
   }
 }
 
+/** Status messages next to the controls, by source; shown together. */
+const statusMessages: { playhead?: string; scroll?: string } = {};
+
+function renderStatus(): void {
+  const status = document.getElementById('playhead-status');
+  if (status) {
+    status.textContent = [statusMessages.playhead, statusMessages.scroll]
+      .filter(Boolean)
+      .join(' · ');
+  }
+}
+
 /** Show (or clear, with undefined) the playhead status next to the controls. */
 function setPlayheadStatus(message: string | undefined): void {
-  const status = document.getElementById('playhead-status');
-  if (status) status.textContent = message ?? '';
+  statusMessages.playhead = message;
+  renderStatus();
+}
+
+/**
+ * Check the current timeline's scroll container (Feature 049) in the rendered
+ * layout, show the problem in the status line and report it to the extension,
+ * which shows it as a warning on the timeline in the Problems view.
+ */
+function reportScrollContainer(config: IEngineConfiguration): void {
+  if (!engine) return;
+  const uri = engine.currentTimelineUri;
+  const selector = scrollSelectorOf(config.timelines, uri);
+  const problem =
+    selector === undefined
+      ? undefined
+      : scrollContainerProblem(
+          document.querySelector(selector),
+          selector,
+          element => getComputedStyle(element).overflowY
+        );
+  statusMessages.scroll = problem;
+  renderStatus();
+  vscode.postMessage({ type: 'scrollContainer', payload: { timelineUri: uri, problem } });
 }
 
 /**

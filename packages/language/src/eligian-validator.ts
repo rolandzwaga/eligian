@@ -143,6 +143,7 @@ export function registerValidationChecks(services: EligianServices) {
       v.timeline.checkValidProvider,
       v.timeline.checkSourceRequired,
       v.timeline.checkTimelineOptions, // Feature 049: scroll / loop / duration header options
+      v.timeline.checkScrollContainer, // Feature 049: scroll container exists and can scroll
       v.timeline.checkTimelineContainerSelector, // Feature 013: Validate timeline container selector against CSS
     ],
     // A property chain used as a time compiles to nothing (the compiler rejects it)

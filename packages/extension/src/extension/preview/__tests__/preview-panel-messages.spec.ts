@@ -47,6 +47,7 @@ const h = vi.hoisted(() => ({
 
 vi.mock('vscode', async () => {
   const nodePath = await import('node:path');
+  const nodeFs = await import('node:fs');
   const file = (p: string): MockUri => ({
     scheme: 'file',
     fsPath: p,
@@ -105,6 +106,9 @@ vi.mock('vscode', async () => {
       },
     },
     workspace: {
+      openTextDocument: async (uri: MockUri) => ({
+        getText: () => nodeFs.readFileSync(uri.fsPath, 'utf-8'),
+      }),
       workspaceFolders: undefined,
       getWorkspaceFolder: () => undefined,
       createFileSystemWatcher: () => ({
@@ -117,6 +121,7 @@ vi.mock('vscode', async () => {
     languages: {
       createDiagnosticCollection: () => ({
         set: (uri: MockUri, diagnostics: unknown[]) => h.diagnostics.set(uri.fsPath, diagnostics),
+        get: (uri: MockUri) => h.diagnostics.get(uri.fsPath),
         delete: (uri: MockUri) => {
           h.diagnosticDeletes.push(uri.fsPath);
           h.diagnostics.delete(uri.fsPath);
@@ -331,5 +336,45 @@ describe('PreviewPanel diagnostics (#59)', () => {
     await new Promise(resolve => setTimeout(resolve, 20));
 
     expect(h.diagnostics.has(documentPath)).toBe(false);
+  });
+});
+
+describe("PreviewPanel 'scrollContainer' (Feature 049)", () => {
+  type Warning = {
+    message: string;
+    severity: number;
+    code?: string;
+    range: { startLine: number; startCharacter: number };
+  };
+  const warnings = () => (h.diagnostics.get(documentPath) ?? []) as Warning[];
+
+  test('a runtime scroll container problem becomes a warning on the timeline header, and clears', async () => {
+    fs.writeFileSync(
+      documentPath,
+      [
+        'styles "./s.css"',
+        '  timeline "story" in "#stage" using scroll "#scroller" duration 60s {',
+        '}',
+        '',
+      ].join('\n')
+    );
+    openPanel();
+    await vi.waitFor(() => expect(count('updateConfig')).toBe(1));
+
+    h.receive?.({
+      type: 'scrollContainer',
+      payload: { timelineUri: 'story', problem: "Scroll container '#scroller' cannot scroll" },
+    });
+    await vi.waitFor(() => expect(warnings()).toHaveLength(1));
+    const [warning] = warnings();
+    expect(warning).toMatchObject({
+      message: "Scroll container '#scroller' cannot scroll",
+      severity: 1,
+      code: 'scroll_container_runtime',
+      range: { startLine: 1, startCharacter: 2 },
+    });
+
+    h.receive?.({ type: 'scrollContainer', payload: { timelineUri: 'story', problem: undefined } });
+    await vi.waitFor(() => expect(warnings()).toEqual([]));
   });
 });

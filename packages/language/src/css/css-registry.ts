@@ -12,6 +12,9 @@ export interface CSSMetadata {
   classRules: Map<string, string>;
   idRules: Map<string, string>;
   errors: CSSParseError[];
+  /** Classes / IDs a rule makes vertically scrollable (see CSSParseResult). */
+  scrollableClasses?: Set<string>;
+  scrollableIds?: Set<string>;
   /**
    * File URIs of the stylesheets this file pulls in through `@import` (transitively).
    * Their classes/IDs are merged into this file's metadata, so a change to one of
@@ -64,6 +67,8 @@ export class CSSRegistryService {
       classRules: metadata.classRules,
       idRules: metadata.idRules,
       errors: metadata.errors,
+      scrollableClasses: metadata.scrollableClasses,
+      scrollableIds: metadata.scrollableIds,
       ...(metadata.importedFiles && metadata.importedFiles.length > 0
         ? { importedFileUris: metadata.importedFiles.map(file => URI.file(file).toString()) }
         : {}),
@@ -174,6 +179,17 @@ export class CSSRegistryService {
    */
   getIDsForDocument(documentUri: string): Set<string> {
     return this.collectFromImports(documentUri, metadata => metadata.ids);
+  }
+
+  /**
+   * Classes and IDs that an imported CSS rule makes vertically scrollable
+   * (`overflow-y: auto`, ...), for the scroll timeline container check.
+   */
+  getScrollableForDocument(documentUri: string): { classes: Set<string>; ids: Set<string> } {
+    return {
+      classes: this.collectFromImports(documentUri, metadata => metadata.scrollableClasses ?? []),
+      ids: this.collectFromImports(documentUri, metadata => metadata.scrollableIds ?? []),
+    };
   }
 
   /**

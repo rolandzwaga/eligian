@@ -24,6 +24,7 @@ import {
   createRecordingWebview,
   findUncoveredDirectories,
 } from './resource-roots.js';
+import { findTimelineHeader } from './timeline-location.js';
 
 /**
  * Manages the lifecycle of a single preview webview panel.
@@ -468,6 +469,42 @@ export class PreviewPanel {
   /**
    * Handle messages received from the webview.
    */
+  /** Diagnostic code of runtime scroll container problems (Feature 049). */
+  private static readonly SCROLL_CONTAINER_CODE = 'scroll_container_runtime';
+
+  /**
+   * Show (or clear) a runtime scroll container problem as a warning on the
+   * timeline's header, next to the preview's other diagnostics.
+   */
+  private async reportScrollContainer(
+    timelineUri: string | undefined,
+    problem: string | undefined
+  ): Promise<void> {
+    const diagnostics = PreviewPanel.diagnostics;
+    if (!diagnostics) return;
+    const others = (diagnostics.get(this.documentUri) ?? []).filter(
+      d => d.code !== PreviewPanel.SCROLL_CONTAINER_CODE
+    );
+    if (!problem || !timelineUri) {
+      diagnostics.set(this.documentUri, others);
+      return;
+    }
+    let text = '';
+    try {
+      text = (await vscode.workspace.openTextDocument(this.documentUri)).getText();
+    } catch {
+      // The document is gone: nothing to annotate
+    }
+    const header = findTimelineHeader(text, timelineUri);
+    const range = header
+      ? new vscode.Range(header.line, header.startCharacter, header.line, header.endCharacter)
+      : new vscode.Range(0, 0, 0, 1);
+    const diagnostic = new vscode.Diagnostic(range, problem, vscode.DiagnosticSeverity.Warning);
+    diagnostic.code = PreviewPanel.SCROLL_CONTAINER_CODE;
+    diagnostic.source = 'Eligian Preview';
+    diagnostics.set(this.documentUri, [...others, diagnostic]);
+  }
+
   private handleWebviewMessage(message: any): void {
     switch (message.type) {
       case 'ready':
@@ -490,6 +527,12 @@ export class PreviewPanel {
         // User clicked retry button - recompile
         console.log('[Preview] Retry requested by user');
         this.compileAndUpdate();
+        break;
+
+      case 'scrollContainer':
+        // Feature 049: the webview checked the scroll timeline's container in
+        // the rendered layout; show a problem on the timeline header
+        void this.reportScrollContainer(message.payload?.timelineUri, message.payload?.problem);
         break;
 
       case 'runtimeError':

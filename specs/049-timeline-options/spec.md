@@ -45,4 +45,16 @@ with the configured duration.
 - The audit's "real video selector" part was already fixed: media timelines emit their container
   selector in the per-timeline position source.
 - The preview does not create a scrollable container: a scroll timeline needs a layout with a
-  scrollable element (`overflow: auto` and taller content).
+  scrollable element (`overflow: auto` and taller content). That is checked instead, see below.
+
+## Scroll container checks
+
+| Check | Where | Severity |
+|---|---|---|
+| An explicit scroll selector's ids/classes exist in the layout HTML or the imported CSS (`unknown_scroll_container`) | editor and compiler | error |
+| A CSS rule (subject of its selector) or an inline `style` in the layout sets `overflow-y`, or the vertical value of `overflow`, to auto/scroll/overlay (`scroll_container_not_scrollable`) | editor and compiler | warning: a heuristic, styles can also come from runtime operations or selectors it cannot match |
+| The element exists in the rendered layout, its computed `overflow-y` scrolls and its content is taller (`scrollHeight > clientHeight`) | preview, after the engine starts the timeline: status line + a warning on the timeline header in the Problems view (`scroll_container_runtime`) | warning |
+
+The CSS parser records the scrollable classes/ids of each stylesheet (`scrollableClasses`,
+`scrollableIds`, including `@import`s); the layout is read through the IDE's HTML registry or from
+disk (`html/layout-elements.ts`). The runtime check is `media/scroll-check.ts`.

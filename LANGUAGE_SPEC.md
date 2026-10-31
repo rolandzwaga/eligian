@@ -1810,6 +1810,7 @@ The options come in the order shown.
 - `audio` - Audio element (requires `from` source)
 - `raf` - RequestAnimationFrame loop (no source)
 - `scroll` - Scroll-driven: the scroll progress of an element maps onto the timeline duration, which is required (Feature 049). Compiles to an animation timeline with its own `ScrollPositionSource`
+  The scroll element must exist in the layout HTML or the imported CSS (error), and some CSS rule or inline style should make it scroll vertically (`overflow-y: auto`; a warning). The preview also checks that it really scrolls: computed overflow and content taller than the element.
 - `custom` - Custom provider (no source)
 
 **Example**:

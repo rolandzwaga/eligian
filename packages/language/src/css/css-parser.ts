@@ -42,6 +42,13 @@ export interface CSSParseResult {
   idRules: Map<string, string>;
   errors: CSSParseError[];
   /**
+   * Classes / IDs that a rule makes scrollable: the subject (last compound) of a
+   * selector whose rule sets `overflow-y` (or `overflow`) to auto, scroll or
+   * overlay. Used to check scroll timeline containers (Feature 049).
+   */
+  scrollableClasses?: Set<string>;
+  scrollableIds?: Set<string>;
+  /**
    * Absolute paths of the stylesheets pulled in through `@import` (transitively,
    * excluding the file itself). Lets callers watch/re-validate on changes to them.
    */
@@ -124,10 +131,15 @@ function parseCSSInternal(
   const idLocations = new Map<string, CSSSourceLocation>();
   const classRules = new Map<string, string>();
   const idRules = new Map<string, string>();
+  const scrollableClasses = new Set<string>();
+  const scrollableIds = new Set<string>();
   const errors: CSSParseError[] = [];
 
   // Record the classes/IDs of one rule selector (first occurrence wins for location/rule text)
   const recordSelector = (selector: string, ruleLocation: CSSSourceLocation, ruleText: string) => {
+    if (declaresVerticalScroll(ruleText)) {
+      recordScrollableSubjects(selector, scrollableClasses, scrollableIds);
+    }
     const processor = selectorParser(selectors => {
       selectors.walkClasses(classNode => {
         const className = classNode.value;
@@ -199,6 +211,8 @@ function parseCSSInternal(
         if (rule !== undefined) idRules.set(name, rule);
       }
     }
+    for (const name of imported.scrollableClasses ?? []) scrollableClasses.add(name);
+    for (const name of imported.scrollableIds ?? []) scrollableIds.add(name);
     for (const err of imported.errors) {
       errors.push({
         ...err,
@@ -289,8 +303,55 @@ function parseCSSInternal(
     classRules,
     idRules,
     errors,
+    scrollableClasses,
+    scrollableIds,
     ...(importedFiles.size > 0 ? { importedFiles: [...importedFiles] } : {}),
   };
+}
+
+/**
+ * True when a rule's own declarations let its element scroll vertically:
+ * `overflow-y` is auto/scroll/overlay, or the `overflow` shorthand's vertical
+ * value (its second value, or its only value) is.
+ */
+export function declaresVerticalScroll(ruleText: string): boolean {
+  const body = ruleText.slice(ruleText.indexOf('{') + 1);
+  const scrolls = (value: string) => /^(auto|scroll|overlay)$/i.test(value.trim());
+  for (const match of body.matchAll(/(?:^|[;{\s])(overflow-y|overflow)\s*:\s*([^;}]*)/gi)) {
+    const values = match[2]
+      .replace(/!important/i, '')
+      .trim()
+      .split(/\s+/);
+    const vertical = match[1].toLowerCase() === 'overflow-y' ? values[0] : (values[1] ?? values[0]);
+    if (vertical && scrolls(vertical)) return true;
+  }
+  return false;
+}
+
+/** Classes / IDs of the subject (last compound) of each selector in `selectorList`. */
+function recordScrollableSubjects(
+  selectorList: string,
+  classes: Set<string>,
+  ids: Set<string>
+): void {
+  selectorParser(selectors => {
+    selectors.each(selector => {
+      let subjectClasses: string[] = [];
+      let subjectIds: string[] = [];
+      for (const node of selector.nodes) {
+        if (node.type === 'combinator') {
+          subjectClasses = [];
+          subjectIds = [];
+        } else if (node.type === 'class') {
+          subjectClasses.push(node.value);
+        } else if (node.type === 'id') {
+          subjectIds.push(node.value);
+        }
+      }
+      for (const name of subjectClasses) classes.add(name);
+      for (const name of subjectIds) ids.add(name);
+    });
+  }).processSync(selectorList);
 }
 
 interface LenientRule {
