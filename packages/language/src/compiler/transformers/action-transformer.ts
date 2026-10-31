@@ -69,10 +69,11 @@ export const transformActionDefinition = (
         startOperations.push(...ops);
       }
       for (const opStmt of actionDef.endOperations) {
+        // End block: a nested endable action call is ended (endAction), not restarted
         const ops = yield* transformOperationStatement(
           opStmt,
           actionScope,
-          false,
+          true,
           program,
           allActions
         );
@@ -129,11 +130,19 @@ export const transformActionDefinition = (
  * - NO endOperations (event actions don't have end operations)
  *
  * @param eventAction - EventActionDefinition AST node
+ * @param programConstants - Program-level constants to inline
+ * @param program - The program the event action belongs to
+ * @param allActions - The actions callable from the program (local AND imported,
+ *   under their import alias). Without it only the program's local actions are
+ *   found, so a call to an imported library action would be treated as an
+ *   unknown operation.
  * @returns IEventActionConfiguration JSON
  */
 export const transformEventAction = (
   eventAction: EventActionDefinition,
-  programConstants: ConstantMap = new Map()
+  programConstants: ConstantMap = new Map(),
+  program?: Program,
+  allActions?: ActionDefinition[]
 ): Effect.Effect<IEventActionConfiguration, TransformError> =>
   Effect.gen(function* () {
     // Guard: eventName is required for transformation (grammar allows optional for completion).
@@ -171,8 +180,8 @@ export const transformEventAction = (
         opStmt,
         eventActionScope,
         false,
-        undefined,
-        undefined
+        program,
+        allActions
       );
 
       // Convert OperationConfigIR[] to IOperationConfiguration[]

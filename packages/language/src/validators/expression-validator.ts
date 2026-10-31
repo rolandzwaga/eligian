@@ -1,13 +1,24 @@
 import { type AstNode, AstUtils, type ValidationAcceptor } from 'langium';
 import {
+  ARITHMETIC_OPERATORS,
+  constantValueType,
+  evaluateExpression,
+  runtimeOperatorMessage,
+} from '../compiler/expression-evaluator.js';
+import type { ConstantMap } from '../compiler/types/constant-folding.js';
+import {
+  type BinaryExpression,
   type Expression,
+  isBinaryExpression,
   isExpression,
   isIfStatement,
   isObjectProperty,
   isUnaryExpression,
   isVariableDeclaration,
+  isVariableReference,
   type UnaryExpression,
   type VariableDeclaration,
+  type VariableReference,
 } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
 
@@ -22,6 +33,32 @@ export const RUNTIME_NEGATION_MESSAGE =
   'Negation of runtime values (parameters, variables, system properties) is only supported inside if/when conditions';
 
 /**
+ * Diagnostic code for an operator the compiler cannot emit because an operand is a runtime value:
+ * arithmetic (`x + 10`, `-x`) anywhere, comparisons/logic (`x > 5`) outside an `if` condition.
+ * The message is {@link runtimeOperatorMessage}, shared with the compiler.
+ */
+export const RUNTIME_OPERATOR_CODE = 'runtime_operator_operand';
+
+/**
+ * Diagnostic code for an all-constant expression that has no valid value (`10 % 0`, `"abc" - 1`,
+ * `true + 1`, a non-finite result). The message is the constant evaluator's reason, which the
+ * compiler reports too.
+ */
+export const INVALID_CONSTANT_CODE = 'invalid_constant_expression';
+
+/**
+ * Diagnostic code for a reference, in the end block of an endable action or inline stagger
+ * block, to a runtime (non-foldable) const of the start block.
+ */
+export const END_BLOCK_RUNTIME_CONST_CODE = 'end_block_runtime_const';
+
+/** End-block property → start-block property of the same node (see eligian-scope-provider.ts). */
+const START_LIST_OF_END_LIST: Readonly<Record<string, string>> = {
+  endOperations: 'startOperations',
+  endOps: 'startOps',
+};
+
+/**
  * Compile-time classification of an expression:
  * - `constant`: folds at compile time (literals, constant references, operators over those)
  * - `runtime`: definitely depends on a runtime value (parameter, system property, property chain)
@@ -29,36 +66,163 @@ export const RUNTIME_NEGATION_MESSAGE =
  */
 type Constness = 'constant' | 'runtime' | 'unknown';
 
+type OperatorExpression = BinaryExpression | UnaryExpression;
+
+interface Problem {
+  message: string;
+  code: string;
+}
+
 /**
  * Validates expressions for constructs the compiler cannot emit.
  */
 export class ExpressionValidator extends BaseValidator {
   /**
-   * Unary `!` folds only compile-time constants. Eligius has no runtime negation outside
-   * `when` expressions, so the compiler rejects `!` on a runtime operand unless the expression
-   * sits inside an `if` condition (serialized to a `when` expression string).
+   * Reports operator expressions the compiler rejects (expression-transformer.ts):
+   * - `!` on a runtime operand outside an `if` condition (Eligius has no runtime negation outside
+   *   `when` expressions)
+   * - arithmetic or unary `-` on a runtime operand (Eligius has no runtime arithmetic; the
+   *   compiler used to emit an inert `("$operationdata.x" + 10)` string)
+   * - a comparison or logical operator on a runtime operand outside an `if` condition
+   * - an all-constant operation with no valid value (`10 % 0`, `"abc" - 1`)
    *
-   * Only the innermost offending `!` is reported (`!!flag` yields one diagnostic), and an
-   * operand whose constness cannot be determined is not reported.
+   * Like the compiler, which transforms operands first, only the innermost offending expression
+   * is reported (`!!flag` and `x + 1 + 2` yield one diagnostic each), and an operand whose
+   * constness cannot be determined is not reported.
    */
-  checkRuntimeNegation(node: UnaryExpression, accept: ValidationAcceptor): void {
-    if (node.op !== '!' || !node.operand) return;
-    if (classifyConstness(node.operand) !== 'runtime') return;
-    if (isInsideIfCondition(node)) return;
-    if (containsRuntimeNegation(node.operand)) return;
+  checkOperatorExpression(node: OperatorExpression, accept: ValidationAcceptor): void {
+    const problem = operatorProblem(node);
+    if (!problem) return;
+    if (operandsOf(node).some(hasProblemWithin)) return;
 
-    accept('error', RUNTIME_NEGATION_MESSAGE, {
+    accept('error', problem.message, {
       node,
-      data: { code: RUNTIME_NEGATION_CODE },
+      data: { code: problem.code },
     });
   }
+
+  /**
+   * End blocks see the consts of their start block (the compiler transforms both with one scope
+   * and inlines foldable consts). A const whose value depends on a runtime value is emitted as a
+   * `setVariable` in the start operations instead, and Eligius does not carry it over to the end
+   * operations, so referencing it from the end block is an error.
+   */
+  checkEndBlockConstReference(node: VariableReference, accept: ValidationAcceptor): void {
+    const declaration = node.variable?.ref;
+    if (!isVariableDeclaration(declaration)) return;
+    const owner = declaration.$container;
+    const startProperty = declaration.$containerProperty;
+    if (!owner || !Object.values(START_LIST_OF_END_LIST).includes(startProperty ?? '')) return;
+
+    // The statement of `owner` that holds the reference must sit in the end list.
+    let child: AstNode = node;
+    while (child.$container && child.$container !== owner) {
+      child = child.$container;
+    }
+    if (child.$container !== owner) return;
+    const endProperty = child.$containerProperty ?? '';
+    if (START_LIST_OF_END_LIST[endProperty] !== startProperty) return;
+
+    if (classifyConstness(declaration.value) !== 'runtime') return;
+    accept(
+      'error',
+      `'${declaration.name}' is declared in the start block from a runtime value, so it is not available in the end block: Eligius runs the end operations without the start operations' variables. Only compile-time constants of the start block can be used here.`,
+      { node, data: { code: END_BLOCK_RUNTIME_CONST_CODE } }
+    );
+  }
+}
+
+function operandsOf(node: OperatorExpression): Expression[] {
+  return (isBinaryExpression(node) ? [node.left, node.right] : [node.operand]).filter(
+    (e): e is Expression => e !== undefined
+  );
+}
+
+/** True when `expr` or an operator expression nested in it has a problem of its own. */
+function hasProblemWithin(expr: Expression): boolean {
+  return AstUtils.streamAst(expr).some(
+    n => (isBinaryExpression(n) || isUnaryExpression(n)) && operatorProblem(n) !== undefined
+  );
+}
+
+/** The problem with this operator expression itself, ignoring problems in its operands. */
+function operatorProblem(node: OperatorExpression): Problem | undefined {
+  const operands = operandsOf(node);
+  if (operands.length !== (isBinaryExpression(node) ? 2 : 1)) return undefined;
+
+  const constness = combine(operands, new Set());
+  if (constness === 'runtime') {
+    if (isUnaryExpression(node) && node.op === '!') {
+      return isInsideIfCondition(node)
+        ? undefined
+        : { message: RUNTIME_NEGATION_MESSAGE, code: RUNTIME_NEGATION_CODE };
+    }
+    const unary = isUnaryExpression(node);
+    // Conditions serialize comparisons and logic over runtime values, never arithmetic.
+    if (unary || ARITHMETIC_OPERATORS.has(node.op) || !isInsideIfCondition(node)) {
+      return { message: runtimeOperatorMessage(node.op, unary), code: RUNTIME_OPERATOR_CODE };
+    }
+    return undefined;
+  }
+
+  if (constness === 'constant') {
+    const reason = invalidConstantReason(node, operands);
+    return reason ? { message: reason, code: INVALID_CONSTANT_CODE } : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * The constant evaluator's reason when `node` itself is an invalid constant. Operands that do not
+ * evaluate (invalid themselves, or not foldable) are left to their own diagnostic / the compiler.
+ */
+function invalidConstantReason(
+  node: OperatorExpression,
+  operands: Expression[]
+): string | undefined {
+  const constants = constantsReferencedBy(node, new Set());
+  if (!operands.every(operand => evaluateExpression(operand, constants).canEvaluate)) {
+    return undefined;
+  }
+  const result = evaluateExpression(node, constants);
+  return result.error?.invalid ? result.error.reason : undefined;
+}
+
+/**
+ * Constant values of the `const` declarations `expr` references (transitively), keyed and
+ * matched by declaration like the compiler's constant map.
+ */
+function constantsReferencedBy(expr: Expression, visiting: Set<VariableDeclaration>): ConstantMap {
+  const constants: ConstantMap = new Map();
+  for (const node of AstUtils.streamAst(expr)) {
+    if (!isVariableReference(node)) continue;
+    const declaration = node.variable?.ref;
+    if (!isVariableDeclaration(declaration) || visiting.has(declaration)) continue;
+    if (constants.get(declaration.name)?.declaration === declaration) continue;
+    visiting.add(declaration);
+    const result = evaluateExpression(
+      declaration.value,
+      constantsReferencedBy(declaration.value, visiting)
+    );
+    visiting.delete(declaration);
+    if (result.canEvaluate) {
+      const value = result.value ?? null;
+      constants.set(declaration.name, {
+        name: declaration.name,
+        value,
+        type: constantValueType(value),
+        declaration,
+      });
+    }
+  }
+  return constants;
 }
 
 /**
  * Mirrors the compiler's constant evaluator (compiler/expression-evaluator.ts): a reference to
  * a `const` is constant when its initializer is. Where the compiler might still refuse to fold
- * a "constant" (e.g. division by zero, a global referencing a later global), this reports
- * `constant` — erring towards no diagnostic.
+ * a "constant" (e.g. a global referencing a later global), this reports `constant` — erring
+ * towards no diagnostic.
  */
 function classifyConstness(
   expr: Expression | undefined,
@@ -123,11 +287,4 @@ function isInsideIfCondition(node: AstNode): boolean {
     parent = parent.$container;
   }
   return false;
-}
-
-/** True when a nested `!` inside `expr` is itself reported, so the outer one stays silent. */
-function containsRuntimeNegation(expr: Expression): boolean {
-  return AstUtils.streamAst(expr).some(
-    n => isUnaryExpression(n) && n.op === '!' && classifyConstness(n.operand) === 'runtime'
-  );
 }

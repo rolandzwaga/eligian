@@ -109,7 +109,7 @@ describe('Action-Scoped Constant Folding', () => {
   test('should preserve setVariable for non-evaluable expressions', async () => {
     const code = `
       action test(duration) [
-        const ADJUSTED = duration + 100
+        const ADJUSTED = duration
         wait(@ADJUSTED)
       ]
 
@@ -260,7 +260,7 @@ describe('Action-Scoped Constant Folding', () => {
         const x = $operationdata.foo
         selectElement("#a")
         setElementContent(@x)
-        const y = @x + 10
+        const y = [@x, 10]
         setElementContent(@y)
       ]
 
@@ -290,7 +290,7 @@ describe('Action-Scoped Constant Folding', () => {
         op => op.systemName === 'setVariable' && op.operationData?.name === 'y'
       );
       expect(setVarY).toBeDefined();
-      expect(setVarY?.operationData?.value).not.toBe(11);
+      expect(setVarY?.operationData?.value).not.toEqual([1, 10]);
 
       const contentOps = ops.filter(op => op.systemName === 'setElementContent');
       expect(contentOps[1].operationData?.template).toBe('$scope.variables.y');

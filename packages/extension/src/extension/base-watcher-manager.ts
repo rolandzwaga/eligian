@@ -7,7 +7,8 @@
  * its delete-notification semantics — all supplied via {@link FileWatcherConfig}.
  *
  * Design:
- * - Single FileSystemWatcher per workspace (efficient)
+ * - One FileSystemWatcher per workspace folder (multi-root aware), plus a narrow
+ *   per-file watcher for imports that live outside every workspace folder
  * - Per-file debouncing (300ms) to handle auto-save
  * - Independent timers for each file (parallel editing support)
  * - Reverse mapping: imported file URI → documents that import it (for LSP notifications)
@@ -72,7 +73,8 @@ export interface FileWatcherConfig {
  * {@link FileImportWatcherManager.registerImportsInternal}.
  */
 export abstract class FileImportWatcherManager {
-  private watcher: vscode.FileSystemWatcher | null = null;
+  /** Active watchers keyed by workspace-folder URI or outside-file path. */
+  private readonly watchers = new Map<string, vscode.FileSystemWatcher>();
   private readonly trackedFiles = new Set<string>();
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
   private readonly debounceDelay = 300; // milliseconds
@@ -118,12 +120,6 @@ export abstract class FileImportWatcherManager {
       return;
     }
 
-    // Parse document URI to get workspace root.
-    const docUri = vscode.Uri.parse(documentUri);
-    const docPath = docUri.fsPath;
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
-    const workspaceRoot = workspaceFolder?.uri.fsPath || path.dirname(docPath);
-
     // Collect absolute file paths for watching.
     const filePaths: string[] = [];
 
@@ -141,8 +137,8 @@ export abstract class FileImportWatcherManager {
       filePaths.push(vscode.Uri.parse(absoluteUri).fsPath);
     }
 
-    // Start watching (idempotent - won't recreate the watcher if one exists).
-    this.startWatching(filePaths, workspaceRoot);
+    // Start watching (idempotent - watchers are created once per root).
+    this.startWatching(filePaths);
   }
 
   /**
@@ -166,41 +162,74 @@ export abstract class FileImportWatcherManager {
   /**
    * Start watching files for changes.
    *
-   * Creates a single workspace FileSystemWatcher (if not already created) and
-   * tracks the specified files. File changes are debounced per-file.
+   * Tracks the specified files and makes sure a FileSystemWatcher covers each of
+   * them. Each file is covered by the watcher of the workspace folder that
+   * contains it (one watcher per folder, so multi-root workspaces work). Files
+   * outside every workspace folder (e.g. `../shared/theme.css` escaping the
+   * root) get a narrow watcher on their own directory. File changes are
+   * debounced per-file.
    *
    * @param files - Absolute file paths to track
-   * @param workspaceRoot - Workspace root directory for the watcher pattern
+   * @param _workspaceRoot - Deprecated and ignored: the root is derived per file
    */
-  startWatching(files: string[], workspaceRoot: string): void {
+  startWatching(files: string[], _workspaceRoot?: string): void {
     if (files.length === 0) {
       return;
     }
 
     this.updateTrackedFiles(files);
 
-    if (!this.watcher) {
-      // Single watcher for all matching files in the workspace (efficient).
-      const pattern = new vscode.RelativePattern(workspaceRoot, this.config.globPattern);
-      this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
-
-      // File creation (e.g. renamed back to an imported name) - CSS only.
-      if (this.config.watchCreate) {
-        this.watcher.onDidCreate(uri => {
-          this.handleFileCreate(uri);
-        });
-      }
-
-      this.watcher.onDidChange(uri => {
-        this.handleFileChange(uri);
-      });
-
-      this.watcher.onDidDelete(uri => {
-        this.handleFileDelete(uri);
-      });
-
-      this.disposables.push(this.watcher);
+    for (const file of files) {
+      this.ensureWatcherFor(file);
     }
+  }
+
+  /**
+   * Create (once) the watcher that covers `file`.
+   */
+  private ensureWatcherFor(file: string): void {
+    const fileUri = vscode.Uri.file(file);
+    const folder = vscode.workspace.getWorkspaceFolder(fileUri);
+
+    let key: string;
+    let pattern: vscode.RelativePattern;
+    if (folder) {
+      key = `folder:${folder.uri.toString()}`;
+      if (this.watchers.has(key)) {
+        return;
+      }
+      pattern = new vscode.RelativePattern(folder, this.config.globPattern);
+    } else {
+      // Outside every workspace folder: watch just this one file (narrow pattern).
+      key = `file:${file}`;
+      if (this.watchers.has(key)) {
+        return;
+      }
+      pattern = new vscode.RelativePattern(
+        vscode.Uri.file(path.dirname(file)),
+        path.basename(file)
+      );
+    }
+
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    this.watchers.set(key, watcher);
+
+    // File creation (e.g. renamed back to an imported name) - CSS only.
+    if (this.config.watchCreate) {
+      watcher.onDidCreate(uri => {
+        this.handleFileCreate(uri);
+      });
+    }
+
+    watcher.onDidChange(uri => {
+      this.handleFileChange(uri);
+    });
+
+    watcher.onDidDelete(uri => {
+      this.handleFileDelete(uri);
+    });
+
+    this.disposables.push(watcher);
   }
 
   /**
@@ -326,7 +355,7 @@ export abstract class FileImportWatcherManager {
       disposable.dispose();
     }
     this.disposables = [];
-    this.watcher = null;
+    this.watchers.clear();
 
     this.trackedFiles.clear();
   }

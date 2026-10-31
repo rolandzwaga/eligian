@@ -1,3 +1,4 @@
+import { URI } from 'langium';
 import type { CSSParseError, CSSParseResult, CSSSourceLocation } from './css-parser.js';
 
 /**
@@ -11,6 +12,12 @@ export interface CSSMetadata {
   classRules: Map<string, string>;
   idRules: Map<string, string>;
   errors: CSSParseError[];
+  /**
+   * File URIs of the stylesheets this file pulls in through `@import` (transitively).
+   * Their classes/IDs are merged into this file's metadata, so a change to one of
+   * them requires re-parsing this file (see {@link CSSRegistryService.getFilesImporting}).
+   */
+  importedFileUris?: string[];
 }
 
 /**
@@ -57,7 +64,28 @@ export class CSSRegistryService {
       classRules: metadata.classRules,
       idRules: metadata.idRules,
       errors: metadata.errors,
+      ...(metadata.importedFiles && metadata.importedFiles.length > 0
+        ? { importedFileUris: metadata.importedFiles.map(file => URI.file(file).toString()) }
+        : {}),
     });
+  }
+
+  /**
+   * Registered CSS files that `@import` the given file (directly or transitively).
+   *
+   * Their merged metadata is stale after the imported file changes; callers re-parse them.
+   *
+   * @param fileUri - Absolute file URI of the imported stylesheet
+   */
+  getFilesImporting(fileUri: string): string[] {
+    const target = normalizeFileUri(fileUri);
+    const importers: string[] = [];
+    for (const [uri, metadata] of this.metadataByFile) {
+      if (metadata.importedFileUris?.some(imported => normalizeFileUri(imported) === target)) {
+        importers.push(uri);
+      }
+    }
+    return importers;
   }
 
   /**
@@ -352,5 +380,14 @@ export class CSSRegistryService {
   clearAll(): void {
     this.importsByDocument.clear();
     this.metadataByFile.clear();
+  }
+}
+
+/** Compare file URIs regardless of drive-letter case / percent-encoding differences. */
+function normalizeFileUri(fileUri: string): string {
+  try {
+    return URI.parse(fileUri).fsPath.toLowerCase();
+  } catch {
+    return fileUri.toLowerCase();
   }
 }

@@ -1,10 +1,9 @@
 import { type AstNode, AstUtils, type Properties, type ValidationAcceptor } from 'langium';
+import { getCssImportPaths } from '../css/css-import-paths.js';
 import type { EligianServices } from '../eligian-module.js';
 import type { Library, Program } from '../generated/ast.js';
 import { isLibrary, isProgram } from '../generated/ast.js';
-import { isDefaultImport } from '../utils/ast-helpers.js';
 import { resolveImportPathToUri } from '../utils/path-utils.js';
-import { getImports } from '../utils/program-helpers.js';
 
 /**
  * Shared base for the focused Eligian validator classes.
@@ -88,20 +87,14 @@ export abstract class BaseValidator {
 
     const cssRegistry = this.services.css.CSSRegistry;
 
-    // Extract all CSS imports (DefaultImport with type='styles')
-    const allImports = getImports(program);
-    const cssImports = allImports.filter(imp => isDefaultImport(imp) && imp.type === 'styles');
-
+    // Extract all CSS imports: `styles` default imports AND named imports that resolve to
+    // CSS (explicit `as css` or inferred from extension) — the same set the asset loader
+    // emits into config.cssFiles.
     // Convert CSS file paths to absolute URIs (must match language server format)
-    const cssFileUris: string[] = [];
-
-    for (const cssImport of cssImports) {
-      if (!cssImport.path) {
-        continue;
-      }
-      // Resolve relative path to absolute URI (D4: shared resolution)
-      cssFileUris.push(resolveImportPathToUri(documentUri, cssImport.path));
-    }
+    // (D4: shared resolution)
+    const cssFileUris = getCssImportPaths(program).map(cssPath =>
+      resolveImportPathToUri(documentUri, cssPath)
+    );
 
     // Register CSS imports with the registry (idempotent - safe to call multiple times)
     cssRegistry.registerImports(documentUri, cssFileUris);

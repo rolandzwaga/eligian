@@ -131,8 +131,12 @@ function toCliAssetError(err: AssetValidationError): {
     return {
       message: err.message,
       filePath: err.filePath,
-      absolutePath: err.filePath,
-      sourceLocation: { file: err.filePath, line: err.line, column: err.column },
+      absolutePath: err.absolutePath ?? err.filePath,
+      sourceLocation: {
+        file: err.absolutePath ?? err.filePath,
+        line: err.line,
+        column: err.column,
+      },
       hint: err.hint,
       details: `Line ${err.line}, Column ${err.column}`,
     };

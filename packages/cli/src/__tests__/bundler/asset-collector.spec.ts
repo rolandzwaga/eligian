@@ -21,6 +21,7 @@ import {
   generateUniqueOutputPath,
   resolveAssetPath,
 } from '../../bundler/asset-collector.js';
+import { buildConfig, withProviderSettings } from './config-fixtures.js';
 
 /**
  * Creates a unique temporary directory for test isolation
@@ -35,19 +36,19 @@ async function createTempDir(): Promise<string> {
  * Create a minimal Eligius config for testing
  */
 function createMinimalConfig() {
-  return {
+  return buildConfig({
     containerSelector: '#presentation',
     initActions: [],
     actions: [],
     timelines: [],
-  };
+  });
 }
 
 /**
  * Create a config with video provider
  */
 function createVideoConfig() {
-  return {
+  return buildConfig({
     containerSelector: '#presentation',
     timelineProviderSettings: {
       video: {
@@ -58,7 +59,7 @@ function createVideoConfig() {
     initActions: [],
     actions: [],
     timelines: [],
-  };
+  });
 }
 
 /**
@@ -501,15 +502,12 @@ describe('Asset Collector (Feature 040, Phase 4)', () => {
       // Small video file (but should still not be inlined)
       await fs.writeFile(videoPath, Buffer.alloc(1024));
 
-      const config = {
-        ...createVideoConfig(),
-        timelineProviderSettings: {
-          video: {
-            selector: '#video',
-            src: './media/intro.mp4',
-          },
+      const config = withProviderSettings(createVideoConfig(), {
+        video: {
+          selector: '#video',
+          src: './media/intro.mp4',
         },
-      };
+      });
 
       const manifest = await Effect.runPromise(
         collectAssets(config, [cssPath], tmpdir, defaultOptions)
@@ -529,14 +527,11 @@ describe('Asset Collector (Feature 040, Phase 4)', () => {
       await fs.writeFile(cssPath, '/* empty */');
       await fs.writeFile(audioPath, Buffer.alloc(1024));
 
-      const config = {
-        ...createMinimalConfig(),
-        timelineProviderSettings: {
-          audio: {
-            src: './media/sound.mp3',
-          },
+      const config = withProviderSettings(createMinimalConfig(), {
+        audio: {
+          src: './media/sound.mp3',
         },
-      };
+      });
 
       const manifest = await Effect.runPromise(
         collectAssets(config, [cssPath], tmpdir, defaultOptions)

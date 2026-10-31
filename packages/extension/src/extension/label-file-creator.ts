@@ -90,6 +90,33 @@ export function validatePath(filePath: string): { valid: boolean; reason?: strin
 }
 
 /**
+ * Check whether a file exists (any file type) without throwing.
+ *
+ * Only a "not found" failure counts as absent; any other stat failure (e.g. a
+ * permission error) is rethrown so the caller never overwrites on uncertainty.
+ */
+async function fileExists(uri: vscode.Uri): Promise<boolean> {
+  try {
+    await vscode.workspace.fs.stat(uri);
+    return true;
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    const name = (error as { name?: string } | null)?.name;
+    if (
+      code === 'FileNotFound' ||
+      code === 'ENOENT' ||
+      name === 'EntryNotFound (FileSystemError)'
+    ) {
+      return false;
+    }
+    if (error instanceof Error && /FileNotFound|ENOENT|EntryNotFound/.test(error.message)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
  * Create a labels file from a code action command
  *
  * This function:
@@ -126,13 +153,22 @@ export async function createLabelsFile(args: CreateLabelsFileCommand): Promise<F
     // Convert file path to VS Code URI
     const fileUri = vscode.Uri.file(filePath);
 
-    // Feature 039 - T009: Create parent directories if they don't exist
-    const parentDir = vscode.Uri.joinPath(fileUri, '..');
-    await vscode.workspace.fs.createDirectory(parentDir);
+    // Never overwrite an existing file: the quick fix can be stale (the file may have
+    // been restored or created since the diagnostic was produced), and the existing
+    // file holds real translations. Just open it instead.
+    if (await fileExists(fileUri)) {
+      vscode.window.showInformationMessage(
+        `Labels file already exists, not overwriting: ${filePath}`
+      );
+    } else {
+      // Feature 039 - T009: Create parent directories if they don't exist
+      const parentDir = vscode.Uri.joinPath(fileUri, '..');
+      await vscode.workspace.fs.createDirectory(parentDir);
 
-    // Feature 039 - T008: Write file content
-    const contentBytes = Buffer.from(content, 'utf-8');
-    await vscode.workspace.fs.writeFile(fileUri, contentBytes);
+      // Feature 039 - T008: Write file content
+      const contentBytes = Buffer.from(content, 'utf-8');
+      await vscode.workspace.fs.writeFile(fileUri, contentBytes);
+    }
 
     // Feature 039 - T010: Open file in editor
     let editorOpened = false;

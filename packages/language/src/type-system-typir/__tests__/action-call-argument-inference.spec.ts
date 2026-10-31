@@ -33,8 +33,9 @@ describe('Typir inference for timeline action call arguments', () => {
   }
 
   // Action function types of documents parsed earlier in the shared test workspace stay
-  // registered with Typir (as overloads of the same name). A unique action name per program
-  // keeps an earlier untyped `a1(a)` from silently accepting a later typed call.
+  // registered with Typir. Calls match by resolved reference (see
+  // action-call-cross-document.spec.ts), so this is not needed for correctness, but a unique
+  // action name per program keeps each test's diagnostics easy to attribute.
   let programCounter = 0;
 
   /** Build a program defining action `a1(params)` and calling it as `call` in a timeline. */

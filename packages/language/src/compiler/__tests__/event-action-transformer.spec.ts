@@ -190,7 +190,7 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify the parameter reference is resolved to eventArgs[0]
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
+    const eventAction = config.eventActions![0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
     expect(operation.systemName).toBe('addClass');
@@ -222,7 +222,7 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify the second parameter reference is resolved to eventArgs[1]
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
+    const eventAction = config.eventActions![0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
     expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.1');
@@ -253,7 +253,7 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify the third parameter reference is resolved to eventArgs[2]
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
+    const eventAction = config.eventActions![0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
     expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.2');
@@ -285,7 +285,7 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify constant reference is inlined (not treated as parameter)
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
+    const eventAction = config.eventActions![0];
     expect(eventAction.startOperations).toHaveLength(1);
     const operation = eventAction.startOperations[0];
     expect(operation.operationData).toHaveProperty('className', 'active');

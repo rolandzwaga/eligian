@@ -181,7 +181,7 @@ DefaultImport:
  * Path must be relative (validated in eligian-validator.ts).
  */
 NamedImport:
-    'import' name=ID 'from' path=STRING ('as' assetType=AssetType)?;
+    'import' name=Identifier 'from' path=STRING ('as' assetType=AssetType)?;
 
 /**
  * Asset Type - Supported asset types for explicit type override
@@ -334,7 +334,7 @@ EndableActionDefinition:
  * Type annotations are optional and used for compile-time type checking.
  */
 Parameter:
-    name=ID (':' type=TypeAnnotation)?;
+    name=Identifier (':' type=TypeAnnotation)?;
 
 /**
  * Type Annotation - Optional type hint for parameters
@@ -393,7 +393,7 @@ IfStatement:
  *   }
  */
 ForStatement:
-    'for' '(' itemName=ID 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
+    'for' '(' itemName=Identifier 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
 
 /**
  * Break Statement - Exit current loop immediately
@@ -464,7 +464,7 @@ NavigateStatement:
  * Action-level: Sets scope variable (accessed via @varName)
  */
 VariableDeclaration:
-    'const' name=ID '=' value=Expression;
+    'const' name=Identifier '=' value=Expression;
 
 /**
  * Operation Call - Unified syntax for both built-in operations and custom actions
@@ -660,11 +660,24 @@ Additive infers Expression:
     Multiplicative ({infer BinaryExpression.left=current} op=('+' | '-') right=Multiplicative)*;
 
 Multiplicative infers Expression:
-    Unary ({infer BinaryExpression.left=current} op=('*' | '/' | '%' | '**') right=Unary)*;
+    Unary ({infer BinaryExpression.left=current} op=('*' | '/' | '%') right=Unary)*;
 
+/**
+ * Unary operators bind looser than `**`, so `-2 ** 2` is `-(2 ** 2)` = -4
+ * (the mathematical convention, as in Python).
+ */
 Unary infers Expression:
     {infer UnaryExpression} op=('!' | '-') operand=Unary |
-    Primary;
+    Exponent;
+
+/**
+ * Exponentiation binds tighter than `*`, `/`, `%` and is right-associative:
+ *   2 * 3 ** 2  = 2 * (3 ** 2) = 18
+ *   2 ** 3 ** 2 = 2 ** (3 ** 2) = 512
+ * The exponent may itself be negated: 2 ** -1 = 0.5
+ */
+Exponent infers Expression:
+    Primary ({infer BinaryExpression.left=current} op='**' right=Unary)?;
 
 Primary infers Expression:
     '(' Expression ')' |
@@ -690,7 +703,7 @@ Primary infers Expression:
  *   $globaldata.userSettings.theme
  */
 PropertyChainReference:
-    '$' scope=PropertyScope ('.' properties += ID)+;
+    '$' scope=PropertyScope ('.' properties += FeatureName)+;
 
 PropertyScope returns string:
     'scope' | 'operationdata' | 'globaldata';
@@ -708,7 +721,7 @@ PropertyScope returns string:
  * Compiles to $scope.propertyName(.subProperty)* string for Eligius runtime.
  */
 SystemPropertyReference:
-    '@@' name=ID ('.' properties+=ID)*;
+    '@@' name=FeatureName ('.' properties+=FeatureName)*;
 
 /**
  * Variable Reference - Access action-scoped variables with @ prefix
@@ -722,7 +735,7 @@ SystemPropertyReference:
  * Compiles to $scope.variables.varName string for Eligius runtime.
  */
 VariableReference:
-    '@' variable=[VariableDeclaration:ID];
+    '@' variable=[VariableDeclaration:Identifier];
 
 /**
  * Parameter Reference - Access action parameters with bare identifier
@@ -736,7 +749,7 @@ VariableReference:
  * Only valid inside action bodies. Compiles to $operationdata.paramName.
  */
 ParameterReference:
-    parameter=[Parameter:ID];
+    parameter=[Parameter:Identifier];
 
 // ============================================================================
 // Literals
@@ -768,7 +781,7 @@ ObjectLiteral:
     '{' (properties += ObjectProperty (',' properties += ObjectProperty)*)? '}';
 
 ObjectProperty:
-    key=(ID | STRING) ':' value=Expression;
+    key=(FeatureName | STRING) ':' value=Expression;
 
 /**
  * Array Literal - List of expressions
@@ -780,6 +793,52 @@ ObjectProperty:
  */
 ArrayLiteral:
     '[' (elements += Expression (',' elements += Expression)*)? ']';
+
+// ============================================================================
+// Names (keyword-tolerant identifiers)
+// ============================================================================
+
+/**
+ * Identifier - A user-declared name: parameter, const, for-loop item and
+ * named-import names, and the references to them (`x`, `@x`, `@@x`).
+ *
+ * Besides plain IDs it accepts the grammar's *contextual* keywords, which only
+ * have meaning in one fixed position (`event`, `from`, `at`, `in`, `html`,
+ * `string`, the time units `s`/`m`/`h`/`ms`, ...), so `action f(event)`,
+ * `const s = 5` and `for (from in items)` parse.
+ *
+ * Reserved keywords (statement/declaration starters and literals) are NOT
+ * accepted here: action, break, const, continue, else, endable, false, for,
+ * if, import, null, on, sequence, stagger, timeline, true.
+ *
+ * The only place a contextual keyword can be read two ways is a unit name
+ * right after a stagger delay number (`stagger 200 s s ...`); the parser
+ * prefers the time-unit reading, which is what it did before.
+ *
+ * Keep the reserved list in sync with RESERVED_KEYWORDS in
+ * type-system-typir/types/typir-types.ts and validators/validation-constants.ts.
+ * eligian-completion-provider.ts (NAME_RULES) never offers the keywords listed
+ * in this rule or in FeatureName as keyword completions.
+ */
+Identifier returns string:
+    ID
+    | 'array' | 'as' | 'at' | 'audio' | 'boolean' | 'click' | 'css' | 'custom'
+    | 'event' | 'from' | 'globaldata' | 'h' | 'html' | 'in' | 'languages'
+    | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
+    | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
+    | 's' | 'scope' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with';
+
+/**
+ * FeatureName - A property name in a position where any word is unambiguous:
+ * object-literal keys (`{ from: 0, to: 1 }`) and property-chain segments
+ * (`$operationdata.html`, `$scope.currentItem.for`, `@@item.at`).
+ * Accepts every keyword, reserved ones included.
+ */
+FeatureName returns string:
+    Identifier
+    | 'action' | 'break' | 'const' | 'continue' | 'else' | 'endable' | 'false'
+    | 'for' | 'if' | 'import' | 'null' | 'on' | 'sequence' | 'stagger'
+    | 'timeline' | 'true';
 
 // ============================================================================
 // Terminals - Lexical tokens

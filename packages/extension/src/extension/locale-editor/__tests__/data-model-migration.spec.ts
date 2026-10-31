@@ -378,7 +378,7 @@ describe('Data Model Migration (Feature 045, Phase 4B)', () => {
       expect(locales['en-US']).toEqual({ home: 'Home', about: 'About' });
       expect(locales['nl-NL']).toEqual({ about: 'Over Ons' });
       // nl-NL should NOT have 'home' key at all
-      expect(Object.hasOwn(locales['nl-NL'], 'home')).toBe(false);
+      expect(Object.keys(locales['nl-NL'])).not.toContain('home');
     });
   });
 

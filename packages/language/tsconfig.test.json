@@ -1,0 +1,15 @@
+// Type-checks src AND tests (specs, fixtures, test helpers). Never emits.
+// Run via `pnpm typecheck:tests` from the repo root.
+{
+  "extends": "./tsconfig.src.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "src/schemas/*.json"],
+  "exclude": ["**/lib/**/*", "**/out/**/*", "**/node_modules/**/*"]
+}

@@ -156,8 +156,8 @@ action demo(selector, duration) [
   - Empty branch warnings
 - [x] **US5**: Timeline configuration validation
   - Provider-source consistency (video/audio require source)
-  - CSS selector syntax validation
   - Empty timeline warnings
+  - (Container selector syntax is validated by the Langium timeline validator's PostCSS parser, not Typir)
   - Hover shows timeline type (`Timeline<video>`)
 
 **Test Coverage**:

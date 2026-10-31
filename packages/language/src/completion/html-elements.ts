@@ -12,6 +12,9 @@ import {
   HTML_ELEMENT_NAMES,
 } from './html-elements.generated.js';
 
+/** An object key that lexes as an ID (the grammar's ID terminal) needs no quotes. */
+const IDENTIFIER_KEY = /^[_a-zA-Z][\w_]*$/;
+
 /**
  * Provider for HTML element completions in createElement calls
  */
@@ -58,7 +61,9 @@ export class HTMLElementCompletionProvider {
         label: attr.name,
         kind: CompletionItemKind.Property,
         detail: attr.description ?? `${elementName} attribute`,
-        insertText: attr.name,
+        filterText: attr.name,
+        // Object keys must be identifiers or strings: quote `http-equiv`, `accept-charset`, ...
+        insertText: IDENTIFIER_KEY.test(attr.name) ? attr.name : JSON.stringify(attr.name),
       }));
   }
 

@@ -11,7 +11,10 @@
  *
  *  2. One synthetic action per DISTINCT (target, position) that the listener
  *     invokes, which broadcasts the engine's timeline-switch request:
- *       broadcastEvent({ eventName: "request-timeline-uri", eventArgs: [target, position] })
+ *       broadcastEvent({ eventName: "request-timeline-uri", eventArgs: [uri, position] })
+ *     The engine switches by timeline `uri` (`switchTimeline(uri, position)`),
+ *     so the target name is resolved to its timeline's uri ({@link timelineUri}):
+ *     the name for a `raf` timeline, the media source for a video/audio one.
  *
  * The synthetic action name must match between the call-site expansion
  * (operation-transformer) and the central action generator (ast-transformer),
@@ -20,7 +23,7 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import type { TimeExpression as AstTimeExpression } from '../../generated/ast.js';
+import type { TimeExpression as AstTimeExpression, Timeline } from '../../generated/ast.js';
 import type { SourceLocation } from '../types/common.js';
 import type { EndableActionIR, OperationConfigIR } from '../types/eligius-ir.js';
 import { getSourceLocation } from './source-location.js';
@@ -31,6 +34,16 @@ const REQUEST_TIMELINE_URI = 'request-timeline-uri';
 
 /** The controller used to attach a DOM click listener to an element. */
 const DOM_EVENT_LISTENER_CONTROLLER = 'DOMEventListenerController';
+
+/**
+ * The engine `uri` of a timeline (T272): its name for an animation (`raf`)
+ * timeline, its media source for a media timeline (falling back to the name
+ * when it has none). Eligius looks timelines up by this uri when switching, so
+ * every `request-timeline-uri` broadcast must carry it.
+ */
+export function timelineUri(timeline: Pick<Timeline, 'name' | 'provider' | 'source'>): string {
+  return timeline.provider === 'raf' ? timeline.name : timeline.source || timeline.name;
+}
 
 /**
  * Deterministic synthetic action name for a navigate target + position.
@@ -101,11 +114,18 @@ export function buildNavigateOperations(
   ];
 }
 
-/** The synthetic broadcast action that performs the timeline switch. */
+/**
+ * The synthetic broadcast action that performs the timeline switch.
+ *
+ * Named after the DSL `target` (so the call sites can derive the name), but
+ * broadcasts `uri`, the target timeline's engine uri ({@link timelineUri}).
+ * `uri` defaults to `target`, which is the uri of a `raf` timeline.
+ */
 export function buildNavTargetAction(
   target: string,
   position: number,
-  sourceLocation: SourceLocation
+  sourceLocation: SourceLocation,
+  uri: string = target
 ): EndableActionIR {
   return {
     id: crypto.randomUUID(),
@@ -114,7 +134,7 @@ export function buildNavTargetAction(
       {
         id: crypto.randomUUID(),
         systemName: 'broadcastEvent',
-        operationData: { eventName: REQUEST_TIMELINE_URI, eventArgs: [target, position] },
+        operationData: { eventName: REQUEST_TIMELINE_URI, eventArgs: [uri, position] },
         sourceLocation,
       },
     ],

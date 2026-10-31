@@ -242,6 +242,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
       idRules: new Map(),
       errors: [
         {
+          filePath: 'file:///broken.css',
           line: 5,
           column: 10,
           message: 'Unclosed block',
@@ -283,6 +284,7 @@ describe('CSS Hot-Reload - Registry Update Validation', () => {
       idRules: new Map(),
       errors: [
         {
+          filePath: 'file:///broken.css',
           line: 5,
           column: 10,
           message: 'Unclosed block',

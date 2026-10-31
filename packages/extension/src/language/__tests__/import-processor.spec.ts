@@ -11,17 +11,20 @@
  */
 
 import * as path from 'node:path';
-import type { DefaultImport, Program } from '@eligian/language';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import type { Program } from '@eligian/language';
+import { beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import { URI } from 'vscode-uri';
 import type { ImportProcessorConfig } from '../import-processor.js';
 import { processImports } from '../import-processor.js';
+
+/** The default-import node type (`styles`, `locales`, ...); not exported by the package index. */
+type DefaultImport = Extract<Program['statements'][number], { $type: 'DefaultImport' }>;
 
 /**
  * Mock connection for notification testing
  */
 interface MockConnection {
-  sendNotification: ReturnType<typeof vi.fn>;
+  sendNotification: Mock<(type: string, params: unknown) => void>;
 }
 
 /**
@@ -172,10 +175,10 @@ describe('Generic Import Processor (TDD)', () => {
         hasImport: vi.fn().mockReturnValue(false),
       };
 
-      const mockProgram = createMockProgram([{ type: 'labels', path: './labels.json' }]);
+      const mockProgram = createMockProgram([{ type: 'locales', path: './labels.json' }]);
 
       const config: ImportProcessorConfig<Array<{ id: string }>> = {
-        importType: 'labels',
+        importType: 'locales',
         parseFile: vi.fn().mockReturnValue([{ id: 'test' }]),
         createEmptyMetadata: () => [],
         registry: mockRegistry,
@@ -220,10 +223,10 @@ describe('Generic Import Processor (TDD)', () => {
         hasImport: vi.fn().mockReturnValue(true), // Already registered
       };
 
-      const mockProgram = createMockProgram([{ type: 'labels', path: './labels.json' }]);
+      const mockProgram = createMockProgram([{ type: 'locales', path: './labels.json' }]);
 
       const config: ImportProcessorConfig<Array<{ id: string }>> = {
-        importType: 'labels',
+        importType: 'locales',
         parseFile: vi.fn().mockReturnValue([{ id: 'test' }]),
         createEmptyMetadata: () => [],
         registry: mockRegistry,

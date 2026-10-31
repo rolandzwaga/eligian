@@ -118,15 +118,16 @@ export function generateCSSId(filePath: string): string {
 }
 
 /**
- * Rewrite CSS url() paths to webview URIs for images/fonts
+ * Rewrite CSS url() paths and bare-string @import targets to webview URIs
  *
- * Converts relative paths in CSS (like url(./image.png)) to webview URIs
- * so assets load correctly in the webview context.
+ * Converts relative paths in CSS (like url(./image.png) or @import "./x.css")
+ * to webview URIs so assets and imported sheets load in the webview context.
+ * (Left relative, an @import resolves against the webview origin and is blocked.)
  *
  * @param css - CSS file content
  * @param cssFilePath - Absolute path to CSS file (for resolving relative paths)
  * @param converter - Webview URI converter (platform-specific)
- * @returns CSS content with rewritten url() paths
+ * @returns CSS content with rewritten url() paths and @import targets
  *
  * @example
  * ```typescript
@@ -143,35 +144,74 @@ export function rewriteUrls(
   const cssDir = path.dirname(cssFilePath);
 
   // Match url(...) patterns in CSS
-  // Handles: url(./file), url("./file"), url('../file'), url('file')
-  const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
+  // Handles: url(./file), url("./file"), url('../file'), url('file'), url( "file" )
+  const urlRegex = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
 
-  return css.replace(urlRegex, (match, urlPath) => {
-    // Skip absolute URLs (http://, https://, data:)
-    if (
-      urlPath.startsWith('http://') ||
-      urlPath.startsWith('https://') ||
-      urlPath.startsWith('data:')
-    ) {
-      return match;
-    }
+  // Bare-string @import targets: @import "./x.css" / @import './x.css'
+  // (@import url(...) is covered by urlRegex)
+  const importRegex = /@import\s+(['"])([^'"]+)\1/g;
 
-    // Resolve relative path to absolute
-    const absolutePath = path.resolve(cssDir, urlPath);
+  return css
+    .replace(urlRegex, (match, _quote, rawUrl: string) => {
+      const ref = toWebviewRef(rawUrl, cssDir, converter);
+      return ref === undefined ? match : `url('${ref}')`;
+    })
+    .replace(importRegex, (match, _quote, rawUrl: string) => {
+      const ref = toWebviewRef(rawUrl, cssDir, converter);
+      return ref === undefined ? match : `@import '${ref}'`;
+    });
+}
 
-    // Normalize Windows paths (CSS doesn't accept backslashes)
-    const normalizedPath = absolutePath.replace(/\\/g, '/');
+/**
+ * Webview URI (quote-escaped, ?query / #fragment kept) for a local CSS reference, or
+ * undefined for references that must stay as written.
+ */
+function toWebviewRef(
+  rawUrl: string,
+  cssDir: string,
+  converter: WebviewUriConverter
+): string | undefined {
+  const url = rawUrl.trim();
 
-    // Convert to webview URI using platform-specific converter
-    const fileUri: Uri = {
-      scheme: 'file',
-      path: normalizedPath,
-      toString: () => `file://${normalizedPath}`,
-    };
-    const webviewUri = converter.convertToWebviewUri(fileUri);
+  // Leave non-file references untouched: fragment-only (#id), protocol-relative (//host),
+  // and anything with a URL scheme (http:, https:, data:, blob:, ...)
+  if (
+    url === '' ||
+    url.startsWith('#') ||
+    url.startsWith('//') ||
+    /^[a-z][a-z0-9+.-]+:/i.test(url)
+  ) {
+    return undefined;
+  }
 
-    return `url('${webviewUri.toString()}')`;
-  });
+  // Separate the file path from any ?query / #fragment, which must survive rewriting
+  const suffixIndex = url.search(/[?#]/);
+  const rawPath = suffixIndex === -1 ? url : url.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? '' : url.slice(suffixIndex);
+
+  // Percent-decode for file lookup (the converter re-encodes as needed)
+  let urlPath = rawPath;
+  try {
+    urlPath = decodeURIComponent(rawPath);
+  } catch {
+    // Malformed escape: use the path as written
+  }
+
+  // Resolve relative path to absolute
+  const absolutePath = path.resolve(cssDir, urlPath);
+
+  // Normalize Windows paths (CSS doesn't accept backslashes)
+  const normalizedPath = absolutePath.replace(/\\/g, '/');
+
+  // Convert to webview URI using platform-specific converter
+  const fileUri: Uri = {
+    scheme: 'file',
+    path: normalizedPath,
+    toString: () => `file://${normalizedPath}`,
+  };
+  const webviewUri = converter.convertToWebviewUri(fileUri);
+
+  return `${webviewUri.toString().replace(/'/g, "\\'")}${suffix}`;
 }
 
 /**

@@ -113,7 +113,7 @@ describe('Library Scoping', () => {
     // Get the scope for this reference
     const scopeProvider = ctx.services.Eligian.references.ScopeProvider;
     const referenceInfo = {
-      reference: { $refText: actionImport.name },
+      reference: { $refText: actionImport.action.$refText },
       container: actionImport,
       property: 'action',
     };
@@ -159,7 +159,7 @@ describe('Library Scoping', () => {
     // Get the scope for this reference
     const scopeProvider = ctx.services.Eligian.references.ScopeProvider;
     const referenceInfo = {
-      reference: { $refText: actionImport.name },
+      reference: { $refText: actionImport.action.$refText },
       container: actionImport,
       property: 'action',
     };
@@ -202,7 +202,7 @@ describe('Library Scoping', () => {
     // Get the scope for this reference
     const scopeProvider = ctx.services.Eligian.references.ScopeProvider;
     const referenceInfo = {
-      reference: { $refText: actionImport.name },
+      reference: { $refText: actionImport.action.$refText },
       container: actionImport,
       property: 'action',
     };
@@ -241,7 +241,7 @@ describe('Library Scoping', () => {
     // Check first action import
     const actionImport1 = importStmt.actions[0] as ActionImport;
     const referenceInfo1 = {
-      reference: { $refText: actionImport1.name },
+      reference: { $refText: actionImport1.action.$refText },
       container: actionImport1,
       property: 'action',
     };
@@ -255,7 +255,7 @@ describe('Library Scoping', () => {
     // Check second action import
     const actionImport2 = importStmt.actions[1] as ActionImport;
     const referenceInfo2 = {
-      reference: { $refText: actionImport2.name },
+      reference: { $refText: actionImport2.action.$refText },
       container: actionImport2,
       property: 'action',
     };

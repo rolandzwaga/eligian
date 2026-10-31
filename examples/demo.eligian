@@ -52,35 +52,38 @@ const config = {
 
 /**
  * Shows a slide with fade animation
- * @param slideId Slide element ID
+ *
+ * Takes the full selector: Eligius has no runtime string concatenation, so
+ * `"#" + slideId` on a parameter is a compile error.
+ * @param selector Slide element selector (e.g. "#intro")
  * @param duration Animation duration in milliseconds
  */
-action showSlide(slideId: string, duration: number) [
-  fadeIn("#" + slideId, duration)
-  selectElement("#" + slideId)
+action showSlide(selector: string, duration: number) [
+  fadeIn(selector, duration)
+  selectElement(selector)
   addClass("active")
 ]
 
 /**
  * Hides a slide
- * @param slideId Slide element ID  
+ * @param selector Slide element selector (e.g. "#intro")
  * @param duration Animation duration in milliseconds
  */
-action hideSlide(slideId: string, duration: number) [
-  fadeOut("#" + slideId, duration)
-  selectElement("#" + slideId)
+action hideSlide(selector: string, duration: number) [
+  fadeOut(selector, duration)
+  selectElement(selector)
   removeClass("active")
 ]
 
 /**
  * Shows items in a list with for loop
- * @param items Array of item IDs
+ * @param items Array of item selectors (e.g. "#feat1")
  */
 action showItems(items: array) [
   for (item in items) {
-    selectElement("#" + @@item)
+    selectElement(@@item)
     removeClass("hidden")
-    slideInLeft("#" + @@item, 500)
+    slideInLeft(@@item, 500)
     wait(200)
   }
 ]
@@ -114,11 +117,11 @@ action searchItems(items: array, target: string) [
     }
 
     if (@@item == target) {
-      log("Found: " + target)
+      log(target)
       break
     }
 
-    log("Checking: " + @@item)
+    log(@@item)
   }
 ]
 
@@ -164,7 +167,7 @@ timeline "Eligian Demo" in "#container" using raf {
   // === Inline Endable Action with start and end blocks ===
   at 0s..5s [
     selectElement("#intro")
-    setElementContent({template: @title})
+    setElementContent(@title)
     addClass("fade-in")
     animate({opacity: 1}, 1000)
   ] [
@@ -174,7 +177,7 @@ timeline "Eligian Demo" in "#container" using raf {
   ]
 
   // === Call custom action (operation call) ===
-  at 1s..2s showSlide("title", 1000)
+  at 1s..2s showSlide("#title", 1000)
 
   // === For loop in timeline ===
   at 3s..4s for (slide in @slides) {
@@ -188,7 +191,7 @@ timeline "Eligian Demo" in "#container" using raf {
 
   // === Feature showcase ===
   at 5s..15s [
-    hideSlide("intro", 500)
+    hideSlide("#intro", 500)
     wait(500)
     selectElement("#features")
     addClass("visible")
@@ -207,7 +210,7 @@ timeline "Eligian Demo" in "#container" using raf {
   ]
 
   // === Action call without time range (uses stagger/sequence context) ===
-  at 6s..7s showItems(["feat1", "feat2", "feat3", "feat4", "feat5"])
+  at 6s..7s showItems(["#feat1", "#feat2", "#feat3", "#feat4", "#feat5"])
 
   // === Interactive demo section ===
   at 15s..25s [
@@ -230,8 +233,8 @@ timeline "Eligian Demo" in "#container" using raf {
 
   // === Code examples ===
   at 25s..35s [
-    hideSlide("demo-section", 500)
-    showSlide("code-section", 1000)
+    hideSlide("#demo-section", 500)
+    showSlide("#code-section", 1000)
   ] []
 
   // === Action with break/continue ===
@@ -248,7 +251,7 @@ timeline "Eligian Demo" in "#container" using raf {
   // === Closing slide ===
   at 35s..40s [
     resetAll()
-    showSlide("outro", 1500)
+    showSlide("#outro", 1500)
     selectElement("#outro")
     addClass("closing")
     animate({opacity: 1, transform: "scale(1.2)"}, 2000)
@@ -288,7 +291,7 @@ on event "language-change" action handleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
-  log("Language changed to: " + languageCode)
+  log(languageCode)
 ]
 
 /**
@@ -313,8 +316,8 @@ on event "timeline-complete" action handleTimelineComplete() [
  * Auto-generates: on event "before-request-video-url" action handleBeforeRequestVideoUrl(index: number, requestedVideoPosition: number, isHistoryRequest: boolean) [ ... ]
  */
 on event "before-request-video-url" action handleBeforeRequestVideoUrl(index: number, requestedVideoPosition: number, isHistoryRequest: boolean) [
-  log("Requesting video URL at index: " + index)
-  log("Position: " + requestedVideoPosition)
+  log(index)
+  log(requestedVideoPosition)
   if (isHistoryRequest) {
     log("History navigation detected")
   }

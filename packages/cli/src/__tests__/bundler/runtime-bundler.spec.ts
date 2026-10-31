@@ -23,6 +23,7 @@ import {
   generateEntryPoint,
 } from '../../bundler/runtime-bundler.js';
 import type { RuntimeBundleConfig, TimelineProviderType } from '../../bundler/types.js';
+import { buildConfig } from './config-fixtures.js';
 
 /**
  * ES Module equivalent of __dirname
@@ -81,7 +82,7 @@ function getNodeModulesPaths(): string[] {
  * Minimal Eligius configuration for testing
  */
 function createMinimalConfig() {
-  return {
+  return buildConfig({
     containerSelector: '#presentation',
     initActions: [],
     actions: [],
@@ -102,14 +103,14 @@ function createMinimalConfig() {
         ],
       },
     ],
-  };
+  });
 }
 
 /**
  * Configuration with multiple operations
  */
 function createConfigWithOperations() {
-  return {
+  return buildConfig({
     containerSelector: '#app',
     initActions: [
       {
@@ -144,14 +145,14 @@ function createConfigWithOperations() {
         ],
       },
     ],
-  };
+  });
 }
 
 /**
  * Configuration with video provider settings
  */
 function createVideoProviderConfig() {
-  return {
+  return buildConfig({
     containerSelector: '#video-player',
     timelineProviderSettings: {
       video: {
@@ -166,14 +167,14 @@ function createVideoProviderConfig() {
         timelineActions: [],
       },
     ],
-  };
+  });
 }
 
 /**
  * Configuration with lottie provider settings
  */
 function createLottieProviderConfig() {
-  return {
+  return buildConfig({
     containerSelector: '#lottie-container',
     timelineProviderSettings: {
       lottie: {
@@ -183,7 +184,7 @@ function createLottieProviderConfig() {
     initActions: [],
     actions: [],
     timelines: [],
-  };
+  });
 }
 
 /**
@@ -191,7 +192,7 @@ function createLottieProviderConfig() {
  * (from timelineProviderSettings) and a controller (via getControllerInstance).
  */
 function createConfigWithSystemEntries() {
-  return {
+  return buildConfig({
     containerSelector: '#app',
     timelineProviderSettings: {
       animation: { positionSource: { systemName: 'RafPositionSource' } },
@@ -214,7 +215,7 @@ function createConfigWithSystemEntries() {
       },
     ],
     timelines: [{ uri: 'main', timelineActions: [] }],
-  };
+  });
 }
 
 describe('Runtime Bundler (Feature 040, Phase 3)', () => {
@@ -267,12 +268,12 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     });
 
     test('should return empty array for empty config', () => {
-      const config = {
+      const config = buildConfig({
         containerSelector: '#app',
         initActions: [],
         actions: [],
         timelines: [],
-      };
+      });
       const operations = extractUsedOperations(config);
 
       expect(operations).toEqual([]);
@@ -302,7 +303,7 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     });
 
     test('should detect multiple providers', () => {
-      const config = {
+      const config = buildConfig({
         containerSelector: '#app',
         timelineProviderSettings: {
           video: { selector: '#video' },
@@ -311,7 +312,7 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
         initActions: [],
         actions: [],
         timelines: [],
-      };
+      });
       const providers = extractUsedProviders(config);
 
       expect(providers).toContain('video');
@@ -390,7 +391,7 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
 
     test('should include lottie-web import for lottie provider', () => {
       const config = createLottieProviderConfig();
-      const operations = [];
+      const operations: string[] = [];
       const providers: TimelineProviderType[] = ['lottie'];
 
       const entryPoint = generateEntryPoint(config, operations, providers);
@@ -423,7 +424,7 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
 
     test('should export EligiusBundled to window', () => {
       const config = createMinimalConfig();
-      const operations = [];
+      const operations: string[] = [];
       const providers: TimelineProviderType[] = [];
 
       const entryPoint = generateEntryPoint(config, operations, providers);
@@ -597,12 +598,12 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
 
     test('should handle empty operations list', async () => {
       const bundleConfig: RuntimeBundleConfig = {
-        eligiusConfig: {
+        eligiusConfig: buildConfig({
           containerSelector: '#app',
           initActions: [],
           actions: [],
           timelines: [],
-        },
+        }),
         usedOperations: [],
         usedProviders: [],
         minify: false,

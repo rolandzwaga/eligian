@@ -4,6 +4,13 @@
  * Build-time script that extracts HTML element and attribute metadata from
  * TypeScript's lib.dom.d.ts using the TypeScript Compiler API.
  *
+ * IMPORTANT: Eligius' `createElement` applies the attributes object with jQuery
+ * `.attr(key, value)`, so the keys are HTML ATTRIBUTE names (`class`, `for`,
+ * `tabindex`), not DOM property names (`className`, `htmlFor`, `tabIndex`). The DOM
+ * interfaces in lib.dom.d.ts are only a source of candidate names; every candidate
+ * goes through `toHtmlAttribute`, which renames it to the real attribute and drops
+ * read-only / DOM-only properties.
+ *
  * Run with: pnpm generate:html-metadata
  */
 
@@ -139,20 +146,138 @@ const EXCLUDED_PROPERTIES = new Set([
 // Common HTMLElement attributes that apply to all elements
 const COMMON_ATTRIBUTES: AttributeMetadata[] = [
   { name: 'id', type: 'string' },
-  { name: 'className', type: 'string' },
+  { name: 'class', type: 'string' },
   { name: 'style', type: 'string' },
   { name: 'title', type: 'string' },
   { name: 'lang', type: 'string' },
   { name: 'dir', type: 'enum', enumValues: ['ltr', 'rtl', 'auto'] },
   { name: 'hidden', type: 'boolean' },
-  { name: 'tabIndex', type: 'number' },
-  { name: 'accessKey', type: 'string' },
+  { name: 'tabindex', type: 'number' },
+  { name: 'accesskey', type: 'string' },
   { name: 'draggable', type: 'boolean' },
   { name: 'spellcheck', type: 'boolean' },
-  { name: 'contentEditable', type: 'enum', enumValues: ['true', 'false', 'inherit'] },
+  { name: 'contenteditable', type: 'enum', enumValues: ['true', 'false', 'inherit'] },
   { name: 'translate', type: 'boolean' },
   { name: 'slot', type: 'string' },
 ];
+
+/**
+ * DOM property name -> HTML attribute name, for the properties whose attribute is
+ * not simply the lower-cased property name.
+ */
+const PROPERTY_TO_ATTRIBUTE: Record<string, string> = {
+  className: 'class',
+  htmlFor: 'for',
+  httpEquiv: 'http-equiv',
+  acceptCharset: 'accept-charset',
+  ch: 'char',
+  chOff: 'charoff',
+};
+
+/**
+ * Properties of the DOM interfaces that are NOT content attributes: read-only
+ * state, derived values, collections, constants and aliases. `createElement`
+ * cannot set them through `.attr()`.
+ */
+const DOM_ONLY_PROPERTIES = new Set([
+  // Constants (HTMLTrackElement.ERROR, ...)
+  'ERROR',
+  'LOADED',
+  'LOADING',
+  'NONE',
+  // Derived / read-only / live state
+  'accessKeyLabel',
+  'areas',
+  'caption',
+  'cellIndex',
+  'cells',
+  'commandForElement',
+  'complete',
+  'contentDocument',
+  'contentWindow',
+  'control',
+  'currentSrc',
+  'defaultChecked',
+  'defaultSelected',
+  'defaultValue',
+  'elements',
+  'encoding',
+  'index',
+  'indeterminate',
+  'length',
+  'naturalHeight',
+  'naturalWidth',
+  'position',
+  'readyState',
+  'returnValue',
+  'rowIndex',
+  'sectionRowIndex',
+  'selectedIndex',
+  'shadowRootCustomElementRegistry',
+  'tBodies',
+  'tFoot',
+  'tHead',
+  'text',
+  'textLength',
+  'track',
+  'videoHeight',
+  'videoWidth',
+  'webkitEntries',
+  'x',
+  'y',
+  // URL decomposition properties of <a> / <area> (derived from href)
+  'hash',
+  'host',
+  'hostname',
+  'origin',
+  'password',
+  'pathname',
+  'port',
+  'protocol',
+  'search',
+  'username',
+]);
+
+/** Properties that are only DOM-only on specific elements (an attribute elsewhere). */
+const DOM_ONLY_PROPERTIES_BY_ELEMENT: Record<string, ReadonlySet<string>> = {
+  table: new Set(['rows']),
+  tbody: new Set(['rows']),
+  thead: new Set(['rows']),
+  tfoot: new Set(['rows']),
+};
+
+/**
+ * Convert a DOM property name to the HTML attribute name that `createElement`
+ * must be given, or `null` when the property is not a content attribute. HTML
+ * attribute names are case-insensitive and conventionally lower-case, so
+ * camelCase properties are simply lower-cased.
+ */
+function toHtmlAttribute(property: string, tagName?: string): string | null {
+  if (DOM_ONLY_PROPERTIES.has(property)) return null;
+  if (tagName && DOM_ONLY_PROPERTIES_BY_ELEMENT[tagName]?.has(property)) return null;
+  const mapped = PROPERTY_TO_ATTRIBUTE[property] ?? property.toLowerCase();
+  // Event handler content attributes (onclick, onenterpictureinpicture, ...) are not offered
+  if (/^on[a-z]/.test(mapped)) return null;
+  return mapped;
+}
+
+/**
+ * Rename every attribute to its HTML attribute name, drop DOM-only properties and
+ * duplicates, and sort alphabetically.
+ */
+function normalizeAttributes(
+  attributes: AttributeMetadata[],
+  tagName?: string
+): AttributeMetadata[] {
+  const byName = new Map<string, AttributeMetadata>();
+  for (const attr of attributes) {
+    const name = toHtmlAttribute(attr.name, tagName);
+    if (name && !byName.has(name)) {
+      byName.set(name, { ...attr, name });
+    }
+  }
+  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /**
  * Well-known string/boolean attributes inherited from mixin interfaces that TypeScript
@@ -163,23 +288,9 @@ const COMMON_ATTRIBUTES: AttributeMetadata[] = [
 const INHERITED_ATTRIBUTES: Record<string, Record<string, 'string' | 'number' | 'boolean'>> = {
   a: {
     href: 'string',
-    protocol: 'string',
-    host: 'string',
-    hostname: 'string',
-    port: 'string',
-    pathname: 'string',
-    search: 'string',
-    hash: 'string',
   },
   area: {
     href: 'string',
-    protocol: 'string',
-    host: 'string',
-    hostname: 'string',
-    port: 'string',
-    pathname: 'string',
-    search: 'string',
-    hash: 'string',
   },
   img: {
     src: 'string',
@@ -715,9 +826,8 @@ function extractElementAttributes(
     }
   }
 
-  // Sort alphabetically
-  attributes.sort((a, b) => a.name.localeCompare(b.name));
-  return attributes;
+  // Convert DOM property names to HTML attribute names (createElement uses .attr())
+  return normalizeAttributes(attributes, tagName);
 }
 
 /**
@@ -842,7 +952,7 @@ export type HTMLElementName = (typeof HTML_ELEMENT_NAMES)[number];
  * Common attributes inherited from HTMLElement (apply to all elements)
  */
 export const COMMON_HTML_ATTRIBUTES: readonly HTMLAttributeMetadata[] = [
-${COMMON_ATTRIBUTES.map(attr => `  ${JSON.stringify(attr)},`).join('\n')}
+${normalizeAttributes(COMMON_ATTRIBUTES).map(attr => `  ${JSON.stringify(attr)},`).join('\n')}
 ];
 
 /**
@@ -895,7 +1005,8 @@ export function getAttributeEnumValues(
   attributeName: string
 ): readonly string[] | undefined {
   const attributes = getElementAttributes(tagName);
-  const attr = attributes.find(a => a.name === attributeName);
+  // HTML attribute names are case-insensitive
+  const attr = attributes.find(a => a.name === attributeName.toLowerCase());
   if (attr?.type === 'enum' && attr.enumValues) {
     return attr.enumValues;
   }

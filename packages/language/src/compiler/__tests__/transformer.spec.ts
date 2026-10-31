@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { Effect } from 'effect';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
@@ -28,14 +26,6 @@ describe('AST Transformer', () => {
       );
     }
     return document.parseResult.value;
-  }
-
-  /**
-   * Helper: Load fixture file
-   */
-  function _loadFixture(filename: string): string {
-    const path = join(__dirname, '__fixtures__', filename);
-    return readFileSync(path, 'utf-8');
   }
 
   describe('Timeline transformation (T050)', () => {
@@ -324,9 +314,9 @@ describe('AST Transformer', () => {
         '$globaldata.items'
       );
       // Action-level variables stay scope variables
-      expect(ops.filter(op => op.systemName === 'setVariable').at(-1)?.operationData?.value).toBe(
-        '$scope.variables.local'
-      );
+      expect(
+        ops.filter(op => op.systemName === 'setVariable').slice(-1)[0]?.operationData?.value
+      ).toBe('$scope.variables.local');
     });
 
     test('should compile @@currentItem.prop to a $scope property chain', async () => {
@@ -878,7 +868,7 @@ describe('AST Transformer', () => {
 
       try {
         await Effect.runPromise(transformAST(program));
-        fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (error: any) {
         // Effect 4 rejects with the typed error itself
         expect(error._tag).toBe('TransformError');
@@ -975,7 +965,7 @@ describe('AST Transformer', () => {
 
       try {
         await Effect.runPromise(transformAST(program));
-        fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (error: any) {
         // Should include suggestion for typo
         expect(error.message).toContain('addClas');

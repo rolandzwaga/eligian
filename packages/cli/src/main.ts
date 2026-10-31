@@ -12,7 +12,7 @@ import * as url from 'node:url';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
-import { BundleError, createBundle } from './bundler/index.js';
+import { BundleCompileError, BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
 import {
   AssetError,
@@ -22,6 +22,7 @@ import {
   IOError,
   ParseError,
 } from './compile-file.js';
+import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const packagePath = path.resolve(__dirname, '..', 'package.json');
@@ -129,6 +130,37 @@ function printAssetErrors(error: AssetError): void {
 }
 
 /**
+ * Print a compile-step error with its full details (line, snippet, hint) and
+ * exit with the matching code. Shared by the compile and bundle commands so
+ * bundle mode does not flatten errors to a single message line.
+ */
+function reportCompileError(error: unknown): never {
+  if (error instanceof ParseError) {
+    printFormattedErrors('Parse failed:', error.formatted);
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  if (error instanceof AssetError) {
+    printAssetErrors(error);
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  if (error instanceof CompilationError) {
+    printFormattedErrors('Compilation failed:', error.formatted);
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  if (error instanceof IOError) {
+    console.error(chalk.red(`I/O Error: ${error.message}`));
+    process.exit(EXIT_IO_ERROR);
+  }
+
+  // Unknown error
+  console.error(chalk.red('Unexpected error:'), error);
+  process.exit(EXIT_IO_ERROR);
+}
+
+/**
  * CLI wrapper for compileFile - handles console output and process.exit()
  */
 async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<void> {
@@ -161,7 +193,17 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
     }
 
     // Determine output path
-    const outputPath = options.output || inputPath.replace(/\.eligian$/, '.json');
+    const outputPath = options.output || deriveDefaultOutputPath(inputPath, '.json');
+
+    // Never overwrite the source file
+    if (isSamePath(inputPath, outputPath)) {
+      console.error(
+        chalk.red(
+          `Output path '${outputPath}' is the same as the input file; refusing to overwrite.`
+        )
+      );
+      process.exit(EXIT_IO_ERROR);
+    }
 
     // Write output file (or stdout if output is -)
     if (outputPath === '-') {
@@ -174,29 +216,7 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
       }
     }
   } catch (error) {
-    if (error instanceof ParseError) {
-      printFormattedErrors('Parse failed:', error.formatted);
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    if (error instanceof AssetError) {
-      printAssetErrors(error);
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    if (error instanceof CompilationError) {
-      printFormattedErrors('Compilation failed:', error.formatted);
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    if (error instanceof IOError) {
-      console.error(chalk.red(`I/O Error: ${error.message}`));
-      process.exit(EXIT_IO_ERROR);
-    }
-
-    // Unknown error
-    console.error(chalk.red('Unexpected error:'), error);
-    process.exit(EXIT_IO_ERROR);
+    reportCompileError(error);
   }
 }
 
@@ -233,6 +253,10 @@ async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> 
   }
 
   const failure = Cause.findErrorOption(exit.cause);
+  if (Option.isSome(failure) && failure.value instanceof BundleCompileError) {
+    reportCompileError(failure.value.compileError);
+  }
+
   if (Option.isSome(failure) && failure.value instanceof BundleError) {
     console.error(chalk.red(`\nBundle failed: ${failure.value.message}`));
     process.exit(EXIT_COMPILE_ERROR);

@@ -22,6 +22,9 @@ import { isObjectLiteral, isObjectProperty, isOperationCall } from '../generated
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { type HTMLCompletionContext, HTMLCompletionContextType } from './context-types.js';
 
+/** Leaves after which whitespace may still be a createElement completion position. */
+const WHITESPACE_CONTEXT_LEAVES = new Set(['(', '{', ',']);
+
 /**
  * Detect if cursor is in an HTML completion context for createElement
  *
@@ -38,7 +41,18 @@ export function detectHTMLCompletionContext(context: CompletionContext): HTMLCom
     return { type: HTMLCompletionContextType.None };
   }
 
-  const leafNode = CstUtils.findLeafNodeAtOffset(cstNode, offset);
+  let leafNode = CstUtils.findLeafNodeAtOffset(cstNode, offset);
+  if (!leafNode) {
+    // Whitespace is hidden, so it is a gap between leaves and no leaf matches.
+    // Typical typing states are `{ | }`, `{ type: "text", | }` and a newline
+    // inside the braces: use the closest leaf before the cursor, but only when
+    // it is an opening delimiter or separator (`(`, `{`, `,`) so that e.g.
+    // whitespace after a property value or colon is not misread as a new key.
+    const before = CstUtils.findLeafNodeBeforeOffset(cstNode, offset);
+    if (before && WHITESPACE_CONTEXT_LEAVES.has(before.text)) {
+      leafNode = before;
+    }
+  }
   if (!leafNode?.astNode) {
     return { type: HTMLCompletionContextType.None };
   }

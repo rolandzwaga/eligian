@@ -57,8 +57,10 @@ describe('ExpressionValidator: runtime negation', () => {
       ['property chain', 'setData({"a": !$operationdata.flag})', []],
       ['runtime action variable', 'const v = $operationdata.foo\n  setData({"a": !@v})', []],
       [
+        // `!(flag && true)` is now reported at the inner `&&` (runtime logic outside a
+        // condition), like the compiler; see runtime-operator-validator.spec.ts
         'negation nested in a binary expression',
-        'setData({"a": !(flag && true)})',
+        'setData({"a": !flag && true})',
         [{ name: 'flag' }],
       ],
     ])('%s', async (_label, body, params) => {

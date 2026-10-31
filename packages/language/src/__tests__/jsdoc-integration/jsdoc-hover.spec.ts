@@ -77,7 +77,7 @@ describe('JSDoc Hover (T021 - US3)', () => {
     expect(hover).toBeDefined();
     expect(hover?.contents).toBeDefined();
 
-    if (hover?.contents && typeof hover.contents === 'object' && 'value' in hover.contents) {
+    if (hover?.contents && typeof hover.contents === 'object' && 'kind' in hover.contents) {
       expect(hover.contents.kind).toBe('markdown');
       const markdown = hover.contents.value;
 

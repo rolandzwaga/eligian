@@ -13,25 +13,22 @@
  */
 
 import { EmptyFileSystem } from 'langium';
-import type { CompletionList } from 'langium/lsp';
-import { expectCompletion, parseHelper } from 'langium/test';
+import { expectCompletion } from 'langium/test';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { CompletionList } from 'vscode-languageserver-protocol';
 import type { CSSRegistryService } from '../../css/css-registry.js';
 import { createEligianServices } from '../../eligian-module.js';
-import type { Program } from '../../generated/ast.js';
 
 describe('CSS Completion Integration: className Parameters', () => {
   let services: ReturnType<typeof createEligianServices>;
   let cssRegistry: CSSRegistryService;
   let completion: ReturnType<typeof expectCompletion>;
-  let _parse: ReturnType<typeof parseHelper<Program>>;
 
   // Expensive setup - runs once per suite
   beforeAll(() => {
     // Create services
     services = createEligianServices(EmptyFileSystem);
     completion = expectCompletion(services.Eligian);
-    _parse = parseHelper<Program>(services.Eligian);
 
     // Get CSS registry service
     cssRegistry = services.Eligian.css.CSSRegistry;

@@ -166,7 +166,7 @@ timeline "test" in ".container" using raf {
 
 action selectAndLog(selector: string) [
   selectElement(selector)
-  log("Selected: " + selector)
+  log(selector)
 ]
 `;
     await fsp.writeFile(path.join(libsDir, 'base.eligian'), baseLibrary);

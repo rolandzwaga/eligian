@@ -9,6 +9,7 @@ import { ImportValidator } from './validators/import-validator.js';
 import { LanguagesValidator } from './validators/languages-validator.js';
 import { NavigateValidator } from './validators/navigate-validator.js';
 import { OperationCallValidator } from './validators/operation-call-validator.js';
+import { OperationSequenceValidator } from './validators/operation-sequence-validator.js';
 import { ProgramValidator } from './validators/program-validator.js';
 import { TimelineValidator } from './validators/timeline-validator.js';
 
@@ -67,6 +68,7 @@ export class EligianValidator {
   readonly eventAction: EventActionValidator;
   readonly navigate: NavigateValidator;
   readonly expression: ExpressionValidator;
+  readonly operationSequence: OperationSequenceValidator;
 
   constructor(services: EligianServices) {
     this.program = new ProgramValidator(services);
@@ -78,6 +80,7 @@ export class EligianValidator {
     this.eventAction = new EventActionValidator(services);
     this.navigate = new NavigateValidator(services);
     this.expression = new ExpressionValidator(services);
+    this.operationSequence = new OperationSequenceValidator(services);
   }
 }
 
@@ -99,6 +102,8 @@ export function registerValidationChecks(services: EligianServices) {
       v.program.checkDuplicateActions, // T042: US2 - Duplicate action detection
       v.program.checkDuplicateConstants, // Duplicate constant detection
       v.program.checkDuplicateEventActions, // T033: Duplicate event/topic combinations
+      v.program.checkDuplicateTimelines, // Duplicate timeline names (navigate targets)
+      v.program.checkEventActionNames, // Duplicate event action names / action + built-in clashes
       // validator.checkDefaultImports, // DISABLED: Now handled by Typir validation (US1)
       v.program.checkNamedImportNames, // T048-T051: US2 - Named import name validation
       v.program.checkAssetLoading, // Feature 010: Asset loading and validation
@@ -135,6 +140,8 @@ export function registerValidationChecks(services: EligianServices) {
       v.timeline.checkSourceRequired,
       v.timeline.checkTimelineContainerSelector, // Feature 013: Validate timeline container selector against CSS
     ],
+    // A property chain used as a time compiles to nothing (the compiler rejects it)
+    PropertyChainReference: v.timeline.checkPropertyChainInTime,
     // TimelineEvent time ranges are validated by the Typir rules
     // (type-system-typir/validation/event-validation.ts), not here.
   };
@@ -162,6 +169,7 @@ export function registerValidationChecks(services: EligianServices) {
     RegularActionDefinition: [
       v.action.checkActionNameCollision, // T039: US2 - Name collision detection
       v.action.checkRecursiveActionCalls, // Detect infinite recursion
+      v.action.checkActionParameters, // Duplicate / reserved parameter names
       v.action.checkControlFlowPairing,
       v.action.checkErasedPropertiesInAction, // T254-T255: Erased property validation
       v.action.checkPrivateOnlyInLibraries, // T056: US3 - Validate 'private' only in libraries
@@ -169,6 +177,7 @@ export function registerValidationChecks(services: EligianServices) {
     EndableActionDefinition: [
       v.action.checkActionNameCollision, // T039: US2 - Name collision detection
       v.action.checkRecursiveActionCalls, // Detect infinite recursion
+      v.action.checkActionParameters, // Duplicate / reserved parameter names
       v.action.checkControlFlowPairingInStartOps,
       v.action.checkControlFlowPairingInEndOps,
       v.action.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
@@ -205,6 +214,21 @@ export function registerValidationChecks(services: EligianServices) {
   };
   registry.register(eventActionChecks, v.eventAction);
 
+  // Control-flow pairing and operationData dependency checks for operation
+  // lists outside action definitions (event action bodies, inline stagger
+  // blocks). A separate group, so EventActionDefinition has checks in two groups.
+  const operationSequenceChecks: ValidationChecks<EligianAstType> = {
+    EventActionDefinition: [
+      v.operationSequence.checkControlFlowPairingInEventAction,
+      v.operationSequence.checkErasedPropertiesInEventAction,
+    ],
+    StaggerBlock: [
+      v.operationSequence.checkControlFlowPairingInStagger,
+      v.operationSequence.checkErasedPropertiesInStagger,
+    ],
+  };
+  registry.register(operationSequenceChecks, v.operationSequence);
+
   const navigateChecks: ValidationChecks<EligianAstType> = {
     NavigateStatement: [
       v.navigate.checkNavigateTarget, // navigate target must name an existing timeline
@@ -214,7 +238,12 @@ export function registerValidationChecks(services: EligianServices) {
   registry.register(navigateChecks, v.navigate);
 
   const expressionChecks: ValidationChecks<EligianAstType> = {
-    UnaryExpression: v.expression.checkRuntimeNegation, // `!` on a runtime value outside an if condition
+    // Operators the compiler cannot emit: `!`/comparisons/logic on runtime values outside an if
+    // condition, arithmetic on runtime values, invalid constants (`10 % 0`, `"abc" - 1`)
+    UnaryExpression: v.expression.checkOperatorExpression,
+    BinaryExpression: v.expression.checkOperatorExpression,
+    // An end block referencing a runtime const of its start block
+    VariableReference: v.expression.checkEndBlockConstReference,
   };
   registry.register(expressionChecks, v.expression);
 }

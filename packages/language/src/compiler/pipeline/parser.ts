@@ -11,10 +11,10 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { Effect } from 'effect';
 import { type LangiumDocument, URI } from 'langium';
+import { getCssImportPaths } from '../../css/css-import-paths.js';
 import { createEmptyCSSMetadata, parseCSS } from '../../css/css-parser.js';
 import type { ParseError, ValidationError } from '../../errors/index.js';
 import { isLibrary, type Program } from '../../generated/ast.js';
-import { isDefaultImport } from '../../utils/ast-helpers.js';
 import { resolveImportRelativePath } from '../../utils/path-utils.js';
 import { extractDocumentErrors } from './document-errors.js';
 import {
@@ -104,12 +104,19 @@ export const parseSource = (
 
       const importPaths = extractLibraryImports(tempProgram);
 
-      // Feature 032 US3: Load each library recursively (including nested dependencies)
+      // Feature 032 US3: Load each library recursively (including nested dependencies).
+      // Shared across imports so a library reached twice is loaded once.
+      const loadedLibraries = new Map<string, LangiumDocument[]>();
       for (const importPath of importPaths) {
         const libraryUri = resolveLibraryPath(documentUri, importPath);
 
         // Recursively load library and all its dependencies with cycle detection
-        const nestedLibraries = yield* loadLibraryRecursive(libraryUri, documentUri);
+        const nestedLibraries = yield* loadLibraryRecursive(
+          libraryUri,
+          documentUri,
+          new Map(),
+          loadedLibraries
+        );
 
         // Add all nested libraries to the collection (avoiding duplicates)
         for (const libDoc of nestedLibraries) {
@@ -177,16 +184,8 @@ export const parseSource = (
           const root = document.parseResult.value;
 
           // Extract CSS imports from AST
-          const cssFiles: string[] = [];
-          for (const statement of root.statements) {
-            if (isDefaultImport(statement) && statement.type === 'styles') {
-              if (!statement.path) {
-                continue;
-              }
-              const cssPath = statement.path.replace(/^["']|["']$/g, '');
-              cssFiles.push(cssPath);
-            }
-          }
+          // (`styles` default imports AND named imports that resolve to CSS)
+          const cssFiles = getCssImportPaths(root).map(p => p.replace(/^["']|["']$/g, ''));
 
           // Parse each CSS file and load into registry
           const docPath = documentUri.fsPath;

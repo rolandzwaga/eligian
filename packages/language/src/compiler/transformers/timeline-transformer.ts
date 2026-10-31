@@ -27,6 +27,7 @@ import type {
 import { buildActionCallOperations } from './action-call-operations.js';
 import { mapProviderToTimelineType } from './config-builder.js';
 import { transformExpression } from './expression-transformer.js';
+import { timelineUri } from './navigate-operations.js';
 import {
   transformForStatement,
   transformIfStatement,
@@ -128,7 +129,7 @@ export const buildTimelineConfig = (
     // T271: Map provider to Eligius timeline type
     // T272: Generate uri (timeline name for animation, source path for mediaplayer)
     const timelineType = mapProviderToTimelineType(timeline.provider);
-    const uri = timeline.provider === 'raf' ? timeline.name : timeline.source || timeline.name;
+    const uri = timelineUri(timeline);
 
     return {
       // Constitution VII: UUID v4 for globally unique timeline ID
@@ -546,10 +547,13 @@ const transformTimedEvent = (
 
     if (action.$type === 'InlineEndableAction') {
       // Inline endable action: [ ... ] [ ... ]
+      // One scope for both blocks, like named endable actions: foldable consts
+      // declared earlier (in the start block too, for the end block) are inlined.
+      const inlineScope = createEmptyScope(programConstants);
       for (const opStmt of action.startOperations) {
         const ops = yield* transformOperationStatement(
           opStmt,
-          createEmptyScope(programConstants),
+          inlineScope,
           false,
           program,
           allActions
@@ -559,7 +563,7 @@ const transformTimedEvent = (
       for (const opStmt of action.endOperations) {
         const ops = yield* transformOperationStatement(
           opStmt,
-          createEmptyScope(programConstants),
+          inlineScope,
           true,
           program,
           allActions

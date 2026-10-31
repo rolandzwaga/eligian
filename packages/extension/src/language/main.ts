@@ -56,6 +56,40 @@ function triggerRevalidation(documentUris: string[]): void {
   }
 }
 
+/**
+ * Re-parse the registered stylesheets that `@import` a changed CSS file: their metadata
+ * merges the imported file's classes/IDs, so it is stale now.
+ */
+function reparseImporters(cssFileUri: string): void {
+  const cssRegistry = Eligian.css.CSSRegistry;
+  for (const importerUri of cssRegistry.getFilesImporting(cssFileUri)) {
+    const importerPath = URI.parse(importerUri).fsPath;
+    try {
+      cssRegistry.updateCSSFile(
+        importerUri,
+        parseCSS(readFileSync(importerPath, 'utf-8'), importerPath)
+      );
+    } catch {
+      // The importer itself is gone/unreadable: its own watcher event reports that
+    }
+  }
+}
+
+/**
+ * The CSS files to watch for a document: its imported files plus every stylesheet they
+ * `@import` (from the registry), so an edit to an imported sheet re-validates the document.
+ */
+function withImportedStylesheets(cssFileUris: string[]): string[] {
+  const cssRegistry = Eligian.css.CSSRegistry;
+  const all = new Set(cssFileUris);
+  for (const uri of cssFileUris) {
+    for (const imported of cssRegistry.getMetadata(uri)?.importedFileUris ?? []) {
+      all.add(imported);
+    }
+  }
+  return [...all];
+}
+
 // Register CSS notification handlers
 connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) => {
   const { cssFileUri, documentUris } = params;
@@ -71,6 +105,7 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
     // Update the CSS registry with parsed metadata
     const cssRegistry = Eligian.css.CSSRegistry;
     cssRegistry.updateCSSFile(cssFileUri, parseResult);
+    reparseImporters(cssFileUri);
 
     // Trigger re-validation of importing documents
     triggerRevalidation(documentUris);
@@ -88,6 +123,7 @@ connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =
         },
       ])
     );
+    reparseImporters(cssFileUri);
 
     // Trigger re-validation to show "file not found" or CSS errors
     triggerRevalidation(documentUris);
@@ -196,18 +232,20 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
       // Process CSS imports (one-to-many: document can import multiple CSS files)
       const cssConfig: ImportProcessorConfig<ReturnType<typeof parseCSS>> = {
         importType: 'styles',
+        includeNamedCssImports: true,
         parseFile: (content, filePath) => parseCSS(content, filePath),
         createEmptyMetadata: () => createEmptyCSSMetadata(),
         registry: {
           updateFile: (uri, metadata) => cssRegistry.updateCSSFile(uri, metadata),
           registerImports: (docUri, fileUris) =>
             cssRegistry.registerImports(docUri, fileUris as string[]),
+          getImports: docUri => Array.from(cssRegistry.getDocumentImports(docUri)),
         },
         notification: {
           type: CSS_IMPORTS_DISCOVERED_NOTIFICATION,
           createParams: (docUri, fileUris) => ({
             documentUri: docUri,
-            cssFileUris: fileUris as string[],
+            cssFileUris: withImportedStylesheets(fileUris as string[]),
           }),
         },
         cardinality: 'many',
@@ -217,7 +255,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
 
       // Process labels imports (one-to-one: document imports single labels file)
       const labelsConfig: ImportProcessorConfig<ReturnType<typeof extractTranslationKeys>> = {
-        importType: 'labels',
+        importType: 'locales',
         parseFile: (content, filePath) => {
           const validationError = validateLocalesJSON(content, filePath);
           if (validationError) {
@@ -232,6 +270,11 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           registerImports: (docUri, fileUri) =>
             labelRegistry.registerImports(docUri, fileUri as string),
           hasImport: docUri => labelRegistry.hasImport(docUri),
+          getImports: docUri => {
+            const file = labelRegistry.getLabelsFileUri(docUri);
+            return file ? [file] : [];
+          },
+          clearImports: docUri => labelRegistry.clearDocument(docUri),
         },
         notification: {
           type: LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
@@ -264,6 +307,11 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           registerImports: (docUri, fileUri) =>
             htmlRegistry.registerImports(docUri, fileUri as string),
           hasImport: docUri => htmlRegistry.hasImport(docUri),
+          getImports: docUri => {
+            const file = htmlRegistry.getHTMLFileURI(docUri);
+            return file ? [file] : [];
+          },
+          clearImports: docUri => htmlRegistry.clearDocument(docUri),
         },
         notification: {
           type: HTML_IMPORTS_DISCOVERED_NOTIFICATION,

@@ -118,10 +118,39 @@ function getAtPath(data: TLocaleData, path: string[]): string | TLocaleData | un
 }
 
 /**
- * Set value at a dot-notation path in locale data.
- * Creates intermediate objects as needed.
+ * Find the first intermediate segment of `path` that is already a leaf value
+ * (string, function, array or other non-branch value). Setting anything beneath
+ * such a segment would destroy the existing translation.
+ *
+ * @returns Dot-notation path of the blocking leaf, or undefined when the path is free
  */
-function setAtPath(data: TLocaleData, path: string[], value: string | TLocaleData): void {
+function findBlockingLeaf(data: TLocaleData, path: string[]): string | undefined {
+  let current: TLocaleData = data;
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const next = (current as Record<string, unknown>)[path[i]];
+    if (next === undefined) return undefined; // Rest of the path can be created freely
+    if (typeof next !== 'object' || next === null || Array.isArray(next)) {
+      return path.slice(0, i + 1).join('.');
+    }
+    current = next as TLocaleData;
+  }
+
+  return undefined;
+}
+
+/**
+ * Set value at a dot-notation path in locale data.
+ * Creates intermediate objects as needed. Never replaces an existing leaf
+ * translation with an intermediate object.
+ *
+ * @returns false (leaving data untouched) when an intermediate segment is an existing leaf
+ */
+function setAtPath(data: TLocaleData, path: string[], value: string | TLocaleData): boolean {
+  if (findBlockingLeaf(data, path) !== undefined) {
+    return false;
+  }
+
   let current: TLocaleData = data;
 
   for (let i = 0; i < path.length - 1; i++) {
@@ -133,6 +162,36 @@ function setAtPath(data: TLocaleData, path: string[], value: string | TLocaleDat
   }
 
   current[path[path.length - 1]] = value;
+  return true;
+}
+
+/**
+ * Detect whether adding or updating `key` would require turning an existing
+ * leaf translation into an intermediate object (e.g. adding `nav.home.title`
+ * while `nav.home` is a translation string).
+ *
+ * @param config - Configuration to inspect
+ * @param key - Dot-notation translation key
+ * @param locale - Restrict the check to one locale (defaults to all locales)
+ * @returns Dot-notation path of the existing leaf that blocks the key, if any
+ */
+export function findKeyConflict(
+  config: ILocalesConfiguration,
+  key: string,
+  locale?: string
+): string | undefined {
+  const path = key.split('.');
+  const locales = config as unknown as IndexableLocales;
+  const names = locale === undefined ? Object.keys(locales) : [locale];
+
+  for (const name of names) {
+    const entry = locales[name];
+    if (typeof entry !== 'object' || entry === null || '$ref' in entry) continue;
+    const blocker = findBlockingLeaf(entry as TLocaleData, path);
+    if (blocker !== undefined) return blocker;
+  }
+
+  return undefined;
 }
 
 /**
@@ -225,6 +284,8 @@ export function updateTranslationInConfig(
     result[locale] = {};
   }
 
+  // Never destroy an existing leaf translation by nesting a key beneath it
+  // (setAtPath refuses and leaves the data untouched in that case).
   setAtPath(result[locale] as TLocaleData, path, value);
 
   return result as ILocalesConfiguration;
@@ -241,6 +302,12 @@ export function updateTranslationInConfig(
 export function addKeyToConfig(config: ILocalesConfiguration, key: string): ILocalesConfiguration {
   const result = cloneConfig(config) as IndexableLocales;
   const path = key.split('.');
+
+  // All-or-nothing: if any locale holds a leaf translation on the way to the new
+  // key, adding it would replace that translation, so leave every locale untouched.
+  if (findKeyConflict(config, key) !== undefined) {
+    return result as ILocalesConfiguration;
+  }
 
   for (const locale of Object.keys(result)) {
     const entry = result[locale];
@@ -297,6 +364,12 @@ export function renameKeyInConfig(
   const result = cloneConfig(config) as IndexableLocales;
   const oldPath = oldKey.split('.');
   const newPath = newKey.split('.');
+
+  // All-or-nothing: moving a value beneath an existing leaf would destroy that
+  // translation (and, since the old key is deleted first, the moved one too).
+  if (findKeyConflict(config, newKey) !== undefined) {
+    return result as ILocalesConfiguration;
+  }
 
   for (const locale of Object.keys(result)) {
     const entry = result[locale];

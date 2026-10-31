@@ -30,6 +30,7 @@ import {
   loadProgramAssets,
 } from '../asset-loading/compiler-integration.js';
 import type {
+  AssetError,
   EmitError,
   ParseError,
   TransformError,
@@ -37,12 +38,15 @@ import type {
   ValidationError,
 } from '../errors/index.js';
 import { isLibrary, type Program } from '../generated/ast.js';
+import { getImports } from '../utils/program-helpers.js';
 import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
 import { optimize } from './optimizer.js';
 import { type DocumentWarning, extractDocumentWarnings } from './pipeline/document-errors.js';
 import { parseSource, validateAST } from './pipeline/parser.js';
+import { getSourceLocation } from './transformers/source-location.js';
 import { typeCheck } from './type-checker.js';
+import type { SourceLocation } from './types/common.js';
 import type { EligiusIR } from './types/eligius-ir.js';
 
 export type { DocumentWarning } from './pipeline/document-errors.js';
@@ -100,6 +104,55 @@ export const getProgramWarnings = (program: Program): ReadonlyArray<DocumentWarn
   extractDocumentWarnings(program.$document);
 
 /**
+ * Turn the asset-loading errors of a program into the (single) ValidationError
+ * compile() fails with: the first error's message, hint and import location,
+ * plus a count of any further asset errors.
+ *
+ * Every asset error is located at the import statement whose path it names (the
+ * asset validation service only fills in a placeholder 0:0 location, and a
+ * CssParseError's line/column are in the CSS file). The location carries no
+ * `file`: imports are always in the main program, and main-program locations
+ * carry no `file` (see getSourceLocation), so the error reporter renders the
+ * snippet against the main source.
+ */
+const assetErrorToValidationError = (
+  errors: ReadonlyArray<AssetError>,
+  program: Program
+): ValidationError => {
+  const [first] = errors;
+  const more = errors.length - 1;
+  const suffix = more > 0 ? ` (and ${more} more asset error${more === 1 ? '' : 's'})` : '';
+
+  const baseMessage =
+    first._tag === 'CssParseError'
+      ? `CSS file '${first.filePath}' has syntax errors (line ${first.line}, column ${first.column}): ${first.message}`
+      : first.message;
+
+  const importStmt = getImports(program).find(imp => imp.path === first.filePath);
+  let location: SourceLocation;
+  if (importStmt) {
+    const { line, column, length } = getSourceLocation(importStmt);
+    location = { line, column, length };
+  } else if (first._tag !== 'CssParseError' && first.location.line >= 1) {
+    location = {
+      line: first.location.line,
+      column: Math.max(1, first.location.column),
+      length: first.location.length ?? 0,
+    };
+  } else {
+    location = { line: 1, column: 1, length: 0 };
+  }
+
+  return {
+    _tag: 'ValidationError' as const,
+    kind: 'SemanticValidation' as const,
+    message: `${baseMessage}${suffix}`,
+    location,
+    ...(first.hint ? { hint: first.hint } : {}),
+  };
+};
+
+/**
  * Union of all possible compilation errors
  */
 export type CompileError = ParseError | ValidationError | TransformError | TypeError | EmitError;
@@ -135,6 +188,13 @@ export const compile = (
     let assets: AssetLoadingResult | undefined;
     if (options.sourceUri) {
       assets = loadProgramAssets(validatedProgram, options.sourceUri);
+      // Never compile with assets silently dropped (missing layout, invalid
+      // locales, broken HTML/CSS, ...). The IDE validator reports these too, but
+      // compile() must not depend on it having run or on it matching each error
+      // to an import node.
+      if (assets.errors.length > 0) {
+        return yield* Effect.fail(assetErrorToValidationError(assets.errors, validatedProgram));
+      }
     }
 
     // T050-T059: Transform AST to IR

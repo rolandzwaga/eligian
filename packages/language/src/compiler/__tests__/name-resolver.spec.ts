@@ -3,13 +3,36 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Program } from '../../generated/ast.js';
+import type {
+  EndableActionDefinition,
+  Program,
+  RegularActionDefinition,
+} from '../../generated/ast.js';
 import {
   buildNameRegistry,
   findActionByName,
   resolveCallName,
   suggestSimilarActions,
 } from '../name-resolver.js';
+
+// Minimal action nodes: only the fields the resolver reads. `$container` is omitted because the
+// nodes are created before the Program that owns them.
+const regularAction = (name: string): RegularActionDefinition =>
+  ({
+    $type: 'RegularActionDefinition',
+    name,
+    parameters: [],
+    operations: [],
+  }) as unknown as RegularActionDefinition;
+
+const endableAction = (name: string): EndableActionDefinition =>
+  ({
+    $type: 'EndableActionDefinition',
+    name,
+    parameters: [],
+    startOperations: [],
+    endOperations: [],
+  }) as unknown as EndableActionDefinition;
 
 describe('name-resolver', () => {
   describe('buildNameRegistry', () => {
@@ -30,21 +53,7 @@ describe('name-resolver', () => {
     it('should build registry with actions from program', () => {
       const program: Program = {
         $type: 'Program',
-        statements: [
-          {
-            $type: 'RegularActionDefinition',
-            name: 'fadeIn',
-            params: [],
-            statements: [],
-          },
-          {
-            $type: 'EndableActionDefinition',
-            name: 'slideIn',
-            params: [],
-            startStatements: [],
-            endStatements: [],
-          },
-        ],
+        statements: [regularAction('fadeIn'), endableAction('slideIn')],
       };
 
       const registry = buildNameRegistry(program);
@@ -59,14 +68,7 @@ describe('name-resolver', () => {
     it('should find regular action by name', () => {
       const program: Program = {
         $type: 'Program',
-        statements: [
-          {
-            $type: 'RegularActionDefinition',
-            name: 'fadeIn',
-            params: [],
-            statements: [],
-          },
-        ],
+        statements: [regularAction('fadeIn')],
       };
 
       const action = findActionByName('fadeIn', program);
@@ -77,15 +79,7 @@ describe('name-resolver', () => {
     it('should find endable action by name', () => {
       const program: Program = {
         $type: 'Program',
-        statements: [
-          {
-            $type: 'EndableActionDefinition',
-            name: 'slideIn',
-            params: [],
-            startStatements: [],
-            endStatements: [],
-          },
-        ],
+        statements: [endableAction('slideIn')],
       };
 
       const action = findActionByName('slideIn', program);
@@ -108,14 +102,7 @@ describe('name-resolver', () => {
     it('should resolve to action when action exists', () => {
       const program: Program = {
         $type: 'Program',
-        statements: [
-          {
-            $type: 'RegularActionDefinition',
-            name: 'fadeIn',
-            params: [],
-            statements: [],
-          },
-        ],
+        statements: [regularAction('fadeIn')],
       };
 
       const registry = buildNameRegistry(program);
@@ -146,14 +133,7 @@ describe('name-resolver', () => {
       // Create an action with the same name as an operation
       const program: Program = {
         $type: 'Program',
-        statements: [
-          {
-            $type: 'RegularActionDefinition',
-            name: 'selectElement', // Same name as built-in operation
-            params: [],
-            statements: [],
-          },
-        ],
+        statements: [regularAction('selectElement')],
       };
 
       const registry = buildNameRegistry(program);

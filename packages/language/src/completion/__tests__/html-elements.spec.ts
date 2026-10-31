@@ -8,16 +8,14 @@
  */
 
 import { beforeAll, describe, expect, test } from 'vitest';
-import { createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
+import { createTestContext } from '../../__tests__/test-helpers.js';
 import { HTML_ELEMENT_NAMES } from '../html-elements.generated.js';
 import { HTMLElementCompletionProvider } from '../html-elements.js';
 
 describe('HTML Element Name Completion (Feature 043, US1)', () => {
-  let _ctx: TestContext;
   let provider: HTMLElementCompletionProvider;
 
   beforeAll(() => {
-    _ctx = createTestContext();
     provider = new HTMLElementCompletionProvider();
   });
 
@@ -150,16 +148,114 @@ describe('HTML Attribute Name Completion (Feature 043, US2)', () => {
       expect(labels).toContain('disabled');
     });
 
-    test('should provide common attributes (id, className) for all elements (T027)', () => {
+    test('should provide common attributes (id, class) for all elements (T027)', () => {
       // Check common attributes appear for different elements
       for (const element of ['div', 'span', 'button', 'input', 'a']) {
         const completions = provider.getAttributeNameCompletions(element);
         const labels = completions.map(c => c.label);
 
         expect(labels).toContain('id');
-        expect(labels).toContain('className');
+        expect(labels).toContain('class');
+        expect(labels).not.toContain('className');
         expect(labels).toContain('style');
       }
+    });
+
+    test('offers HTML attribute names, not DOM property names (audit #29)', () => {
+      // createElement applies the attributes with .attr(), so the keys must be real attributes
+      const label = provider.getAttributeNameCompletions('label').map(c => c.label);
+      expect(label).toContain('for');
+      expect(label).not.toContain('htmlFor');
+
+      const meta = provider.getAttributeNameCompletions('meta').map(c => c.label);
+      expect(meta).toContain('http-equiv');
+      expect(meta).not.toContain('httpEquiv');
+
+      const form = provider.getAttributeNameCompletions('form').map(c => c.label);
+      expect(form).toContain('accept-charset');
+      expect(form).not.toContain('acceptCharset');
+
+      const div = provider.getAttributeNameCompletions('div').map(c => c.label);
+      expect(div).toContain('tabindex');
+      expect(div).toContain('accesskey');
+      expect(div).not.toContain('tabIndex');
+      expect(div).not.toContain('accessKey');
+    });
+
+    test('inserted attribute keys parse, quoting names that are not identifiers (audit #29)', async () => {
+      const ctx = createTestContext();
+      for (const [element, name] of [
+        ['meta', 'http-equiv'],
+        ['form', 'accept-charset'],
+        ['div', 'id'],
+      ]) {
+        const item = provider.getAttributeNameCompletions(element).find(c => c.label === name);
+        expect(item, name).toBeDefined();
+        const insertText = item!.insertText!;
+        if (name.includes('-')) expect(insertText).toBe(`"${name}"`);
+        else expect(insertText).toBe(name);
+
+        const document = await ctx.parse(
+          `action a [
+  createElement("${element}", "", { ${insertText}: "x" })
+]
+`
+        );
+        expect(document.parseResult.lexerErrors, name).toEqual([]);
+        expect(document.parseResult.parserErrors, name).toEqual([]);
+      }
+    });
+
+    test('every offered attribute key parses', async () => {
+      const ctx = createTestContext();
+      for (const element of ['meta', 'form', 'input', 'a', 'div']) {
+        for (const item of provider.getAttributeNameCompletions(element)) {
+          const document = await ctx.parse(
+            `action a [
+  createElement("${element}", "", { ${item.insertText}: "x" })
+]
+`
+          );
+          expect(document.parseResult.parserErrors, `${element}.${item.label}`).toEqual([]);
+        }
+      }
+    });
+
+    test('does not offer attribute names that contain upper-case letters', () => {
+      for (const element of ['div', 'input', 'a', 'td', 'iframe', 'video', 'form', 'table']) {
+        const labels = provider.getAttributeNameCompletions(element).map(c => c.label);
+        expect(labels.filter(l => l !== l.toLowerCase())).toEqual([]);
+      }
+    });
+
+    test('does not offer read-only or DOM-only properties (audit #29)', () => {
+      const input = provider.getAttributeNameCompletions('input').map(c => c.label);
+      for (const domOnly of ['defaultChecked', 'defaultValue', 'indeterminate', 'webkitEntries']) {
+        expect(input).not.toContain(domOnly);
+        expect(input).not.toContain(domOnly.toLowerCase());
+      }
+      expect(input).toContain('checked');
+      expect(input).toContain('value');
+      expect(input).toContain('readonly');
+
+      const anchor = provider.getAttributeNameCompletions('a').map(c => c.label);
+      for (const domOnly of [
+        'hash',
+        'host',
+        'hostname',
+        'port',
+        'protocol',
+        'search',
+        'pathname',
+      ]) {
+        expect(anchor).not.toContain(domOnly);
+      }
+      expect(anchor).toContain('href');
+      expect(anchor).toContain('target');
+
+      // table.rows is a DOM collection; rows is an attribute of textarea
+      expect(provider.getAttributeNameCompletions('table').map(c => c.label)).not.toContain('rows');
+      expect(provider.getAttributeNameCompletions('textarea').map(c => c.label)).toContain('rows');
     });
 
     test('should filter attributes by partial text (T028)', () => {
@@ -186,7 +282,8 @@ describe('HTML Attribute Name Completion (Feature 043, US2)', () => {
 
       // Should have common attributes
       expect(labels).toContain('id');
-      expect(labels).toContain('className');
+      expect(labels).toContain('class');
+      expect(labels).not.toContain('className');
     });
   });
 });

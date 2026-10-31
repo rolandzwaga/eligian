@@ -14,6 +14,7 @@ import { OperationDataTracker } from '../operation-data-tracker.js';
 import { formatValidationMessage } from '../utils/error-builder.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
+import { RESERVED_KEYWORDS } from './validation-constants.js';
 
 /**
  * Validations for action definitions (control-flow pairing, erased properties,
@@ -45,6 +46,41 @@ export class ActionValidator extends BaseValidator {
   }
 
   /**
+   * Validate regular/endable action parameters (same rules as event actions):
+   * - Parameters must not use reserved keywords (`reserved_keyword_parameter`)
+   * - No duplicate parameter names (`duplicate_parameter`, on the later one)
+   *
+   * ParameterReference resolves by name, so a duplicate would silently shadow
+   * the other parameter and collapse both into one operationData key.
+   */
+  checkActionParameters(
+    action: RegularActionDefinition | EndableActionDefinition,
+    accept: ValidationAcceptor
+  ): void {
+    const parameters = action.parameters;
+    if (parameters.length === 0) {
+      return;
+    }
+
+    for (const param of parameters) {
+      if (RESERVED_KEYWORDS.has(param.name)) {
+        accept('error', `Parameter name '${param.name}' is a reserved keyword and cannot be used`, {
+          node: param,
+          property: 'name',
+          code: 'reserved_keyword_parameter',
+        });
+      }
+    }
+
+    this.reportDuplicatesByName(
+      parameters,
+      param => `Duplicate parameter name '${param.name}'`,
+      'duplicate_parameter',
+      accept
+    );
+  }
+
+  /**
    * Check for recursive action calls that would cause infinite loops.
    *
    * Detects both direct recursion (action calls itself) and indirect recursion
@@ -60,61 +96,77 @@ export class ActionValidator extends BaseValidator {
     action: RegularActionDefinition | EndableActionDefinition,
     accept: ValidationAcceptor
   ): void {
-    // Track action names in current call chain to detect cycles
-    const callChain: string[] = [action.name];
-
-    // B24: actions whose entire call subtree has already been explored (and
-    // found cycle-free relative to the current root). Without this, an action
-    // reachable via N distinct paths is re-explored from scratch each time,
-    // giving O(M^N) worst-case blow-up. This is standard DFS coloring: `chain`
-    // is the recursion stack (gray) used to detect back-edges, `visited` is the
-    // finished set (black). A finished node cannot be part of an undiscovered
-    // cycle, so it is safe to prune.
-    const visited = new Set<string>();
-
-    // Helper: Recursively check for cycles starting from an action
-    const checkForCycles = (
-      currentAction: RegularActionDefinition | EndableActionDefinition,
-      chain: string[]
-    ): void => {
-      // Get all operation calls from the action body
-      const operationCalls = this.getAllOperationCalls(currentAction);
-
-      for (const opCall of operationCalls) {
-        // Check if this is a custom action call (not a built-in operation)
-        const actionRef = opCall.operationName.ref;
-        if (!actionRef) {
-          // Not resolved or is a built-in operation - skip
-          continue;
-        }
-
-        const calledActionName = opCall.operationName.$refText;
-
-        // Check if this action is already in our call chain (cycle detected!)
-        if (chain.includes(calledActionName)) {
-          // Found a cycle - report error
-          const cycleChain = [...chain, calledActionName].join(' → ');
-          accept(
-            'error',
-            `Recursive action call detected: '${calledActionName}' creates an infinite loop\n  Call chain: ${cycleChain}`,
-            {
-              node: opCall,
-              property: 'operationName',
-              code: 'recursive_action_call',
-            }
-          );
-        } else if (!visited.has(calledActionName)) {
-          // No cycle yet and not already fully explored - recurse deeper
-          checkForCycles(actionRef, [...chain, calledActionName]);
-        }
+    // Actions are tracked by AST node identity, never by name: a local action
+    // and a same-named (private) library action are different nodes, and an
+    // aliased import's call-site text differs from the definition name.
+    //
+    // Only cycles that close back to `action` itself are reported, and always
+    // on `action`'s own first-hop call. That call lives in the document being
+    // validated, so the diagnostic range is never computed from another file's
+    // CST. Every action on a cycle gets its own report when it is validated as
+    // the root; an action that merely calls into a cycle is not reported.
+    for (const firstHop of this.getAllOperationCalls(action)) {
+      const callee = firstHop.operationName.ref;
+      if (!callee) {
+        // Not resolved or is a built-in operation - skip
+        continue;
       }
 
-      // Done with this action's subtree - mark finished so other paths skip it.
-      visited.add(currentAction.name);
+      const path = this.findCallPath(callee, action);
+      if (!path) {
+        continue;
+      }
+
+      const cycleChain = [action, ...path].map(a => a.name).join(' → ');
+      accept(
+        'error',
+        `Recursive action call detected: '${firstHop.operationName.$refText}' creates an infinite loop\n  Call chain: ${cycleChain}`,
+        {
+          node: firstHop,
+          property: 'operationName',
+          code: 'recursive_action_call',
+        }
+      );
+    }
+  }
+
+  /**
+   * Helper: Find a call path from `from` to `target` in the action call graph.
+   *
+   * Depth-first reachability with an identity-keyed visited set (B24: each
+   * action is expanded at most once per search, so diamond-shaped graphs and
+   * cycles that do not include `target` cannot blow up or loop forever).
+   *
+   * @returns The actions along the path, starting with `from` and ending with
+   *   `target`, or `undefined` when `target` is unreachable.
+   */
+  private findCallPath(
+    from: ActionDefinition,
+    target: ActionDefinition
+  ): ActionDefinition[] | undefined {
+    const visited = new Set<ActionDefinition>();
+
+    const visit = (current: ActionDefinition): ActionDefinition[] | undefined => {
+      if (current === target) {
+        return [current];
+      }
+      if (visited.has(current)) {
+        return undefined;
+      }
+      visited.add(current);
+
+      for (const opCall of this.getAllOperationCalls(current)) {
+        const next = opCall.operationName.ref;
+        if (!next) continue;
+        const rest = visit(next);
+        if (rest) {
+          return [current, ...rest];
+        }
+      }
+      return undefined;
     };
 
-    // Start cycle detection from this action
-    checkForCycles(action, callChain);
+    return visit(from);
   }
 
   /**
@@ -311,15 +363,16 @@ export class ActionValidator extends BaseValidator {
    * @param accept - Validation acceptor for reporting errors
    * @param context - Parent action node for error reporting
    * @param tracker - Optional tracker to continue from (for nested scopes)
+   * @returns The tracker holding the operationData state after the sequence
    */
   private validateOperationSequence(
     operations: Array<OperationStatement>,
     accept: ValidationAcceptor,
     context: RegularActionDefinition | EndableActionDefinition | InlineEndableAction,
     tracker?: OperationDataTracker
-  ): void {
+  ): OperationDataTracker {
     // Create new tracker if not provided (top-level call)
-    const currentTracker = tracker ?? new OperationDataTracker();
+    let currentTracker = tracker ?? new OperationDataTracker();
 
     // Walk through operations and track operationData state
     for (const statement of operations) {
@@ -364,20 +417,35 @@ export class ActionValidator extends BaseValidator {
         }
       } else if (statement.$type === 'IfStatement') {
         // Handle if/else branches (T255: Control flow support)
-        // Validate both branches with current tracker state
-        // Note: For a complete implementation, we would need to merge both branch states
-        // and only keep properties available in BOTH branches
-        this.validateOperationSequence(statement.thenOps, accept, context, currentTracker.clone());
-        this.validateOperationSequence(statement.elseOps, accept, context, currentTracker.clone());
+        // Each branch starts from the pre-branch state. At the join, only
+        // properties available in BOTH branches survive (merge = intersection).
+        // A missing else (elseOps empty) yields the pre-branch state, so the
+        // join is then-state ∩ pre-state, which is exactly "if not taken".
+        const thenTracker = this.validateOperationSequence(
+          statement.thenOps,
+          accept,
+          context,
+          currentTracker.clone()
+        );
+        const elseTracker = this.validateOperationSequence(
+          statement.elseOps,
+          accept,
+          context,
+          currentTracker.clone()
+        );
+        thenTracker.merge(elseTracker);
+        currentTracker = thenTracker;
       } else if (statement.$type === 'ForStatement') {
         // Handle loop body (T255: Control flow support)
         // Validate loop body with current tracker state
         // Note: Full loop analysis would require fixed-point iteration
-        // to determine which properties are stable across all iterations
+        // to determine which properties are stable across all iterations.
+        // The body may run zero times, so its resulting state is discarded.
         this.validateOperationSequence(statement.body, accept, context, currentTracker.clone());
-      } else if (statement.$type === 'VariableDeclaration') {
       }
     }
+
+    return currentTracker;
   }
 
   /**

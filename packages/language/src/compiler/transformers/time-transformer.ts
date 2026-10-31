@@ -12,6 +12,16 @@ import type { TimeExpression } from '../types/eligius-ir.js';
 import { getSourceLocation } from './source-location.js';
 
 /**
+ * Message for a property chain (`$scope.x`) used as a time. Shared by the
+ * compiler (below) and the IDE validator (validators/timeline-validator.ts) so
+ * both report the same wording.
+ */
+export function propertyChainTimeMessage(chain: { scope: string; properties: string[] }): string {
+  const name = `$${chain.scope}.${chain.properties.join('.')}`;
+  return `Property references are not supported in time expressions: ${name}. Use a literal time (e.g. 2s) or a constant expression.`;
+}
+
+/**
  * Transform TimeExpression → TimeExpression IR
  *
  * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
@@ -40,13 +50,17 @@ export const transformTimeExpression = (
         };
       }
       case 'PropertyChainReference': {
-        // Property reference in time expression
-        const scope = expr.scope;
-        const properties = expr.properties.join('.');
-        return {
-          kind: 'variable' as const,
-          name: `$${scope}.${properties}`,
-        };
+        // The grammar accepts a property chain as a time, but Eligius needs
+        // numeric start/end times at configuration time, so it cannot be
+        // compiled. Fail with a located TransformError here: the former
+        // `{ kind: 'variable' }` IR node made evaluateTimeExpression throw a raw
+        // Error, which escaped the Effect pipeline as a defect.
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: propertyChainTimeMessage(expr),
+          location: getSourceLocation(expr),
+        });
       }
       case 'BinaryTimeExpression': {
         const left = yield* transformTimeExpression(expr.left, previousEventEndTime);
@@ -72,15 +86,20 @@ export const transformTimeExpression = (
  * Helper: Evaluate TimeExpression to a numeric value
  *
  * Performs constant folding for binary expressions (e.g., 10 + 5 → 15).
- * Variables are not supported yet and will throw an error.
+ *
+ * `variable` nodes are never produced: {@link transformTimeExpression} rejects
+ * property chains with a TransformError before any evaluation happens. The
+ * guard below is an internal invariant (a compiler bug if reached), not a user
+ * error path.
  */
 export function evaluateTimeExpression(expr: TimeExpression): number {
   switch (expr.kind) {
     case 'literal':
       return expr.value;
     case 'variable':
-      // TODO: Variable support requires a symbol table/environment
-      throw new Error(`Variables not yet supported in time expressions: ${expr.name}`);
+      throw new Error(
+        `Internal compiler error: unresolved variable '${expr.name}' in a time expression (transformTimeExpression should have rejected it)`
+      );
     case 'binary': {
       const left = evaluateTimeExpression(expr.left);
       const right = evaluateTimeExpression(expr.right);

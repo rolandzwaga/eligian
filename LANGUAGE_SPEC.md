@@ -174,7 +174,7 @@ null
 
 ### 2.4 Keywords
 
-Reserved keywords that cannot be used as identifiers:
+Keywords of the language:
 
 ```
 action      at          timeline    for         if
@@ -184,6 +184,16 @@ true        false       on          event       topic
 endable     library     private     sequence    stagger
 in          using       with        const       null
 ```
+
+**Reserved keywords** cannot be used as names: `action`, `break`, `const`, `continue`, `else`,
+`endable`, `false`, `for`, `if`, `import`, `null`, `on`, `sequence`, `stagger`, `timeline`, `true`.
+
+All other keywords are **contextual**: they only have meaning in one fixed position, so they are
+valid parameter, `const`, `for`-item and named-import names (`action f(event)`, `const s = 5`,
+`for (from in items)`, `import video from './intro.mp4'`). This includes the type names
+(`string`, `number`, ...), asset types, timeline providers, scope names and the time units
+`ms`, `s`, `m`, `h`. Object-literal keys and property-chain segments accept **every** keyword
+(`{ from: 0, if: 1 }`, `$operationdata.html`, `@@currentItem.for`).
 
 **Note**: Keywords are organized by category:
 - **Action keywords**: `action`, `endable`, `private`
@@ -1269,7 +1279,7 @@ on event "language-change" action HandleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
-  log("Language changed to: " + languageCode)
+  log(languageCode)
 ]
 ```
 
@@ -1948,6 +1958,33 @@ action checkAndActivate(count: number, enabled: boolean) [
   }
 ]
 ```
+
+#### Precedence (tightest first)
+
+| Operators | Associativity |
+|-----------|---------------|
+| `**` | right (`2 ** 3 ** 2` = `2 ** 9` = 512) |
+| unary `-`, `!` | prefix (`-2 ** 2` = `-(2 ** 2)` = -4) |
+| `*` `/` `%` | left (`2 * 3 ** 2` = 18) |
+| `+` `-` | left |
+| `<` `<=` `>` `>=` | left |
+| `==` `!=` | left |
+| `&&` | left |
+| `\|\|` | left |
+
+#### Compile-time evaluation
+
+Outside `if` conditions, operator expressions are evaluated at compile time and must consist of
+compile-time constants (literals and `const` values). There is no implicit type coercion:
+
+- Arithmetic (`-` `*` `/` `%` `**`) needs numbers; `+` adds numbers or concatenates when either
+  side is a string; `<` `<=` `>` `>=` compare two numbers or two strings.
+- Division or modulo by zero, a wrong operand type (`"abc" - 1`, `true + 1`) and a non-finite
+  result are compile errors.
+- An operator applied to a runtime value (parameter, variable, system property, property chain)
+  is a compile error. Comparisons, `&&`, `||` and `!` on runtime values are supported only inside
+  `if` conditions. Arithmetic on runtime values is not supported anywhere; use the `calc`
+  operation (its result is `$operationdata.calculationResult`).
 
 ### 7.5 Unary Expressions
 

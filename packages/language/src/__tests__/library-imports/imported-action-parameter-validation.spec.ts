@@ -101,7 +101,7 @@ describe('Imported Action Parameter Validation (Feature 032 Fix)', () => {
     // Use file:///test/styles.css because tests use "./styles.css" which resolves
     // relative to document URI (file:///test/main-N.eligian)
     setupCSSRegistry(ctx, 'file:///test/styles.css', {
-      classes: ['container', ...CSS_FIXTURES.common.classes],
+      classes: ['container', ...(CSS_FIXTURES.common.classes ?? [])],
       ids: CSS_FIXTURES.common.ids,
     });
   });

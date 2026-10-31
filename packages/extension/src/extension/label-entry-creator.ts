@@ -9,7 +9,7 @@
  * Updated for Eligius 2.2+ ILocalesConfiguration format (nested object keyed by locale).
  */
 
-import { mergeLocaleEntry } from '@eligian/language';
+import { mergeLocaleEntryWithSkipped } from '@eligian/language';
 import type { ILocalesConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 import {
@@ -218,7 +218,11 @@ export async function createLabelEntry(
     }
 
     // Merge new translation key into existing configuration
-    const updatedConfig = mergeLocaleEntry(localesConfig, labelId, languageCodes);
+    const { config: updatedConfig, skipped } = mergeLocaleEntryWithSkipped(
+      localesConfig,
+      labelId,
+      languageCodes
+    );
 
     // Write file with 2-space indentation (preserves formatting consistency)
     const newContent = JSON.stringify(updatedConfig, null, 2);
@@ -239,6 +243,13 @@ export async function createLabelEntry(
           cause: error instanceof Error ? error : undefined,
         },
       };
+    }
+
+    // $ref locales are left untouched; tell the user where the key still has to be added
+    if (skipped.length > 0) {
+      vscode.window.showWarningMessage(
+        `Locale(s) ${skipped.join(', ')} reference external files via "$ref"; add '${labelId}' to the referenced file(s) manually.`
+      );
     }
 
     // Success - show info message

@@ -259,84 +259,54 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   }
 
   /**
-   * Collect all variable declarations visible from the given node.
+   * Collect the variable declarations visible from the given node, nearest
+   * first.
    *
-   * Walks up the AST tree collecting:
-   * 1. Local variables (declared in action body)
-   * 2. Global variables (declared at program level)
+   * Local consts are lexically scoped: walking up from the reference, each
+   * enclosing statement list (action / event action body, endable start and
+   * end blocks, inline endable and stagger blocks, then / else branches, for
+   * bodies) contributes the consts declared BEFORE the statement that contains
+   * the reference, the closest declaration first. So a const is not visible
+   * before its declaration, after the block it is declared in, in a sibling
+   * branch, or in its own initializer. The end block of an endable action
+   * (named or inline) or of an inline stagger block also sees every const of
+   * its start block, which runs first: the compiler transforms both blocks with
+   * one scope and inlines foldable consts. A non-foldable start-block const is a
+   * runtime variable that Eligius does not carry over to the end operations, so
+   * the validator reports such references
+   * (ExpressionValidator.checkEndBlockConstReference).
    *
-   * Local variables shadow globals with the same name.
+   * Program-level consts come last (they are globals, visible everywhere), so
+   * a local shadows a global of the same name.
    */
   private getVisibleVariables(node: AstNode): VariableDeclaration[] {
     const variables: VariableDeclaration[] = [];
     const seenNames = new Set<string>();
-
-    // Walk up the AST from the reference node
-    let current: AstNode | undefined = node;
-
-    while (current) {
-      // If we're inside an action, collect local variables
-      if (isActionDefinition(current)) {
-        const localVars = this.getLocalVariables(current);
-        for (const varDecl of localVars) {
-          if (!seenNames.has(varDecl.name)) {
-            variables.push(varDecl);
-            seenNames.add(varDecl.name);
-          }
-        }
-      }
-
-      // Move up to parent
-      current = current.$container;
-    }
-
-    // Get global variables from program root. Only top-level statements count
-    // as globals — descending into the whole AST (streamAst) would leak other
-    // actions' local variable declarations into this scope.
-    const program = AstUtils.getDocument(node).parseResult.value;
-    const globalVars = isProgram(program) ? program.statements.filter(isVariableDeclaration) : [];
-
-    for (const varDecl of globalVars) {
+    const add = (varDecl: VariableDeclaration): void => {
       if (!seenNames.has(varDecl.name)) {
         variables.push(varDecl);
         seenNames.add(varDecl.name);
       }
-    }
-
-    return variables;
-  }
-
-  /**
-   * Get all local variable declarations within an action.
-   *
-   * Recursively walks through the action's operations to find all const declarations.
-   */
-  private getLocalVariables(actionDef: AstNode): VariableDeclaration[] {
-    const variables: VariableDeclaration[] = [];
-
-    // Get all operation statements from the action
-    const operations = isActionDefinition(actionDef)
-      ? 'startOperations' in actionDef
-        ? actionDef.startOperations
-        : actionDef.operations
-      : [];
-
-    // Recursively collect all variable declarations from operations
-    const collectVars = (nodes: AstNode[]): void => {
-      for (const node of nodes) {
-        if (isVariableDeclaration(node)) {
-          variables.push(node);
-        }
-        // Recursively check children (for if statements, for loops, etc.)
-        // Use streamContents to get only children (not the node itself)
-        const children = AstUtils.streamContents(node).toArray();
-        if (children.length > 0) {
-          collectVars(children);
-        }
-      }
     };
 
-    collectVars(operations as AstNode[]);
+    let child: AstNode = node;
+    let parent = node.$container;
+    while (parent && !isProgram(parent) && !isLibrary(parent)) {
+      for (const varDecl of getPrecedingDeclarations(child, parent)) {
+        add(varDecl);
+      }
+      child = parent;
+      parent = parent.$container;
+    }
+
+    // Global variables: only top-level statements count as globals. Descending
+    // into the whole AST (streamAst) would leak actions' local declarations.
+    const program = AstUtils.getDocument(node).parseResult.value;
+    if (isProgram(program)) {
+      for (const varDecl of program.statements.filter(isVariableDeclaration)) {
+        add(varDecl);
+      }
+    }
 
     return variables;
   }
@@ -409,3 +379,53 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     return this.createScope(actionDescriptions);
   }
 }
+
+/**
+ * The const declarations that precede `child` in the statement list of
+ * `parent` holding it, nearest first. Empty when `child` is not held in a
+ * list (e.g. an if condition). Only statement lists can hold
+ * VariableDeclarations, so any other list (call arguments, object literal
+ * properties) contributes nothing.
+ */
+function getPrecedingDeclarations(child: AstNode, parent: AstNode): VariableDeclaration[] {
+  const index = child.$containerIndex;
+  const property = child.$containerProperty;
+  if (index === undefined || property === undefined) {
+    return [];
+  }
+  const siblings = (parent as unknown as Record<string, unknown>)[property];
+  if (!Array.isArray(siblings)) {
+    return [];
+  }
+  const declarations: VariableDeclaration[] = [];
+  for (let i = index - 1; i >= 0; i--) {
+    const sibling: unknown = siblings[i];
+    if (isVariableDeclaration(sibling)) {
+      declarations.push(sibling);
+    }
+  }
+  // An end block also sees the consts of its start block, last first.
+  const startProperty = START_LIST_OF_END_LIST[property];
+  const startList = startProperty
+    ? (parent as unknown as Record<string, unknown>)[startProperty]
+    : undefined;
+  if (Array.isArray(startList)) {
+    for (let i = startList.length - 1; i >= 0; i--) {
+      const statement: unknown = startList[i];
+      if (isVariableDeclaration(statement)) {
+        declarations.push(statement);
+      }
+    }
+  }
+  return declarations;
+}
+
+/**
+ * End-block property → start-block property of the same node: endable action
+ * definitions and inline endable actions (`endOperations`), inline stagger
+ * blocks (`endOps`).
+ */
+const START_LIST_OF_END_LIST: Readonly<Record<string, string>> = {
+  endOperations: 'startOperations',
+  endOps: 'startOps',
+};

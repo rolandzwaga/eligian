@@ -83,10 +83,75 @@ export function generateLocaleEntry(
 }
 
 /**
+ * Result of {@link mergeLocaleEntryWithSkipped}.
+ */
+export interface MergeLocaleEntryResult {
+  /** New configuration with the key merged in (the input is never mutated) */
+  readonly config: ILocalesConfiguration;
+  /**
+   * Locale codes that were left untouched because their entry is a `{ "$ref": "..." }`
+   * pointer. The key must be added to the referenced file instead.
+   */
+  readonly skipped: string[];
+}
+
+/**
+ * Whether a locale entry is a `{ "$ref": "..." }` pointer to an external file.
+ */
+function isLocaleRef(localeData: unknown): boolean {
+  return typeof localeData === 'object' && localeData !== null && '$ref' in localeData;
+}
+
+/**
  * Merge a new translation key into an existing ILocalesConfiguration.
  *
  * Deeply merges the new key into each locale, preserving existing translations.
- * If a locale doesn't exist, it creates it with the new key.
+ * If a locale doesn't exist, it creates it with the new key. Locales whose entry is a
+ * `$ref` pointer are left exactly as they are (the reference is never overwritten) and
+ * reported in `skipped`.
+ *
+ * @param existing - Existing locale configuration (not mutated)
+ * @param translationKey - Dot-notation translation key to add
+ * @param languageCodes - Language codes to add the key to
+ * @returns The merged configuration plus the locale codes skipped because they are `$ref`s
+ */
+export function mergeLocaleEntryWithSkipped(
+  existing: ILocalesConfiguration,
+  translationKey: string,
+  languageCodes: string[]
+): MergeLocaleEntryResult {
+  // Deep clone the existing configuration
+  const result: ILocalesConfiguration = JSON.parse(JSON.stringify(existing));
+  const skipped: string[] = [];
+
+  for (const localeCode of languageCodes) {
+    const code = localeCode as TLanguageCode;
+    let localeData = result[code];
+
+    if (isLocaleRef(localeData)) {
+      // Can't merge into a reference; keep the pointer intact.
+      skipped.push(localeCode);
+      continue;
+    }
+
+    if (!localeData || typeof localeData !== 'object') {
+      localeData = {};
+      result[code] = localeData;
+    }
+
+    // Add the new key
+    setNestedValue(localeData as TLocaleData, translationKey, '');
+  }
+
+  return { config: result, skipped };
+}
+
+/**
+ * Merge a new translation key into an existing ILocalesConfiguration.
+ *
+ * Same as {@link mergeLocaleEntryWithSkipped} but returns only the configuration.
+ * `$ref` locale entries are preserved unchanged; use {@link mergeLocaleEntryWithSkipped}
+ * to learn which locales were skipped.
  *
  * @param existing - Existing locale configuration (not mutated)
  * @param translationKey - Dot-notation translation key to add
@@ -111,22 +176,5 @@ export function mergeLocaleEntry(
   translationKey: string,
   languageCodes: string[]
 ): ILocalesConfiguration {
-  // Deep clone the existing configuration
-  const result: ILocalesConfiguration = JSON.parse(JSON.stringify(existing));
-
-  for (const localeCode of languageCodes) {
-    const code = localeCode as TLanguageCode;
-    // Get or create locale data
-    let localeData = result[code];
-    if (!localeData || typeof localeData !== 'object' || '$ref' in localeData) {
-      // Create new locale data if missing or if it's a $ref (can't merge into reference)
-      localeData = {};
-      result[code] = localeData;
-    }
-
-    // Add the new key
-    setNestedValue(localeData as TLocaleData, translationKey, '');
-  }
-
-  return result;
+  return mergeLocaleEntryWithSkipped(existing, translationKey, languageCodes).config;
 }

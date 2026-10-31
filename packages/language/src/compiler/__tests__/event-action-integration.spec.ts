@@ -40,7 +40,7 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions).toHaveLength(1);
 
     // Verify event action structure
-    const eventAction = config.eventActions[0];
+    const eventAction = config.eventActions![0];
     expect(eventAction).toHaveProperty('id');
     expect(eventAction).toHaveProperty('name', 'HandleLanguageChange');
     expect(eventAction).toHaveProperty('eventName', 'language-change');
@@ -79,22 +79,22 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions).toHaveLength(3);
 
     // First event action: HandleLogin
-    expect(config.eventActions[0].name).toBe('HandleLogin');
-    expect(config.eventActions[0].eventName).toBe('user-login');
-    expect(config.eventActions[0].eventTopic).toBeUndefined();
-    expect(config.eventActions[0].startOperations).toHaveLength(3);
+    expect(config.eventActions![0].name).toBe('HandleLogin');
+    expect(config.eventActions![0].eventName).toBe('user-login');
+    expect(config.eventActions![0].eventTopic).toBeUndefined();
+    expect(config.eventActions![0].startOperations).toHaveLength(3);
 
     // Second event action: HandleLogout
-    expect(config.eventActions[1].name).toBe('HandleLogout');
-    expect(config.eventActions[1].eventName).toBe('user-logout');
-    expect(config.eventActions[1].eventTopic).toBeUndefined();
-    expect(config.eventActions[1].startOperations).toHaveLength(3);
+    expect(config.eventActions![1].name).toBe('HandleLogout');
+    expect(config.eventActions![1].eventName).toBe('user-logout');
+    expect(config.eventActions![1].eventTopic).toBeUndefined();
+    expect(config.eventActions![1].startOperations).toHaveLength(3);
 
     // Third event action: SyncData
-    expect(config.eventActions[2].name).toBe('SyncData');
-    expect(config.eventActions[2].eventName).toBe('data-sync');
-    expect(config.eventActions[2].eventTopic).toBeUndefined();
-    expect(config.eventActions[2].startOperations).toHaveLength(2);
+    expect(config.eventActions![2].name).toBe('SyncData');
+    expect(config.eventActions![2].eventName).toBe('data-sync');
+    expect(config.eventActions![2].eventTopic).toBeUndefined();
+    expect(config.eventActions![2].startOperations).toHaveLength(2);
   });
 
   test('should compile DSL file with zero-parameter event action', async () => {
@@ -112,10 +112,10 @@ describe('Event Action Integration Tests (T012)', () => {
 
     // Verify event action with zero parameters
     expect(config.eventActions).toHaveLength(1);
-    expect(config.eventActions[0].name).toBe('Initialize');
-    expect(config.eventActions[0].eventName).toBe('app-ready');
-    expect(config.eventActions[0].eventTopic).toBeUndefined();
-    expect(config.eventActions[0].startOperations).toHaveLength(2);
+    expect(config.eventActions![0].name).toBe('Initialize');
+    expect(config.eventActions![0].eventName).toBe('app-ready');
+    expect(config.eventActions![0].eventTopic).toBeUndefined();
+    expect(config.eventActions![0].startOperations).toHaveLength(2);
   });
 
   test('should compile DSL file with multiple-parameter event action', async () => {
@@ -133,15 +133,15 @@ describe('Event Action Integration Tests (T012)', () => {
 
     // Verify event action with multiple parameters
     expect(config.eventActions).toHaveLength(1);
-    expect(config.eventActions[0].name).toBe('UpdateUserDisplay');
-    expect(config.eventActions[0].eventName).toBe('user-updated');
-    expect(config.eventActions[0].eventTopic).toBeUndefined();
-    expect(config.eventActions[0].startOperations).toHaveLength(6);
+    expect(config.eventActions![0].name).toBe('UpdateUserDisplay');
+    expect(config.eventActions![0].eventName).toBe('user-updated');
+    expect(config.eventActions![0].eventTopic).toBeUndefined();
+    expect(config.eventActions![0].startOperations).toHaveLength(6);
 
     // T022: Verify parameter mapping to eventArgs indices
     // Fixture has: UpdateUserDisplay(userId, userName, userRole)
     // Operations: selectElement(".user-id"), setElementContent(userId), selectElement(".user-name"), setElementContent(userName), ...
-    const ops = config.eventActions[0].startOperations;
+    const ops = config.eventActions![0].startOperations;
 
     // First param (userId) → eventArgs[0]
     expect(ops[1].systemName).toBe('setElementContent');
@@ -173,16 +173,16 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions).toHaveLength(2);
 
     // First event action: HandleNavClick with topic "navigation"
-    expect(config.eventActions[0].name).toBe('HandleNavClick');
-    expect(config.eventActions[0].eventName).toBe('click');
-    expect(config.eventActions[0].eventTopic).toBe('navigation');
-    expect(config.eventActions[0].startOperations).toHaveLength(2);
+    expect(config.eventActions![0].name).toBe('HandleNavClick');
+    expect(config.eventActions![0].eventName).toBe('click');
+    expect(config.eventActions![0].eventTopic).toBe('navigation');
+    expect(config.eventActions![0].startOperations).toHaveLength(2);
 
     // Second event action: HandleFormClick with topic "form"
-    expect(config.eventActions[1].name).toBe('HandleFormClick');
-    expect(config.eventActions[1].eventName).toBe('click');
-    expect(config.eventActions[1].eventTopic).toBe('form');
-    expect(config.eventActions[1].startOperations).toHaveLength(2);
+    expect(config.eventActions![1].name).toBe('HandleFormClick');
+    expect(config.eventActions![1].eventName).toBe('click');
+    expect(config.eventActions![1].eventTopic).toBe('form');
+    expect(config.eventActions![1].startOperations).toHaveLength(2);
   });
 
   test('should compile event action with topic and include eventTopic in JSON (T040)', async () => {
@@ -210,7 +210,7 @@ describe('Event Action Integration Tests (T012)', () => {
 
     // Verify event action has correct eventName and eventTopic
     expect(config.eventActions).toHaveLength(1);
-    expect(config.eventActions[0].eventName).toBe('click');
-    expect(config.eventActions[0].eventTopic).toBe('navigation');
+    expect(config.eventActions![0].eventName).toBe('click');
+    expect(config.eventActions![0].eventTopic).toBe('navigation');
   });
 });

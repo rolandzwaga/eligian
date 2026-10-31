@@ -63,7 +63,8 @@ export function getActionScopeRoot(node: AstNode): ActionScopeRoot | undefined {
   );
 }
 
-function getLibraryImportsOf(root: ActionScopeRoot): LibraryImport[] {
+/** The library imports (`import { ... } from "./x.eligian"`) of a Program or Library. */
+export function getLibraryImportsOf(root: ActionScopeRoot): LibraryImport[] {
   return isProgram(root)
     ? root.statements.filter(isLibraryImport)
     : (root.imports ?? []).filter(isLibraryImport);

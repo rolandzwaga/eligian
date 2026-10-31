@@ -12,13 +12,18 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { extractCSSFiles } from '../css-loader.js';
+import { collectCSSImporters, extractCSSFiles } from '../css-loader.js';
 import { CSSWatcherManager } from '../css-watcher.js';
 import { WebviewCSSInjector } from '../webview-css-injector.js';
 import { CompilationService } from './CompilationService.js';
 import { EligiusEngineService, type EngineEvent } from './EligiusEngineService.js';
 import { FileWatcher } from './FileWatcher.js';
 import { MediaResolver } from './MediaResolver.js';
+import {
+  computeInitialRootDirectories,
+  createRecordingWebview,
+  findUncoveredDirectories,
+} from './resource-roots.js';
 
 /**
  * Manages the lifecycle of a single preview webview panel.
@@ -48,6 +53,19 @@ export class PreviewPanel {
   private cssInjector: WebviewCSSInjector;
   private cssWatcher: CSSWatcherManager;
   private workspaceRoot: string;
+  /** Local directories the webview may load files from (besides the extension) */
+  private resourceRootDirs: string[];
+  /** Absolute paths of the CSS files referenced by the latest successful compile */
+  private currentCSSFiles = new Set<string>();
+  /** Stylesheet pulled in through `@import` → the injected CSS files that import it. */
+  private cssImporters = new Map<string, Set<string>>();
+  /** The CSS files injected into the preview (resolved paths), without the imported sheets. */
+  private injectedCSSFiles = new Set<string>();
+  /**
+   * Incremented by every compileAndUpdate run; a run whose id is no longer the
+   * latest stops applying its results (a newer compile supersedes it).
+   */
+  private compileSeq = 0;
 
   /**
    * Initialize the static diagnostics collection (called once per extension activation).
@@ -79,6 +97,13 @@ export class PreviewPanel {
     this.documentUri = documentUri;
     this.extensionUri = extensionUri;
     this.compilationService = new CompilationService();
+
+    // Workspace folders plus the document's own directory (loose files opened
+    // without a folder, or files outside every open folder).
+    this.resourceRootDirs = computeInitialRootDirectories(
+      vscode.workspace.workspaceFolders?.map(f => f.uri.fsPath) ?? [],
+      documentUri.fsPath
+    );
 
     // Create webview panel
     this.panel = this.createWebviewPanel();
@@ -129,13 +154,41 @@ export class PreviewPanel {
       {
         enableScripts: true, // Allow JavaScript
         retainContextWhenHidden: true, // Keep state when hidden
-        localResourceRoots: [
-          this.extensionUri,
-          // Add workspace folders for media access
-          ...(vscode.workspace.workspaceFolders?.map(f => f.uri) || []),
-        ],
+        localResourceRoots: this.buildLocalResourceRoots(),
       }
     );
+  }
+
+  /**
+   * localResourceRoots: the extension plus every allowed local directory.
+   */
+  private buildLocalResourceRoots(): vscode.Uri[] {
+    return [this.extensionUri, ...this.resourceRootDirs.map(dir => vscode.Uri.file(dir))];
+  }
+
+  /**
+   * Make sure the webview may load every given local file.
+   *
+   * Media and CSS url() assets may live outside the workspace folders and the
+   * document directory (e.g. `../shared/bg.png`). Their directories are added
+   * to localResourceRoots. Assigning webview options reloads the webview
+   * document, so this must run before the compiled config and CSS are posted
+   * (VS Code queues messages until the reloaded document is ready).
+   *
+   * @param filePaths - Absolute paths of local files the preview will load
+   */
+  private ensureResourceRoots(filePaths: Iterable<string>): void {
+    const missing = findUncoveredDirectories(this.resourceRootDirs, filePaths);
+    if (missing.length === 0) {
+      return;
+    }
+
+    console.log('[Preview] Extending localResourceRoots with:', missing);
+    this.resourceRootDirs = [...this.resourceRootDirs, ...missing];
+    this.panel.webview.options = {
+      ...this.panel.webview.options,
+      localResourceRoots: this.buildLocalResourceRoots(),
+    };
   }
 
   /**
@@ -231,25 +284,43 @@ export class PreviewPanel {
    * Compile the document and update the preview.
    */
   private async compileAndUpdate(): Promise<void> {
+    // Save, retry and the initial compile can overlap. Only the latest run may
+    // apply its results; an older run that finishes late must not overwrite a
+    // newer config (or re-initialize the engine with stale data).
+    const runId = ++this.compileSeq;
+    const isStale = (): boolean => this.isDisposed || runId !== this.compileSeq;
+
     console.log('[Preview] Starting compilation for:', this.documentUri.fsPath);
 
     try {
       // Show loading state
       console.log('[Preview] Sending showLoading message');
       await this.panel.webview.postMessage({ type: 'showLoading' });
+      if (isStale()) {
+        return;
+      }
 
       // Compile the document
       console.log('[Preview] Calling compilation service...');
       const result = await this.compilationService.compile(this.documentUri);
+      if (isStale()) {
+        console.log('[Preview] Discarding superseded compilation result');
+        return;
+      }
       console.log('[Preview] Compilation result:', {
         success: result.success,
         errorCount: result.errors.length,
       });
 
       if (result.success && result.config) {
-        // Resolve media paths to webview URIs
+        // Resolve media paths to webview URIs, recording every local file the
+        // preview will load so localResourceRoots can be extended to cover it.
         console.log('[Preview] Resolving media paths...');
-        const mediaResolver = new MediaResolver(this.panel.webview, this.documentUri);
+        const referencedFiles = new Set<string>();
+        const recordingWebview = createRecordingWebview(this.panel.webview, filePath =>
+          referencedFiles.add(filePath)
+        );
+        const mediaResolver = new MediaResolver(recordingWebview, this.documentUri);
         const resolvedConfig = mediaResolver.resolveMediaPaths(result.config);
 
         // Check for missing media files
@@ -261,6 +332,24 @@ export class PreviewPanel {
           );
         }
 
+        // Load and rewrite the CSS files (Feature 011 - US1). Not posted yet:
+        // their url() assets must be covered by localResourceRoots first.
+        // CSS file paths are relative to the .eligian file's directory, not workspace root
+        const sourceFileDir = path.dirname(this.documentUri.fsPath);
+        const absoluteCSSFiles = extractCSSFiles(resolvedConfig).map(file =>
+          path.isAbsolute(file) ? file : path.resolve(sourceFileDir, file)
+        );
+        const preparedCSS = await this.cssInjector.prepareCSS(absoluteCSSFiles);
+        if (isStale()) {
+          return;
+        }
+        for (const filePath of preparedCSS.referencedLocalPaths) {
+          referencedFiles.add(filePath);
+        }
+
+        // Must happen before anything below is posted (it may reload the webview)
+        this.ensureResourceRoots(referencedFiles);
+
         // Send successful compilation result to webview
         console.log('[Preview] Sending updateConfig message with resolved config');
         await this.panel.webview.postMessage({
@@ -269,6 +358,9 @@ export class PreviewPanel {
             config: resolvedConfig,
           },
         });
+        if (isStale()) {
+          return;
+        }
 
         // Clear diagnostics on successful compilation
         if (PreviewPanel.diagnostics) {
@@ -278,23 +370,24 @@ export class PreviewPanel {
         // Initialize Eligius engine with the compiled config
         console.log('[Preview] Initializing Eligius engine');
         await this.engineService.initialize(resolvedConfig);
-
-        // Inject CSS files into preview (Feature 011 - US1)
-        const cssFiles = extractCSSFiles(resolvedConfig);
-        if (cssFiles.length > 0) {
-          // Convert relative paths to absolute paths
-          // CSS file paths are relative to the .eligian file's directory, not workspace root
-          const sourceFileDir = path.dirname(this.documentUri.fsPath);
-          const absoluteCSSFiles = cssFiles.map(file =>
-            path.isAbsolute(file) ? file : path.resolve(sourceFileDir, file)
-          );
-
-          console.log(`[Preview] Injecting ${cssFiles.length} CSS file(s):`, absoluteCSSFiles);
-          await this.cssInjector.injectCSS(absoluteCSSFiles);
-
-          // Start watching CSS files for hot-reload (Feature 011 - US2)
-          this.cssWatcher.startWatching(absoluteCSSFiles, this.workspaceRoot);
+        if (isStale()) {
+          return;
         }
+
+        // Replace the injected CSS with exactly this compile's set: stylesheets
+        // whose `styles` import was removed from the source are taken out, even
+        // when the new set is empty.
+        console.log(
+          `[Preview] Injecting ${absoluteCSSFiles.length} CSS file(s):`,
+          absoluteCSSFiles
+        );
+        await this.cssInjector.applyCSS(preparedCSS);
+        if (isStale()) {
+          return;
+        }
+
+        // Watch exactly the current CSS files for hot-reload (Feature 011 - US2)
+        this.updateCSSWatching(absoluteCSSFiles);
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
       } else {
@@ -345,6 +438,10 @@ export class PreviewPanel {
       // Handle unexpected errors
       console.error('[Preview] ✗ Unexpected compilation error:', error);
       console.error('[Preview] Error stack:', error instanceof Error ? error.stack : 'No stack');
+
+      if (isStale()) {
+        return; // A newer run owns the preview (or the panel is gone)
+      }
 
       await this.panel.webview.postMessage({
         type: 'showError',
@@ -438,13 +535,44 @@ export class PreviewPanel {
   }
 
   /**
+   * Watch exactly `cssFiles` (plus the sheets they `@import`) for hot-reload.
+   *
+   * CSSWatcherManager only ever adds tracked files, so when a compile drops a
+   * CSS file the watcher is reset first; otherwise edits to a no-longer
+   * imported file would keep hot-reloading it into the preview.
+   */
+  private updateCSSWatching(cssFiles: readonly string[]): void {
+    // Also watch the sheets they `@import`: an edit to one reloads its importers.
+    this.cssImporters = collectCSSImporters(cssFiles);
+    this.injectedCSSFiles = new Set(cssFiles.map(file => path.resolve(file)));
+    const next = new Set([...cssFiles, ...this.cssImporters.keys()]);
+    const removedAny = [...this.currentCSSFiles].some(file => !next.has(file));
+    this.currentCSSFiles = next;
+
+    if (removedAny) {
+      this.cssWatcher.dispose();
+    }
+    this.cssWatcher.startWatching([...next], this.workspaceRoot);
+  }
+
+  /**
    * Handle CSS file change events from the watcher (hot-reload)
    */
   private async handleCSSFileChange(filePath: string): Promise<void> {
     console.log('[Preview] CSS file changed, reloading:', filePath);
 
+    // An @import-ed sheet is not injected itself: reload the injected files importing it.
+    const resolved = path.resolve(filePath);
+    const importers = this.cssImporters.get(resolved);
+    const targets = new Set(importers ?? []);
+    if (!importers || this.injectedCSSFiles.has(resolved)) {
+      targets.add(filePath);
+    }
+
     try {
-      await this.cssInjector.reloadCSS(filePath);
+      for (const target of targets) {
+        await this.cssInjector.reloadCSS(target);
+      }
       console.log('[Preview] ✓ CSS hot-reloaded successfully');
     } catch (error) {
       console.error('[Preview] ✗ CSS hot-reload failed:', error);

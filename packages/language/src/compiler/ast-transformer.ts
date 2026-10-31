@@ -50,6 +50,7 @@ import {
   buildNavTargetAction,
   resolveNavPosition,
   syntheticNavActionName,
+  timelineUri,
 } from './transformers/navigate-operations.js';
 import { createEmptyScope, createParameterContext } from './transformers/scope.js';
 import { getSourceLocation } from './transformers/source-location.js';
@@ -170,7 +171,9 @@ export const transformAST = (
     // (target, position). Each `on click … navigate …` call site expands to a
     // DOMEventListenerController whose `actions` reference these by name (the
     // name is derived purely from target+position so both sites agree). The
-    // engine resolves them via request-action at runtime.
+    // engine resolves them via request-action at runtime. The broadcast
+    // carries the target timeline's uri: the engine switches timelines by uri,
+    // which for a video/audio timeline is its media source, not its name.
     const navStatements = getNavigateStatements(program);
     const seenNavActions = new Set<string>();
     for (const navStmt of navStatements) {
@@ -180,14 +183,23 @@ export const transformAST = (
         continue;
       }
       seenNavActions.add(navActionName);
-      actions.push(buildNavTargetAction(navStmt.target, position, getSourceLocation(navStmt)));
+      // An unknown target is reported by the navigate validator
+      const targetTimeline = timelineNodes.find(timeline => timeline.name === navStmt.target);
+      const uri = targetTimeline ? timelineUri(targetTimeline) : navStmt.target;
+      actions.push(buildNavTargetAction(navStmt.target, position, getSourceLocation(navStmt), uri));
     }
 
     // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
+    // Event actions call actions from the program's scope (local + imported).
     const eventActionNodes = getEventActions(program);
     const eventActions: IEventActionConfiguration[] = [];
     for (const eventActionDef of eventActionNodes) {
-      const eventAction = yield* transformEventAction(eventActionDef, constantMap);
+      const eventAction = yield* transformEventAction(
+        eventActionDef,
+        constantMap,
+        program,
+        programScope
+      );
       eventActions.push(eventAction);
     }
 

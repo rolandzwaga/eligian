@@ -65,6 +65,7 @@ export function evaluateExpression(
       canEvaluate: false,
       error: {
         reason: error instanceof Error ? error.message : String(error),
+        invalid: error instanceof InvalidConstantExpression,
         expression: expr.$cstNode?.text ?? 'unknown',
         sourceLocation: {
           line: expr.$cstNode?.range.start.line ?? 0,
@@ -116,9 +117,24 @@ function evaluateExpressionInternal(
 
     // Binary expressions: a + b, a && b, etc.
     case 'BinaryExpression': {
-      const left = assertPrimitive(evaluateExpressionInternal(expr.left, constants, evaluating));
-      const right = assertPrimitive(evaluateExpressionInternal(expr.right, constants, evaluating));
-      return applyBinaryOperator(expr.op, left, right);
+      // Evaluate both operands before checking their types: when one side is a
+      // runtime value, its (plain) error must win over an invalid-constant error
+      // for the other side, whatever the operand order.
+      const leftValue = evaluateExpressionInternal(expr.left, constants, evaluating);
+      const rightValue = evaluateExpressionInternal(expr.right, constants, evaluating);
+      if (NULLABLE_OPERATORS.has(expr.op)) {
+        // Strict equality and truthiness are well defined for null.
+        return applyNullableOperator(
+          expr.op,
+          assertPrimitiveOrNull(leftValue, expr.op),
+          assertPrimitiveOrNull(rightValue, expr.op)
+        );
+      }
+      return applyBinaryOperator(
+        expr.op,
+        assertPrimitive(leftValue, expr.op),
+        assertPrimitive(rightValue, expr.op)
+      );
     }
 
     // Unary expressions: !flag, -value
@@ -129,7 +145,7 @@ function evaluateExpressionInternal(
       if (expr.op === '!') {
         return !operand;
       }
-      return applyUnaryOperator(expr.op, assertPrimitive(operand));
+      return applyUnaryOperator(expr.op, assertPrimitive(operand, expr.op));
     }
 
     // Variable reference: @varName
@@ -206,83 +222,178 @@ export function constantValueType(
 }
 
 /**
- * Narrow a JsonValue to a primitive for arithmetic/logical/comparison operators.
- * Arrays/objects/null can't participate in these, so a non-primitive operand
- * makes the whole expression non-constant (caught → canEvaluate: false).
+ * Thrown (and caught by {@link evaluateExpression}) when an expression is made
+ * only of compile-time constants but is not a valid constant: division or
+ * modulo by zero, an operand of the wrong type (`"abc" - 1`, `true + 1`), or
+ * a result that is not a finite number. Unlike a non-constant expression, which
+ * falls back to a runtime value, this is a compile error: there is no value to
+ * emit (JSON has no NaN/Infinity; they serialize as `null`).
  */
-function assertPrimitive(value: JsonValue): string | number | boolean {
+class InvalidConstantExpression extends Error {}
+
+/** Binary operators that require two numbers and produce a number. */
+const NUMERIC_OPERATORS: ReadonlySet<string> = new Set(['-', '*', '/', '%', '**']);
+
+/** Relational operators: two numbers or two strings. */
+const RELATIONAL_OPERATORS: ReadonlySet<string> = new Set(['<', '>', '<=', '>=']);
+
+/**
+ * Arithmetic operators (`+` included). Eligius has no runtime arithmetic, so
+ * these compile only when both operands are compile-time constants.
+ */
+export const ARITHMETIC_OPERATORS: ReadonlySet<string> = new Set(['+', ...NUMERIC_OPERATORS]);
+
+/**
+ * Message for an operator applied to a runtime value (parameter, variable,
+ * system property, property chain) in a place where the compiler cannot emit it.
+ *
+ * Shared by the compiler (transformers/expression-transformer.ts) and the IDE
+ * validator (validators/expression-validator.ts) so both use the same wording.
+ * Comparisons and logical operators work on runtime values only inside if/when
+ * conditions; arithmetic (and unary `-`) works nowhere at runtime.
+ */
+export function runtimeOperatorMessage(op: string, unary = false): string {
+  const operands = 'runtime values (parameters, variables, system properties, property chains)';
+  if (unary || ARITHMETIC_OPERATORS.has(op)) {
+    return `Arithmetic operator '${op}' cannot be applied to ${operands}: Eligius has no runtime arithmetic in expressions. Use the calc operation instead (its result is $operationdata.calculationResult)`;
+  }
+  return `Operator '${op}' on ${operands} is only supported inside if/when conditions`;
+}
+
+/**
+ * Narrow a JsonValue to a primitive for arithmetic and relational operators.
+ * Arrays, objects and null cannot take part in these, so such an operand makes
+ * the expression an invalid constant. (`==`, `!=`, `&&` and `||` also accept
+ * null; see {@link assertPrimitiveOrNull}.)
+ */
+function assertPrimitive(value: JsonValue, op: string): string | number | boolean {
   if (value === null || typeof value === 'object') {
-    throw new Error('Operator operand is not a primitive value');
+    throw new InvalidConstantExpression(
+      `Operator '${op}' cannot be applied to a constant of type ${constantValueType(value)}`
+    );
   }
   return value;
 }
 
+/** Operators that accept a null operand: strict equality and logical (truthiness). */
+const NULLABLE_OPERATORS: ReadonlySet<string> = new Set(['==', '!=', '&&', '||']);
+
+type PrimitiveOrNull = string | number | boolean | null;
+
+/** Like {@link assertPrimitive}, but lets null through (arrays and objects still fail). */
+function assertPrimitiveOrNull(value: JsonValue, op: string): PrimitiveOrNull {
+  return value === null ? null : assertPrimitive(value, op);
+}
+
+/** Apply `==`, `!=`, `&&` or `||` to two primitive-or-null constants (no coercion). */
+function applyNullableOperator(
+  op: string,
+  left: PrimitiveOrNull,
+  right: PrimitiveOrNull
+): PrimitiveOrNull {
+  switch (op) {
+    case '&&':
+      return left && right;
+    case '||':
+      return left || right;
+    case '==':
+      return left === right;
+    default:
+      return left !== right;
+  }
+}
+
+/** Reject NaN and ±Infinity: JSON cannot represent them (they serialize as null). */
+function assertFinite(result: number, op: string): number {
+  if (!Number.isFinite(result)) {
+    throw new InvalidConstantExpression(
+      `Constant expression with operator '${op}' does not produce a finite number (${result})`
+    );
+  }
+  return result;
+}
+
+function operandTypeError(op: string, expected: string, left: unknown, right: unknown): never {
+  throw new InvalidConstantExpression(
+    `Operator '${op}' requires ${expected}, got ${typeof left} and ${typeof right}`
+  );
+}
+
 /**
- * Apply a binary operator to two values
+ * Apply a binary operator to two constant values.
+ *
+ * No JavaScript coercion: `"5" - 2`, `true + 1` and `"a" < 1` are invalid
+ * instead of folding to a coerced (or NaN) value.
  */
 function applyBinaryOperator(
   op: string,
   left: string | number | boolean,
   right: string | number | boolean
 ): string | number | boolean {
+  if (NUMERIC_OPERATORS.has(op)) {
+    if (typeof left !== 'number' || typeof right !== 'number') {
+      return operandTypeError(op, 'numeric operands', left, right);
+    }
+    if ((op === '/' || op === '%') && right === 0) {
+      throw new InvalidConstantExpression(
+        `${op === '/' ? 'Division' : 'Modulo'} by zero in constant expression`
+      );
+    }
+    return assertFinite(applyNumericOperator(op, left, right), op);
+  }
+
+  if (RELATIONAL_OPERATORS.has(op)) {
+    const comparable =
+      (typeof left === 'number' && typeof right === 'number') ||
+      (typeof left === 'string' && typeof right === 'string');
+    if (!comparable) {
+      return operandTypeError(op, 'two numbers or two strings', left, right);
+    }
+    switch (op) {
+      case '<':
+        return left < right;
+      case '>':
+        return left > right;
+      case '<=':
+        return left <= right;
+      default:
+        return left >= right;
+    }
+  }
+
   switch (op) {
-    // Arithmetic operators
     case '+':
-      // Special case: string concatenation
+      // String concatenation when either side is a string
       if (typeof left === 'string' || typeof right === 'string') {
         return String(left) + String(right);
       }
-      return (left as number) + (right as number);
-
-    case '-':
-      return (left as number) - (right as number);
-
-    case '*':
-      return (left as number) * (right as number);
-
-    case '/': {
-      if ((right as number) === 0) {
-        throw new Error('Division by zero in constant expression');
+      if (typeof left !== 'number' || typeof right !== 'number') {
+        return operandTypeError(op, 'numbers or a string', left, right);
       }
-      return (left as number) / (right as number);
-    }
-
-    case '%':
-      return (left as number) % (right as number);
-
-    // Logical operators
-    case '&&':
-      return left && right;
-
-    case '||':
-      return left || right;
-
-    // Comparison operators
-    case '==':
-      return left === right;
-
-    case '!=':
-      return left !== right;
-
-    case '<':
-      return (left as number) < (right as number);
-
-    case '>':
-      return (left as number) > (right as number);
-
-    case '<=':
-      return (left as number) <= (right as number);
-
-    case '>=':
-      return (left as number) >= (right as number);
+      return assertFinite(left + right, op);
 
     default:
       throw new Error(`Unsupported binary operator: ${op}`);
   }
 }
 
+function applyNumericOperator(op: string, left: number, right: number): number {
+  switch (op) {
+    case '-':
+      return left - right;
+    case '*':
+      return left * right;
+    case '/':
+      return left / right;
+    case '%':
+      return left % right;
+    default:
+      return left ** right;
+  }
+}
+
 /**
- * Apply a unary operator to a value
+ * Apply a unary operator to a constant value
  */
 function applyUnaryOperator(
   op: string,
@@ -290,7 +401,12 @@ function applyUnaryOperator(
 ): string | number | boolean {
   switch (op) {
     case '-':
-      return -(operand as number);
+      if (typeof operand !== 'number') {
+        throw new InvalidConstantExpression(
+          `Operator '-' requires a numeric operand, got ${typeof operand}`
+        );
+      }
+      return -operand;
 
     default:
       throw new Error(`Unsupported unary operator: ${op}`);

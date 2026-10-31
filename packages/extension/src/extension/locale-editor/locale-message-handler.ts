@@ -16,6 +16,7 @@ import { parseLabels, validateLabels, validateLocaleConfig } from './locale-conf
 import {
   addKeyToConfig,
   deleteKeyFromConfig,
+  findKeyConflict,
   keyTreeToSerializable,
   parseLocalesConfiguration,
   renameKeyInConfig,
@@ -27,6 +28,19 @@ import type {
   ToExtensionMessage,
   ToWebviewMessage,
 } from './types.js';
+
+/**
+ * Warn the user (and report true) when `key` cannot be created because an existing
+ * translation sits on its path. The edit is then skipped so nothing is lost.
+ */
+function warnOnKeyConflict(config: ILocalesConfiguration, key: string, locale?: string): boolean {
+  const blocker = findKeyConflict(config, key, locale);
+  if (blocker === undefined) return false;
+  vscode.window.showWarningMessage(
+    `Cannot use key '${key}': '${blocker}' is already a translation, not a group.`
+  );
+  return true;
+}
 
 /**
  * Instance-coupled operations the message handler needs from the provider.
@@ -102,6 +116,7 @@ export async function handleWebviewMessage(
       {
         const config = deps.documentConfigs.get(document.uri.toString());
         if (config) {
+          if (warnOnKeyConflict(config, message.key, message.locale)) break;
           const updated = updateTranslationInConfig(
             config,
             message.key,
@@ -122,6 +137,7 @@ export async function handleWebviewMessage(
           const fullKey = message.parentKey
             ? `${message.parentKey}.${message.newSegment}`
             : message.newSegment;
+          if (warnOnKeyConflict(config, fullKey)) break;
           const updated = addKeyToConfig(config, fullKey);
           deps.documentConfigs.set(document.uri.toString(), updated);
           deps.saveConfig(document, updated);
@@ -146,6 +162,7 @@ export async function handleWebviewMessage(
       {
         const config = deps.documentConfigs.get(document.uri.toString());
         if (config) {
+          if (warnOnKeyConflict(config, message.newKey)) break;
           const updated = renameKeyInConfig(config, message.oldKey, message.newKey);
           deps.documentConfigs.set(document.uri.toString(), updated);
           deps.saveConfig(document, updated);

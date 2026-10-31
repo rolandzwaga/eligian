@@ -261,9 +261,10 @@ async function createCompletionContext(text: string): Promise<CompletionContext>
     textDocument: document.textDocument,
     offset: cursorIndex,
     position,
-    // @ts-expect-error - Simplified mock for testing (node/tokenOffset not critical for our logic)
     node: undefined,
     tokenOffset: cursorIndex,
+    tokenEndOffset: cursorIndex,
+    features: [],
   };
 
   return context;

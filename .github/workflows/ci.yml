@@ -62,6 +62,11 @@ jobs:
       - name: Type check
         run: pnpm run typecheck
 
+      # Type-check test files (specs, fixtures, helpers), which are excluded from the build
+      # tsconfigs above. Must run after Build: cli/extension resolve @eligian/language via its output.
+      - name: Type check tests
+        run: pnpm run typecheck:tests
+
       # Effect LSP diagnostics (errors + warnings fail the build via --strict).
       # Must run after Build so Langium-generated sources exist; invisible to
       # tsc/Biome so CI is the only automated gate for these findings.

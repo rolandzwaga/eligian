@@ -227,7 +227,8 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
     // Register timeline inference rules (Timeline AST node)
     registerTimelineInference(this);
 
-    // Register timeline validation rules (provider-source consistency, CSS selector, empty timeline)
+    // Register timeline validation rules (provider-source consistency, empty timeline).
+    // Container selector syntax is validated by the Langium timeline validator's real parser.
     registerTimelineValidation(typir);
 
     // ═══════════════════════════════════════════════════════════════════
@@ -515,8 +516,15 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       .inferenceRuleForCalls({
         languageKey: 'OperationCall',
         matching: (call: OperationCall) => {
-          // Only match if the call name matches this action
-          if (getOperationCallName(call) !== action.name) {
+          // Only match calls that resolve to THIS action definition. Every loaded document
+          // registers a function type per action, so matching by name would treat
+          // same-named actions from other documents as overloads (a call passes if any of
+          // them accepts it) and would never match an aliased import
+          // (`import { show as display }`). The scope provider resolves local actions and
+          // (aliased) imports to the defining ActionDefinition, and linking completes
+          // before validation, so the resolved reference identifies the callee exactly.
+          // An unresolved call (`ref` undefined) matches no action type.
+          if (call.operationName.ref !== action) {
             return false;
           }
 

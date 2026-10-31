@@ -83,9 +83,12 @@ describe('Timeline time validation is unit-aware', () => {
   });
 
   test('does not flag property-chain or relative stagger durations', async () => {
-    expect(
+    // The unit-aware duration rule has nothing to say about a property chain. (The chain itself
+    // is rejected by TimelineValidator.checkPropertyChainInTime, since it cannot compile.)
+    const durationErrors = (
       await timeErrors(`stagger 200ms items with selectElement(".item") for $globaldata.duration`)
-    ).toEqual([]);
+    ).filter(message => !message.startsWith('Property references are not supported'));
+    expect(durationErrors).toEqual([]);
     expect(await timeErrors(`stagger 200ms items with selectElement(".item") for +1s`)).toEqual([]);
   });
 

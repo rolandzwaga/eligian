@@ -52,12 +52,12 @@ describe('Single Source of Truth (Feature 018 - US3)', () => {
 
     it('exports AssetError union type', () => {
       const location: SourceLocation = { file: 'test.eligian', line: 1, column: 1 };
-      const error: AssetError = createCssImportError(
-        'test.css',
-        '/abs/test.css',
-        'File not found',
-        location
-      );
+      const error: AssetError = createCssImportError({
+        filePath: 'test.css',
+        absolutePath: '/abs/test.css',
+        message: 'File not found',
+        location,
+      });
       expect(error._tag).toBe('CssImportError');
     });
 
@@ -76,12 +76,12 @@ describe('Single Source of Truth (Feature 018 - US3)', () => {
     it('exports AllErrors union type', () => {
       const location: SourceLocation = { file: 'test.eligian', line: 1, column: 1 };
       const compilerError: AllErrors = createParseError({ message: 'test', location });
-      const assetError: AllErrors = createCssImportError(
-        'test.css',
-        '/abs/test.css',
-        'File not found',
-        location
-      );
+      const assetError: AllErrors = createCssImportError({
+        filePath: 'test.css',
+        absolutePath: '/abs/test.css',
+        message: 'File not found',
+        location,
+      });
 
       expect(isCompilerError(compilerError)).toBe(true);
       expect(isAssetError(assetError)).toBe(true);
@@ -181,30 +181,30 @@ describe('Single Source of Truth (Feature 018 - US3)', () => {
     });
 
     it('exports asset error type guards', () => {
-      const cssImportError = createCssImportError(
-        'test.css',
-        '/abs/test.css',
-        'File not found',
-        location
-      );
+      const cssImportError = createCssImportError({
+        filePath: 'test.css',
+        absolutePath: '/abs/test.css',
+        message: 'File not found',
+        location,
+      });
       const cssParseError = createCssParseError({
         filePath: 'test.css',
         message: 'Syntax error',
         line: 1,
         column: 1,
       });
-      const htmlImportError = createHtmlImportError(
-        'test.html',
-        '/abs/test.html',
-        'File not found',
-        location
-      );
-      const mediaImportError = createMediaImportError(
-        'test.mp4',
-        '/abs/test.mp4',
-        'File not found',
-        location
-      );
+      const htmlImportError = createHtmlImportError({
+        filePath: 'test.html',
+        absolutePath: '/abs/test.html',
+        message: 'File not found',
+        location,
+      });
+      const mediaImportError = createMediaImportError({
+        filePath: 'test.mp4',
+        absolutePath: '/abs/test.mp4',
+        message: 'File not found',
+        location,
+      });
 
       expect(isCssImportError(cssImportError)).toBe(true);
       expect(isCssParseError(cssParseError)).toBe(true);
@@ -258,12 +258,12 @@ describe('Single Source of Truth (Feature 018 - US3)', () => {
     it('exports isEligianError for all error types', () => {
       const location: SourceLocation = { file: 'test.eligian', line: 1, column: 1 };
       const parseError = createParseError({ message: 'test', location });
-      const cssImportError = createCssImportError(
-        'test.css',
-        '/abs/test.css',
-        'File not found',
-        location
-      );
+      const cssImportError = createCssImportError({
+        filePath: 'test.css',
+        absolutePath: '/abs/test.css',
+        message: 'File not found',
+        location,
+      });
       const fileNotFoundError = {
         _tag: 'FileNotFoundError',
         path: '/test/file.txt',

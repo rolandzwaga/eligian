@@ -348,11 +348,11 @@ export const transformOperationStatement = (
 
       case 'IfStatement':
         // If/else → when/otherwise/endWhen sequence
-        return yield* transformIfStatement(stmt, scope, program, allActions);
+        return yield* transformIfStatement(stmt, scope, program, allActions, isEndOperation);
 
       case 'ForStatement':
         // For loop → forEach/endForEach sequence
-        return yield* transformForStatement(stmt, scope, program, allActions);
+        return yield* transformForStatement(stmt, scope, program, allActions, isEndOperation);
 
       case 'VariableDeclaration':
         // Action-scoped variable → setVariable operation
@@ -407,12 +407,16 @@ export const transformOperationStatement = (
  *
  * The condition is serialized to the Eligius `when` expression string by
  * {@link transformCondition}. For if-without-else, otherwise() is omitted.
+ *
+ * `isEndOperation` is forwarded to both branches, so an endable action called
+ * inside an `if` in an end block is ended (endAction) rather than restarted.
  */
 export const transformIfStatement = (
   stmt: IfStatement,
   scope: ScopeContext = createEmptyScope(),
   program?: Program,
-  allActions?: ActionDefinition[]
+  allActions?: ActionDefinition[],
+  isEndOperation: boolean = false
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
@@ -437,7 +441,13 @@ export const transformIfStatement = (
       scopedConstants: new Map(scope.scopedConstants), // Clone the map
     };
     for (const thenOp of stmt.thenOps) {
-      const ops = yield* transformOperationStatement(thenOp, thenScope, false, program, allActions);
+      const ops = yield* transformOperationStatement(
+        thenOp,
+        thenScope,
+        isEndOperation,
+        program,
+        allActions
+      );
       operations.push(...ops);
     }
 
@@ -459,7 +469,7 @@ export const transformIfStatement = (
         const ops = yield* transformOperationStatement(
           elseOp,
           elseScope,
-          false,
+          isEndOperation,
           program,
           allActions
         );
@@ -492,12 +502,15 @@ export const transformIfStatement = (
  *   endForEach()
  *
  * The item variable name is passed to forEach so Eligius can set it in the operation data context.
+ *
+ * `isEndOperation` is forwarded to the loop body (see {@link transformIfStatement}).
  */
 export const transformForStatement = (
   stmt: ForStatement,
   scope: ScopeContext = createEmptyScope(),
   program?: Program,
-  allActions?: ActionDefinition[]
+  allActions?: ActionDefinition[],
+  isEndOperation: boolean = false
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
@@ -527,7 +540,13 @@ export const transformForStatement = (
     };
 
     for (const bodyOp of stmt.body) {
-      const ops = yield* transformOperationStatement(bodyOp, loopScope, false, program, allActions);
+      const ops = yield* transformOperationStatement(
+        bodyOp,
+        loopScope,
+        isEndOperation,
+        program,
+        allActions
+      );
       operations.push(...ops);
     }
 

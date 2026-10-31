@@ -12,7 +12,7 @@
  * decomposition).
  */
 
-import type { LangiumDocument, MaybePromise } from 'langium';
+import { AstUtils, GrammarAST, type LangiumDocument, type MaybePromise } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
 import {
@@ -22,7 +22,7 @@ import {
   type CompletionList,
   type CompletionParams,
 } from 'vscode-languageserver';
-import { getActionCompletions } from './completion/actions.js';
+import { type CallableActionSource, getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
 import { resolveStringLiteralCompletion } from './completion/controller-completion-handler.js';
 import { handleCssCompletion } from './completion/css-completion-handler.js';
@@ -33,6 +33,13 @@ import { getOperationCompletions } from './completion/operations.js';
 import { getVariableCompletions } from './completion/variables.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
+
+/**
+ * Keyword-tolerant name rules in eligian.langium. The keywords they list are
+ * accepted as names (`action f(event)`, `{ from: 0 }`), not syntax, so they are
+ * never offered as keyword completions.
+ */
+const NAME_RULES: ReadonlySet<string> = new Set(['Identifier', 'FeatureName']);
 
 /**
  * Eligian-specific completion provider
@@ -50,6 +57,15 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     this.services = services;
     this.cssCompletionProvider = new CSSCompletionProvider();
     this.htmlCompletionProvider = new HTMLElementCompletionProvider();
+  }
+
+  /** Skip keywords that only appear inside the keyword-tolerant name rules. */
+  protected override filterKeyword(
+    context: CompletionContext,
+    keyword: GrammarAST.Keyword
+  ): boolean {
+    const rule = AstUtils.getContainerOfType(keyword, GrammarAST.isParserRule);
+    return (!rule || !NAME_RULES.has(rule.name)) && super.filterKeyword(context, keyword);
   }
 
   /**
@@ -125,7 +141,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       const isInsideArguments = cursorContext.insideOperationCall && !isCompletingOperationName;
 
       // Get custom action completions once to reuse for both adding and filtering
-      const actionCompletions = getActionCompletions(document);
+      const actionCompletions = getActionCompletions(document, this.getCallableActionSource());
       const actionNames = new Set(
         actionCompletions.map(a => a.insertText || a.label.replace('action: ', ''))
       );
@@ -217,11 +233,17 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         return super.completionFor(context, next, noOpAcceptor);
       }
 
-      if (cursorContext.isInsideAction && !isInsideArguments) {
-        // Add operation completions
-        const operationCompletions = getOperationCompletions(context);
-        for (const item of operationCompletions) {
-          filteringAcceptor(context, item);
+      // Operation/action positions: inside action bodies (incl. inline endable blocks) both
+      // operations and actions; at the operation-name slot of a timeline event outside any
+      // action body (`at 0s..2s <cursor>`, timeline for/if bodies) actions only, because
+      // OperationExistenceValidator.checkTimelineOperationCall rejects built-in operations there.
+      const isTimelineOperationSlot = cursorContext.isInsideEvent && isCompletingOperationName;
+      if ((cursorContext.isInsideAction || isTimelineOperationSlot) && !isInsideArguments) {
+        if (cursorContext.isInsideAction) {
+          const operationCompletions = getOperationCompletions(context);
+          for (const item of operationCompletions) {
+            filteringAcceptor(context, item);
+          }
         }
 
         // Add custom action completions
@@ -286,6 +308,16 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Graceful error handling - fallback to default completion
       return super.completionFor(context, next, acceptor);
     }
+  }
+
+  /**
+   * The scope provider as a source of callable (own and imported) actions, if it is one.
+   */
+  private getCallableActionSource(): CallableActionSource | undefined {
+    const scopeProvider = this.services.references.ScopeProvider as Partial<CallableActionSource>;
+    return typeof scopeProvider.getCallableActions === 'function'
+      ? (scopeProvider as CallableActionSource)
+      : undefined;
   }
 
   /**

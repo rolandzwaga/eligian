@@ -49,6 +49,14 @@ export class ProgramValidator extends BaseValidator {
     this.duplicates.checkDuplicateEventActions(program, accept);
   }
 
+  checkDuplicateTimelines(program: Program, accept: ValidationAcceptor): void {
+    this.duplicates.checkDuplicateTimelines(program, accept);
+  }
+
+  checkEventActionNames(program: Program, accept: ValidationAcceptor): void {
+    this.duplicates.checkEventActionNames(program, accept);
+  }
+
   checkNamedImportNames(program: Program, accept: ValidationAcceptor): void {
     this.importNames.checkNamedImportNames(program, accept);
   }

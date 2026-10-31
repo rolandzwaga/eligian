@@ -189,8 +189,11 @@ export function parseLibraryDocument(
       }),
     });
 
-    // Check for lexer / parser / semantic-validation errors
+    // Check for lexer / parser / semantic-validation errors. The library's file
+    // goes on each location so it is not rendered against the main program.
+    const libraryFile = libraryUri.scheme === 'file' ? libraryUri.fsPath : libraryUri.toString();
     yield* extractDocumentErrors(document, {
+      file: libraryFile,
       lexerMessagePrefix: 'Lexer error in library: ',
       lexerHint: `In library file: ${libraryUri.fsPath}`,
       parserHint: `In library file: ${libraryUri.fsPath}`,
@@ -203,7 +206,7 @@ export function parseLibraryDocument(
       return yield* Effect.fail({
         _tag: 'ParseError' as const,
         message: `File is not a library (found ${root.$type || 'unknown'} instead)`,
-        location: { line: 1, column: 1, length: 0 },
+        location: { file: libraryFile, line: 1, column: 1, length: 0 },
         hint: `Library files must start with "library <name>". File: ${libraryUri.fsPath}`,
       });
     }
@@ -229,12 +232,17 @@ export function parseLibraryDocument(
  * @param documentUri - URI of document importing this library (for path resolution)
  * @param loadingStack - Libraries currently being loaded, keyed by
  *   {@link libraryPathKey} with the display path as value (for cycle detection)
+ * @param loaded - Libraries already loaded in this compilation, keyed by
+ *   {@link libraryPathKey}. A library reached twice (imported directly AND
+ *   through another library, or by two libraries) is loaded once: re-parsing
+ *   it would delete the document the first importer was linked against.
  * @returns Effect with array of all library documents (self + dependencies)
  */
 export function loadLibraryRecursive(
   libraryUri: URI,
   _documentUri: URI,
-  loadingStack: ReadonlyMap<string, string> = new Map()
+  loadingStack: ReadonlyMap<string, string> = new Map(),
+  loaded: Map<string, LangiumDocument[]> = new Map()
 ): Effect.Effect<LangiumDocument[], ParseError | ValidationError> {
   return Effect.gen(function* () {
     const uriPath = libraryUri.fsPath;
@@ -254,6 +262,12 @@ export function loadLibraryRecursive(
         location: { line: 1, column: 1, length: 0 },
         hint: 'Remove circular import to break the cycle',
       });
+    }
+
+    // Already loaded in this compilation (diamond import): reuse it
+    const alreadyLoaded = loaded.get(key);
+    if (alreadyLoaded) {
+      return alreadyLoaded;
     }
 
     // Add current library to loading stack
@@ -289,11 +303,17 @@ export function loadLibraryRecursive(
       const nestedLibraryUri = resolveLibraryPath(libraryUri, importPath);
 
       // Recursively load nested library and its dependencies
-      const nestedLibraries = yield* loadLibraryRecursive(nestedLibraryUri, libraryUri, newStack);
+      const nestedLibraries = yield* loadLibraryRecursive(
+        nestedLibraryUri,
+        libraryUri,
+        newStack,
+        loaded
+      );
 
       allLibraries.push(...nestedLibraries);
     }
 
+    loaded.set(key, allLibraries);
     return allLibraries;
   });
 }

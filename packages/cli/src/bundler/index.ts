@@ -10,7 +10,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
-import { compileFile } from '../compile-file.js';
+import { CompileError, compileFile } from '../compile-file.js';
+import { deriveDefaultOutputPath, isSamePath } from '../output-path.js';
 import { type CollectOptions, collectAssets } from './asset-collector.js';
 import { processCSS } from './css-processor.js';
 import { generateHTML, rewriteHTMLUrls } from './html-generator.js';
@@ -30,6 +31,20 @@ import {
 // Re-export types for consumers
 export type { BundleFile, BundleOptions, BundleResult, BundleStats } from './types.js';
 export { AssetNotFoundError, BundleError, OutputExistsError, RuntimeBundleError } from './types.js';
+
+/**
+ * Bundle failure caused by the Eligian compile step.
+ *
+ * Wraps the original typed {@link CompileError} (ParseError, CompilationError,
+ * AssetError, IOError) so callers can still present the line/snippet/hint
+ * details instead of a flattened "Compilation failed: ParseError: ..." string.
+ */
+export class BundleCompileError extends BundleError {
+  constructor(public readonly compileError: CompileError) {
+    super(`Compilation failed: ${compileError.message}`);
+    this.name = 'BundleCompileError';
+  }
+}
 
 /**
  * Check if a directory exists
@@ -100,7 +115,14 @@ export function createBundle(
     const resolvedOptions = { ...defaultBundleOptions, ...options };
 
     // Resolve output directory
-    const outputDir = resolvedOptions.outputDir || inputPath.replace(/\.eligian$/, '.bundle');
+    const outputDir = resolvedOptions.outputDir || deriveDefaultOutputPath(inputPath, '.bundle');
+
+    // Never write the bundle over the source file
+    if (isSamePath(inputPath, outputDir)) {
+      return yield* Effect.fail(
+        new BundleError(`Output directory must not be the input file: ${inputPath}`)
+      );
+    }
 
     // Check if output exists (unless --force)
     if (!resolvedOptions.force && (yield* Effect.promise(() => directoryExists(outputDir)))) {
@@ -110,7 +132,10 @@ export function createBundle(
     // Compile Eligian source to configuration
     const compileResult = yield* Effect.tryPromise({
       try: () => compileFile(inputPath, { optimize: true }),
-      catch: e => new BundleError(`Compilation failed: ${e}`),
+      catch: e =>
+        e instanceof CompileError
+          ? new BundleCompileError(e)
+          : new BundleError(`Compilation failed: ${e instanceof Error ? e.message : String(e)}`),
     });
 
     const config = compileResult.config;

@@ -1,7 +1,16 @@
 import type { ValidationAcceptor } from 'langium';
+import { propertyChainTimeMessage } from '../compiler/transformers/time-transformer.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import { parseSelector } from '../css/selector-parser.js';
-import type { Timeline } from '../generated/ast.js';
+import {
+  isBinaryTimeExpression,
+  isNavigateStatement,
+  isSequenceItem,
+  isStaggerBlock,
+  isTimeRange,
+  type PropertyChainReference,
+  type Timeline,
+} from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
 
 /**
@@ -86,6 +95,17 @@ export class TimelineValidator extends BaseValidator {
       return;
     }
 
+    // parseSelector accepts "" and "   " (no selectors, nothing invalid), but an empty
+    // container selector matches nothing at runtime.
+    if (timeline.containerSelector.trim() === '') {
+      accept('error', 'Invalid CSS selector syntax: the timeline container selector is empty', {
+        node: timeline,
+        property: 'containerSelector',
+        data: { code: 'invalid_css_selector_syntax' },
+      });
+      return;
+    }
+
     // Parse timeline container selector
     const { classes, ids, valid, error } = parseSelector(timeline.containerSelector);
 
@@ -131,10 +151,36 @@ export class TimelineValidator extends BaseValidator {
     }
   }
 
+  /**
+   * Report a property chain (`$scope.x`) used as a time: in a time range, a stagger delay or
+   * duration, a sequence item duration or a navigate position (directly or inside time
+   * arithmetic). The grammar accepts it, but Eligius needs numeric times at configuration time,
+   * so the compiler rejects it (time-transformer.ts) with the same message.
+   */
+  checkPropertyChainInTime(node: PropertyChainReference, accept: ValidationAcceptor): void {
+    if (!isTimeSlot(node)) return;
+    accept('error', propertyChainTimeMessage(node), {
+      node,
+      data: { code: 'property_chain_in_time_expression' },
+    });
+  }
+
   // Time-range validation (start < end, non-negative start, positive durations and
   // delays) lives in exactly one place: the Typir rules in
   // type-system-typir/validation/event-validation.ts, which are unit-aware and
   // understand relative and property-chain times. The former checkValidTimeRange /
   // checkNonNegativeTimes rules here compared raw literal values (ignoring units)
   // and duplicated those diagnostics, so they were removed.
+}
+
+/** True when `node` sits where the grammar expects a TimeExpression. */
+function isTimeSlot(node: PropertyChainReference): boolean {
+  const container = node.$container;
+  const property = node.$containerProperty;
+  if (isBinaryTimeExpression(container)) return true;
+  if (isTimeRange(container)) return property === 'start' || property === 'end';
+  if (isStaggerBlock(container)) return property === 'delay' || property === 'duration';
+  if (isSequenceItem(container)) return property === 'duration';
+  if (isNavigateStatement(container)) return property === 'position';
+  return false;
 }

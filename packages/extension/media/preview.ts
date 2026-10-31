@@ -22,6 +22,7 @@ import {
   type IEventbusListener,
 } from 'eligius';
 import $ from 'jquery';
+import { createEngineLifecycleQueue } from './engine-lifecycle-queue.js';
 
 // Make jQuery available globally for Eligius operations
 (window as any).$ = $;
@@ -322,6 +323,14 @@ class EventbusDebugViewer implements IEventbusListener {
 // Create debug viewer instance
 const debugViewer = new EventbusDebugViewer();
 
+// Serialize engine lifecycle work: the async message listener below is not
+// awaited between events, so overlapping 'initialize' messages would otherwise
+// destroy an engine that is still in `await engine.init()`.
+const engineQueue = createEngineLifecycleQueue<IEngineConfiguration>({
+  initialize: initializeEngine,
+  destroy: destroyEngine,
+});
+
 // Listen for messages from extension
 window.addEventListener('message', async event => {
   const message = event.data;
@@ -378,7 +387,7 @@ window.addEventListener('message', async event => {
 
     // Engine commands
     case 'initialize':
-      await initializeEngine(message.payload.config);
+      await engineQueue.initialize(message.payload.config);
       break;
 
     // Playback commands broadcast the corresponding timeline request on the
@@ -408,7 +417,7 @@ window.addEventListener('message', async event => {
       break;
 
     case 'destroy':
-      await destroyEngine();
+      await engineQueue.destroy();
       break;
 
     // CSS injection and hot-reload (Feature 011)

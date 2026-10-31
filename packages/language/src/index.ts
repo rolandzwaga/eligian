@@ -22,6 +22,7 @@ export {
 export { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 // Compiler exports (all compiler functionality is now part of language package)
 export * from './compiler/index.js';
+export { isCssImport } from './css/css-import-paths.js';
 export * from './css/css-parser.js';
 export * from './css/css-registry.js';
 // CSS service exports (Feature 017 - Phase 2)
@@ -50,6 +51,7 @@ export { generateJSDocContent } from './jsdoc/jsdoc-template-generator.js';
 export {
   generateLocaleEntry,
   mergeLocaleEntry,
+  mergeLocaleEntryWithSkipped,
 } from './labels/label-entry-generator.js';
 export { extractTranslationKeys } from './locales/translation-key-extractor.js';
 // Shared asset notification base types (D7)

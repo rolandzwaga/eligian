@@ -148,6 +148,14 @@ export interface ExpressionEvaluationResult {
   error?: {
     /** Human-readable error message explaining why evaluation failed */
     reason: string;
+    /**
+     * True when the expression consists only of compile-time constants but is
+     * not a valid constant (division/modulo by zero, wrong operand type such as
+     * `"abc" - 1`, non-finite result). Callers must report this as an error
+     * instead of falling back to a runtime value. False when the expression is
+     * simply not constant (it references a runtime value).
+     */
+    invalid?: boolean;
     /** The expression that failed to evaluate (for debugging) */
     expression: string;
     /** Source location where the error occurred */

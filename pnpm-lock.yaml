@@ -224,6 +224,18 @@ importers:
       commander:
         specifier: 15.0.0
         version: 15.0.0
+      effect:
+        specifier: 4.0.5
+        version: 4.0.5
+      eligius:
+        specifier: 3.0.1
+        version: 3.0.1(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)(video.js@8.24.2)
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      jquery:
+        specifier: 4.0.0
+        version: 4.0.0
 
   packages/extension:
     dependencies:

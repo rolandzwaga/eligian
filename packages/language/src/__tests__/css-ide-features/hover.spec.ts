@@ -15,7 +15,10 @@
 import { describe, expect, it } from 'vitest';
 import { MarkupKind } from 'vscode-languageserver-protocol';
 import { CSSHoverProvider } from '../../css/css-hover.js';
-import type { CSSClassInfo, CSSIDInfo } from '../../css/css-registry.js';
+
+/** The hover provider's input shapes (its interfaces are module-private). */
+type CSSClassInfo = Parameters<CSSHoverProvider['provideCSSClassHover']>[0];
+type CSSIDInfo = Parameters<CSSHoverProvider['provideCSSIDHover']>[0];
 
 describe('CSS Hover Provider', () => {
   const provider = new CSSHoverProvider();

@@ -5,7 +5,7 @@
  * The context determines which completion items should be shown (operations, actions, keywords, etc.).
  */
 
-import { AstUtils, type CstNode, CstUtils, type LangiumDocument } from 'langium';
+import { AstUtils, type CstNode, CstUtils, GrammarUtils, type LangiumDocument } from 'langium';
 import type { Position } from 'vscode-languageserver-protocol';
 import {
   type ActionDefinition,
@@ -17,10 +17,12 @@ import {
   isForStatement,
   isInlineEndableAction,
   isOperationCall,
+  isStaggerBlock,
   isSystemPropertyReference,
   isTimeline,
   isTimelineEvent,
   type OperationCall,
+  type StaggerBlock,
   type Timeline,
 } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
@@ -145,7 +147,13 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   const inlineAction = AstUtils.getContainerOfType(astNode, isInlineEndableAction);
   const eventAction = AstUtils.getContainerOfType(astNode, isEventActionDefinition);
 
-  if (action || endableAction || inlineAction || eventAction) {
+  // Inline stagger operation blocks (`stagger ... for 1s [ ... ] [ ... ]`) are operation
+  // lists like inline endable action blocks.
+  const staggerBlock = AstUtils.getContainerOfType(astNode, isStaggerBlock);
+  const inStaggerOps =
+    staggerBlock !== undefined && isInStaggerOperationBlock(staggerBlock, offset);
+
+  if (action || endableAction || inlineAction || eventAction || inStaggerOps) {
     context.isInsideAction = true;
     // Only store the action if it's a named action (not inline)
     if (action || endableAction) {
@@ -250,51 +258,39 @@ function detectVariablePrefix(document: LangiumDocument, offset: number, astNode
  * @returns True if cursor is in a position to complete event names
  */
 function detectEventNameString(
-  document: LangiumDocument,
+  _document: LangiumDocument,
   offset: number,
   cstNode: CstNode | undefined,
-  _eventAction: EventActionDefinition
+  eventAction: EventActionDefinition
 ): boolean {
-  // If no CST node, can't determine position
-  if (!cstNode) {
+  const actionCst = eventAction.$cstNode;
+  if (!actionCst) {
     return false;
   }
 
-  // Get the text content of the current CST node
-  const nodeText = cstNode.text;
-
-  // Check if we're in a STRING token
-  // The CST node should contain quotes
-  if (!nodeText.includes('"') && !nodeText.includes("'")) {
-    return false;
+  // Normal case: the eventName STRING was parsed. The cursor must be strictly
+  // inside its quotes - body strings, topic strings and anything else never
+  // qualify.
+  const nameNode = GrammarUtils.findNodeForProperty(actionCst, 'eventName');
+  if (nameNode) {
+    return offset > nameNode.offset && offset < nameNode.end;
   }
 
-  // Check if the CST node's range contains the cursor offset
-  const nodeStart = cstNode.offset;
-  const nodeEnd = cstNode.offset + cstNode.length;
-
-  if (offset < nodeStart || offset > nodeEnd) {
+  // Recovery case (empty / just-deleted / unterminated name): accept a string
+  // leaf at the cursor that sits directly after the `event` keyword, i.e. before
+  // any `topic` / `action` keyword.
+  if (!cstNode || !/^["']/.test(cstNode.text)) {
     return false;
   }
-
-  // Simple approach: Check if we're in a STRING token that comes BEFORE the "topic" keyword
-  // or BEFORE the "action" keyword (whichever comes first).
-  // This is the eventName string.
-  const text = document.textDocument.getText();
-  const lineStart = text.lastIndexOf('\n', offset) + 1;
-  const lineEnd = text.indexOf('\n', offset);
-  const lineText = text.substring(lineStart, lineEnd === -1 ? undefined : lineEnd);
-
-  // Find positions of keywords relative to cursor
-  const cursorPosInLine = offset - lineStart;
-  const topicPos = lineText.indexOf('topic');
-  const actionPos = lineText.indexOf('action');
-
-  // If cursor is before "topic" or "action", and we're in a STRING, we're in eventName
-  const beforeTopic = topicPos === -1 || cursorPosInLine < topicPos;
-  const beforeAction = actionPos === -1 || cursorPosInLine < actionPos;
-
-  return beforeTopic && beforeAction;
+  if (offset <= cstNode.offset || offset > cstNode.end) {
+    return false;
+  }
+  const eventKeyword = GrammarUtils.findNodesForKeyword(actionCst, 'event')[0];
+  if (!eventKeyword || eventKeyword.end > cstNode.offset) {
+    return false;
+  }
+  const between = actionCst.root.fullText.substring(eventKeyword.end, cstNode.offset);
+  return between.trim() === '';
 }
 
 /**
@@ -305,19 +301,27 @@ function detectEventNameString(
 function detectAfterEventKeyword(
   document: LangiumDocument,
   offset: number,
-  _eventAction: EventActionDefinition
+  eventAction: EventActionDefinition
 ): boolean {
   // NOTE: We intentionally do NOT early-return when eventAction.eventName is
   // already set. The cursor may be positioned right after "on event" to replace
   // an existing event name, in which case completions must still be offered. The
-  // regex below correctly gates this case by inspecting the text before the cursor.
-
-  // Check the text before cursor to see if it ends with "on event"
+  // check below gates this case by inspecting the text between the `event`
+  // keyword and the cursor.
   const text = document.textDocument.getText();
+
+  const eventKeyword = eventAction.$cstNode
+    ? GrammarUtils.findNodesForKeyword(eventAction.$cstNode, 'event')[0]
+    : undefined;
+  if (eventKeyword) {
+    // Only whitespace may sit between the `event` keyword and the cursor; this
+    // also excludes cursors in the action body.
+    return offset >= eventKeyword.end && text.substring(eventKeyword.end, offset).trim() === '';
+  }
+
+  // No keyword node (heavily broken input): fall back to the line text
   const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
   const textBeforeCursor = text.substring(lineStart, offset).trim();
-
-  // Check if text ends with "on event" (possibly with whitespace)
   return /\bon\s+event\s*$/.test(textBeforeCursor);
 }
 
@@ -405,4 +409,16 @@ function detectControllerContext(
     controllerName,
     parameterIndex,
   };
+}
+
+/**
+ * True when `offset` lies inside the start or end operation block of an inline stagger block:
+ * the `with action()` form has no blocks, and in the block form the offset must be past the
+ * first `[` that belongs to the stagger block itself (an items array literal has its own CST).
+ */
+function isInStaggerOperationBlock(stagger: StaggerBlock, offset: number): boolean {
+  if (stagger.actionCall !== undefined || !stagger.$cstNode) return false;
+  return CstUtils.streamCst(stagger.$cstNode).some(
+    node => node.text === '[' && node.astNode === stagger && node.offset < offset
+  );
 }

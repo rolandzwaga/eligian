@@ -12,7 +12,7 @@ import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { HoverParams } from 'vscode-languageserver';
-import type { OperationSignature } from '../compiler/operations/types.js';
+import type { OperationSignature, ParameterType } from '../compiler/operations/types.js';
 import { EligianHoverProvider } from '../eligian-hover-provider.js';
 import { createEligianServices } from '../eligian-module.js';
 import type { Timeline } from '../generated/ast.js';
@@ -21,6 +21,12 @@ import {
   formatOutputType,
   formatParameterType,
 } from '../hover/hover-builders.js';
+
+/**
+ * Free-form dependency/output type names. The formatter prints them verbatim, so these tests
+ * use readable names instead of the registry's `ParameterType:*` identifiers.
+ */
+const pt = (name: string): ParameterType => name as ParameterType;
 
 describe('EligianHoverProvider', () => {
   const services = createEligianServices(EmptyFileSystem).Eligian;
@@ -39,7 +45,6 @@ describe('EligianHoverProvider', () => {
     it('should format basic operation with description', () => {
       const signature: OperationSignature = {
         systemName: 'selectElement',
-        dslName: 'selectElement',
         description: 'Selects a DOM element by CSS selector',
         parameters: [],
         dependencies: [],
@@ -56,18 +61,17 @@ describe('EligianHoverProvider', () => {
     it('should format operation with required parameters', () => {
       const signature: OperationSignature = {
         systemName: 'animate',
-        dslName: 'animate',
         description: 'Animates CSS properties',
         parameters: [
           {
             name: 'properties',
-            type: ['object'],
+            type: ['ParameterType:object'],
             required: true,
             description: 'CSS properties to animate',
           },
           {
             name: 'duration',
-            type: ['number'],
+            type: ['ParameterType:number'],
             required: true,
             description: 'Animation duration in milliseconds',
           },
@@ -88,12 +92,11 @@ describe('EligianHoverProvider', () => {
     it('should format operation with optional parameters', () => {
       const signature: OperationSignature = {
         systemName: 'fadeIn',
-        dslName: 'fadeIn',
         description: 'Fades in an element',
         parameters: [
           {
             name: 'duration',
-            type: ['number'],
+            type: ['ParameterType:number'],
             required: false,
             description: 'Optional duration',
           },
@@ -110,12 +113,11 @@ describe('EligianHoverProvider', () => {
     it('should format operation with erased parameters', () => {
       const signature: OperationSignature = {
         systemName: 'useValue',
-        dslName: 'useValue',
         description: 'Uses a stored value',
         parameters: [
           {
             name: 'key',
-            type: ['string'],
+            type: ['ParameterType:string'],
             required: true,
             erased: true,
           },
@@ -132,12 +134,11 @@ describe('EligianHoverProvider', () => {
     it('should format operation with dependencies', () => {
       const signature: OperationSignature = {
         systemName: 'animate',
-        dslName: 'animate',
         description: 'Animates an element',
         parameters: [],
         dependencies: [
-          { name: 'selectedElement', type: 'Element' },
-          { name: 'timeline', type: 'TimelineProvider' },
+          { name: 'selectedElement', type: pt('Element') },
+          { name: 'timeline', type: pt('TimelineProvider') },
         ],
         outputs: [],
       };
@@ -152,11 +153,10 @@ describe('EligianHoverProvider', () => {
     it('should format operation with outputs', () => {
       const signature: OperationSignature = {
         systemName: 'selectElement',
-        dslName: 'selectElement',
         description: 'Selects an element',
         parameters: [],
         dependencies: [],
-        outputs: [{ name: 'selectedElement', type: 'Element' }],
+        outputs: [{ name: 'selectedElement', type: pt('Element') }],
       };
 
       const markdown = buildOperationHoverMarkdown(signature);
@@ -168,11 +168,10 @@ describe('EligianHoverProvider', () => {
     it('should format operation with erased outputs', () => {
       const signature: OperationSignature = {
         systemName: 'storeValue',
-        dslName: 'storeValue',
         description: 'Stores a value',
         parameters: [],
         dependencies: [],
-        outputs: [{ name: 'storedValue', type: 'any', erased: true }],
+        outputs: [{ name: 'storedValue', type: pt('any'), erased: true }],
       };
 
       const markdown = buildOperationHoverMarkdown(signature);
@@ -183,31 +182,30 @@ describe('EligianHoverProvider', () => {
     it('should format complex operation with all features', () => {
       const signature: OperationSignature = {
         systemName: 'complexOperation',
-        dslName: 'complexOperation',
         description: 'A complex operation with everything',
         parameters: [
           {
             name: 'required',
-            type: ['string'],
+            type: ['ParameterType:string'],
             required: true,
             description: 'A required parameter',
           },
           {
             name: 'optional',
-            type: ['number'],
+            type: ['ParameterType:number'],
             required: false,
           },
           {
             name: 'erased',
-            type: ['object'],
+            type: ['ParameterType:object'],
             required: true,
             erased: true,
           },
         ],
-        dependencies: [{ name: 'dep1', type: 'Type1' }],
+        dependencies: [{ name: 'dep1', type: pt('Type1') }],
         outputs: [
-          { name: 'out1', type: 'Type2' },
-          { name: 'out2', type: 'Type3', erased: true },
+          { name: 'out1', type: pt('Type2') },
+          { name: 'out2', type: pt('Type3'), erased: true },
         ],
       };
 
@@ -294,7 +292,7 @@ event test at 0..10 {
 
       expect(hover).toBeDefined();
       expect(hover?.contents).toBeDefined();
-      if (hover?.contents && typeof hover.contents === 'object' && 'value' in hover.contents) {
+      if (hover?.contents && typeof hover.contents === 'object' && 'kind' in hover.contents) {
         expect(hover.contents.kind).toBe('markdown');
         expect(hover.contents.value).toContain('selectElement');
       }
@@ -371,18 +369,17 @@ event test at 0..10 {
     it('should generate consistent markdown for standard operation', () => {
       const signature: OperationSignature = {
         systemName: 'animate',
-        dslName: 'animate',
         description: 'Animates CSS properties over time',
         parameters: [
           {
             name: 'properties',
-            type: ['object'],
+            type: ['ParameterType:object'],
             required: true,
             description: 'CSS properties to animate',
           },
           {
             name: 'duration',
-            type: ['number'],
+            type: ['ParameterType:number'],
             required: true,
             description: 'Duration in milliseconds',
           },
@@ -393,8 +390,8 @@ event test at 0..10 {
             description: 'Easing function',
           },
         ],
-        dependencies: [{ name: 'selectedElement', type: 'Element' }],
-        outputs: [{ name: 'animation', type: 'Animation' }],
+        dependencies: [{ name: 'selectedElement', type: pt('Element') }],
+        outputs: [{ name: 'animation', type: pt('Animation') }],
       };
 
       const markdown = buildOperationHoverMarkdown(signature);
@@ -405,12 +402,11 @@ event test at 0..10 {
     it('should generate consistent markdown for simple operation', () => {
       const signature: OperationSignature = {
         systemName: 'log',
-        dslName: 'log',
         description: 'Logs a message to console',
         parameters: [
           {
             name: 'message',
-            type: ['string'],
+            type: ['ParameterType:string'],
             required: true,
           },
         ],

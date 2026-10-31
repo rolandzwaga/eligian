@@ -3,45 +3,16 @@
   "scopeName": "source.eligian",
   "fileTypes": ["eligian"],
   "patterns": [
-    {
-      "include": "#comments"
-    },
-    {
-      "name": "keyword.control.eligian",
-      "match": "\\b(action|at|audio|context|custom|endable|false|from|globaldata|h|m|ms|null|operationdata|raf|s|timeline|true|using|video)\\b"
-    },
-    {
-      "name": "string.quoted.double.eligian",
-      "begin": "\"",
-      "end": "\"",
-      "patterns": [
-        {
-          "include": "#string-character-escape"
-        }
-      ]
-    },
-    {
-      "name": "string.quoted.single.eligian",
-      "begin": "'",
-      "end": "'",
-      "patterns": [
-        {
-          "include": "#string-character-escape"
-        }
-      ]
-    },
-    {
-      "name": "punctuation.bracket.square.eligian",
-      "match": "\\[|\\]"
-    },
-    {
-      "name": "punctuation.bracket.round.eligian",
-      "match": "\\(|\\)"
-    },
-    {
-      "name": "punctuation.bracket.curly.eligian",
-      "match": "\\{|\\}"
-    }
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#property-chain-reference" },
+    { "include": "#system-property-reference" },
+    { "include": "#variable-reference" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#function-calls" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
   ],
   "repository": {
     "comments": {
@@ -50,32 +21,164 @@
           "name": "comment.block.eligian",
           "begin": "/\\*",
           "beginCaptures": {
-            "0": {
-              "name": "punctuation.definition.comment.eligian"
-            }
+            "0": { "name": "punctuation.definition.comment.eligian" }
           },
           "end": "\\*/",
           "endCaptures": {
-            "0": {
-              "name": "punctuation.definition.comment.eligian"
-            }
+            "0": { "name": "punctuation.definition.comment.eligian" }
           }
         },
         {
+          "name": "comment.line.double-slash.eligian",
           "begin": "//",
           "beginCaptures": {
-            "1": {
-              "name": "punctuation.whitespace.comment.leading.eligian"
-            }
+            "0": { "name": "punctuation.definition.comment.eligian" }
           },
-          "end": "(?=$)",
-          "name": "comment.line.eligian"
+          "end": "(?=$)"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.eligian",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [{ "include": "#string-character-escape" }]
+        },
+        {
+          "name": "string.quoted.single.eligian",
+          "begin": "'",
+          "end": "'",
+          "patterns": [{ "include": "#string-character-escape" }]
         }
       ]
     },
     "string-character-escape": {
       "name": "constant.character.escape.eligian",
       "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\\{[0-9A-Fa-f]+\\}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)"
+    },
+    "property-chain-reference": {
+      "comment": "$scope.x, $operationdata.x, $globaldata.x",
+      "match": "(\\$)(scope|operationdata|globaldata)((?:\\.[_a-zA-Z][\\w_]*)+)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.eligian" },
+        "2": { "name": "variable.language.scope.eligian" },
+        "3": { "name": "variable.other.property.eligian" }
+      }
+    },
+    "system-property-reference": {
+      "comment": "@@currentItem, @@loopIndex, @@item.name",
+      "match": "(@@)([_a-zA-Z][\\w_]*)((?:\\.[_a-zA-Z][\\w_]*)*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.eligian" },
+        "2": { "name": "variable.language.system.eligian" },
+        "3": { "name": "variable.other.property.eligian" }
+      }
+    },
+    "variable-reference": {
+      "comment": "@constName (reference to a const declaration)",
+      "match": "(@)([_a-zA-Z][\\w_]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.eligian" },
+        "2": { "name": "variable.other.constant.eligian" }
+      }
+    },
+    "numbers": {
+      "comment": "Numbers, optionally followed by a time unit (ms, s, m, h); also right after the range operator (0s..5s)",
+      "match": "(?:(?<![\\w.])|(?<=\\.\\.))([0-9]+(?:\\.[0-9]+)?)(ms|s|m|h)?(?![\\w])",
+      "captures": {
+        "1": { "name": "constant.numeric.eligian" },
+        "2": { "name": "keyword.other.unit.time.eligian" }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.eligian",
+          "match": "(?<![\\w.])(?:if|else|for|in|break|continue)(?![\\w])"
+        },
+        {
+          "name": "keyword.control.timeline.eligian",
+          "match": "(?<![\\w.])(?:at|timeline|using|sequence|stagger|with)(?![\\w])"
+        },
+        {
+          "name": "keyword.control.event.eligian",
+          "match": "(?<![\\w.])(?:on|event|topic|click|navigate)(?![\\w])"
+        },
+        {
+          "name": "keyword.control.import.eligian",
+          "match": "(?<![\\w.])(?:import|from|as|layout|styles|provider|locales)(?![\\w])"
+        },
+        {
+          "name": "storage.modifier.eligian",
+          "match": "(?<![\\w.])(?:private|endable)(?![\\w])"
+        },
+        {
+          "name": "storage.type.declaration.eligian",
+          "match": "(?<![\\w.])(?:action|const|library|languages)(?![\\w])"
+        },
+        {
+          "name": "storage.type.primitive.eligian",
+          "match": "(?<![\\w.])(?:string|number|boolean|object|array)(?![\\w])"
+        },
+        {
+          "name": "constant.language.eligian",
+          "match": "(?<![\\w.])(?:true|false|null)(?![\\w])"
+        },
+        {
+          "name": "support.constant.provider.eligian",
+          "match": "(?<![\\w.])(?:video|audio|raf|custom)(?![\\w])"
+        },
+        {
+          "name": "support.constant.asset-type.eligian",
+          "match": "(?<![\\w.])(?:html|css|media)(?![\\w])"
+        },
+        {
+          "name": "variable.language.scope.eligian",
+          "match": "(?<![\\w.$])(?:scope|operationdata|globaldata)(?![\\w])"
+        }
+      ]
+    },
+    "function-calls": {
+      "match": "(?<![\\w.])([_a-zA-Z][\\w_]*)(?=\\s*\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.eligian" }
+      }
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.range.eligian",
+          "match": "\\.\\."
+        },
+        {
+          "name": "keyword.operator.comparison.eligian",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.eligian",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.arithmetic.eligian",
+          "match": "\\*\\*|[+\\-*/%]"
+        },
+        {
+          "name": "keyword.operator.assignment.eligian",
+          "match": "="
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.bracket.square.eligian", "match": "\\[|\\]" },
+        { "name": "punctuation.bracket.round.eligian", "match": "\\(|\\)" },
+        { "name": "punctuation.bracket.curly.eligian", "match": "\\{|\\}" },
+        { "name": "punctuation.separator.comma.eligian", "match": "," },
+        { "name": "punctuation.separator.colon.eligian", "match": ":" },
+        { "name": "punctuation.accessor.eligian", "match": "\\." }
+      ]
     }
   }
 }

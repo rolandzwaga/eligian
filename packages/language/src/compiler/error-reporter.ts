@@ -18,6 +18,34 @@ import type {
 import { formatSourceLocation, type SourceLocation } from './types/common.js';
 
 /**
+ * Normalize a file path or file URI for comparison (scheme, separators, case).
+ */
+function normalizePath(filePath: string): string {
+  let normalized = filePath;
+  if (/^file:/i.test(normalized)) {
+    normalized = decodeURIComponent(normalized.replace(/^file:\/*/i, '/'));
+  }
+  return normalized
+    .replace(/\\/g, '/')
+    .replace(/^\/(?=[a-zA-Z]:)/, '')
+    .toLowerCase();
+}
+
+/**
+ * True when a location points into the main source (the `sourceCode` passed to
+ * the formatter). A location without a `file` is in the main source; one with a
+ * `file` (e.g. an imported library action) is only when it equals `sourcePath`.
+ * Rendering another file's line/column against the main source would show an
+ * unrelated snippet.
+ */
+function isInMainSource(location: SourceLocation, sourcePath: string | undefined): boolean {
+  if (!location?.file) {
+    return true;
+  }
+  return sourcePath !== undefined && normalizePath(location.file) === normalizePath(sourcePath);
+}
+
+/**
  * Build a FormattedError from a prefix, a located error, and a precomputed hint.
  *
  * All four `format*Error` functions share the same shape (prefix + message,
@@ -29,13 +57,15 @@ import { formatSourceLocation, type SourceLocation } from './types/common.js';
  * @param error - The error's message and source location
  * @param sourceCode - Optional source for the context snippet
  * @param hint - Optional precomputed hint
+ * @param sourcePath - Optional path of `sourceCode`; a location in another file gets no snippet
  * @returns Formatted error ready for display
  */
 function buildFormattedError(
   prefix: string,
   error: { message: string; location: SourceLocation },
   sourceCode: string | undefined,
-  hint: string | undefined
+  hint: string | undefined,
+  sourcePath: string | undefined
 ): FormattedError {
   const { message, location } = error;
 
@@ -45,7 +75,10 @@ function buildFormattedError(
     formatted += `\n  at ${formatSourceLocation(location)}`;
   }
 
-  const codeSnippet = sourceCode ? extractCodeSnippet(sourceCode, location) : undefined;
+  const codeSnippet =
+    sourceCode && isInMainSource(location, sourcePath)
+      ? extractCodeSnippet(sourceCode, location)
+      : undefined;
 
   return {
     severity: 'error',
@@ -70,8 +103,18 @@ function buildFormattedError(
  * // "Parse error at line 5, column 10:
  * //  Expected 'timeline' but found 'timline'"
  */
-export function formatParseError(error: ParseError, sourceCode?: string): FormattedError {
-  return buildFormattedError('Parse Error', error, sourceCode, generateParseHint(error.message));
+export function formatParseError(
+  error: ParseError,
+  sourceCode?: string,
+  sourcePath?: string
+): FormattedError {
+  return buildFormattedError(
+    'Parse Error',
+    error,
+    sourceCode,
+    generateParseHint(error.message),
+    sourcePath
+  );
 }
 
 /**
@@ -84,12 +127,17 @@ export function formatParseError(error: ParseError, sourceCode?: string): Format
  * @param sourceCode - Optional source code for context snippet
  * @returns Formatted error message
  */
-export function formatValidationError(error: ValidationError, sourceCode?: string): FormattedError {
+export function formatValidationError(
+  error: ValidationError,
+  sourceCode?: string,
+  sourcePath?: string
+): FormattedError {
   return buildFormattedError(
     'Validation Error',
     error,
     sourceCode,
-    generateValidationHint(error.message)
+    generateValidationHint(error.message),
+    sourcePath
   );
 }
 
@@ -102,8 +150,18 @@ export function formatValidationError(error: ValidationError, sourceCode?: strin
  * @param sourceCode - Optional source code for context snippet
  * @returns Formatted error message
  */
-export function formatTypeError(error: TypeError, sourceCode?: string): FormattedError {
-  return buildFormattedError('Type Error', error, sourceCode, generateTypeHint(error.message));
+export function formatTypeError(
+  error: TypeError,
+  sourceCode?: string,
+  sourcePath?: string
+): FormattedError {
+  return buildFormattedError(
+    'Type Error',
+    error,
+    sourceCode,
+    generateTypeHint(error.message),
+    sourcePath
+  );
 }
 
 /**
@@ -115,12 +173,17 @@ export function formatTypeError(error: TypeError, sourceCode?: string): Formatte
  * @param sourceCode - Optional source code for context snippet
  * @returns Formatted error message
  */
-export function formatTransformError(error: TransformError, sourceCode?: string): FormattedError {
+export function formatTransformError(
+  error: TransformError,
+  sourceCode?: string,
+  sourcePath?: string
+): FormattedError {
   return buildFormattedError(
     `Transform Error (${error.kind})`,
     error,
     sourceCode,
-    generateTransformHint(error.kind, error.message)
+    generateTransformHint(error.kind, error.message),
+    sourcePath
   );
 }
 
@@ -135,19 +198,23 @@ export function formatTransformError(error: TransformError, sourceCode?: string)
  * const formatted = formatError(error, sourceCode);
  * console.error(formatted.message);
  */
-export function formatError(error: CompilerError, sourceCode?: string): FormattedError {
+export function formatError(
+  error: CompilerError,
+  sourceCode?: string,
+  sourcePath?: string
+): FormattedError {
   switch (error._tag) {
     case 'ParseError':
-      return formatParseError(error, sourceCode);
+      return formatParseError(error, sourceCode, sourcePath);
 
     case 'ValidationError':
-      return formatValidationError(error, sourceCode);
+      return formatValidationError(error, sourceCode, sourcePath);
 
     case 'TypeError':
-      return formatTypeError(error, sourceCode);
+      return formatTypeError(error, sourceCode, sourcePath);
 
     case 'TransformError':
-      return formatTransformError(error, sourceCode);
+      return formatTransformError(error, sourceCode, sourcePath);
 
     case 'EmitError':
     case 'OptimizationError':
@@ -179,8 +246,12 @@ export function formatError(error: CompilerError, sourceCode?: string): Formatte
  * @param sourceCode - Optional source code for context snippets
  * @returns Array of formatted error messages
  */
-export function formatErrors(errors: CompilerError[], sourceCode?: string): FormattedError[] {
-  return errors.map(error => formatError(error, sourceCode));
+export function formatErrors(
+  errors: CompilerError[],
+  sourceCode?: string,
+  sourcePath?: string
+): FormattedError[] {
+  return errors.map(error => formatError(error, sourceCode, sourcePath));
 }
 
 /**

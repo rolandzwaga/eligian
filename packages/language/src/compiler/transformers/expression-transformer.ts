@@ -7,7 +7,12 @@
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
 import { type Expression, isProgram } from '../../generated/ast.js';
-import { evaluateExpression, resolveConstant } from '../expression-evaluator.js';
+import {
+  evaluateExpression,
+  resolveConstant,
+  runtimeOperatorMessage,
+} from '../expression-evaluator.js';
+import type { ConstantMap } from '../types/constant-folding.js';
 import type { JsonValue } from '../types/eligius-ir.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
@@ -165,47 +170,20 @@ export const transformExpression = (
 
       case 'BinaryExpression': {
         // Binary expression: 10 + 5
-        // Evaluate at compile time if both sides are literals
-        const left = yield* transformExpression(expr.left, scope);
-        const right = yield* transformExpression(expr.right, scope);
-
-        // If both are numbers, evaluate
-        if (typeof left === 'number' && typeof right === 'number') {
-          switch (expr.op) {
-            case '+':
-              return left + right;
-            case '-':
-              return left - right;
-            case '*':
-              return left * right;
-            case '/':
-              return left / right;
-            case '%':
-              return left % right;
-            case '**':
-              return left ** right;
-            case '>':
-              return left > right;
-            case '<':
-              return left < right;
-            case '>=':
-              return left >= right;
-            case '<=':
-              return left <= right;
-            case '==':
-              return left === right;
-            case '!=':
-              return left !== right;
-          }
-        }
-
-        // Otherwise, serialize as expression string
-        return `(${JSON.stringify(left)} ${expr.op} ${JSON.stringify(right)})`;
+        // Transform the operands first so their own errors (unresolved
+        // references, runtime negation, ...) surface at the innermost node.
+        yield* transformExpression(expr.left, scope);
+        yield* transformExpression(expr.right, scope);
+        // Only compile-time constants can be emitted: Eligius resolves a
+        // property chain only as a whole string, so an expression over a
+        // runtime value has no JSON form (if conditions are serialized by
+        // condition-transformer.ts instead).
+        return yield* foldConstantOperation(expr, expr.op, false, scope);
       }
 
       case 'UnaryExpression': {
         // Unary expression: !flag, -value
-        const operand = yield* transformExpression(expr.operand, scope);
+        yield* transformExpression(expr.operand, scope);
 
         switch (expr.op) {
           case '!': {
@@ -214,10 +192,7 @@ export const transformExpression = (
             // property-chain string ('$operationdata.flag'), and JS `!` on it is
             // always `false`. Ask the constant evaluator instead, which resolves
             // literals and constant references by their actual declaration.
-            const folded = evaluateExpression(
-              expr.operand,
-              new Map([...scope.programConstants.entries(), ...scope.scopedConstants.entries()])
-            );
+            const folded = evaluateExpression(expr.operand, constantsInScope(scope));
             if (folded.canEvaluate) {
               return !folded.value;
             }
@@ -232,10 +207,7 @@ export const transformExpression = (
             });
           }
           case '-':
-            if (typeof operand === 'number') {
-              return -operand;
-            }
-            return `(-${JSON.stringify(operand)})`;
+            return yield* foldConstantOperation(expr, expr.op, true, scope);
           default:
             return yield* Effect.fail({
               _tag: 'TransformError' as const,
@@ -255,3 +227,42 @@ export const transformExpression = (
         });
     }
   });
+
+/** Program and action-scoped constants visible to an expression (scoped ones win). */
+const constantsInScope = (scope: ScopeContext): ConstantMap =>
+  new Map([...scope.programConstants.entries(), ...scope.scopedConstants.entries()]);
+
+/**
+ * Fold an operator expression whose operands have already been transformed.
+ *
+ * The transformed operands cannot be used for this: a runtime reference
+ * becomes a property-chain string ('$operationdata.x'), indistinguishable from
+ * a string literal. The constant evaluator resolves literals and constant
+ * references by their declaration, so it tells constants and runtime values
+ * apart:
+ * - constant: emit the folded value
+ * - invalid constant (division/modulo by zero, wrong operand type, non-finite
+ *   result): compile error, there is no value to emit
+ * - runtime operand: compile error. Eligius resolves property chains only as
+ *   whole strings, so `x + 10` cannot be emitted (it used to become the inert
+ *   string '("$operationdata.x" + 10)').
+ */
+const foldConstantOperation = (
+  expr: Expression,
+  op: string,
+  unary: boolean,
+  scope: ScopeContext
+): Effect.Effect<JsonValue, TransformError> => {
+  const folded = evaluateExpression(expr, constantsInScope(scope));
+  if (folded.canEvaluate) {
+    return Effect.succeed(folded.value ?? null);
+  }
+  return Effect.fail({
+    _tag: 'TransformError' as const,
+    kind: 'InvalidExpression' as const,
+    message: folded.error?.invalid
+      ? (folded.error.reason ?? 'Invalid constant expression')
+      : runtimeOperatorMessage(op, unary),
+    location: getSourceLocation(expr),
+  });
+};

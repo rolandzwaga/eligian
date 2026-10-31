@@ -21,7 +21,14 @@ import {
   getMimeType,
   NEVER_INLINE_EXTENSIONS,
 } from './types.js';
-import { isDataUri, isExternalUrl, resolveAssetPath } from './url-utils.js';
+import {
+  isDataUri,
+  isExternalUrl,
+  isFragmentOnlyUrl,
+  maskCssComments,
+  resolveAssetPath,
+  resolveCssUrlFile,
+} from './url-utils.js';
 
 // Re-export for consumers that imported it from this module (e.g. tests)
 export { resolveAssetPath } from './url-utils.js';
@@ -92,7 +99,8 @@ interface CSSUrlRef {
  */
 export function extractCSSUrlsWithLines(cssContent: string): CSSUrlRef[] {
   const results: CSSUrlRef[] = [];
-  const lines = cssContent.split('\n');
+  // Comments are blanked (newlines preserved) so url() inside them is ignored
+  const lines = maskCssComments(cssContent).split('\n');
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
@@ -103,8 +111,8 @@ export function extractCSSUrlsWithLines(cssContent: string): CSSUrlRef[] {
     while ((match = URL_REGEX.exec(line)) !== null) {
       const url = match[2].trim();
 
-      // Skip external URLs and data URIs
-      if (isExternalUrl(url) || isDataUri(url)) {
+      // Skip external URLs, data URIs and fragment-only references
+      if (isExternalUrl(url) || isDataUri(url) || isFragmentOnlyUrl(url)) {
         continue;
       }
 
@@ -130,14 +138,16 @@ export function extractCSSUrls(cssContent: string): string[] {
   const urls = new Set<string>();
   let match: RegExpExecArray | null;
 
+  const masked = maskCssComments(cssContent);
+
   // Reset regex state
   URL_REGEX.lastIndex = 0;
 
-  while ((match = URL_REGEX.exec(cssContent)) !== null) {
+  while ((match = URL_REGEX.exec(masked)) !== null) {
     const url = match[2].trim();
 
-    // Skip external URLs and data URIs
-    if (isExternalUrl(url) || isDataUri(url)) {
+    // Skip external URLs, data URIs and fragment-only references
+    if (isExternalUrl(url) || isDataUri(url) || isFragmentOnlyUrl(url)) {
       continue;
     }
 
@@ -450,7 +460,8 @@ export function collectAssets(
 
       // Process each URL
       for (const { url: urlRef, line } of urlRefs) {
-        const absolutePath = resolveAssetPath(urlRef, cssFilePath);
+        // Strip ?query / #fragment and percent-decode to get the real file path
+        const { absolutePath } = resolveCssUrlFile(urlRef, cssFilePath);
 
         // Check if asset exists (include source location in error)
         const stat = yield* Effect.tryPromise({

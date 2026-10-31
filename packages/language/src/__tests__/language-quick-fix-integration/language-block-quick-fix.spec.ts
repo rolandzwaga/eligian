@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { LangiumDocument } from 'langium';
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import type { CodeAction } from 'vscode-languageserver';
 import { CodeActionKind } from 'vscode-languageserver';
@@ -23,6 +24,27 @@ describe('Language Block Quick Fix - Integration Tests', () => {
   beforeAll(async () => {
     ctx = createTestContext();
   });
+
+  // Request quick fixes at the top of the document. The provider may also return bare Commands;
+  // these tests only look at CodeActions.
+  const getQuickFixes = async (document: LangiumDocument): Promise<CodeAction[]> => {
+    const actions = await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 1 },
+      },
+      context: {
+        diagnostics: [],
+        only: [CodeActionKind.QuickFix],
+      },
+      textDocument: { uri: document.uri.toString() },
+    });
+    expect(actions).toBeDefined();
+    return (actions ?? []).filter(
+      (action): action is CodeAction =>
+        'title' in action && !('command' in action && typeof action.command === 'string')
+    );
+  };
 
   beforeEach(() => {
     setupCSSRegistry(ctx, 'file:///styles.css', {
@@ -51,19 +73,7 @@ describe('Language Block Quick Fix - Integration Tests', () => {
       const { document } = await ctx.parseAndValidate(program);
 
       // Request code actions at the top of the document
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       expect(codeActions).toBeDefined();
       expect(codeActions.length).toBeGreaterThan(0);
@@ -88,19 +98,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')
@@ -117,19 +115,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')
@@ -164,19 +150,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')
@@ -198,19 +172,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')
@@ -234,19 +196,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')
@@ -273,19 +223,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')
@@ -317,19 +255,7 @@ action testAction() [
 
       const { document } = await ctx.parseAndValidate(program);
 
-      const codeActions: CodeAction[] =
-        await ctx.services.Eligian.lsp.CodeActionProvider!.getCodeActions(document, {
-          diagnostics: [],
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 1 },
-          },
-          context: {
-            diagnostics: [],
-            only: [CodeActionKind.QuickFix],
-          },
-          textDocument: { uri: document.uri.toString() },
-        });
+      const codeActions = await getQuickFixes(document);
 
       const languageBlockFix = codeActions.find(action =>
         action.title.includes('Generate language block')

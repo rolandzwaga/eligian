@@ -228,7 +228,7 @@ describe('Pipeline', () => {
 
       // T282: compile() returns IEngineConfiguration which doesn't have metadata
       // Use compileToIR() if you need metadata
-      expect(result.metadata).toBeUndefined();
+      expect((result as { metadata?: unknown }).metadata).toBeUndefined();
     });
 
     test('should fail on invalid DSL', async () => {

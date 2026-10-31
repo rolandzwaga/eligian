@@ -27,6 +27,7 @@ export type { BundleFile, BundleOptions, BundleResult, BundleStats } from './bun
 // Bundler API
 export {
   AssetNotFoundError,
+  BundleCompileError,
   BundleError,
   createBundle,
   OutputExistsError,
