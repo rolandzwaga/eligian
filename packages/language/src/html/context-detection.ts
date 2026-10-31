@@ -16,9 +16,14 @@
  * - None: Not in a createElement context
  */
 
-import { type AstNode, AstUtils, CstUtils } from 'langium';
+import { type AstNode, AstUtils, CstUtils, GrammarUtils } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
-import { isObjectLiteral, isObjectProperty, isOperationCall } from '../generated/ast.js';
+import {
+  isObjectLiteral,
+  isObjectProperty,
+  isOperationCall,
+  type ObjectProperty,
+} from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { type HTMLCompletionContext, HTMLCompletionContextType } from './context-types.js';
 
@@ -80,16 +85,22 @@ export function detectHTMLCompletionContext(context: CompletionContext): HTMLCom
     if (firstArg.$cstNode) {
       const argStart = firstArg.$cstNode.offset;
       const argEnd = firstArg.$cstNode.end;
+      const bounds = extractStringBoundaries(text, argStart, argEnd);
 
-      if (offset >= argStart && offset <= argEnd) {
-        // Inside first argument - ElementName context
-        const partialText = extractPartialText(text, offset, argStart, argEnd);
-        const stringBounds = extractStringBoundaries(text, argStart, argEnd);
+      // A string argument only counts when the cursor is between its quotes
+      // (`$cstNode.end` is exclusive and the quotes themselves are outside the
+      // content). A non-string argument keeps the inclusive range so a cursor
+      // directly after an identifier being typed still matches.
+      const inside = bounds
+        ? offset >= bounds.contentStart && offset <= bounds.contentEnd
+        : offset >= argStart && offset <= argEnd;
+
+      if (inside) {
         return {
           type: HTMLCompletionContextType.ElementName,
-          partialText,
-          stringContentStart: stringBounds?.contentStart,
-          stringContentEnd: stringBounds?.contentEnd,
+          partialText: bounds ? extractPartialText(text, offset, bounds) : '',
+          stringContentStart: bounds?.contentStart,
+          stringContentEnd: bounds?.contentEnd,
         };
       }
     }
@@ -104,33 +115,64 @@ export function detectHTMLCompletionContext(context: CompletionContext): HTMLCom
       const objStart = thirdArg.$cstNode.offset;
       const objEnd = thirdArg.$cstNode.end;
 
-      if (offset >= objStart && offset <= objEnd) {
+      // Strictly between the braces: `end` is exclusive, so `{}|` is outside.
+      // An unterminated object (`{|` or `{ a: "x",|` while typing) has no `}`: parser
+      // recovery ends its CST at the last real token, so the end offset itself is inside.
+      const isClosed = GrammarUtils.findNodeForKeyword(thirdArg.$cstNode, '}') !== undefined;
+      if (offset > objStart && (isClosed ? offset < objEnd : offset <= objEnd)) {
         // Extract element name from first argument
         const elementName = extractElementName(args[0], text);
 
-        // Check if cursor is inside a property value
-        const objectProperty = AstUtils.getContainerOfType(astNode, isObjectProperty);
-        if (objectProperty?.value?.$cstNode) {
-          const valueStart = objectProperty.value.$cstNode.offset;
-          const valueEnd = objectProperty.value.$cstNode.end;
-
-          if (offset >= valueStart && offset <= valueEnd) {
-            // Inside property value - AttributeValue context
-            const attributeName = objectProperty.key;
-            const partialText = extractPartialText(text, offset, valueStart, valueEnd);
-            const stringBounds = extractStringBoundaries(text, valueStart, valueEnd);
-            return {
-              type: HTMLCompletionContextType.AttributeValue,
-              elementName,
-              attributeName,
-              partialText,
-              stringContentStart: stringBounds?.contentStart,
-              stringContentEnd: stringBounds?.contentEnd,
-            };
+        // Check if cursor is inside a property of this object
+        const objectProperty = findPropertyOf(astNode, thirdArg);
+        if (objectProperty) {
+          // String key (`{ "aria-label": ... }`, `{ "data-x": ... }`): complete inside the quotes
+          const keyNode = GrammarUtils.findNodeForProperty(objectProperty.$cstNode, 'key');
+          if (keyNode) {
+            const keyBounds = extractStringBoundaries(text, keyNode.offset, keyNode.end);
+            if (keyBounds) {
+              if (offset >= keyBounds.contentStart && offset <= keyBounds.contentEnd) {
+                return {
+                  type: HTMLCompletionContextType.AttributeName,
+                  elementName,
+                  partialText: extractPartialText(text, offset, keyBounds),
+                  stringContentStart: keyBounds.contentStart,
+                  stringContentEnd: keyBounds.contentEnd,
+                };
+              }
+            } else if (offset >= keyNode.offset && offset <= keyNode.end) {
+              // Identifier key being typed
+              return { type: HTMLCompletionContextType.AttributeName, elementName };
+            }
           }
+
+          const valueNode = objectProperty.value?.$cstNode;
+          if (valueNode) {
+            const valueStart = valueNode.offset;
+            const valueEnd = valueNode.end;
+            const valueBounds = extractStringBoundaries(text, valueStart, valueEnd);
+            const inValue = valueBounds
+              ? offset >= valueBounds.contentStart && offset <= valueBounds.contentEnd
+              : offset >= valueStart && offset <= valueEnd;
+
+            if (inValue) {
+              return {
+                type: HTMLCompletionContextType.AttributeValue,
+                elementName,
+                attributeName: objectProperty.key,
+                partialText: valueBounds ? extractPartialText(text, offset, valueBounds) : '',
+                stringContentStart: valueBounds?.contentStart,
+                stringContentEnd: valueBounds?.contentEnd,
+              };
+            }
+          }
+
+          // On a property but neither in its key nor in its value (colon, outside the
+          // value's quotes): no HTML completion applies.
+          return { type: HTMLCompletionContextType.None };
         }
 
-        // Inside object but not in a value - AttributeName context
+        // Inside the braces but not in a property: AttributeName context
         return {
           type: HTMLCompletionContextType.AttributeName,
           elementName,
@@ -139,17 +181,30 @@ export function detectHTMLCompletionContext(context: CompletionContext): HTMLCom
     }
   }
 
-  // Check if cursor is between parens but no arguments yet
-  const textBeforeCursor = text.substring(0, offset);
-  const callMatch = textBeforeCursor.match(/createElement\s*\(\s*$/);
-  if (callMatch) {
-    return {
-      type: HTMLCompletionContextType.ElementName,
-      partialText: '',
-    };
+  // Cursor between the parens of a call that has no arguments yet
+  if (args.length === 0) {
+    const textBeforeCursor = text.substring(0, offset);
+    if (/createElement\s*\(\s*$/.test(textBeforeCursor)) {
+      return {
+        type: HTMLCompletionContextType.ElementName,
+        partialText: '',
+      };
+    }
   }
 
   return { type: HTMLCompletionContextType.None };
+}
+
+/**
+ * Find the property of `object` that contains `node` (a nested object literal's own
+ * properties resolve to the outer property that holds it).
+ */
+function findPropertyOf(node: AstNode, object: AstNode): ObjectProperty | undefined {
+  let current: AstNode | undefined = node;
+  while (current && current.$container !== object) {
+    current = current.$container;
+  }
+  return current && isObjectProperty(current) ? current : undefined;
 }
 
 /**
@@ -175,90 +230,44 @@ function extractElementName(arg: AstNode | undefined, text: string): string | un
   return undefined;
 }
 
+/** Offsets of the characters between a string literal's quotes. */
+interface StringBounds {
+  contentStart: number;
+  contentEnd: number;
+}
+
 /**
- * Extract string content boundaries (after opening quote, before closing quote)
+ * Extract string content boundaries (after opening quote, before closing quote).
+ *
+ * Only a node whose text is a quoted string qualifies; anything else (an identifier,
+ * a number, an expression) yields undefined.
  *
  * @param text - Full document text
- * @param argStart - Argument start offset
- * @param argEnd - Argument end offset
- * @returns Object with contentStart and contentEnd, or undefined if not a string
+ * @param nodeStart - Node start offset
+ * @param nodeEnd - Node end offset (exclusive)
  */
 function extractStringBoundaries(
   text: string,
-  argStart: number,
-  argEnd: number
-): { contentStart: number; contentEnd: number } | undefined {
-  const argText = text.substring(argStart, argEnd);
-
-  // Find opening quote
-  let quoteChar = '"';
-  let openQuoteIndex = argText.indexOf('"');
-  if (openQuoteIndex === -1) {
-    openQuoteIndex = argText.indexOf("'");
-    quoteChar = "'";
-  }
-  if (openQuoteIndex === -1) {
+  nodeStart: number,
+  nodeEnd: number
+): StringBounds | undefined {
+  const quote = text[nodeStart];
+  if (quote !== '"' && quote !== "'") {
     return undefined;
   }
-
-  // Find closing quote
-  let closeQuoteIndex = argText.indexOf(quoteChar, openQuoteIndex + 1);
-  if (closeQuoteIndex === -1) {
-    // No closing quote - content extends to end
-    closeQuoteIndex = argText.length;
-  }
-
+  // Closing quote is the last character; an unterminated string extends to the end.
+  const closed = nodeEnd - nodeStart >= 2 && text[nodeEnd - 1] === quote;
   return {
-    contentStart: argStart + openQuoteIndex + 1, // After opening quote
-    contentEnd: argStart + closeQuoteIndex, // Before closing quote
+    contentStart: nodeStart + 1,
+    contentEnd: closed ? nodeEnd - 1 : nodeEnd,
   };
 }
 
 /**
- * Extract partial text typed by user (text before cursor within quotes)
- *
- * @param text - Full document text
- * @param offset - Cursor offset
- * @param argStart - Argument start offset
- * @param argEnd - Argument end offset
- * @returns Partial text string
+ * Extract partial text typed by the user: the string content before the cursor.
+ * The cursor is clamped into the content so it never reads outside the quotes.
  */
-function extractPartialText(
-  text: string,
-  offset: number,
-  argStart: number,
-  argEnd: number
-): string {
-  const argText = text.substring(argStart, argEnd);
-
-  // Find the opening quote
-  const openQuoteIndex = argText.indexOf('"');
-  if (openQuoteIndex === -1) {
-    // Try single quote
-    const singleQuoteIndex = argText.indexOf("'");
-    if (singleQuoteIndex === -1) {
-      return '';
-    }
-    // Calculate relative position within the string
-    const relativeOffset = offset - argStart - singleQuoteIndex - 1;
-    const closeQuoteIndex = argText.indexOf("'", singleQuoteIndex + 1);
-    if (closeQuoteIndex === -1) {
-      return argText.substring(singleQuoteIndex + 1);
-    }
-    // Clamp to the closing quote so a cursor past the string end never
-    // returns text beyond it (mirrors the double-quote branch below).
-    const endPos = Math.min(singleQuoteIndex + 1 + relativeOffset, closeQuoteIndex);
-    return argText.substring(singleQuoteIndex + 1, endPos);
-  }
-
-  // Calculate relative position within the string
-  const relativeOffset = offset - argStart - openQuoteIndex - 1;
-  const closeQuoteIndex = argText.indexOf('"', openQuoteIndex + 1);
-  if (closeQuoteIndex === -1) {
-    return argText.substring(openQuoteIndex + 1);
-  }
-
-  // Return text from opening quote to cursor position
-  const endPos = Math.min(openQuoteIndex + 1 + relativeOffset, closeQuoteIndex);
-  return argText.substring(openQuoteIndex + 1, endPos);
+function extractPartialText(text: string, offset: number, bounds: StringBounds): string {
+  const end = Math.min(Math.max(offset, bounds.contentStart), bounds.contentEnd);
+  return text.substring(bounds.contentStart, end);
 }

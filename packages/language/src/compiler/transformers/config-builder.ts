@@ -6,6 +6,7 @@
  * generate layout/provider settings, build the source map, and strip/convert IR
  * types into their Eligius equivalents.
  */
+import selectorParser from 'postcss-selector-parser';
 import type { LanguagesBlock } from '../../generated/ast.js';
 import type { SourceLocation } from '../types/common.js';
 import type {
@@ -111,43 +112,281 @@ export function createDefaultConfiguration() {
   };
 }
 
+/** One element of a generated layout: a compound selector made concrete. */
+interface LayoutElement {
+  readonly tag: string;
+  readonly id: string | undefined;
+  readonly classes: readonly string[];
+  readonly attributes: ReadonlyArray<readonly [string, string]>;
+  /** Canonical identity, so equal compounds at the same position merge. */
+  readonly key: string;
+}
+
+interface LayoutTreeNode {
+  readonly element: LayoutElement;
+  readonly children: LayoutTreeNode[];
+}
+
+type LayoutEntry =
+  | { readonly kind: 'element'; readonly node: LayoutTreeNode }
+  | { readonly kind: 'comment'; readonly text: string };
+
+/** HTML elements that cannot have content (so cannot contain a nested container). */
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);
+
+const TAG_NAME = /^[a-z][a-z0-9-]*$/;
+const ATTRIBUTE_NAME = /^[a-zA-Z_:][-a-zA-Z0-9_:.]*$/;
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** A selector as an HTML comment (comments must not contain `--`). */
+function layoutComment(selector: string, reason: string): string {
+  const text = `eligian: no container generated for selector "${selector}" (${reason})`;
+  return `<!-- ${text.replace(/-{2,}/g, match => match.split('').join(' ')).replace(/>/g, '&gt;')} -->`;
+}
+
 /**
- * Generate HTML layout template with container divs for all timeline selectors.
+ * Turn a selector into the chain of elements (outermost first) that matches it,
+ * or a reason it cannot be represented as plain markup. Descendant and child
+ * combinators nest; compounds keep their tag, id, classes and attributes.
+ */
+function selectorToElementPath(selector: string): LayoutElement[] | string {
+  let root: selectorParser.Root;
+  try {
+    root = selectorParser().astSync(selector);
+  } catch {
+    return 'invalid selector';
+  }
+  if (root.nodes.length !== 1) {
+    return root.nodes.length === 0 ? 'empty selector' : 'selector lists are not supported';
+  }
+
+  const path: LayoutElement[] = [];
+  let tag: string | undefined;
+  let id: string | undefined;
+  let classes: string[] = [];
+  let attributes: Array<[string, string]> = [];
+  let compoundIsEmpty = true;
+
+  const finishCompound = (): string | undefined => {
+    if (compoundIsEmpty) {
+      return 'dangling combinator';
+    }
+    const element: LayoutElement = {
+      tag: tag ?? 'div',
+      id,
+      classes,
+      attributes,
+      key: JSON.stringify([
+        tag ?? 'div',
+        id ?? null,
+        [...classes].sort(),
+        [...attributes].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+      ]),
+    };
+    path.push(element);
+    tag = undefined;
+    id = undefined;
+    classes = [];
+    attributes = [];
+    compoundIsEmpty = true;
+    return undefined;
+  };
+
+  for (const node of root.nodes[0].nodes) {
+    switch (node.type) {
+      case 'tag': {
+        const name = node.value.toLowerCase();
+        if (!TAG_NAME.test(name) || node.namespace) {
+          return `unsupported tag '${node.value}'`;
+        }
+        tag = name;
+        compoundIsEmpty = false;
+        break;
+      }
+      case 'universal':
+        compoundIsEmpty = false;
+        break;
+      case 'id':
+        if (id !== undefined && id !== node.value) {
+          return 'an element cannot have two ids';
+        }
+        id = node.value;
+        compoundIsEmpty = false;
+        break;
+      case 'class':
+        if (!classes.includes(node.value)) {
+          classes.push(node.value);
+        }
+        compoundIsEmpty = false;
+        break;
+      case 'attribute': {
+        const name = node.attribute;
+        if (!ATTRIBUTE_NAME.test(name) || name === 'id' || name === 'class' || node.namespace) {
+          return `unsupported attribute '${name}'`;
+        }
+        if (node.operator !== undefined && node.operator !== '=') {
+          return `unsupported attribute operator '${node.operator}'`;
+        }
+        attributes.push([name, node.operator === '=' ? (node.value ?? '') : '']);
+        compoundIsEmpty = false;
+        break;
+      }
+      case 'combinator': {
+        if (node.value.trim() !== '' && node.value.trim() !== '>') {
+          return `unsupported combinator '${node.value.trim()}'`;
+        }
+        const error = finishCompound();
+        if (error) {
+          return error;
+        }
+        break;
+      }
+      case 'comment':
+        break;
+      default:
+        return `unsupported ${node.type} '${String(node)}'`;
+    }
+  }
+  const error = finishCompound();
+  if (error) {
+    return error;
+  }
+
+  for (let i = 0; i < path.length - 1; i++) {
+    if (VOID_ELEMENTS.has(path[i].tag)) {
+      return `<${path[i].tag}> cannot contain elements`;
+    }
+  }
+  return path;
+}
+
+function renderLayoutNode(node: LayoutTreeNode): string {
+  const { tag, id, classes, attributes } = node.element;
+  let attrs = '';
+  if (id !== undefined) {
+    attrs += ` id="${escapeHtmlAttribute(id)}"`;
+  }
+  if (classes.length > 0) {
+    attrs += ` class="${escapeHtmlAttribute(classes.join(' '))}"`;
+  }
+  for (const [name, value] of attributes) {
+    attrs += ` ${name}="${escapeHtmlAttribute(value)}"`;
+  }
+  if (VOID_ELEMENTS.has(tag)) {
+    return `<${tag}${attrs}>`;
+  }
+  return `<${tag}${attrs}>${node.children.map(renderLayoutNode).join('')}</${tag}>`;
+}
+
+/**
+ * Generate HTML layout template with container elements for all timeline selectors.
  *
  * Eligius sets containerSelector.html(layoutTemplate) during initialization,
- * so we need to provide HTML that includes divs for all timeline selectors.
+ * so we need to provide HTML that includes an element for every timeline selector.
+ *
+ * - Each compound selector becomes one element carrying all of its parts
+ *   (`div#z.a.b` → `<div id="z" class="a b"></div>`).
+ * - Descendant / child combinators nest (`.p > .q` → `.p` containing `.q`).
+ * - Selectors are merged into one tree, so timelines sharing a container (or
+ *   an ancestor) share its element and no id is emitted twice.
+ * - Selectors that plain markup cannot express (pseudo-classes, sibling
+ *   combinators, selector lists, conflicting ids, ...) produce an HTML comment
+ *   naming the selector instead of a non-matching element.
  *
  * @param timelines - All timeline configurations
- * @returns HTML string with container divs
+ * @returns HTML string with container elements
  *
  * @example
  * Input: [{ selector: '.timeline1' }, { selector: '#timeline2' }]
  * Output: '<div class="timeline1"></div><div id="timeline2"></div>'
  */
 export function generateLayoutTemplate(timelines: TimelineConfigIR[]): string {
-  const containerDivs = timelines.map(timeline => {
-    const selector = timeline.selector;
+  const entries: LayoutEntry[] = [];
+  const topLevel: LayoutTreeNode[] = [];
+  const nodesById = new Map<string, LayoutTreeNode>();
+  const seenSelectors = new Set<string>();
 
-    // Parse selector to create appropriate HTML
-    if (selector.startsWith('.')) {
-      // Class selector: .timeline → <div class="timeline"></div>
-      const className = selector.slice(1);
-      return `<div class="${className}"></div>`;
+  for (const { selector } of timelines) {
+    if (seenSelectors.has(selector)) {
+      continue;
     }
-    if (selector.startsWith('#')) {
-      // ID selector: #timeline → <div id="timeline"></div>
-      const id = selector.slice(1);
-      return `<div id="${id}"></div>`;
+    seenSelectors.add(selector);
+
+    const path = selectorToElementPath(selector);
+    if (typeof path === 'string') {
+      entries.push({ kind: 'comment', text: layoutComment(selector, path) });
+      continue;
     }
 
-    // For other selectors, use as class name (simplified)
-    const safeClass = selector.replace(/[^a-zA-Z0-9-_]/g, '');
-    return `<div class="${safeClass}"></div>`;
-  });
+    // Resolve the path against the tree first, so a conflict changes nothing.
+    let siblings = topLevel;
+    let depth = 0;
+    let parent: LayoutTreeNode | undefined;
+    for (; depth < path.length; depth++) {
+      const existing = siblings.find(n => n.element.key === path[depth].key);
+      if (!existing) {
+        break;
+      }
+      parent = existing;
+      siblings = existing.children;
+    }
+    const toCreate = path.slice(depth);
+    const newIds = toCreate.map(e => e.id).filter((i): i is string => i !== undefined);
+    const conflict = newIds.find((i, index) => nodesById.has(i) || newIds.indexOf(i) !== index);
+    if (conflict !== undefined) {
+      entries.push({
+        kind: 'comment',
+        text: layoutComment(selector, `id '${conflict}' is already used by another container`),
+      });
+      continue;
+    }
+    if (parent && VOID_ELEMENTS.has(parent.element.tag) && toCreate.length > 0) {
+      entries.push({
+        kind: 'comment',
+        text: layoutComment(selector, `<${parent.element.tag}> cannot contain elements`),
+      });
+      continue;
+    }
 
-  // Return only the timeline container divs
+    for (const element of toCreate) {
+      const node: LayoutTreeNode = { element, children: [] };
+      if (element.id !== undefined) {
+        nodesById.set(element.id, node);
+      }
+      if (siblings === topLevel) {
+        entries.push({ kind: 'element', node });
+      }
+      siblings.push(node);
+      siblings = node.children;
+    }
+  }
+
+  // Return only the timeline containers
   // UI controls are kept separate in the webview HTML (outside #eligius-container)
-  return containerDivs.join('');
+  return entries
+    .map(entry => (entry.kind === 'comment' ? entry.text : renderLayoutNode(entry.node)))
+    .join('');
 }
 
 /**
@@ -257,6 +496,7 @@ export function convertTimelineConfigToEligius(timeline: TimelineConfigIR): ITim
     duration: timeline.duration,
     loop: timeline.loop,
     selector: timeline.selector,
+    ...(timeline.positionSource ? { positionSource: timeline.positionSource } : {}),
     timelineActions: timeline.timelineActions.map(convertTimelineActionToEligius),
   };
 }
@@ -308,6 +548,52 @@ export function mapProviderToTimelineType(provider: string): 'animation' | 'medi
   }
 }
 
+/** MIME types of common media file extensions (lowercase, without the dot). */
+const MEDIA_MIME_TYPES: Readonly<Record<string, string>> = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  ogg: 'video/ogg',
+  mov: 'video/quicktime',
+  m3u8: 'application/x-mpegURL',
+  mpd: 'application/dash+xml',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  oga: 'audio/ogg',
+  flac: 'audio/flac',
+};
+
+/**
+ * MIME type of a media source, from its file extension. Unknown extensions fall back
+ * to `video/<ext>` / `audio/<ext>` according to the timeline provider.
+ */
+export function mediaMimeType(src: string, provider: string): string {
+  const ext = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec(src)?.[1]?.toLowerCase() ?? '';
+  const known = Object.keys(MEDIA_MIME_TYPES).includes(ext) ? MEDIA_MIME_TYPES[ext] : undefined;
+  if (known) return known;
+  const kind = provider === 'audio' ? 'audio' : 'video';
+  return ext ? `${kind}/${ext}` : `${kind}/mp4`;
+}
+
+/**
+ * Per-timeline `VideoPositionSource` settings for a media timeline: the player renders
+ * into the timeline's container and plays the `from "..."` source. Returns `undefined`
+ * for non-media timelines and for media timelines without a source.
+ */
+export function mediaPositionSource(
+  provider: string,
+  source: string | undefined,
+  selector: string
+): TimelineConfigIR['positionSource'] {
+  if (mapProviderToTimelineType(provider) !== 'mediaplayer' || !source) {
+    return undefined;
+  }
+  return { selector, sources: [{ src: source, type: mediaMimeType(source, provider) }] };
+}
+
 /**
  * T273: Generate timelineProviderSettings based on timeline types used
  *
@@ -346,7 +632,8 @@ export function generateTimelineProviderSettings(
       settings.mediaplayer = {
         positionSource: {
           systemName: 'VideoPositionSource',
-          selector: '', // TODO: Could extract from timeline selector field
+          // Each media timeline sets its own selector and sources (see mediaPositionSource)
+          selector: '',
         },
       };
     }

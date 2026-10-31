@@ -30,11 +30,13 @@ export function formatJSDocAsMarkdown(jsdoc: JSDocComment, actionName: string): 
 
     // Format each param as `name` (`type`) - description (description omitted if absent)
     const items = jsdoc.params.map(param => {
-      const type = param.type || 'unknown';
+      // A backtick inside the type would terminate the inline code span
+      const type = (param.type || 'unknown').replace(/`/g, "'");
       const name = param.name;
+      const optional = param.optional ? ' *(optional)*' : '';
       return param.description && param.description.trim().length > 0
-        ? `\`${name}\` (\`${type}\`) - ${param.description}`
-        : `\`${name}\` (\`${type}\`)`;
+        ? `\`${name}\` (\`${type}\`)${optional} - ${param.description}`
+        : `\`${name}\` (\`${type}\`)${optional}`;
     });
     builder.list(items);
   }

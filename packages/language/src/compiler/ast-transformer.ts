@@ -30,7 +30,7 @@ import {
   getTimelines,
   getVariables,
 } from '../utils/program-helpers.js';
-import { buildConstantMap } from './constant-folder.js';
+import { buildConstantMapWithFailures } from './constant-folder.js';
 import {
   transformActionDefinition,
   transformEventAction,
@@ -91,7 +91,20 @@ export const transformAST = (
     // This map will be used throughout transformation to inline constant values.
     // B3: kept local and threaded through scopes (no module-level state) so
     // concurrent compilations cannot clobber each other.
-    const constantMap = buildConstantMap(program);
+    const { constants: constantMap, failures: htmlImportFailures } =
+      buildConstantMapWithFailures(program);
+
+    // An HTML import that cannot be loaded must fail the compile: otherwise
+    // `@name` falls through to a `$globaldata.name` that nothing ever sets.
+    const failedImport = htmlImportFailures[0];
+    if (failedImport) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidImport' as const,
+        message: `Cannot load HTML import '${failedImport.name}' (${failedImport.node.path}): ${failedImport.message}`,
+        location: getSourceLocation(failedImport.node),
+      });
+    }
 
     // Find all timelines (validation ensures at least one exists)
     const timelineNodes = getTimelines(program);

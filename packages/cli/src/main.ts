@@ -14,6 +14,7 @@ import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
 import { BundleCompileError, BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
+import { parseInlineThreshold, validateOptionCombination } from './cli-options.js';
 import {
   AssetError,
   CompilationError,
@@ -165,7 +166,8 @@ function reportCompileError(error: unknown): never {
  */
 async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<void> {
   if (options.verbose) {
-    console.log(chalk.blue(`Compiling ${inputPath}...`));
+    // Progress goes to stderr: stdout carries the JSON payload when output is '-'
+    console.error(chalk.blue(`Compiling ${inputPath}...`));
   }
 
   try {
@@ -180,7 +182,7 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
 
     if (options.verbose) {
       if (result.assetCount > 0) {
-        console.log(chalk.green(`✓ Validated ${result.assetCount} asset(s)`));
+        console.error(chalk.green(`✓ Validated ${result.assetCount} asset(s)`));
       }
     }
 
@@ -225,7 +227,7 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
  */
 async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> {
   if (options.verbose) {
-    console.log(chalk.gray(`Bundling ${inputPath}...`));
+    console.error(chalk.gray(`Bundling ${inputPath}...`));
   }
 
   // Use runPromiseExit so we can inspect the Cause directly and distinguish a
@@ -238,6 +240,7 @@ async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> 
       inlineThreshold: options.inlineThreshold,
       sourcemap: options.sourcemap,
       force: options.force,
+      optimize: options.optimize,
     })
   );
 
@@ -283,7 +286,11 @@ export default function main(): void {
     .argument('<input>', 'input .eligian file')
     .option('-o, --output <file>', 'output file (default: <input>.json, use "-" for stdout)')
     .option('--check', 'syntax check only (do not generate output)', false)
-    .option('--minify', 'minify JSON output (no whitespace)', false)
+    .option(
+      '--minify',
+      'minify JSON output (no whitespace); with --bundle, minify the bundle JS and CSS',
+      false
+    )
     .option('--no-optimize', 'disable optimization passes')
     .option('-v, --verbose', 'verbose logging', false)
     .option('-q, --quiet', 'suppress success messages', false)
@@ -296,10 +303,10 @@ export default function main(): void {
     .option('--sourcemap', 'generate source maps in bundle', false)
     .option('--force', 'overwrite existing output directory', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {
-      const inlineThreshold = parseInt(cmdOptions.inlineThreshold as string, 10);
-      if (Number.isNaN(inlineThreshold)) {
+      const inlineThreshold = parseInlineThreshold(String(cmdOptions.inlineThreshold));
+      if (inlineThreshold === undefined) {
         console.error(
-          `Error: --inline-threshold must be a number (got "${cmdOptions.inlineThreshold}")`
+          `Error: --inline-threshold must be a non-negative whole number of bytes (got "${cmdOptions.inlineThreshold}")`
         );
         process.exit(1);
       }
@@ -316,6 +323,12 @@ export default function main(): void {
         sourcemap: cmdOptions.sourcemap as boolean,
         force: cmdOptions.force as boolean,
       };
+
+      const combinationError = validateOptionCombination(options);
+      if (combinationError) {
+        console.error(`Error: ${combinationError}`);
+        process.exit(1);
+      }
 
       if (options.bundle) {
         await bundleCLI(input, options);

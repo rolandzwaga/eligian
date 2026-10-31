@@ -32,7 +32,6 @@ import {
   buildControllerHover,
   buildEventActionHoverMarkdown,
   buildImportHover,
-  buildLabelIDHover,
   buildLanguagesHover,
   buildOperationHoverMarkdown,
 } from './hover/hover-builders.js';
@@ -104,12 +103,6 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
           if (hover) return hover;
         }
       }
-    }
-
-    // 2. Check if we're hovering over a label ID in an operation parameter
-    const labelHover = buildLabelIDHover(cstNode.astNode, document, this.labelRegistry);
-    if (labelHover) {
-      return labelHover;
     }
 
     // 2.5. Check if we're hovering over a languages block (Feature 037 US5)

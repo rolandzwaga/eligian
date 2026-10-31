@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AstNode, ValidationAcceptor } from 'langium';
 import { URI } from 'vscode-uri';
-import { OPERATION_REGISTRY } from '../../compiler/index.js';
+import { getOperationSignature } from '../../compiler/index.js';
 import { getController, isController } from '../../completion/metadata/controllers.generated.js';
 import type { OperationCall, Program } from '../../generated/ast.js';
 import { extractLanguageCodes } from '../../labels/index.js';
@@ -302,7 +302,7 @@ export class LabelParameterValidator extends BaseValidator {
     if (!operationName) return;
 
     // Check if this operation has label ID parameters
-    const operationSignature = OPERATION_REGISTRY[operationName];
+    const operationSignature = getOperationSignature(operationName);
     if (!operationSignature) return; // Unknown operation (caught by checkOperationExists)
 
     // Find label ID parameter indices (both single and array with @itemType)

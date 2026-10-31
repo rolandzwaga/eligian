@@ -1,7 +1,7 @@
 import type { AstNode, ValidationAcceptor } from 'langium';
 import {
+  getOperationSignature,
   hasOperation,
-  OPERATION_REGISTRY,
   validateDependencies,
   validateParameterCount,
   validateParameterTypes,
@@ -103,7 +103,7 @@ export class ParameterValidator extends BaseValidator {
       return;
     }
 
-    const signature = OPERATION_REGISTRY[opName];
+    const signature = getOperationSignature(opName)!;
 
     // Use compiler validation logic
     const error = validateParameterCount(signature, argumentCount);
@@ -139,7 +139,7 @@ export class ParameterValidator extends BaseValidator {
       return;
     }
 
-    const signature = OPERATION_REGISTRY[opName];
+    const signature = getOperationSignature(opName)!;
 
     // Use compiler validation logic
     const errors = validateParameterTypes(signature, operation.args);
@@ -176,7 +176,7 @@ export class ParameterValidator extends BaseValidator {
       return;
     }
 
-    const signature = OPERATION_REGISTRY[opName];
+    const signature = getOperationSignature(opName)!;
 
     // If operation has no dependencies, no validation needed
     if (signature.dependencies.length === 0) {

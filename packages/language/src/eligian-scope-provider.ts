@@ -44,6 +44,7 @@ import {
   getCallableActions,
   type LibraryResolver,
 } from './utils/action-scope.js';
+import { isHtmlImport } from './utils/program-helpers.js';
 
 export class EligianScopeProvider extends DefaultScopeProvider {
   private eligianServices: EligianServices;
@@ -247,12 +248,8 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       // TypeScript doesn't understand that isNamedImport narrows the type, so we use type assertion
       const imports = allStatements.filter(isNamedImport) as unknown as NamedImport[];
 
-      // Filter to only HTML imports (explicit type or .html extension)
-      return imports.filter(imp => {
-        const explicitType = imp.assetType === 'html';
-        const htmlExtension = imp.path.endsWith('.html');
-        return explicitType || htmlExtension;
-      });
+      // Filter to only HTML imports (effective asset type, same rule as the constant folder)
+      return imports.filter(isHtmlImport);
     }
 
     return [];
@@ -337,7 +334,8 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     // Get current document URI
     const currentDocument = AstUtils.getDocument(context.container);
     const currentUri = currentDocument.uri;
-    if (!currentUri) {
+    // No path yet in a partial AST (`import { a } from` while typing)
+    if (!currentUri || !libraryImport.path) {
       return EMPTY_SCOPE;
     }
 

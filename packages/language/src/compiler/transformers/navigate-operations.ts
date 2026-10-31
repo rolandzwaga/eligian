@@ -46,11 +46,39 @@ export function timelineUri(timeline: Pick<Timeline, 'name' | 'provider' | 'sour
 }
 
 /**
+ * FNV-1a 32-bit hash of a string's UTF-16 code units, as 8 lowercase hex digits.
+ * Stable across runs and platforms, so the call site and the generator agree.
+ */
+function fnv1aHex(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Encode a numeric position as an identifier fragment without collisions.
+ * `String(number)` is canonical, and each of its non-alphanumeric characters
+ * maps to its own letter (`.` → `p`, `-` → `m`, `+` dropped), so `1e+21` and
+ * `1e-21` stay distinct (`1e21` / `1em21`).
+ */
+function encodePosition(position: number): string {
+  return String(position).replace(/\./g, 'p').replace(/-/g, 'm').replace(/\+/g, '');
+}
+
+/**
  * Deterministic synthetic action name for a navigate target + position.
  *
  * Pure function of its inputs so the call site and the central generator agree
  * without sharing state. Distinct positions produce distinct names so two
  * navigates to the same timeline at different positions don't collide.
+ *
+ * The readable slug is lossy (case and punctuation are folded), so a hash of
+ * the EXACT target is appended: "Chapter 1" and "chapter-1" share the slug
+ * `chapter_1` but get different names, and therefore different broadcast
+ * actions (the generator dedupes by this name).
  */
 export function syntheticNavActionName(target: string, position: number): string {
   const slug =
@@ -58,8 +86,8 @@ export function syntheticNavActionName(target: string, position: number): string
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '') || 'timeline';
-  const posSuffix = position === 0 ? '' : `__${String(position).replace(/[^a-z0-9]+/gi, '_')}`;
-  return `__nav__${slug}${posSuffix}`;
+  const posSuffix = position === 0 ? '' : `__${encodePosition(position)}`;
+  return `__nav__${slug}_${fnv1aHex(target)}${posSuffix}`;
 }
 
 /**

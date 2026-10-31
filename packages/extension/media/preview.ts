@@ -23,6 +23,13 @@ import {
 } from 'eligius';
 import $ from 'jquery';
 import { createEngineLifecycleQueue } from './engine-lifecycle-queue.js';
+import {
+  applyCSSLoad,
+  applyCSSReload,
+  applyCSSRemove,
+  renderDebugEvents,
+  renderErrorList,
+} from './preview-dom.js';
 
 // Make jQuery available globally for Eligius operations
 (window as any).$ = $;
@@ -282,41 +289,9 @@ class EventbusDebugViewer implements IEventbusListener {
         )
       : this.events;
 
-    // Render events
-    container.innerHTML = filteredEvents
-      .map(event => {
-        const time = new Date(event.timestamp).toLocaleTimeString('en-US', {
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          fractionalSecondDigits: 3,
-        } as Intl.DateTimeFormatOptions);
-
-        const topicHtml = event.eventTopic
-          ? `<div class="debug-event-topic">Topic: ${event.eventTopic}</div>`
-          : '';
-
-        const argsJson = JSON.stringify(event.args, null, 2);
-
-        return `
-          <div class="debug-event">
-            <div class="debug-event-header">
-              <span class="debug-event-name">${event.eventName}</span>
-              <span class="debug-event-time">${time}</span>
-            </div>
-            ${topicHtml}
-            <div class="debug-event-args">${argsJson}</div>
-          </div>
-        `;
-      })
-      .join('');
-
-    // Show message if no events
-    if (filteredEvents.length === 0) {
-      container.innerHTML =
-        '<div style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground);">No events to display</div>';
-    }
+    // Built with textContent: event names, topics and args (operation data often
+    // holds HTML strings) must show as text, not render as live markup.
+    renderDebugEvents(container, filteredEvents);
   }
 }
 
@@ -358,25 +333,22 @@ window.addEventListener('message', async event => {
       document.getElementById('eligius-container')!.style.display = 'none';
       document.getElementById('error-container')!.style.display = 'block';
 
-      // Display errors with enhanced formatting
-      const errorList = document.getElementById('error-list')!;
-      errorList.innerHTML = message.payload.errors
-        .map(
-          (error: any) =>
-            `<div class="error-item ${error.severity || 'error'}">
-          <div class="error-severity">${error.severity === 'warning' ? '⚠️ Warning' : '❌ Error'}</div>
-          <div class="error-message">${error.message}</div>
-          ${error.line ? `<div class="error-location">Line ${error.line}${error.column ? `, Column ${error.column}` : ''}</div>` : ''}
-          ${error.code ? `<div class="error-code">[${error.code}]</div>` : ''}
-        </div>`
-        )
-        .join('');
+      // The playback controls belong to the previous (now stale) engine
+      hideControls();
+
+      // Compiler text is rendered with textContent: messages contain source text
+      // (paths, string literals, token text) that must not become markup.
+      renderErrorList(document.getElementById('error-list')!, message.payload.errors ?? []);
 
       // Show source file if provided
       if (message.payload.sourceFile) {
         const errorHeader = document.querySelector('#error-container h2')!;
         errorHeader.textContent = `Compilation Errors in ${message.payload.sourceFile}`;
       }
+
+      // Stop the previous timeline: its audio/video would otherwise keep playing
+      // behind the error view, driven by the still-visible controls.
+      await engineQueue.destroy();
       break;
     }
 
@@ -423,39 +395,23 @@ window.addEventListener('message', async event => {
     // CSS injection and hot-reload (Feature 011)
     case 'css-load': {
       const { cssId, content, loadOrder } = message.payload;
-
-      let styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
-      if (!styleTag) {
-        styleTag = document.createElement('style');
-        styleTag.setAttribute('data-css-id', cssId);
-        styleTag.setAttribute('data-load-order', loadOrder.toString());
-        document.head.appendChild(styleTag);
-      }
-      // CRITICAL: Use textContent (NOT innerHTML) for security
-      styleTag.textContent = content;
+      // Creates or updates the stylesheet (textContent, never innerHTML) and
+      // keeps it in cascade order, so reordered `styles` imports reorder it.
+      applyCSSLoad(document, cssId, content, loadOrder);
       break;
     }
 
     case 'css-reload': {
       const { cssId, content } = message.payload;
-
-      const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
-      if (styleTag) {
-        // Hot-reload: just update content (timeline continues)
-        styleTag.textContent = content;
-      }
+      // Hot-reload: update content (timeline continues). Creates the stylesheet
+      // when it is missing (e.g. its initial load failed and was then fixed).
+      applyCSSReload(document, cssId, content);
       break;
     }
 
-    case 'css-remove': {
-      const { cssId } = message.payload;
-
-      const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`);
-      if (styleTag) {
-        styleTag.remove();
-      }
+    case 'css-remove':
+      applyCSSRemove(document, message.payload.cssId);
       break;
-    }
 
     case 'css-error': {
       // Keep previous CSS (if any) - no changes to DOM
@@ -496,10 +452,9 @@ function showControls(): void {
 }
 
 /**
- * Hide playback controls (reserved for future use).
+ * Hide playback controls (after a compile error: no usable engine is running).
  */
-// @ts-expect-error - Reserved for future use
-function _hideControls(): void {
+function hideControls(): void {
   const controls = document.getElementById('controls')!;
   controls.style.display = 'none';
 }

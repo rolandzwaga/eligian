@@ -99,6 +99,35 @@ function cloneConfig(config: ILocalesConfiguration): ILocalesConfiguration {
 }
 
 /**
+ * Path segments that would reach `Object.prototype` (or a constructor) when used as
+ * a plain property name. User-typed keys are split on '.' and walked with bracket
+ * access, so these must never be traversed or assigned (prototype pollution).
+ */
+const UNSAFE_SEGMENTS: ReadonlySet<string> = new Set(['__proto__', 'prototype', 'constructor']);
+
+/**
+ * Find the first segment of a dot-notation key that is unsafe to use as a property
+ * name (`__proto__`, `prototype`, `constructor`).
+ *
+ * @returns The offending segment, or undefined when every segment is safe
+ */
+export function findUnsafeKeySegment(key: string): string | undefined {
+  return key.split('.').find(segment => UNSAFE_SEGMENTS.has(segment));
+}
+
+/** Own-property test (`Object.hasOwn` is not in this project's lib target). */
+function hasOwn(data: object, segment: string): boolean {
+  return Object.getOwnPropertyDescriptor(data, segment) !== undefined;
+}
+
+/**
+ * Own-property lookup that never reaches the prototype chain.
+ */
+function getOwn(data: object, segment: string): unknown {
+  return hasOwn(data, segment) ? (data as Record<string, unknown>)[segment] : undefined;
+}
+
+/**
  * Get value at a dot-notation path in locale data.
  */
 function getAtPath(data: TLocaleData, path: string[]): string | TLocaleData | undefined {
@@ -108,7 +137,8 @@ function getAtPath(data: TLocaleData, path: string[]): string | TLocaleData | un
     if (typeof current === 'string' || typeof current === 'function' || current === undefined) {
       return undefined;
     }
-    const next = current[segment];
+    if (current === null || UNSAFE_SEGMENTS.has(segment)) return undefined;
+    const next = getOwn(current, segment) as TLocaleData | string | undefined;
     // Skip function values (parameterized translations)
     if (typeof next === 'function') return undefined;
     current = next as TLocaleData | string;
@@ -128,7 +158,7 @@ function findBlockingLeaf(data: TLocaleData, path: string[]): string | undefined
   let current: TLocaleData = data;
 
   for (let i = 0; i < path.length - 1; i++) {
-    const next = (current as Record<string, unknown>)[path[i]];
+    const next = getOwn(current, path[i]);
     if (next === undefined) return undefined; // Rest of the path can be created freely
     if (typeof next !== 'object' || next === null || Array.isArray(next)) {
       return path.slice(0, i + 1).join('.');
@@ -147,6 +177,9 @@ function findBlockingLeaf(data: TLocaleData, path: string[]): string | undefined
  * @returns false (leaving data untouched) when an intermediate segment is an existing leaf
  */
 function setAtPath(data: TLocaleData, path: string[], value: string | TLocaleData): boolean {
+  if (path.some(segment => UNSAFE_SEGMENTS.has(segment))) {
+    return false;
+  }
   if (findBlockingLeaf(data, path) !== undefined) {
     return false;
   }
@@ -155,7 +188,8 @@ function setAtPath(data: TLocaleData, path: string[], value: string | TLocaleDat
 
   for (let i = 0; i < path.length - 1; i++) {
     const segment = path[i];
-    if (typeof current[segment] !== 'object' || current[segment] === null) {
+    const next = getOwn(current, segment);
+    if (typeof next !== 'object' || next === null) {
       current[segment] = {};
     }
     current = current[segment] as TLocaleData;
@@ -181,6 +215,7 @@ export function findKeyConflict(
   locale?: string
 ): string | undefined {
   const path = key.split('.');
+  if (path.some(segment => UNSAFE_SEGMENTS.has(segment))) return undefined;
   const locales = config as unknown as IndexableLocales;
   const names = locale === undefined ? Object.keys(locales) : [locale];
 
@@ -199,10 +234,10 @@ export function findKeyConflict(
  * Cleans up empty parent objects.
  */
 function deleteAtPath(data: TLocaleData, path: string[]): boolean {
-  if (path.length === 0) return false;
+  if (path.length === 0 || path.some(segment => UNSAFE_SEGMENTS.has(segment))) return false;
 
   if (path.length === 1) {
-    if (path[0] in data) {
+    if (hasOwn(data, path[0])) {
       delete data[path[0]];
       return true;
     }
@@ -215,13 +250,14 @@ function deleteAtPath(data: TLocaleData, path: string[]): boolean {
   let current: TLocaleData = data;
 
   for (const segment of parentPath) {
-    if (typeof current[segment] !== 'object' || current[segment] === null) {
+    const next = getOwn(current, segment);
+    if (typeof next !== 'object' || next === null) {
       return false;
     }
-    current = current[segment] as TLocaleData;
+    current = next as TLocaleData;
   }
 
-  if (!(key in current)) {
+  if (!hasOwn(current, key)) {
     return false;
   }
 
@@ -243,7 +279,7 @@ function cleanEmptyParents(data: TLocaleData, path: string[]): void {
   const parents: { obj: TLocaleData; key: string }[] = [];
 
   for (const segment of path) {
-    if (typeof current[segment] !== 'object') return;
+    if (typeof getOwn(current, segment) !== 'object') return;
     parents.push({ obj: current, key: segment });
     current = current[segment] as TLocaleData;
   }
@@ -279,6 +315,11 @@ export function updateTranslationInConfig(
   const result = cloneConfig(config) as IndexableLocales;
   const path = key.split('.');
 
+  // Refuse keys/locales that would reach Object.prototype (prototype pollution)
+  if (UNSAFE_SEGMENTS.has(locale) || findUnsafeKeySegment(key) !== undefined) {
+    return result as ILocalesConfiguration;
+  }
+
   // Ensure locale exists
   if (!result[locale] || typeof result[locale] !== 'object' || '$ref' in result[locale]) {
     result[locale] = {};
@@ -302,6 +343,10 @@ export function updateTranslationInConfig(
 export function addKeyToConfig(config: ILocalesConfiguration, key: string): ILocalesConfiguration {
   const result = cloneConfig(config) as IndexableLocales;
   const path = key.split('.');
+
+  if (findUnsafeKeySegment(key) !== undefined) {
+    return result as ILocalesConfiguration;
+  }
 
   // All-or-nothing: if any locale holds a leaf translation on the way to the new
   // key, adding it would replace that translation, so leave every locale untouched.
@@ -364,6 +409,10 @@ export function renameKeyInConfig(
   const result = cloneConfig(config) as IndexableLocales;
   const oldPath = oldKey.split('.');
   const newPath = newKey.split('.');
+
+  if (findUnsafeKeySegment(oldKey) !== undefined || findUnsafeKeySegment(newKey) !== undefined) {
+    return result as ILocalesConfiguration;
+  }
 
   // All-or-nothing: moving a value beneath an existing leaf would destroy that
   // translation (and, since the old key is deleted first, the moved one too).

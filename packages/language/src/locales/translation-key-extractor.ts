@@ -47,6 +47,12 @@ export function extractTranslationKeys(locales: ILocalesConfiguration): LabelGro
       continue;
     }
 
+    // Skip malformed entries (strings, numbers, arrays, null): walking them would yield bogus
+    // keys ('0', '1', ...) or throw
+    if (!isPlainObject(localeEntry)) {
+      continue;
+    }
+
     // Walk the nested structure and collect keys
     const keys = extractKeysFromLocaleData(localeEntry as TLocaleData, '');
 
@@ -74,6 +80,13 @@ export function extractTranslationKeys(locales: ILocalesConfiguration): LabelGro
 }
 
 /**
+ * Whether a value is a non-null, non-array object (the only valid shape of locale data).
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
  * Recursively extract keys from nested locale data.
  *
  * @param data - Nested locale data
@@ -89,7 +102,7 @@ function extractKeysFromLocaleData(data: TLocaleData, prefix: string): string[] 
     if (typeof value === 'string') {
       // Leaf node - this is a translation
       keys.push(fullKey);
-    } else if (typeof value === 'object' && value !== null) {
+    } else if (isPlainObject(value)) {
       // Nested object - recurse
       keys.push(...extractKeysFromLocaleData(value as TLocaleData, fullKey));
     }

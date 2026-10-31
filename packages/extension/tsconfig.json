@@ -9,6 +9,9 @@
   },
   "references": [
     {
+      "path": "../shared-utils"
+    },
+    {
       "path": "../language/tsconfig.src.json"
     }
   ],

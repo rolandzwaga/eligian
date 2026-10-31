@@ -1,5 +1,5 @@
 import type { ValidationAcceptor } from 'langium';
-import { OPERATION_REGISTRY } from '../../compiler/index.js';
+import { getOperationSignature } from '../../compiler/index.js';
 import { findSimilarClasses } from '../../css/levenshtein.js';
 import { reportSelectorIssues } from '../../css/selector-validation.js';
 import type { OperationCall } from '../../generated/ast.js';
@@ -45,7 +45,7 @@ export class CssParameterValidator extends BaseValidator {
     if (!operationName) return;
 
     // Check if this operation has className parameters
-    const operationSignature = OPERATION_REGISTRY[operationName];
+    const operationSignature = getOperationSignature(operationName);
     if (!operationSignature) return; // Unknown operation (will be caught by checkOperationExists)
 
     // Find className parameter indices
@@ -132,7 +132,7 @@ export class CssParameterValidator extends BaseValidator {
     if (!operationName) return;
 
     // Check if this operation has selector parameters
-    const operationSignature = OPERATION_REGISTRY[operationName];
+    const operationSignature = getOperationSignature(operationName);
     if (!operationSignature) return;
 
     // Find selector parameter indices

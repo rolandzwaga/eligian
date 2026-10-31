@@ -12,7 +12,13 @@
  * decomposition).
  */
 
-import { AstUtils, GrammarAST, type LangiumDocument, type MaybePromise } from 'langium';
+import {
+  AstUtils,
+  GrammarAST,
+  type LangiumDocument,
+  type MaybePromise,
+  WorkspaceCache,
+} from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
 import {
@@ -41,6 +47,12 @@ import type { EligianServices } from './eligian-module.js';
  */
 const NAME_RULES: ReadonlySet<string> = new Set(['Identifier', 'FeatureName']);
 
+/** Cached custom-action completion items and the names they are offered under. */
+interface ActionCompletionData {
+  readonly items: readonly CompletionItem[];
+  readonly names: ReadonlySet<string>;
+}
+
 /**
  * Eligian-specific completion provider
  *
@@ -52,9 +64,20 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
   private readonly htmlCompletionProvider: HTMLElementCompletionProvider;
   private readonly services: EligianServices;
 
+  /**
+   * Custom-action completion items per document URI.
+   *
+   * Building them walks the whole AST and resolves imported libraries, and the
+   * result depends on other documents (the imports), so a `WorkspaceCache` is
+   * used: it is evicted whenever any document in the workspace changes. Same
+   * strategy as the scope provider's callable-action cache.
+   */
+  private readonly actionCompletionCache: WorkspaceCache<string, ActionCompletionData>;
+
   constructor(services: EligianServices) {
     super(services);
     this.services = services;
+    this.actionCompletionCache = new WorkspaceCache(services.shared);
     this.cssCompletionProvider = new CSSCompletionProvider();
     this.htmlCompletionProvider = new HTMLElementCompletionProvider();
   }
@@ -140,11 +163,9 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       const isCompletingOperationName = next.property === 'operationName';
       const isInsideArguments = cursorContext.insideOperationCall && !isCompletingOperationName;
 
-      // Get custom action completions once to reuse for both adding and filtering
-      const actionCompletions = getActionCompletions(document, this.getCallableActionSource());
-      const actionNames = new Set(
-        actionCompletions.map(a => a.insertText || a.label.replace('action: ', ''))
-      );
+      // Custom action completions are only needed by the branches below the CSS / HTML /
+      // event early returns, so they are resolved lazily (and cached per workspace state).
+      const getActionData = (): ActionCompletionData => this.getActionCompletionData(document);
 
       // Create a filtering acceptor FIRST, before we add any completions
       // This will wrap ALL completion additions (both ours and default provider's)
@@ -158,7 +179,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
 
         // Filter out action names from default completions
         // (We already added them with "action:" prefix above)
-        if (item.label && actionNames.has(item.label)) {
+        if (item.label && getActionData().names.has(item.label)) {
           return; // Skip - we've already added this action with proper prefix
         }
 
@@ -247,7 +268,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         }
 
         // Add custom action completions
-        for (const item of actionCompletions) {
+        for (const item of getActionData().items) {
           filteringAcceptor(context, item);
         }
       }
@@ -308,6 +329,21 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Graceful error handling - fallback to default completion
       return super.completionFor(context, next, acceptor);
     }
+  }
+
+  /**
+   * The custom-action completion items for a document, cached until the workspace changes.
+   *
+   * Items are shared between requests; callers must not mutate them (the filtering
+   * acceptor only rewrites `sortText` of operation/value items, never action items,
+   * because action items are removed in expression positions).
+   */
+  private getActionCompletionData(document: LangiumDocument): ActionCompletionData {
+    return this.actionCompletionCache.get(document.uri.toString(), () => {
+      const items = getActionCompletions(document, this.getCallableActionSource());
+      const names = new Set(items.map(a => a.insertText || a.label.replace('action: ', '')));
+      return { items, names };
+    });
   }
 
   /**

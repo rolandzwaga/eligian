@@ -1,9 +1,11 @@
-import { AstUtils, type ValidationAcceptor } from 'langium';
+import { AstUtils, type LangiumDocument, UriUtils, type ValidationAcceptor } from 'langium';
 import { hasOperation } from '../compiler/index.js';
+import { libraryPathKey } from '../compiler/pipeline/library-loader.js';
 import { resolveLibraryPath } from '../compiler/pipeline.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import type { DefaultImport, Library, LibraryImport, NamedImport } from '../generated/ast.js';
-import { isLibraryImport } from '../generated/ast.js';
+import { isLibrary, isLibraryImport } from '../generated/ast.js';
+import { getLibraryImportsOf } from '../utils/action-scope.js';
 import { formatValidationMessage } from '../utils/error-builder.js';
 import { validateAssetType } from './asset-type-validator.js';
 import { BaseValidator } from './base-validator.js';
@@ -17,10 +19,14 @@ export class ImportValidator extends BaseValidator {
   /**
    * T021-T024: US1 - Validate library content constraints
    *
-   * Libraries can ONLY contain action definitions. They cannot contain:
+   * Libraries contain action definitions, optionally preceded by library
+   * imports (`import { a } from "./other.eligian"`, Feature 032). They cannot contain:
    * - Timelines (library files are for reusable actions, not timeline execution)
-   * - Imports (libraries cannot import from other libraries or assets)
+   * - Asset imports (styles/layout/provider/locales/named asset imports)
    * - Constants (libraries only define actions)
+   *
+   * Library imports are checked separately (file exists, actions exist and are
+   * public, name collisions, circular imports).
    *
    * This validator checks the library's actions array for non-action elements.
    * Since the grammar already prevents most invalid content, this validator
@@ -92,8 +98,10 @@ export class ImportValidator extends BaseValidator {
    * the imported library file exists and can be loaded by Langium's document loader.
    */
   checkImportFileExists(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
-    if (!this.services) {
-      return; // Cannot validate without services
+    if (!this.services || !libraryImport.path) {
+      // No services, or no path yet (Langium error recovery while typing
+      // `import { a } from`): the parse error is already reported.
+      return;
     }
 
     const document = AstUtils.getDocument(libraryImport);
@@ -120,6 +128,50 @@ export class ImportValidator extends BaseValidator {
   }
 
   /**
+   * Libraries must not import each other in a cycle (the compiler rejects it with
+   * "Circular dependency detected"; the scope provider silently cuts the cycle).
+   *
+   * - In a library, an import is reported when its chain leads back to the
+   *   importing library itself (each library in the cycle reports its own import,
+   *   libraries merely upstream of a cycle report nothing).
+   * - In a program, an import is reported when any cycle is reachable from it,
+   *   since compiling the program fails on that cycle.
+   */
+  checkCircularLibraryImport(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
+    if (!this.services || !libraryImport.path) {
+      return;
+    }
+    const document = AstUtils.getDocument(libraryImport);
+    if (!document.uri) {
+      return;
+    }
+    const documents = this.services.shared.workspace.LangiumDocuments;
+    const target = documents.getDocument(resolveLibraryPath(document.uri, libraryImport.path));
+    if (!target) {
+      return; // Missing library: reported by checkImportFileExists
+    }
+
+    const inLibrary = isLibrary(document.parseResult.value);
+    const cycle = findLibraryImportCycle(
+      target,
+      uri => documents.getDocument(uri),
+      inLibrary ? document : undefined
+    );
+    if (!cycle) {
+      return;
+    }
+    const chain = cycle.join(' → ');
+    const message = inLibrary
+      ? `Circular library import: ${chain}`
+      : `Imported library '${libraryImport.path}' has a circular import: ${chain}`;
+    accept(
+      'error',
+      formatValidationMessage(message, 'Remove one of the imports to break the cycle'),
+      { node: libraryImport, property: 'path', code: 'circular_library_import' }
+    );
+  }
+
+  /**
    * Resolve a library import to its parsed `Library` AST node.
    *
    * Shared by `checkImportedActionsExist` and `checkImportedActionsPublic`. Uses the
@@ -132,8 +184,8 @@ export class ImportValidator extends BaseValidator {
    * `checkImportFileExists`), or the resolved file is not a library.
    */
   private resolveLibraryNode(libraryImport: LibraryImport): Library | undefined {
-    if (!this.services) {
-      return undefined; // Cannot resolve without services
+    if (!this.services || !libraryImport.path) {
+      return undefined; // No services, or no path yet (partial AST while typing)
     }
 
     const document = AstUtils.getDocument(libraryImport);
@@ -301,4 +353,62 @@ export class ImportValidator extends BaseValidator {
       });
     }
   }
+}
+
+/**
+ * Depth-first search for a library import cycle reachable from `start`.
+ *
+ * With `through`, only a cycle that returns to `through` counts (it is placed on
+ * the stack first); otherwise any cycle reachable from `start` is returned.
+ * Returns the cycle as file base names (`a.eligian → b.eligian → a.eligian`), or
+ * `undefined` when there is none. Documents are keyed by {@link libraryPathKey}
+ * (the compiler's cycle key), so different spellings of one file compare equal.
+ */
+function findLibraryImportCycle(
+  start: LangiumDocument,
+  getDocument: (uri: LangiumDocument['uri']) => LangiumDocument | undefined,
+  through?: LangiumDocument
+): string[] | undefined {
+  const stack: LangiumDocument[] = [];
+  const onStack = new Set<string>();
+  const done = new Set<string>();
+  const requiredKey = through ? libraryPathKey(through.uri) : undefined;
+  const names = (docs: readonly LangiumDocument[]) => docs.map(d => UriUtils.basename(d.uri));
+
+  const visit = (doc: LangiumDocument): string[] | undefined => {
+    const key = libraryPathKey(doc.uri);
+    if (onStack.has(key)) {
+      if (requiredKey !== undefined && key !== requiredKey) {
+        return undefined; // A cycle that does not pass through `through`
+      }
+      const from = stack.findIndex(d => libraryPathKey(d.uri) === key);
+      return names([...stack.slice(from), doc]);
+    }
+    const root = doc.parseResult.value;
+    if (done.has(key) || !isLibrary(root)) {
+      return undefined;
+    }
+    stack.push(doc);
+    onStack.add(key);
+    for (const libraryImport of getLibraryImportsOf(root)) {
+      if (!libraryImport.path) {
+        continue;
+      }
+      const next = getDocument(resolveLibraryPath(doc.uri, libraryImport.path));
+      const cycle = next ? visit(next) : undefined;
+      if (cycle) {
+        return cycle;
+      }
+    }
+    stack.pop();
+    onStack.delete(key);
+    done.add(key);
+    return undefined;
+  };
+
+  if (through) {
+    stack.push(through);
+    onStack.add(libraryPathKey(through.uri));
+  }
+  return visit(start);
 }

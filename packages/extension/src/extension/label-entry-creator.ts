@@ -9,7 +9,7 @@
  * Updated for Eligius 2.2+ ILocalesConfiguration format (nested object keyed by locale).
  */
 
-import { mergeLocaleEntryWithSkipped } from '@eligian/language';
+import { isSafeTranslationKey, mergeLocaleEntryWithSkipped } from '@eligian/language';
 import type { ILocalesConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 import {
@@ -17,12 +17,42 @@ import {
   type LabelEntryCreationResult,
   LabelEntryErrorCode,
 } from '../../../language/src/types/code-actions.js';
+import type { LocaleToWebviewMessage } from './locale-editor/types.js';
+
+/**
+ * How long a pending selection stays valid. The selection is consumed when the
+ * editor's webview reports 'ready'; if that never happens (the editor failed to
+ * open, or the user closed it) the entry must not linger and fire on a later,
+ * unrelated open of the same file.
+ */
+const PENDING_SELECTION_TTL_MS = 30_000;
 
 /**
  * Store for pending label selections.
- * Key: file URI string, Value: label ID to select
+ * Key: file URI string, Value: label ID to select and the time it stops being valid
  */
-const pendingSelections = new Map<string, string>();
+const pendingSelections = new Map<string, { labelId: string; expiresAt: number }>();
+
+/**
+ * Locale editor webview panels that are currently open, keyed by file URI string.
+ * Re-opening an already open custom editor only reveals it (no new 'ready'), so
+ * selections for such files are posted straight to the live panel.
+ */
+const livePanels = new Map<string, vscode.WebviewPanel>();
+
+/**
+ * Register a live locale editor panel for a file URI.
+ *
+ * @returns Function that unregisters the panel (a no-op if it was replaced meanwhile)
+ */
+export function registerLocalePanel(fileUri: string, panel: vscode.WebviewPanel): () => void {
+  livePanels.set(fileUri, panel);
+  return () => {
+    if (livePanels.get(fileUri) === panel) {
+      livePanels.delete(fileUri);
+    }
+  };
+}
 
 /**
  * Record a pending selection for a file URI.
@@ -33,7 +63,7 @@ const pendingSelections = new Map<string, string>();
  * @param labelId - Label ID to select once the editor opens
  */
 export function setPendingSelection(fileUri: string, labelId: string): void {
-  pendingSelections.set(fileUri, labelId);
+  pendingSelections.set(fileUri, { labelId, expiresAt: Date.now() + PENDING_SELECTION_TTL_MS });
 }
 
 /**
@@ -44,18 +74,24 @@ export function setPendingSelection(fileUri: string, labelId: string): void {
  * @returns Label ID to select, or undefined if none pending
  */
 export function consumePendingSelection(fileUri: string): string | undefined {
-  const labelId = pendingSelections.get(fileUri);
-  if (labelId) {
-    pendingSelections.delete(fileUri);
+  const pending = pendingSelections.get(fileUri);
+  if (!pending) {
+    return undefined;
   }
-  return labelId;
+  pendingSelections.delete(fileUri);
+  return pending.expiresAt >= Date.now() ? pending.labelId : undefined;
 }
 
 /**
  * Whether a pending selection is currently recorded for a file URI.
  */
 export function hasPendingSelection(fileUri: string): boolean {
-  return pendingSelections.has(fileUri);
+  const pending = pendingSelections.get(fileUri);
+  if (pending && pending.expiresAt < Date.now()) {
+    pendingSelections.delete(fileUri);
+    return false;
+  }
+  return pending !== undefined;
 }
 
 /**
@@ -73,11 +109,32 @@ export function clearPendingSelections(): void {
  * @param labelId - Label ID to select after opening
  */
 async function openLabelEditorWithSelection(fileUri: vscode.Uri, labelId: string): Promise<void> {
-  // Store the pending selection
-  setPendingSelection(fileUri.toString(), labelId);
+  const key = fileUri.toString();
 
-  // Open the locale editor
-  await vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
+  // The editor is already open: openWith would only reveal it and no 'ready' would
+  // ever consume a pending selection, so select the key in the live webview directly.
+  const panel = livePanels.get(key);
+  if (panel) {
+    panel.reveal();
+    const message: LocaleToWebviewMessage = { type: 'select-key', key: labelId };
+    await panel.webview.postMessage(message);
+    return;
+  }
+
+  // Otherwise the new webview consumes the selection when it reports 'ready'
+  setPendingSelection(key, labelId);
+  try {
+    await vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
+  } catch (error) {
+    // No editor will ever consume the selection
+    consumePendingSelection(key);
+    throw error;
+  }
+}
+
+/** Own-property check, so inherited names such as `toString` never count as existing keys. */
+function hasOwn(target: object, key: string): boolean {
+  return Object.keys(target).includes(key);
 }
 
 /**
@@ -101,7 +158,7 @@ function hasTranslationKey(config: ILocalesConfiguration, translationKey: string
     let found = true;
 
     for (const segment of segments) {
-      if (!(segment in current)) {
+      if (!hasOwn(current, segment)) {
         found = false;
         break;
       }
@@ -131,11 +188,11 @@ function hasTranslationKey(config: ILocalesConfiguration, translationKey: string
  * Create a missing translation key entry in an existing locale file
  *
  * This function:
- * 1. Reads the existing locale file
+ * 1. Reads the existing locale file (including unsaved editor changes)
  * 2. Parses it as ILocalesConfiguration
  * 3. Checks if translation key already exists
  * 4. Merges new entry with empty translations for all languages
- * 5. Writes file with 2-space indentation
+ * 5. Applies the result as a document edit (2-space indentation) and saves it
  *
  * @param args - Command arguments from code action
  * @returns Result indicating success/failure with details
@@ -149,11 +206,13 @@ export async function createLabelEntry(
     // Convert file path to VS Code URI
     const fileUri = vscode.Uri.file(labelsFilePath);
 
-    // Read existing locale file
+    // Read the current text through the TextDocument model: if the locale editor (or a
+    // text editor) has the file open with unsaved changes, those changes are included.
+    let document: vscode.TextDocument;
     let existingContent: string;
     try {
-      const contentBytes = await vscode.workspace.fs.readFile(fileUri);
-      existingContent = Buffer.from(contentBytes).toString('utf-8');
+      document = await vscode.workspace.openTextDocument(fileUri);
+      existingContent = document.getText();
     } catch (error) {
       const errorMessage = `Failed to read locale file: ${error instanceof Error ? error.message : 'Unknown error'}`;
       vscode.window.showErrorMessage(errorMessage);
@@ -201,6 +260,22 @@ export async function createLabelEntry(
       };
     }
 
+    // Refuse key paths that cannot be written safely (`__proto__`, empty segments, ...)
+    if (!isSafeTranslationKey(labelId)) {
+      const errorMessage = `'${labelId}' is not a valid translation key`;
+      vscode.window.showErrorMessage(errorMessage);
+
+      return {
+        success: false,
+        labelId,
+        labelsFilePath,
+        error: {
+          code: LabelEntryErrorCode.InvalidKey,
+          message: errorMessage,
+        },
+      };
+    }
+
     // Check if translation key already exists (defensive check)
     if (hasTranslationKey(localesConfig, labelId)) {
       const errorMessage = `Translation key '${labelId}' already exists in the locale file`;
@@ -218,17 +293,42 @@ export async function createLabelEntry(
     }
 
     // Merge new translation key into existing configuration
-    const { config: updatedConfig, skipped } = mergeLocaleEntryWithSkipped(
-      localesConfig,
-      labelId,
-      languageCodes
-    );
+    const {
+      config: updatedConfig,
+      skipped,
+      invalidKey,
+      invalidLanguageCodes,
+    } = mergeLocaleEntryWithSkipped(localesConfig, labelId, languageCodes);
 
-    // Write file with 2-space indentation (preserves formatting consistency)
+    // Defensive: the merge refuses unsafe key paths too; never rewrite the file for one
+    if (invalidKey) {
+      const errorMessage = `'${labelId}' is not a valid translation key`;
+      vscode.window.showErrorMessage(errorMessage);
+
+      return {
+        success: false,
+        labelId,
+        labelsFilePath,
+        error: {
+          code: LabelEntryErrorCode.InvalidKey,
+          message: errorMessage,
+        },
+      };
+    }
+
+    // Apply the merged result to the document (2-space indentation) and save it. Going
+    // through the document keeps an open locale editor in sync via its change listener
+    // instead of leaving a dirty buffer that conflicts with the file on disk.
     const newContent = JSON.stringify(updatedConfig, null, 2);
     try {
-      const contentBytes = Buffer.from(newContent, 'utf-8');
-      await vscode.workspace.fs.writeFile(fileUri, contentBytes);
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(fileUri, new vscode.Range(0, 0, document.lineCount, 0), newContent);
+      if (!(await vscode.workspace.applyEdit(edit))) {
+        throw new Error('The edit was rejected by VS Code');
+      }
+      if (!(await document.save())) {
+        throw new Error('The document could not be saved');
+      }
     } catch (error) {
       const errorMessage = `Failed to write locale file: ${error instanceof Error ? error.message : 'Unknown error'}`;
       vscode.window.showErrorMessage(errorMessage);
@@ -252,9 +352,15 @@ export async function createLabelEntry(
       );
     }
 
+    if (invalidLanguageCodes.length > 0) {
+      vscode.window.showWarningMessage(
+        `Ignored invalid language code(s) ${invalidLanguageCodes.join(', ')}`
+      );
+    }
+
     // Success - show info message
     vscode.window.showInformationMessage(
-      `Created translation key '${labelId}' with ${languageCodes.length} language(s)`
+      `Created translation key '${labelId}' with ${languageCodes.length - invalidLanguageCodes.length} language(s)`
     );
 
     // Open label editor with the new label selected

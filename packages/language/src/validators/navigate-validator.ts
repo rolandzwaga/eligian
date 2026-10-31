@@ -19,6 +19,8 @@ export class NavigateValidator extends BaseValidator {
   checkNavigateTarget(node: NavigateStatement, accept: ValidationAcceptor): void {
     const program = this.getProgram(node);
     if (!program) return;
+    // Partial AST (recovered after a syntax error): the parse error is enough.
+    if (node.target === undefined) return;
 
     const timelineNames = getTimelines(program).map(t => t.name);
     if (!timelineNames.includes(node.target)) {

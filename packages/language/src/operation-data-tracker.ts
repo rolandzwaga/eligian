@@ -42,9 +42,12 @@ export class OperationDataTracker {
    * Simulates what happens to operationData when an operation executes:
    * 1. Check dependencies exist (properties operation expects to find)
    * 2. Track non-erased parameters (stay on operationData for subsequent operations)
+   *    and remove erased ones (Eligius deletes them after use, including a value
+   *    an earlier operation left under the same name; recorded as an erasure)
    * 3. Track outputs (properties operation produces)
    *
-   * Note: Erased parameters are NOT tracked because they're deleted immediately after use.
+   * Note: Erased parameters are never added, so a plain `addClass("foo")` does
+   * not make `className` available to later operations.
    *
    * Example sequence:
    *   selectElement("#el")  → Outputs: selectedElement (tracked)
@@ -71,33 +74,43 @@ export class OperationDataTracker {
       }
     }
 
-    // Step 2: Add non-erased parameters (these stay on operationData after operation)
-    // Rule: If parameter is NOT marked erased, it stays on operationData for subsequent operations
+    // Step 2: Parameters.
+    // - Not erased: the value stays on operationData for subsequent operations.
+    // - Erased: Eligius deletes the property after the operation runs. That also
+    //   removes a value an EARLIER operation left under the same name (e.g.
+    //   createElement outputs 'template', setElementContent erases its
+    //   'template' parameter), so it is removed and recorded as an erasure.
     for (const param of signature.parameters) {
       if (!param.erased) {
-        this.availableProperties.add(param.name);
-        this.history.push({
-          operation: operationName,
-          action: 'added',
-          property: param.name,
-        });
+        this.add(operationName, param.name);
+      } else {
+        this.remove(operationName, param.name);
       }
-      // If erased: true, we don't track it - it's deleted immediately after use
     }
 
-    // Step 3: Add outputs (properties operation produces)
+    // Step 3: Outputs (properties the operation produces). An output marked
+    // erased is deleted after execution, so it never reaches later operations.
     for (const output of signature.outputs) {
-      this.availableProperties.add(output.name);
-      this.history.push({
-        operation: operationName,
-        action: 'added',
-        property: output.name,
-      });
+      if (output.erased) {
+        this.remove(operationName, output.name);
+      } else {
+        this.add(operationName, output.name);
+      }
     }
-
-    // Note: We don't need a Step 4 to remove erased properties because we never added them in Step 2
 
     return missingDependencies;
+  }
+
+  private add(operation: string, property: string): void {
+    this.availableProperties.add(property);
+    this.history.push({ operation, action: 'added', property });
+  }
+
+  /** Remove `property` if present, recording the erasure; a no-op otherwise. */
+  private remove(operation: string, property: string): void {
+    if (this.availableProperties.delete(property)) {
+      this.history.push({ operation, action: 'removed', property });
+    }
   }
 
   /**
@@ -126,11 +139,13 @@ export class OperationDataTracker {
   }
 
   /**
-   * Find which operation erased a given property (for error messages).
-   * Returns undefined if property was never erased.
+   * Find which operation erased a given property (for error messages): the
+   * most recent erasure recorded for it. Returns undefined if the property was
+   * never erased (it was simply never created).
    */
   findErasurePoint(propertyName: string): { operation: string } | undefined {
-    for (const entry of this.history) {
+    for (let i = this.history.length - 1; i >= 0; i--) {
+      const entry = this.history[i];
       if (entry.action === 'removed' && entry.property === propertyName) {
         return { operation: entry.operation };
       }
@@ -162,7 +177,17 @@ export class OperationDataTracker {
     }
     this.availableProperties = intersection;
 
-    // Merge histories
-    this.history.push(...other.history);
+    // Merge histories. Branch trackers are clones of the same pre-branch
+    // tracker, so they share its history entries (same objects) as a prefix:
+    // append only the other branch's own entries, not the shared prefix again.
+    let shared = 0;
+    while (
+      shared < this.history.length &&
+      shared < other.history.length &&
+      this.history[shared] === other.history[shared]
+    ) {
+      shared++;
+    }
+    this.history.push(...other.history.slice(shared));
   }
 }

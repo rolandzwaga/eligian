@@ -16,7 +16,7 @@
  * `compiler/index.ts` barrel) are unchanged (W3 decomposition).
  */
 
-import { OPERATION_REGISTRY, type OperationSignature } from './index.js';
+import { getOperationSignature, type OperationSignature } from './index.js';
 import type { OperationValidationError } from './validation/errors.js';
 import { validateOperationExists } from './validation/existence.js';
 import { validateParameterCount } from './validation/parameter-count.js';
@@ -74,7 +74,7 @@ export function validateOperation(operationName: string, argumentCount?: number)
   }
 
   // Operation exists - get signature
-  const signature = OPERATION_REGISTRY[operationName];
+  const signature = getOperationSignature(operationName)!;
 
   // T214: Check parameter count (if provided)
   if (argumentCount !== undefined) {

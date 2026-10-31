@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
   BLOCK_LABELS_REQUEST,
@@ -29,6 +28,8 @@ import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { URI } from 'vscode-uri';
+import { createAssetUpdateHandlers } from './asset-update-handlers.js';
+import { ImportParseCache } from './import-cache.js';
 import type { ImportProcessorConfig } from './import-processor.js';
 import { processImports } from './import-processor.js';
 
@@ -57,25 +58,6 @@ function triggerRevalidation(documentUris: string[]): void {
 }
 
 /**
- * Re-parse the registered stylesheets that `@import` a changed CSS file: their metadata
- * merges the imported file's classes/IDs, so it is stale now.
- */
-function reparseImporters(cssFileUri: string): void {
-  const cssRegistry = Eligian.css.CSSRegistry;
-  for (const importerUri of cssRegistry.getFilesImporting(cssFileUri)) {
-    const importerPath = URI.parse(importerUri).fsPath;
-    try {
-      cssRegistry.updateCSSFile(
-        importerUri,
-        parseCSS(readFileSync(importerPath, 'utf-8'), importerPath)
-      );
-    } catch {
-      // The importer itself is gone/unreadable: its own watcher event reports that
-    }
-  }
-}
-
-/**
  * The CSS files to watch for a document: its imported files plus every stylesheet they
  * `@import` (from the registry), so an edit to an imported sheet re-validates the document.
  */
@@ -90,126 +72,36 @@ function withImportedStylesheets(cssFileUris: string[]): string[] {
   return [...all];
 }
 
-// Register CSS notification handlers
-connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) => {
-  const { cssFileUri, documentUris } = params;
+// Parsed-phase parse caches: the imports of a document are re-read on every rebuild, so
+// unchanged files (same mtime and size) reuse their parsed metadata. The hot-reload handlers
+// below invalidate the entries they refresh.
+const cssParseCache = new ImportParseCache<ReturnType<typeof parseCSS>>();
+const labelsParseCache = new ImportParseCache<ReturnType<typeof extractTranslationKeys>>();
+const htmlParseCache = new ImportParseCache<{
+  content: string;
+  errors?: Array<{ message: string; line?: number; column?: number }>;
+}>();
 
-  try {
-    // Read CSS file content from file system
-    const cssFilePath = URI.parse(cssFileUri).fsPath;
-    const cssContent = readFileSync(cssFilePath, 'utf-8');
-
-    // Parse CSS to extract classes, IDs, and metadata
-    const parseResult = parseCSS(cssContent, cssFilePath);
-
-    // Update the CSS registry with parsed metadata
-    const cssRegistry = Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile(cssFileUri, parseResult);
-    reparseImporters(cssFileUri);
-
-    // Trigger re-validation of importing documents
-    triggerRevalidation(documentUris);
-  } catch (error) {
-    // File might be deleted or have errors - clear CSS and trigger re-validation
-    const cssRegistry = Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile(
-      cssFileUri,
-      createEmptyCSSMetadata([
-        {
-          message: error instanceof Error ? error.message : String(error),
-          filePath: cssFileUri,
-          line: 0,
-          column: 0,
-        },
-      ])
-    );
-    reparseImporters(cssFileUri);
-
-    // Trigger re-validation to show "file not found" or CSS errors
-    triggerRevalidation(documentUris);
-  }
+const assetHandlers = createAssetUpdateHandlers({
+  cssRegistry: Eligian.css.CSSRegistry,
+  labelRegistry: Eligian.labels.LabelRegistry,
+  htmlRegistry: Eligian.html.HTMLRegistry,
+  triggerRevalidation,
+  caches: { css: cssParseCache, labels: labelsParseCache, html: htmlParseCache },
 });
 
-connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) => {
-  const { cssFileUri, errors } = params;
-
-  // Store error metadata in CSS registry with empty classes/IDs
-  const cssRegistry = Eligian.css.CSSRegistry;
-  cssRegistry.updateCSSFile(cssFileUri, createEmptyCSSMetadata(errors));
-});
-
-// Register labels notification handlers
-connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedParams) => {
-  const { labelsFileUri, documentUris } = params;
-
-  try {
-    // Read labels file content from file system
-    const labelsFilePath = URI.parse(labelsFileUri).fsPath;
-    const labelsContent = readFileSync(labelsFilePath, 'utf-8');
-
-    // Validate labels JSON schema
-    const validationError = validateLocalesJSON(labelsContent, labelsFilePath);
-
-    if (!validationError) {
-      // Parse labels JSON to extract label metadata
-      const labels = JSON.parse(labelsContent);
-      const metadata = extractTranslationKeys(labels);
-
-      // Update the labels registry with parsed metadata
-      const labelRegistry = Eligian.labels.LabelRegistry;
-      labelRegistry.updateLabelsFile(labelsFileUri, metadata);
-
-      // Trigger re-validation of importing documents
-      triggerRevalidation(documentUris);
-    }
-    // If validation error, we don't update the registry
-    // The validator will handle showing the error to the user
-  } catch (_error) {
-    // File might be deleted - clear labels and trigger re-validation
-    const labelRegistry = Eligian.labels.LabelRegistry;
-    labelRegistry.updateLabelsFile(labelsFileUri, []); // Clear labels
-
-    // Trigger re-validation to show "file not found" errors
-    triggerRevalidation(documentUris);
-  }
-});
-
-// Register HTML notification handlers
-connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams) => {
-  const { htmlFileUri, documentUris } = params;
-
-  try {
-    // Read HTML file content from file system
-    const htmlFilePath = URI.parse(htmlFileUri).fsPath;
-    const htmlContent = readFileSync(htmlFilePath, 'utf-8');
-
-    // Update the HTML registry with content (no parsing needed for HTML)
-    const htmlRegistry = Eligian.html.HTMLRegistry;
-    htmlRegistry.updateHTMLFile(htmlFileUri, {
-      content: htmlContent,
-      errors: [],
-    });
-
-    // Trigger re-validation of importing documents
-    triggerRevalidation(documentUris);
-  } catch (error) {
-    // File might be deleted - clear HTML and trigger re-validation
-    const htmlRegistry = Eligian.html.HTMLRegistry;
-    htmlRegistry.updateHTMLFile(htmlFileUri, {
-      content: '',
-      errors: [
-        {
-          message: error instanceof Error ? error.message : String(error),
-          line: 0,
-          column: 0,
-        },
-      ],
-    });
-
-    // Trigger re-validation to show "file not found" errors
-    triggerRevalidation(documentUris);
-  }
-});
+connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =>
+  assetHandlers.onCssUpdated(params)
+);
+connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) =>
+  assetHandlers.onCssError(params)
+);
+connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedParams) =>
+  assetHandlers.onLabelsUpdated(params)
+);
+connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams) =>
+  assetHandlers.onHtmlUpdated(params)
+);
 
 // CRITICAL: Import files MUST be loaded BEFORE validation phase
 // This handler runs during DocumentState.Parsed phase (after parsing, BEFORE validation)
@@ -249,6 +141,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           }),
         },
         cardinality: 'many',
+        cache: cssParseCache,
       };
 
       processImports(documentUri, root, docDir, connection, cssConfig);
@@ -284,6 +177,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           }),
         },
         cardinality: 'one',
+        cache: labelsParseCache,
       };
 
       processImports(documentUri, root, docDir, connection, labelsConfig);
@@ -321,10 +215,18 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           }),
         },
         cardinality: 'one',
+        cache: htmlParseCache,
       };
 
       processImports(documentUri, root, docDir, connection, htmlConfig);
     }
+  }
+});
+
+// Drop the HTML registry state of documents that were deleted from the workspace
+shared.workspace.DocumentBuilder.onUpdate((_changed, deleted) => {
+  for (const uri of deleted) {
+    Eligian.html.HTMLRegistry.clearDocument(uri.toString());
   }
 });
 

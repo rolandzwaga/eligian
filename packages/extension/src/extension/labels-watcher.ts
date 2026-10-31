@@ -27,7 +27,7 @@ export class LabelsWatcherManager extends FileImportWatcherManager {
       {
         globPattern: '**/*.json',
         sendUpdateNotification: (c, labelsFileUri, documentUris) => {
-          c.sendNotification(LABELS_UPDATED_NOTIFICATION, { labelsFileUri, documentUris });
+          return c.sendNotification(LABELS_UPDATED_NOTIFICATION, { labelsFileUri, documentUris });
         },
       },
       onChange,

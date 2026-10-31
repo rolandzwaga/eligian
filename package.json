@@ -18,7 +18,7 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check --write .",
-    "ci": "biome ci .",
+    "ci": "biome ci --error-on-warnings .",
     "typecheck": "tsc -b tsconfig.build.json",
     "typecheck:tests": "tsc -p packages/language/tsconfig.test.json && tsc -p packages/cli/tsconfig.test.json && tsc -p packages/extension/tsconfig.test.json && tsc -p packages/shared-utils/tsconfig.test.json",
     "effect:check": "pnpm effect:check:language && pnpm effect:check:cli",

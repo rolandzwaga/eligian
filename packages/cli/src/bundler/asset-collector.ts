@@ -233,6 +233,89 @@ export function extractHTMLUrls(htmlContent: string): string[] {
 }
 
 /**
+ * True when `ref` is a local file reference (not empty, not external, not a data URI)
+ */
+function isLocalRef(ref: unknown): ref is string {
+  return typeof ref === 'string' && ref !== '' && !isExternalUrl(ref) && !isDataUri(ref);
+}
+
+/**
+ * Map the media references of one settings holder.
+ *
+ * A holder is an object that may carry:
+ * - `src` / `path` (lottie style providers; only when `direct` is set)
+ * - `positionSource.sources[].src` (Eligius 3 VideoPositionSource media list)
+ *
+ * Returns a copy; the input is never mutated.
+ */
+function mapHolderRefs(holder: unknown, map: (ref: string) => string, direct: boolean): unknown {
+  if (!holder || typeof holder !== 'object') {
+    return holder;
+  }
+  const out: Record<string, unknown> = { ...(holder as Record<string, unknown>) };
+
+  if (direct) {
+    for (const key of ['src', 'path']) {
+      const value = out[key];
+      if (isLocalRef(value)) {
+        out[key] = map(value);
+      }
+    }
+  }
+
+  const positionSource = out.positionSource as { sources?: unknown } | undefined;
+  if (
+    positionSource &&
+    typeof positionSource === 'object' &&
+    Array.isArray(positionSource.sources)
+  ) {
+    out.positionSource = {
+      ...positionSource,
+      sources: positionSource.sources.map(source =>
+        source && typeof source === 'object' && isLocalRef((source as { src?: unknown }).src)
+          ? { ...(source as object), src: map((source as { src: string }).src) }
+          : source
+      ),
+    };
+  }
+
+  return out;
+}
+
+/**
+ * Apply `map` to every local media reference in an Eligius configuration and
+ * return the resulting (copied) configuration.
+ *
+ * Covered: `timelineProviderSettings.*.src/path`,
+ * `timelineProviderSettings.*.positionSource.sources[].src` and per-timeline
+ * `timelines[].positionSource.sources[].src`. `timeline.uri` is deliberately
+ * NOT touched: it is an identifier, not a file the runtime fetches.
+ */
+export function mapConfigAssetRefs(
+  config: IEngineConfiguration,
+  map: (ref: string) => string
+): IEngineConfiguration {
+  const result: IEngineConfiguration = { ...config };
+
+  if (config.timelineProviderSettings) {
+    result.timelineProviderSettings = Object.fromEntries(
+      Object.entries(config.timelineProviderSettings).map(([key, value]) => [
+        key,
+        mapHolderRefs(value, map, true),
+      ])
+    ) as IEngineConfiguration['timelineProviderSettings'];
+  }
+
+  if (config.timelines) {
+    result.timelines = config.timelines.map(
+      timeline => mapHolderRefs(timeline, map, false) as (typeof config.timelines)[number]
+    );
+  }
+
+  return result;
+}
+
+/**
  * Extract asset paths from Eligius configuration
  *
  * Extracts media source paths from timeline provider settings
@@ -248,47 +331,32 @@ function extractConfigAssets(
 ): Array<{ absolutePath: string; originalRef: string; sourceType: 'config' }> {
   const assets: Array<{ absolutePath: string; originalRef: string; sourceType: 'config' }> = [];
 
-  const settings = config.timelineProviderSettings;
-  if (!settings) {
-    return assets;
-  }
-
-  // The ITimelineProviderSettings interface uses 'animation' | 'mediaplayer' as keys,
-  // but at runtime the settings object may have provider-specific properties like src/path.
-  // We iterate over all settings entries to extract media source paths.
-  for (const providerSettings of Object.values(settings)) {
-    if (!providerSettings) continue;
-
-    // Check for video/audio src property
-    const settingsWithSrc = providerSettings as { src?: string };
-    if (
-      settingsWithSrc.src &&
-      !isExternalUrl(settingsWithSrc.src) &&
-      !isDataUri(settingsWithSrc.src)
-    ) {
-      assets.push({
-        absolutePath: path.resolve(basePath, settingsWithSrc.src),
-        originalRef: settingsWithSrc.src,
-        sourceType: 'config',
-      });
-    }
-
-    // Check for lottie path property
-    const settingsWithPath = providerSettings as { path?: string };
-    if (
-      settingsWithPath.path &&
-      !isExternalUrl(settingsWithPath.path) &&
-      !isDataUri(settingsWithPath.path)
-    ) {
-      assets.push({
-        absolutePath: path.resolve(basePath, settingsWithPath.path),
-        originalRef: settingsWithPath.path,
-        sourceType: 'config',
-      });
-    }
-  }
+  mapConfigAssetRefs(config, ref => {
+    assets.push({
+      absolutePath: path.resolve(basePath, ref),
+      originalRef: ref,
+      sourceType: 'config',
+    });
+    return ref;
+  });
 
   return assets;
+}
+
+/**
+ * Rewrite local media references in the configuration to the bundle-relative
+ * output paths recorded in the asset manifest, so the embedded CONFIG points at
+ * the copied files (`assets/intro.mp4`) instead of the original source paths.
+ */
+export function rewriteConfigAssetRefs(
+  config: IEngineConfiguration,
+  manifest: AssetManifest,
+  basePath: string
+): IEngineConfiguration {
+  return mapConfigAssetRefs(
+    config,
+    ref => manifest.assets.get(path.resolve(basePath, ref))?.outputPath ?? ref
+  );
 }
 
 /**

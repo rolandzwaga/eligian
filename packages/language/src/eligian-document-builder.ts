@@ -29,6 +29,10 @@
  *
  * Enabled for the language server only (see `createEligianServices`): the
  * compiler loads libraries through its own library loader.
+ *
+ * Relinking also follows library imports transitively (see {@link shouldRelink}):
+ * diagnostics such as `circular_library_import` depend on libraries a document
+ * only reaches through other libraries, which Langium's reference-based check misses.
  */
 
 import {
@@ -85,6 +89,50 @@ export class EligianDocumentBuilder extends DefaultDocumentBuilder {
   }
 
   /**
+   * Also relink (and so revalidate) a document when a library it imports directly or
+   * through other libraries changed or was deleted. Langium only relinks documents with
+   * linking errors or references into the changed documents, so e.g. a program importing
+   * `a`, where `a → b → a` is a cycle, kept its `circular_library_import` error after
+   * `b` dropped its import of `a`.
+   */
+  protected override shouldRelink(document: LangiumDocument, changedUris: Set<string>): boolean {
+    return (
+      super.shouldRelink(document, changedUris) || this.importsChangedLibrary(document, changedUris)
+    );
+  }
+
+  /** Whether `document` transitively imports a library whose URI is in `changedUris`. */
+  private importsChangedLibrary(document: LangiumDocument, changedUris: Set<string>): boolean {
+    const visited = new Set<string>([document.uri.toString()]);
+    const queue: LangiumDocument[] = [document];
+    for (let current = queue.shift(); current; current = queue.shift()) {
+      const root = current.parseResult?.value;
+      if (!isProgram(root) && !isLibrary(root)) {
+        continue;
+      }
+      for (const libraryImport of getLibraryImportsOf(root)) {
+        if (!libraryImport.path) {
+          continue;
+        }
+        const uri = resolveLibraryPath(current.uri, libraryImport.path);
+        const key = uri.toString();
+        if (changedUris.has(key)) {
+          return true;
+        }
+        if (visited.has(key)) {
+          continue;
+        }
+        visited.add(key);
+        const library = this.langiumDocuments.getDocument(uri);
+        if (library) {
+          queue.push(library);
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * Load the libraries that `documents` import, directly or through other
    * libraries, that are not in `LangiumDocuments` yet.
    */
@@ -99,6 +147,9 @@ export class EligianDocumentBuilder extends DefaultDocumentBuilder {
         continue;
       }
       for (const libraryImport of getLibraryImportsOf(root)) {
+        if (!libraryImport.path) {
+          continue; // Partial AST while typing `import { a } from`
+        }
         const library = await this.loadLibrary(
           resolveLibraryPath(document.uri, libraryImport.path),
           cancelToken

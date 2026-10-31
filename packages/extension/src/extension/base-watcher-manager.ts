@@ -3,8 +3,7 @@
  *
  * Shared implementation for the CSS / HTML / Labels watcher managers
  * (consolidation D1). Each concrete watcher differs only in its glob pattern,
- * the LSP notification it sends, whether it reacts to file-create events, and
- * its delete-notification semantics — all supplied via {@link FileWatcherConfig}.
+ * the LSP notification it sends, and its delete-notification semantics — all supplied via {@link FileWatcherConfig}.
  *
  * Design:
  * - One FileSystemWatcher per workspace folder (multi-root aware), plus a narrow
@@ -37,12 +36,6 @@ export interface FileWatcherConfig {
   readonly globPattern: string;
 
   /**
-   * React to file-create events. Used by the CSS watcher to revalidate when a
-   * file is renamed back to a name that documents import. Default: `false`.
-   */
-  readonly watchCreate?: boolean;
-
-  /**
    * Send the update notification on delete even when the deleted file is not
    * currently tracked. Used by the CSS watcher to handle the rename case where
    * the old path is no longer tracked but documents still reference it.
@@ -57,12 +50,14 @@ export interface FileWatcherConfig {
    * @param client - The active language client (guaranteed non-null here)
    * @param fileUri - URI of the changed/created/deleted file (file:///...)
    * @param documentUris - Eligian documents that import the file
+   * @returns The client's send promise (if any); the base catches its rejection, which
+   *   occurs when the client is not running (stopped, restarting, deactivating)
    */
   readonly sendUpdateNotification: (
     client: LanguageClient,
     fileUri: string,
     documentUris: string[]
-  ) => void;
+  ) => Promise<void> | void;
 }
 
 /**
@@ -214,12 +209,11 @@ export abstract class FileImportWatcherManager {
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
     this.watchers.set(key, watcher);
 
-    // File creation (e.g. renamed back to an imported name) - CSS only.
-    if (this.config.watchCreate) {
-      watcher.onDidCreate(uri => {
-        this.handleFileCreate(uri);
-      });
-    }
+    // File creation (restored after a delete, renamed back to an imported name, or created
+    // after the import was written) re-tracks the file and revalidates, for every watcher.
+    watcher.onDidCreate(uri => {
+      this.handleFileCreate(uri);
+    });
 
     watcher.onDidChange(uri => {
       this.handleFileChange(uri);
@@ -246,22 +240,23 @@ export abstract class FileImportWatcherManager {
   }
 
   /**
-   * Handle a file-create event (only registered when `watchCreate` is set).
+   * Handle a file-create event.
    *
-   * Triggers revalidation when a file is created or renamed back to a name that
-   * documents import, marking previously-broken references valid again.
+   * When a file that documents import appears (delete followed by create, a rename back
+   * to an imported name, or a file created after the import was written), it is tracked
+   * again - the preceding delete event untracked it - and revalidation plus the
+   * hot-reload callback run through the usual debounce.
    */
   private handleFileCreate(uri: vscode.Uri): void {
     const filePath = uri.fsPath;
     const fileUri = vscode.Uri.file(filePath).toString();
 
-    this.notifyFileChanged(fileUri);
-
-    // Re-add to tracking if a document still imports it (it may have been
-    // removed by a prior delete event).
-    if (this.importsByFile.has(fileUri)) {
-      this.trackedFiles.add(filePath);
+    if (!this.importsByFile.has(fileUri)) {
+      return;
     }
+
+    this.trackedFiles.add(filePath);
+    this.debounceChange(filePath);
   }
 
   /**
@@ -270,9 +265,13 @@ export abstract class FileImportWatcherManager {
   private handleFileChange(uri: vscode.Uri): void {
     const filePath = uri.fsPath;
 
-    // Only process tracked files.
+    // Only process tracked files. A file that documents still import is tracked again here
+    // so a missed create event (coalesced delete + add) cannot leave hot-reload dead.
     if (!this.trackedFiles.has(filePath)) {
-      return;
+      if (!this.importsByFile.has(vscode.Uri.file(filePath).toString())) {
+        return;
+      }
+      this.trackedFiles.add(filePath);
     }
 
     this.debounceChange(filePath);
@@ -334,8 +333,18 @@ export abstract class FileImportWatcherManager {
       return;
     }
     const documentUris = Array.from(this.importsByFile.get(fileUri) || []);
-    if (documentUris.length > 0) {
-      this.config.sendUpdateNotification(this.client, fileUri, documentUris);
+    if (documentUris.length === 0) {
+      return;
+    }
+    // sendNotification rejects when the client is not running (stopped, restarting after a
+    // crash, deactivating); a lost hot-reload notification must not become an unhandled
+    // rejection in the extension host.
+    try {
+      Promise.resolve(this.config.sendUpdateNotification(this.client, fileUri, documentUris)).catch(
+        () => {}
+      );
+    } catch {
+      // Synchronous failure: same treatment
     }
   }
 
@@ -343,7 +352,7 @@ export abstract class FileImportWatcherManager {
    * Dispose the watcher and clean up resources.
    *
    * Clears all debounce timers, disposes the FileSystemWatcher, and clears the
-   * tracked-files set to prevent memory leaks.
+   * tracked-files set and import mappings to prevent memory leaks.
    */
   dispose(): void {
     for (const timer of this.debounceTimers.values()) {
@@ -358,5 +367,6 @@ export abstract class FileImportWatcherManager {
     this.watchers.clear();
 
     this.trackedFiles.clear();
+    this.importsByFile.clear();
   }
 }

@@ -9,9 +9,6 @@ import {
   type Type,
 } from 'typir';
 import type { LangiumTypeSystemDefinition, TypirLangiumServices } from 'typir-langium';
-import { OPERATION_REGISTRY } from '../compiler/operations/registry.generated.js';
-import type { ConstantValue, ParameterType } from '../compiler/operations/types.js';
-import { isConstantValueArray } from '../compiler/operations/types.js';
 import type {
   ArrayLiteral,
   BinaryExpression,
@@ -37,7 +34,6 @@ import {
   isRegularActionDefinition,
   isStaggerBlock,
 } from '../generated/ast.js';
-import { getOperationCallName } from '../utils/operation-call-utils.js';
 import type { EligianSpecifics } from './eligian-specifics.js';
 import { registerEventInference } from './inference/event-inference.js';
 import { registerImportInference } from './inference/import-inference.js';
@@ -53,6 +49,7 @@ import {
   type TimelineEventTypeProperties,
 } from './types/timeline-event-type.js';
 import { createTimelineTypeFactory, type TimelineType } from './types/timeline-type.js';
+import { findConstCycle } from './utils/const-cycles.js';
 import { registerConstantValidation } from './validation/constant-validation.js';
 import { registerControlFlowValidation } from './validation/control-flow-validation.js';
 import { registerEventValidation } from './validation/event-validation.js';
@@ -231,60 +228,15 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
     // Container selector syntax is validated by the Langium timeline validator's real parser.
     registerTimelineValidation(typir);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // STEP 2: Helper - Map ParameterType to Typir Type (T019)
-    // ═══════════════════════════════════════════════════════════════════
-
-    const mapParameterTypeToTypirType = (paramTypes: ParameterType[] | ConstantValue[]) => {
-      if (!paramTypes || paramTypes.length === 0) {
-        return this.unknownType;
-      }
-
-      // Handle constant values (enums)
-      if (isConstantValueArray(paramTypes)) {
-        return this.stringType;
-      }
-
-      // Single-type constraint: when an operation parameter declares multiple
-      // accepted types, only the first is modelled. Typir parameters carry a
-      // single type here; the broader set is not yet represented as a union, so
-      // additional declared types are intentionally ignored.
-      const paramType = paramTypes[0];
-      const typeString = String(paramType).replace('ParameterType:', '');
-
-      // Unknown/unmapped operation parameter types (incl. constant-value enums) are strings.
-      return this.resolveTypirPrimitiveType(typeString) ?? this.stringType;
-    };
+    // Built-in operations deliberately get NO Typir function types. Their arguments
+    // (including optional parameters and multi-type parameters) are validated by the Langium
+    // operation-call validator against OPERATION_REGISTRY. Per-operation function types with
+    // `validateArgumentsOfFunctionCalls: false` never produced a diagnostic, yet Typir's call
+    // validation still inferred every argument of every matching built-in call and scanned
+    // all of them for every OperationCall (audit 2026-10-22, low finding #21).
 
     // ═══════════════════════════════════════════════════════════════════
-    // STEP 3: Create Function Types for Operations (T020-T022)
-    // ═══════════════════════════════════════════════════════════════════
-
-    for (const [opName, opSig] of Object.entries(OPERATION_REGISTRY)) {
-      const inputParams = opSig.parameters.map(param => ({
-        name: param.name,
-        type: mapParameterTypeToTypirType(param.type),
-      }));
-
-      typir.factory.Functions.create({
-        functionName: opName,
-        outputParameter: {
-          name: '$return',
-          type: this.unknownType,
-        },
-        inputParameters: inputParams,
-      })
-        .inferenceRuleForCalls({
-          languageKey: 'OperationCall',
-          matching: (call: OperationCall) => getOperationCallName(call) === opName,
-          inputArguments: (call: OperationCall) => call.args,
-          validateArgumentsOfFunctionCalls: false, // Disabled - optional params handled in Langium validator
-        })
-        .finish();
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // STEP 4: Register Global Inference Rules (Parameters, Variables)
+    // STEP 2: Register Global Inference Rules (Parameters, Variables)
     // ═══════════════════════════════════════════════════════════════════
 
     typir.Inference.addInferenceRulesForAstNodes({
@@ -300,24 +252,27 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
 
       // Variable declarations: infer from initial value or unknown
       VariableDeclaration: (varDecl: VariableDeclaration) => {
-        if (varDecl.value) {
-          return varDecl.value; // Recursive inference
-        } else {
+        if (!varDecl.value) {
           return this.unknownType;
         }
+        // A const whose value refers back to itself (`const a = @a`, `const a = @b` +
+        // `const b = @a`) has no type. Delegating to its value would make Typir recurse into
+        // this node while it is still pending, which throws instead of reporting a problem.
+        // The cycle itself is reported by the constant validation.
+        if (findConstCycle(varDecl)) {
+          return InferenceRuleNotApplicable;
+        }
+        return varDecl.value; // Recursive inference
       },
 
-      // Variable references: lookup variable declaration
-      VariableReference: (varRef: VariableReference) => {
-        const decl = varRef.variable?.ref;
-        return decl ? decl : this.unknownType;
-      },
+      // Variable references: lookup variable declaration. An unresolved reference already has
+      // a linking error; it has no type (not Top), so no follow-on type diagnostic is added.
+      VariableReference: (varRef: VariableReference) =>
+        varRef.variable?.ref ?? InferenceRuleNotApplicable,
 
-      // Parameter references: lookup parameter declaration
-      ParameterReference: (paramRef: ParameterReference) => {
-        const decl = paramRef.parameter?.ref;
-        return decl ? decl : this.unknownType;
-      },
+      // Parameter references: lookup parameter declaration (unresolved: see VariableReference)
+      ParameterReference: (paramRef: ParameterReference) =>
+        paramRef.parameter?.ref ?? InferenceRuleNotApplicable,
 
       // Values only known at runtime: never a static type mismatch
       NullLiteral: (_node: NullLiteral) => this.dynamicType,
@@ -332,13 +287,9 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       BinaryExpression: (node: BinaryExpression) => this.inferBinaryExpressionType(node),
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // STEP 5: Register Validation Rules (T023-T025)
-    // ═══════════════════════════════════════════════════════════════════
-
-    // Note: Variables don't have type annotations in Eligian grammar
-    // Operation argument validation is handled automatically by Typir
-    // via validateArgumentsOfFunctionCalls: true in operation function types
+    // Note: Variables don't have type annotations in Eligian grammar. Timeline action call
+    // arguments are type-checked by Typir via the action function types created in
+    // onNewAstNode(); built-in operation arguments by the Langium operation-call validator.
   }
 
   /**
@@ -402,44 +353,27 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
   }
 
   /**
-   * Map a parameter/annotation type name to its stored Typir primitive type.
+   * Map a parameter type annotation to its stored Typir primitive type.
    *
-   * Single source of truth for the string→Typir-type mapping (D15). Covers both
-   * grammar type annotations ('string' | 'number' | 'boolean' | 'object' | 'array')
-   * and the richer operation-registry `ParameterType` aliases (e.g. 'selector',
-   * 'className', 'dimensions', 'jQuery'). Returns `undefined` for unmapped names so
-   * each call site can apply its own fallback (string for operation params, unknown
-   * for action/annotation params).
+   * Single source of truth for the annotation→Typir-type mapping (D15). Covers the
+   * grammar's TypeAnnotation values ('string' | 'number' | 'boolean' | 'object' | 'array').
+   * Returns `undefined` for unmapped names so each call site can apply its own fallback.
    *
-   * @param typeName Normalized type name (no 'ParameterType:' prefix)
+   * @param typeName Type annotation text
    * @returns The matching primitive type, or `undefined` if unmapped
    */
   private resolveTypirPrimitiveType(typeName: string): PrimitiveType | undefined {
     switch (typeName) {
       case 'string':
-      case 'selector':
-      case 'className':
-      case 'htmlElementName':
-      case 'eventTopic':
-      case 'actionName':
         return this.stringType;
 
       case 'number':
-      case 'dimensions':
-      case 'dimensionsModifier':
         return this.numberType;
 
       case 'boolean':
         return this.booleanType;
 
       case 'object':
-      case 'jQuery':
-      case 'RegExp':
-      case 'Element':
-      case 'Text':
-      case 'Comment':
-      case 'Document':
-      case 'DocumentFragment':
         return this.objectType;
 
       case 'array':
@@ -558,10 +492,14 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
           return false;
         },
         inputArguments: (call: OperationCall) => call.args,
-        // Type-check action call arguments, but only report a mismatch when every argument
-        // has an inferred type. An argument Typir cannot infer is not evidence of a wrong
-        // type (unknown = opt-out), so it must never surface as a hard call error.
+        // Type-check action call arguments, but only report a mismatch when:
+        // - the argument count matches. A wrong count is already reported (once, in Eligian
+        //   wording) by the Langium ParameterValidator, so Typir's nested copy is suppressed.
+        // - every argument has an inferred type. An argument Typir cannot infer is not
+        //   evidence of a wrong type (unknown = opt-out), so it must never surface as a hard
+        //   call error.
         validateArgumentsOfFunctionCalls: (call: OperationCall) =>
+          call.args.length === parameters.length &&
           call.args.every(arg => isType(this.typirServices.Inference.inferType(arg))),
       })
       .finish();

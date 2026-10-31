@@ -77,8 +77,29 @@ export function handleHtmlCompletion(
       htmlContext.elementName ?? '',
       ''
     );
-    for (const item of attrCompletions) {
-      acceptor(context, item);
+    if (
+      htmlContext.stringContentStart !== undefined &&
+      htmlContext.stringContentEnd !== undefined
+    ) {
+      // Cursor is inside a quoted key (`{ "aria-|": ... }`): replace the string content
+      // with the bare attribute name; the quotes are already there.
+      const range = {
+        start: context.textDocument.positionAt(htmlContext.stringContentStart),
+        end: context.textDocument.positionAt(htmlContext.stringContentEnd),
+      };
+      const typed = (htmlContext.partialText ?? '').toLowerCase();
+      for (const item of attrCompletions) {
+        if (!item.label.toLowerCase().includes(typed)) continue;
+        acceptor(context, {
+          ...item,
+          textEdit: { range, newText: item.label },
+          filterText: item.label,
+        });
+      }
+    } else {
+      for (const item of attrCompletions) {
+        acceptor(context, item);
+      }
     }
     return { status: 'done' }; // Return early
   } else if (htmlContext.type === HTMLCompletionContextType.AttributeValue) {

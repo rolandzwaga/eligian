@@ -22,6 +22,7 @@ import type {
   VariableDeclaration,
 } from '../generated/ast.js';
 import { isNavigateStatement, isTimeline, isVariableDeclaration } from '../generated/ast.js';
+import { inferAssetType } from './asset-type-inference.js';
 import {
   isActionDefinition,
   isEventActionDefinition,
@@ -82,20 +83,26 @@ export function getVariables(program: Program): VariableDeclaration[] {
 }
 
 /**
+ * Whether a named import is an HTML asset.
+ *
+ * An explicit `as <type>` always wins; otherwise the (case-insensitive) file extension decides,
+ * exactly like `inferAssetType`. So `./a.html as css` is NOT html and `./Page.HTML` is.
+ * Single source of truth shared by the constant folder and the scope provider.
+ *
+ * @param imp - NamedImport node
+ */
+export function isHtmlImport(imp: NamedImport): boolean {
+  return (imp.assetType ?? inferAssetType(imp.path)) === 'html';
+}
+
+/**
  * Get all HTML named imports from a program
  *
  * @param program - Program AST node
- * @returns Array of NamedImport nodes with type 'html' or .html extension
+ * @returns Array of NamedImport nodes whose effective asset type is 'html'
  */
 export function getHTMLImports(program: Program): NamedImport[] {
-  return getImports(program)
-    .filter(isNamedImport)
-    .filter(imp => {
-      // Include if explicit type is 'html' OR extension is .html
-      const explicitType = imp.assetType === 'html';
-      const htmlExtension = imp.path.endsWith('.html');
-      return explicitType || htmlExtension;
-    });
+  return getImports(program).filter(isNamedImport).filter(isHtmlImport);
 }
 
 /**

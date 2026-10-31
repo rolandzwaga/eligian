@@ -1,15 +1,10 @@
 import type { AstNode, Properties, ValidationAcceptor } from 'langium';
-import { hasOperation, validateControlFlowPairing } from '../compiler/index.js';
-import type {
-  EventActionDefinition,
-  OperationCall,
-  OperationStatement,
-  StaggerBlock,
-} from '../generated/ast.js';
+import { hasOperation } from '../compiler/index.js';
+import type { EventActionDefinition, OperationStatement, StaggerBlock } from '../generated/ast.js';
 import { OperationDataTracker } from '../operation-data-tracker.js';
-import { formatValidationMessage } from '../utils/error-builder.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
+import { reportControlFlowPairing } from './control-flow-pairing.js';
 
 /**
  * Operation-sequence checks (control-flow pairing and operationData
@@ -74,18 +69,8 @@ export class OperationSequenceValidator extends BaseValidator {
     property: Properties<N>,
     accept: ValidationAcceptor
   ): void {
-    const operationNames = (operations ?? [])
-      .filter((op): op is OperationCall => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op))
-      .filter((name): name is string => name !== undefined);
-
-    for (const error of validateControlFlowPairing(operationNames)) {
-      accept('error', formatValidationMessage(error.message, error.hint), {
-        node,
-        property,
-        code: error.code.toLowerCase(),
-      });
-    }
+    // Pairs the top-level list and every nested if/else branch and for body
+    reportControlFlowPairing(operations, node, property, accept);
   }
 
   /**

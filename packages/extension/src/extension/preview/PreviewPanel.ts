@@ -66,6 +66,8 @@ export class PreviewPanel {
    * latest stops applying its results (a newer compile supersedes it).
    */
   private compileSeq = 0;
+  /** Set by the webview's first 'ready'; any later 'ready' is a reload. */
+  private webviewLoadedOnce = false;
 
   /**
    * Initialize the static diagnostics collection (called once per extension activation).
@@ -249,6 +251,11 @@ export class PreviewPanel {
     }
 
     this.isDisposed = true;
+
+    // Nothing recompiles this document's preview any more, so its
+    // 'Eligian Preview' entries would otherwise stay in Problems until reload.
+    // (In-flight compiles stop applying results once isDisposed is set.)
+    PreviewPanel.diagnostics?.delete(this.documentUri);
 
     // Destroy Eligius engine
     this.engineService.destroy();
@@ -464,7 +471,19 @@ export class PreviewPanel {
   private handleWebviewMessage(message: any): void {
     switch (message.type) {
       case 'ready':
-        console.log('[Preview] Webview ready');
+        // The webview posts 'ready' every time its document loads. The first
+        // load is served by the constructor's compile (VS Code queues messages
+        // until then). A later 'ready' means the document was reloaded
+        // ('Developer: Reload Webviews', the host re-creating it, or new
+        // localResourceRoots): it starts on the template's loading view with no
+        // config, engine or CSS, so replay everything.
+        if (!this.webviewLoadedOnce) {
+          this.webviewLoadedOnce = true;
+          console.log('[Preview] Webview ready');
+        } else {
+          console.log('[Preview] Webview reloaded, replaying preview state');
+          this.compileAndUpdate();
+        }
         break;
 
       case 'retry':

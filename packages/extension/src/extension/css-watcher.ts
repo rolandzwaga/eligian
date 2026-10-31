@@ -16,9 +16,8 @@ import { type FileChangeCallback, FileImportWatcherManager } from './base-watche
 /**
  * Manages file watching for CSS hot-reload and validation hot-reload.
  *
- * CSS-specific behavior (vs HTML/Labels): reacts to file-create events and
- * notifies on delete even for untracked files, to support files being renamed
- * back to a name documents import.
+ * CSS-specific behavior (vs HTML/Labels): notifies on delete even for untracked files, to
+ * support files being renamed back to a name documents import.
  */
 export class CSSWatcherManager extends FileImportWatcherManager {
   /**
@@ -29,10 +28,9 @@ export class CSSWatcherManager extends FileImportWatcherManager {
     super(
       {
         globPattern: '**/*.css',
-        watchCreate: true,
         notifyOnDeleteWhenUntracked: true,
         sendUpdateNotification: (c, cssFileUri, documentUris) => {
-          c.sendNotification(CSS_UPDATED_NOTIFICATION, { cssFileUri, documentUris });
+          return c.sendNotification(CSS_UPDATED_NOTIFICATION, { cssFileUri, documentUris });
         },
       },
       onChange,

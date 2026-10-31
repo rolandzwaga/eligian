@@ -43,7 +43,7 @@ import { transformAST } from './ast-transformer.js';
 import { emitJSON } from './emitter.js';
 import { optimize } from './optimizer.js';
 import { type DocumentWarning, extractDocumentWarnings } from './pipeline/document-errors.js';
-import { parseSource, validateAST } from './pipeline/parser.js';
+import { parseSourceTracked, validateAST } from './pipeline/parser.js';
 import { getSourceLocation } from './transformers/source-location.js';
 import { typeCheck } from './type-checker.js';
 import type { SourceLocation } from './types/common.js';
@@ -158,19 +158,41 @@ const assetErrorToValidationError = (
 export type CompileError = ParseError | ValidationError | TransformError | TypeError | EmitError;
 
 /**
- * T078: Main compilation pipeline
+ * Shared front end of compile() and compileToIR(): parse, reject library files,
+ * validate, load assets when a `sourceUri` is provided, and transform to IR.
+ * Keeping this in one place guarantees both entry points see identical programs
+ * and assets.
  *
- * Composes all stages into a complete DSL → JSON pipeline:
- * source → parse → validate → transform → typecheck → optimize → emit → JSON
+ * The workspace documents loaded for the program (main + libraries) are released
+ * as soon as the transform is done, on success and failure alike, so repeated
+ * compiles in one long-lived process do not accumulate documents in the shared
+ * Langium index.
  */
-export const compile = (
+const sourceToIR = (
   source: string,
-  options: CompileOptions = {}
-): Effect.Effect<IEngineConfiguration, CompileError> =>
-  Effect.gen(function* () {
-    // T076: Parse source to AST
-    const program = yield* parseSource(source, options.sourceUri);
+  options: CompileOptions
+): Effect.Effect<EligiusIR, ParseError | ValidationError | TransformError> =>
+  Effect.acquireUseRelease(
+    parseSourceTracked(source, options.sourceUri),
+    ({ program }) =>
+      Effect.gen(function* () {
+        const { program: validatedProgram, assets } = yield* loadProgram(program, options);
+        return yield* transformAST(validatedProgram, assets);
+      }),
+    ({ release }) => Effect.sync(release)
+  );
 
+/**
+ * Library-file rejection, validation and asset loading for an already parsed program.
+ */
+const loadProgram = (
+  program: Program,
+  options: CompileOptions
+): Effect.Effect<
+  { program: Program; assets: AssetLoadingResult | undefined },
+  ParseError | ValidationError
+> =>
+  Effect.gen(function* () {
     // Check if user tried to compile a library file directly
     if (isLibrary(program as any)) {
       return yield* Effect.fail({
@@ -197,8 +219,22 @@ export const compile = (
       }
     }
 
-    // T050-T059: Transform AST to IR
-    const ir = yield* transformAST(validatedProgram, assets);
+    return { program: validatedProgram, assets };
+  });
+
+/**
+ * T078: Main compilation pipeline
+ *
+ * Composes all stages into a complete DSL → JSON pipeline:
+ * source → parse → validate → transform → typecheck → optimize → emit → JSON
+ */
+export const compile = (
+  source: string,
+  options: CompileOptions = {}
+): Effect.Effect<IEngineConfiguration, CompileError> =>
+  Effect.gen(function* () {
+    // T076 + T050-T059: Parse, validate, load assets, transform AST to IR
+    const ir = yield* sourceToIR(source, options);
 
     // T060-T064: Type check IR
     const typedIR = yield* typeCheck(ir);
@@ -251,14 +287,9 @@ export const compileToIR = (
   options: CompileOptions = {}
 ): Effect.Effect<EligiusIR, ParseError | ValidationError | TransformError | TypeError> =>
   Effect.gen(function* () {
-    // Parse source to AST
-    const program = yield* parseSource(source);
-
-    // Validate AST
-    const validatedProgram = yield* validateAST(program);
-
-    // Transform AST to IR
-    const ir = yield* transformAST(validatedProgram);
+    // Same front end as compile(): sourceUri-aware parsing, library-file
+    // rejection, and asset loading
+    const ir = yield* sourceToIR(source, options);
 
     // Type check IR
     const typedIR = yield* typeCheck(ir);

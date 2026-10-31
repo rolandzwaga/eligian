@@ -122,6 +122,7 @@ export function registerValidationChecks(services: EligianServices) {
     ],
     LibraryImport: [
       v.imports.checkImportFileExists, // T041: US2 - Validate library file exists
+      v.imports.checkCircularLibraryImport, // No import cycles between libraries
       v.imports.checkImportedActionsExist, // T042 + T042a: US2 - Validate imported actions exist
       v.imports.checkImportedActionsPublic, // T055: US3 - Validate imported actions are public
       v.imports.checkImportAliasCollision, // T073: US5 - Validate aliases don't conflict with built-ins

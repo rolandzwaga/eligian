@@ -25,7 +25,7 @@ import type {
   TimelineConfigIR,
 } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
-import { mapProviderToTimelineType } from './config-builder.js';
+import { mapProviderToTimelineType, mediaPositionSource } from './config-builder.js';
 import { transformExpression } from './expression-transformer.js';
 import { timelineUri } from './navigate-operations.js';
 import {
@@ -38,6 +38,17 @@ import { createRuntimeConcatCollector, lowerNodeOperations } from './runtime-val
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
 import { evaluateTimeExpression, transformTimeExpression } from './time-transformer.js';
+
+/**
+ * Round a computed time (seconds) to the microsecond.
+ *
+ * Times are accumulated in floating point (`0 + 3 * 0.1`, `0.1 + 0.2`), which
+ * would otherwise leak values like 0.30000000000000004 into duration.start/end
+ * and the generated action names, and make an end time compare unequal to the
+ * next start time it should equal. The finest DSL unit is ms, and sub-µs
+ * precision is meaningless for a timeline, so the rounding loses nothing.
+ */
+const roundTime = (seconds: number): number => Math.round(seconds * 1e6) / 1e6;
 
 /**
  * Build TimelineConfigIR from timeline node
@@ -131,6 +142,11 @@ export const buildTimelineConfig = (
     // T272: Generate uri (timeline name for animation, source path for mediaplayer)
     const timelineType = mapProviderToTimelineType(timeline.provider);
     const uri = timelineUri(timeline);
+    const positionSource = mediaPositionSource(
+      timeline.provider,
+      timeline.source,
+      timeline.containerSelector
+    );
 
     return {
       // Constitution VII: UUID v4 for globally unique timeline ID
@@ -140,6 +156,7 @@ export const buildTimelineConfig = (
       duration: maxDuration,
       loop: false, // TODO: Could add DSL support for loop
       selector: timeline.containerSelector,
+      ...(positionSource ? { positionSource } : {}),
       timelineActions,
       sourceLocation: getSourceLocation(timeline),
     };
@@ -180,7 +197,7 @@ const transformSequenceBlock = (
 
       // Calculate time range: start at currentTime, end at currentTime + duration
       const start = currentTime;
-      const end = currentTime + duration;
+      const end = roundTime(currentTime + duration);
 
       // Get action name and arguments
       const actionCall = item.actionCall;
@@ -253,7 +270,7 @@ const transformSequenceBlock = (
  * Transform StaggerBlock → TimelineActionIR[] (T192)
  *
  * Transforms:
- *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
  *
  * Into timeline actions with staggered start times:
  *   at 0s..2s { fadeIn(".item-1") }        // starts at 0s
@@ -311,8 +328,8 @@ const transformStaggerBlock = (
       // Generate one timeline action per item
       for (let i = 0; i < itemsValue.length; i++) {
         const item = itemsValue[i];
-        const startTime = previousEventEndTime + i * delay;
-        const endTime = startTime + duration;
+        const startTime = roundTime(previousEventEndTime + i * delay);
+        const endTime = roundTime(startTime + duration);
 
         // Build actionOperationData with the item as first argument
         const concats = createRuntimeConcatCollector();
@@ -374,8 +391,8 @@ const transformStaggerBlock = (
       // Form 2: stagger delay items for duration [ startOps ] [ endOps ]
       // Generate one timeline action per item with inline operations
       for (let i = 0; i < itemsValue.length; i++) {
-        const startTime = previousEventEndTime + i * delay;
-        const endTime = startTime + duration;
+        const startTime = roundTime(previousEventEndTime + i * delay);
+        const endTime = roundTime(startTime + duration);
 
         // Transform inline operations with stagger scope
         // Inside stagger blocks, @item resolves to @@currentItem
@@ -552,8 +569,8 @@ const transformTimedEvent = (
     // T189: Pass previousEventEndTime for relative time resolution
     const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime);
     const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
-    const start = evaluateTimeExpression(startExpr);
-    const end = evaluateTimeExpression(endExpr);
+    const start = roundTime(evaluateTimeExpression(startExpr));
+    const end = roundTime(evaluateTimeExpression(endExpr));
 
     // Transform the action (either named invocation or inline)
     const action = event.action;

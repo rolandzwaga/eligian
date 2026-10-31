@@ -337,13 +337,17 @@ export function bundleRuntime(
         const messages = esbuildError.errors?.map(e => e.text) ?? [];
         return new RuntimeBundleError(`esbuild bundling failed: ${error}`, messages);
       },
-    });
-
-    // Clean up temporary entry point file (non-fatal: warn but don't abort)
-    yield* Effect.tryPromise({
-      try: () => fs.unlink(entryPointPath),
-      catch: () => new RuntimeBundleError('Failed to clean up temp file'),
-    }).pipe(Effect.catch(e => Effect.sync(() => console.warn(`⚠ Cleanup failed: ${e.message}`))));
+    }).pipe(
+      // Always remove the entry point (it embeds the full config), also when
+      // esbuild fails. Cleanup failure is non-fatal: warn but don't abort.
+      Effect.ensuring(
+        Effect.promise(() =>
+          fs
+            .unlink(entryPointPath)
+            .catch(e => console.warn(`⚠ Cleanup failed: ${e instanceof Error ? e.message : e}`))
+        )
+      )
+    );
 
     // Get bundled content
     if (!result.outputFiles || result.outputFiles.length === 0) {

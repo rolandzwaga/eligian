@@ -20,12 +20,12 @@ describe('HTML Element Name Completion (Feature 043, US1)', () => {
   });
 
   describe('Element Name Completions (T011-T015)', () => {
-    test('should provide all 112 HTML elements when cursor in empty string (T012)', () => {
+    test('should provide all 111 HTML elements when cursor in empty string (T012)', () => {
       const completions = provider.getElementNameCompletions('');
 
-      // Verify we get all 112 elements
+      // Verify we get all 111 elements (script is refused by Eligius)
       expect(completions.length).toBe(HTML_ELEMENT_NAMES.length);
-      expect(completions.length).toBe(112);
+      expect(completions.length).toBe(111);
     });
 
     test('should filter elements by partial text (T013)', () => {

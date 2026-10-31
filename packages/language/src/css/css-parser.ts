@@ -126,6 +126,87 @@ function parseCSSInternal(
   const idRules = new Map<string, string>();
   const errors: CSSParseError[] = [];
 
+  // Record the classes/IDs of one rule selector (first occurrence wins for location/rule text)
+  const recordSelector = (selector: string, ruleLocation: CSSSourceLocation, ruleText: string) => {
+    const processor = selectorParser(selectors => {
+      selectors.walkClasses(classNode => {
+        const className = classNode.value;
+        classes.add(className);
+        if (!classLocations.has(className)) classLocations.set(className, ruleLocation);
+        if (!classRules.has(className)) classRules.set(className, ruleText);
+      });
+
+      selectors.walkIds(idNode => {
+        const idName = idNode.value;
+        ids.add(idName);
+        if (!idLocations.has(idName)) idLocations.set(idName, ruleLocation);
+        if (!idRules.has(idName)) idRules.set(idName, ruleText);
+      });
+    });
+
+    processor.processSync(selector);
+  };
+
+  // Follow one @import rule: merge classes/IDs of the imported stylesheet (local rules win
+  // for locations/rule text; each file is parsed at most once, which also breaks cycles)
+  const followImport = (params: string) => {
+    const baseDir = path.dirname(toFsPath(filePath));
+    const readFile = options.readFile ?? ((p: string) => readFileSync(p, 'utf-8'));
+    const target = extractImportTarget(params);
+    if (!target) return;
+
+    const importedPath = path.resolve(baseDir, target);
+    const key = normalizeKey(importedPath);
+    if (!key || visited.has(key)) return;
+    visited.add(key);
+
+    let importedContent: string;
+    try {
+      importedContent = readFile(importedPath);
+    } catch {
+      // Unreadable import (missing file, ...): nothing to merge
+      return;
+    }
+
+    importedFiles.add(importedPath);
+    const imported = parseCSSInternal(
+      importedContent,
+      importedPath,
+      options,
+      visited,
+      importedFiles
+    );
+
+    for (const name of imported.classes) {
+      classes.add(name);
+      if (!classLocations.has(name)) {
+        const loc = imported.classLocations.get(name);
+        if (loc) classLocations.set(name, loc);
+      }
+      if (!classRules.has(name)) {
+        const rule = imported.classRules.get(name);
+        if (rule !== undefined) classRules.set(name, rule);
+      }
+    }
+    for (const name of imported.ids) {
+      ids.add(name);
+      if (!idLocations.has(name)) {
+        const loc = imported.idLocations.get(name);
+        if (loc) idLocations.set(name, loc);
+      }
+      if (!idRules.has(name)) {
+        const rule = imported.idRules.get(name);
+        if (rule !== undefined) idRules.set(name, rule);
+      }
+    }
+    for (const err of imported.errors) {
+      errors.push({
+        ...err,
+        message: `In imported stylesheet '${target}': ${err.message}`,
+      });
+    }
+  };
+
   try {
     // Parse CSS using PostCSS
     const root: Root = postcss.parse(cssContent, { from: filePath });
@@ -141,48 +222,9 @@ function parseCSSInternal(
         endColumn: rule.source?.end?.column ?? 0,
       };
 
-      // Get full rule text (selector + declarations)
-      const ruleText = rule.toString();
-
       // Parse selector to extract individual classes and IDs
       try {
-        const processor = selectorParser(selectors => {
-          selectors.walkClasses(classNode => {
-            const className = classNode.value;
-
-            // Add to classes set
-            classes.add(className);
-
-            // Store location of first occurrence only
-            if (!classLocations.has(className)) {
-              classLocations.set(className, ruleLocation);
-            }
-
-            // Store rule of first occurrence only
-            if (!classRules.has(className)) {
-              classRules.set(className, ruleText);
-            }
-          });
-
-          selectors.walkIds(idNode => {
-            const idName = idNode.value;
-
-            // Add to IDs set
-            ids.add(idName);
-
-            // Store location of first occurrence only
-            if (!idLocations.has(idName)) {
-              idLocations.set(idName, ruleLocation);
-            }
-
-            // Store rule of first occurrence only
-            if (!idRules.has(idName)) {
-              idRules.set(idName, ruleText);
-            }
-          });
-        });
-
-        processor.processSync(rule.selector);
+        recordSelector(rule.selector, ruleLocation, rule.toString());
       } catch (selectorError) {
         // Selector parsing error - log but continue with other rules
         // These errors are typically caused by invalid CSS selectors
@@ -199,67 +241,8 @@ function parseCSSInternal(
       }
     });
 
-    // Follow @import rules: merge classes/IDs of imported stylesheets (local rules win
-    // for locations/rule text; each file is parsed at most once, which also breaks cycles)
     if (options.followImports !== false) {
-      const baseDir = path.dirname(toFsPath(filePath));
-      const readFile = options.readFile ?? ((p: string) => readFileSync(p, 'utf-8'));
-
-      root.walkAtRules('import', (atRule: AtRule) => {
-        const target = extractImportTarget(atRule.params);
-        if (!target) return;
-
-        const importedPath = path.resolve(baseDir, target);
-        const key = normalizeKey(importedPath);
-        if (!key || visited.has(key)) return;
-        visited.add(key);
-
-        let importedContent: string;
-        try {
-          importedContent = readFile(importedPath);
-        } catch {
-          // Unreadable import (missing file, ...): nothing to merge
-          return;
-        }
-
-        importedFiles.add(importedPath);
-        const imported = parseCSSInternal(
-          importedContent,
-          importedPath,
-          options,
-          visited,
-          importedFiles
-        );
-
-        for (const name of imported.classes) {
-          classes.add(name);
-          if (!classLocations.has(name)) {
-            const loc = imported.classLocations.get(name);
-            if (loc) classLocations.set(name, loc);
-          }
-          if (!classRules.has(name)) {
-            const rule = imported.classRules.get(name);
-            if (rule !== undefined) classRules.set(name, rule);
-          }
-        }
-        for (const name of imported.ids) {
-          ids.add(name);
-          if (!idLocations.has(name)) {
-            const loc = imported.idLocations.get(name);
-            if (loc) idLocations.set(name, loc);
-          }
-          if (!idRules.has(name)) {
-            const rule = imported.idRules.get(name);
-            if (rule !== undefined) idRules.set(name, rule);
-          }
-        }
-        for (const err of imported.errors) {
-          errors.push({
-            ...err,
-            message: `In imported stylesheet '${target}': ${err.message}`,
-          });
-        }
-      });
+      root.walkAtRules('import', (atRule: AtRule) => followImport(atRule.params));
     }
   } catch (error) {
     // CSS syntax error - capture details
@@ -271,6 +254,21 @@ function parseCSSInternal(
         column: error.column ?? 0,
         source: error.showSourceCode ? error.showSourceCode() : undefined,
       });
+
+      // Keep the classes/IDs of every rule that is still readable (and follow the readable
+      // @imports), so one mid-edit syntax error does not flag every class use in the importing
+      // .eligian files as unknown. Local rules are recorded first so they win over imports.
+      const recovered = scanRulesLeniently(cssContent);
+      for (const rule of recovered.rules) {
+        try {
+          recordSelector(rule.selector, { filePath, ...rule.location }, rule.text);
+        } catch {
+          // Unparseable selector: skip it
+        }
+      }
+      if (options.followImports !== false) {
+        for (const params of recovered.imports) followImport(params);
+      }
     } else {
       // Unexpected error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -293,6 +291,105 @@ function parseCSSInternal(
     errors,
     ...(importedFiles.size > 0 ? { importedFiles: [...importedFiles] } : {}),
   };
+}
+
+interface LenientRule {
+  selector: string;
+  text: string;
+  location: Omit<CSSSourceLocation, 'filePath'>;
+}
+
+/**
+ * Tolerant fallback scanner used when PostCSS rejects a stylesheet.
+ *
+ * Walks the source (skipping comments, strings and escapes) and treats the text before each
+ * `{` as a rule prelude. At-rule preludes (`@media ...`) are skipped, but the scan continues
+ * inside their blocks so nested rules are still found. This recovers the selectors that
+ * precede and follow a syntax error.
+ */
+function scanRulesLeniently(css: string): { rules: LenientRule[]; imports: string[] } {
+  const rules: LenientRule[] = [];
+  const imports: string[] = [];
+  const lineStarts = [0];
+  for (let i = 0; i < css.length; i++) {
+    if (css[i] === '\n') lineStarts.push(i + 1);
+  }
+  const position = (offset: number) => {
+    let line = 0;
+    for (let lo = 0, hi = lineStarts.length - 1; lo <= hi; ) {
+      const mid = (lo + hi) >> 1;
+      if (lineStarts[mid] <= offset) {
+        line = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return { line: line + 1, column: offset - lineStarts[line] + 1 };
+  };
+
+  let segmentStart = 0;
+  let parenDepth = 0;
+  let i = 0;
+  while (i < css.length) {
+    const ch = css[i];
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      i = end === -1 ? css.length : end + 2;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      i++;
+      while (i < css.length && css[i] !== ch && css[i] !== '\n') {
+        i += css[i] === '\\' ? 2 : 1;
+      }
+      i++;
+      continue;
+    }
+    if (ch === '(') {
+      parenDepth++;
+    } else if (ch === ')') {
+      parenDepth = Math.max(0, parenDepth - 1);
+    } else if (parenDepth === 0 && (ch === ';' || ch === '}')) {
+      if (ch === ';') {
+        const statement = stripComments(css.slice(segmentStart, i)).trim();
+        if (/^@import\s/i.test(statement)) imports.push(statement.replace(/^@import\s+/i, ''));
+      }
+      segmentStart = i + 1;
+    } else if (parenDepth === 0 && ch === '{') {
+      const raw = css.slice(segmentStart, i);
+      const selector = raw.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, ' ').trim();
+      if (selector && !selector.startsWith('@')) {
+        const leading = raw.length - raw.trimStart().length;
+        const start = position(segmentStart + leading);
+        const close = css.indexOf('}', i);
+        const blockEnd = close === -1 ? css.length : close + 1;
+        const end = position(Math.max(blockEnd - 1, i));
+        rules.push({
+          selector,
+          text: css.slice(segmentStart + leading, blockEnd).trim(),
+          location: {
+            startLine: start.line,
+            startColumn: start.column,
+            endLine: end.line,
+            endColumn: end.column,
+          },
+        });
+      }
+      segmentStart = i + 1;
+    }
+    i++;
+  }
+
+  return { rules, imports };
+}
+
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, ' ');
 }
 
 /**

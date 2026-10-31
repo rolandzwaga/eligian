@@ -255,7 +255,7 @@ ActionImport:
  *       addClass("active")
  *     ]
  *
- *   Zero parameters:
+ *   Zero parameters (the parentheses are optional, as for regular actions):
  *     on event "timeline-complete" action ShowCompletionMessage [
  *       selectElement("#completion-overlay")
  *       removeClass("hidden")
@@ -271,7 +271,7 @@ EventActionDefinition:
     'on' 'event' eventName=STRING?
     ('topic' eventTopic=STRING)?
     'action' name=ID
-    '(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')'
+    ('(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')')?
     '[' operations+=OperationStatement* ']';
 
 
@@ -374,10 +374,22 @@ OperationStatement:
  *   } else {
  *     removeClass("active")
  *   }
+ *
+ *   if ($operationdata.mode == "a") {
+ *     addClass("mode-a")
+ *   } else if ($operationdata.mode == "b") {
+ *     addClass("mode-b")
+ *   } else {
+ *     addClass("mode-default")
+ *   }
+ *
+ * `else if (...) { ... }` is sugar for `else { if (...) { ... } }`: the nested
+ * IfStatement becomes the else branch's only statement, so it compiles to a
+ * when/otherwise/endWhen nested inside the outer otherwise.
  */
 IfStatement:
     'if' '(' condition=Expression ')' '{' (thenOps += OperationStatement)* '}'
-    ('else' '{' (elseOps += OperationStatement)* '}')?;
+    ('else' (elseOps += IfStatement | '{' (elseOps += OperationStatement)* '}'))?;
 
 /**
  * For Loop - Syntactic sugar for forEach/endForEach
@@ -527,7 +539,7 @@ TimelineProvider returns string:
  *   }
  *
  * Stagger block (T192):
- *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
  */
 TimelineEvent:
     StaggerBlock | SequenceBlock | TimedEvent;
@@ -561,7 +573,7 @@ SequenceItem:
  * Stagger Block - Staggered events with incremental start times (T192)
  *
  * Example:
- *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
  *
  * Transforms to:
  *   at 0s..2s { fadeIn(".item-1") }        // starts at 0s
@@ -569,7 +581,7 @@ SequenceItem:
  *   at 0.4s..2.4s { fadeIn(".item-3") }    // starts at 0.4s (0 + 400ms)
  *
  * Supports both action calls and inline operation blocks:
- *   stagger 100ms items with fadeIn for 1s
+ *   stagger 100ms items with fadeIn() for 1s
  *   stagger 100ms items for 1s [
  *     addClass("active")
  *   ] [

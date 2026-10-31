@@ -37,15 +37,34 @@ export function disposeCompilerOutputChannel(): void {
 }
 
 /**
- * Recover the underlying error from an Effect failure Cause.
+ * Recover the typed compiler error from an Effect failure Cause.
  *
- * Prefers the typed failure (`Cause.findErrorOption`); for defects/interruptions
- * it falls back to `Cause.squash`, which surfaces the original thrown value.
- * This replaces the previous manual `toJSON()` -> `_id`/`_tag` unwrapping that
- * relied on FiberFailure's undocumented serialization (pairs with B7/B42).
+ * Returns the typed failure (`Cause.findErrorOption`) when it is a tagged
+ * CompilerError. Defects (a transformer throwing a TypeError) and interruptions
+ * have no tagged error, so they yield `undefined` and are reported as internal
+ * errors instead of being mangled into `Unknown Error: {}`.
  */
-function causeToError<E>(cause: Cause.Cause<E>): E {
-  return Option.getOrElse(Cause.findErrorOption(cause), () => Cause.squash(cause) as E);
+export function causeToCompilerError<E>(cause: Cause.Cause<E>): CompilerError | undefined {
+  const error = Cause.findErrorOption(cause);
+  if (Option.isSome(error)) {
+    const value = error.value as { _tag?: unknown } | null;
+    if (typeof value === 'object' && value !== null && typeof value._tag === 'string') {
+      return value as unknown as CompilerError;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Report a defect or interruption: the full rendered Cause (message + stack) goes
+ * to the shared output channel so the user can report or diagnose it.
+ */
+function reportInternalFailure(cause: Cause.Cause<unknown>): void {
+  const outputChannel = getCompilerOutputChannel();
+  outputChannel.clear();
+  outputChannel.appendLine('Internal compiler error:\n');
+  outputChannel.appendLine(Cause.pretty(cause));
+  outputChannel.show();
 }
 
 /**
@@ -148,8 +167,15 @@ export function registerCompileCommand(): vscode.Disposable {
         );
 
         if (Exit.isFailure(exit)) {
-          const actualError = causeToError(exit.cause) as CompilerError;
-          reportCompilationFailure([actualError], sourceCode);
+          const compilerError = causeToCompilerError(exit.cause);
+          if (compilerError) {
+            reportCompilationFailure([compilerError], sourceCode);
+          } else {
+            reportInternalFailure(exit.cause);
+            vscode.window.showErrorMessage(
+              'Compilation failed with an internal error. See the "Eligian Compiler" output.'
+            );
+          }
           return;
         }
 
@@ -169,13 +195,21 @@ export function registerCompileCommand(): vscode.Disposable {
 
         vscode.window.showInformationMessage(`✓ Compiled to ${path.basename(outputPath)}`);
 
-        // Open the output file
-        const outputUri = vscode.Uri.file(outputPath);
-        const outputDoc = await vscode.workspace.openTextDocument(outputUri);
-        await vscode.window.showTextDocument(outputDoc, {
-          preview: false,
-          viewColumn: vscode.ViewColumn.Beside,
-        });
+        // Open the output file. The compile already succeeded, so a failure here is
+        // only a warning, not a command failure.
+        try {
+          const outputUri = vscode.Uri.file(outputPath);
+          const outputDoc = await vscode.workspace.openTextDocument(outputUri);
+          await vscode.window.showTextDocument(outputDoc, {
+            preview: false,
+            viewColumn: vscode.ViewColumn.Beside,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          vscode.window.showWarningMessage(
+            `Compiled to ${path.basename(outputPath)}, but could not open it: ${message}`
+          );
+        }
       }
     );
   });

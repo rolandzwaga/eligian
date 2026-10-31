@@ -1,6 +1,10 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { resolvePath } from '@eligian/shared-utils';
 import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
+
+type MediaType = 'video' | 'audio' | 'image';
 
 /**
  * Media reference found in compiled Eligius configuration
@@ -8,11 +12,41 @@ import * as vscode from 'vscode';
 interface MediaReference {
   /** JSONPath to the property containing the media reference */
   path: string[];
-  /** Original media path/URL value */
+  /** Original media path value */
   originalValue: string;
   /** Type of media file */
-  type: 'video' | 'audio' | 'image';
+  type: MediaType;
 }
+
+/**
+ * Media file extensions we recognize and need to resolve
+ */
+const MEDIA_EXTENSIONS: Readonly<Record<MediaType, readonly string[]>> = {
+  video: ['.mp4', '.webm', '.ogg', '.mov', '.avi'],
+  audio: ['.mp3', '.wav', '.ogg', '.m4a', '.flac'],
+  image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'],
+};
+
+/**
+ * Property names that hold media references in Eligius configs (lower case).
+ * `uri` is where the compiler puts a timeline's `from "..."` source.
+ */
+const MEDIA_PROPERTY_NAMES = [
+  'src',
+  'url',
+  'uri',
+  'source',
+  'file',
+  'path',
+  'poster',
+  'videosrc',
+  'audiosrc',
+  'imagesrc',
+];
+
+/** A URL scheme prefix such as `https:`, `data:` or `blob:` (but not a `C:` drive letter). */
+const URL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+const WINDOWS_DRIVE = /^[a-z]:[\\/]/i;
 
 /**
  * Resolves media file paths in Eligius configurations to webview-accessible URIs.
@@ -21,38 +55,19 @@ interface MediaReference {
  * (video, audio, image files), resolves their paths relative to the document
  * directory, and converts them to webview URIs that can be loaded in the preview panel.
  *
+ * Only values of media properties (see MEDIA_PROPERTY_NAMES, exact or as a
+ * camelCase suffix such as `posterSrc`) that are local paths with a media
+ * extension are rewritten. Other strings ending in `.png` and the like (label
+ * text, templates, selectors) are left untouched, as are http(s) and other URLs.
+ *
  * Path resolution features (delegated to shared-utils):
  * - Supports parent directory navigation (../) for flexible project structures
- * - Relative paths only (must start with "./" or "../")
  * - Consistent with HTML/CSS import path model
  */
 export class MediaResolver {
   private readonly webview: vscode.Webview;
   private readonly documentUri: vscode.Uri;
   private readonly missingFiles: string[] = [];
-
-  /**
-   * Media file extensions we recognize and need to resolve
-   */
-  private readonly mediaExtensions = {
-    video: ['.mp4', '.webm', '.ogg', '.mov', '.avi'],
-    audio: ['.mp3', '.wav', '.ogg', '.m4a', '.flac'],
-    image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'],
-  };
-
-  /**
-   * Property names that commonly contain media references in Eligius configs
-   */
-  private readonly mediaPropertyNames = [
-    'src',
-    'url',
-    'source',
-    'file',
-    'path',
-    'videoSrc',
-    'audioSrc',
-    'imageSrc',
-  ];
 
   constructor(webview: vscode.Webview, documentUri: vscode.Uri) {
     this.webview = webview;
@@ -64,11 +79,11 @@ export class MediaResolver {
    *
    * This method:
    * 1. Walks the config object recursively to find media references
-   * 2. For each reference, attempts to resolve the path
-   * 3. Converts resolved paths to webview URIs
-   * 4. Returns a modified config with resolved URIs
+   * 2. For each reference, resolves the path against the document directory
+   * 3. Records referenced files that do not exist ({@link getMissingFiles})
+   * 4. Returns a modified config with webview URIs
    *
-   * @param config - The compiled Eligius configuration
+   * @param config - The compiled Eligius configuration (not mutated)
    * @returns Modified configuration with resolved media URIs
    */
   public resolveMediaPaths(config: IEngineConfiguration): IEngineConfiguration {
@@ -78,14 +93,9 @@ export class MediaResolver {
     // Deep clone config to avoid mutation
     const resolvedConfig = JSON.parse(JSON.stringify(config)) as IEngineConfiguration;
 
-    // Walk config and find all media references
-    const mediaRefs = this.findMediaReferences(resolvedConfig);
-
-    // Resolve each reference
-    for (const ref of mediaRefs) {
+    for (const ref of this.findMediaReferences(resolvedConfig)) {
       const resolvedUri = this.resolveMediaPath(ref.originalValue);
       if (resolvedUri) {
-        // Update the config with resolved URI
         this.setValueAtPath(resolvedConfig, ref.path, resolvedUri.toString());
       }
     }
@@ -94,9 +104,9 @@ export class MediaResolver {
   }
 
   /**
-   * Get list of media files that couldn't be resolved
+   * Get list of media files that do not exist on disk
    *
-   * @returns Array of missing file paths
+   * @returns Array of missing file paths (as written in the config)
    */
   public getMissingFiles(): string[] {
     return [...this.missingFiles];
@@ -107,41 +117,47 @@ export class MediaResolver {
    *
    * @param obj - Object to search
    * @param currentPath - Current JSONPath (for tracking location)
-   * @returns Array of media references found
+   * @param arrayOwner - Property name owning `obj` when it is an array
+   *   (so `sources: ['./a.mp4', './b.webm']` is recognized)
    */
-  private findMediaReferences(obj: unknown, currentPath: string[] = []): MediaReference[] {
+  private findMediaReferences(
+    obj: unknown,
+    currentPath: string[] = [],
+    arrayOwner?: string
+  ): MediaReference[] {
     const references: MediaReference[] = [];
 
     if (typeof obj !== 'object' || obj === null) {
       return references;
     }
 
-    if (Array.isArray(obj)) {
-      // Handle arrays
-      for (let i = 0; i < obj.length; i++) {
-        references.push(...this.findMediaReferences(obj[i], [...currentPath, String(i)]));
-      }
-    } else {
-      // Handle objects
-      for (const [key, value] of Object.entries(obj)) {
-        const newPath = [...currentPath, key];
+    const entries: Array<[string, unknown, string | undefined]> = Array.isArray(obj)
+      ? obj.map((value, i): [string, unknown, string | undefined] => [String(i), value, arrayOwner])
+      : Object.entries(obj).map(([key, value]): [string, unknown, string | undefined] => [
+          key,
+          value,
+          key,
+        ]);
 
-        // Check if this property might contain a media reference
-        if (typeof value === 'string' && this.isMediaProperty(key, value)) {
-          const mediaType = this.getMediaType(value);
-          if (mediaType) {
-            references.push({
-              path: newPath,
-              originalValue: value,
-              type: mediaType,
-            });
-          }
-        }
+    for (const [key, value, propertyName] of entries) {
+      const newPath = [...currentPath, key];
 
-        // Recurse into nested objects/arrays
-        if (typeof value === 'object' && value !== null) {
-          references.push(...this.findMediaReferences(value, newPath));
+      if (typeof value === 'string') {
+        const mediaType =
+          propertyName !== undefined && this.isMediaProperty(propertyName)
+            ? this.getLocalMediaType(value)
+            : null;
+        if (mediaType) {
+          references.push({ path: newPath, originalValue: value, type: mediaType });
         }
+      } else if (typeof value === 'object' && value !== null) {
+        references.push(
+          ...this.findMediaReferences(
+            value,
+            newPath,
+            Array.isArray(value) ? propertyName : undefined
+          )
+        );
       }
     }
 
@@ -149,38 +165,43 @@ export class MediaResolver {
   }
 
   /**
-   * Check if a property likely contains a media reference.
-   *
-   * @param propertyName - Name of the property
-   * @param value - Value of the property
-   * @returns True if this property might contain media
+   * Check if a property holds media references: a media property name
+   * (case-insensitive, singular or plural such as `sources`) or a camelCase
+   * name ending in one (`posterSrc`, `imageUrl`).
    */
-  private isMediaProperty(propertyName: string, value: string): boolean {
-    // Check property name
-    const nameMatch = this.mediaPropertyNames.some(name =>
-      propertyName.toLowerCase().includes(name.toLowerCase())
-    );
-
-    if (nameMatch) {
-      return true;
-    }
-
-    // Check file extension
-    return this.getMediaType(value) !== null;
+  private isMediaProperty(propertyName: string): boolean {
+    const singular =
+      propertyName.length > 1 && propertyName.endsWith('s')
+        ? propertyName.slice(0, -1)
+        : propertyName;
+    return [propertyName, singular].some(candidate => {
+      const lower = candidate.toLowerCase();
+      return MEDIA_PROPERTY_NAMES.some(name => {
+        if (lower === name) {
+          return true;
+        }
+        if (!lower.endsWith(name)) {
+          return false;
+        }
+        const boundary = candidate.charAt(candidate.length - name.length);
+        return boundary !== boundary.toLowerCase();
+      });
+    });
   }
 
   /**
-   * Determine media type from file path/URL.
-   *
-   * @param value - File path or URL
-   * @returns Media type or null if not recognized
+   * Media type of a local file path, or null when `value` is not a local media
+   * path (no media extension, or a URL such as https:, data: or blob:).
    */
-  private getMediaType(value: string): 'video' | 'audio' | 'image' | null {
-    const lowerValue = value.toLowerCase();
+  private getLocalMediaType(value: string): MediaType | null {
+    if (URL_SCHEME.test(value) && !WINDOWS_DRIVE.test(value)) {
+      return null; // http(s) and other URLs pass through unchanged
+    }
 
-    for (const [type, extensions] of Object.entries(this.mediaExtensions)) {
+    const lowerValue = value.toLowerCase();
+    for (const [type, extensions] of Object.entries(MEDIA_EXTENSIONS)) {
       if (extensions.some(ext => lowerValue.endsWith(ext))) {
-        return type as 'video' | 'audio' | 'image';
+        return type as MediaType;
       }
     }
 
@@ -188,38 +209,25 @@ export class MediaResolver {
   }
 
   /**
-   * Resolve a single media path to a webview URI.
-   *
-   * Resolution strategy:
-   * 1. HTTPS URLs → pass through unchanged
-   * 2. Relative paths → resolve relative to document directory using shared-utils
-   *    (supports "../" for parent directory navigation)
-   * 3. Convert resolved path to webview URI
+   * Resolve a single local media path to a webview URI, relative to the
+   * document's directory (supports "../" via shared-utils). A file that does
+   * not exist is recorded in {@link getMissingFiles}; it is still rewritten so
+   * the preview requests the same location the author wrote.
    *
    * @param mediaPath - Original media path from config
-   * @returns Resolved webview URI or null if resolution failed
+   * @returns Resolved webview URI or null if conversion failed
    */
   private resolveMediaPath(mediaPath: string): vscode.Uri | null {
-    // HTTPS URLs pass through unchanged
-    if (mediaPath.startsWith('https://') || mediaPath.startsWith('http://')) {
-      try {
-        return vscode.Uri.parse(mediaPath);
-      } catch {
-        return null;
-      }
+    const absolutePath = resolvePath(mediaPath, path.dirname(this.documentUri.fsPath));
+
+    if (!fs.existsSync(absolutePath)) {
+      this.missingFiles.push(mediaPath);
     }
 
-    // Use shared-utils to resolve path relative to document directory
-    // Parent directory navigation (../) is allowed
-    const absolutePath = resolvePath(mediaPath, this.documentUri.fsPath);
-
-    // Convert resolved absolute path to webview URI
     try {
-      const fileUri = vscode.Uri.file(absolutePath);
-      return this.webview.asWebviewUri(fileUri);
+      return this.webview.asWebviewUri(vscode.Uri.file(absolutePath));
     } catch (error) {
       console.warn(`[MediaResolver] Failed to convert to webview URI: ${mediaPath}`, error);
-      this.missingFiles.push(mediaPath);
       return null;
     }
   }
@@ -228,7 +236,7 @@ export class MediaResolver {
    * Set a value in an object at the given JSONPath.
    *
    * @param obj - Object to modify
-   * @param path - JSONPath array (e.g., ['timelines', '0', 'source'])
+   * @param path - JSONPath array (e.g., ['timelines', '0', 'uri'])
    * @param value - Value to set
    */
   private setValueAtPath(obj: any, path: string[], value: string): void {

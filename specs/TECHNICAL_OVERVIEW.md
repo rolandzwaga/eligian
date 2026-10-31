@@ -793,7 +793,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMetadata> = {
 - `css-registry.ts` - Centralized registry service (10,500 bytes)
 - `levenshtein.ts` - Edit distance for suggestions (3,938 bytes)
 - `selector-parser.ts` - CSS selector parsing (2,535 bytes)
-- `css-service.ts` - Public API (exported as `@eligian/language/css-service`)
+- `css-service.ts` - Public API (re-exported from the `@eligian/language` root entry)
 
 **Features** (Feature 013):
 - CSS class name validation (`addClass("className")`)

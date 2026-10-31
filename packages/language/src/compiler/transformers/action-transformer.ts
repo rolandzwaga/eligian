@@ -174,25 +174,30 @@ export const transformEventAction = (
     // Transform each operation using the full pipeline.
     // B2: composed with `yield*` so inner failures propagate as TransformError through
     // the Effect channel instead of escaping `Effect.runSync` as an unhandled fiber crash.
-    const startOperations: IOperationConfiguration<TOperationData>[] = [];
+    const operationIRs: OperationConfigIR[] = [];
     for (const opStmt of eventAction.operations) {
-      const operationIRs = yield* transformOperationStatement(
+      const ops = yield* transformOperationStatement(
         opStmt,
         eventActionScope,
         false,
         program,
         allActions
       );
-
-      // Convert OperationConfigIR[] to IOperationConfiguration[]
-      for (const opIR of operationIRs) {
-        startOperations.push({
-          id: opIR.id,
-          systemName: opIR.systemName,
-          operationData: opIR.operationData,
-        });
-      }
+      operationIRs.push(...ops);
     }
+
+    // T173: Validate dependencies in the operation sequence, as for regular
+    // actions and timeline events. Helper operations inserted by runtime-value
+    // lowering (setOperationData, concatenateStrings, ...) declare no
+    // dependencies and remove no outputs, so they pass through transparently.
+    yield* validateOperationSequence(operationIRs, `event action '${eventAction.name}'`);
+
+    // Convert OperationConfigIR[] to IOperationConfiguration[]
+    const startOperations: IOperationConfiguration<TOperationData>[] = operationIRs.map(opIR => ({
+      id: opIR.id,
+      systemName: opIR.systemName,
+      operationData: opIR.operationData,
+    }));
 
     // Build IEventActionConfiguration
     return {

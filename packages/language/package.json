@@ -4,8 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "engines": {
-    "node": ">=20.10.0",
-    "npm": ">=10.2.3"
+    "node": ">=20.19.6"
   },
   "files": [
     "dist",
@@ -18,10 +17,6 @@
     ".": {
       "types": "./out/index.d.ts",
       "default": "./dist/index.cjs"
-    },
-    "./css-service": {
-      "types": "./out/css/css-service.d.ts",
-      "default": "./dist/css/css-service.cjs"
     },
     "./errors": {
       "types": "./out/errors/index.d.ts",

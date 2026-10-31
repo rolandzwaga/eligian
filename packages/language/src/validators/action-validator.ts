@@ -1,5 +1,5 @@
 import { type AstNode, AstUtils, type Properties, type ValidationAcceptor } from 'langium';
-import { hasOperation, validateControlFlowPairing } from '../compiler/index.js';
+import { hasOperation } from '../compiler/index.js';
 import type {
   ActionDefinition,
   BreakStatement,
@@ -11,9 +11,9 @@ import type {
   RegularActionDefinition,
 } from '../generated/ast.js';
 import { OperationDataTracker } from '../operation-data-tracker.js';
-import { formatValidationMessage } from '../utils/error-builder.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
+import { reportControlFlowPairing } from './control-flow-pairing.js';
 import { RESERVED_KEYWORDS } from './validation-constants.js';
 
 /**
@@ -234,22 +234,8 @@ export class ActionValidator extends BaseValidator {
     property: Properties<N>,
     accept: ValidationAcceptor
   ): void {
-    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = operations
-      .filter(op => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op as OperationCall))
-      .filter((name): name is string => name !== undefined);
-    const errors = validateControlFlowPairing(operationNames);
-
-    for (const error of errors) {
-      const message = formatValidationMessage(error.message, error.hint);
-
-      accept('error', message, {
-        node,
-        property,
-        code: error.code.toLowerCase(),
-      });
-    }
+    // Pairs the top-level list and every nested if/else branch and for body
+    reportControlFlowPairing(operations as OperationStatement[], node, property, accept);
   }
 
   /**

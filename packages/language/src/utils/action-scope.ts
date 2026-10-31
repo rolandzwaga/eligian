@@ -89,7 +89,9 @@ function resolveActionImport(
   resolveLibrary: LibraryResolver
 ): ActionDefinition | undefined {
   const actionName = actionImport.action.$refText;
-  const library = fromUri ? resolveLibrary(fromUri, libraryImport.path) : undefined;
+  // `path` is undefined in a partial AST (`import { a } from` while typing)
+  const library =
+    fromUri && libraryImport.path ? resolveLibrary(fromUri, libraryImport.path) : undefined;
   if (library) {
     return (library.actions ?? []).find(
       action => action.name === actionName && action.visibility !== 'private'

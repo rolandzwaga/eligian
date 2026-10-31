@@ -28,7 +28,9 @@ export function extractLibraryImports(program: Program): string[] {
   const importPaths = new Set<string>();
 
   for (const statement of program.statements) {
-    if (isLibraryImport(statement)) {
+    // `path` is undefined in a partial AST (`import { a } from`); the parse
+    // error is reported later, so skip it rather than crash resolving it.
+    if (isLibraryImport(statement) && statement.path) {
       importPaths.add(statement.path);
     }
   }
@@ -48,7 +50,7 @@ export function extractLibraryImportsFromLibrary(library: Library): string[] {
   const importPaths = new Set<string>();
 
   for (const importStmt of library.imports || []) {
-    if (isLibraryImport(importStmt)) {
+    if (isLibraryImport(importStmt) && importStmt.path) {
       importPaths.add(importStmt.path);
     }
   }

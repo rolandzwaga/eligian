@@ -100,6 +100,12 @@ export type TimelineConfigIR = {
   readonly duration: number;
   readonly loop: boolean;
   readonly selector: string;
+  /**
+   * Per-timeline position source settings. Media timelines carry their own
+   * `VideoPositionSource` `selector` and `sources` here (merged over
+   * `timelineProviderSettings.mediaplayer.positionSource` by the engine).
+   */
+  readonly positionSource?: ITimelineConfiguration['positionSource'];
   readonly timelineActions: ReadonlyArray<TimelineActionIR>;
   readonly sourceLocation: SourceLocation;
 };

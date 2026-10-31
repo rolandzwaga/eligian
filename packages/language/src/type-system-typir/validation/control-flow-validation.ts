@@ -15,10 +15,20 @@
  */
 
 import type { ValidationProblemAcceptor } from 'typir';
-import { isBottomType, isType } from 'typir';
+import { isBottomType, isTopType, isType, type Type } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { ForStatement, IfStatement } from '../../generated/ast.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
+
+/**
+ * Whether an inference result is a concrete static type worth checking. Not inferable
+ * (e.g. an unresolved reference, which already has a linking error), runtime-only values
+ * (bottom type, e.g. `$globaldata.x`) and `unknown` (Typir's top type, printed as 'any')
+ * all opt out of the check.
+ */
+function hasStaticType(result: unknown): result is Type {
+  return isType(result) && !isBottomType(result) && !isTopType(result);
+}
 
 /**
  * Register control flow validation rules with Typir
@@ -61,8 +71,8 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
     IfStatement: (node: IfStatement, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
       // Check condition type
       const conditionTypeResult = typir.Inference.inferType(node.condition);
-      // Runtime-only values (bottom type, e.g. `$globaldata.x`) have no static type to check
-      if (isType(conditionTypeResult) && !isBottomType(conditionTypeResult)) {
+      // Not inferable, runtime-only and unknown values have no static type to check
+      if (hasStaticType(conditionTypeResult)) {
         const typeName = conditionTypeResult.getName();
         // Warn if condition is not boolean type
         if (typeName !== 'boolean') {
@@ -120,8 +130,8 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
     ForStatement: (node: ForStatement, accept: ValidationProblemAcceptor<EligianSpecifics>) => {
       // Check collection type
       const collectionTypeResult = typir.Inference.inferType(node.collection);
-      // Runtime-only values (bottom type, e.g. `$globaldata.items`) have no static type to check
-      if (isType(collectionTypeResult) && !isBottomType(collectionTypeResult)) {
+      // Not inferable, runtime-only and unknown values have no static type to check
+      if (hasStaticType(collectionTypeResult)) {
         const typeName = collectionTypeResult.getName();
         // Error if collection is not array type
         if (typeName !== 'array') {

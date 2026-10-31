@@ -9,7 +9,7 @@
  */
 
 import type { CompletionAcceptor, CompletionContext, NextFeature } from 'langium/lsp';
-import type { CompletionItem } from 'vscode-languageserver';
+import { type CompletionItem, InsertTextFormat } from 'vscode-languageserver';
 import type { CursorContext } from './context.js';
 import { getEventNameCompletions, getEventTopicCompletions } from './events.js';
 import type { CompletionBranchResult } from './handler-result.js';
@@ -74,11 +74,19 @@ export function handleEventCompletion(
     const stringEnd = context.position;
     const stringRange = { start: stringStart, end: stringEnd };
 
-    // Calculate range for entire EventActionDefinition (to replace with skeleton)
-    const actionStart = eventAction.$cstNode.offset;
-    const actionEnd = eventAction.$cstNode.end;
-    const actionStartPos = document.textDocument.positionAt(actionStart);
-    const actionEndPos = document.textDocument.positionAt(actionEnd);
+    // The whole EventActionDefinition is replaced by the skeleton. The LSP requires the
+    // main textEdit to be a single-line range containing the cursor and forbids
+    // additionalTextEdits from overlapping it, so the definition is split into three
+    // adjacent, non-overlapping ranges:
+    //   [actionStart, stringStart) -> additional edit: replaced by the skeleton
+    //   [stringStart, cursor)      -> main edit: the typed event-name prefix, deleted
+    //   [cursor, actionEnd)        -> additional edit: the rest of the old definition, deleted
+    const actionStartPos = document.textDocument.positionAt(eventAction.$cstNode.offset);
+    const actionEndPos = document.textDocument.positionAt(eventAction.$cstNode.end);
+    const restEdits =
+      eventAction.$cstNode.end > document.textDocument.offsetAt(stringEnd)
+        ? [{ range: { start: stringEnd, end: actionEndPos }, newText: '' }]
+        : [];
 
     // Add completions that replace entire EventActionDefinition with skeleton
     // Use stringRange for filtering but replace the entire action
@@ -92,22 +100,17 @@ export function handleEventCompletion(
         documentation: item.documentation,
         sortText: item.sortText,
         filterText: item.label, // Match against event name only
-        insertTextFormat: item.insertTextFormat, // Snippet format
-        // Use two separate edits: delete action, insert skeleton
+        // additionalTextEdits cannot carry snippet syntax, so the skeleton is plain text
+        insertTextFormat: InsertTextFormat.PlainText,
         additionalTextEdits: [
           {
-            // Delete the entire EventActionDefinition
-            range: { start: actionStartPos, end: actionEndPos },
-            newText: '',
-          },
-          {
-            // Insert skeleton at action start (without snippet - additionalTextEdits don't support it)
-            range: { start: actionStartPos, end: actionStartPos },
+            range: { start: actionStartPos, end: stringStart },
             newText: fullSkeleton.replace(/\$\d+/g, ''), // Strip snippet placeholders
           },
+          ...restEdits,
         ],
         textEdit: {
-          // Delete string content - let additionalTextEdits handle everything
+          // Delete the typed prefix; the additional edits do the rest
           range: stringRange,
           newText: '',
         },

@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "clean": "shx rm -fr *.tsbuildinfo dist coverage",
     "test": "vitest run",
     "test:coverage:ci": "vitest run",
     "test:watch": "vitest",

@@ -64,10 +64,10 @@ describe('CSS Context Detection', () => {
       expect(result).toBe(CompletionContextType.ClassName);
     });
 
-    it('should detect cursor inside hasClass() string parameter', async () => {
+    it('should detect cursor inside animateWithClass() string parameter', async () => {
       const text = s`
         action test [
-          hasClass("visible<|>")
+          animateWithClass("visible<|>")
         ]
       `;
 
@@ -118,10 +118,10 @@ describe('CSS Context Detection', () => {
       expect(result).toBe(CompletionContextType.SelectorClass);
     });
 
-    it('should detect cursor in querySelector with dot', async () => {
+    it('should detect cursor in reparentElement with dot', async () => {
       const text = s`
         action test [
-          querySelector(".<|>active")
+          reparentElement(".<|>active")
         ]
       `;
 
@@ -159,10 +159,10 @@ describe('CSS Context Detection', () => {
       expect(result).toBe(CompletionContextType.SelectorID);
     });
 
-    it('should detect cursor in querySelectorAll with hash', async () => {
+    it('should detect cursor in reparentElement with hash', async () => {
       const text = s`
         action test [
-          querySelectorAll("#<|>container")
+          reparentElement("#<|>container")
         ]
       `;
 

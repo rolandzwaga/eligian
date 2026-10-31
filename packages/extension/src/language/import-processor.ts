@@ -20,6 +20,7 @@ import {
   resolveImportRelativePath,
 } from '@eligian/language';
 import { URI } from 'vscode-uri';
+import type { ImportParseCache } from './import-cache.js';
 
 /**
  * Connection interface for sending notifications
@@ -54,6 +55,12 @@ export interface ImportProcessorConfig<TMetadata> {
    * Should throw on error (empty metadata will be registered instead)
    */
   parseFile: (content: string, filePath: string) => TMetadata;
+
+  /**
+   * Optional parse cache keyed by absolute path and validated by the file's mtime and size.
+   * Skips the read + parse of unchanged files on every rebuild; the registry is still updated.
+   */
+  cache?: ImportParseCache<TMetadata>;
 
   /**
    * Create empty metadata for error cases
@@ -159,9 +166,15 @@ export function processImports<TMetadata>(
 
     // Parse and register file
     try {
-      // Read and parse file
-      const content = readFileSync(absolutePath, 'utf-8');
-      const metadata = config.parseFile(content, absolutePath);
+      // Reuse the parse of an unchanged file; otherwise read and parse it. The stamp is taken
+      // before the read so a concurrent write can only make the entry look stale.
+      const stamp = config.cache?.stamp(absolutePath);
+      let metadata = config.cache?.get(absolutePath, stamp);
+      if (metadata === undefined) {
+        const content = readFileSync(absolutePath, 'utf-8');
+        metadata = config.parseFile(content, absolutePath);
+        config.cache?.set(absolutePath, stamp, metadata);
+      }
 
       // Update registry with parsed metadata
       config.registry.updateFile(fileUri, metadata);

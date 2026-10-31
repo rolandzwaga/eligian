@@ -75,9 +75,9 @@ export class CompilationService {
 
       // Compile with timeout protection (pass URI for asset resolution)
       const compilationPromise = this.compileSource(fileContent, documentUri);
-      const timeoutPromise = this.createTimeout(timeout);
+      const timer = this.createTimeout(timeout);
 
-      const result = await Promise.race([compilationPromise, timeoutPromise]);
+      const result = await Promise.race([compilationPromise, timer.promise]).finally(timer.cancel);
 
       if ('timeout' in result) {
         return {
@@ -191,11 +191,14 @@ export class CompilationService {
   }
 
   /**
-   * Create a timeout promise.
+   * Create a cancellable timeout promise (cancel once the race settled, so a
+   * finished compile does not leave its timer pending).
    */
-  private createTimeout(ms: number): Promise<{ timeout: true }> {
-    return new Promise(resolve => {
-      setTimeout(() => resolve({ timeout: true }), ms);
+  private createTimeout(ms: number): { promise: Promise<{ timeout: true }>; cancel: () => void } {
+    let handle: ReturnType<typeof setTimeout> | undefined;
+    const promise = new Promise<{ timeout: true }>(resolve => {
+      handle = setTimeout(() => resolve({ timeout: true }), ms);
     });
+    return { promise, cancel: () => clearTimeout(handle) };
   }
 }

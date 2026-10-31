@@ -7,9 +7,8 @@
  * their registry as an argument instead of reading provider fields.
  */
 
-import { type AstNode, AstUtils, CstUtils, type LangiumDocument } from 'langium';
+import { type AstNode, AstUtils, type LangiumDocument } from 'langium';
 import type { Hover } from 'vscode-languageserver';
-import { getOperationSignature } from '../compiler/operations/index.js';
 import type { OperationSignature } from '../compiler/operations/types.js';
 import { getController } from '../completion/metadata/controllers.generated.js';
 import type {
@@ -19,10 +18,10 @@ import type {
   NamedImport,
 } from '../generated/ast.js';
 import { isDefaultImport, isOperationCall } from '../generated/ast.js';
+import { inferAssetTypeFromKeyword } from '../type-system-typir/inference/import-inference.js';
 import type { LabelRegistryService } from '../type-system-typir/utils/label-registry.js';
 import { createMarkdownHover } from '../utils/hover-utils.js';
 import { MarkdownBuilder } from '../utils/markdown-builder.js';
-import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { getFileExtension } from '../utils/path-utils.js';
 
 /**
@@ -289,9 +288,9 @@ export function buildImportHover(importNode: DefaultImport | NamedImport): Hover
   // Get asset type from the import node
   let assetType: string;
   if (isDefaultImport(importNode)) {
-    // Default imports: layout→html, styles→css, provider→media
-    assetType =
-      importNode.type === 'layout' ? 'html' : importNode.type === 'styles' ? 'css' : 'media';
+    // Default imports share the Typir keyword mapping
+    // (layout→html, styles→css, provider→media, locales→json)
+    assetType = inferAssetTypeFromKeyword(importNode.type);
   } else {
     // Named imports: use explicit type or infer from extension
     if (importNode.assetType) {
@@ -311,6 +310,8 @@ export function buildImportHover(importNode: DefaultImport | NamedImport): Hover
         ext === 'ogg'
       ) {
         assetType = 'media';
+      } else if (ext === 'json') {
+        assetType = 'json';
       } else {
         assetType = 'unknown';
       }
@@ -329,86 +330,6 @@ export function buildImportHover(importNode: DefaultImport | NamedImport): Hover
       value: markdown,
     },
   };
-}
-
-/**
- * Build hover content for label ID parameters
- *
- * Displays label metadata: translation count and language codes.
- */
-export function buildLabelIDHover(
-  node: AstNode,
-  document: LangiumDocument,
-  labelRegistry: LabelRegistryService
-): Hover | undefined {
-  // Traverse up AST to find OperationCall
-  const operationCall = AstUtils.getContainerOfType(node, isOperationCall);
-  if (!operationCall) {
-    return undefined;
-  }
-
-  const opName = getOperationCallName(operationCall);
-  if (!opName) {
-    return undefined;
-  }
-
-  const signature = getOperationSignature(opName);
-  if (!signature) {
-    return undefined;
-  }
-
-  // Find label ID parameter indices
-  const labelIDParamIndices: number[] = [];
-  for (let i = 0; i < signature.parameters.length; i++) {
-    const param = signature.parameters[i];
-    if (
-      Array.isArray(param.type) &&
-      param.type.some(t => typeof t === 'string' && t === 'ParameterType:labelId')
-    ) {
-      labelIDParamIndices.push(i);
-    }
-  }
-
-  if (labelIDParamIndices.length === 0) {
-    return undefined;
-  }
-
-  // Check if we're hovering over a string literal in a label ID parameter
-  const args = operationCall.args || [];
-  for (const paramIndex of labelIDParamIndices) {
-    const arg = args[paramIndex];
-    if (!arg) continue;
-
-    // Check if this is the node we're hovering over
-    if (arg.$cstNode && CstUtils.findLeafNodeAtOffset(arg.$cstNode, 0) === node.$cstNode) {
-      // Hovering over this argument
-      if (arg.$type !== 'StringLiteral') continue;
-
-      const labelId = (arg as any).value;
-      if (typeof labelId !== 'string') continue;
-
-      // Get document URI
-      const documentUri = document.uri.toString();
-
-      // Query label metadata
-      const metadata = labelRegistry.findLabelMetadata(documentUri, labelId);
-      if (!metadata) {
-        return undefined; // No metadata found (validation will show error)
-      }
-
-      // Format hover markdown
-      const builder = new MarkdownBuilder();
-      builder
-        .heading(3, `TranslationKey<${metadata.id}>`)
-        .blank()
-        .text(`**Translations:** ${metadata.translationCount}`)
-        .text(`**Languages:** ${metadata.languageCodes.join(', ')}`);
-
-      return createMarkdownHover(builder.build());
-    }
-  }
-
-  return undefined;
 }
 
 /**

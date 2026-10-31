@@ -292,7 +292,9 @@ function extractCodeSnippet(sourceCode: string, location: SourceLocation): strin
 
     // Add error indicator on the error line
     if (isErrorLine && location.column !== undefined) {
-      const padding = ' '.repeat(prefix.length + String(lineNum).length + 3 + location.column);
+      const padding = ' '.repeat(
+        prefix.length + String(lineNum).length + 3 + Math.max(0, location.column - 1)
+      );
       const underline = '^'.repeat(Math.max(1, location.length || 1));
       snippet += `${padding}${underline}\n`;
     }

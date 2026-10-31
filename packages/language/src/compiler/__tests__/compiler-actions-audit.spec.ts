@@ -24,6 +24,7 @@ import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
 import { parseSource } from '../pipeline.js';
+import { syntheticNavActionName } from '../transformers/navigate-operations.js';
 import type { EligiusIR } from '../types/eligius-ir.js';
 
 type EmittedAction = EligiusIR['config']['actions'][number];
@@ -429,8 +430,8 @@ timeline "Clip" in ".c" using video from "./c.mp4" {
 `);
       const clip = ir.config.timelines.find(t => t.uri === './c.mp4');
       expect(clip).toBeDefined();
-      expect(navArgs(ir, '__nav__clip')).toEqual(['./c.mp4', 0]);
-      expect(navArgs(ir, '__nav__clip__5')).toEqual(['./c.mp4', 5]);
+      expect(navArgs(ir, syntheticNavActionName('Clip', 0))).toEqual(['./c.mp4', 0]);
+      expect(navArgs(ir, syntheticNavActionName('Clip', 5))).toEqual(['./c.mp4', 5]);
     });
 
     test('a raf timeline is targeted by its name (its uri)', async () => {
@@ -444,8 +445,8 @@ timeline "Chapter One" in "#stage" using raf {
 }
 `);
       expect(ir.config.timelines.map(t => t.uri)).toEqual(['Hub', 'Chapter One']);
-      expect(navArgs(ir, '__nav__chapter_one')).toEqual(['Chapter One', 0]);
-      expect(navArgs(ir, '__nav__hub')).toEqual(['Hub', 0]);
+      expect(navArgs(ir, syntheticNavActionName('Chapter One', 0))).toEqual(['Chapter One', 0]);
+      expect(navArgs(ir, syntheticNavActionName('Hub', 0))).toEqual(['Hub', 0]);
     });
 
     test('every broadcast uri names an emitted timeline', async () => {

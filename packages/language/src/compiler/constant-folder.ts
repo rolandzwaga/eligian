@@ -15,7 +15,7 @@
  */
 
 import path from 'node:path';
-import type { Program, VariableDeclaration } from '../generated/ast.js';
+import type { NamedImport, Program, VariableDeclaration } from '../generated/ast.js';
 import { getElements, getHTMLImports } from '../utils/program-helpers.js';
 import { constantValueType, evaluateExpression } from './expression-evaluator.js';
 import { loadHTMLFile, resolveHTMLPath } from './html-import-utils.js';
@@ -48,7 +48,36 @@ import type { ConstantMap, ConstantValue } from './types/constant-folding.js';
  * ```
  */
 export function buildConstantMap(program: Program): ConstantMap {
+  return buildConstantMapWithFailures(program).constants;
+}
+
+/**
+ * An HTML import that could not be resolved or read.
+ */
+export interface HtmlImportFailure {
+  /** The import's binding name (`import page from "./x.html"` -> `page`) */
+  readonly name: string;
+  /** Why the import failed (missing file, unreadable, ...) */
+  readonly message: string;
+  /** The import node, for source-location reporting */
+  readonly node: NamedImport;
+}
+
+/** Result of building the constant map, including HTML import load failures. */
+export interface ConstantMapResult {
+  readonly constants: ConstantMap;
+  readonly failures: HtmlImportFailure[];
+}
+
+/**
+ * Like {@link buildConstantMap}, but also reports HTML imports that failed to
+ * load instead of swallowing them. Callers that can fail (transformAST) must
+ * turn the failures into errors: otherwise `@page` silently compiles to a
+ * `$globaldata.page` reference that nothing ever sets.
+ */
+export function buildConstantMapWithFailures(program: Program): ConstantMapResult {
   const map: ConstantMap = new Map();
+  const failures: HtmlImportFailure[] = [];
 
   // FEATURE 015: Add HTML imports as constants (they get inlined like const)
   const htmlImports = getHTMLImports(program);
@@ -74,9 +103,13 @@ export function buildConstantMap(program: Program): ConstantMap {
       };
 
       map.set(htmlImport.name, constantValue);
-    } catch (error: any) {
-      // Log warning but don't fail - transformer will catch missing constants
-      console.error(`[CONSTANT-FOLDER]: ${error.message}`);
+    } catch (error: unknown) {
+      // Reported to the caller: the transformer fails with a TransformError
+      failures.push({
+        name: htmlImport.name,
+        message: error instanceof Error ? error.message : String(error),
+        node: htmlImport,
+      });
     }
   }
 
@@ -106,7 +139,7 @@ export function buildConstantMap(program: Program): ConstantMap {
     // Cannot evaluate - skip (this constant will be treated as a regular variable)
   }
 
-  return map;
+  return { constants: map, failures };
 }
 
 /**

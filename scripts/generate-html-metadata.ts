@@ -159,7 +159,32 @@ const COMMON_ATTRIBUTES: AttributeMetadata[] = [
   { name: 'contenteditable', type: 'enum', enumValues: ['true', 'false', 'inherit'] },
   { name: 'translate', type: 'boolean' },
   { name: 'slot', type: 'string' },
+  // WAI-ARIA: hyphenated names that only fit as quoted object keys (`{ "aria-label": "..." }`)
+  { name: 'role', type: 'string' },
+  { name: 'aria-atomic', type: 'enum', enumValues: ['true', 'false'] },
+  { name: 'aria-busy', type: 'enum', enumValues: ['true', 'false'] },
+  { name: 'aria-checked', type: 'enum', enumValues: ['true', 'false', 'mixed'] },
+  { name: 'aria-controls', type: 'string' },
+  { name: 'aria-current', type: 'string' },
+  { name: 'aria-describedby', type: 'string' },
+  { name: 'aria-disabled', type: 'enum', enumValues: ['true', 'false'] },
+  { name: 'aria-expanded', type: 'enum', enumValues: ['true', 'false'] },
+  { name: 'aria-haspopup', type: 'string' },
+  { name: 'aria-hidden', type: 'enum', enumValues: ['true', 'false'] },
+  { name: 'aria-label', type: 'string' },
+  { name: 'aria-labelledby', type: 'string' },
+  { name: 'aria-live', type: 'enum', enumValues: ['assertive', 'off', 'polite'] },
+  { name: 'aria-pressed', type: 'enum', enumValues: ['true', 'false', 'mixed'] },
+  { name: 'aria-selected', type: 'enum', enumValues: ['true', 'false'] },
 ];
+
+/**
+ * Elements and attributes the Eligius `createElement` operation refuses at runtime
+ * (`createElement: elementName 'script' is not allowed`; `assertSafeAttribute` rejects
+ * `on*` and `srcdoc`). They must never be offered as completions.
+ */
+const REFUSED_ELEMENTS: ReadonlySet<string> = new Set(['script']);
+const REFUSED_ATTRIBUTES: ReadonlySet<string> = new Set(['srcdoc']);
 
 /**
  * DOM property name -> HTML attribute name, for the properties whose attribute is
@@ -258,6 +283,8 @@ function toHtmlAttribute(property: string, tagName?: string): string | null {
   const mapped = PROPERTY_TO_ATTRIBUTE[property] ?? property.toLowerCase();
   // Event handler content attributes (onclick, onenterpictureinpicture, ...) are not offered
   if (/^on[a-z]/.test(mapped)) return null;
+  // Attributes Eligius refuses at runtime (srcdoc)
+  if (REFUSED_ATTRIBUTES.has(mapped)) return null;
   return mapped;
 }
 
@@ -466,6 +493,7 @@ const WELL_KNOWN_ENUM_VALUES: Record<string, Record<string, string[]>> = {
     ],
     inputMode: ['none', 'text', 'decimal', 'numeric', 'tel', 'search', 'email', 'url'],
     autocomplete: ['on', 'off'],
+    formTarget: ['_self', '_blank', '_parent', '_top'],
   },
   a: {
     target: ['_self', '_blank', '_parent', '_top'],
@@ -512,8 +540,10 @@ const WELL_KNOWN_ENUM_VALUES: Record<string, Record<string, string[]>> = {
   },
   button: {
     type: ['submit', 'reset', 'button'],
+    formTarget: ['_self', '_blank', '_parent', '_top'],
   },
   form: {
+    target: ['_self', '_blank', '_parent', '_top'],
     method: ['get', 'post', 'dialog'],
     enctype: ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'],
     autocomplete: ['on', 'off'],
@@ -696,6 +726,7 @@ function generateHTMLMetadata(): void {
   const elements: Map<string, ElementMetadata> = new Map();
 
   for (const [tagName, interfaceName] of elementMap) {
+    if (REFUSED_ELEMENTS.has(tagName)) continue;
     const attributes = extractElementAttributes(program, checker, interfaceName, tagName);
     elements.set(tagName, {
       tagName,

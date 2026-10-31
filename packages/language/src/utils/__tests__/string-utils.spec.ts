@@ -78,10 +78,7 @@ describe('String Utilities', () => {
       //                               ^^^^^^^^ positions 20-26
       expect(isOffsetInStringLiteral(text, 6)).toBe(true); // inside "first"
       expect(isOffsetInStringLiteral(text, 11)).toBe(true); // inside "first"
-      // Note: Simple implementation has limitation with multiple strings on same line
-      // Position 13 (between strings) incorrectly returns true because it finds
-      // opening quote from "first" and closing quote from "second"
-      expect(isOffsetInStringLiteral(text, 13)).toBe(true); // limitation: between strings
+      expect(isOffsetInStringLiteral(text, 13)).toBe(false); // between the strings
       expect(isOffsetInStringLiteral(text, 20)).toBe(true); // inside "second"
       expect(isOffsetInStringLiteral(text, 26)).toBe(true); // inside "second"
     });
@@ -120,6 +117,33 @@ describe('String Utilities', () => {
       expect(isOffsetInStringLiteral(text, 0)).toBe(false);
       expect(isOffsetInStringLiteral(text, 7)).toBe(false);
       expect(isOffsetInStringLiteral(text, 14)).toBe(false);
+    });
+
+    test('is false between two separate strings on one line (audit low #42)', () => {
+      const text = 'selectElement(".a") /* */ addClass("b")';
+      const afterFirstCall = text.indexOf('.a") ') + 3; // just after the first closing quote
+      expect(isOffsetInStringLiteral(text, afterFirstCall)).toBe(false);
+      expect(isOffsetInStringLiteral(text, text.indexOf('/* */') + 2)).toBe(false);
+      expect(isOffsetInStringLiteral(text, text.indexOf('b"'))).toBe(true);
+      expect(isOffsetInStringLiteral(text, text.indexOf('.a'))).toBe(true);
+    });
+
+    test('is false in the gap between adjacent strings with mixed quote kinds', () => {
+      const text = `f("a", 'b')`;
+      expect(isOffsetInStringLiteral(text, 5)).toBe(false); // right after the first string
+      expect(isOffsetInStringLiteral(text, 6)).toBe(false); // after the comma
+      expect(isOffsetInStringLiteral(text, 9)).toBe(true); // inside 'b'
+    });
+
+    test('honours escaped quotes inside a string', () => {
+      const text = 'f("a\\"b")';
+      expect(isOffsetInStringLiteral(text, 5)).toBe(true); // at the escaped quote
+      expect(isOffsetInStringLiteral(text, 7)).toBe(true); // after the escaped quote
+    });
+
+    test('ignores quotes inside a line comment', () => {
+      const text = `f(a) // it's "fine"`;
+      expect(isOffsetInStringLiteral(text, 15)).toBe(false);
     });
   });
 });

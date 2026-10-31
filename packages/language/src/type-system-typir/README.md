@@ -53,7 +53,7 @@ type-system-typir/
 ### Type System Evolution
 
 **Phase 1**: Primitive types (string, number, boolean, object, array, unknown)
-**Phase 2**: Operation function types (loaded from OPERATION_REGISTRY)
+**Phase 2**: Operation function types (loaded from OPERATION_REGISTRY; removed 2026-10 — built-in operation arguments are validated by the Langium operation-call validator)
 **Phase 3**: Action function types, constant inference, parameter validation
 **Phase 4-7** (021): Enhanced Typir integration - 5 user stories implemented ✅
 
@@ -82,7 +82,7 @@ type-system-typir/
 
 ### Operation Type Checking
 
-Operation calls are validated against signatures from `OPERATION_REGISTRY`:
+Built-in operation calls are validated against signatures from `OPERATION_REGISTRY` by the Langium operation-call validator (not by Typir; Typir has no function types for built-in operations):
 
 ```eligian
 // ✅ Correct types
@@ -131,8 +131,7 @@ action demo(selector, duration) [
 
 **Core Type System** (Original Implementation):
 - [x] Primitive type inference (string, number, boolean, object, array, unknown)
-- [x] Operation function types from registry
-- [x] Operation call argument validation
+- [x] Operation call argument validation (Langium operation-call validator, not Typir)
 - [x] Variable type checking (const declarations)
 - [x] Action function types with parameter validation
 - [x] Type error reporting in IDE (red squiggles, hover messages)
@@ -184,8 +183,8 @@ initializeLangiumTypirServices(Eligian, Eligian.typir);
 
 ### Type System Lifecycle
 
-1. **Initialization**: `onInitialize()` creates primitive types and operation function types
-2. **AST Processing**: `onNewAstNode()` handles user-defined types (currently no-op)
+1. **Initialization**: `onInitialize()` creates primitive types and registers inference/validation rules
+2. **AST Processing**: `onNewAstNode()` creates a function type per action, used to type-check timeline action calls
 3. **Validation**: Typir validates type constraints automatically
 4. **Error Reporting**: Langium displays type errors in IDE
 
@@ -254,12 +253,12 @@ VS Code extension testing:
 
 1. Check language server is running (VS Code Output → Eligian Language Server)
 2. Verify Typir initialization: Add logging in `onInitialize()`
-3. Check operation registry loaded: Verify `OPERATION_REGISTRY` import
+3. Built-in operation argument errors come from the Langium operation-call validator, not Typir
 
 ### Incorrect Type Errors
 
 1. Check operation metadata in `registry.generated.ts`
-2. Verify parameter type mapping in `mapParameterTypeToTypirType()`
+2. Verify the annotation type mapping in `resolveTypirPrimitiveType()`
 3. Check primitive type inference rules match AST nodes
 
 ### Performance Issues

@@ -76,7 +76,7 @@ export {
  * }
  */
 export function getOperationSignature(name: string): OperationSignature | undefined {
-  return OPERATION_REGISTRY[name];
+  return hasOperation(name) ? OPERATION_REGISTRY[name] : undefined;
 }
 
 /**
@@ -91,7 +91,8 @@ export function getOperationSignature(name: string): OperationSignature | undefi
  * }
  */
 export function hasOperation(name: string): boolean {
-  return name in OPERATION_REGISTRY;
+  // Own properties only: `in` would accept toString/constructor/valueOf/...
+  return Object.getOwnPropertyDescriptor(OPERATION_REGISTRY, name) !== undefined;
 }
 
 /**

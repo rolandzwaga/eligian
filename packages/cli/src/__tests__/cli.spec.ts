@@ -11,7 +11,7 @@
  * @see https://sdorra.dev/posts/2024-02-12-vitest-tmpdir
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
@@ -170,12 +170,13 @@ describe('CLI - Flags and Options', () => {
     const inputFile = path.join(FIXTURES_PATH, 'valid-simple.eligian');
     const outputFile = path.join(tmpdir, 'output.json');
 
-    const result = execSync(`node "${CLI_PATH}" "${inputFile}" -o "${outputFile}" --verbose`, {
+    // Progress ("Compiling ...") goes to stderr so it never mixes with stdout data
+    const run = spawnSync('node', [CLI_PATH, inputFile, '-o', outputFile, '--verbose'], {
       encoding: 'utf-8',
     });
 
-    expect(result).toContain('Compiling');
-    expect(result).toContain('Compiled');
+    expect(run.stderr).toContain('Compiling');
+    expect(run.stdout).toContain('Compiled');
   });
 
   it('should support --quiet flag', () => {

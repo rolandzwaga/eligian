@@ -1254,7 +1254,7 @@ Event actions are special action definitions that execute in response to runtime
 
 **Syntax** (BNF notation):
 ```bnf
-on event <eventName> (topic <topicName>)? action <ActionName> ( <parameters>? ) [
+on event <eventName> (topic <topicName>)? action <ActionName> (( <parameters>? ))? [
   <operations>*
 ]
 ```
@@ -1263,7 +1263,7 @@ Where:
 - `<eventName>` is a string literal naming one of the 43 Eligius events (e.g., `"language-change"`, `"timeline-play"`); see section 5.10
 - `(topic <topicName>)?` is optional - use parentheses to indicate optionality in BNF
 - `<ActionName>` is an identifier starting with an uppercase letter
-- `<parameters>?` is an optional comma-separated parameter list
+- `<parameters>?` is an optional comma-separated parameter list; with no parameters the parentheses can be omitted (`action ShowCompletionMessage [ ... ]`), as for regular actions
 - `[` and `]` are **literal square brackets** in the Eligian syntax (not EBNF notation)
 
 **Components**:
@@ -1849,7 +1849,7 @@ stagger <delay> <items> for <duration> [
 **Example**:
 
 ```eligian
-stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
 
 // Compiles to:
 // at 0s..2s { fadeIn(".item-1") }
@@ -2165,7 +2165,17 @@ if (<condition>) {
 } else {
   <operations>*
 }
+
+if (<condition>) {
+  <operations>*
+} else if (<condition>) {
+  <operations>*
+} else {
+  <operations>*
+}
 ```
+
+`else if` chains can be as long as needed, and the final `else` is optional.
 
 **Example**:
 
@@ -2180,6 +2190,33 @@ action toggle(enabled: boolean) [
 ```
 
 **Compilation**: Compiles to `when()` / `otherwise()` / `endWhen()` operations.
+
+**Else-if chains**: `else if (b) { ... }` is shorthand for `else { if (b) { ... } }`, so each
+`else if` compiles to a `when()` / `endWhen()` pair nested inside the preceding `otherwise()`:
+
+```eligian
+action showMode(mode: string) [
+  if (mode == "a") {
+    addClass("mode-a")
+  } else if (mode == "b") {
+    addClass("mode-b")
+  } else {
+    addClass("mode-default")
+  }
+]
+```
+
+```
+when      { expression: "$operationdata.mode == 'a'" }
+addClass  { className: "mode-a" }
+otherwise
+  when      { expression: "$operationdata.mode == 'b'" }
+  addClass  { className: "mode-b" }
+  otherwise
+  addClass  { className: "mode-default" }
+  endWhen
+endWhen
+```
 
 ### 8.4 For Loops
 
