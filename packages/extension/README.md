@@ -12,6 +12,8 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Live Preview**: Interactive preview with Eligius engine integration
 - **CSS Hot-Reload**: Import CSS files with instant hot-reload (no preview restart)
 - **Snippets**: `action`, `endable action`, `on event`, `timeline`, `chapter`, `languages` and `library` skeletons
+- **Signature help**: typing `(` or `,` in a call shows its parameters (types, optional ones, descriptions from the operation metadata or the action's JSDoc), including a controller's parameters in `addController`
+- **Parameter-name inlay hints**: `broadcastEvent(eventArgs: [...], eventName: "go")`; setting `eligian.inlayHints.parameterNames` = `literals` (default), `all` or `none`
 - **Timeline event completion**: inside a timeline, `at … for … [ ]` (starting where the previous event ends), `sequence { }` and `stagger … with …`
 
 ## Installation

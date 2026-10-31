@@ -274,6 +274,8 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: '*', language: 'eligian' }],
+    // Forward `eligian.*` setting changes (e.g. eligian.inlayHints.parameterNames) to the server
+    synchronize: { configurationSection: 'eligian' },
   };
 
   // Create the language client and start the client.

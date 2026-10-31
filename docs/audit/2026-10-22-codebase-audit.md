@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3, #8, #9 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3, #7, #8, #9 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3409,6 +3409,8 @@ timeline "Logic" in "#stage" using raf {
 - **Rationale:** It fixes a real output defect (duration 3600 everywhere) and removes a trick every author of multi-timeline presentations has to learn. It ranks just below the IDE foundations because it depends on the end-block startAction fix, and the end-time strategy for video and scroll sources still needs checking against the engine.
 
 ### #7 Signature help and parameter-name inlay hints for operations and actions
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (signature help for actions, operations and addController controllers; parameter-name inlay hints with the `eligian.inlayHints.parameterNames` setting; both prerequisites were already fixed)
 
 - **Area:** ide · **Effort:** M · **Score:** 8.4
 - **Problem:** Calls are positional, but Eligius operations take named properties, so the tour has to explain argument order in comments ('broadcastEvent's params are (eventArgs, eventName) in that order'). No SignatureHelpProvider or InlayHintProvider is registered, even though registry.generated.ts and action JSDoc already hold every parameter's name, type, required flag and description.

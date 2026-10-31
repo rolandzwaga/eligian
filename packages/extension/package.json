@@ -38,6 +38,26 @@
         "path": "./snippets/eligian.json"
       }
     ],
+    "configuration": {
+      "title": "Eligian",
+      "properties": {
+        "eligian.inlayHints.parameterNames": {
+          "type": "string",
+          "enum": [
+            "none",
+            "literals",
+            "all"
+          ],
+          "default": "literals",
+          "enumDescriptions": [
+            "No parameter-name hints",
+            "Hints before literal arguments (strings, numbers, booleans, null, arrays, objects)",
+            "Hints before every argument, except a parameter passed under its own name"
+          ],
+          "description": "Show parameter names as inlay hints in operation and action calls, e.g. broadcastEvent(eventArgs: [...], eventName: \"go\")."
+        }
+      }
+    },
     "commands": [
       {
         "command": "eligian.compile",

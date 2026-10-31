@@ -26,6 +26,8 @@ import { EligianValidator, registerValidationChecks } from './eligian-validator.
 import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
 import { HTMLRegistryService } from './html/html-registry.js';
+import { EligianInlayHintProvider } from './lsp/eligian-inlay-hint-provider.js';
+import { EligianSignatureHelpProvider } from './lsp/eligian-signature-help-provider.js';
 import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
 import { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
 
@@ -40,6 +42,8 @@ export type EligianAddedServices = {
     HoverProvider: EligianHoverProvider;
     CompletionProvider: EligianCompletionProvider;
     CodeActionProvider: EligianCodeActionProvider;
+    SignatureHelp: EligianSignatureHelpProvider;
+    InlayHintProvider: EligianInlayHintProvider;
   };
   css: {
     CSSRegistry: CSSRegistryService;
@@ -78,6 +82,8 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       HoverProvider: services =>
         new EligianHoverProvider(services.css.CSSRegistry, services.labels.LabelRegistry, services),
       CompletionProvider: services => new EligianCompletionProvider(services),
+      SignatureHelp: services => new EligianSignatureHelpProvider(services),
+      InlayHintProvider: services => new EligianInlayHintProvider(services),
       CodeActionProvider: services => new EligianCodeActionProvider(services),
       Formatter: services => new EligianFormatter(services),
     },
