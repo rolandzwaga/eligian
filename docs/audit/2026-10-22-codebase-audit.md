@@ -1,5 +1,26 @@
 # Eligian codebase audit — 2026-10-22
 
+## Resolution (updated 2026-10-31)
+
+All 146 confirmed findings are resolved on branch `fix/audit-high-findings`. Each finding below has a **Status** line.
+
+| Severity | Findings | Commit |
+|---|---|---|
+| High | 15 | `65fdd0f` |
+| Medium | 53 (4 already covered by the high fixes) | `c7a75df` |
+| Low | 78 (5 already covered by earlier fixes; #44 and #58 completed in `c47f7bd`) | `e6b5c32` |
+
+Follow-up work on the same branch, prompted by the audit:
+
+- `a242971`: runtime string concatenation and runtime value forwarding (feature idea #1, spec 046).
+- `4fb2c74`: one operation-data dataflow analysis with inferred action contracts (spec 047).
+- `711a713`: program-level runtime consts used a `setData` key Eligius rejects (`globaldata.x`, now `$globaldata.x`).
+- `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
+- `c47f7bd`: bundling works outside a project; build warnings cleaned up.
+
+The feature ideas below are still open except #1 (done) and #12 (partly done).
+
+
 ## Summary
 
 - **Build health:** green. `pnpm typecheck`, `pnpm run ci` (Biome), `pnpm effect:check` (0/0/0 for both projects) and `pnpm test` (2702 passed, 42 skipped, 0 failed) all pass. The only Biome output is a deprecation info about `linter.recommended` in `biome.json`.
@@ -50,6 +71,8 @@ None.
 
 ### Constant evaluator resolves @refs by name, so a non-constant local that shadows a global const is replaced by the global's value
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/compiler/expression-evaluator.ts:135](../../packages/language/src/compiler/expression-evaluator.ts#L135)
 - **Category:** bug
 - **Description:** The VariableReference case uses only `varRef.variable.ref.name` to look up the constants map, and ignores which declaration the reference actually linked to. The scope provider lets an action-local const shadow a global one. If the local value is not foldable (e.g. `$operationdata.foo`), the local is emitted as setVariable, but every `@x` still finds the global constant of the same name. expression-transformer.ts has the same by-name lookup (`scope.programConstants.has(varName)`), so plain references are inlined with the wrong value and derived constants fold against it.
@@ -71,6 +94,8 @@ Verifier: Reproduced with the real CLI (packages/cli/bin/cli.js) on a scratchpad
 
 ### parseSource uses URI.parse on a Windows filesystem path, dropping the drive letter and breaking asset and library resolution when the file is on a different drive from the cwd
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/compiler/pipeline/parser.ts:53](../../packages/language/src/compiler/pipeline/parser.ts#L53)
 - **Category:** bug
 - **Description:** The CLI (compile-file.ts) and the VS Code extension pass sourceUri as a plain fsPath (e.g. `C:\proj\a.eligian`). `URI.parse('C:\\proj\\a.eligian')` reads `C` as the scheme, so `documentUri.fsPath` becomes `\proj\a.eligian` with no drive. Every later resolution (asset validation, library path resolution, CSS file reads) is relative to the process's current drive, not the file's drive.
@@ -89,6 +114,8 @@ Verifier: Reproduced. A file in the C: scratchpad with `styles "./s.css"` and s.
 
 ### Any warning, info or hint diagnostic aborts compilation as a ValidationError
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/compiler/pipeline/document-errors.ts:72](../../packages/language/src/compiler/pipeline/document-errors.ts#L72)
 - **Category:** bug
 - **Description:** extractDocumentErrors fails on `document.diagnostics[0]` whenever the array is non-empty and never checks severity. The validators emit warnings (timeline provider with unused source, duplicate event handlers, empty timeline, unreachable code, operation dependency warnings, locales parse warning). Those become fatal compile errors. Only element 0 is inspected, so a warning can also hide the real error that follows it.
@@ -106,6 +133,8 @@ if (document.diagnostics && document.diagnostics.length > 0) {
 Verifier: Reproduced with the real CLI. `timeline "main" in "#app" using raf from "x.mp4" { at 0s..5s f() }`, with valid CSS and action, fails with 'Validation Error: While validating the AstNode ..., this warning is found: Timeline provider 'raf' does not use a source file' and produces no output. document-errors.ts:72 takes `diagnostics[0]` whenever the array is non-empty and never checks severity. EligianDocumentValidator does not filter by severity either. Several validators emit 'warning' severity: timeline-validation, control-flow-validation, import-validation, event-action-validator, parameter-validator, asset-import-validator and duplicate-validator. Each of these becomes fatal, and a warning listed first can hide a later real error.
 
 ### resolveLibraryPath does not normalize '..', so import cycles that use '..' defeat cycle detection and recurse until the process runs out of memory
+
+- **Status:** ✅ Fixed in `65fdd0f`
 
 - **Location:** [packages/language/src/compiler/pipeline/library-loader.ts:85](../../packages/language/src/compiler/pipeline/library-loader.ts#L85)
 - **Category:** bug
@@ -126,6 +155,8 @@ if (loadingStack.has(uriPath)) {
 Verifier: Reproduced. a/l1.eligian imports `../b/l2.eligian`, b/l2.eligian imports `../a/l1.eligian`, and main imports `./a/l1.eligian`. Run with `--max-old-space-size=256`, the CLI dies within about 7 seconds with 'FATAL ERROR: Ineffective mark-compacts near heap limit ... JavaScript heap out of memory' (exit 134) instead of reporting the cycle. resolveLibraryPath builds the path by string concatenation, and URI.file does not collapse `..` segments. loadingStack compares raw fsPath strings, so each hop produces a new, longer key and the cycle is never detected. The `./`-only cycle example is detected correctly.
 
 ### Library actions cannot call sibling or private helper actions (FR-010 unimplemented in the compiler)
+
+- **Status:** ✅ Fixed in `65fdd0f`
 
 - **Location:** [packages/language/src/compiler/transformers/library-imports.ts:93](../../packages/language/src/compiler/transformers/library-imports.ts#L93)
 - **Category:** bug
@@ -149,6 +180,8 @@ Verifier: In library-imports.ts, resolveImports pushes only the explicitly impor
 
 ### Unary `!` on a runtime reference constant-folds to `false`
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/compiler/transformers/expression-transformer.ts:213](../../packages/language/src/compiler/transformers/expression-transformer.ts#L213)
 - **Category:** bug
 - **Description:** UnaryExpression transforms the operand first. A parameter, variable or system reference becomes a string such as `$operationdata.flag`. The `!` case then applies JS `!` to that string, so every non-empty reference string becomes the compile-time constant `false`. The operand is a runtime value, so the result should stay symbolic, or be rejected the way the condition transformer rejects it.
@@ -169,6 +202,8 @@ Verifier: expression-transformer.ts:212-213 applies JS `!` to the transformed op
 
 ### checkValidTimeRange compares raw time values and ignores units, rejecting valid ranges like 500ms..2s or 90s..2m
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/validators/timeline-validator.ts:155](../../packages/language/src/validators/timeline-validator.ts#L155)
 - **Category:** bug
 - **Description:** TimeLiteral has an optional unit (ms|s|m|h), but the check compares `start.value > end.value` without converting to a common unit. Valid mixed-unit ranges are reported as errors, and invalid ones (`1s..500ms`) are not caught by this check. The compiler's time-transformer converts units correctly, so the validator disagrees with the compiler. The Typir rule (type-system-typir/utils/time-expression.ts) also converts only 'ms', so 'm' and 'h' are treated as seconds there. Reproduced by running the validator.
@@ -186,6 +221,8 @@ if (start.$type === 'TimeLiteral' && end.$type === 'TimeLiteral') {
 Verifier: The grammar (eligian.langium:624-628) defines `TimeLiteral: value=NUMBER unit=TimeUnit?` with TimeUnit 'ms'|'s'|'m'|'h'. checkValidTimeRange (timeline-validator.ts:155) compares raw `start.value > end.value` and is registered for every TimelineEvent (eligian-validator.ts:134). The verifier ran the real validator through a tsx script using createEligianServices. `at 500ms..2s a()` gives 'Timeline event start time (500) must be less than or equal to end time (2)'. `at 90s..2m` gives the same error plus a Typir error, because extractTimeValue in type-system-typir/utils/time-expression.ts converts only 'ms' and treats 'm'/'h' as seconds. `at 1s..500ms` is missed by this check and only Typir reports it. pipeline.spec.ts shows that this check's error blocks compilation, so valid mixed-unit ranges cannot be compiled. High severity is justified.
 
 ### Timeline action calls fail with a hard error for any argument without a Typir inference rule, even for untyped (unknown) parameters
+
+- **Status:** ✅ Fixed in `65fdd0f`
 
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:462](../../packages/language/src/type-system-typir/eligian-type-system.ts#L462)
 - **Category:** bug
@@ -205,6 +242,8 @@ typir.Inference.addInferenceRulesForAstNodes({ Parameter..., VariableDeclaration
 Verifier: Reproduced against the built services (packages/language/out, built after the last commit), using one document per case under EmptyFileSystem. With `action a1(a) [...]` and timeline calls, `a1(null)`, `a1(-5)`, `a1(1 + 2)`, `a1($globaldata.x)`, `a1(@@currentItem)`, and `const q = $globaldata.x` followed by `a1(@q)` each give an error-severity diagnostic: "The given operands for the call of 'a1' don't match ... parameters of 'a1(a: any): ($return: any)'". `a1("x")` gives none. eligian-type-system.ts registers inference rules only for String/Number/Boolean/Object/ArrayLiteral and for Parameter/VariableDeclaration/VariableReference/ParameterReference, and the action rule uses `validateArgumentsOfFunctionCalls: true`. So the argument cannot be inferred even when the parameter is Top/unknown. That breaks the documented 'unknown = opt-out' contract and blocks ordinary valid programs with an error.
 
 ### extractTimeValue ignores m/h units, relative times and property-chain times, giving spurious and missed time-range errors
+
+- **Status:** ✅ Fixed in `65fdd0f`
 
 - **Location:** [packages/language/src/type-system-typir/utils/time-expression.ts:32](../../packages/language/src/type-system-typir/utils/time-expression.ts#L32)
 - **Category:** bug
@@ -228,6 +267,8 @@ Verifier: time-expression.ts treats every unit except 'ms' as seconds and return
 
 ### Explicit 'as' asset type is compared against an extension map that defaults unknown extensions to html, producing false conflict warnings
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/type-system-typir/utils/asset-type-inferrer.ts:51](../../packages/language/src/type-system-typir/utils/asset-type-inferrer.ts#L51)
 - **Category:** bug
 - **Description:** `inferAssetTypeFromExtension` returns 'html' for every extension it does not know. The NamedImport validation warns whenever the explicit `as` type differs from that result. The asset-type validator tells users to add an explicit `as` for unknown extensions, and `as css` and `as media` are legal. Following that advice for any extension not in the small list then produces a contradictory warning. Media extensions such as .mov, .m4a, .aac, .flac, .mkv and .opus, and .scss/.less for css, are not in the list.
@@ -249,6 +290,8 @@ Verifier: `inferAssetTypeFromExtension` (asset-type-inferrer.ts:51-53) returns '
 
 ### Library files cannot call actions they import: scope returns only the library's own actions
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/eligian-scope-provider.ts:120](../../packages/language/src/eligian-scope-provider.ts#L120)
 - **Category:** bug
 - **Description:** For a Library root, getScopeForActionReference uses only `model.actions`. It never adds the actions the library imports (Feature 032 US3 nested libraries). The existence validator also gates the imported-action lookup on `program &&`, which is null for libraries. So the call stays unresolved and checkOperationExists reports an unknown operation.
@@ -269,6 +312,8 @@ Verifier: The Library branch of getScopeForActionReference (lines 120-123) only 
 
 ### Locales JSON schema rejects every { "$ref": ... } locale entry (oneOf matches both branches)
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/language/src/schemas/locales-schema.json:10](../../packages/language/src/schemas/locales-schema.json#L10)
 - **Category:** bug
 - **Description:** The per-locale value is `oneOf [localeData, localeReference]`. `localeData` allows any string-valued property, so `{ "$ref": "./x.json" }` is also a valid localeData. It then matches both branches and Ajv fails `oneOf` (passingSchemas [0,1]). The schema's own `examples`, the LabelsParser docs and `isLocaleReference` all treat `$ref` entries as valid, so the documented external-locale format can never compile. Confirmed by running the compiled schema through Ajv.
@@ -285,6 +330,8 @@ Verifier: The Library branch of getScopeForActionReference (lines 120-123) only 
 Verifier: The verifier compiled packages/language/src/schemas/locales-schema.json with Ajv, using the same options as locale-import-validator.ts. `{"en-US":{"$ref":"./locales/en-US.json"}}` returns false with keyword 'oneOf' and passingSchemas [0,1], while `{"en-US":{"a":"b"}}` passes. localeData's additionalProperties accepts any string value, so a `$ref` object matches both oneOf branches. The validator is called from loadProgramAssets (compiler-integration.ts:219, which adds a LocalesImportError and is used by the CLI and the LSP asset check) and from the extension's locales parse step, which then returns empty metadata. The schema's own second example and the LabelsParser docs therefore describe a format that is always rejected. No spec runs a `$ref` entry through validateLocalesJSON.
 
 ### package.json bin maps eligian to dist/cli.mjs, which only exports main and never runs it; bin/cli.js is not published
+
+- **Status:** ✅ Fixed in `65fdd0f`
 
 - **Location:** [packages/cli/package.json:22](../../packages/cli/package.json#L22)
 - **Category:** bug
@@ -307,6 +354,8 @@ Verifier: package.json `bin` maps both `eligian` and `eligian-cli` to ./dist/cli
 
 ### Compile command overwrites the source file when its path does not end in .eligian
 
+- **Status:** ✅ Fixed in `65fdd0f`
+
 - **Location:** [packages/extension/src/extension/commands/compile.ts:131](../../packages/extension/src/extension/commands/compile.ts#L131)
 - **Category:** bug
 - **Description:** The output path is derived with a case-sensitive regex replace. If the active document has languageId 'eligian' but its path does not end in lowercase '.eligian', the replace does nothing and the output path equals the input path. The compiled JSON is then written over the user's source file. A document can have languageId 'eligian' without the extension through 'Change Language Mode', files.associations, untitled documents, or an upper-case .ELIGIAN extension. For an untitled document, fsPath is 'Untitled-1', so the JSON is written to a relative path in the extension host's cwd.
@@ -326,6 +375,8 @@ await fs.writeFile(outputPath, outputJson, 'utf-8');
 Verifier: compile.ts:92 checks only `document.languageId === 'eligian'`, and line 131 derives the output with the case-sensitive `inputPath.replace(/\.eligian$/, '.json')`. No other guard exists. If a document has the eligian language ID but its path does not end in lowercase '.eligian' (Change Language Mode, files.associations such as `*.eli`, or an upper-case .ELIGIAN file on Windows), `outputPath === inputPath` and fs.writeFile overwrites the source on disk. The compile has to succeed first, so this only happens when the content is valid Eligian. That is realistic for an associated or upper-case extension, not for an arbitrary notes.txt. For an untitled document, fsPath is 'Untitled-1', so the write goes to a relative path in the extension host's cwd instead of over a source file. Undo or Local History may recover the file, but losing the source on disk justifies high severity.
 
 ### CI only runs tests for the language package; cli, extension and shared-utils specs never run
+
+- **Status:** ✅ Fixed in `65fdd0f`
 
 - **Location:** [.github/workflows/ci.yml:72](../../.github/workflows/ci.yml#L72)
 - **Category:** test-gap
@@ -349,6 +400,8 @@ Verifier: ci.yml has one test step, `pnpm run test:coverage:ci` (line 72), and n
 
 ### Constant folding produces NaN for % by zero and for arithmetic on non-numeric operands, which serialize as JSON null
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/expression-evaluator.ts:214](../../packages/language/src/compiler/expression-evaluator.ts#L214)
 - **Category:** bug
 - **Description:** `/` guards against a zero divisor, but `%` does not. `-`, `*`, `<`, `>` etc. cast string and boolean operands with `as number` and rely on JS coercion without checking types. `10 % 0` and `"abc" - 1` fold to NaN and are accepted as constants of type 'number'. JSON.stringify turns NaN into null, so the compiled config silently gets null.
@@ -370,6 +423,8 @@ Verifier: Reproduced with the real CLI. `const modv = 10 % 0` and `const strv = 
 
 ### Parse errors at end of input get NaN line and column
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/pipeline/document-errors.ts:61](../../packages/language/src/compiler/pipeline/document-errors.ts#L61)
 - **Category:** bug
 - **Description:** For an unexpected EOF, Chevrotain's EOF token has startLine, startColumn and startOffset equal to NaN. `NaN ?? 1` stays NaN, so the nullish fallback never applies. The location is reported as NaN and the code snippet is empty. The length uses `error.token.endOffset ? ... : 0`, which only works by accident.
@@ -389,6 +444,8 @@ Verifier: document-errors.ts:61-63 uses `?? 1` on Chevrotain token positions. Th
 
 ### Constant evaluator rejects the grammar's `**` operator, so valid constant expressions are not folded and constant conditions are rejected
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/expression-evaluator.ts:244](../../packages/language/src/compiler/expression-evaluator.ts#L244)
 - **Category:** inconsistency
 - **Description:** The grammar defines `**` in Multiplicative, and expression-transformer.ts handles it (`left ** right`), but applyBinaryOperator has no case for it. `const powv = 2 ** 3` is therefore not a constant and falls back to a globaldata variable. In if-conditions, evaluateExpression fails, so condition-transformer reports that `**` is unsupported 'unless both sides are constants', even though both sides are constants.
@@ -406,6 +463,8 @@ default:
 Verifier: The grammar (eligian.langium:663) allows `**` in Multiplicative, and expression-transformer.ts:186 handles it. applyBinaryOperator in expression-evaluator.ts has no `**` case and throws 'Unsupported binary operator'. Verified with the built compiler: `const powv = 2 ** 3` is emitted as a setData init action (`'globaldata.powv': 8`) and referenced as `$globaldata.powv`, while `2 * 3` is inlined. `if (2 ** 3 > 5)` fails with "Operator `**` is not supported in conditions unless both sides are constants", even though both sides are constants. The const case still works at runtime, so that half is a missed optimization. The condition case rejects a valid program with a misleading message.
 
 ### Errors raised for imported library actions are reported with no file and are rendered against the main source
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/compiler/transformers/source-location.ts:14](../../packages/language/src/compiler/transformers/source-location.ts#L14)
 - **Category:** bug
@@ -427,6 +486,8 @@ Verifier: source-location.ts always sets `file: undefined`. Library documents ar
 
 ### compile() ignores assets.errors, relying on a validator that skips asset checks for paths containing '/memory/'
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/pipeline.ts:127](../../packages/language/src/compiler/pipeline.ts#L127)
 - **Category:** robustness
 - **Description:** loadProgramAssets collects missing-file errors, CSS/HTML syntax errors and locales-schema errors into `result.errors`, but compile() only reads layoutTemplate, cssFiles and locales from the result. Reporting those errors is left entirely to asset-import-validator.checkAssetLoading, which returns early when the file name matches `/^\d+\.eligian$/` or the path includes '/memory/'. Such files then compile with the assets silently dropped.
@@ -446,6 +507,8 @@ Verifier: pipeline.ts:126-131 passes `assets` to transformAST and never reads `a
 
 ### Comment says local actions override imported ones, but findActionByName returns the imported action first
 
+- **Status:** ✅ Already fixed by `65fdd0f` (regression test added in `c7a75df`)
+
 - **Location:** [packages/language/src/compiler/ast-transformer.ts:159](../../packages/language/src/compiler/ast-transformer.ts#L159)
 - **Category:** inconsistency
 - **Description:** actionDefinitions is `[...importedActions, ...localActions]`, and every consumer calls `findActionByName(name, allActions)`, which uses Array.find and so returns the first match. If an imported (aliased) action and a local action ever share a name, the imported one wins, the opposite of what the comment says. `actionDefinitions` and the emitted `actions` would also both contain duplicates. Only the validator prevents this.
@@ -463,6 +526,8 @@ const actionDefinitions = [...importedActions, ...localActions];
 Verifier: The reviewer's scenario is guarded: ImportNameCollisionValidator.checkImportNameCollisions flags both an alias and a plain import name that collide with a local action. There is a real gap through another route, though. resolveLibraryImports (transformers/library-imports.ts:155-159) pushes all actions of each transitively imported library, private ones included, under their original names, and no validator compares those names with the main program's local actions. Example: main imports `{ a }` from libA, libA imports from libB, which defines `show`, and main also defines a local `show`. Then actionDefinitions = [libB.show, a, local show]. findActionByName (name-resolver.ts:69, Array.find) in timeline-transformer.ts:186/299/577 and operation-transformer.ts:301 returns libB's `show`, the opposite of what the comment claims. The emitted `actions` array also holds two actions named `show`, so lookup by name at runtime is ambiguous too. Validation passes because the local `show` resolves in scope. Silently binding to the wrong body justifies a higher severity than low.
 
 ### Transitive library resolution is import-order dependent: missing actions or duplicate action definitions
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/compiler/transformers/library-imports.ts:36](../../packages/language/src/compiler/transformers/library-imports.ts#L36)
 - **Category:** bug
@@ -487,6 +552,8 @@ Verifier: `visited` serves both as a cycle guard and as an 'already collected' m
 
 ### Operations inside an endable action's end block (and inside if/for in any end block) use startAction instead of endAction
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/transformers/action-transformer.ts:69](../../packages/language/src/compiler/transformers/action-transformer.ts#L69)
 - **Category:** inconsistency
 - **Description:** transformActionDefinition passes `false` for isEndOperation when it transforms an endable action's endOperations. The inline timeline form (timeline-transformer.ts:560) and inline stagger form (timeline-transformer.ts:389) pass `true`. In addition, transformIfStatement and transformForStatement hard-code `false` for their nested statements and have no parameter to carry the flag. So an endable-action call placed inside `if`/`for` in an end block is also expanded to startAction, in the inline timeline and stagger forms too. The end phase therefore restarts the nested endable action instead of ending it, and the nested effect is never reverted.
@@ -509,6 +576,8 @@ for (const opStmt of actionDef.endOperations) {
 Verifier: action-transformer.ts:69-76 passes `false` for isEndOperation on endOperations. transformIfStatement and transformForStatement (operation-transformer.ts) call transformOperationStatement with a hard-coded `false` and have no flag parameter. Both cases reproduced: outer's endOperations are [requestAction, startAction], and the end block of an inline timeline gives [requestAction, endAction] for a direct call but [when, requestAction, startAction, endWhen] inside an if. The inline timeline/stagger forms pass true for direct calls, so the behaviour is inconsistent. Lowered to medium: it requires an endable action called from an end block, which is a fairly niche pattern.
 
 ### Event actions cannot call imported (library) actions; error is a misleading 'Unknown operation'
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/compiler/transformers/action-transformer.ts:166](../../packages/language/src/compiler/transformers/action-transformer.ts#L166)
 - **Category:** bug
@@ -534,6 +603,8 @@ Verifier: transformEventAction calls `transformOperationStatement(opStmt, scope,
 
 ### Arithmetic on runtime references is emitted as an inert expression string instead of failing
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/transformers/expression-transformer.ts:203](../../packages/language/src/compiler/transformers/expression-transformer.ts#L203)
 - **Category:** bug
 - **Description:** When a BinaryExpression has a non-number side (a reference string), the transformer serializes it as the literal string `("$operationdata.x" + 10)`. Eligius resolves only whole-string property chains (`$operationdata.…`, `$scope.…`), so this string is passed to the operation verbatim, and nothing in the compiler or validator flags it. Division by zero (`10 / 0`) folds to Infinity, which JSON serializes as `null`.
@@ -551,6 +622,8 @@ return `(${JSON.stringify(left)} ${expr.op} ${JSON.stringify(right)})`;
 Verifier: In expression-transformer.ts lines 173-204, both sides are folded only when they are numbers; otherwise the code returns the literal string `` `(${JSON.stringify(left)} op ${JSON.stringify(right)})` ``. Operation arguments use this path (operation-transformer.ts:148/271/326, timeline-transformer.ts:209/325). Conditions do not: they go through condition-transformer.ts serializeCondition, which emits Eligius `when` expression syntax, so `if` is unaffected. Eligius resolve-external-property-chain treats a value as a chain only when it starts with `$operationdata.`/`$globaldata.`/`$scope.`, so a string starting with '(' is passed to the operation as-is. No validator or Typir rule mentions BinaryExpression. For division by zero, expression-evaluator.ts throws on `/` by zero, but transformExpression does not use it, so `10/0` folds to Infinity and is emitted as null. condition-transformer.ts:174 already has an isFinite guard, which shows the gap is unintended.
 
 ### Property-chain in a time expression throws a raw Error out of the Effect pipeline
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/compiler/transformers/time-transformer.ts:104](../../packages/language/src/compiler/transformers/time-transformer.ts#L104)
 - **Category:** robustness
@@ -571,6 +644,8 @@ Verifier: The grammar's PrimaryTime includes PropertyChainReference (eligian.lan
 
 ### navigate broadcasts the timeline NAME, but the engine switches by uri; video/audio timelines are never reached
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/compiler/transformers/navigate-operations.ts:117](../../packages/language/src/compiler/transformers/navigate-operations.ts#L117)
 - **Category:** bug
 - **Description:** buildNavTargetAction puts the DSL target (a timeline name) into the `request-timeline-uri` eventArgs, and the engine calls `switchTimeline(uri, position)`. buildTimelineConfig sets `uri = provider === 'raf' ? timeline.name : timeline.source || timeline.name`, so for video/audio timelines the uri is the media source path. The navigate validator only checks that the name exists, so navigating to a media timeline compiles cleanly but is a no-op or an error at runtime.
@@ -588,6 +663,8 @@ operationData: { eventName: REQUEST_TIMELINE_URI, eventArgs: [target, position] 
 Verifier: buildNavTargetAction broadcasts eventArgs `[target, position]`, where target is the DSL timeline name. In Eligius, engine-eventbus-adapter.ts:168-172 calls `switchTimeline(uri, position)`, and eligius-engine.ts:728 looks the timeline up in `_timelineLookupCache`, which is keyed by `timelineInfo.uri` (line 1347). It rejects with an unknown-timeline error when there is no match. timeline-transformer.ts:131 sets uri = name only for 'raf'; for video/audio timelines with a source, uri = source. navigate-validator.ts only checks that a timeline with that name exists. So navigating to a media timeline compiles without errors and fails at runtime.
 
 ### Library files that import other libraries get false 'Unknown operation' errors and no argument-count checking when calling the imported action
+
+- **Status:** ✅ Already fixed by `65fdd0f` (regression test added in `c7a75df`)
 
 - **Location:** [packages/language/src/validators/operation-call/operation-existence-validator.ts:55](../../packages/language/src/validators/operation-call/operation-existence-validator.ts#L55)
 - **Category:** bug
@@ -608,6 +685,8 @@ Verifier: The grammar allows `'library' name=ID (imports += LibraryImport)* ...`
 
 ### No duplicate-name validation for timelines or event actions, and event actions can collide with actions or operations
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/validators/program/duplicate-validator.ts:21](../../packages/language/src/validators/program/duplicate-validator.ts#L21)
 - **Category:** bug
 - **Description:** checkDuplicateActions only considers Regular/EndableActionDefinition. No check exists for duplicate timeline names, even though navigate targets and Eligius timeline URIs are identified by name. EventActionDefinition has its own `name` but is excluded from checkDuplicateActions, and checkActionNameCollision (the built-in operation clash) is not registered for it. checkDuplicateEventActions only looks at event/topic signatures. Reproduced: no diagnostic is produced.
@@ -627,6 +706,8 @@ const actions = getElements(program).filter(
 Verifier: duplicate-validator.ts only checks Regular/Endable action names, constants and event/topic signatures. Each case reproduced: two `timeline "t"` blocks give no duplicate diagnostic, two `on event ... action foo()` give none, `action foo()` plus `on event "x" action foo()` give none, and an event action named `selectElement` gives no built-in conflict. The timeline part matters most. The grammar has a NavigateStatement (`navigate "Timeline name"`, eligian.langium:433-452) that targets timelines by name, so duplicate names make navigation ambiguous with no warning. The event-action parts are weaker: event actions go into a separate eventActions[] array and cannot be called as operations, so a clash with a built-in name has little effect. The timeline case justifies medium; the event-action cases on their own would be low.
 
 ### Duplicate parameter names are not validated for regular/endable actions
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/validators/action-validator.ts:1](../../packages/language/src/validators/action-validator.ts#L1)
 - **Category:** bug
@@ -651,6 +732,8 @@ Verifier: The RegularActionDefinition/EndableActionDefinition checks (eligian-va
 
 ### Control-flow pairing and erased-property checks are not applied to event actions or stagger inline blocks
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/eligian-validator.ts:193](../../packages/language/src/eligian-validator.ts#L193)
 - **Category:** bug
 - **Description:** checkControlFlowPairing* and checkErasedProperties* are registered for RegularActionDefinition, EndableActionDefinition and InlineEndableAction only. EventActionDefinition (operations) and StaggerBlock (startOps/endOps) get neither check. The same raw `when(...)` without `endWhen` is reported in a regular action but passes silently here. Reproduced.
@@ -674,6 +757,8 @@ Verifier: In eligian-validator.ts the control-flow pairing and erased-property c
 
 ### Recursion detection identifies actions by name, giving false positives across files and aliases
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/validators/action-validator.ts:94](../../packages/language/src/validators/action-validator.ts#L94)
 - **Category:** bug
 - **Description:** The call chain and the visited set hold names, mixing `action.name` (the definition name) with `opCall.operationName.$refText` (the alias at the call site). Different actions that share a name, such as a local action and a private action in an imported library, are treated as the same node. Aliased imports are keyed inconsistently, so `visited` pruning does not match. When a cycle is found, `accept` is also called with a node from another document, so the diagnostic range comes from a different file's CST. The name-collision false positive was reproduced.
@@ -694,6 +779,8 @@ Verifier: checkRecursiveActionCalls keys the chain and the visited set by string
 
 ### Contradictory and duplicate diagnostics: Langium start<=end rule vs Typir end>start rule, plus double-reported errors
 
+- **Status:** ✅ Already fixed by `65fdd0f` (regression test added in `c7a75df`)
+
 - **Location:** [packages/language/src/validators/timeline-validator.ts:155](../../packages/language/src/validators/timeline-validator.ts#L155)
 - **Category:** inconsistency
 - **Description:** checkValidTimeRange allows equal start and end ('must be less than or equal to'), and its test accepts `at 5s..5s`. The Typir rule in type-system-typir/validation/event-validation.ts errors when `endTime <= startTime`. The two checks disagree, and every invalid range is reported twice on the same node. checkNonNegativeTimes is dead code, since the NUMBER terminal cannot be negative and a unary minus is a parse error.
@@ -710,6 +797,8 @@ Verifier: checkRecursiveActionCalls keys the chain and the visited set by string
 Verifier: timeline-validator.ts:154-165 errors only when `start.value > end.value`, so equal values are accepted. validation.spec.ts:171-190 accepts `at 5s..5s`, but its filter only matches 'must be less than', which hides the Typir error. type-system-typir/validation/event-validation.ts:66 errors when `endTime <= startTime`, and Typir rules run through initializeLangiumTypirServices (eligian-module.ts:131). So the two rules disagree on zero-length events, and every reversed range is reported twice. checkNonNegativeTimes is dead: NUMBER is `/[0-9]+(\.[0-9]+)?/`, and the test at validation.spec.ts:192 says negative values are a parse error. extractTimeValue also returns 0 for a missing end, so a partial range gets a false 'end (0s) must be greater than start (0s)'. The reviewer missed a worse problem: the Langium rule compares the raw `value` and ignores `unit` (no value converter exists), so valid code such as `at 500ms..2s` gets a false 'start time (500) must be less than or equal to end time (2)' error. Typir's extractTimeValue also treats 'm' and 'h' as seconds. That false positive on valid mixed-unit ranges is why the severity was raised to medium.
 
 ### Action function types are matched by name only and are global across documents, so overloads from other files mask or change checks
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:426](../../packages/language/src/type-system-typir/eligian-type-system.ts#L426)
 - **Category:** bug
@@ -732,6 +821,8 @@ Verifier: Reproduced with separate service instances per scenario. With c.eligia
 
 ### Timeline container selector regex rejects valid CSS selectors (non-ASCII identifiers, escapes, '/' in attribute values)
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/type-system-typir/validation/timeline-validation.ts:48](../../packages/language/src/type-system-typir/validation/timeline-validation.ts#L48)
 - **Category:** bug
 - **Description:** `isValidCSSSelector` accepts only an ASCII-limited character whitelist (`\w` is ASCII-only, and `/`, `\`, `%`, `@`, `{`, `&` are not allowed). Valid selectors that use non-ASCII identifier characters, backslash escapes (e.g. Tailwind `.sm\:flex`) or '/' or '%' in attribute values are reported as errors.
@@ -749,6 +840,8 @@ const cssSelectorPattern = /^[#.\w\-:[\]=~|^$*"'()\s,>+]+$/;
 Verifier: The pattern `/^[#.\w\-:[\]=~|^$*"'()\s,>+]+$/` uses ASCII `\w` and excludes '/', '\\', '%' and '@'. Reproduced with the CLI: `timeline "T" in "a[href='/x']" using raf {...}` fails with "Invalid CSS selector: 'a[href='/x']'". A diagnostics dump through createEligianServices on `#café` gave the same Typir error, 'Invalid CSS selector: '#café''. Both selectors are valid CSS. Typir errors are part of `document.diagnostics`, so compilation is blocked. The Langium validator `checkTimelineContainerSelector` (validators/timeline-validator.ts:90) already parses the same selector with the PostCSS-based `parseSelector` and reports 'Invalid CSS selector syntax' when it really is invalid. The regex check is therefore redundant as well as wrong.
 
 ### Transitively imported library actions leak into the importer's scope and can shadow explicitly imported actions
+
+- **Status:** ✅ Already fixed by `65fdd0f` (regression test added in `c7a75df`)
 
 - **Location:** [packages/language/src/eligian-scope-provider.ts:208](../../packages/language/src/eligian-scope-provider.ts#L208)
 - **Category:** bug
@@ -770,6 +863,8 @@ const nestedActions = this.getImportedActions(library, visited);
 Verifier: computeImportedActions (eligian-scope-provider.ts:208-209) pushes the nested library's transitive imports before that LibraryImport's direct imports. getScopeForActionReference passes this list to createScope, and Langium's StreamScope.getElement returns the first entry whose name matches, so a transitively pulled B.bAct ends up ahead of an explicitly imported D.bAct whenever the A import comes first. findImportedActionByNameOrAlias falls back to `importedActions.find(name)`, which is also first-wins, so the parameter-count validator checks against the wrong action. ProgramImportNameValidator.checkImportNameCollisions only looks at direct imports, so nothing flags the clash. A program that imports only `pub` can also call `bAct` without an error. The compiler's resolveImports/resolveLibraryImports in transformers/library-imports.ts deliberately includes transitive actions (all actions of nested libraries) so that `pub`'s body can be emitted. So the transitive closure is needed for emission, but it should not be in the program's visible scope. The bug is real but only triggers with same-named actions across a nested chain, so medium rather than high.
 
 ### `@var` references do not see consts declared in endable end blocks, inline endable blocks or event actions
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/eligian-scope-provider.ts:368](../../packages/language/src/eligian-scope-provider.ts#L368)
 - **Category:** bug
@@ -795,6 +890,8 @@ Verifier: getVisibleVariables only collects locals when an ancestor matches isAc
 
 ### Local const scoping ignores block structure and declaration order, so references bind to the wrong declaration
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/eligian-scope-provider.ts:414](../../packages/language/src/eligian-scope-provider.ts#L414)
 - **Category:** bug
 - **Description:** getLocalVariables gathers every VariableDeclaration anywhere in the enclosing action (recursively through if, else and for bodies), and the first one with a given name wins. Consts declared in a different branch or later in the action are therefore visible, and same-named consts in sibling blocks all bind to the first one.
@@ -817,6 +914,8 @@ Verifier: getLocalVariables walks the whole action recursively with streamConten
 
 ### if/else branch property state is never merged back, producing false 'missing dependency' errors
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/validators/action-validator.ts:370](../../packages/language/src/validators/action-validator.ts#L370)
 - **Category:** bug
 - **Description:** validateOperationSequence validates thenOps and elseOps with cloned trackers and discards them. OperationDataTracker.merge (the intersection logic in operation-data-tracker.ts:155) exists but is never called. After an if/else in which both branches create a property, the outer tracker lacks that property.
@@ -834,6 +933,8 @@ this.validateOperationSequence(statement.thenOps, accept, context, currentTracke
 Verifier: action-validator.ts:315-380 validates both IfStatement branches on `currentTracker.clone()` and throws the results away. OperationDataTracker.merge (operation-data-tracker.ts:155) has no call sites. In registry.generated.ts, addClass declares selectedElement as a dependency. Running the reviewer's program against the built language package (createEligianServices + EmptyFileSystem) reports "Property 'selectedElement' is not available - ensure it is created by a previous operation" on addClass, so the false error is real. Severity lowered to medium: it is a false positive in one narrow pattern (selecting inside both branches), and selecting before the if avoids it.
 
 ### Imports of libraries outside the loaded workspace never resolve in the IDE (no on-demand document loading)
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/eligian-scope-provider.ts:198](../../packages/language/src/eligian-scope-provider.ts#L198)
 - **Category:** robustness
@@ -854,6 +955,8 @@ Verifier: The scope provider (computeImportedActions, getScopeForActionImport) a
 
 ### findActionBelow ignores event actions and non-adjacent declarations, yielding wrong JSDoc templates; on-type formatter is untested and no-ops for unterminated /**
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/utils/ast-navigation.ts:59](../../packages/language/src/utils/ast-navigation.ts#L59)
 - **Category:** bug
 - **Description:** findActionBelow returns the first ActionDefinition anywhere at or after the next line. EventActionDefinition is not an ActionDefinition, and other statements (timeline, const) are skipped, so the template is built for an unrelated later action. Also, with an unterminated `/**` (the state right after typing it) the parse fails and the AST loses the actions, so formatDocumentOnType returns []. Existing tests call findActionBelow directly and never exercise EligianFormatter.formatDocumentOnType. The inserted lines are also not indented to the comment's column.
@@ -873,6 +976,8 @@ const actionOffset = item.$cstNode?.offset;
 Verifier: Ran Eligian.lsp.Formatter.formatDocumentOnType against the built package. (a) With `/** */`, then an event action handler(a), then action later(b: string), it inserts '* @param {string} b', which is later's parameter and not the event action's. EventActionDefinition is not part of the ActionDefinition union (grammar lines 81-82 and 312), and findActionBelow skips anything that isn't an action. (b) With an unterminated `/**` above an action, the parse yields 1 parser error, `statements` is undefined and the result is []. When the `/**` follows an earlier action, the action after it is lost from the AST and the result is still []. language-configuration.json has no `/**` auto-closing pair, so the unterminated state is exactly what exists when the user types the trigger `*`. The on-type JSDoc template therefore does nothing in its main real-world use. No test exercises formatDocumentOnType; tests only call findActionBelow on well-formed documents. Severity was raised to medium because the feature is effectively broken in practice, not just mis-targeted in an edge case.
 
 ### Any string inside an event-action body is treated as the event-name string and offers destructive event skeleton completions
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/completion/context.ts:252](../../packages/language/src/completion/context.ts#L252)
 - **Category:** bug
@@ -898,6 +1003,8 @@ Verifier: In completion/context.ts, detectEventNameString checks only that the l
 
 ### Attribute-name completions are lost when the cursor is in whitespace inside the createElement attributes object
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/html/context-detection.ts:41](../../packages/language/src/html/context-detection.ts#L41)
 - **Category:** bug
 - **Description:** detectHTMLCompletionContext starts from `CstUtils.findLeafNodeAtOffset(cstNode, offset)`, which only matches a leaf with offset <= o < end. Whitespace is a hidden gap between leaves, so no leaf is found and the function returns None before the AST-range checks run. The final regex fallback only handles an empty `createElement(` call.
@@ -917,6 +1024,8 @@ const leafNode = CstUtils.findLeafNodeAtOffset(cstNode, offset);
 Verifier: In html/context-detection.ts, detectHTMLCompletionContext returns None when CstUtils.findLeafNodeAtOffset finds no leaf, which is the case for whitespace (hidden, not a leaf). The regex fallback covers only `createElement(`. Running the provider, `createElement("input", "", { | })` and `{ type: "text", | }` both returned only the 7 @@variable items, while `{|}` returned 51 input attributes, matching the report exactly. A space or Enter inside a fresh object is the normal typing state, so medium is reasonable.
 
 ### Attribute metadata uses DOM property names although createElement applies them with .attr(): `class` is missing and `className` is offered
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/completion/html-elements.generated.ts:141](../../packages/language/src/completion/html-elements.generated.ts#L141)
 - **Category:** bug
@@ -938,6 +1047,8 @@ entries.forEach(([key, value]) => { template.attr(key, String(value)); });
 Verifier: The installed eligius dist (node_modules/eligius/dist/index.mjs) contains `template.attr(key, String(value))`, and the source create-element.ts applies Object.entries(attributes) through jQuery `.attr()` on `$(document.createElement(...))`. jQuery .attr does not map className to class (propFix applies only to .prop), so `className: "box"` sets a `classname` attribute and no class. html-elements.generated.ts line 141 lists `className` in COMMON_HTML_ATTRIBUTES and also lists `htmlFor`, and a run showed className, defaultChecked and defaultValue among the input attributes. The compiler has no className-to-class key mapping (a grep of compiler/ finds none). html-elements.spec.ts lines 160/189 assert `className`. The root cause is the eligius type `attributes?: Partial<HTMLElementTagNameMap[T]>` (DOM properties), which the generator mirrors, while the runtime sets attributes.
 
 ### Imported (library) actions are never suggested at operation-name positions
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/completion/actions.ts:121](../../packages/language/src/completion/actions.ts#L121)
 - **Category:** bug
@@ -961,6 +1072,8 @@ Verifier: getActionCompletions(document) only streams the current document's Reg
 
 ### Classes from named CSS imports are emitted into cssFiles but never registered for validation
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/validators/base-validator.ts:93](../../packages/language/src/validators/base-validator.ts#L93)
 - **Category:** inconsistency
 - **Description:** loadProgramAssets pushes both `styles` imports and named imports whose assetType is css (`import theme from "./theme.css"`) into `cssFiles`, so the runtime loads them. CSS registration and parsing only look at `DefaultImport` with `type === 'styles'`: ensureCSSImportsRegistered in base-validator, parser.ts, and validateCSSFileErrors. A named CSS import therefore contributes no classes or IDs to `getClassesForDocument`, and its syntax errors are never surfaced through the registry.
@@ -977,6 +1090,8 @@ base-validator.ts:93: const cssImports = allImports.filter(imp => isDefaultImpor
 Verifier: loadProgramAssets (compiler-integration.ts) pushes named imports with assetType 'css' into result.cssFiles, so the runtime loads them as stylesheets. Every place that feeds the CSS registry only considers DefaultImport with type 'styles': base-validator.ensureCSSImportsRegistered, compiler/pipeline/parser.ts, validateCSSFileErrors in asset-import-validator.ts, and the extension's processImports with importType 'styles'. A class defined only in a named CSS import is therefore reported as 'Unknown CSS class'. This matters more because only one `styles` default import is allowed per document, so named CSS imports are the only way to bring in a second stylesheet.
 
 ### CssParseError carries the absolute path, so the LSP asset validator silently drops CSS syntax errors
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/asset-loading/asset-validation-service.ts:178](../../packages/language/src/asset-loading/asset-validation-service.ts#L178)
 - **Category:** bug
@@ -995,6 +1110,8 @@ const importStmt = imports.find(imp => (isDefaultImport(imp) && imp.path === err
 Verifier: validateCss in asset-validation-service.ts builds the CssParseError with `filePath: absolutePath`, while every other error builder uses relativePath. checkAssetLoading (asset-import-validator.ts) matches errors to imports with `imp.path === error.filePath`. imp.path and importInfo.path come from the same AST STRING, so relative paths match, but an absolute path never does, and with no else branch the error is dropped. For `styles` imports the syntax error still appears through validateCSSFileErrors (the registry path), so only named CSS imports lose it, which overlaps with the named-CSS-import finding above. The CLI (compile-file.ts) does report loadProgramAssets errors, so the IDE and the CLI disagree. Separately, pipeline.ts ignores assets.errors entirely.
 
 ### mergeLocaleEntry replaces a { $ref } locale with {}, silently deleting the reference in the user's file
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/labels/label-entry-generator.ts:123](../../packages/language/src/labels/label-entry-generator.ts#L123)
 - **Category:** bug
@@ -1017,6 +1134,8 @@ Verifier: mergeLocaleEntry replaces any locale entry containing '$ref' with {} o
 
 ### rewriteUrls mangles fragment, query, percent-encoded and protocol-relative url() values
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/css/css-service.ts:147](../../packages/language/src/css/css-service.ts#L147)
 - **Category:** bug
 - **Description:** Every url() that is not http(s)/data is run through `path.resolve(cssDir, urlPath)` and turned into a file URI. Several forms are not handled. `url(#grad)`, used by SVG filter/clip-path/mask references, becomes a filesystem path ending in '/#grad'. Font URLs such as `font.eot?#iefix` or `font.woff2?v=4.7.0` (Font Awesome style) keep '?...' in the file name, which then does not exist. Percent-encoded names such as `my%20file.png` are re-encoded to %2520. `//cdn.x/a.png`, `blob:` and `about:` are treated as paths. The regex also stops at the first ')' inside quotes, so `url("a (1).png")` is truncated and the rest of the CSS is corrupted. Unquoted `URL(` and `url( 'x' )` are not matched at all.
@@ -1033,6 +1152,8 @@ const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g; ... if (urlPath.startsWith('http
 Verifier: rewriteUrls is used only by the preview (webview-css-injector.ts:66 and :103, through css-loader.rewriteCSSUrls). VSCodeWebviewUriConverter calls `vscode.Uri.file(fileUri.path)`, which percent-encodes '#', '?' and '%' in the path. So `url(#blur)` becomes `.../css/%23blur`, `fa.woff2?v=4.7.0` becomes `...fa.woff2%3Fv%3D4.7.0`, and `my%20file.png` becomes `my%2520file.png`; all three break. '//cdn', 'blob:' and 'about:' fall through to path.resolve. With `url("a (1).png")`, the character class `[^'")]` stops at the first ')' and leaves `.png")` behind, which corrupts the CSS. Uppercase `URL(` does not match because the regex is case-sensitive. The impact is limited to the live preview; the compiled output and the CLI do not use this function.
 
 ### parseCSS ignores @import, so classes defined in imported stylesheets are reported as unknown (and bare-string @import is not rewritten for the webview)
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/css/css-parser.ts:93](../../packages/language/src/css/css-parser.ts#L93)
 - **Category:** robustness
@@ -1052,6 +1173,8 @@ Verifier: css-parser.ts parseCSS uses only root.walkRules. There is no walkAtRul
 
 ### Named media/binary imports are read fully as UTF-8 text into importMap
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/asset-loading/compiler-integration.ts:205](../../packages/language/src/asset-loading/compiler-integration.ts#L205)
 - **Category:** performance
 - **Description:** B37 skipped content loading only for the `provider` default import. A named import of a video, audio or image (`import intro from "./intro.mp4"`) still goes through `loader.loadFile(absolutePath)`, which does `readFileSync(path, 'utf-8')`. The whole binary is decoded into a mangled JS string and stored in `result.importMap[name]`. This runs on every LSP validation pass (checkAssetLoading) as well as on compile.
@@ -1068,6 +1191,8 @@ const content = loader.loadFile(absolutePath);  ...  } else if (importInfo.type 
 Verifier: In loadProgramAssets, only `importInfo.type === 'provider'` skips loader.loadFile. Every other import, including named media imports (inferred media from .mp4 and similar), goes through NodeAssetLoader.loadFile, which calls shared-utils loadFileSync and so `fs.readFileSync(path, 'utf-8')`, and the result is stored in importMap[name]. loadProgramAssets is called from validators/program/asset-import-validator.ts on every LSP validation of a real file, not only from pipeline.ts. Nothing reads per-name media content from importMap; cli compile-file only counts the keys. So a large binary is read synchronously and decoded into a useless string on every validation pass. Files above V8's maximum string length would throw and show up as a bogus load error. Because it is on the language server's hot path, medium is more accurate than low.
 
 ### Default output path equals the input path when the input does not end in lowercase .eligian, so the source file is overwritten
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/cli/src/main.ts:141](../../packages/cli/src/main.ts#L141)
 - **Category:** bug
@@ -1087,6 +1212,8 @@ await fs.writeFile(outputPath, result.json, 'utf-8');
 Verifier: main.ts:141 sets `outputPath = options.output || inputPath.replace(/\.eligian$/, '.json')`. When the input has no lowercase `.eligian` suffix, the replace does nothing, and the code goes straight to `fs.writeFile(outputPath, ...)` with no check that output differs from input. compileFile reads any path and passes it to parseSource, which builds the Langium document from that URI. It never checks the extension, and with a single registered language the service registry ignores the extension anyway. So `eligian STORY.ELIGIAN` (common on Windows), `eligian story.txt` or an extensionless file compiles, and then the JSON overwrites the source. Downgraded to medium because it needs an unusual input name. The `-o story.eligian` case is the user's explicit choice, not a defect. The `.bundle` default in bundler/index.ts:103 has the same no-op replace: directoryExists returns false for a file, and the bundle then fails late at mkdir, with no data lost.
 
 ### CLI uses esbuild, eligius and jquery at runtime but declares none of them as dependencies
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/cli/package.json:32](../../packages/cli/package.json#L32)
 - **Category:** bug
@@ -1111,6 +1238,8 @@ Verifier: css-processor.ts:12 and runtime-bundler.ts:12 import 'esbuild' at top 
 
 ### CSS url() references with query string, fragment, #id, percent-encoding, or inside comments are treated as file paths and abort the bundle with AssetNotFound
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/cli/src/bundler/asset-collector.ts:453](../../packages/cli/src/bundler/asset-collector.ts#L453)
 - **Category:** bug
 - **Description:** Every url(...) that is not http(s), '//' or data: is resolved with path.resolve and fs.stat'd as a literal file path. There is no stripping of ?query or #fragment, no decodeURIComponent, no skipping of fragment-only references, and no comment awareness (the regex is applied to raw text). A missing stat becomes AssetNotFoundError, which fails the whole bundle. rewriteCSSUrls in css-processor.ts uses the same raw resolution, so the same URLs would also fail to match the manifest.
@@ -1129,6 +1258,8 @@ Verifier: extractCSSUrlsWithLines (asset-collector.ts:93) runs URL_REGEX over ea
 
 ### Bundle mode flattens compile errors to 'Compilation failed: ParseError: ...' and discards line/snippet/hint details
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/cli/src/bundler/index.ts:111](../../packages/cli/src/bundler/index.ts#L111)
 - **Category:** inconsistency
 - **Description:** compileFile throws ParseError, CompilationError or AssetError, each carrying `formatted` diagnostics (messages, code snippets, hints). createBundle turns the thrown value into a string with a template literal, which yields only 'Name: short message', and bundleCLI prints that single line. Plain compile mode prints full diagnostics, so `--bundle` gives far worse error reporting for the same input.
@@ -1145,6 +1276,8 @@ catch: e => new BundleError(`Compilation failed: ${e}`),
 Verifier: compileFile throws ParseError, CompilationError or AssetError, all subclasses of CompileError. CompileError sets `this.name = 'CompileError'`, and the subclasses do not override it. createBundle catches with `` e => new BundleError(`Compilation failed: ${e}`) ``, which becomes 'CompileError: Failed to parse Eligian source' or 'CompileError: Compilation failed'. The `formatted` array (message, codeSnippet, hint) and AssetError.errors are dropped, and BundleError has no cause field. bundleCLI prints only `failure.value.message`, so the actual output is 'Bundle failed: Compilation failed: CompileError: Compilation failed', with no location or snippet. compileFileCLI prints full diagnostics through printFormattedErrors and printAssetErrors. The real output says 'CompileError' rather than the 'ParseError' the finding quotes; that detail does not change the problem.
 
 ### One watcher is rooted at the first document's workspace folder, so imports in other roots or outside the root are never watched
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/extension/src/extension/base-watcher-manager.ts:184](../../packages/extension/src/extension/base-watcher-manager.ts#L184)
 - **Category:** bug
@@ -1165,6 +1298,8 @@ if (!this.watcher) {
 Verifier: base-watcher-manager.ts:182-203 creates the watcher only once, in the first startWatching call, with `RelativePattern(workspaceRoot, glob)`. Later calls only add paths to trackedFiles. registerImportsInternal derives workspaceRoot from the first registering document's folder, or from `dirname(doc)` when the document is outside any folder. The validation watchers in extension/main.ts are singletons for the extension's lifetime, so in a multi-root workspace, CSS/HTML files under a second root never fire events. The same applies to imports that resolve outside the first root, and to every workspace file when the first document registered was outside the workspace (the root is then just that document's directory). PreviewPanel.ts:105 uses `workspaceFolders[0]` for its own CSS watcher. Single-root workspaces with in-root imports, the common case, work, which makes medium more accurate than high.
 
 ### Retargeting a one-to-one import (locales/layout) is never announced, so the extension keeps watching the old file
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/extension/src/language/import-processor.ts:104](../../packages/extension/src/language/import-processor.ts#L104)
 - **Category:** bug
@@ -1188,6 +1323,8 @@ Verifier: For the layout import the finding is accurate. HTMLRegistry.hasImport 
 
 ### Eligian: Edit Locales from the editor context menu receives the editor's own URI and opens the .eligian file in the locale editor
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/extension/src/extension/commands/locale.ts:26](../../packages/extension/src/extension/commands/locale.ts#L26)
 - **Category:** bug
 - **Description:** The command is contributed to the editor/context menu in package.json. VS Code passes the current editor's resource URI as the first argument to commands invoked from editor/context. The handler treats any truthy first argument as an 'explicit locale file' and opens it directly with eligian.localeEditor. The 'cursor on a locales import' branch is therefore only reachable from the command palette or a keybinding. From the context menu, the .eligian document itself is opened with the JSON locale editor.
@@ -1208,6 +1345,8 @@ async (fileUri?: vscode.Uri) => {
 Verifier: package.json contributes eligian.openLabelEditor to editor/context with the condition `resourceLangId == eligian`. VS Code calls editor/context commands with the active editor's resource URI as the first argument. The handler at locale.ts:26 treats any truthy fileUri as an explicit locale file and calls `vscode.openWith(fileUri, 'eligian.localeEditor')`, so a right-click opens the .eligian document itself in the JSON locale custom editor. vscode.openWith forces the viewType even though the selector is `**/*locale*.json`. The cursor-line branch is only reachable from the command palette. The one programmatic caller, label-file-creator.ts:141, passes a JSON URI, so only the context-menu path is broken.
 
 ### Preview localResourceRoots omits the document directory, so CSS url() assets and media outside workspace folders are blocked
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/extension/src/extension/preview/PreviewPanel.ts:135](../../packages/extension/src/extension/preview/PreviewPanel.ts#L135)
 - **Category:** bug
@@ -1230,6 +1369,8 @@ Verifier: In PreviewPanel.ts:132-136, localResourceRoots contains only extension
 
 ### createLabelsFile overwrites an existing locale file without checking that it exists
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/extension/src/extension/label-file-creator.ts:135](../../packages/extension/src/extension/label-file-creator.ts#L135)
 - **Category:** bug
 - **Description:** createLabelsFile calls vscode.workspace.fs.writeFile on the target path. writeFile overwrites by default, and the code never stats the path first. validatePath only checks the extension, length and characters. The quick fix is offered from a diagnostic saying the file is missing, and that diagnostic can be stale, for example after a git checkout, or after the file was created by hand or by another quick fix. The command 'eligian.createLabelsFile' is also a public command that takes arbitrary args.
@@ -1251,6 +1392,8 @@ Verifier: In label-file-creator.ts createLabelsFile, the only checks before `vsc
 
 ### Adding or updating a key under an existing leaf silently replaces the translation with an empty object in every locale
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/extension/src/extension/locale-editor/locale-editor-utils.ts:124](../../packages/extension/src/extension/locale-editor/locale-editor-utils.ts#L124)
 - **Category:** bug
 - **Description:** setAtPath replaces any non-object intermediate segment, including a string leaf, with {}. addKeyToConfig only checks `getAtPath(...) === undefined`, and getAtPath returns undefined when it walks through a string. So a path that passes through a leaf is treated as 'does not exist', and the leaf is destroyed. The Add Key modal has a free-text 'parent key' input (media/locale-editor.ts handleAddKeyConfirm). Its value is not validated against the tree and is sent as parentKey. updateTranslationInConfig and renameKeyInConfig use the same setAtPath.
@@ -1271,6 +1414,8 @@ for (let i = 0; i < path.length - 1; i++) {
 Verifier: In locale-editor-utils.ts, getAtPath returns undefined as soon as the walk hits a string. addKeyToConfig treats undefined as 'missing' and calls setAtPath, which replaces any non-object intermediate segment, including a string leaf, with {}. The webview's handleAddKeyConfirm (media/locale-editor.ts) validates only newSegment with `/^[a-zA-Z0-9_-]+$/`. parentKey is free text from the #add-key-parent input and is sent unchecked. The modal pre-fill avoids leaves, but the user can edit the field; the template placeholder is literally 'nav.home', and the help text invites dot-notation parents. locale-message-handler.ts 'add-key' joins `${parentKey}.${newSegment}` and passes it to addKeyToConfig without checking it against the tree, then calls saveConfig, which applies a WorkspaceEdit. So `{"nav":{"home":"Home"}}` with parent 'nav.home' and segment 'title' turns home into `{title:''}` in every locale. A renameKeyInConfig to a new key that passes through a leaf uses the same setAtPath. The WorkspaceEdit makes the change undoable on the text document, which limits the damage, but the overwrite is silent and hits every locale. Medium is right.
 
 ### CSS removed from the .eligian source stays injected in the preview; removeCSS is never called
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/extension/src/extension/preview/PreviewPanel.ts:283](../../packages/extension/src/extension/preview/PreviewPanel.ts#L283)
 - **Category:** bug
@@ -1294,6 +1439,8 @@ Verifier: PreviewPanel sets panel.webview.html only once, in the constructor, so
 
 ### The locale file watcher reacts to the editor's own saves: it shows 'modified externally' and reloads the webview, losing focus
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts:219](../../packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts#L219)
 - **Category:** bug
 - **Description:** LocaleFileWatcher fires onDidChange for any write to the file, including the `document.save()` triggered by the editor's request-save or Ctrl+S. applyingWebviewEdits only guards the in-memory WorkspaceEdit, not the later disk write. The callback always shows the information toast and posts a 'reload'. In the new-format webview, the 'reload' case (media/locale-editor.ts ~417) re-renders the key tree and table without saveFocusState/restoreFocusState; the legacy branch does call them.
@@ -1314,6 +1461,8 @@ const fileWatcher = new LocaleFileWatcher(document.uri, async _fileUri => {
 Verifier: LocaleFileWatcher (LocaleFileWatcher.ts) wraps `vscode.workspace.createFileSystemWatcher` and calls onChange for every onDidChange on the file after a 300 ms debounce. A FileSystemWatcher also fires for writes VS Code makes itself, so document.save() (from the webview's Ctrl+S → 'request-save' → trySaveDocument, or a native save) triggers it. applyingWebviewEdits is only set around applyEdit, never around the save, and nothing else guards the callback, so it always posts 'reload' and shows 'Label file was modified externally. Reloaded.' In media/locale-editor.ts the new-format 'reload' case (~line 417) calls renderKeyTree() and renderLocaleTable() without saveFocusState/restoreFocusState. renderLocaleTable removes and rebuilds the table, so a focused input loses focus and cursor. The legacy branch (~line 350) does save and restore focus. The watcher is also redundant: for an open TextDocument, VS Code reloads external disk changes into the document, and onDidChangeTextDocument → updateWebview already handles that.
 
 ### Overlapping compiles and overlapping engine initializations can apply stale results or destroy an engine that is mid-init
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/extension/src/extension/preview/PreviewPanel.ts:233](../../packages/extension/src/extension/preview/PreviewPanel.ts#L233)
 - **Category:** bug
@@ -1337,6 +1486,8 @@ Verifier: compileAndUpdate is triggered by FileWatcher's onDidSaveTextDocument w
 
 ### `**` is parsed at the same precedence and associativity as `*`, `/`, `%`, so constant folding gives wrong values
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/src/eligian.langium:663](../../packages/language/src/eligian.langium#L663)
 - **Category:** bug
 - **Description:** The Multiplicative rule puts `**` in the same left-associative loop as `*`, `/` and `%`. In JS and in math, `**` binds tighter than `*` and is right-associative. The compiler's constant folder (expression-transformer.ts, `case '**': return left ** right`) follows the tree shape, so folded constants and emitted expressions silently differ from what the author wrote. The AST shapes were confirmed by parsing.
@@ -1354,6 +1505,8 @@ Multiplicative infers Expression:
 Verifier: eligian.langium:662-663 puts `**` in the same left-associative loop as `*`, `/` and `%`, directly over Unary. Running the built parser (packages/language/dist/index.cjs) on `const x = 2 * 3 ** 2` produced `BinaryExpression(**, left=BinaryExpression(*, 2, 3), right=2)`. In expression-transformer.ts:173-200 the fold follows the tree (`case '**': return left ** right`), so the result is 36 where JS gives 18. Right-associativity is also wrong, and because Unary sits below Multiplicative, `-2 ** 2` folds to 4 with no diagnostic. No parser or folder tests use `**`. The bug is real and silent. Lowered to medium because mixing `**` with other operators is rare in timeline config.
 
 ### Many grammar keywords cannot be used as identifiers, property-chain segments or object keys
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [packages/language/src/eligian.langium:771](../../packages/language/src/eligian.langium#L771)
 - **Category:** bug
@@ -1377,6 +1530,8 @@ Verifier: The errors were reproduced with the built parser. `action f(event)` gi
 
 ### TextMate grammar is hand-written, stale and highlights almost none of the current keywords
 
+- **Status:** ✅ Fixed in `c7a75df`
+
 - **Location:** [packages/language/syntaxes/eligian.tmLanguage.json:9](../../packages/language/syntaxes/eligian.tmLanguage.json#L9)
 - **Category:** inconsistency
 - **Description:** The extension copies this file verbatim (extension `build:prepare`). langium-config.json has no `textMate` section, so nothing generates or checks it. The keyword list has only about 20 words, one of which (`context`) is not in the grammar. Control-flow, declaration, import, event and timeline keywords are missing, and there are no number or operator scopes.
@@ -1393,6 +1548,8 @@ Verifier: The errors were reproduced with the built parser. `action f(event)` gi
 Verifier: packages/language/langium-config.json has no textMate section, and the extension's build:prepare uses shx to copy ../language/syntaxes/eligian.tmLanguage.json as-is. The single keyword regex lists action|at|audio|context|custom|endable|false|from|globaldata|h|m|ms|null|operationdata|raf|s|timeline|true|using|video. 'context' does not appear in eligian.langium. The grammar's other keywords are missing from the regex: if, else, for, in, const, break, continue, import, layout, styles, provider, locales, library, private, languages, on, event, topic, sequence, stagger, with, click, navigate, scope, as, html, css, media, plus the type names string, number, boolean, object, array. The file has no number, operator or `$`/`@` reference scopes, and no SemanticTokenProvider exists in language/src or extension/src to make up for it, so these words really are not highlighted.
 
 ### Test files are excluded from every tsconfig and currently hold 277 type errors that nothing catches
+
+- **Status:** ✅ Fixed in `c7a75df`
 
 - **Location:** [tsconfig.json:22](../../tsconfig.json#L22)
 - **Category:** test-gap
@@ -1420,6 +1577,8 @@ Verifier: The root tsconfig.json excludes `**/__tests__/**/*` and `**/__fixtures
 
 ### HTML import load failures are swallowed with console.error and the reference compiles to a never-set $globaldata variable
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/compiler/constant-folder.ts:76](../../packages/language/src/compiler/constant-folder.ts#L76)
 - **Category:** robustness
 - **Description:** A failure to resolve or read an HTML import is caught, logged and ignored, with the comment 'transformer will catch missing constants'. The transformer does not catch it. The scope provider links `@name` to the NamedImport node, whose `$container` is the Program, so expression-transformer falls through to `` return `$globaldata.${varName}` ``, which nothing ever sets. The asset validator skips in-memory and '/memory/' documents, so this path is reachable (compile(source) without a sourceUri, or a project path containing /memory/).
@@ -1440,6 +1599,8 @@ Verifier: The scenario is real but narrower than the reviewer says. On the real 
 
 ### Code-snippet caret is shifted one column to the right
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/compiler/error-reporter.ts:224](../../packages/language/src/compiler/error-reporter.ts#L224)
 - **Category:** bug
 - **Description:** `location.column` is 1-based (getSourceLocation and extractDocumentErrors add 1), but the caret padding adds `location.column` as if it were a 0-based offset, so the underline starts one character late.
@@ -1456,6 +1617,8 @@ const padding = ' '.repeat(prefix.length + String(lineNum).length + 3 + location
 Verifier: Each snippet line is rendered as `${prefix}${lineNum} | ${line}`, so the source text starts at offset prefix.length + digits + 3, and a 1-based column c is at that offset + (c-1). The padding adds `+ location.column`, which puts the caret at column c+1. Every producer of the column is 1-based: source-location.ts:21 uses `character + 1`, document-errors.ts:81 uses `start.character + 1`, and the Chevrotain lexer column and token.startColumn are 1-based. error-reporter.spec.ts only checks `toContain('^')`, so no test pins the offset. This is a purely cosmetic off-by-one.
 
 ### compileToIR drops sourceUri and assets and skips the library-file check that compile() performs
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/compiler/pipeline.ts:185](../../packages/language/src/compiler/pipeline.ts#L185)
 - **Category:** inconsistency
@@ -1476,6 +1639,8 @@ Verifier: pipeline.ts:185 calls `parseSource(source)` without `options.sourceUri
 
 ### parseSource claims to remove documents from the workspace but never does, so documents accumulate in the shared index
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/compiler/pipeline/parser.ts:46](../../packages/language/src/compiler/pipeline/parser.ts#L46)
 - **Category:** performance
 - **Description:** The doc comment says documents are removed after parsing to prevent memory leaks. No such cleanup exists: DocumentBuilder.build indexes each built document in the singleton IndexManager, and nothing removes it. Library documents are also re-added with addDocument and never deleted. Programmatic compiles without a uri use a fresh `file:///memory/source-N.eligian` each time (`documentCounter++`), so every call adds a permanent entry.
@@ -1494,6 +1659,8 @@ const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
 Verifier: The doc comment (parser.ts:41-44) says documents are removed after parsing, but no cleanup exists anywhere in language/src or cli/src. A search for deleteDocument, IndexManager.remove and DocumentBuilder.update finds only the delete-then-re-add at library-loader.ts:140. In Langium, DocumentBuilder.build runs IndexManager.updateContent, which stores an entry in symbolIndex keyed by URI. Calls without a uri generate `` `file:///memory/source-${documentCounter++}` ``, so every programmatic compile adds a permanent index entry. One correction: library documents do not accumulate, because they reuse the same URI, are deleted and re-added, and updateContent overwrites the same key. The same holds for CLI compiles with a fixed sourceUri. So growth is limited to anonymous compiles (tests, embedders) and their stale exports, which remain in the global index. That is a real but minor issue.
 
 ### Synthetic navigate action names collide for distinct targets, so clicks go to the wrong timeline
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/compiler/transformers/navigate-operations.ts:42](../../packages/language/src/compiler/transformers/navigate-operations.ts#L42)
 - **Category:** bug
@@ -1515,6 +1682,8 @@ Verifier: syntheticNavActionName slugifies the target lossily: it lowercases, an
 
 ### hasOperation uses `in`, so names like toString/constructor crash validators and the transformer
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/compiler/operations/index.ts:94](../../packages/language/src/compiler/operations/index.ts#L94)
 - **Category:** robustness
 - **Description:** `name in OPERATION_REGISTRY` is true for inherited Object.prototype members. validateOperationExists then treats `toString`, `constructor`, `valueOf`, `hasOwnProperty` and the like as real operations. `getOperationSignature`/`OPERATION_REGISTRY[name]` returns a function, and the next `signature.parameters.filter`/`signature.dependencies` access throws a TypeError. The validators and name-resolver share the same lookup.
@@ -1533,6 +1702,8 @@ export function hasOperation(name: string): boolean {
 Verifier: operations/index.ts:43 builds OPERATION_REGISTRY as a plain object literal, so hasOperation's `name in OPERATION_REGISTRY` is true for Object.prototype members (toString, constructor, valueOf, hasOwnProperty...). getOperationSignature (line 79) and validator.ts:77 index the registry directly and return the inherited function. Callers include operation-existence-validator:126, parameter-validator:143/179/216, action-validator:32/330, import-validator:228 and name-resolver:98. They then read signature.parameters/dependencies on a function, which crashes validators (Langium reports 'An error occurred during validation') and the transformer. action-validator:32 would also wrongly report that an action named `toString` collides with an operation. The bug is real, but it only triggers on Object.prototype member names, which users rarely type, so low severity.
 
 ### Event action operations skip dependency validation that normal actions get
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/compiler/transformers/action-transformer.ts:166](../../packages/language/src/compiler/transformers/action-transformer.ts#L166)
 - **Category:** inconsistency
@@ -1553,6 +1724,8 @@ for (const opIR of operationIRs) {
 Verifier: transformActionDefinition (action-transformer.ts:94-100) and timeline-transformer.ts:652-657 both call validateOperationSequence. transformEventAction (action-transformer.ts:132-205), which ast-transformer.ts:194 calls, never does. The Langium validator's dependency check (parameter-validator.ts checkDependencies) is commented out in eligian-validator.ts:148-149 (TODO T216), so nothing else checks event action bodies. The scenario holds: an event action that calls addClass without selectElement compiles. Every valid event-action fixture starts with selectElement, so adding the check will not break them.
 
 ### generateLayoutTemplate emits duplicate ids and mangles compound selectors
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/compiler/transformers/config-builder.ts:127](../../packages/language/src/compiler/transformers/config-builder.ts#L127)
 - **Category:** bug
@@ -1578,6 +1751,8 @@ Verifier: config-builder.ts:127-151 maps each timeline to its own div with no de
 
 ### Floating-point accumulation leaks into emitted times and action names
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/compiler/transformers/timeline-transformer.ts:361](../../packages/language/src/compiler/transformers/timeline-transformer.ts#L361)
 - **Category:** robustness
 - **Description:** ms values are converted by division (`value / 1000`), and stagger start times are computed as `previousEventEndTime + i * delay` in floating point. The raw result is written to the config and into the action name, so values like 0.30000000000000004 appear.
@@ -1595,6 +1770,8 @@ const endTime = startTime + duration;
 Verifier: time-transformer.ts:82 converts ms with `value / 1000`. Both stagger forms in timeline-transformer.ts compute `previousEventEndTime + i * delay` and write the raw number into duration.start and the action name. In node, `0 + 3*(100/1000)` gives 0.30000000000000004, so the reported output is real. The effect is mostly cosmetic, and engine boundary comparisons are a minor risk at most, so low is the right severity.
 
 ### hasOperation uses `in` on a plain object, so prototype names (toString, constructor, hasOwnProperty, valueOf) count as operations and crash the operation-call validators
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/compiler/operations/index.ts:94](../../packages/language/src/compiler/operations/index.ts#L94)
 - **Category:** bug
@@ -1614,6 +1791,8 @@ export function hasOperation(name: string): boolean {
 Verifier: OPERATION_REGISTRY (compiler/operations/index.ts:43) is a plain object literal spread from the generated registry, so `name in OPERATION_REGISTRY` is true for inherited Object.prototype keys. Reproduced: `action b() [ toString() ]` produces 5 'An error occurred during validation' diagnostics ('signature.dependencies is not iterable', 'reading filter', and 'reading length' three times) and no 'unknown operation' message. `action toString() [...]` reports the false error 'name conflicts with built-in operation' and also hits the same crashes. The bug is real, but it only fires for Object.prototype names (toString, constructor, valueOf, hasOwnProperty, ...), which users rarely pick as action or operation names, so low fits better than medium.
 
 ### LibraryImport validators crash when the import path is missing (partial AST while typing)
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/validators/import-validator.ts:87](../../packages/language/src/validators/import-validator.ts#L87)
 - **Category:** robustness
@@ -1635,6 +1814,8 @@ Verifier: resolveLibraryPath (compiler/pipeline/library-loader.ts:77) calls `imp
 
 ### Control-flow pairing only inspects top-level operations, so raw when/forEach inside if/for bodies are never checked
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/validators/action-validator.ts:187](../../packages/language/src/validators/action-validator.ts#L187)
 - **Category:** bug
 - **Description:** validateControlFlowPairingForOps filters `operations` to direct OperationCall children and never recurses into IfStatement.thenOps/elseOps or ForStatement.body. A raw unpaired `when(...)`/`forEach(...)` nested in a block is not detected, although the same call at top level is. Reproduced.
@@ -1653,6 +1834,8 @@ const operationNames = operations
 Verifier: validateControlFlowPairingForOps (action-validator.ts:186-189) filters to top-level OperationCall nodes and never descends into IfStatement.thenOps/elseOps or ForStatement.body. That differs from collectOperationCallsFromStatements and validateOperationSequence, which both recurse. An unclosed raw `when()` inside an if body is therefore never checked; the if itself compiles to a when/endWhen pair, so the emitted sequence ends up unbalanced. It also produces false positives: a top-level `when()` followed by an `endWhen()` inside an if body is reported as unclosed. Real, but it needs raw when/forEach calls mixed with if/for sugar, which is unusual, so low severity.
 
 ### Library files miss import validations: circular library imports, import/local name collisions, and duplicate imports
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/eligian-validator.ts:111](../../packages/language/src/eligian-validator.ts#L111)
 - **Category:** bug
@@ -1674,6 +1857,8 @@ Verifier: The Library checks are only checkLibraryContent and checkLibraryDuplic
 
 ### checkEventArgumentCount messages are inverted and warn on the benign case of declaring fewer parameters than the event supplies
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/validators/event-action-validator.ts:221](../../packages/language/src/validators/event-action-validator.ts#L221)
 - **Category:** inconsistency
 - **Description:** When the action declares fewer parameters than the event provides, the extra arguments are simply dropped, yet the warning claims 'Missing arguments may be undefined at runtime'. When it declares more, the extra parameters are the ones that are undefined, but the message says 'Extra parameters will be ignored'. The first case should not warn at all. Reproduced.
@@ -1692,6 +1877,8 @@ if (actualParamCount < expectedArgCount) {
 Verifier: event-action-validator.ts:211-238 warns whenever the counts differ. action-transformer.ts:119/150 and expression-transformer.ts:160 map parameters to `$operationData.eventArgs.<n>` by index. So when an action declares fewer parameters than the event supplies, the trailing args are never read, which is harmless; when it declares more, the extra parameters resolve to undefined. The messages say the opposite: 'Missing arguments may be undefined' fires on the harmless case, and 'Extra parameters will be ignored' fires on the case that yields undefined. The text was copied verbatim from specs/029 data-model.md, so the spec has the same error. It is still a real false or misleading warning on a common pattern (a handler that ignores its args).
 
 ### checkRecursiveActionCalls reports the same cycle multiple times, once per action that can reach it
+
+- **Status:** ✅ Already fixed by an earlier commit on this branch (regression test added in `e6b5c32`)
 
 - **Location:** [packages/language/src/validators/action-validator.ts:59](../../packages/language/src/validators/action-validator.ts#L59)
 - **Category:** bug
@@ -1712,6 +1899,8 @@ const callChain: string[] = [action.name];
 Verifier: Traced action-validator.ts:59-118 for a→b, b→c, c→b. Validating a: chain [a,b,c], c calls b, which is in the chain, so it reports on the b() node in c. Validating b: chain [b,c], so it reports on the same b() node with a different chain string. Validating c: chain [c,b], so it reports on c() in b. That is 3 errors for one cycle, two of them on one node, and Langium does not dedupe diagnostics. The rule is registered for both regular and endable actions (eligian-validator.ts:159,166). Upstream actions that are not in the cycle (a) still report it.
 
 ### Partial-AST handling produces misleading or contradictory diagnostics (empty languages block, missing event name, navigate target 'undefined')
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/validators/languages-validator.ts:20](../../packages/language/src/validators/languages-validator.ts#L20)
 - **Category:** robustness
@@ -1735,6 +1924,8 @@ Verifier: Event name: the grammar is `'on' 'event' eventName=STRING?` (eligian.l
 
 ### checkAssetLoading skips asset validation for any file whose path contains /memory/ or is named N.eligian
 
+- **Status:** ✅ Already fixed by an earlier commit on this branch (regression test added in `e6b5c32`)
+
 - **Location:** [packages/language/src/validators/program/asset-import-validator.ts:75](../../packages/language/src/validators/program/asset-import-validator.ts#L75)
 - **Category:** bug
 - **Description:** Production code detects test documents by path heuristics. A real user project under a directory named `memory`, or a file literally named `1.eligian`, silently loses all asset-existence, HTML and CSS validation, with no diagnostic that validation was skipped.
@@ -1754,6 +1945,8 @@ Verifier: asset-import-validator.ts:70-78 skips all asset loading when the filen
 
 ### Cyclic or self-referencing consts crash inference with an uncaught Typir recursion error
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:282](../../packages/language/src/type-system-typir/eligian-type-system.ts#L282)
 - **Category:** robustness
 - **Description:** VariableDeclaration returns `varDecl.value` and VariableReference returns `decl`, so Typir recurses through declaration, value, reference and back. The scope provider makes every program-level const visible regardless of order, including to itself, and no validator detects const cycles. Typir's `inferType` throws on a pending node instead of returning a problem, and does not clear the pending flag when it throws. The flag stays set until the document cache is cleared, so later inferences of that node throw again.
@@ -1772,6 +1965,8 @@ Verifier: Reproduced: `const a = @b; const b = @a`, and also `const a = @a`, use
 
 ### Arity mismatch on timeline action calls is reported twice, and the Typir copy is a long nested message
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:462](../../packages/language/src/type-system-typir/eligian-type-system.ts#L462)
 - **Category:** inconsistency
 - **Description:** ParameterValidator.checkParameterCount already reports `Action 'foo' expects N argument(s) but got M` for local and imported actions. The Typir call validation (`validateArgumentsOfFunctionCalls: true`) independently reports the same wrong count as 'The given operands for the call of ... don't match -> ... The number of given parameter values does not match...', with sub-problems that name the Typir signature `foo(a: any, b: any): ($return: any)`.
@@ -1788,6 +1983,8 @@ validateArgumentsOfFunctionCalls: true, // Enable type checking for action calls
 Verifier: Reproduced: `action foo(a, b)` with `at 0s..3s foo(1)` gives two errors on the same line: "Action 'foo' expects 2 argument(s) but got 1. Expected: a, b" from ParameterValidator, and a nested Typir message that exposes 'foo(a: any, b: any): ($return: any)'. This is real but cosmetic: one mistake, two diagnostics, one of them in internal wording. Nothing is wrongly accepted or rejected, so low rather than medium.
 
 ### Unresolved references infer as the Top type, producing a second, misleading error/warning that names the type 'any'
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:293](../../packages/language/src/type-system-typir/eligian-type-system.ts#L293)
 - **Category:** inconsistency
@@ -1808,6 +2005,8 @@ Verifier: Both cases reproduced with a diagnostics dump. `const c = @zzz` plus `
 
 ### Typir call validation infers arguments for every built-in operation rule on every OperationCall, and the per-operation function types are never used for checking
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:243](../../packages/language/src/type-system-typir/eligian-type-system.ts#L243)
 - **Category:** performance
 - **Description:** A function type with an inference rule is created for each of the 79 registry operations, all with `validateArgumentsOfFunctionCalls: false` and output type Top. Typir's `FunctionCallArgumentsValidation.validation` iterates all overload groups (79 operations plus every action in the workspace). For the matching rule, `executeSingleRule` runs `inferType` on every argument and `checkTypes` before it looks at `validateArgumentsOfFunctionCalls`. So each built-in operation call infers all of its arguments and then discards the result, and each OperationCall also scans every function group. `mapParameterTypeToTypirType` (including the 'first type only' simplification at lines 228-236) therefore has no observable effect.
@@ -1826,6 +2025,8 @@ Verifier: Checked typir/lib/kinds/function/function-validation-calls.js. `valida
 
 ### No tests cover action-call argument type checking from timelines, time units/relative times, or const cycles
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/type-system-typir/eligian-type-system.ts:400](../../packages/language/src/type-system-typir/eligian-type-system.ts#L400)
 - **Category:** test-gap
 - **Description:** `createActionFunctionType`, its context-dependent `matching` (stagger skip, action body skip, timeline-only) and `validateArgumentsOfFunctionCalls: true` have no dedicated spec. The existing typir-event-validation spec has no test for m/h units or relative times, and the reference-cycle path in the Variable/Parameter inference rules is untested. Even basic tests would have caught the bugs above.
@@ -1842,6 +2043,8 @@ validateArgumentsOfFunctionCalls: true, // Enable type checking for action calls
 Verifier: The finding is partly overstated. Action-call argument typing does have tests: `__tests__/action-type-validation.spec.ts` parses a timeline that calls `test(123)` against `action test(name: string)` and asserts a number/string mismatch, so the basic `createActionFunctionType` / `validateArgumentsOfFunctionCalls` path is covered. The stagger skip is covered too: `__tests__/stagger-validation.spec.ts` tests the arity of `with action()` for 1- and 2-parameter actions. The other gaps are real. (1) No spec covers null args, unary/binary expressions, `$globaldata` property chains, InlineEndableAction contexts or same-named actions in two documents. (2) Time units and relative times: typir-event-validation.spec.ts only uses s/ms (`0s - 1s..5s`, `5s..2s`), and the `+0s..+5s` tests in compiler/__tests__/transformer.spec.ts only exercise transformAST, not validation. These gaps hide real bugs: extractTimeValue converts only 'ms' and treats every other unit as seconds, so `at 30s..1m` gives 30 vs 1 and wrongly triggers the end<=start error, and it returns 0 for RelativeTimeLiteral (there is a TODO), so `at +0s..+5s` gives 0..0 and wrongly triggers 'end time (0s) must be greater than start time (0s)'. utils/__tests__ has only asset-type-inferrer.spec.ts and no time-expression spec. (3) Const cycles: the VariableDeclaration/VariableReference inference rules (eligian-type-system.ts lines ~282-300) recurse with no cycle guard, and no spec contains a self-referencing or mutually referencing const; the only `const X = @Y` cases in specs are acyclic compiler tests. So it is a genuine test gap, but 'no dedicated spec' is wrong for the basic and stagger action-call cases.
 
 ### Aliased/duplicate imports of the same action leave the second name unresolved
+
+- **Status:** ✅ Already fixed by an earlier commit on this branch (regression test added in `e6b5c32`)
 
 - **Location:** [packages/language/src/eligian-scope-provider.ts:241](../../packages/language/src/eligian-scope-provider.ts#L241)
 - **Category:** bug
@@ -1865,6 +2068,8 @@ Verifier: getActionNameForScope returns the first alias whose `actionImport.acti
 
 ### Block label bracket detection takes the first four '[' / ']' tokens in the whole node, so array literals corrupt positions
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/lsp/block-labels.ts:126](../../packages/language/src/lsp/block-labels.ts#L126)
 - **Category:** bug
 - **Description:** extractBracketPositions streams every leaf CST token of the endable node, including brackets that belong to array literals or other expressions inside the start block, and then assumes the first four brackets are the block delimiters.
@@ -1887,6 +2092,8 @@ Verifier: extractBracketPositions streams every leaf CST token under the endable
 
 ### JSDoc @param parsing drops multi-line descriptions and silently drops optional or nested-brace types
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/jsdoc/jsdoc-parser.ts:134](../../packages/language/src/jsdoc/jsdoc-parser.ts#L134)
 - **Category:** bug
 - **Description:** The regex `(?:\s+(.+))?` stops at the first newline, because `.` does not match line breaks, so continuation lines of a description are cut off. `@param [opt] ...` (optional syntax) and `{{a: string}}` do not match, and the whole param is dropped from the hover. A description starting with `- ` (the common `@param x - text` style) renders as `- - text`. The `{type}` text is inserted inside backticks without escaping in jsdoc-formatter.ts, so a backtick in a type breaks the markdown.
@@ -1904,6 +2111,8 @@ Verifier: Langium 4.2.4's JSDocParagraph.toString joins lines with '\n'. The reg
 
 ### buildLabelIDHover can never match: label-ID parameter type does not exist in the registry and the CST comparison is broken
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/hover/hover-builders.ts:383](../../packages/language/src/hover/hover-builders.ts#L383)
 - **Category:** bug
 - **Description:** No operation in registry.generated.ts has a `ParameterType:labelId` parameter, so labelIDParamIndices is always empty and the function returns undefined. Even if one existed, the match `findLeafNodeAtOffset(arg.$cstNode, 0) === node.$cstNode` is wrong: offset 0 is an absolute document offset and the right-hand side is a composite node, so the equality is never true. The feature has no test.
@@ -1920,6 +2129,8 @@ if (arg.$cstNode && CstUtils.findLeafNodeAtOffset(arg.$cstNode, 0) === node.$cst
 Verifier: Counting the `ParameterType:*` values in registry.generated.ts shows none of them is labelId, so labelIDParamIndices is always empty, and buildLabelIDHover (called from eligian-hover-provider.ts:110 on every hover) always returns undefined. The matching check is also wrong: `findLeafNodeAtOffset(arg.$cstNode, 0)` looks up absolute document offset 0 and compares it with `node.$cstNode`, the composite CST node of the hovered AST node, so it would never be true. No spec references this builder. Users lose nothing, though: label-ID hover already works through buildControllerHover, whose `addController('LabelController', '<id>')` branch (hover-builders.ts, paramIndex === 1) shows the translation-key metadata. So this is dead code, not a missing feature.
 
 ### Hover for `locales "..."` default import shows `Import<media>`
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/hover/hover-builders.ts:293](../../packages/language/src/hover/hover-builders.ts#L293)
 - **Category:** bug
@@ -1939,6 +2150,8 @@ Verifier: The grammar defines DefaultImport `type=('layout' | 'styles' | 'provid
 
 ### OperationDataTracker erase tracking is dead: 'removed' history is never recorded, so the 'erased-property-access' diagnostic is unreachable
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/operation-data-tracker.ts:107](../../packages/language/src/operation-data-tracker.ts#L107)
 - **Category:** test-gap
 - **Description:** No code path pushes an entry with action 'removed', so findErasurePoint always returns undefined, and the validator's erased-property-access error branch can never fire. clone() and merge() have no unit tests, and the only spec that exercises the tracker is a single happy-path case in validation.spec.ts.
@@ -1957,6 +2170,8 @@ findErasurePoint(propertyName: string): { operation: string } | undefined {
 Verifier: In operation-data-tracker.ts only `action: 'added'` entries are ever pushed to history (in processOperation; clone and merge just copy). So findErasurePoint always returns undefined, and the erased-property-access branch in action-validator.ts validateOperationSequence (around line 339) can never run. merge() is never called anywhere: the IfStatement branch validates each branch on clone() and drops the result. No spec tests the tracker on its own. The practical impact is small. Dependencies (for example selectedElement) are outputs that are never erased, and erased parameters are deliberately never added (erased params are intended in Eligius), so the validator's missing-dependency message ('ensure it is created by a previous operation') is roughly right in any realistic case. This is dead code plus a test gap, not a user-visible wrong diagnostic.
 
 ### Inclusive end-offset comparisons offer HTML completions with the cursor outside the string or object
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/html/context-detection.ts:93](../../packages/language/src/html/context-detection.ts#L93)
 - **Category:** bug
@@ -1979,6 +2194,8 @@ Verifier: `$cstNode.end` is exclusive and the checks use `offset <= end`. Runnin
 
 ### `script` element and `srcdoc` attribute are suggested although createElement refuses them at runtime
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/completion/html-elements.generated.ts:99](../../packages/language/src/completion/html-elements.generated.ts#L99)
 - **Category:** inconsistency
 - **Description:** Eligius createElement throws for elementName `script`, and assertSafeAttribute throws for `srcdoc` and `on*` attributes. The metadata lists 'script' in HTML_ELEMENT_NAMES (line 99) and `srcdoc` for iframe (line 871).
@@ -1997,6 +2214,8 @@ Verifier: `$cstNode.end` is exclusive and the checks use `offset <= end`. Runnin
 Verifier: Checked node_modules/eligius/dist/configuration-api.d.mts (createElement docs, around line 2362) and index.mjs. Eligius refuses `script` elements ('configuration may not create scripts') and `on*`/`srcdoc` attributes ('Event handler (on*) and srcdoc attributes are refused'). html-elements.generated.ts lists 'script' at line 99, a 'script' attribute table at line 1342, `srcdoc` for iframe at line 871, and `onenterpictureinpicture`/`onleavepictureinpicture` at lines 1785-1786. Outside the generated file and tests, no Eligian validator mentions 'script' or 'srcdoc', so nothing stops this at compile time. The IDE suggests values that are guaranteed to fail at runtime. The impact is small because the runtime error is explicit.
 
 ### Cursor at the opening quote of the first createElement argument yields an empty list because substring() swaps its arguments
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/html/context-detection.ts:241](../../packages/language/src/html/context-detection.ts#L241)
 - **Category:** bug
@@ -2017,6 +2236,8 @@ return argText.substring(openQuoteIndex + 1, endPos);
 Verifier: detectHTMLCompletionContext accepts the ElementName branch when `offset >= argStart`, so a cursor just before the opening quote qualifies. In extractPartialText, openQuoteIndex is 0, so relativeOffset = offset - argStart - 0 - 1 = -1 and endPos = min(0, close) = 0. substring(1, 0) then swaps its arguments and returns the quote character. getElementNameCompletions filters with `name.includes('"')`, which matches nothing, and handleHtmlCompletion still returns 'done', so the fallback completions are suppressed as well. The bug is real, but it only hits a cursor placed before the quote, where an element-name completion is of little use anyway.
 
 ### Custom-action completion items (with markdown) are rebuilt by a full AST walk on every completionFor call; the documented WeakMap cache does not exist
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/eligian-completion-provider.ts:128](../../packages/language/src/eligian-completion-provider.ts#L128)
 - **Category:** performance
@@ -2039,6 +2260,8 @@ Verifier: The header comment in completion/actions.ts (lines 16-17) claims a per
 
 ### Event-name completion's main textEdit lies inside the range deleted by additionalTextEdits (overlapping edits)
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/completion/event-completion-handler.ts:97](../../packages/language/src/completion/event-completion-handler.ts#L97)
 - **Category:** robustness
 - **Description:** The LSP specification requires additionalTextEdits not to overlap the main edit. Here the main textEdit range (the string content) is a subset of the delete range [actionStart, actionEnd], and the skeleton insert shares the delete's start position. The result depends on the client: VS Code may reject or misapply the edits, and other LSP clients may fail outright. The snippet placeholders are also stripped with `/\$\d+/g`, so the skeleton is inserted as plain text without cursor placement.
@@ -2060,6 +2283,8 @@ Verifier: In event-completion-handler.ts lines 97-113, the main textEdit (string
 
 ### HTMLRegistryService.hasImport is keyed by document only, so changing or re-adding a layout import is never re-announced; documents are never cleared
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/html/html-registry.ts:106](../../packages/language/src/html/html-registry.ts#L106)
 - **Category:** robustness
 - **Description:** The extension's processImports computes `isNewImport = !hasImport(documentUri)` before registerImports overwrites the mapping. A document that switches from layout1.html to layout2.html is therefore not 'new', no HTML_IMPORTS_DISCOVERED notification is sent, and the file watcher keeps watching the old file. clearDocument is never called for HTML (only the CSS registry is cleared in the parser pipeline). Removing the import leaves the stale mapping, and htmlByFile entries are never pruned by clearDocument.
@@ -2079,6 +2304,8 @@ hasImport(documentUri: string): boolean {
 Verifier: In extension/src/language/import-processor.ts:104-106, `isNewImport = !hasImport(documentUri)` is computed before registerImports, and HTMLRegistryService.hasImport (html-registry.ts:106) checks only the document key. Switching `layout "./a.html"` to `"./b.html"` therefore sends no HTML_IMPORTS_DISCOVERED notification. That notification is the only thing that calls validationHTMLWatcher.registerImport (extension/src/extension/main.ts:102-107). BaseWatcherManager.handleFileChange ignores files outside trackedFiles, so edits to b.html do not trigger revalidation while the document stays mapped to a.html in the watcher. The LSP-side registry is still re-read on every rebuild of the .eligian document, which limits the damage to hot reload and revalidation triggered by the HTML file. clearDocument for HTML is never called (grep finds no callers), and processImports never clears the mapping when the layout import is removed, so getHTMLForDocument keeps returning stale content. The labels registry follows the same pattern (main.ts:234) and has the same defect.
 
 ### Object-literal attribute keys given as strings (data-*, aria-*) get no completions and the metadata contains no such attributes
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/html/context-detection.ts:99](../../packages/language/src/html/context-detection.ts#L99)
 - **Category:** bug
@@ -2100,6 +2327,8 @@ Verifier: The grammar allows `key=(ID | STRING)` (eligian.langium:771). When the
 
 ### No tests for handler-level HTML and event completion boundaries, whitespace cursor positions or event-body strings
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/html/__tests__/context-detection.spec.ts:158](../../packages/language/src/html/__tests__/context-detection.spec.ts#L158)
 - **Category:** test-gap
 - **Description:** The HTML context tests compute the offset as `indexOf(operationName) + operationName.length + 2` or `indexOf(text) + text.length`. These are always cursor positions on a token, never whitespace or immediately after a closing delimiter, and they do not go through the real completion provider. context.spec.ts tests isInEventNameString only on single-line headers. There is no spec for html-completion-handler.ts or event-completion-handler.ts.
@@ -2117,6 +2346,8 @@ Verifier: html/__tests__/context-detection.spec.ts computes offsets with indexOf
 
 ### parseCSS drops every class/ID on any CSS syntax error, so each class use in .eligian is flagged unknown
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/css/css-parser.ts:90](../../packages/language/src/css/css-parser.ts#L90)
 - **Category:** robustness
 - **Description:** `postcss.parse` throws on the first syntax error (an unclosed block, a stray `}`, a `//` comment). The catch block returns empty class/ID sets with one error. The registry is overwritten with that empty metadata on every CSS_UPDATED notification, and the unknown-class check only consults `getClassesForDocument`, never `hasErrors`. The spec 'should return empty classes/IDs when CSS has fatal syntax error' pins this behaviour.
@@ -2133,6 +2364,8 @@ const root: Root = postcss.parse(cssContent, { from: filePath }); ... } catch (e
 Verifier: parseCSS wraps postcss.parse in try/catch. On a CssSyntaxError (for example an unclosed block) it returns empty class and ID sets plus one error. The extension's Parsed-phase handler and its CSS_UPDATED handler (extension/src/language/main.ts) write that result into the registry. CssParameterValidator, reportSelectorIssues, timeline-validator and navigate-validator only call getClassesForDocument/getIDsForDocument and never check hasErrors, so every class or ID use is flagged unknown, with no suggestions because the set is empty. The scenario is real. However, re-parsing happens on file save through the file watcher, not on every keystroke; the root cause is also reported at the import (validateCSSFileErrors); and the behaviour is deliberate and pinned by a spec. This is noisy follow-on diagnostics rather than incorrect output, so low severity.
 
 ### setNestedValue allows prototype pollution through dotted translation keys such as `__proto__.x`
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/labels/label-entry-generator.ts:34](../../packages/language/src/labels/label-entry-generator.ts#L34)
 - **Category:** security
@@ -2152,6 +2385,8 @@ Verifier: Traced the path: label-entry-creator.ts:221 calls `mergeLocaleEntry(lo
 
 ### extractTranslationKeys is not guarded against non-object locale entries (bogus numeric keys, or a throw)
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/locales/translation-key-extractor.ts:51](../../packages/language/src/locales/translation-key-extractor.ts#L51)
 - **Category:** robustness
 - **Description:** Both LSP callers (checkLocalesImports, ensureLabelsImportsRegistered) only run JSON.parse before extractTranslationKeys, never the schema. Any entry that is not a plain object is passed straight to `Object.entries`. A string value yields one key per character ('0','1',...), an array yields index keys, and null throws. Confirmed: `{'en-US':'oops'}` returns ids '0'..'3'.
@@ -2168,6 +2403,8 @@ const keys = extractKeysFromLocaleData(localeEntry as TLocaleData, '');   // no 
 Verifier: asset-import-validator.ts:265-269 (checkLocalesImports) and label-parameter-validator.ts:258-260 (ensureLabelsImportsRegistered) both call JSON.parse and then extractTranslationKeys, with no validateLocalesJSON step. The main.ts notification handlers do validate, but these validators overwrite the registry. `isLocaleReference('Hello')` returns false, so `Object.entries('Hello')` produces keys '0' to '4', and an array produces index keys. For null, Object.entries throws a TypeError, which is caught and shown as the generic 'Failed to parse locales file: Cannot convert undefined or null to object' warning in checkLocalesImports and silently ignored in the label validator. The compile path (compiler-integration.ts:219) does run the schema, so a bad file still fails at compile time. The impact is limited to misleading IDE validation for a file that is already malformed, so low is right.
 
 ### CLASS_NAME/SELECTOR_OPERATIONS list operations that do not exist in Eligius and omit ones that do
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/css/css-operations.ts:18](../../packages/language/src/css/css-operations.ts#L18)
 - **Category:** inconsistency
@@ -2186,6 +2423,8 @@ export const SELECTOR_OPERATIONS = new Set(['selectElement','selectElements','qu
 Verifier: css-operations.ts lists hasClass, selectElements, querySelector and querySelectorAll. In registry.generated.ts, ParameterType:className appears only on addClass, animateWithClass, removeClass and toggleClass, and ParameterType:selector only on reparentElement and selectElement. Eligius' src/operation dir has add-class, animate-with-class, remove-class, select-element and toggle-class, and no hasClass or querySelector*. context-detection.ts and hover-detection.ts are the only consumers, so animateWithClass and reparentElement get no CSS completion or hover, and the four extra names are dead.
 
 ### getHTMLImports ignores an explicit `as` type and is case-sensitive, disagreeing with inferAssetType
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/utils/program-helpers.ts:96](../../packages/language/src/utils/program-helpers.ts#L96)
 - **Category:** inconsistency
@@ -2206,6 +2445,8 @@ Verifier: program-helpers.getHTMLImports (line 96) and eligian-scope-provider.ge
 
 ### isOffsetInStringLiteral returns true when the cursor sits between two separate strings on one line
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/utils/string-utils.ts:26](../../packages/language/src/utils/string-utils.ts#L26)
 - **Category:** bug
 - **Description:** The function takes the nearest quote before the offset and the nearest matching quote after it, without tracking whether quotes are open or closed. The closing quote of one string and the opening quote of the next satisfy this. It is used by CSS completion context detection.
@@ -2223,6 +2464,8 @@ Verifier: The algorithm does not track whether quotes are open or closed. string
 
 ### No tests for label-entry-generator (mergeLocaleEntry/generateLocaleEntry) or for rewriteUrls edge cases
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/labels/label-entry-generator.ts:89](../../packages/language/src/labels/label-entry-generator.ts#L89)
 - **Category:** test-gap
 - **Description:** mergeLocaleEntry and generateLocaleEntry write to user locale files, but no spec references them. The only rewriteUrls specs cover plain relative paths, http/data URLs and Windows backslashes. The defects reported above (`$ref` overwrite, `__proto__` keys, fragment/query/percent-encoded URLs, `@import`) are all uncovered.
@@ -2239,6 +2482,8 @@ export function mergeLocaleEntry(existing: ILocalesConfiguration, translationKey
 Verifier: No `*.spec.ts` in packages/ imports label-entry-generator, mergeLocaleEntry or generateLocaleEntry. The only references are language/src/index.ts, the generated out/*.d.ts and extension/src/extension/label-entry-creator.ts, and there is no labels/__tests__ directory. These functions build the content the extension writes to user locale JSON files, so the test gap is real. The specific defects this finding cites (`$ref` overwrite, `__proto__`, URL edge cases) belong to other findings and were not re-checked here.
 
 ### Media timeline source (video/audio) is not copied into the bundle and is used as the HTML page title
+
+- **Status:** ✅ Fixed in `e6b5c32` (partial), completed in `c47f7bd`
 
 - **Location:** [packages/cli/src/bundler/index.ts:69](../../packages/cli/src/bundler/index.ts#L69)
 - **Category:** bug
@@ -2259,6 +2504,8 @@ Verifier: The code does what the finding says. timeline-transformer.ts sets `uri
 
 ### Temp directory leaks when runtime bundling (or any later step) fails; most I/O failures drop the underlying cause
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/cli/src/bundler/index.ts:149](../../packages/cli/src/bundler/index.ts#L149)
 - **Category:** robustness
 - **Description:** mkdtemp creates eligian-bundle-* in the OS temp dir. The only fs.rm runs after bundleRuntime succeeds, so an esbuild failure (for example an unresolvable 'eligius' import) returns early and the directory is never removed. Separately, the write and copy catch handlers (`catch: () => new BundleError('Failed to write bundle.js')`, 'Failed to copy asset: ...') ignore the thrown error, so EACCES, ENOSPC and similar errors look the same.
@@ -2277,6 +2524,8 @@ yield* Effect.tryPromise({ try: () => fs.rm(tempDir, ...) ...
 Verifier: The temp dir is created with mkdtemp at index.ts:149, and fs.rm runs only after bundleRuntime succeeds. If findNodeModulesPaths or bundleRuntime fails, the Effect stops early and the directory stays. The leak is worse than an empty dir: runtime-bundler.ts writes entry-`<ts>`.js, containing the full embedded config, into tempDir before esbuild runs, and its unlink also runs only after esbuild succeeds, so on an esbuild failure the entry file stays behind too. The second half also holds: the catch handlers for mkdir, writeFile and copyFile in index.ts ignore the error argument and drop the errno.
 
 ### --verbose messages go to stdout and corrupt JSON when output is '-'
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/cli/src/main.ts:117](../../packages/cli/src/main.ts#L117)
 - **Category:** bug
@@ -2299,6 +2548,8 @@ Verifier: compileFileCLI calls console.log for 'Compiling ...' (line 117) and '�
 
 ### Several CLI flags are silently ignored in --bundle mode and --inline-threshold accepts garbage
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/cli/src/main.ts:252](../../packages/cli/src/main.ts#L252)
 - **Category:** inconsistency
 - **Description:** With `--bundle`, `--check` is ignored (a bundle is still written) and `--no-optimize` is ignored (createBundle hardcodes `optimize: true`). parseInt accepts partial and negative input: '10kb' becomes 10, and '-5' disables inlining without any error. `--minify` in bundle mode controls JS/CSS rather than JSON, which is undocumented.
@@ -2318,6 +2569,8 @@ Verifier: bundleCLI never reads options.check, so `--bundle --check` writes a fu
 
 ### --force bundles are written over the existing directory without cleaning, leaving stale assets
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/cli/src/bundler/index.ts:198](../../packages/cli/src/bundler/index.ts#L198)
 - **Category:** bug
 - **Description:** With `--force` the existing output dir is reused (`mkdir` recursive) and files are overwritten, but previously emitted `assets/*` that are no longer referenced are never removed. Stale files remain and are not counted in the stats.
@@ -2334,6 +2587,8 @@ yield* Effect.tryPromise({ try: () => fs.mkdir(outputDir, { recursive: true }), 
 Verifier: In packages/cli/src/bundler/index.ts, the only check on an existing output dir is at line 106 (`if (!resolvedOptions.force && directoryExists(outputDir))`). With `--force` the code runs `fs.mkdir(outputDir, {recursive:true})`, then writes index.html and bundle.js and copies each non-inlined asset into assets/. Nothing removes files that are already there; the only `fs.rm` in the file deletes the temp esbuild dir. Asset output names come from generateUniqueOutputPath in asset-collector.ts: `assets/<fileName>`, with a hash suffix only when two sources share a name. So an asset that was dropped, renamed, or whose collision hash changed stays in assets/ after a `--force` rebuild and is not listed in the BundleFile stats. The scenario is real but low impact: extra bytes ship, and nothing breaks at runtime.
 
 ### HTML and labels watchers ignore create events, so a delete followed by create (atomic save, git checkout) permanently stops hot-reload
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/extension/base-watcher-manager.ts:268](../../packages/extension/src/extension/base-watcher-manager.ts#L268)
 - **Category:** bug
@@ -2355,6 +2610,8 @@ Verifier: Only css-watcher.ts sets watchCreate, so HTML and labels watchers regi
 
 ### Language client start failure aborts activation, so unrelated commands (compile, preview, locale editor) never get registered
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/main.ts:44](../../packages/extension/src/extension/main.ts#L44)
 - **Category:** robustness
 - **Description:** activate() awaits startLanguageClient() as its first statement and has no try/catch. If client.start() rejects (missing out/language/main.cjs, a server crash on init, a port 6009 conflict in debug mode), activate rejects before any command, custom editor or provider is registered. Compile and Preview only need the in-process compiler, and the locale editor needs nothing from the LSP, yet they become 'command not found'. The partly started client is not stopped, and the user sees nothing beyond VS Code's generic activation failure.
@@ -2373,6 +2630,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 Verifier: packages/extension/src/extension/main.ts:44: the first thing activate() does is `client = await startLanguageClient(context)`, and nothing catches an error from it. startLanguageClient awaits client.start() (line 247). If that rejects, activate() rejects before line 110, so the diagnostics collection, the locale custom editor, the link provider, compile, preview, the locale commands and the create-labels commands are never registered, and VS Code reports 'command not found' for the contributed commands. `registerCompileCommand()` and `registerPreviewCommand(context)` take no client and could work without the LSP. The scenario needs a broken install (missing out/language/main.cjs) or a server crash during initialize, which is uncommon and leaves the extension mostly useless anyway. That makes this a robustness or graceful-degradation issue, so low rather than medium.
 
 ### Labels hot-reload with invalid JSON neither updates the registry nor revalidates importing documents
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/language/main.ts:117](../../packages/extension/src/language/main.ts#L117)
 - **Category:** bug
@@ -2396,6 +2655,8 @@ Verifier: In language/main.ts:117-130, triggerRevalidation is only called when v
 
 ### Stale CSS is never removed from the preview, and css-reload is a silent no-op for unknown ids
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/webview-css-injector.ts:383](../../packages/extension/src/extension/webview-css-injector.ts#L383)
 - **Category:** bug
 - **Description:** removeCSS() has no callers. On each recompile, injectCSS only sends css-load for the currently imported files. The webview's css-load updates an existing style tag's content but never reorders it. Style tags for CSS imports removed from the source therefore stay in the document head, and the load-order attribute is not updated when imports are reordered. In PreviewPanel, trackedFiles also only grows, so a removed import keeps being watched. The webview's css-reload handler does nothing when the style tag does not exist.
@@ -2413,6 +2674,8 @@ removeCSS(cssFile: string): void { ... type: 'css-remove' ...}  // no call sites
 Verifier: A search for callers of removeCSS outside tests finds none, so 'css-remove' is never sent. PreviewPanel sets webview.html only once (line 87), in the constructor. Each recompile calls `cssInjector.injectCSS(absoluteCSSFiles)` only for the files currently imported, and only when `cssFiles.length > 0`. In media/preview.ts, the css-load handler reuses an existing `style[data-css-id]` tag and just replaces its textContent; it never moves the tag or updates data-load-order. So a removed styles import keeps styling the preview, reordering imports does not change cascade order, and removing the last import leaves every style tag in place. The base watcher's trackedFiles only grows, by design (its own comment says so), so removed imports stay watched. The css-reload handler does nothing when no tag exists, so a CSS file that failed its initial load and is then fixed does not appear until the next recompile. The finding is real but limited to the preview, so low.
 
 ### rewriteUrls rewrites url(#frag), query/fragment suffixes and protocol-relative URLs as file paths
+
+- **Status:** ✅ Already fixed by an earlier commit on this branch (regression test added in `e6b5c32`)
 
 - **Location:** [packages/language/src/css/css-service.ts:147](../../packages/language/src/css/css-service.ts#L147)
 - **Category:** bug
@@ -2434,6 +2697,8 @@ Verifier: In language/src/css/css-service.ts:147-170, the only values skipped ar
 
 ### JSDoc auto-close inserts a duplicate '*/' when the second '*' is typed on an existing block comment
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/commands/jsdoc.ts:108](../../packages/extension/src/extension/commands/jsdoc.ts#L108)
 - **Category:** bug
 - **Description:** The handler fires for any single-character `*` insertion whose preceding text ends with `/**`. It never checks whether a `*/` already follows on the line, or whether the cursor is inside a string or line comment. It then always inserts ` */` and runs eligian.generateJSDoc. generateJSDoc also uses the first `*/` on the line, which can belong to a different comment. language-configuration.json has no `/**` auto-closing pair, so this handler is the only source of the closing `*/`, and it produces a duplicate when an existing comment is edited. There is no test for this path.
@@ -2452,6 +2717,8 @@ Verifier: In jsdoc.ts:76-125, the handler fires on any single-change `*` inserti
 
 ### Compile command reports defects as 'Unknown Error: {}' and leaves post-write failures unhandled
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/commands/compile.ts:119](../../packages/extension/src/extension/commands/compile.ts#L119)
 - **Category:** robustness
 - **Description:** On a defect or interruption, causeToError returns `Cause.squash(cause)`, which is typically an Error instance rather than a tagged CompilerError. The result is cast to CompilerError and passed to formatErrors, whose default branch renders `` `Unknown Error: ${JSON.stringify(error)}` ``. For an Error that is '{}', so the message and stack are lost. Also, `vscode.workspace.openTextDocument` and `showTextDocument` after the write are outside any try/catch, so a failure there shows up only as VS Code's generic command error after the 'Compiled' toast.
@@ -2469,6 +2736,8 @@ reportCompilationFailure([actualError], sourceCode);
 Verifier: The compile type (pipeline.ts:103) declares only tagged errors in its failure channel, and the pipeline has no catchDefect or sandbox. Defects can still happen: loadProgramAssets is called synchronously inside Effect.gen and is not wrapped, and transformers can throw. In that case causeToError returns `Cause.squash(cause)`, which is the original Error, and that Error goes to formatErrors. Its `_tag` is undefined, so error-reporter.ts:162-170 takes the default branch and prints `` `Unknown Error: ${JSON.stringify(error)}` ``. Error's message and stack are non-enumerable, so this prints '{}'. An interruption squashes to an Error-like value too. The post-write openTextDocument and showTextDocument calls (compile.ts:145-150) are outside any try/catch; a failure there rejects the withProgress callback, and VS Code shows only a generic command error. That is a cosmetic gap and rare. Low severity is right: it affects diagnosability, not correctness.
 
 ### LSP update notifications are fire-and-forget promises that can reject when the client is not running
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/extension/css-watcher.ts:35](../../packages/extension/src/extension/css-watcher.ts#L35)
 - **Category:** robustness
@@ -2489,6 +2758,8 @@ Verifier: Checked node_modules/vscode-languageclient 9.0.1, lib/common/client.js
 
 ### Parsed-phase handler synchronously re-reads and re-parses every CSS/labels/HTML import on every document rebuild
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/language/main.ts:183](../../packages/extension/src/language/main.ts#L183)
 - **Category:** performance
 - **Description:** The onBuildPhase(Parsed) handler calls processImports three times per .eligian document. Each call does readFileSync plus parseCSS (PostCSS), JSON validation or an HTML read for every import, on the language-server main thread. This happens on every rebuild, including each reparse triggered by typing, even though the files have not changed. The hot-reload notifications already exist to refresh the registries when files do change. Large CSS files (framework-sized) slow down typing and completion.
@@ -2506,6 +2777,8 @@ Verifier: In language/main.ts:183-260, the onBuildPhase(DocumentState.Parsed) ha
 
 ### No tests for watcher lifecycle (delete/create/debounce/dispose), command handlers, or retargeted imports
 
+- **Status:** ✅ Fixed in `e6b5c32` (partial), completed in `c47f7bd`
+
 - **Location:** [packages/extension/src/extension/base-watcher-manager.ts:288](../../packages/extension/src/extension/base-watcher-manager.ts#L288)
 - **Category:** test-gap
 - **Description:** The existing watcher specs only cover reverse-mapping cleanup (registerImports twice for the same document). Nothing exercises debounce coalescing, the delete-then-create sequence, the CSS behaviour on deleting an untracked file, or dispose() clearing timers and the watcher. debounce-util.ts has no spec. The mock's createFileSystemWatcher cannot fire events. There are no specs for compile.ts (including the output-path derivation), jsdoc.ts, locale.ts, or processImports with a changed import path. The defects in this report sit on exactly these paths.
@@ -2522,6 +2795,8 @@ debounce(this.debounceTimers, filePath, this.debounceDelay, () => { ... }) // no
 Verifier: The extension's watcher specs are only the `*-watcher-mapping-cleanup.spec.ts` files. Nothing references debounce, handleFileDelete, handleFileCreate or onDidDelete, and there is no debounce-util spec. In `__mocks__` (lines 56-61), createFileSystemWatcher returns no-op onDidCreate/onDidChange/onDidDelete, so tests cannot fire events. The commands/ directory (compile.ts, jsdoc.ts, locale.ts, preview.ts) has no specs. import-processor.spec.ts does exist and covers path resolution, multiple CSS files, hasImport loop prevention, missing files and partial failure, but has no case for an import path that changes between passes. That gap matters: for one-to-one imports, hasImport makes isNewImport false, so a retargeted layout import never sends the discovered notification. The labels tests also use a mock type 'labels' that the grammar cannot produce (the grammar keyword is 'locales'), which hides the fact that the labels pass is dead in language/main.ts. The test gap is real and low severity.
 
 ### Preview diagnostics are never cleared when the preview panel closes, so stale Problems entries persist
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/extension/preview/PreviewPanel.ts:193](../../packages/extension/src/extension/preview/PreviewPanel.ts#L193)
 - **Category:** bug
@@ -2549,6 +2824,8 @@ Verifier: PreviewPanel.handleDispose destroys the engine and disposes the file w
 
 ### Compiler error messages are injected into the webview with innerHTML without escaping
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/media/preview.ts:354](../../packages/extension/media/preview.ts#L354)
 - **Category:** security
 - **Description:** The 'showError' handler builds markup from error.message, error.code and error.severity with template strings and assigns it to innerHTML. Messages contain text from the source, such as import paths, string literals and Chevrotain token text. The CSP (`script-src ${cspSource}`, no unsafe-inline) blocks script execution, but injected markup still corrupts or hides the message, and it can load images and apply styles. EventbusDebugViewer.renderEvents (line ~285-312) has the same problem: it writes eventName, eventTopic and `JSON.stringify(args)` into innerHTML. Operation data in those args routinely holds HTML strings, which then render as live DOM in the debug panel.
@@ -2570,6 +2847,8 @@ errorList.innerHTML = message.payload.errors
 Verifier: The 'showError' handler in media/preview.ts puts error.message, error.severity and error.code into an innerHTML template with no escaping. EventbusDebugViewer.renderEvents does the same with eventName, eventTopic and `JSON.stringify(args)`. The CSP in preview.html allows `style-src 'unsafe-inline'` and `img-src https:`, so injected `<style>` or `<img>` tags would take effect. The security framing is overstated, though. All of this text comes from the author's own .eligian source and compiled config, and the same webview already renders that author's arbitrary layout HTML through Eligius. No trust boundary is crossed, and script-src blocks inline script. What remains is a display bug: messages or event args containing `<...>`, such as HTML strings in operation data or type text with angle brackets, render as markup or vanish instead of showing as text. That is low severity, not a medium security issue.
 
 ### Invalid JSON in the document leaves a stale documentConfigs entry, and the next webview edit overwrites the whole document with it
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts:275](../../packages/extension/src/extension/locale-editor/LocaleEditorProvider.ts#L275)
 - **Category:** bug
@@ -2596,6 +2875,8 @@ Verifier: updateWebview runs from onDidChangeTextDocument for any non-webview ch
 
 ### createLabelEntry read-modify-writes the file on disk and ignores an open or dirty editor buffer
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/label-entry-creator.ts:155](../../packages/extension/src/extension/label-entry-creator.ts#L155)
 - **Category:** bug
 - **Description:** The function reads the file with workspace.fs.readFile and writes it back with workspace.fs.writeFile, never consulting `vscode.workspace.textDocuments`. The locale editor applies every webview change to the TextDocument immediately, so the document is dirty until it is saved, and the creator merges onto a stale disk version. It also serializes with `JSON.stringify(..., null, 2)`, which reformats the whole file. Two quick fixes run in quick succession can race, because both read the same original content and the later write drops the earlier key.
@@ -2615,6 +2896,8 @@ const contentBytes = await vscode.workspace.fs.readFile(fileUri);
 Verifier: createLabelEntry (registered as the eligian.createLabelEntry command in main.ts) reads with workspace.fs.readFile and writes with workspace.fs.writeFile, and never checks workspace.textDocuments. The locale editor applies every webview change as a WorkspaceEdit, so the document stays dirty until Ctrl+S. If the user runs the quick fix while the buffer is dirty, the new key goes onto the stale disk content, and the dirty buffer then conflicts with the disk. The loss is not silent, though: on save, VS Code shows its 'file is newer' conflict dialog (Compare/Overwrite), so the user picks which version to keep. A related problem the reviewer missed: openLabelEditorWithSelection runs vscode.openWith on an already-open custom editor, which only reveals it, so no new 'ready' message arrives, the pending selection is not consumed, and the dirty webview never shows the new key. The race between two quick fixes needs two command invocations to overlap a few ms of file I/O, which is unlikely. Low severity.
 
 ### MediaResolver rewrites any string that ends in a media extension, and its missing-file warning can never fire
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/extension/preview/MediaResolver.ts:158](../../packages/extension/src/extension/preview/MediaResolver.ts#L158)
 - **Category:** bug
@@ -2638,6 +2921,8 @@ Verifier: findMediaReferences adds a reference only when getMediaType(value) is 
 
 ### After a compile error the previous engine keeps running and the playback controls stay visible over the error view
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/media/preview.ts:346](../../packages/extension/media/preview.ts#L346)
 - **Category:** bug
 - **Description:** The 'showError' handler hides #loading and #eligius-container and shows #error-container. It does not destroy the running engine and does not hide #controls, which is position:fixed and was shown by showControls on the last successful init. PreviewPanel's failure branch does not send 'destroy' either.
@@ -2659,6 +2944,8 @@ Verifier: The showError handler in media/preview.ts (around line 346) only switc
 
 ### The webview 'ready' message is a no-op, so a reloaded webview stays on 'Loading' with no config
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/preview/PreviewPanel.ts:369](../../packages/extension/src/extension/preview/PreviewPanel.ts#L369)
 - **Category:** bug
 - **Description:** The extension sends showLoading, updateConfig, initialize and css-load once, from compileAndUpdate, which is triggered by the constructor or a save. The webview posts 'ready' on every load (the last line of media/preview.ts), but handleWebviewMessage only logs it. If the webview is reloaded (Developer: Reload Webviews, or after the host re-creates it), it starts from the template's initial loading state, and nothing resends the state. There is also no cached last config or CSS to replay.
@@ -2677,6 +2964,8 @@ case 'ready':
 Verifier: PreviewPanel.handleWebviewMessage only logs 'ready', which the webview posts as the last statement of media/preview.ts. The first load works, because VS Code queues postMessage until the webview is ready and the constructor calls compileAndUpdate. `retainContextWhenHidden: true` means a hidden tab does not reload, so the only realistic triggers are 'Developer: Reload Webviews' and the host re-creating the webview. In those cases the HTML is reloaded, starts on the template's loading view, and nothing resends updateConfig, initialize or the css-load messages. The retry button lives in the error container, so it cannot be reached from the loading view, and the preview stays there until the next save. Severity is low because the main trigger is a developer command.
 
 ### Locale tree edits split user-typed keys on '.' without guarding `__proto__`, so Parent key input can pollute Object.prototype
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/extension/src/extension/locale-editor/locale-editor-utils.ts:124](../../packages/extension/src/extension/locale-editor/locale-editor-utils.ts#L124)
 - **Category:** security
@@ -2701,6 +2990,8 @@ Verifier: Traced the path. locale-message-handler builds fullKey as `${parentKey
 
 ### The pending label selection is not applied when the locale editor is already open, and it lingers until a later unrelated open
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/label-entry-creator.ts:75](../../packages/extension/src/extension/label-entry-creator.ts#L75)
 - **Category:** bug
 - **Description:** openLabelEditorWithSelection stores the key in a module-level map, which is consumed only inside the 'ready' handler of a newly resolved webview (locale-message-handler.ts:75/87). If the custom editor for that file is already open, vscode.openWith just reveals it, no 'ready' is sent, and the entry stays in the map. The disk write triggers only a 'reload' with no selection.
@@ -2721,6 +3012,8 @@ Verifier: consumePendingSelection runs only in the 'ready' case of locale-messag
 
 ### Core preview and quick-fix paths have no unit tests (CompilationService, MediaResolver, PreviewPanel message handling, createLabelEntry, LocaleLinkProvider)
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/extension/src/extension/preview/CompilationService.ts:69](../../packages/extension/src/extension/preview/CompilationService.ts#L69)
 - **Category:** test-gap
 - **Description:** A search of the extension specs finds no direct tests for MediaResolver, PreviewPanel.handleWebviewMessage or compileAndUpdate, BlockLabelDecorationProvider, LocaleLinkProvider, LocaleFileWatcher, or createLabelEntry beyond the pending-selection store. The CompilationService tests (compilation-error-consistency.spec.ts) cover only the error format. The timeout branch, convertCompilerError for errors without a location, media path rewriting, hasTranslationKey, the BOM/invalid-JSON branch and the link regex are untested. Several defects listed above are in exactly these paths.
@@ -2738,6 +3031,8 @@ public async compile(documentUri: vscode.Uri, timeout = 5000): Promise<Compilati
 Verifier: The extension package's spec files are under media/__tests__, src/extension/__tests__ and src/extension/locale-editor/__tests__. A grep across all of them for MediaResolver, createLabelEntry, LocaleLinkProvider, BlockLabelDecoration, LocaleFileWatcher, compileAndUpdate and PreviewPanel's handleWebviewMessage finds nothing. The only CompilationService hits are compilation-error-consistency.spec.ts and error-import-consistency.spec.ts, which test the error format and error imports. label-entry-auto-select.spec.ts covers only the pending-selection store. The gap is real, and as a test-gap finding it is low severity.
 
 ### @eligian/cli statically imports `esbuild` and `effect` but declares neither (nor `eligius`)
+
+- **Status:** ✅ Already fixed by an earlier commit on this branch (regression test added in `e6b5c32`)
 
 - **Location:** [packages/cli/package.json:33](../../packages/cli/package.json#L33)
 - **Category:** robustness
@@ -2761,6 +3056,8 @@ Verifier: packages/cli/package.json declares only @eligian/language, chalk and c
 
 ### Windows drive-root baseDir collapses to a drive-relative path and resolves against process cwd
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/shared-utils/src/path-resolver.ts:87](../../packages/shared-utils/src/path-resolver.ts#L87)
 - **Category:** bug
 - **Description:** `normalizePath` strips every trailing slash except a lone `/`. For `C:/` it returns `C:`, which is a drive-relative path. `resolvePath` then calls `isWindowsAbsolutePath('C:')`, whose regex needs `C:/`, so it is false, and it falls through to `path.posix.resolve('C:', rel)`, which prepends `process.cwd()`. This breaks the module's own rule that cwd is never used. Confirmed by running the built package.
@@ -2781,6 +3078,8 @@ Verifier: Running the built shared-utils/dist: `normalizePath('C:/')` returns 'C
 
 ### No `else if` chain: IfStatement only allows `else { ... }`
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/language/src/eligian.langium:380](../../packages/language/src/eligian.langium#L380)
 - **Category:** robustness
 - **Description:** The optional else branch is only `'else' '{' ... '}'`. Users coming from JS/TS will write `else if (...)`, which fails with "Expecting token of type '{' but found `if`" (confirmed). The workaround, nesting `else { if ... }`, parses fine, so this is purely missing syntactic sugar.
@@ -2800,6 +3099,8 @@ Verifier: In eligian.langium, IfStatement's else branch is only `'else' '{' (els
 
 ### CI runs `biome lint`, so formatting and import order are never enforced and warnings do not fail the build
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [.github/workflows/ci.yml:57](../../.github/workflows/ci.yml#L57)
 - **Category:** inconsistency
 - **Description:** The root `lint` script is `biome lint .`, which does not run the formatting, `organizeImports` (assist action) or `ci`-mode checks. Also, `noUnusedVariables`, `noUnusedImports` and `useConst` are configured as `warn`, and warnings do not fail `biome lint`. AGENTS.md says the goal is 0 warnings and offers `pnpm ci` (`biome ci .`) as the CI-style command, but CI uses neither `pnpm ci` nor `--error-on-warnings`.
@@ -2818,6 +3119,8 @@ Verifier: In eligian.langium, IfStatement's else branch is only `'else' '{' (els
 Verifier: ci.yml line 57 runs `pnpm run lint`, and the root package.json defines it as `biome lint .`. Lint mode skips formatting and the assist/organizeImports check that biome.json enables. noUnusedVariables, noUnusedImports and useConst are set to warn, and warnings do not fail `biome lint`. CI never runs the existing `ci` script (`biome ci .`). Even that script lacks `--error-on-warnings`, so the reviewer's fix wrongly implied the existing script already had the flag.
 
 ### language package export map advertises `./css-service` but no dist bundle is built for it
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/package.json:22](../../packages/language/package.json#L22)
 - **Category:** bug
@@ -2840,6 +3143,8 @@ Verifier: In packages/language/package.json, `exports['./css-service'].default` 
 
 ### pruned-coverage tool reads the wrong coverage path from the repo root, and hides all failures
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [tools/pruned-coverage.ts:16](../../tools/pruned-coverage.ts#L16)
 - **Category:** bug
 - **Description:** The root `pnpm test:coverage` runs `npm run test:coverage:ci` and then reads `coverage/coverage-summary.json` relative to the cwd (the repo root). Coverage is written to `packages/language/coverage/`, and the root `coverage/` has only a stale coverage-final.json and no summary, so the report step always lands in the catch. Separately, child stdout and stderr are discarded, so if the tests or thresholds fail (code !== 0) the script exits with no output. Directories with zero branches also print NaN%.
@@ -2861,6 +3166,8 @@ Verifier: tools/pruned-coverage.ts spawns `npm run test:coverage:ci`, which runs
 
 ### Package engines are inconsistent with dependency requirements and the pinned @types/vscode
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [packages/cli/package.json:7](../../packages/cli/package.json#L7)
 - **Category:** inconsistency
 - **Description:** The cli and language packages declare `node >=20.10.0`, but cli depends on commander 15 (engines node >=22.12.0) and chalk 6 (node >=22). The extension declares `engines.vscode ^1.107.0` while its devDependency `@types/vscode` is 1.140.0, and `vsce package` and `vsce publish` refuse an @types/vscode newer than engines.vscode.
@@ -2878,6 +3185,8 @@ Verifier: tools/pruned-coverage.ts spawns `npm run test:coverage:ci`, which runs
 Verifier: packages/cli/package.json declares engines node >=20.10.0 and npm >=10.2.3. Its runtime dependencies are commander 15.0.0, whose installed package.json requires node >=22.12.0, and chalk 6.0.1, which requires node >=22. esbuild marks these packages external, so they are installed and loaded at runtime, and the declared engine range is therefore wrong. packages/language has the same >=20.10 declaration. The extension declares engines.vscode ^1.107.0 with devDependency @types/vscode 1.140.0, and it has a `vsce` config block, so packaging with vsce is intended; vsce's documented check rejects an @types/vscode newer than engines.vscode. CI uses Node 24, so this only affects end users and packaging. Low severity holds.
 
 ### Grammar comments and LANGUAGE_SPEC document syntax the grammar rejects (`stagger ... with fadeIn` and zero-param event actions)
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/language/src/eligian.langium:580](../../packages/language/src/eligian.langium#L580)
 - **Category:** inconsistency
@@ -2899,6 +3208,8 @@ Verifier: Line 580 of the grammar is `StaggerBlock: 'stagger' delay items 'with'
 
 ### shared-utils is outside the root typecheck/watch graph and has no `clean` script, so stale dist/tsbuildinfo can survive
 
+- **Status:** ✅ Fixed in `e6b5c32`
+
 - **Location:** [tsconfig.build.json:2](../../tsconfig.build.json#L2)
 - **Category:** maintainability
 - **Description:** tsconfig.build.json references only language, cli and extension, so `pnpm typecheck` and `pnpm watch` never build shared-utils. Consumers read shared-utils' prebuilt `dist/*.d.ts`, so after an edit, `pnpm watch` leaves language, cli and extension using a stale shared-utils dist. shared-utils also defines no `clean` script, so the root `clean` and `build:clean` skip it. Its inherited composite/incremental tsbuildinfo sits at the package root (`tsconfig.tsbuildinfo`), outside `dist`, so after `dist` is removed an incremental `tsc` can consider the project up to date and not emit anything.
@@ -2916,6 +3227,8 @@ shared-utils/package.json scripts: build/test/test:watch/test:coverage only (no 
 Verifier: tsconfig.build.json references only language/tsconfig.src.json, cli and extension, and no project tsconfig references shared-utils. language and extension consume it through `workspace:*`, and its package.json types/main point at ./dist. So `pnpm typecheck` and `pnpm watch` (`tsc -b tsconfig.build.json`) never rebuild it, and edits to shared-utils stay stale until `pnpm build` builds it separately. shared-utils/package.json has no clean script, so the root `pnpm clean` skips it. Its tsconfig inherits composite and incremental from the root without setting tsBuildInfoFile, and tsconfig.tsbuildinfo sits at the package root next to dist, so deleting dist by hand can leave tsc thinking the project is up to date. This is a maintainability issue, so low severity.
 
 ### normalizePath is host-OS dependent: backslash `..` segments are not resolved on POSIX, and UNC paths lose their prefix
+
+- **Status:** ✅ Fixed in `e6b5c32`
 
 - **Location:** [packages/shared-utils/src/path-resolver.ts:81](../../packages/shared-utils/src/path-resolver.ts#L81)
 - **Category:** robustness
@@ -2965,6 +3278,8 @@ Ranked 1–25 by the judge. Below they are grouped by tier, and each heading car
 ### Tier: do-now
 
 ### #1 Close the silent parameter-forwarding hole (auto-resolve or diagnose non-resolving operation inputs)
+
+- **Status:** ✅ Done in `a242971` (runtime values are resolved by a `setOperationData` before operations that do not resolve them; spec 046)
 
 - **Area:** dsl / compiler · **Effort:** M · **Score:** 9.4
 - **Problem:** Most Eligius operations do not resolve `$operationdata.x` property chains in their inputs. operation-transformer.ts drops a forwarded parameter only when the action parameter has the same name as the operation input. Otherwise it emits the chain as a literal string. So `action label(sel, cls, text) [ selectElement(sel) addClass(cls) setElementContent(text) ]` compiles to `addClass {className: "$operationdata.cls"}`, the page gets a class literally named `$operationdata.cls`, and the compiler says nothing. The tour library has to document the workaround ('the content param MUST be named `template`').
@@ -3140,6 +3455,8 @@ timeline "Ambient" in "#bg" using raf loop duration 30s { … }
 - **Rationale:** It exposes engine capabilities that the DSL currently hides, including a flagship use case (scroll), with small grammar and transformer changes. An explicit duration also gives lifecycle blocks (#6) a precise end time.
 
 ### #12 Fix the installed bin and add `eligian init` / 'New Presentation…' starters
+
+- **Status:** 🟡 Partly done: the bin was fixed in `65fdd0f`; `eligian init` and the starters are still open
 
 - **Area:** docs-onboarding · **Effort:** S · **Score:** 7.3
 - **Problem:** KNOWN_ISSUES B1b: the package.json bin points at dist/cli.mjs, which does not call main, and bin/cli.js is missing from `files`, so a new user's `eligian --version` prints nothing. There is no scaffold, so authors must work out the required timeline header, the languages and locales pairing and the hub/chapter pattern from scratch.
