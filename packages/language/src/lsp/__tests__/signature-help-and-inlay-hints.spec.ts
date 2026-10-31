@@ -155,3 +155,97 @@ describe('parameter-name inlay hints', () => {
     ]);
   });
 });
+
+describe('time inlay hints (audit idea #4)', () => {
+  let ctx: TestContext;
+
+  const provider = () => ctx.services.Eligian.lsp.InlayHintProvider as EligianInlayHintProvider;
+
+  beforeAll(async () => {
+    ctx = createTestContext();
+    // The provider reads the client settings once the configuration is ready; let that settle
+    provider();
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+
+  /** Each hint label with the 8 characters of code before it. */
+  async function timeHints(code: string): Promise<string[]> {
+    const document = await ctx.parse(code);
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: false });
+    provider().setParameterNameHints('none');
+    try {
+      const hints = (await provider().getInlayHints(document, {
+        textDocument: { uri: document.uri.toString() },
+        range: {
+          start: { line: 0, character: 0 },
+          end: document.textDocument.positionAt(code.length),
+        },
+      })) as InlayHint[];
+      return hints.map(h => {
+        const offset = document.textDocument.offsetAt(h.position);
+        return `${code.slice(Math.max(0, offset - 8), offset)}${h.label}`;
+      });
+    } finally {
+      provider().setParameterNameHints('literals');
+      provider().setTimeHints({
+        sequenceTimes: true,
+        staggerTimes: true,
+        computedTimes: true,
+        timelineDuration: true,
+      });
+    }
+  }
+
+  test('sequence items, stagger blocks, computed ranges and the inferred duration', async () => {
+    const hints = await timeHints(`action f(x) [ selectElement("#a") ]
+timeline "t" in ".c" using raf {
+  at 0s..5s [ selectElement("#a") ]
+  sequence { f(1) for 5s  f(2) for 10s }
+  stagger 0.3s ["#a", "#b", "#c"] with f() for 1s
+  at +1s for 2s [ selectElement("#a") ]
+}`);
+
+    expect(hints).toEqual([
+      'ing raf ‹24.6s›',
+      ') for 5s‹5s..10s›',
+      ' for 10s‹10s..20s›',
+      ') for 1s‹20s..21.6s ×3›',
+      's for 2s‹22.6s..24.6s›',
+    ]);
+  });
+
+  test('no hints for plain ranges, runtime times, or an explicit duration', async () => {
+    const hints = await timeHints(`timeline "t" in ".c" using raf duration 30s {
+  at 0s..5s [ selectElement("#a") ]
+  at 5s..$globaldata.end [ selectElement("#a") ]
+  at +1s..+2s [ selectElement("#a") ]
+}`);
+    expect(hints).toEqual([]);
+  });
+
+  test('each kind can be switched off', async () => {
+    const code = `timeline "t" in ".c" using raf {
+  sequence { f() for 1s }
+  at +0s for 1s [ selectElement("#a") ]
+}`;
+    const document = await ctx.parse(code);
+    await ctx.services.shared.workspace.DocumentBuilder.build([document], { validation: false });
+    provider().setParameterNameHints('none');
+    provider().applySettings({
+      parameterNames: 'none',
+      sequenceTimes: false,
+      computedTimes: false,
+      timelineDuration: false,
+    });
+    const hints = (await provider().getInlayHints(document, {
+      textDocument: { uri: document.uri.toString() },
+      range: {
+        start: { line: 0, character: 0 },
+        end: document.textDocument.positionAt(code.length),
+      },
+    })) as InlayHint[];
+    provider().applySettings({});
+
+    expect(hints).toEqual([]);
+  });
+});

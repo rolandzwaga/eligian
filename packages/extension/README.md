@@ -14,6 +14,7 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Snippets**: `action`, `endable action`, `on event`, `timeline`, `chapter`, `languages` and `library` skeletons
 - **Signature help**: typing `(` or `,` in a call shows its parameters (types, optional ones, descriptions from the operation metadata or the action's JSDoc), including a controller's parameters in `addController`
 - **Parameter-name inlay hints**: `broadcastEvent(eventArgs: [...], eventName: "go")`; setting `eligian.inlayHints.parameterNames` = `literals` (default), `all` or `none`
+- **Time inlay hints**: absolute times the compiler computes, shown in place: `‹5s..15s›` after each sequence item, `‹22s..23.8s ×3›` after a stagger block, the resolved range of relative, computed or `for` ranges, and the inferred duration on a timeline header without `duration`. Times that depend on runtime values show no hint. Settings `eligian.inlayHints.sequenceTimes`, `staggerTimes`, `computedTimes` and `timelineDuration` (all on by default)
 - **Timeline event completion**: inside a timeline, `at … for … [ ]` (starting where the previous event ends), `sequence { }` and `stagger … with …`
 
 ## Installation

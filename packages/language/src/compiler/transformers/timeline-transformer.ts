@@ -41,18 +41,19 @@ import {
 import { createRuntimeConcatCollector, lowerNodeOperations } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
+import {
+  inferredDuration,
+  roundTime,
+  sequenceSpans,
+  staggerSpans,
+  type TimeSpan,
+  timedEventSpan,
+  timedEventSpanFor,
+} from './time-schedule.js';
 import { evaluateTimeExpression, transformTimeExpression } from './time-transformer.js';
 
-/**
- * Round a computed time (seconds) to the microsecond.
- *
- * Times are accumulated in floating point (`0 + 3 * 0.1`, `0.1 + 0.2`), which
- * would otherwise leak values like 0.30000000000000004 into duration.start/end
- * and the generated action names, and make an end time compare unequal to the
- * next start time it should equal. The finest DSL unit is ms, and sub-µs
- * precision is meaningless for a timeline, so the rounding loses nothing.
- */
-const roundTime = (seconds: number): number => Math.round(seconds * 1e6) / 1e6;
+// Start/end arithmetic (rounding, sequences, staggers) lives in time-schedule.ts,
+// shared with the IDE's time resolver so editor hints match the compiled times.
 
 /**
  * Build TimelineConfigIR from timeline node
@@ -134,13 +135,12 @@ export const buildTimelineConfig = (
     }
 
     // T188: Calculate total duration from events (duration inference)
-    let maxDuration = 0;
-    for (const action of timelineActions) {
-      const endTime = typeof action.duration.end === 'number' ? action.duration.end : 0;
-      if (endTime > maxDuration) {
-        maxDuration = endTime;
-      }
-    }
+    const maxDuration = inferredDuration(
+      timelineActions.map(action => ({
+        start: typeof action.duration.start === 'number' ? action.duration.start : 0,
+        end: typeof action.duration.end === 'number' ? action.duration.end : 0,
+      }))
+    );
 
     // Feature 049: an explicit `duration` header option overrides the inferred one
     let duration = maxDuration;
@@ -230,8 +230,7 @@ const transformSequenceBlock = (
       const duration = evaluateTimeExpression(durationExpr);
 
       // Calculate time range: start at currentTime, end at currentTime + duration
-      const start = currentTime;
-      const end = roundTime(currentTime + duration);
+      const [{ start, end }] = sequenceSpans(currentTime, [duration]);
 
       // Get action name and arguments
       const actionCall = item.actionCall;
@@ -360,10 +359,10 @@ const transformStaggerBlock = (
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
 
       // Generate one timeline action per item
+      const spans = staggerSpans(previousEventEndTime, delay, duration, itemsValue.length);
       for (let i = 0; i < itemsValue.length; i++) {
         const item = itemsValue[i];
-        const startTime = roundTime(previousEventEndTime + i * delay);
-        const endTime = roundTime(startTime + duration);
+        const { start: startTime, end: endTime } = spans[i];
 
         // Build actionOperationData with the item as first argument
         const concats = createRuntimeConcatCollector();
@@ -424,9 +423,9 @@ const transformStaggerBlock = (
     } else {
       // Form 2: stagger delay items for duration [ startOps ] [ endOps ]
       // Generate one timeline action per item with inline operations
+      const spans = staggerSpans(previousEventEndTime, delay, duration, itemsValue.length);
       for (let i = 0; i < itemsValue.length; i++) {
-        const startTime = roundTime(previousEventEndTime + i * delay);
-        const endTime = roundTime(startTime + duration);
+        const { start: startTime, end: endTime } = spans[i];
 
         // Transform inline operations with stagger scope
         // Inside stagger blocks, @item resolves to @@currentItem
@@ -602,8 +601,8 @@ const transformTimedEvent = (
     // Transform start and end times to numbers
     // T189: Pass previousEventEndTime for relative time resolution
     const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime);
-    const start = roundTime(evaluateTimeExpression(startExpr));
-    let end: number;
+    const startTime = evaluateTimeExpression(startExpr);
+    let span: TimeSpan;
     if (timeRange.duration) {
       // `at <start> for <duration>` (Feature 048): end = start + duration
       if (containsRelativeTime(timeRange.duration)) {
@@ -615,10 +614,10 @@ const transformTimedEvent = (
         });
       }
       const durationExpr = yield* transformTimeExpression(timeRange.duration);
-      end = roundTime(start + evaluateTimeExpression(durationExpr));
+      span = timedEventSpanFor(startTime, evaluateTimeExpression(durationExpr));
     } else if (timeRange.end) {
       const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
-      end = roundTime(evaluateTimeExpression(endExpr));
+      span = timedEventSpan(startTime, evaluateTimeExpression(endExpr));
     } else {
       return yield* Effect.fail({
         _tag: 'TransformError' as const,
@@ -627,6 +626,7 @@ const transformTimedEvent = (
         location: getSourceLocation(timeRange),
       });
     }
+    const { start, end } = span;
 
     // Transform the action (either named invocation or inline)
     const action = event.action;

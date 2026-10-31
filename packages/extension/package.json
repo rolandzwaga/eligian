@@ -55,6 +55,26 @@
             "Hints before every argument, except a parameter passed under its own name"
           ],
           "description": "Show parameter names as inlay hints in operation and action calls, e.g. broadcastEvent(eventArgs: [...], eventName: \"go\")."
+        },
+        "eligian.inlayHints.sequenceTimes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the absolute time range after each sequence item, e.g. ‹5s..15s›."
+        },
+        "eligian.inlayHints.staggerTimes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the time range and item count after a stagger block, e.g. ‹22s..23.9s ×3›."
+        },
+        "eligian.inlayHints.computedTimes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the absolute time range after `at` ranges that are relative (+2s), computed (1s+2s) or use `for`."
+        },
+        "eligian.inlayHints.timelineDuration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the inferred duration on a timeline header that has no explicit `duration`."
         }
       }
     },

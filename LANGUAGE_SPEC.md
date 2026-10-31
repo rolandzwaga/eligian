@@ -1983,6 +1983,11 @@ at +0s for 3s    // Starts where the previous event ends, lasts 3s
   whose length is statically known.
 - **Inline stagger blocks** may also leave out their end block:
   `stagger 200ms items for 1s [ addClass("in") ]`.
+- **Resolved times in the editor:** the VS Code extension shows the absolute times the compiler
+  computes as inlay hints: after each sequence item (`‹5s..15s›`), after a stagger block
+  (`‹22s..23.8s ×3›`), after relative, computed and `for` ranges, and the inferred duration on a
+  timeline header without `duration`. A time that depends on a runtime value (`$globaldata.end`),
+  and any relative time after it, has no hint.
 
 ---
 

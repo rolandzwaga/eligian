@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3, #7, #8, #9 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3, #4, #7, #8, #9 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3347,6 +3347,8 @@ at +0s for 8s [ narrate("Ranges can compute…") ]
 - **Rationale:** It removes the most frequent noise in real files at small cost. The existing two-block stagger form stays unambiguous because it has its own keyword. It depends on fixing the high-severity unit-comparison bug in checkValidTimeRange first; otherwise `for 500ms` after a `2s` start is rejected.
 
 ### #4 Shared absolute-time resolver plus inlay hints for sequence, stagger, relative and arithmetic times
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (shared scheduling arithmetic in compiler/transformers/time-schedule.ts used by the compiler and the new time-resolver.ts; time hints in the inlay hint provider with four settings; the resolver is checked against the compiled output of a timeline using every construct and of the demo and tour examples)
 
 - **Area:** ide · **Effort:** M · **Score:** 8.8
 - **Problem:** Absolute times are implicit for sequence items, for stagger items (whose base is the previous event's end), for `+2s` relative literals and for time arithmetic. The tour explains them in comments ('Placed here so its base time = end of Beat 3 (22s)'), and moving one event silently shifts a stagger. No InlayHintProvider is registered (confirmed by a grep of packages/language/src).
