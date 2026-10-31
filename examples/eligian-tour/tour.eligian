@@ -7,15 +7,16 @@
  * that click→switch is the `navigate` sugar, which compiles to a
  * DOMEventListenerController that broadcasts `request-timeline-uri`.
  *
- * VIEW MANAGEMENT — each timeline shows ONLY its own view. The first event in
- * every timeline is a long-range **endable setup action**:
- *   start → showView(self) + wire nav      (fires when the timeline is switched IN)
- *   end   → hideView(self)                  (fires when it is switched AWAY)
- * The engine's switch lifecycle runs the leaving timeline's `end` ops, then the
- * entering timeline's `start` ops, so no timeline needs to hide the others. The
- * range is deliberately huge so `end` fires only on switch, never from the
- * playhead reaching it. (See ELIGIUS_EXECUTION_MODEL.md §7b.) `#narration` is a
- * shared subtitle bar each chapter shows/hides alongside its own view.
+ * VIEW MANAGEMENT — each timeline shows ONLY its own view, through its
+ * lifecycle blocks:
+ *   on enter → showView(self) + wire nav   (runs when the timeline is switched IN)
+ *   on leave → hideView(self)               (runs when it is switched AWAY)
+ * The engine's switch lifecycle runs the leaving timeline's `on leave`, then the
+ * entering timeline's `on enter`, so no timeline needs to hide the others. They
+ * are not events: the view stays up after the last beat, and the timeline's
+ * duration is its last beat's end. (See ELIGIUS_EXECUTION_MODEL.md §7b.)
+ * `#narration` is a shared subtitle bar each chapter shows/hides alongside its
+ * own view.
  *
  * Snippets in the code pane are hand-authored display assets (pre-tokenized in
  * layout.html); this file is the real machinery driving them.
@@ -89,7 +90,7 @@ on event "tour-ping" action ch5OnPing(target) [
 timeline "Hub" in "#stage" using raf {
 
   // setup: show the hub on enter, hide it on leave; wire the cards
-  at 0s..3600s [
+  on enter [
     showView("#hub")
     on click "#card-ch1" navigate "Timeline & Time"
     on click "#card-ch2" navigate "Actions"
@@ -97,7 +98,8 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-ch4" navigate "Timeline Power Tools"
     on click "#card-ch5" navigate "Engine Reach"
     on click "#card-ch6" navigate "Tooling Magic"
-  ] [
+  ]
+  on leave [
     hideView("#hub")
   ]
 }
@@ -109,11 +111,12 @@ timeline "Hub" in "#stage" using raf {
 timeline "Timeline & Time" in "#stage" using raf {
 
   // setup: show this chapter + narration on enter, hide on leave; wire back
-  at 0s..3600s [
+  on enter [
     showView("#ch1")
     showView("#narration")
     on click "#c1-to-hub" navigate "Hub"
-  ] [
+  ]
+  on leave [
     hideView("#ch1")
     hideView("#narration")
   ]
@@ -181,11 +184,12 @@ timeline "Timeline & Time" in "#stage" using raf {
 timeline "Actions" in "#stage" using raf {
 
   // setup: show this chapter + narration on enter, hide on leave; wire back
-  at 0s..3600s [
+  on enter [
     showView("#ch2")
     showView("#narration")
     on click "#c2-to-hub" navigate "Hub"
-  ] [
+  ]
+  on leave [
     hideView("#ch2")
     hideView("#narration")
   ]
@@ -255,11 +259,12 @@ timeline "Actions" in "#stage" using raf {
 timeline "Logic" in "#stage" using raf {
 
   // setup: show this chapter + narration on enter, hide on leave; wire back
-  at 0s..3600s [
+  on enter [
     showView("#ch3")
     showView("#narration")
     on click "#c3-to-hub" navigate "Hub"
-  ] [
+  ]
+  on leave [
     hideView("#ch3")
     hideView("#narration")
   ]
@@ -333,11 +338,12 @@ timeline "Logic" in "#stage" using raf {
 timeline "Timeline Power Tools" in "#stage" using raf {
 
   // setup: show this chapter + narration on enter, hide on leave; wire back
-  at 0s..3600s [
+  on enter [
     showView("#ch4")
     showView("#narration")
     on click "#c4-to-hub" navigate "Hub"
-  ] [
+  ]
+  on leave [
     hideView("#ch4")
     hideView("#narration")
   ]
@@ -410,11 +416,12 @@ timeline "Timeline Power Tools" in "#stage" using raf {
 timeline "Engine Reach" in "#stage" using raf {
 
   // setup: show this chapter + narration on enter, hide on leave; wire back
-  at 0s..3600s [
+  on enter [
     showView("#ch5")
     showView("#narration")
     on click "#c5-to-hub" navigate "Hub"
-  ] [
+  ]
+  on leave [
     hideView("#ch5")
     hideView("#narration")
   ]
@@ -491,11 +498,12 @@ timeline "Engine Reach" in "#stage" using raf {
 timeline "Tooling Magic" in "#stage" using raf {
 
   // setup: show this chapter + narration on enter, hide on leave; wire back
-  at 0s..3600s [
+  on enter [
     showView("#ch6")
     showView("#narration")
     on click "#c6-to-hub" navigate "Hub"
-  ] [
+  ]
+  on leave [
     hideView("#ch6")
     hideView("#narration")
   ]

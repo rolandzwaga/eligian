@@ -29,6 +29,7 @@ import {
   isSystemPropertyReference,
   isTimeline,
   isTimelineEvent,
+  isTimelineLifecycle,
   type OperationCall,
   type StaggerBlock,
   type Timeline,
@@ -167,6 +168,8 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   const action = AstUtils.getContainerOfType(astNode, isActionDefinition);
   const endableAction = AstUtils.getContainerOfType(astNode, isEndableActionDefinition);
   const inlineAction = AstUtils.getContainerOfType(astNode, isInlineEndableAction);
+  // `on enter [ ... ]` / `on leave [ ... ]` blocks are operation lists too (audit idea #6)
+  const lifecycleBlock = AstUtils.getContainerOfType(astNode, isTimelineLifecycle);
   const eventAction = AstUtils.getContainerOfType(astNode, isEventActionDefinition);
 
   // Inline stagger operation blocks (`stagger ... for 1s [ ... ] [ ... ]`) are operation
@@ -175,7 +178,7 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   const inStaggerOps =
     staggerBlock !== undefined && isInStaggerOperationBlock(staggerBlock, offset);
 
-  if (action || endableAction || inlineAction || eventAction || inStaggerOps) {
+  if (action || endableAction || inlineAction || lifecycleBlock || eventAction || inStaggerOps) {
     context.isInsideAction = true;
     // Only store the action if it's a named action (not inline)
     if (action || endableAction) {

@@ -522,7 +522,8 @@ export function convertTimelineActionToEligius(
     name: action.name,
     startOperations: action.startOperations.map(stripOperationSourceLocation),
     endOperations: action.endOperations.map(stripOperationSourceLocation),
-    duration: { start, end },
+    // An open-ended range (the lifecycle action) has no end: Eligius reads it as Infinity
+    duration: action.lifecycle ? { start } : { start, end },
   };
 }
 

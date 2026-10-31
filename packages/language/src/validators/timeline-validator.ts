@@ -23,6 +23,7 @@ import {
   RELATIVE_DURATION_MESSAGE,
   SCROLL_DURATION_REQUIRED_MESSAGE,
 } from '../utils/time-units.js';
+import { duplicateLifecycleMessage, lifecycleBlocks } from '../utils/timeline-lifecycle.js';
 import { BaseValidator } from './base-validator.js';
 
 /**
@@ -78,6 +79,17 @@ export class TimelineValidator extends BaseValidator {
    * - The duration must be a positive, non-relative time.
    * - Events that end after an explicit duration are never reached: a warning.
    */
+  /** Audit idea #6: at most one `on enter` and one `on leave` block per timeline. */
+  checkTimelineLifecycle(timeline: Timeline, accept: ValidationAcceptor): void {
+    for (const block of lifecycleBlocks(timeline).duplicates) {
+      accept('error', duplicateLifecycleMessage(block.kind), {
+        node: block,
+        property: 'kind',
+        code: 'duplicate_lifecycle_block',
+      });
+    }
+  }
+
   checkTimelineOptions(timeline: Timeline, accept: ValidationAcceptor): void {
     if (timeline.provider === 'scroll' && !timeline.duration) {
       accept('error', SCROLL_DURATION_REQUIRED_MESSAGE, { node: timeline, property: 'provider' });

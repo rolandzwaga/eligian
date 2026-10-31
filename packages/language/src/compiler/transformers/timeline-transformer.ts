@@ -21,6 +21,7 @@ import {
   RELATIVE_DURATION_MESSAGE,
   SCROLL_DURATION_REQUIRED_MESSAGE,
 } from '../../utils/time-units.js';
+import { duplicateLifecycleMessage, lifecycleBlocks } from '../../utils/timeline-lifecycle.js';
 import { findActionByName } from '../name-resolver.js';
 import type { ConstantMap } from '../types/constant-folding.js';
 import type {
@@ -142,6 +143,14 @@ export const buildTimelineConfig = (
       }))
     );
 
+    // Audit idea #6: `on enter` / `on leave`, after the inference above (not counted)
+    const lifecycleAction = yield* transformLifecycle(
+      timeline,
+      program,
+      allActions,
+      programConstants
+    );
+
     // Feature 049: an explicit `duration` header option overrides the inferred one
     let duration = maxDuration;
     if (timeline.duration) {
@@ -191,8 +200,64 @@ export const buildTimelineConfig = (
       loop: timeline.loop,
       selector: timeline.containerSelector,
       ...(positionSource ? { positionSource } : {}),
-      timelineActions,
+      timelineActions: lifecycleAction ? [lifecycleAction, ...timelineActions] : timelineActions,
       sourceLocation: getSourceLocation(timeline),
+    };
+  });
+
+/**
+ * Timeline lifecycle blocks (audit idea #6):
+ *
+ *   on enter [ showView("#ch3") ]
+ *   on leave [ hideView("#ch3") ]
+ *
+ * become one open-ended timeline action ({ start: 0 }, no end): Eligius starts
+ * it whenever the timeline becomes active (it covers every position) and ends
+ * it when the timeline is left (switch, stop, destroy), not when the content
+ * ends. Undefined when the timeline has neither block.
+ */
+const transformLifecycle = (
+  timeline: Timeline,
+  program: Program,
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
+): Effect.Effect<TimelineActionIR | undefined, TransformError> =>
+  Effect.gen(function* () {
+    const { enter, leave, duplicates } = lifecycleBlocks(timeline);
+    if (duplicates.length > 0) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidTimeline' as const,
+        message: duplicateLifecycleMessage(duplicates[0].kind),
+        location: getSourceLocation(duplicates[0]),
+      });
+    }
+    const first = enter ?? leave;
+    if (!first) return undefined;
+
+    // One scope for both blocks, like inline endable actions
+    const scope = createEmptyScope(programConstants);
+    const startOperations: OperationConfigIR[] = [];
+    for (const statement of enter?.operations ?? []) {
+      startOperations.push(
+        ...(yield* transformOperationStatement(statement, scope, false, program, allActions))
+      );
+    }
+    const endOperations: OperationConfigIR[] = [];
+    for (const statement of leave?.operations ?? []) {
+      endOperations.push(
+        ...(yield* transformOperationStatement(statement, scope, true, program, allActions))
+      );
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      name: 'timeline-lifecycle',
+      duration: { start: 0, end: -1 },
+      lifecycle: true as const,
+      startOperations,
+      endOperations,
+      sourceLocation: getSourceLocation(first),
     };
   });
 

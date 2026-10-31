@@ -519,7 +519,28 @@ OperationCall:
 Timeline:
     'timeline' name=STRING 'in' containerSelector=STRING 'using' provider=TimelineProvider
     (scrollSelector=STRING)? ('from' source=STRING)? (loop?='loop')? ('duration' duration=TimeExpression)?
-    '{' (events += TimelineEvent)* '}';
+    '{' (lifecycle += TimelineLifecycle | events += TimelineEvent)* '}';
+
+/**
+ * Timeline lifecycle block (audit idea #6): operations that run when the
+ * timeline becomes active (`on enter`) and when it is left (`on leave`: a
+ * navigate/switch to another timeline, stop, or the engine being destroyed;
+ * not when its content ends). At most one of each per timeline.
+ *
+ *   timeline "Logic" in "#stage" using raf {
+ *     on enter [ showView("#ch3") on click "#c3-to-hub" navigate "Hub" ]
+ *     on leave [ hideView("#ch3") ]
+ *     at 0s for 7s [ narrate("const names a value") ]
+ *   }
+ *
+ * Compiles to one open-ended timeline action ({ start: 0 }, no end) that is
+ * not counted in the timeline's duration or in relative times.
+ */
+TimelineLifecycle:
+    'on' kind=LifecycleKind '[' (operations += OperationStatement)* ']';
+
+LifecycleKind returns string:
+    'enter' | 'leave';
 
 TimelineProvider returns string:
     'video' | 'audio' | 'raf' | 'scroll' | 'custom';
@@ -856,7 +877,7 @@ Identifier returns string:
     | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
     | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
-    | 'duration' | 'loop';
+    | 'duration' | 'loop' | 'enter' | 'leave';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:

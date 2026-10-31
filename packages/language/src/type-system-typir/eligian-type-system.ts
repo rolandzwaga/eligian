@@ -478,7 +478,8 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
             if (
               current.$type === 'RegularActionDefinition' ||
               current.$type === 'EndableActionDefinition' ||
-              current.$type === 'InlineEndableAction'
+              current.$type === 'InlineEndableAction' ||
+              current.$type === 'TimelineLifecycle'
             ) {
               return false;
             }

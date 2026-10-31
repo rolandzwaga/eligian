@@ -164,6 +164,12 @@ export type TimelineActionIR = {
   readonly endOperations: ReadonlyArray<OperationConfigIR>;
   readonly duration: DurationIR;
   readonly sourceLocation: SourceLocation;
+  /**
+   * The timeline's `on enter` / `on leave` action (audit idea #6): open-ended
+   * (duration.end is -1, emitted without an end), kept by the optimizer and not
+   * part of the timeline's duration.
+   */
+  readonly lifecycle?: true;
 };
 
 /**

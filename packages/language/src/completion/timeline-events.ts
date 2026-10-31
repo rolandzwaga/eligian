@@ -1,6 +1,7 @@
 /**
  * Timeline event snippets (audit feature idea #13): inside a timeline body,
- * offer `at … for … [ ]`, `sequence { }` and `stagger … with …` skeletons.
+ * offer `at … for … [ ]`, `sequence { }` and `stagger … with …` skeletons,
+ * plus `on enter [ ]` / `on leave [ ]` (idea #6) while the timeline has none.
  *
  * The `at` snippet starts where the previous event ends: at that time when it
  * is statically known (`at 31s for 5s`), else at `+0s`, which means exactly
@@ -63,6 +64,23 @@ export function getTimelineEventCompletions(timeline: Timeline, offset: number):
   const start = end === undefined ? '+0s' : `${tidy(end)}s`;
   const startNote =
     end === undefined ? 'starts right after the previous event' : `starts at ${start}`;
+  const has = (kind: string) => timeline.lifecycle.some(block => block.kind === kind);
+  const lifecycle: CompletionItem[] = [];
+  if (!has('enter')) {
+    lifecycle.push(
+      snippet('on enter [ ]', 'Runs when the timeline becomes active', 'on enter [\n\t$0\n]', 4)
+    );
+  }
+  if (!has('leave')) {
+    lifecycle.push(
+      snippet(
+        'on leave [ ]',
+        'Runs when the timeline is left (navigate, stop), not when its content ends',
+        'on leave [\n\t$0\n]',
+        5
+      )
+    );
+  }
   return [
     snippet(
       'at … for … [ ]',
@@ -82,6 +100,7 @@ export function getTimelineEventCompletions(timeline: Timeline, offset: number):
       `stagger ${tabStop(1, '200ms')} ${tabStop(2, '["#a", "#b"]')} with ${tabStop(3, 'action')}() for ${tabStop(4, '1s')}`,
       3
     ),
+    ...lifecycle,
   ];
 }
 

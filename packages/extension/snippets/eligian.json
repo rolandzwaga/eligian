@@ -30,9 +30,11 @@
     "description": "Chapter timeline with a link back to another timeline",
     "body": [
       "timeline \"${1:Chapter}\" in \"${2:#stage}\" using raf {",
-      "\tat 0s for ${3:3600s} [",
-      "\t\ton click \"${4:#back}\" navigate \"${5:Hub}\"",
+      "\ton enter [",
+      "\t\ton click \"${3:#back}\" navigate \"${4:Hub}\"",
       "\t\t$0",
+      "\t]",
+      "\ton leave [",
       "\t]",
       "}"
     ]

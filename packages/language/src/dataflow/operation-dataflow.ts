@@ -164,6 +164,15 @@ export class OperationDataflow {
       if (isEventActionDefinition(statement)) {
         this.analyzeEventAction(statement, report);
       } else if (isTimeline(statement)) {
+        // `on enter` / `on leave` (audit idea #6): the start and end block of one
+        // timeline action, each starting with empty operation data like inline blocks
+        for (const block of statement.lifecycle) {
+          this.walk(
+            block.operations,
+            new OperationDataTracker(),
+            entryContext('', block.kind === 'leave', report)
+          );
+        }
         for (const event of statement.events) {
           this.analyzeTimelineEvent(event, report);
         }

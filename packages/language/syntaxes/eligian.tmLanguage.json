@@ -100,7 +100,7 @@
         },
         {
           "name": "keyword.control.timeline.eligian",
-          "match": "(?<![\\w.])(?:at|timeline|using|sequence|stagger|with|loop|duration)(?![\\w])"
+          "match": "(?<![\\w.])(?:at|timeline|using|sequence|stagger|with|loop|duration|enter|leave)(?![\\w])"
         },
         {
           "name": "keyword.control.event.eligian",

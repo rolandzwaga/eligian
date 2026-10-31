@@ -38,8 +38,24 @@ describe('timeline event snippets', () => {
   test('offers at, sequence and stagger skeletons once each in a timeline body', async () => {
     const items = await snippetsAt('timeline "t" in ".c" using raf {\n  <|>\n}');
 
-    expect(items.map(i => i.label)).toEqual(['at … for … [ ]', 'sequence { }', 'stagger … with …']);
+    expect(items.map(i => i.label)).toEqual([
+      'at … for … [ ]',
+      'sequence { }',
+      'stagger … with …',
+      'on enter [ ]',
+      'on leave [ ]',
+    ]);
     expect(insertOf(items, 'at … for … [ ]')).toBe(atSnippet('0s'));
+  });
+
+  test('offers on enter / on leave only while the timeline has none (audit idea #6)', async () => {
+    const items = await snippetsAt(`timeline "t" in ".c" using raf {
+  on enter [ selectElement("#a") ]
+  <|>
+}`);
+    const labels = items.map(i => i.label);
+    expect(labels).not.toContain('on enter [ ]');
+    expect(labels).toContain('on leave [ ]');
   });
 
   test("the at snippet starts at the previous event's end", async () => {

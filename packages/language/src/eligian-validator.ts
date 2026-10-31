@@ -143,6 +143,7 @@ export function registerValidationChecks(services: EligianServices) {
       v.timeline.checkValidProvider,
       v.timeline.checkSourceRequired,
       v.timeline.checkTimelineOptions, // Feature 049: scroll / loop / duration header options
+      v.timeline.checkTimelineLifecycle, // Audit idea #6: one `on enter` / `on leave` each
       v.timeline.checkScrollContainer, // Feature 049: scroll container exists and can scroll
       v.timeline.checkTimelineContainerSelector, // Feature 013: Validate timeline container selector against CSS
     ],
@@ -190,6 +191,7 @@ export function registerValidationChecks(services: EligianServices) {
       v.action.checkControlFlowPairingInInlineStart,
       v.action.checkControlFlowPairingInInlineEnd,
     ],
+    TimelineLifecycle: v.action.checkControlFlowPairingInLifecycle, // Audit idea #6
   };
   registry.register(actionChecks, v.action);
 

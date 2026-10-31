@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3, #4, #5, #7, #8, #9 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3, #4, #5, #6, #7, #8, #9 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3394,6 +3394,8 @@ at 22s..31s [
 - **Rationale:** This merges 'Timeline-aware preview: scrubber, play-from-cursor CodeLens and live playhead highlight' with 'Preview scrubber, timeline picker and Preview from here CodeLens', and adds the language switcher from 'Preview inspector'. It removes the biggest cost in each edit-and-check cycle, using engine APIs that already exist. The live-playhead decoration moves to #14, which provides the source map it needs.
 
 ### #6 Timeline lifecycle blocks: `on enter [..]` / `on leave [..]`
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 050). The prerequisite end-block startAction bug was already fixed in `c7a75df` (re-verified with the CLI). Instead of end = duration + epsilon, the action is open-ended (`{ start: 0 }`, no end), which the Eligius 3 engine reads as Infinity: this works for raf, video and scroll timelines alike, and a real-engine test confirms enter on activation, leave on switch, and views staying up after the content ends. The tour's 7 setup blocks were converted (real durations 0s to 48s instead of 3600s). No hover/Outline label yet.
 
 - **Area:** dsl · **Effort:** M · **Score:** 8.6
 - **Problem:** Eligius has no per-timeline setup hook, so every tour timeline starts with `at 0s..3600s [ showView(..) …navigate wiring ] [ hideView(..) ]` (7 copies). As a result every compiled timeline reports `duration: 3600`, which breaks progress and timeline-complete. `previousEventEndTime` also jumps to 3600, so relative times and position-based staggers after the block are anchored an hour out. Authors must learn an engine-internals trick before they can build anything with more than one timeline.

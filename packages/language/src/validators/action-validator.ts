@@ -9,6 +9,7 @@ import type {
   OperationCall,
   OperationStatement,
   RegularActionDefinition,
+  TimelineLifecycle,
 } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
 import { reportControlFlowPairing } from './control-flow-pairing.js';
@@ -292,6 +293,11 @@ export class ActionValidator extends BaseValidator {
     accept: ValidationAcceptor
   ): void {
     this.validateControlFlowPairingForOps(action.endOperations, action, 'endOperations', accept);
+  }
+
+  /** Validate control flow pairing in an `on enter` / `on leave` block (audit idea #6). */
+  checkControlFlowPairingInLifecycle(block: TimelineLifecycle, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(block.operations, block, 'operations', accept);
   }
 
   /**

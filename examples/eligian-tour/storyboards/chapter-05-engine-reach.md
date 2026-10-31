@@ -20,9 +20,9 @@ inside `#stage` with its own chrome (`.chrome` + `.progress-rail` + `.chapter-la
 elements are namespaced `#c5-…` and **must be registered in `tour.css`** (id-registration rule groups —
 class styling alone doesn't satisfy CSS validation's id-exists check). `#narration` is the shared subtitle.
 
-**View management** = the self-managing endable setup action (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
-`timeline "Engine Reach"`'s first event is `at 0s..3600s [ showView("#ch5") + showView("#narration")
-+ wire #c5-to-hub ] [ hideView("#ch5") + hideView("#narration") ]`. Hub card `#card-ch5` `navigate`s to
+**View management** = the timeline's `on enter` / `on leave` blocks (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
+`timeline "Engine Reach"`'s `on enter [ showView("#ch5") + showView("#narration")
++ wire #c5-to-hub ]` and `on leave [ hideView("#ch5") + hideView("#narration") ]`. Hub card `#card-ch5` `navigate`s to
 `"Engine Reach"`.
 
 ### Shared + chapter-local actions

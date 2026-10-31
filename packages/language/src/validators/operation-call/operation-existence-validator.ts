@@ -126,7 +126,8 @@ export class OperationExistenceValidator extends BaseValidator {
 
       // If we're inside an InlineEndableAction, we're NOT a direct timeline call
       // (operations are allowed inside inline endable action blocks)
-      if (current.$type === 'InlineEndableAction') {
+      // Likewise inside `on enter` / `on leave` blocks (audit idea #6)
+      if (current.$type === 'InlineEndableAction' || current.$type === 'TimelineLifecycle') {
         return false;
       }
 

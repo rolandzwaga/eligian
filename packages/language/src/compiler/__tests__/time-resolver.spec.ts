@@ -72,9 +72,10 @@ describe('resolveTimelineTimes matches the compiler', () => {
 
       expect(timelines.length).toBe(ir.config.timelines.length);
       timelines.forEach((timeline, index) => {
-        const compiled = ir.config.timelines[index].timelineActions.map(
-          a => [a.duration.start, a.duration.end] as [number, number]
-        );
+        // The open-ended `on enter` / `on leave` action (idea #6, no end) is not an event
+        const compiled = ir.config.timelines[index].timelineActions
+          .filter(a => a.duration.end !== undefined)
+          .map(a => [a.duration.start, a.duration.end] as [number, number]);
         expect(resolvedSpans(timeline)).toEqual(compiled);
         expect(resolveTimelineTimes(timeline).duration).toBe(ir.config.timelines[index].duration);
       });

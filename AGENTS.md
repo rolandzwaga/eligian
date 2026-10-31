@@ -101,6 +101,7 @@ Typir-based, in `type-system-typir/` (the old standalone `type-system/` dir was 
 - **Library files + action imports**: `library name` files contain only actions (`private` hides them); consumers use `import { a, b } from "./lib.eligian"`. (specs 023/032)
 - **Event actions**: `on event "name" (topic "t")? action handler(params) [ ... ]` — Eligius event listeners declared as actions. (spec 028)
 - **Endable actions**: `endable action name(...)` with start + end operation lists for timed ranges. Timelines: `timeline "name" in "#selector" using <provider> (from "src")?`.
+- **Timeline lifecycle**: `on enter [ ops ]` / `on leave [ ops ]` in a timeline body → one open-ended timeline action (`{ start: 0 }`, no end), not counted in the duration; leave runs on navigate/stop, not when the content ends. (spec 050)
 - **Languages + locales**: `languages { * "en-US" "English" ... }` block plus `locales "./file"` import for typed labels; `locales` is the keyword (not `labels`). (specs 037/045)
 
 ## Testing

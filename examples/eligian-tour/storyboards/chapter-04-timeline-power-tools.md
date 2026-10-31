@@ -15,9 +15,9 @@ inside `#stage` with its own chrome (`.chrome` + `.progress-rail` + `.chapter-la
 elements are namespaced `#c4-…` and **must be registered in `tour.css`** (id-registration rule groups —
 class styling alone doesn't satisfy CSS validation's id-exists check). `#narration` is the shared subtitle.
 
-**View management** = the self-managing endable setup action (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
-`timeline "Timeline Power Tools"`'s first event is `at 0s..3600s [ showView("#ch4") + showView("#narration")
-+ wire #c4-to-hub ] [ hideView("#ch4") + hideView("#narration") ]`. Hub card `#card-ch4` `navigate`s to
+**View management** = the timeline's `on enter` / `on leave` blocks (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
+`timeline "Timeline Power Tools"`'s `on enter [ showView("#ch4") + showView("#narration")
++ wire #c4-to-hub ]` and `on leave [ hideView("#ch4") + hideView("#narration") ]`. Hub card `#card-ch4` `navigate`s to
 `"Timeline Power Tools"`.
 
 ### Shared presentation actions

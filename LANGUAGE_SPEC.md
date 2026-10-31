@@ -211,7 +211,7 @@ valid parameter, `const`, `for`-item and named-import names (`action f(event)`, 
 **Note**: Keywords are organized by category:
 - **Action keywords**: `action`, `endable`, `private`
 - **Control flow**: `for`, `if`, `else`, `break`, `continue`, `in`
-- **Timeline keywords**: `timeline`, `at`, `sequence`, `stagger`, `using`, `with`
+- **Timeline keywords**: `timeline`, `at`, `sequence`, `stagger`, `using`, `with`, `enter`, `leave` (`on enter` / `on leave`)
 - **Import keywords**: `import`, `layout`, `styles`, `provider`, `locales`, `library`, `from`, `as`
 - **Event keywords**: `on`, `event`, `topic`
 - **Declaration keywords**: `const`
@@ -1838,6 +1838,35 @@ timeline "Ambient" in "#bg" using raf loop duration 30s {
 variable names. Hovering a timeline header shows its provider, effective duration and whether it
 loops.
 
+#### Lifecycle blocks: `on enter` / `on leave`
+
+Operations that run when the timeline becomes active, and when it is left:
+
+```eligian
+timeline "Logic" in "#stage" using raf {
+  on enter [ showView("#ch3") on click "#c3-to-hub" navigate "Hub" ]
+  on leave [ hideView("#ch3") ]
+  at 0s for 7s [ narrate("const names a value") ]
+}
+```
+
+- `on enter` runs when the timeline becomes active: the first timeline when the presentation
+  starts, any other one when it is navigated or switched to.
+- `on leave` runs when the timeline is left: a `navigate` / switch to another timeline, a stop,
+  or the engine being destroyed. It does **not** run when the timeline's content ends, so a view
+  shown in `on enter` stays up after the last event.
+- At most one of each per timeline, in any order and anywhere in the body. Both are operation
+  lists like an inline `at` block (operations and action calls; an endable action called in
+  `on leave` is ended).
+- They compile to one open-ended timeline action (`duration: { start: 0 }`, no end, which
+  Eligius treats as never ending on its own). It is not an event: it does not count towards the
+  timeline's inferred duration, and relative times (`+2s`) and staggers count from the events.
+  A timeline with only lifecycle blocks (a menu that waits for clicks) has duration 0.
+- `enter` and `leave` are contextual keywords (still valid parameter and variable names).
+
+This replaces the `at 0s..3600s [ setup ] [ teardown ]` trick, which gave every timeline a
+duration of an hour and pushed relative times after it an hour out.
+
 ### 6.2 Timeline Events
 
 #### Timed Events
@@ -2902,7 +2931,8 @@ Parameter       := ID (':' TypeAnnotation)?
 TypeAnnotation  := 'string' | 'number' | 'boolean' | 'object' | 'array'
 
 Timeline        := 'timeline' STRING 'in' STRING 'using' Provider ('from' STRING)?
-                   '{' TimelineEvent* '}'
+                   '{' (Lifecycle | TimelineEvent)* '}'
+Lifecycle       := 'on' ('enter' | 'leave') '[' OperationStatement* ']'
 Provider        := 'video' | 'audio' | 'raf' | 'custom'
 
 TimelineEvent   := TimedEvent | SequenceBlock | StaggerBlock

@@ -84,7 +84,8 @@ export function registerTimelineValidation(typir: TypirLangiumServices<EligianSp
       }
 
       // Rule 2: Empty timeline detection
-      if (!node.events || node.events.length === 0) {
+      // A timeline with only `on enter` / `on leave` blocks (e.g. a hub) is not empty
+      if ((node.events?.length ?? 0) === 0 && (node.lifecycle?.length ?? 0) === 0) {
         accept({
           severity: 'warning',
           message: 'Timeline has no events. Add at least one event inside the timeline block.',
