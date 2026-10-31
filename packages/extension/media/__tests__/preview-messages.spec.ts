@@ -296,3 +296,44 @@ describe('preview.ts controls: scrubbing and switching timelines (audit idea #5)
     );
   });
 });
+
+describe('preview.ts runtime errors and the playhead (audit idea #14)', () => {
+  test('forwards engine errors with the failing action and operation, and the playhead', async () => {
+    const inits = h.initCalls;
+    send({ type: 'initialize', payload: { config: { id: 'c', timelines: [{ uri: 'intro' }] } } });
+    await vi.waitFor(() => expect(h.initCalls).toBe(inits + 1));
+    await vi.waitFor(() => expect(h.engineListeners.has('error')).toBe(true));
+    h.posted.length = 0;
+
+    h.engineListeners.get('error')?.({
+      message: "Error in action start 'beat': boom",
+      actionId: 'a1',
+      actionName: 'beat',
+      phase: 'start',
+      operationSystemName: 'addClass',
+      operationIndex: 2,
+    });
+    h.engineListeners.get('seekComplete')?.(4, 60);
+
+    expect(h.posted).toContainEqual({
+      type: 'runtimeError',
+      payload: {
+        message: "Error in action start 'beat': boom",
+        actionId: 'a1',
+        actionName: 'beat',
+        phase: 'start',
+        operationSystemName: 'addClass',
+        operationIndex: 2,
+        timelineUri: 'intro',
+        position: 0,
+      },
+    });
+    expect(h.posted).toContainEqual({
+      type: 'playhead',
+      payload: { timelineUri: 'intro', position: 4 },
+    });
+    expect(byId('playhead-status').textContent).toContain(
+      "Runtime error: Error in action start 'beat': boom"
+    );
+  });
+});

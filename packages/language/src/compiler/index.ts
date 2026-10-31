@@ -22,6 +22,17 @@ export {
   MainLayer,
   TestLayer,
 } from './effects/index.js';
+// Idea #14: compiled JSON → .eligian source (runtime errors, live playhead)
+export {
+  activeTimelineActions,
+  buildEligianMap,
+  type EligianMap,
+  type EligianMapAction,
+  type EligianMapOperation,
+  type EngineErrorInfo,
+  type LocatedEngineError,
+  locateEngineError,
+} from './eligian-map.js';
 // Error formatting exports
 export { formatErrors } from './error-reporter.js';
 // Operation registry exports
@@ -83,6 +94,7 @@ export {
   compileToIR,
   compileToJSON,
   compileWithDefaults,
+  compileWithMap,
   type DocumentWarning,
   emitJSON,
   getCompilerVersion,

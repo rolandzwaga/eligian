@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 to #11 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #11, #13 and #14 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3555,6 +3555,8 @@ sequence each [ clearSpots() ] {
 - **Rationale:** Together with #3 it removes most hand-computed timing in click-paced presentations. It extends an existing construct naturally, so it fits the language well.
 
 ### #14 Runtime source map: engine errors as diagnostics and a live playhead in the editor
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 053), except the optional breakpoints (point 4). The map is keyed by action id (the ids the compiled config keeps) rather than by name; errors inside called actions are located by following requestAction calls, because Eligius reports the innermost operation's index with the outer timeline action. The prerequisite (library files in source locations) was already fixed. Runtime diagnostics use their own collection so a recompile clears them. A real-engine test checks an error maps to the failing line.
 
 - **Area:** runtime-integration · **Effort:** M · **Score:** 7.5
 - **Problem:** The IR carries a sourceLocation for every action and operation and builds EligiusIR.sourceMap, but emitter.ts returns only `ir.config`, so the mapping is lost. The preview never subscribes to `engine.on('error')`, although Eligius 3 raises EngineActionError with the action, phase and operation index. Runtime failures are invisible, or they appear under the names of generated JSON actions.

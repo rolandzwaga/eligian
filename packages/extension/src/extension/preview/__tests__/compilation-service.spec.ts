@@ -22,7 +22,11 @@ vi.mock('vscode', () => ({
 }));
 
 vi.mock('@eligian/language', () => ({
-  compileString: (source: string, options: unknown) => h.compile!(source, options),
+  // Idea #14: the preview compiles with the Eligian map
+  compileWithMap: (source: string, options: unknown) =>
+    (h.compile!(source, options) as Effect.Effect<unknown, unknown>).pipe(
+      Effect.map(config => ({ config, map: { version: 1, actions: {} } }))
+    ),
 }));
 
 import type * as vscode from 'vscode';

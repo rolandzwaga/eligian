@@ -11,9 +11,11 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { type EligianMap, locateEngineError, type SourceLocation } from '@eligian/language';
 import * as vscode from 'vscode';
 import { collectCSSImporters, extractCSSFiles } from '../css-loader.js';
 import { CSSWatcherManager } from '../css-watcher.js';
+import { PlayheadDecorator } from '../decorations/playhead-decoration-provider.js';
 import { WebviewCSSInjector } from '../webview-css-injector.js';
 import { CompilationService } from './CompilationService.js';
 import { EligiusEngineService, type EngineEvent } from './EligiusEngineService.js';
@@ -25,6 +27,17 @@ import {
   findUncoveredDirectories,
 } from './resource-roots.js';
 import { findTimelineHeader } from './timeline-location.js';
+
+/** What the webview reports about an engine error (idea #14). */
+interface RuntimeErrorPayload {
+  readonly message?: string;
+  readonly actionId?: string;
+  readonly phase?: 'start' | 'end';
+  readonly operationSystemName?: string;
+  readonly operationIndex?: number;
+  readonly timelineUri?: string;
+  readonly position?: number;
+}
 
 /**
  * Manages the lifecycle of a single preview webview panel.
@@ -41,6 +54,8 @@ import { findTimelineHeader } from './timeline-location.js';
  */
 export class PreviewPanel {
   private static diagnostics: vscode.DiagnosticCollection | null = null;
+  /** Idea #14: errors the engine reports while the preview runs (source 'eligius-runtime') */
+  private static runtimeDiagnostics: vscode.DiagnosticCollection | null = null;
 
   private panel: vscode.WebviewPanel;
   private documentUri: vscode.Uri;
@@ -77,6 +92,12 @@ export class PreviewPanel {
   private timelineUris: Map<string, string> | undefined;
   /** A "Preview from here" request waiting for the first successful compile */
   private pendingPreviewAt: { timelineUri: string; seconds: number } | undefined;
+  /** Idea #14: compiled JSON → source locations, from the latest successful compile */
+  private eligianMap: EligianMap | undefined;
+  /** Files this panel reported runtime errors for (cleared on recompile and close) */
+  private runtimeErrorUris = new Map<string, vscode.Uri>();
+  /** Idea #14: marks the running events in the editor; created on the first playhead */
+  private playheadDecorator: PlayheadDecorator | undefined;
 
   /**
    * Initialize the static diagnostics collection (called once per extension activation).
@@ -84,6 +105,10 @@ export class PreviewPanel {
   public static initializeDiagnostics(): vscode.DiagnosticCollection {
     if (!PreviewPanel.diagnostics) {
       PreviewPanel.diagnostics = vscode.languages.createDiagnosticCollection('eligian-preview');
+    }
+    if (!PreviewPanel.runtimeDiagnostics) {
+      PreviewPanel.runtimeDiagnostics =
+        vscode.languages.createDiagnosticCollection('eligius-runtime');
     }
     return PreviewPanel.diagnostics;
   }
@@ -96,6 +121,8 @@ export class PreviewPanel {
       PreviewPanel.diagnostics.dispose();
       PreviewPanel.diagnostics = null;
     }
+    PreviewPanel.runtimeDiagnostics?.dispose();
+    PreviewPanel.runtimeDiagnostics = null;
   }
 
   /**
@@ -278,6 +305,8 @@ export class PreviewPanel {
     // 'Eligian Preview' entries would otherwise stay in Problems until reload.
     // (In-flight compiles stop applying results once isDisposed is set.)
     PreviewPanel.diagnostics?.delete(this.documentUri);
+    this.clearRuntimeErrors();
+    this.playheadDecorator?.dispose();
 
     // Destroy Eligius engine
     this.engineService.destroy();
@@ -405,6 +434,10 @@ export class PreviewPanel {
 
         // Map compiled timeline uris to the resolved ones, then send a waiting
         // "Preview from here" (the webview applies it once the engine is up)
+        // Idea #14: a new engine runs, so earlier runtime errors are stale
+        this.eligianMap = result.map;
+        this.clearRuntimeErrors();
+
         const resolvedTimelines = resolvedConfig.timelines ?? [];
         this.timelineUris = new Map(
           (result.config.timelines ?? []).map((timeline, index) => [
@@ -573,8 +606,23 @@ export class PreviewPanel {
 
       case 'runtimeError':
         // Runtime error from Eligius engine
-        console.error('[Preview] Runtime error from Eligius:', message.payload.message);
-        vscode.window.showErrorMessage(`Eligian Preview Runtime Error: ${message.payload.message}`);
+        console.error('[Preview] Runtime error from Eligius:', message.payload?.message);
+        // Idea #14: located in the source through the Eligian map
+        this.reportRuntimeError(message.payload ?? {});
+        break;
+
+      case 'playhead':
+        // Idea #14: mark the events running at the playhead in the editor
+        this.playheadDecorator ??= new PlayheadDecorator(this.documentUri);
+        this.playheadDecorator.update(
+          this.eligianMap,
+          message.payload
+            ? {
+                timelineUri: this.compiledTimelineUri(message.payload.timelineUri),
+                position: message.payload.position,
+              }
+            : null
+        );
         break;
 
       // Route engine events to engine service
@@ -590,6 +638,114 @@ export class PreviewPanel {
       default:
         console.log('[Preview] Unknown message type:', message.type);
     }
+  }
+
+  /** The compiled uri of a timeline the webview names by its resolved (webview) uri. */
+  private compiledTimelineUri(resolved: string): string {
+    for (const [compiled, webviewUri] of this.timelineUris ?? []) {
+      if (webviewUri === resolved) return compiled;
+    }
+    return resolved;
+  }
+
+  /**
+   * Idea #14: show an engine error with where it happens in the source: a
+   * notification with 'Go to Source', and an Error diagnostic (source
+   * 'eligius-runtime') on the failing operation, in the program or in the
+   * library that defines the action.
+   */
+  private reportRuntimeError(payload: RuntimeErrorPayload): void {
+    const located =
+      this.eligianMap && payload.actionId
+        ? locateEngineError(this.eligianMap, {
+            actionId: payload.actionId,
+            phase: payload.phase ?? 'start',
+            operationSystemName: payload.operationSystemName,
+            operationIndex: payload.operationIndex,
+          })
+        : undefined;
+    const location = located?.location;
+    const uri = location?.file ? vscode.Uri.file(location.file) : this.documentUri;
+    const where = location
+      ? ` (${path.basename(uri.fsPath)}:${location.line}:${location.column})`
+      : '';
+    const text = `Eligian Preview Runtime Error: ${payload.message ?? 'unknown error'}${where}`;
+
+    if (!location) {
+      vscode.window.showErrorMessage(text);
+      return;
+    }
+    void Promise.resolve(vscode.window.showErrorMessage(text, 'Go to Source')).then(choice => {
+      if (choice === 'Go to Source') void this.revealLocation(uri, location);
+    });
+    void this.addRuntimeDiagnostic(uri, location, payload, located?.via ?? []);
+  }
+
+  private async addRuntimeDiagnostic(
+    uri: vscode.Uri,
+    location: SourceLocation,
+    payload: RuntimeErrorPayload,
+    via: readonly string[]
+  ): Promise<void> {
+    const diagnostics = PreviewPanel.runtimeDiagnostics;
+    if (!diagnostics || this.isDisposed) return;
+    const range = await this.rangeOf(uri, location);
+    const at =
+      payload.position !== undefined
+        ? ` at ${Math.round(payload.position * 10) / 10}s of '${this.compiledTimelineUri(payload.timelineUri ?? '')}'`
+        : '';
+    const through = via.length > 0 ? ` (in ${via.map(name => `'${name}'`).join(' → ')})` : '';
+    const diagnostic = new vscode.Diagnostic(
+      range,
+      `Runtime error${at}${through}: ${payload.message ?? 'unknown error'}`,
+      vscode.DiagnosticSeverity.Error
+    );
+    diagnostic.source = 'eligius-runtime';
+    diagnostic.code = 'runtime_error';
+    const existing = diagnostics.get(uri) ?? [];
+    // The same failure repeats (every loop, every replay): report it once per place
+    if (
+      existing.some(
+        d =>
+          d.range.start.line === range.start.line &&
+          d.range.start.character === range.start.character &&
+          d.message === diagnostic.message
+      )
+    ) {
+      return;
+    }
+    diagnostics.set(uri, [...existing, diagnostic]);
+    this.runtimeErrorUris.set(uri.toString(), uri);
+  }
+
+  private clearRuntimeErrors(): void {
+    for (const uri of this.runtimeErrorUris.values()) {
+      PreviewPanel.runtimeDiagnostics?.delete(uri);
+    }
+    this.runtimeErrorUris.clear();
+  }
+
+  /** The range of `location` (1-based line and column, offset length) in `uri`. */
+  private async rangeOf(uri: vscode.Uri, location: SourceLocation): Promise<vscode.Range> {
+    const line = Math.max(0, location.line - 1);
+    const character = Math.max(0, location.column - 1);
+    try {
+      const document = await vscode.workspace.openTextDocument(uri);
+      const start = new vscode.Position(line, character);
+      const end = document.positionAt(document.offsetAt(start) + (location.length ?? 1));
+      return new vscode.Range(start, end);
+    } catch {
+      return new vscode.Range(line, character, line, character + 1);
+    }
+  }
+
+  private async revealLocation(uri: vscode.Uri, location: SourceLocation): Promise<void> {
+    const range = await this.rangeOf(uri, location);
+    const editor = await vscode.window.showTextDocument(uri, {
+      viewColumn: vscode.ViewColumn.One,
+      selection: range,
+    });
+    editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
   }
 
   /**

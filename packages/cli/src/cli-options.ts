@@ -28,9 +28,25 @@ export function parseInlineThreshold(value: string): number | undefined {
 export function validateOptionCombination(options: {
   bundle: boolean;
   check: boolean;
+  eligianMap?: boolean;
+  output?: string;
 }): string | undefined {
   if (options.bundle && options.check) {
     return '--bundle and --check cannot be combined: --check validates only and writes no output, but --bundle always writes a bundle directory';
   }
+  if (options.eligianMap && options.bundle) {
+    return '--eligian-map applies to JSON output, not to --bundle';
+  }
+  if (options.eligianMap && options.output === '-') {
+    return "--eligian-map needs an output file (it is written next to it), not '-o -'";
+  }
   return undefined;
+}
+
+/**
+ * Idea #14: where `--eligian-map` writes the map for the output `story.json`:
+ * `story.eligian-map.json` (a non-.json output gets the suffix appended).
+ */
+export function eligianMapPath(outputPath: string): string {
+  return `${outputPath.replace(/.json$/i, '')}.eligian-map.json`;
 }

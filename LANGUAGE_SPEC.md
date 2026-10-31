@@ -2856,6 +2856,15 @@ The preview opens in a side panel and displays the rendered Eligius timeline wit
 known statically. It opens the preview, switches to that timeline, seeks to that time and plays.
 The setting `eligian.codeLens.preview` turns the lenses off.
 
+**Runtime errors and the live playhead**: the preview compiles with an *Eligian map* (every
+compiled action and operation with its source location; `eligian --eligian-map` writes the same
+map next to the JSON). When the Eligius engine reports a failing timeline action, the preview finds
+the failing operation, also inside the actions it calls or in an imported library, and shows the
+error as a notification with *Go to Source* and as an Error in the Problems view (source
+`eligius-runtime`, cleared on the next compile). While it plays, the editor marks the events that
+run at the playhead (`▶ 0s..6s` at the end of their line; setting
+`eligian.preview.highlightActiveEvents`).
+
 ### 13.2 CSS Injection
 
 CSS files imported via `styles` keyword are automatically loaded into the preview webview.

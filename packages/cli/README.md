@@ -113,6 +113,9 @@ Options:
   --check              syntax check only (do not generate output)
   --minify             minify JSON output (no whitespace)
   --no-optimize        disable optimization passes
+  --eligian-map        also write <output>.eligian-map.json: every compiled action and
+                       operation with its .eligian source location (for tools that
+                       report Eligius runtime errors against the source)
   -v, --verbose        verbose logging
   -q, --quiet          suppress success messages
   -h, --help           display help for command

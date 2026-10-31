@@ -16,7 +16,7 @@ import { BundleCompileError, BundleError, createBundle } from './bundler/index.j
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
 import { parseCheckFormat, parseMaxWarnings, runCheck } from './check/check-command.js';
 import { CHECK_FORMATS } from './check/reporters.js';
-import { parseInlineThreshold, validateOptionCombination } from './cli-options.js';
+import { eligianMapPath, parseInlineThreshold, validateOptionCombination } from './cli-options.js';
 import {
   AssetError,
   CompilationError,
@@ -65,6 +65,8 @@ interface CLIOptions {
   inlineThreshold: number;
   sourcemap: boolean;
   force: boolean;
+  /** Idea #14: also write `<out>.eligian-map.json` */
+  eligianMap: boolean;
 }
 
 /**
@@ -218,6 +220,14 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
       if (!options.quiet) {
         console.log(chalk.green(`✓ Compiled ${inputPath} → ${outputPath}`));
       }
+
+      if (options.eligianMap) {
+        const mapPath = eligianMapPath(outputPath);
+        await fs.writeFile(mapPath, JSON.stringify(result.map, null, 2), 'utf-8');
+        if (!options.quiet) {
+          console.log(chalk.green(`✓ Eligian map → ${mapPath}`));
+        }
+      }
     }
   } catch (error) {
     reportCompileError(error);
@@ -348,6 +358,11 @@ export default function main(): void {
       String(DEFAULT_INLINE_THRESHOLD)
     )
     .option('--sourcemap', 'generate source maps in bundle', false)
+    .option(
+      '--eligian-map',
+      'also write <output>.eligian-map.json: compiled actions and operations → .eligian source locations',
+      false
+    )
     .option('--force', 'overwrite existing output directory', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {
       const inlineThreshold = parseInlineThreshold(String(cmdOptions.inlineThreshold));
@@ -369,6 +384,7 @@ export default function main(): void {
         inlineThreshold,
         sourcemap: cmdOptions.sourcemap as boolean,
         force: cmdOptions.force as boolean,
+        eligianMap: cmdOptions.eligianMap === true,
       };
 
       const combinationError = validateOptionCombination(options);

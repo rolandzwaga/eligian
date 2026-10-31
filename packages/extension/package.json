@@ -41,6 +41,11 @@
     "configuration": {
       "title": "Eligian",
       "properties": {
+        "eligian.preview.highlightActiveEvents": {
+          "type": "boolean",
+          "default": true,
+          "description": "While the preview plays, mark the timeline events that are running in the .eligian editor."
+        },
         "eligian.codeLens.preview": {
           "type": "boolean",
           "default": true,

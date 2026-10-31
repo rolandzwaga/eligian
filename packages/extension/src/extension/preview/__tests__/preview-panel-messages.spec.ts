@@ -24,6 +24,7 @@ interface MockUri {
 interface CompileResult {
   success: boolean;
   config: Record<string, unknown> | null;
+  map?: unknown;
   errors: Array<{
     message: string;
     severity: 'error' | 'warning';
@@ -413,5 +414,62 @@ describe('PreviewPanel.previewAt (audit idea #5)', () => {
       timelineUri: 'main',
       position: 2,
     });
+  });
+});
+
+describe('PreviewPanel runtime errors (audit idea #14)', () => {
+  test('a located engine error becomes a notification with its place and a runtime diagnostic', async () => {
+    h.compileResults.push({
+      success: true,
+      config: { id: 'cfg', timelines: [{ uri: 't' }] },
+      map: {
+        version: 1,
+        actions: {
+          a1: {
+            name: 'timeline-action-0-5',
+            kind: 'timeline',
+            location: { line: 4, column: 3, length: 20 },
+            start: [
+              { systemName: 'selectElement', location: { line: 5, column: 5, length: 10 } },
+              { systemName: 'getControllerInstance', location: { line: 6, column: 5, length: 30 } },
+            ],
+            end: [],
+            timelineUri: 't',
+            duration: { start: 0, end: 5 },
+          },
+        },
+      },
+      errors: [],
+      timestamp: 0,
+    } as CompileResult);
+    openPanel();
+    await vi.waitFor(() => expect(count('initialize')).toBe(1));
+    h.errorMessages.length = 0;
+
+    h.receive?.({
+      type: 'runtimeError',
+      payload: {
+        message: "Error in action start 'timeline-action-0-5': no controller",
+        actionId: 'a1',
+        phase: 'start',
+        operationSystemName: 'getControllerInstance',
+        operationIndex: 1,
+        timelineUri: 't',
+        position: 1.25,
+      },
+    });
+
+    expect(h.errorMessages).toEqual([
+      "Eligian Preview Runtime Error: Error in action start 'timeline-action-0-5': no controller (story.eligian:6:5)",
+    ]);
+    await vi.waitFor(() => expect(h.diagnostics.get(documentPath)?.length).toBe(1));
+    const [diagnostic] = h.diagnostics.get(documentPath) as Array<{
+      message: string;
+      source?: string;
+      range: { startLine: number; startCharacter: number };
+    }>;
+    expect(diagnostic.source).toBe('eligius-runtime');
+    expect(diagnostic.message).toContain("at 1.3s of 't'");
+    expect([diagnostic.range.startLine, diagnostic.range.startCharacter]).toEqual([5, 4]);
   });
 });

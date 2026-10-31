@@ -194,20 +194,69 @@ const byId = <T extends HTMLElement = HTMLElement>(id: string): T =>
 /** Keep the scrubber, readout and timeline picker in step with the engine. */
 function bindEngineListeners(current: IEligiusEngine): void {
   removeEngineListeners();
+  statusMessages.runtime = undefined;
+  renderStatus();
   engineListenerRemovers = [
     current.on('time', position => {
       if (!scrubbing) refreshPlayhead(position);
+      reportPlayhead(current, position);
     }),
     current.on('duration', () => refreshPlayhead()),
-    current.on('seekComplete', position => refreshPlayhead(position)),
+    current.on('seekComplete', position => {
+      refreshPlayhead(position);
+      reportPlayhead(current, position, true);
+    }),
     current.on('timelineChange', uri => {
       byId<HTMLSelectElement>('timeline-select').value = uri;
       refreshPlayhead();
+      reportPlayhead(current, current.position, true);
+    }),
+    // Idea #14: a timeline action that failed while the engine ran it. The
+    // extension maps (action, phase, operation) back to the .eligian source.
+    current.on('error', error => {
+      statusMessages.runtime = `Runtime error: ${error.message}`;
+      renderStatus();
+      vscode.postMessage({
+        type: 'runtimeError',
+        payload: {
+          message: error.message,
+          actionId: error.actionId,
+          actionName: error.actionName,
+          phase: error.phase,
+          operationSystemName: error.operationSystemName,
+          operationIndex: error.operationIndex,
+          timelineUri: current.currentTimelineUri,
+          position: current.position,
+        },
+      });
     }),
   ];
 }
 
+/** Last time the playhead was posted to the extension (ms). */
+let lastPlayheadPost = 0;
+const PLAYHEAD_INTERVAL_MS = 250;
+
+/**
+ * Idea #14: tell the extension where the playhead is (about 4 times a second,
+ * and right away after a seek or a timeline switch) so the editor can mark the
+ * events that are running.
+ */
+function reportPlayhead(current: IEligiusEngine, position: number, now = false): void {
+  const time = Date.now();
+  if (!now && time - lastPlayheadPost < PLAYHEAD_INTERVAL_MS) return;
+  lastPlayheadPost = time;
+  vscode.postMessage({
+    type: 'playhead',
+    payload: { timelineUri: current.currentTimelineUri, position },
+  });
+}
+
 function removeEngineListeners(): void {
+  if (engineListenerRemovers.length > 0) {
+    // No engine runs any more: nothing is playing
+    vscode.postMessage({ type: 'playhead', payload: null });
+  }
   for (const remove of engineListenerRemovers) {
     remove();
   }
@@ -606,12 +655,12 @@ function updateControlStates(isPlaying: boolean): void {
 }
 
 /** Status messages next to the controls, by source; shown together. */
-const statusMessages: { playhead?: string; scroll?: string } = {};
+const statusMessages: { playhead?: string; scroll?: string; runtime?: string } = {};
 
 function renderStatus(): void {
   const status = document.getElementById('playhead-status');
   if (status) {
-    status.textContent = [statusMessages.playhead, statusMessages.scroll]
+    status.textContent = [statusMessages.runtime, statusMessages.playhead, statusMessages.scroll]
       .filter(Boolean)
       .join(' · ');
   }

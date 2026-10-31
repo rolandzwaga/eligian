@@ -40,6 +40,7 @@ import type {
 import { isLibrary, type Program } from '../generated/ast.js';
 import { getImports } from '../utils/program-helpers.js';
 import { transformAST } from './ast-transformer.js';
+import { buildEligianMap, type EligianMap } from './eligian-map.js';
 import { emitJSON } from './emitter.js';
 import { optimize } from './optimizer.js';
 import { type DocumentWarning, extractDocumentWarnings } from './pipeline/document-errors.js';
@@ -252,6 +253,21 @@ export const compile = (
     const config = yield* emitJSON(optimizedIR);
 
     return config;
+  });
+
+/**
+ * Idea #14: compile() plus the Eligian map (compiled JSON → .eligian source),
+ * for tools that report runtime errors or follow the playhead (the preview,
+ * `eligian --eligian-map`).
+ */
+export const compileWithMap = (
+  source: string,
+  options: CompileOptions = {}
+): Effect.Effect<{ config: IEngineConfiguration; map: EligianMap }, CompileError> =>
+  Effect.gen(function* () {
+    const ir = yield* compileToIR(source, options);
+    const config = yield* emitJSON(ir);
+    return { config, map: buildEligianMap(ir) };
   });
 
 /**

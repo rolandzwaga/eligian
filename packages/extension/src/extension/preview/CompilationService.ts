@@ -12,7 +12,7 @@
  * from the @eligian/language error formatting module.
  */
 
-import { compileString, type IEngineConfiguration } from '@eligian/language';
+import { compileWithMap, type EligianMap, type IEngineConfiguration } from '@eligian/language';
 // Feature 018 (US1): Import error types from unified error system
 import { type AllErrors, formatError } from '@eligian/language/errors';
 import { Effect } from 'effect';
@@ -36,6 +36,8 @@ interface CompilationError {
 interface CompilationResult {
   success: boolean;
   config: IEngineConfiguration | null;
+  /** Idea #14: compiled JSON → source locations (runtime errors, live playhead) */
+  map?: EligianMap;
   errors: CompilationError[];
   timestamp: number;
 }
@@ -132,8 +134,8 @@ export class CompilationService {
   ): Promise<Omit<CompilationResult, 'timestamp'>> {
     try {
       // Use the Eligian compiler with sourceUri for asset resolution (Feature 010)
-      const config = await Effect.runPromise(
-        compileString(source, {
+      const { config, map } = await Effect.runPromise(
+        compileWithMap(source, {
           sourceUri: documentUri.fsPath,
         })
       );
@@ -141,6 +143,7 @@ export class CompilationService {
       return {
         success: true,
         config,
+        map,
         errors: [],
       };
     } catch (error) {

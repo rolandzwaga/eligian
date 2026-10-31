@@ -10,7 +10,8 @@ import * as path from 'node:path';
 import {
   type AssetError as AssetValidationError,
   type CompilerError,
-  compile,
+  compileWithMap,
+  type EligianMap,
   formatErrors,
   getProgramWarnings,
   hasImports,
@@ -54,6 +55,8 @@ export interface CompileResult {
   config: IEngineConfiguration;
   /** JSON string representation */
   json: string;
+  /** Idea #14: compiled JSON → source locations (written with `--eligian-map`) */
+  map: EligianMap;
   /** Number of assets validated (if any imports) */
   assetCount: number;
   /** Non-fatal diagnostics (warnings / info / hints), in document order */
@@ -300,7 +303,7 @@ export async function compileFile(
 
   // Run compiler pipeline
   const compileExit = await Effect.runPromiseExit(
-    compile(sourceCode, {
+    compileWithMap(sourceCode, {
       optimize,
       minify,
       sourceUri: absoluteInputPath,
@@ -318,10 +321,10 @@ export async function compileFile(
       }))
     );
   }
-  const config: IEngineConfiguration = compileExit.value;
+  const { config, map } = compileExit.value;
 
   // Generate output JSON
   const json = minify ? JSON.stringify(config) : JSON.stringify(config, null, 2);
 
-  return { config, json, assetCount, warnings };
+  return { config, json, map: { ...map, source: absoluteInputPath }, assetCount, warnings };
 }
