@@ -787,7 +787,7 @@ NullLiteral:
  *
  * Examples:
  *   { opacity: 1, color: "red" }
- *   { "operationdata.name": $scope.currentItem }
+ *   { "$operationdata.name": $scope.currentItem }
  */
 ObjectLiteral:
     '{' (properties += ObjectProperty (',' properties += ObjectProperty)*)? '}';

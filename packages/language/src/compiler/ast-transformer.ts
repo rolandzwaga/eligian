@@ -132,7 +132,9 @@ export const transformAST = (
       // Add regular variable declarations (non-constants)
       for (const varDecl of variableDeclarations) {
         const value = yield* transformExpression(varDecl.value, createEmptyScope(constantMap));
-        properties[`globaldata.${varDecl.name}`] = value;
+        // Eligius setData targets need the dollar prefix ($globaldata.x): it
+        // reads the target as the first key segment minus its first character
+        properties[`$globaldata.${varDecl.name}`] = value;
       }
 
       // Create single setData operation wrapped in an IEndableActionConfiguration

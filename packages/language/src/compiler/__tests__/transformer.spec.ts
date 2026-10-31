@@ -308,10 +308,10 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      // Program-level variables are stored via setData as 'globaldata.items'
+      // Program-level variables are stored via setData as '$globaldata.items'
       const init = result.config.initActions[0].startOperations[0];
       expect(init.operationData?.properties).toEqual({
-        'globaldata.items': ['$globaldata.first', 'b'],
+        '$globaldata.items': ['$globaldata.first', 'b'],
       });
 
       const ops = result.config.actions[0].startOperations;

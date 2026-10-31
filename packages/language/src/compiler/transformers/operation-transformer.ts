@@ -47,7 +47,7 @@ import { getProgram, getSourceLocation } from './source-location.js';
  * Handles function-style operation calls with positional parameters:
  *   selectElement("#title")
  *   animate({ opacity: 1 }, 500, "ease")
- *   setData({ "operationdata.name": $scope.currentItem })
+ *   setData({ "$operationdata.name": $scope.currentItem })
  *
  * Per DSL_DESIGN_DECISIONS.md Q3: Flattens wrapper objects automatically.
  * Constitution VII: Generates UUID for operation ID
