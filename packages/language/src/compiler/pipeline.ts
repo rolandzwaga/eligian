@@ -49,6 +49,12 @@ import { typeCheck } from './type-checker.js';
 import type { SourceLocation } from './types/common.js';
 import type { EligiusIR } from './types/eligius-ir.js';
 
+export {
+  type CheckDiagnostic,
+  type CheckFileResult,
+  type CheckSeverity,
+  checkFiles,
+} from './pipeline/check.js';
 export type { DocumentWarning } from './pipeline/document-errors.js';
 export {
   extractLibraryImports,

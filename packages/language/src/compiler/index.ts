@@ -73,7 +73,11 @@ export {
 } from './operations/validator.js';
 // Compilation pipeline exports
 export {
+  type CheckDiagnostic,
+  type CheckFileResult,
+  type CheckSeverity,
   type CompileError,
+  checkFiles,
   compile,
   compileString,
   compileToIR,

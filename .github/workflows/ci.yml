@@ -73,6 +73,11 @@ jobs:
       - name: Effect LSP diagnostics
         run: pnpm run effect:check
 
+      # Every example must check cleanly (examples that demonstrate errors are
+      # excluded in the script); problems show as pull-request annotations
+      - name: Check examples (eligian check)
+        run: pnpm run check:examples --format github
+
       - name: Run tests with coverage
         run: pnpm run test:coverage:ci
 

@@ -14,6 +14,8 @@ import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
 import { BundleCompileError, BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
+import { parseCheckFormat, parseMaxWarnings, runCheck } from './check/check-command.js';
+import { CHECK_FORMATS } from './check/reporters.js';
 import { parseInlineThreshold, validateOptionCombination } from './cli-options.js';
 import {
   AssetError,
@@ -279,10 +281,55 @@ export default function main(): void {
   program
     .name('eligian')
     .description('Eligian DSL compiler - compile .eligian files to Eligius JSON')
-    .version(packageVersion);
+    .version(packageVersion)
+    .addHelpText(
+      'after',
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian compile --help' or 'eligian check --help' for their options."
+    );
 
-  // Compile command (default)
+  // Check command: every diagnostic of every matched file
   program
+    .command('check')
+    .description('report all errors and warnings in .eligian files (no output is written)')
+    .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
+    .option('--format <format>', `output format: ${CHECK_FORMATS.join(', ')}`, 'pretty')
+    .option('--max-warnings <n>', 'fail when there are more than <n> warnings')
+    .option('--warnings-as-errors', 'fail on any warning (same as --max-warnings 0)', false)
+    .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
+      const format = parseCheckFormat(String(cmdOptions.format));
+      if (!format) {
+        console.error(
+          `Error: --format must be one of ${CHECK_FORMATS.join(', ')} (got "${cmdOptions.format}")`
+        );
+        process.exit(2);
+      }
+      let maxWarnings: number | undefined;
+      if (cmdOptions.maxWarnings !== undefined) {
+        maxWarnings = parseMaxWarnings(String(cmdOptions.maxWarnings));
+        if (maxWarnings === undefined) {
+          console.error(
+            `Error: --max-warnings must be a non-negative whole number (got "${cmdOptions.maxWarnings}")`
+          );
+          process.exit(2);
+        }
+      }
+
+      const outcome = await runCheck(patterns, {
+        format,
+        maxWarnings,
+        warningsAsErrors: cmdOptions.warningsAsErrors === true,
+        cwd: process.cwd(),
+        version: packageVersion,
+      });
+      if (outcome.output) console.log(outcome.output);
+      if (outcome.error) console.error(chalk.red(outcome.error));
+      process.exit(outcome.exitCode);
+    });
+
+  // Compile command (the default: `eligian <input>` is `eligian compile <input>`)
+  program
+    .command('compile', { isDefault: true })
+    .description('compile an .eligian file to Eligius JSON, or bundle it with --bundle')
     .argument('<input>', 'input .eligian file')
     .option('-o, --output <file>', 'output file (default: <input>.json, use "-" for stdout)')
     .option('--check', 'syntax check only (do not generate output)', false)

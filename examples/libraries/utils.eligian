@@ -43,7 +43,7 @@ action safeToggleClass(selector: string, className: string) [
  */
 action safeSetContent(selector: string, content: string) [
   selectElement(selector)
-  setElementContent({template: content})
+  setElementContent(content)
 ]
 
 /**

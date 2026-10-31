@@ -42,6 +42,36 @@ Check syntax without generating output:
 eligian input.eligian --check
 ```
 
+### Check Many Files (`eligian check`)
+
+Report **every** error and warning in a set of files, with their severities.
+`compile` stops at the first error; `check` does not, and writes no output.
+
+```bash
+eligian check "examples/**/*.eligian"
+eligian check src "!src/drafts/**" --max-warnings 0
+eligian check "**/*.eligian" --format github   # GitHub Actions annotations
+```
+
+- **Patterns:** file names, directories (all `.eligian` files below them) and
+  globs. Quote globs so the shell does not expand them. A pattern starting with
+  `!` excludes files. `node_modules` is always skipped.
+- **Imports:** imported libraries are loaded for linking even when they are not
+  in the checked set. Library files in the set are checked too.
+- **Compile errors:** programs without validation errors are also compiled, so
+  errors only the compiler finds are reported as well.
+
+| Option | Meaning |
+|---|---|
+| `--format pretty\|json\|sarif\|github` | Output format (default `pretty`). `sarif` is SARIF 2.1.0 for code scanning; `github` prints workflow commands that annotate pull requests. |
+| `--max-warnings <n>` | Fail when there are more than `n` warnings. |
+| `--warnings-as-errors` | Fail on any warning (same as `--max-warnings 0`). |
+
+Exit codes: **0** clean (warnings within the limit), **1** errors or too many
+warnings, **2** nothing matched or an invalid option.
+
+`eligian <input>` is short for `eligian compile <input>`.
+
 ### Optimization & Minification
 
 ```bash
@@ -69,7 +99,8 @@ eligian input.eligian --quiet
 ## Options
 
 ```
-Usage: eligian [options] <input>
+Usage: eligian [compile] [options] <input>
+       eligian check [options] <patterns...>
 
 Eligian DSL compiler - compile .eligian files to Eligius JSON
 

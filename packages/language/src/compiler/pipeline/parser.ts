@@ -280,51 +280,7 @@ const parseSourceInner = (
         // No manual registration needed here.
 
         if (uri) {
-          const root = document.parseResult.value;
-
-          // Extract CSS imports from AST
-          // (`styles` default imports AND named imports that resolve to CSS)
-          const cssFiles = getCssImportPaths(root).map(p => p.replace(/^["']|["']$/g, ''));
-
-          // Parse each CSS file and load into registry
-          const docPath = documentUri.fsPath;
-          const docDir = path.dirname(docPath);
-          const cssFileUris: string[] = [];
-          for (const cssRelativePath of cssFiles) {
-            // Convert relative path to absolute (D4: shared resolution,
-            // path.join handles ./, ., ../). Computed once for both branches.
-            const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
-            // Convert to absolute URI (must match validator format)
-            const cssFileUri = URI.file(cssFilePath).toString();
-            cssFileUris.push(cssFileUri);
-
-            try {
-              // Read and parse CSS file
-              const cssContent = readFileSync(cssFilePath, 'utf-8');
-              const parseResult = parseCSS(cssContent, cssFilePath);
-
-              // Update registry with parsed CSS
-              cssRegistry.updateCSSFile(cssFileUri, parseResult);
-            } catch (error) {
-              // Register error in registry
-              cssRegistry.updateCSSFile(
-                cssFileUri,
-                createEmptyCSSMetadata([
-                  {
-                    message: error instanceof Error ? error.message : 'Unknown error',
-                    filePath: cssFileUri,
-                    line: 0,
-                    column: 0,
-                  },
-                ])
-              );
-            }
-          }
-
-          // CRITICAL FIX: Register document→CSS mapping (enables validation!)
-          // Without this, cssRegistry.getClassesForDocument() returns empty set
-          cssRegistry.registerImports(uriString, cssFileUris);
-          // DEBUG: Check CSS registry state
+          loadCssImports(document, cssRegistry);
         }
 
         // Now run validation with CSS loaded
@@ -357,6 +313,59 @@ const parseSourceInner = (
     // Return parsed AST
     return document.parseResult.value;
   });
+
+/**
+ * Parse the CSS files a document imports (`styles` default imports and named
+ * CSS imports) into the CSS registry and register the document→CSS mapping.
+ * Must run before validation: the CSS class/selector validators read the
+ * registry, so the IDE and the compiler validate against the same classes.
+ */
+export function loadCssImports(
+  document: LangiumDocument,
+  cssRegistry: ReturnType<typeof getOrCreateServices>['Eligian']['css']['CSSRegistry']
+): void {
+  const root = document.parseResult.value as Program;
+  const cssFiles = getCssImportPaths(root).map(p => p.replace(/^["']|["']$/g, ''));
+
+  const docDir = path.dirname(document.uri.fsPath);
+  const cssFileUris: string[] = [];
+  for (const cssRelativePath of cssFiles) {
+    // D4: shared resolution (path.join handles ./, ., ../)
+    const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
+    // Absolute URI: must match the validator's format
+    const cssFileUri = URI.file(cssFilePath).toString();
+    cssFileUris.push(cssFileUri);
+
+    try {
+      const cssContent = readFileSync(cssFilePath, 'utf-8');
+      cssRegistry.updateCSSFile(cssFileUri, parseCSS(cssContent, cssFilePath));
+    } catch (error) {
+      cssRegistry.updateCSSFile(
+        cssFileUri,
+        createEmptyCSSMetadata([
+          {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            filePath: cssFileUri,
+            line: 0,
+            column: 0,
+          },
+        ])
+      );
+    }
+  }
+
+  // Register document→CSS mapping (without it getClassesForDocument() is empty)
+  cssRegistry.registerImports(document.uri.toString(), cssFileUris);
+}
+
+/**
+ * Remove documents from the shared compiler workspace (index and document map).
+ */
+export function releaseWorkspaceDocuments(uris: Iterable<URI>): void {
+  const map = new Map<string, URI>();
+  for (const uri of uris) map.set(uri.toString(), uri);
+  releaseDocuments(map);
+}
 
 /**
  * T077: Validate AST semantics

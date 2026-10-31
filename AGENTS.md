@@ -38,6 +38,7 @@ Research/reference (read-only, do NOT import):
 - `pnpm check` (Biome format+lint, autofix — run after each task) · `pnpm lint` · `pnpm run ci` (no writes; bare `pnpm ci` is pnpm's clean-install, never run it)
 - `pnpm langium:generate` (after editing `eligian.langium`) · `pnpm generate:html-metadata` (regenerates HTML completion metadata)
 - `pnpm test:coverage` (local pruned coverage report via `tools/pruned-coverage.ts`)
+- `pnpm run check:examples` (`eligian check` on every example; CI runs it with `--format github`)
 - `pnpm effect:check` (Effect LSP diagnostics; also `:language` / `:cli`) — see Effect LSP above
 
 ### Task completion checklist

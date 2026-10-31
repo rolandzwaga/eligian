@@ -38,6 +38,7 @@
     "effect": "4.0.5",
     "eligius": "3.0.1",
     "esbuild": "0.28.2",
-    "jquery": "4.0.0"
+    "jquery": "4.0.0",
+    "tinyglobby": "0.2.17"
   }
 }

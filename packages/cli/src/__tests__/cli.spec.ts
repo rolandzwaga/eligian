@@ -227,7 +227,7 @@ describe('CLI - Version and Help', () => {
   });
 
   it('should display help with --help', () => {
-    const result = execSync(`node "${CLI_PATH}" --help`, {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 
@@ -238,8 +238,18 @@ describe('CLI - Version and Help', () => {
     expect(result).toContain('--minify');
   });
 
-  it('should display bundle options in help', () => {
+  it('lists the compile and check commands in the top-level help', () => {
     const result = execSync(`node "${CLI_PATH}" --help`, {
+      encoding: 'utf-8',
+    });
+
+    expect(result).toContain('compile [options] <input>');
+    expect(result).toContain('check [options] <patterns...>');
+    expect(result).toContain("'eligian compile --help'");
+  });
+
+  it('should display bundle options in help', () => {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 
@@ -270,7 +280,7 @@ describe('CLI - Bundle Options (Feature 040, Phase 6)', () => {
 
   // Test that --bundle flag is recognized and parsed correctly
   it('should recognize --bundle flag in help output', () => {
-    const result = execSync(`node "${CLI_PATH}" --help`, {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 
@@ -280,7 +290,7 @@ describe('CLI - Bundle Options (Feature 040, Phase 6)', () => {
 
   // Test that -o/--output option works with --bundle
   it('should recognize -o option for bundle output directory', () => {
-    const result = execSync(`node "${CLI_PATH}" --help`, {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 
@@ -289,7 +299,7 @@ describe('CLI - Bundle Options (Feature 040, Phase 6)', () => {
 
   // Test --inline-threshold option parsing
   it('should recognize --inline-threshold option', () => {
-    const result = execSync(`node "${CLI_PATH}" --help`, {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 
@@ -299,7 +309,7 @@ describe('CLI - Bundle Options (Feature 040, Phase 6)', () => {
 
   // Test --sourcemap option parsing
   it('should recognize --sourcemap option', () => {
-    const result = execSync(`node "${CLI_PATH}" --help`, {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 
@@ -309,7 +319,7 @@ describe('CLI - Bundle Options (Feature 040, Phase 6)', () => {
 
   // Test --force option parsing
   it('should recognize --force option', () => {
-    const result = execSync(`node "${CLI_PATH}" --help`, {
+    const result = execSync(`node "${CLI_PATH}" compile --help`, {
       encoding: 'utf-8',
     });
 

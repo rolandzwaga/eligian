@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 (done) and #12 (partly done).
+The feature ideas below are still open except #1 and #2 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3303,6 +3303,8 @@ action callout(selector: string, text: string) [
 - **Rationale:** Authors cannot see this correctness bug: the output compiles and then misbehaves at runtime. It also forces naming conventions on every action author. The fix stays inside the existing registry and transformer architecture and depends on nothing else in this list. It ranks above every other idea because it affects any action that forwards a parameter.
 
 ### #2 Make the CLI a real linter: `eligian check` with every diagnostic, severities kept separate, globs and machine-readable output
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (`eligian check` with pretty/json/sarif/github output, `--max-warnings`, `--warnings-as-errors`, `compile` subcommand, CI job `pnpm run check:examples`)
 
 - **Area:** cli · **Effort:** M · **Score:** 9.2
 - **Problem:** extractDocumentErrors (pipeline/document-errors.ts) returns only the first lexer, parser or validation diagnostic. It also ignores severity, so any warning, info or hint aborts compilation as a ValidationError (the confirmed high-severity bug at document-errors.ts:72). Parse errors at end of input get NaN line and column. A file with 6 errors takes 6 runs to fix. The CLI accepts a single input and prints coloured text only, and the repo's CI never compiles examples/.
