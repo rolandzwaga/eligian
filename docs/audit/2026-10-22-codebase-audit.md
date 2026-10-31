@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 and #2 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2 and #3 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3327,6 +3327,8 @@ $ eligian check "examples/**/*.eligian" --format github --max-warnings 0
 - **Rationale:** This item absorbs four confirmed pipeline bugs (warnings abort compilation, NaN positions, lost drive letter, ignored assets.errors), so fixing them is part of the work rather than a prerequisite. It is also the foundation that the smoke runner, the dev server and CI all need. The CI part of the 'Reusable GitHub Action' idea is merged in here.
 
 ### #3 Optional end block and `at <start> for <duration>`
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 048: `for` durations, optional end blocks for inline timeline and stagger blocks, convert-to-`for` code action; the tour and demo lost their empty end blocks)
 
 - **Area:** dsl · **Effort:** S · **Score:** 9.0
 - **Problem:** InlineEndableAction requires both `[start] [end]`, so `at 0s..2s [ selectElement("#b") ]` is a parse error, and tour.eligian contains 36 empty `] []` lines. Ranges must be written as absolute `a..b` pairs, so every beat repeats the arithmetic.

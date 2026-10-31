@@ -587,22 +587,32 @@ SequenceItem:
  */
 StaggerBlock:
     'stagger' delay=TimeExpression items=Expression 'with' actionCall=OperationCall 'for' duration=TimeExpression |
-    'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' '[' (endOps += OperationStatement)* ']';
+    'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' ('[' (endOps += OperationStatement)* ']')?;
 
 
 /**
  * Inline endable action - anonymous endable action defined at use site
+ *
+ * The end block is optional: `at 0s..2s [ selectElement("#b") ]` has no end
+ * operations (Feature 048).
  */
 InlineEndableAction:
     '[' (startOperations += OperationStatement)* ']'
-    '[' (endOperations += OperationStatement)* ']';
+    ('[' (endOperations += OperationStatement)* ']')?;
 
 // ============================================================================
 // Time Expressions
 // ============================================================================
 
+/**
+ * TimeRange - when a timeline event is active
+ *
+ *   at 2s..5s     start and end
+ *   at 2s for 3s  start and duration (end = start + duration); also with
+ *                 relative starts: `at +0s for 3s` (Feature 048)
+ */
 TimeRange:
-    start=TimeExpression '..' end=TimeExpression;
+    start=TimeExpression ('..' end=TimeExpression | 'for' duration=TimeExpression);
 
 TimeExpression:
     AdditiveTime;

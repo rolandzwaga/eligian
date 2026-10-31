@@ -116,6 +116,21 @@ export interface TimeRangeValues {
  */
 export function parseTimeRange(timeRange: TimeRange | undefined): TimeRangeValues {
   const start = evaluateLinearTime(timeRange?.start);
+  if (timeRange?.duration) {
+    // `at <start> for <duration>`: end = start + duration. A relative duration
+    // is invalid (reported separately), so it gives no known duration.
+    const length = evaluateLinearTime(timeRange.duration);
+    const duration = length && length.relative === 0 ? length.offset : undefined;
+    const absoluteStart = start && start.relative === 0 ? start.offset : undefined;
+    return {
+      start: absoluteStart,
+      end:
+        absoluteStart !== undefined && duration !== undefined
+          ? absoluteStart + duration
+          : undefined,
+      duration,
+    };
+  }
   const end = evaluateLinearTime(timeRange?.end);
   const duration =
     start && end && start.relative === end.relative ? end.offset - start.offset : undefined;
@@ -124,4 +139,14 @@ export function parseTimeRange(timeRange: TimeRange | undefined): TimeRangeValue
     end: end && end.relative === 0 ? end.offset : undefined,
     duration,
   };
+}
+
+/** True when `timeExpr` contains a relative time literal (`+2s`). */
+export function containsRelativeTime(timeExpr: TimeExpression | undefined): boolean {
+  if (!timeExpr) return false;
+  if (timeExpr.$type === 'RelativeTimeLiteral') return true;
+  if (timeExpr.$type === 'BinaryTimeExpression') {
+    return containsRelativeTime(timeExpr.left) || containsRelativeTime(timeExpr.right);
+  }
+  return false;
 }

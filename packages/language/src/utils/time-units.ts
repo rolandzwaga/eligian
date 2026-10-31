@@ -26,3 +26,11 @@ export function convertTimeToSeconds(value: number, unit?: string): number {
       return value; // 's' or no unit
   }
 }
+
+/**
+ * Reported (by the IDE validator and the compiler) for a relative time in the
+ * duration of `at <start> for <duration>`: a duration is a length, so `+2s`
+ * has no meaning there.
+ */
+export const RELATIVE_DURATION_MESSAGE =
+  "A duration cannot be a relative time: write 'for 2s', not 'for +2s'";

@@ -226,13 +226,13 @@ timeline "Eligian Demo" in "#container" using raf {
     validateInput("Valid input")
     wait(500)
     checkValue(75)
-  ] []
+  ]
 
   // === Code examples ===
   at 25s..35s [
     hideSlide("demo-section", 500)
     showSlide("code-section", 1000)
-  ] []
+  ]
 
   // === Action with break/continue ===
   at 27s..28s searchItems(["apple", "banana", "", "cherry", "date"], "cherry")

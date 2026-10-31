@@ -19,8 +19,13 @@ import type {
   TimedEvent,
   TimeExpression,
 } from '../../generated/ast.js';
+import { RELATIVE_DURATION_MESSAGE } from '../../utils/time-units.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
-import { extractTimeValue, parseTimeRange } from '../utils/time-expression.js';
+import {
+  containsRelativeTime,
+  extractTimeValue,
+  parseTimeRange,
+} from '../utils/time-expression.js';
 
 /**
  * Register timeline event validation rules with Typir
@@ -65,6 +70,26 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
           languageNode: node,
           languageProperty: 'timeRange',
         });
+      }
+
+      // `at <start> for <duration>`: the duration must be a positive length
+      if (node.timeRange?.duration) {
+        if (containsRelativeTime(node.timeRange.duration)) {
+          accept({
+            severity: 'error',
+            message: RELATIVE_DURATION_MESSAGE,
+            languageNode: node,
+            languageProperty: 'timeRange',
+          });
+        } else if (duration !== undefined && duration <= 0) {
+          accept({
+            severity: 'error',
+            message: `Timeline event duration must be greater than 0 (got ${duration}s)`,
+            languageNode: node,
+            languageProperty: 'timeRange',
+          });
+        }
+        return;
       }
 
       // Check for end time not after start time. `duration` is known for absolute

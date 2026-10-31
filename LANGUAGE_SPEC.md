@@ -5,6 +5,8 @@
 **Status**: Living Document - Updated with every language feature change
 
 **Recent Changes** (v1.8.0):
+- `at <start> for <duration>` and optional end blocks for inline timeline and stagger blocks
+  (Feature 048, sections 6.2 and 6.3)
 - Operation-data dependencies use inferred action contracts (Feature 047, section 4.7): a called
   action may rely on its caller's operation data; missing properties are reported where the
   action is entered (timelines, event actions, controller action lists)
@@ -1820,11 +1822,16 @@ timeline "animation" in "#canvas" using raf {
 #### Timed Events
 
 ```eligian
-at <start>..<end> <actionCall>
-at <start>..<end> <operationCall>
-at <start>..<end> <controlFlow>
-at <start>..<end> [ <start-ops>* ] [ <end-ops>* ]
+at <range> <actionCall>
+at <range> <operationCall>
+at <range> <controlFlow>
+at <range> [ <start-ops>* ] ([ <end-ops>* ])?
+
+<range> = <start>..<end> | <start> for <duration>
 ```
+
+The end block of an inline block is optional (Feature 048): `at 0s..2s [ selectElement("#b") ]`
+has no end operations.
 
 **Examples**:
 
@@ -1841,6 +1848,12 @@ at 5s..10s [
   addClass("visible")
 ] [
   removeClass("visible")
+]
+
+// Start and duration, no end block
+at 10s for 5s [
+  selectElement("#content")
+  addClass("highlight")
 ]
 
 // Control flow with mixed action/operation calls
@@ -1939,7 +1952,16 @@ stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
 at 0s..5s        // From 0s to 5s
 at 1s..1s+2s     // From 1s to 3s (using arithmetic)
 at +0s..+2s      // Relative timing
+at 2s for 3s     // From 2s to 5s (start and duration, Feature 048)
+at +0s for 3s    // Starts where the previous event ends, lasts 3s
 ```
+
+- **Duration:** `for <duration>` takes any time expression in any unit (`at 500ms for 2s` ends
+  at 2.5s). It must be greater than 0 and cannot be relative (`for +2s` is an error).
+- **Converting:** the editor offers *Convert to '<start> for <length>'* on a `start..end` range
+  whose length is statically known.
+- **Inline stagger blocks** may also leave out their end block:
+  `stagger 200ms items for 1s [ addClass("in") ]`.
 
 ---
 
@@ -2907,7 +2929,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.8.0 | 2026-10-31 | **Feature 047 - Operation-data contracts** (section 4.7): dependencies are checked by one dataflow analysis shared by the editor and the compiler; called actions inherit their caller's state through inferred contracts. **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
+| 1.8.0 | 2026-10-31 | **Feature 048 - `for` durations and optional end blocks** (sections 6.2, 6.3): `at 2s for 3s`, relative starts with durations, inline timeline/stagger blocks without an end block, and a code action converting `a..b` to `a for <length>`. **Feature 047 - Operation-data contracts** (section 4.7): dependencies are checked by one dataflow analysis shared by the editor and the compiler; called actions inherit their caller's state through inferred contracts. **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
 | 1.7.0 | 2026-10-17 | **Feature 045 - Locales Import**: `labels` import replaced by `locales` (section 3.2.4); nested JSON format keyed by locale code, compiles to `config.locales`, requires a `languages` block; translation keys referenced via `LabelController`. **Feature 029 corrections**: event names are restricted to the 43 Eligius events (sections 5.5, 5.10); the previous event list contained non-existent events. Duplicate event handlers documented as warnings; noted that the compiler fails on any diagnostic. Keyword list and grammar summary updated. |
 | 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |

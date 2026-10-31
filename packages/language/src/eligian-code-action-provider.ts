@@ -21,6 +21,7 @@ import type { EligianServices } from './eligian-module.js';
 import { MISSING_LABELS_FILE_CODE } from './eligian-validator.js';
 import type { Program } from './generated/ast.js';
 import { LanguageBlockCodeActionProvider } from './labels/language-block-code-actions.js';
+import { createTimeRangeActions } from './timeline/time-range-actions.js';
 import type {
   CreateLabelEntryCommand,
   CreateLabelsFileCommand,
@@ -108,6 +109,9 @@ export class EligianCodeActionProvider implements CodeActionProvider {
 
       // setData keys missing their '$' target prefix
       actions.push(...this.createSetDataTargetActions(params, documentUri));
+
+      // Feature 048: `at a..b` → `at a for <length>`
+      actions.push(...createTimeRangeActions(document, params.range));
 
       // Future: Add more code action providers here
       // - Refactoring actions (extract action, inline action, etc.)

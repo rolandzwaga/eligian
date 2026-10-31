@@ -15,7 +15,9 @@ import type {
   TimedEvent,
   Timeline,
 } from '../../generated/ast.js';
+import { containsRelativeTime } from '../../type-system-typir/utils/time-expression.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
+import { RELATIVE_DURATION_MESSAGE } from '../../utils/time-units.js';
 import { findActionByName } from '../name-resolver.js';
 import type { ConstantMap } from '../types/constant-folding.js';
 import type {
@@ -567,9 +569,31 @@ const transformTimedEvent = (
     // Transform start and end times to numbers
     // T189: Pass previousEventEndTime for relative time resolution
     const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime);
-    const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
     const start = roundTime(evaluateTimeExpression(startExpr));
-    const end = roundTime(evaluateTimeExpression(endExpr));
+    let end: number;
+    if (timeRange.duration) {
+      // `at <start> for <duration>` (Feature 048): end = start + duration
+      if (containsRelativeTime(timeRange.duration)) {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidEvent' as const,
+          message: RELATIVE_DURATION_MESSAGE,
+          location: getSourceLocation(timeRange.duration),
+        });
+      }
+      const durationExpr = yield* transformTimeExpression(timeRange.duration);
+      end = roundTime(start + evaluateTimeExpression(durationExpr));
+    } else if (timeRange.end) {
+      const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
+      end = roundTime(evaluateTimeExpression(endExpr));
+    } else {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidEvent' as const,
+        message: 'Timeline event time range has no end or duration',
+        location: getSourceLocation(timeRange),
+      });
+    }
 
     // Transform the action (either named invocation or inline)
     const action = event.action;

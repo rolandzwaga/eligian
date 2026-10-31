@@ -178,7 +178,9 @@ function isTimeSlot(node: PropertyChainReference): boolean {
   const container = node.$container;
   const property = node.$containerProperty;
   if (isBinaryTimeExpression(container)) return true;
-  if (isTimeRange(container)) return property === 'start' || property === 'end';
+  if (isTimeRange(container)) {
+    return property === 'start' || property === 'end' || property === 'duration';
+  }
   if (isStaggerBlock(container)) return property === 'delay' || property === 'duration';
   if (isSequenceItem(container)) return property === 'duration';
   if (isNavigateStatement(container)) return property === 'position';
