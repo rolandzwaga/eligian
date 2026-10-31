@@ -6,7 +6,7 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import type { TimeExpression as AstTimeExpression, TimedEvent } from '../../generated/ast.js';
+import type { TimeExpression as AstTimeExpression, LabeledEvent } from '../../generated/ast.js';
 import {
   eventEdgeMessage,
   isEventEdge,
@@ -29,7 +29,7 @@ export function propertyChainTimeMessage(chain: { scope: string; properties: str
 
 /** Start and end (seconds) of the labeled events compiled so far (`at … as intro`, idea #10). */
 export type EventLabelTimes = ReadonlyMap<
-  TimedEvent,
+  LabeledEvent,
   { readonly start: number; readonly end: number }
 >;
 

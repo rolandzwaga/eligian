@@ -141,7 +141,16 @@ export class OperationDataflow {
   /** All dataflow diagnostics for the actions, event actions and timelines of `root`. */
   analyzeDocument(root: Program | Library): DataflowDiagnostic[] {
     const diagnostics: DataflowDiagnostic[] = [];
-    const report = (diagnostic: DataflowDiagnostic) => diagnostics.push(diagnostic);
+    // A sequence's `each` / `then` block is analyzed once per item: report each
+    // finding on a node once
+    const reported = new Map<AstNode, Set<string>>();
+    const report = (diagnostic: DataflowDiagnostic) => {
+      const messages = reported.get(diagnostic.node) ?? new Set<string>();
+      if (messages.has(diagnostic.message)) return;
+      messages.add(diagnostic.message);
+      reported.set(diagnostic.node, messages);
+      diagnostics.push(diagnostic);
+    };
 
     const actions = isLibrary(root)
       ? root.actions
@@ -207,8 +216,29 @@ export class OperationDataflow {
         this.walk([action], new OperationDataTracker(), entryContext('', false, report));
       }
     } else if (isSequenceBlock(event)) {
+      // Idea #11: every item runs `each [..]` first and `then [..]` after its end;
+      // inline items are start/end blocks like an inline `at` event
       for (const item of event.items) {
-        this.analyzeTimelineCall(item.actionCall, report);
+        if (item.actionCall) {
+          if (event.prelude.length > 0) {
+            this.walk(event.prelude, new OperationDataTracker(), entryContext('', false, report));
+          }
+          this.analyzeTimelineCall(item.actionCall, report);
+          if (event.postlude.length > 0) {
+            this.walk(event.postlude, new OperationDataTracker(), entryContext('', true, report));
+          }
+        } else {
+          this.walk(
+            [...event.prelude, ...item.startOps],
+            new OperationDataTracker(),
+            entryContext('', false, report)
+          );
+          this.walk(
+            [...item.endOps, ...event.postlude],
+            new OperationDataTracker(),
+            entryContext('', true, report)
+          );
+        }
       }
     } else if (isStaggerBlock(event)) {
       if (event.actionCall) {

@@ -194,7 +194,8 @@ export class EligianInlayHintProvider extends AbstractInlayHintProvider {
         if (!this.timeHints.sequenceTimes) continue;
         for (const item of event.items) {
           const span = times.sequenceItems.get(item);
-          if (span) after(item, range(span));
+          // After the duration: `f() for 5s‹..›`, `for 7s‹..› [ ... ]` (inline items, idea #11)
+          if (span) after(item.duration, range(span));
         }
       } else if (isStaggerBlock(event)) {
         if (!this.timeHints.staggerTimes) continue;

@@ -25,6 +25,8 @@ import {
   isForStatement,
   isInlineEndableAction,
   isOperationCall,
+  isSequenceBlock,
+  isSequenceItem,
   isStaggerBlock,
   isSystemPropertyReference,
   isTimeline,
@@ -170,6 +172,8 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   const inlineAction = AstUtils.getContainerOfType(astNode, isInlineEndableAction);
   // `on enter [ ... ]` / `on leave [ ... ]` blocks are operation lists too (audit idea #6)
   const lifecycleBlock = AstUtils.getContainerOfType(astNode, isTimelineLifecycle);
+  // Idea #11: a sequence's `each` / `then` blocks and inline item blocks
+  const sequenceOps = inSequenceOperationBlock(astNode, offset);
   const eventAction = AstUtils.getContainerOfType(astNode, isEventActionDefinition);
 
   // Inline stagger operation blocks (`stagger ... for 1s [ ... ] [ ... ]`) are operation
@@ -178,7 +182,15 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   const inStaggerOps =
     staggerBlock !== undefined && isInStaggerOperationBlock(staggerBlock, offset);
 
-  if (action || endableAction || inlineAction || lifecycleBlock || eventAction || inStaggerOps) {
+  if (
+    action ||
+    endableAction ||
+    inlineAction ||
+    lifecycleBlock ||
+    sequenceOps ||
+    eventAction ||
+    inStaggerOps
+  ) {
     context.isInsideAction = true;
     // Only store the action if it's a named action (not inline)
     if (action || endableAction) {
@@ -465,4 +477,26 @@ function isInStaggerOperationBlock(stagger: StaggerBlock, offset: number): boole
   return CstUtils.streamCst(stagger.$cstNode).some(
     node => node.text === '[' && node.astNode === stagger && node.offset < offset
   );
+}
+
+/**
+ * Idea #11: whether the cursor at `offset` is in an operation list of a
+ * sequence: an inline item's `[..]` blocks, or the block's `each [..]` /
+ * `then [..]` (before its `{`). Offset-based, like the stagger blocks above,
+ * so an empty `[ | ]` block counts too.
+ */
+function inSequenceOperationBlock(node: AstNode, offset: number): boolean {
+  const opensBefore = (owner: AstNode) =>
+    owner.$cstNode !== undefined &&
+    CstUtils.streamCst(owner.$cstNode).some(
+      cst => cst.text === '[' && cst.astNode === owner && cst.offset < offset
+    );
+  const item = AstUtils.getContainerOfType(node, isSequenceItem);
+  if (item) return item.actionCall === undefined && opensBefore(item);
+  const block = AstUtils.getContainerOfType(node, isSequenceBlock);
+  if (!block?.$cstNode) return false;
+  const brace = CstUtils.streamCst(block.$cstNode).find(
+    cst => cst.text === '{' && cst.astNode === block
+  );
+  return opensBefore(block) && (brace === undefined || offset <= brace.offset);
 }

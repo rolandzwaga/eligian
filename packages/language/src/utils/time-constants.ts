@@ -13,10 +13,14 @@ import {
   type Expression,
   isBinaryExpression,
   isNumberLiteral,
+  isSequenceBlock,
+  isTimedEvent,
   isTimeValue,
   isUnaryExpression,
   isVariableDeclaration,
   isVariableReference,
+  type LabeledEvent,
+  type Timeline,
   type VariableDeclaration,
   type VariableReference,
 } from '../generated/ast.js';
@@ -141,3 +145,19 @@ export const eventEdgeMessage = (reference: EventTimeReference): string =>
 /** Message for a reference to the referencing event itself or to a later event. */
 export const laterEventMessage = (label: string): string =>
   `'${label}' is not defined before this time: a time can only refer to events earlier in the timeline`;
+
+/**
+ * The labeled events of `timeline` in order: `at … as x` events and (idea #11)
+ * labeled sequence items.
+ */
+export function labeledEvents(timeline: Timeline): LabeledEvent[] {
+  const result: LabeledEvent[] = [];
+  for (const event of timeline.events) {
+    if (isSequenceBlock(event)) {
+      result.push(...event.items.filter(item => item.name));
+    } else if (isTimedEvent(event) && event.name) {
+      result.push(event);
+    }
+  }
+  return result;
+}

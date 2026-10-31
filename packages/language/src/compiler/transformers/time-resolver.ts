@@ -16,9 +16,9 @@ import {
   isTimedEvent,
   isVariableDeclaration,
   isVariableReference,
+  type LabeledEvent,
   type SequenceItem,
   type StaggerBlock,
-  type TimedEvent,
   type TimeExpression,
   type Timeline,
   type TimelineEvent,
@@ -59,7 +59,7 @@ export interface ResolveOptions {
 export function evaluateTimeAt(
   expr: TimeExpression | undefined,
   base: number | undefined,
-  labels: ReadonlyMap<TimedEvent, TimeSpan> = new Map()
+  labels: ReadonlyMap<LabeledEvent, TimeSpan> = new Map()
 ): number | undefined {
   if (!expr) return undefined;
   switch (expr.$type) {
@@ -120,7 +120,7 @@ export function resolveTimelineTimes(
   const itemCount = options.itemCount ?? (stagger => literalItemCount(stagger.items));
   const events = new Map<TimelineEvent, readonly TimeSpan[]>();
   const sequenceItems = new Map<SequenceItem, TimeSpan>();
-  const labels = new Map<TimedEvent, TimeSpan>();
+  const labels = new Map<LabeledEvent, TimeSpan>();
   let base: number | undefined = 0;
   let allResolved = true;
 
@@ -153,7 +153,7 @@ function resolveEvent(
   base: number | undefined,
   itemCount: (stagger: StaggerBlock) => number | undefined,
   sequenceItems: Map<SequenceItem, TimeSpan>,
-  labels: ReadonlyMap<TimedEvent, TimeSpan>
+  labels: Map<LabeledEvent, TimeSpan>
 ): TimeSpan[] | undefined {
   if (isSequenceBlock(event)) {
     if (base === undefined) return undefined;
@@ -166,6 +166,7 @@ function resolveEvent(
       const [span] = sequenceSpans(current, [duration]);
       spans.push(span);
       sequenceItems.set(item, span);
+      if (item.name) labels.set(item, span);
       current = span.end;
     }
     return spans;

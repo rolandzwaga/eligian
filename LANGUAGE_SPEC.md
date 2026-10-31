@@ -1943,6 +1943,22 @@ sequence {
 // at 15s..18s outro()
 ```
 
+**Inline items, shared blocks and labels**: an item can also be inline operation blocks, like an
+`at` event without its range. `each [ .. ]` runs before every item's start operations and
+`then [ .. ]` after every item's end operations. An item can be labeled with `as <name>` for
+`<name>.start` / `<name>.end` in later times (see *Time Constants and Event Labels*):
+
+```eligian
+sequence each [ clearSpots() ] then [ log("beat done") ] {
+  for 7s as explain [ narrate("An action is a named list…") revealBlock("#code-def") ]
+  for 8s [ narrate("Calling your action…") ] [ hideBlock("#code-def") ]
+  intro() for 5s
+}
+```
+
+Inserting or resizing an item moves every later item; no range has to be renumbered. A later item
+of the same sequence may use an earlier item's label (`for explain.end - explain.start [ .. ]`).
+
 #### Stagger Blocks
 
 Staggered events with incremental start times:
@@ -2974,7 +2990,10 @@ Provider        := 'video' | 'audio' | 'raf' | 'custom'
 
 TimelineEvent   := TimedEvent | SequenceBlock | StaggerBlock
 TimedEvent      := 'at' TimeRange ('as' Identifier)? (NamedAction | InlineAction)
-SequenceBlock   := 'sequence' '{' SequenceItem* '}'
+SequenceBlock   := 'sequence' ('each' '[' Operations ']' ('then' '[' Operations ']')?)?
+                   '{' SequenceItem* '}'
+SequenceItem    := ActionCall 'for' TimeExpr ('as' Identifier)?
+                 | 'for' TimeExpr ('as' Identifier)? '[' Operations ']' ('[' Operations ']')?
 StaggerBlock    := 'stagger' TimeExpr Expression ('at' TimeExpr)? 'with' ActionCall 'for' TimeExpr
                  | 'stagger' TimeExpr Expression ('at' TimeExpr)? 'for' TimeExpr
                    '[' Operations ']' '[' Operations ']'

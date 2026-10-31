@@ -9,8 +9,12 @@ import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
 import type {
   ActionDefinition,
+  LabeledEvent,
+  OperationCall,
+  OperationStatement,
   Program,
   SequenceBlock,
+  SequenceItem,
   StaggerBlock,
   TimedEvent,
   Timeline,
@@ -80,7 +84,7 @@ export const buildTimelineConfig = (
     const timelineActions: TimelineActionIR[] = [];
     let previousEventEndTime = 0;
     // Idea #10: times of labeled events (`at … as intro`), for `intro.start` / `intro.end`
-    const labels = new Map<TimedEvent, { start: number; end: number }>();
+    const labels = new Map<LabeledEvent, { start: number; end: number }>();
 
     for (const event of timeline.events) {
       // T190/T192: Check event type (sequence, stagger, or timed)
@@ -291,15 +295,20 @@ const transformLifecycle = (
  *   at 5s..15s { main() }
  *   at 15s..18s { outro() }
  *
+ * Idea #11: items may be inline blocks (`for 7s [ start ] [ end ]`), the block
+ * may have an `each [ prelude ]` (before every item's start operations) and a
+ * `then [ postlude ]` (after every item's end operations), and items may be
+ * labeled (`as intro`) for `intro.start` / `intro.end` in later times.
+ *
  * previousEventEndTime is the starting point for the first sequence item.
  */
 const transformSequenceBlock = (
   sequence: SequenceBlock,
   previousEventEndTime: number,
-  _program: Program,
+  program: Program,
   allActions: ActionDefinition[],
   programConstants: ConstantMap,
-  labels: EventLabelTimes
+  labels: Map<LabeledEvent, { start: number; end: number }>
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
@@ -313,71 +322,112 @@ const transformSequenceBlock = (
       // Calculate time range: start at currentTime, end at currentTime + duration
       const [{ start, end }] = sequenceSpans(currentTime, [duration]);
 
-      // Get action name and arguments
-      const actionCall = item.actionCall;
-      const actionName = getOperationCallName(actionCall);
-      const actionRef = findActionByName(actionName, allActions);
+      // One scope per item for its prelude, blocks and postlude (consts declared
+      // in the prelude are visible in the item), like an inline endable action
+      const scope = createEmptyScope(programConstants);
+      const operations = (statements: readonly OperationStatement[], isEnd: boolean) =>
+        Effect.gen(function* () {
+          const result: OperationConfigIR[] = [];
+          for (const statement of statements) {
+            result.push(
+              ...(yield* transformOperationStatement(statement, scope, isEnd, program, allActions))
+            );
+          }
+          return result;
+        });
 
-      // Check if this is an endable action or regular action
-      const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
-
-      // Transform action arguments to actionOperationData
-      const concats = createRuntimeConcatCollector();
-      const argScope = { ...createEmptyScope(programConstants), runtimeConcats: concats };
-      let actionOperationData: Record<string, JsonValue> | undefined;
-      if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
-        const parameters = actionRef.parameters || [];
-        const args = actionCall.args;
-
-        if (args.length !== parameters.length) {
-          return yield* Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'ValidationError' as const,
-            message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
-            location: getSourceLocation(item),
-          });
-        }
-
-        actionOperationData = {};
-        for (let i = 0; i < parameters.length; i++) {
-          const paramName = parameters[i].name;
-          const argValue = yield* transformExpression(args[i], argScope);
-          actionOperationData[paramName] = argValue;
-        }
+      const prelude = yield* operations(sequence.prelude, false);
+      let body: { start: OperationConfigIR[]; end: OperationConfigIR[]; name: string };
+      if (item.actionCall) {
+        body = yield* sequenceCallOperations(item, item.actionCall, allActions, programConstants);
+      } else {
+        body = {
+          start: yield* operations(item.startOps, false),
+          end: yield* operations(item.endOps, true),
+          name: 'item',
+        };
       }
+      const postlude = yield* operations(sequence.postlude, true);
 
-      // Build start and end operations for this sequence item
-      const itemLocation = getSourceLocation(item);
-      const startOperations: OperationConfigIR[] = lowerNodeOperations(
-        actionCall,
-        concats,
-        buildActionCallOperations(actionName, actionOperationData, itemLocation, 'startAction')
-      );
-
-      // End operations: Only generate for endable actions
-      const endOperations: OperationConfigIR[] = isEndableAction
-        ? lowerNodeOperations(
-            actionCall,
-            concats,
-            buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
-          )
-        : [];
-
-      // Create timeline action for this sequence item
       actions.push({
         id: crypto.randomUUID(),
-        name: `sequence-${actionName}-${start}-${end}`,
+        name: `sequence-${body.name}-${start}-${end}`,
         duration: { start, end },
-        startOperations,
-        endOperations,
+        startOperations: [...prelude, ...body.start],
+        endOperations: [...body.end, ...postlude],
         sourceLocation: getSourceLocation(item),
       });
+      if (item.name) labels.set(item, { start, end });
 
       // Update currentTime for next item
       currentTime = end;
     }
 
     return actions;
+  });
+
+/**
+ * The operations of an `action() for 5s` sequence item: requestAction +
+ * startAction, and requestAction + endAction for an endable action.
+ */
+const sequenceCallOperations = (
+  item: SequenceItem,
+  actionCall: OperationCall,
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
+): Effect.Effect<
+  { start: OperationConfigIR[]; end: OperationConfigIR[]; name: string },
+  TransformError
+> =>
+  Effect.gen(function* () {
+    const actionName = getOperationCallName(actionCall);
+    const actionRef = findActionByName(actionName, allActions);
+
+    // Check if this is an endable action or regular action
+    const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
+
+    // Transform action arguments to actionOperationData
+    const concats = createRuntimeConcatCollector();
+    const argScope = { ...createEmptyScope(programConstants), runtimeConcats: concats };
+    let actionOperationData: Record<string, JsonValue> | undefined;
+    if (actionCall.args && actionCall.args.length > 0 && actionRef) {
+      const parameters = actionRef.parameters || [];
+      const args = actionCall.args;
+
+      if (args.length !== parameters.length) {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
+          location: getSourceLocation(item),
+        });
+      }
+
+      actionOperationData = {};
+      for (let i = 0; i < parameters.length; i++) {
+        const paramName = parameters[i].name;
+        const argValue = yield* transformExpression(args[i], argScope);
+        actionOperationData[paramName] = argValue;
+      }
+    }
+
+    const itemLocation = getSourceLocation(item);
+    return {
+      start: lowerNodeOperations(
+        actionCall,
+        concats,
+        buildActionCallOperations(actionName, actionOperationData, itemLocation, 'startAction')
+      ),
+      // End operations: only for endable actions
+      end: isEndableAction
+        ? lowerNodeOperations(
+            actionCall,
+            concats,
+            buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
+          )
+        : [],
+      name: actionName,
+    };
   });
 
 /**

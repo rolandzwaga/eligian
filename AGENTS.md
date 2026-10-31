@@ -103,6 +103,7 @@ Typir-based, in `type-system-typir/` (the old standalone `type-system/` dir was 
 - **Endable actions**: `endable action name(...)` with start + end operation lists for timed ranges. Timelines: `timeline "name" in "#selector" using <provider> (from "src")?`.
 - **Timeline lifecycle**: `on enter [ ops ]` / `on leave [ ops ]` in a timeline body → one open-ended timeline action (`{ start: 0 }`, no end), not counted in the duration; leave runs on navigate/stop, not when the content ends. (spec 050)
 - **Time constants, labels, anchors**: `const beat = 7s` used as `@beat` in times; `at … as intro [..]` then `intro.start`/`intro.end` (earlier events only); `stagger … at <time>` anchors the first item. Shared evaluator `utils/time-constants.ts` (compiler, IDE resolver, validators). (spec 051)
+- **Sequence items**: `sequence each [ prelude ] then [ postlude ] { call() for 5s  for 7s as x [ start ] [ end ] }`: inline items, a prelude before every item's start ops, a postlude after every item's end ops, labeled items. (spec 052)
 - **Languages + locales**: `languages { * "en-US" "English" ... }` block plus `locales "./file"` import for typed labels; `locales` is the keyword (not `labels`). (specs 037/045)
 
 ## Testing

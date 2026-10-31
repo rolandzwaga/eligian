@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 to #10 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #11 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3535,6 +3535,8 @@ stagger 200ms ["#c4-card-1", "#c4-card-2"] at editBeat.end with revealCard() for
 - **Rationale:** It fixes the confirmed raw-throw crash (the Effect no-throw rule) and stops stagger timing from depending on where an event sits in the document. It ranks below #3 to #9 because it depends on the shared resolver, on the high-severity evaluator shadowing bug, and on a new Typir `time` type.
 
 ### #11 Sequence items with inline blocks and a shared `each` prelude
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 052). Grammar as two item forms (`call() for 5s` / `for 5s [..] [..]?`) instead of the proposal's `'for'?` rule; `then [..]` runs after each item's end operations; items take `as <name>` labels (shared with #10's `at … as`). The prerequisite end-block bug was already fixed (`c7a75df`). Tour chapters 2–6 use `sequence each [ clearSpots() ]` (chapter 1 stays a list of `at` events: that is what it teaches); compiled times are unchanged.
 
 - **Area:** dsl · **Effort:** M · **Score:** 7.7
 - **Problem:** A SequenceItem only accepts `OperationCall for <dur>`, so the most common shape, a run of beats that each have an inline body, cannot use `sequence`, and the tour falls back to hand-computed ranges. Every beat also starts with `clearSpots()` (30 occurrences), and inserting a beat means renumbering every later range.

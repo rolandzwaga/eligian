@@ -8,6 +8,7 @@ import {
   isBinaryTimeExpression,
   isNavigateStatement,
   isProgram,
+  isSequenceBlock,
   isSequenceItem,
   isStaggerBlock,
   isTimedEvent,
@@ -15,8 +16,10 @@ import {
   isTimeRange,
   isUnaryExpression,
   isVariableDeclaration,
+  type LabeledEvent,
   type PropertyChainReference,
   type Timeline,
+  type TimelineEvent,
   type TimeValue,
   type VariableReference,
 } from '../generated/ast.js';
@@ -30,6 +33,7 @@ import {
   eventEdgeMessage,
   isEventEdge,
   isTimeConstant,
+  labeledEvents,
   laterEventMessage,
   TIME_VALUE_PLACEMENT_MESSAGE,
   timeConstantMisuseMessage,
@@ -409,7 +413,7 @@ export class TimelineValidator extends BaseValidator {
     );
     // Outside the events: the header's `duration`, evaluated after all events
     if (!referencing) return;
-    if (timeline.events.indexOf(referencing) <= timeline.events.indexOf(target)) {
+    if (!isBefore(target, referencing, node, timeline)) {
       accept('error', laterEventMessage(node.event?.$refText ?? '?'), {
         node,
         code: 'event_label_not_before',
@@ -420,8 +424,10 @@ export class TimelineValidator extends BaseValidator {
   /** Idea #10: event labels are unique within a timeline. */
   checkEventLabels(timeline: Timeline, accept: ValidationAcceptor): void {
     const seen = new Set<string>();
-    for (const event of timeline.events) {
-      if (!isTimedEvent(event) || !event.name) continue;
+    // `at … as x` events and (idea #11) `… for 5s as x` sequence items
+    const labeled = labeledEvents(timeline);
+    for (const event of labeled) {
+      if (!event.name) continue;
       if (seen.has(event.name)) {
         accept('error', `Duplicate event label '${event.name}' in this timeline`, {
           node: event,
@@ -442,6 +448,28 @@ export class TimelineValidator extends BaseValidator {
 }
 
 /** True when `node` sits where the grammar expects a TimeExpression. */
+/**
+ * Whether the labeled `target` comes before the time `node` (inside the
+ * timeline event `referencing`): an earlier event, or an earlier item of the
+ * same sequence.
+ */
+function isBefore(
+  target: LabeledEvent,
+  referencing: TimelineEvent,
+  node: AstNode,
+  timeline: Timeline
+): boolean {
+  const targetEvent: TimelineEvent = isSequenceItem(target) ? target.$container : target;
+  const at = timeline.events.indexOf(referencing);
+  const targetAt = timeline.events.indexOf(targetEvent);
+  if (at !== targetAt) return at > targetAt;
+  if (!isSequenceBlock(referencing) || !isSequenceItem(target)) return false;
+  const item = referencing.items.find(candidate =>
+    AstUtils.streamAst(candidate).some(child => child === node)
+  );
+  return item !== undefined && referencing.items.indexOf(item) > referencing.items.indexOf(target);
+}
+
 function isTimeSlot(node: AstNode): boolean {
   const container = node.$container;
   const property = node.$containerProperty;

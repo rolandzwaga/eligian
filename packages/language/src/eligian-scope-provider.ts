@@ -33,7 +33,6 @@ import {
   isOperationCall,
   isParameterReference,
   isProgram,
-  isTimedEvent,
   isTimeline,
   isVariableDeclaration,
   isVariableReference,
@@ -48,6 +47,7 @@ import {
   type LibraryResolver,
 } from './utils/action-scope.js';
 import { isHtmlImport } from './utils/program-helpers.js';
+import { labeledEvents } from './utils/time-constants.js';
 
 export class EligianScopeProvider extends DefaultScopeProvider {
   private eligianServices: EligianServices;
@@ -237,7 +237,8 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     const timeline = AstUtils.getContainerOfType(context.container, isTimeline);
     if (!timeline) return EMPTY_SCOPE;
     const document = AstUtils.getDocument(context.container);
-    const labeled = timeline.events.filter(isTimedEvent).filter(event => event.name);
+    // `at … as x` events and (idea #11) labeled sequence items
+    const labeled = labeledEvents(timeline);
     return this.createScope(
       labeled.map(event => this.descriptions.createDescription(event, event.name!, document))
     );

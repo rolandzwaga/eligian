@@ -197,6 +197,8 @@ export function registerValidationChecks(services: EligianServices) {
       v.action.checkControlFlowPairingInInlineEnd,
     ],
     TimelineLifecycle: v.action.checkControlFlowPairingInLifecycle, // Audit idea #6
+    SequenceBlock: v.action.checkControlFlowPairingInSequence, // Audit idea #11
+    SequenceItem: v.action.checkControlFlowPairingInSequenceItem, // Audit idea #11
   };
   registry.register(actionChecks, v.action);
 

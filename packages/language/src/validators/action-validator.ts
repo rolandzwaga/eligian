@@ -9,6 +9,8 @@ import type {
   OperationCall,
   OperationStatement,
   RegularActionDefinition,
+  SequenceBlock,
+  SequenceItem,
   TimelineLifecycle,
 } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
@@ -293,6 +295,18 @@ export class ActionValidator extends BaseValidator {
     accept: ValidationAcceptor
   ): void {
     this.validateControlFlowPairingForOps(action.endOperations, action, 'endOperations', accept);
+  }
+
+  /** Idea #11: control flow pairing in a sequence's `each [..]` / `then [..]` blocks. */
+  checkControlFlowPairingInSequence(block: SequenceBlock, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(block.prelude, block, 'prelude', accept);
+    this.validateControlFlowPairingForOps(block.postlude, block, 'postlude', accept);
+  }
+
+  /** Idea #11: control flow pairing in an inline sequence item's blocks. */
+  checkControlFlowPairingInSequenceItem(item: SequenceItem, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(item.startOps, item, 'startOps', accept);
+    this.validateControlFlowPairingForOps(item.endOps, item, 'endOps', accept);
   }
 
   /** Validate control flow pairing in an `on enter` / `on leave` block (audit idea #6). */

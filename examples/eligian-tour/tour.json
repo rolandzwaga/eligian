@@ -1,6 +1,6 @@
 {
   "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
-  "id": "0c6aaf7b-bf5c-4fba-9a43-f679a8753abc",
+  "id": "4aa61622-9b03-491c-b4a6-5af465e4e10c",
   "engine": {
     "systemName": "EligiusEngine"
   },
@@ -12,7 +12,7 @@
   ],
   "availableLanguages": [
     {
-      "id": "8e1920d5-11a9-4b19-810f-4614c096e20d",
+      "id": "6dbeb1a0-8b74-436e-9b42-6b75844fc1c2",
       "languageCode": "en-US",
       "label": "English"
     }
@@ -20,51 +20,51 @@
   "initActions": [],
   "actions": [
     {
-      "id": "b69e6682-1e83-43b1-ad50-d277590f22fb",
+      "id": "cf1e5912-9b91-42f9-bd8f-93b047284124",
       "name": "ch3ToggleBadge",
       "startOperations": [
         {
-          "id": "5c6bcc28-25c3-402d-9cca-cfe410a9f883",
+          "id": "d3452164-2cdf-4018-b827-735ff7e94dbc",
           "systemName": "when",
           "operationData": {
             "expression": "$operationdata.count > 0"
           }
         },
         {
-          "id": "af65b424-c895-4f1e-8d28-0f1c95cba833",
+          "id": "ca8d23dd-8260-4c77-a960-a92a6095289d",
           "systemName": "selectElement",
           "operationData": {
             "selector": "#c3-badge"
           }
         },
         {
-          "id": "f69e4c79-4dd2-45ad-876f-7926af295f11",
+          "id": "e93ef3e1-c385-40a3-9afc-df1f7cf59b5d",
           "systemName": "addClass",
           "operationData": {
             "className": "active"
           }
         },
         {
-          "id": "0b4cbb68-89a9-4f18-aefa-137b3cb94295",
+          "id": "ac62563e-5abc-4ecb-9ae5-53f82905835a",
           "systemName": "otherwise",
           "operationData": {}
         },
         {
-          "id": "e396b66d-e50d-4927-bdfe-89849668ae46",
+          "id": "269058e4-4c4d-42a3-b5f4-6b3e30311952",
           "systemName": "selectElement",
           "operationData": {
             "selector": "#c3-badge"
           }
         },
         {
-          "id": "2a7006ce-675e-4ff3-8f5c-fb390f8da529",
+          "id": "14bc4e14-1816-4b2d-8f4f-252991ad5456",
           "systemName": "removeClass",
           "operationData": {
             "className": "active"
           }
         },
         {
-          "id": "f396581b-5d5e-4f9c-9f7e-0200f1fec6bb",
+          "id": "aef00479-414e-40d0-bd7c-055355313440",
           "systemName": "endWhen",
           "operationData": {}
         }
@@ -72,11 +72,11 @@
       "endOperations": []
     },
     {
-      "id": "3ab50a12-0869-426a-a486-5009eea124ee",
+      "id": "9d951272-023b-4db6-aa5d-b56a84d266fc",
       "name": "ch3RevealBullets",
       "startOperations": [
         {
-          "id": "ddb0000b-a28b-4925-9fe1-7e1979033b3d",
+          "id": "1bd0a61c-3b88-408c-9879-760fd790cc97",
           "systemName": "setVariable",
           "operationData": {
             "name": "points",
@@ -88,7 +88,7 @@
           }
         },
         {
-          "id": "8fcb7796-a4e4-42ce-a4a6-45a8c6a33cf6",
+          "id": "b315affb-4395-45f0-add8-ae02a4ac1522",
           "systemName": "forEach",
           "operationData": {
             "collection": "$scope.variables.points",
@@ -96,21 +96,21 @@
           }
         },
         {
-          "id": "b7a4d240-639b-4d9d-9fe5-0f73934aa750",
+          "id": "3d4618e1-580f-49e1-93f3-0494e5be9cfe",
           "systemName": "selectElement",
           "operationData": {
             "selector": "$scope.currentItem"
           }
         },
         {
-          "id": "5887db3a-0342-4063-86a1-049322c09f6a",
+          "id": "2ef2bc48-f6ef-469a-b138-cb72cf75acb0",
           "systemName": "addClass",
           "operationData": {
             "className": "in"
           }
         },
         {
-          "id": "1a9e9ab3-a875-411b-9f39-1e097bb998d6",
+          "id": "3d027c2e-9667-4127-9770-2dd0e888c1ca",
           "systemName": "endForEach",
           "operationData": {}
         }
@@ -118,25 +118,25 @@
       "endOperations": []
     },
     {
-      "id": "389702f8-a748-4e1c-9a28-2a5382f7e4b7",
+      "id": "0547192f-2724-4fd3-b125-fdfeefeeb3cd",
       "name": "ch5WireButton",
       "startOperations": [
         {
-          "id": "93d131b6-b94e-4aa9-bf23-80afa38db103",
+          "id": "55cca164-8f83-4018-8cb4-55ea6f0f3afc",
           "systemName": "selectElement",
           "operationData": {
             "selector": "#c5-fx-ping"
           }
         },
         {
-          "id": "742b94c3-a9ee-480b-beb7-81c7f9859e47",
+          "id": "9df436c8-1ca2-4eea-ae9a-19f6af98f5c2",
           "systemName": "getControllerInstance",
           "operationData": {
             "systemName": "DOMEventListenerController"
           }
         },
         {
-          "id": "88efcff4-84d9-47f1-97e9-1008c09c69f4",
+          "id": "39170c70-2144-4493-85b5-dd9a139d48b8",
           "systemName": "addControllerToElement",
           "operationData": {
             "eventName": "click",
@@ -149,11 +149,11 @@
       "endOperations": []
     },
     {
-      "id": "68ac61eb-9329-4cca-8894-93e79e1b5cdb",
+      "id": "14d89931-359b-4787-a4de-f7f19af18432",
       "name": "ch5BroadcastPing",
       "startOperations": [
         {
-          "id": "730b489b-7472-4125-915c-3fee578598ad",
+          "id": "feaa2b42-2c18-4da0-b965-321171c71ced",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventArgs": [
@@ -166,29 +166,29 @@
       "endOperations": []
     },
     {
-      "id": "b648718f-7381-49bb-9eea-b24427815c5e",
+      "id": "458412e6-2ed2-4b7e-975a-3fee2054042c",
       "name": "revealBlock",
       "startOperations": [
         {
-          "id": "4f60cd0c-225d-4454-a7b9-127440a39a16",
+          "id": "5d1e917a-427c-4d97-adbd-03d8aea84250",
           "systemName": "selectElement"
         },
         {
-          "id": "31ff9401-0eac-463f-bdec-a5a7a82a35c7",
+          "id": "b15eda78-790c-4ccc-8cb8-1cae0d6cc02b",
           "systemName": "addClass",
           "operationData": {
             "className": "in"
           }
         },
         {
-          "id": "80bc16c1-3ef1-4e7c-8671-332b76eb6ad3",
+          "id": "c83efe01-15d6-470a-9738-836cde2e805e",
           "systemName": "addClass",
           "operationData": {
             "className": "typing"
           }
         },
         {
-          "id": "953161c2-2e21-4c6a-b686-233b844d2f73",
+          "id": "7002878b-8392-4fe5-9cf4-3735d6885d34",
           "systemName": "scrollToElement",
           "operationData": {
             "behavior": "smooth",
@@ -199,15 +199,15 @@
       "endOperations": []
     },
     {
-      "id": "fe12488d-03d8-4f0c-a5a0-26c34a4f5330",
+      "id": "5550323b-1e38-4580-8dd1-1e2662e330db",
       "name": "spotlight",
       "startOperations": [
         {
-          "id": "ef7444a3-10b3-4c6f-84ee-94dbad2e52c8",
+          "id": "ca6e21cd-f709-4496-8705-792444c13896",
           "systemName": "selectElement"
         },
         {
-          "id": "6ade5c12-691b-4de1-a4e3-74df674ea978",
+          "id": "1f912cb5-8741-4852-b0c2-aa4664ee621c",
           "systemName": "addClass",
           "operationData": {
             "className": "spot"
@@ -217,32 +217,32 @@
       "endOperations": []
     },
     {
-      "id": "205cad8e-b8a7-4d47-adeb-c0f64861622a",
+      "id": "8efd93c4-582a-4c0f-8392-c55eb84f90f4",
       "name": "clearSpots",
       "startOperations": [
         {
-          "id": "15216730-cdad-4194-bbb8-6ce0bed6373b",
+          "id": "f03bf376-d797-47f2-8b41-114ad24e9f98",
           "systemName": "selectElement",
           "operationData": {
             "selector": ".tok"
           }
         },
         {
-          "id": "e5574ab6-fdcc-4cd4-a561-144ac6665fdd",
+          "id": "255620e2-6c00-4d35-9a72-54fac141d7b2",
           "systemName": "removeClass",
           "operationData": {
             "className": "spot"
           }
         },
         {
-          "id": "aaa85f58-30d6-452a-b8c3-819efa535a05",
+          "id": "f4d8cdf2-d526-4642-9b0e-1fa1200352a0",
           "systemName": "selectElement",
           "operationData": {
             "selector": ".callout"
           }
         },
         {
-          "id": "689cf71a-eaf2-47cd-9dcf-b0a189da7695",
+          "id": "27461b7e-5389-48a1-9a58-cc64a9ecb3e7",
           "systemName": "removeClass",
           "operationData": {
             "className": "show"
@@ -252,19 +252,19 @@
       "endOperations": []
     },
     {
-      "id": "895eae9e-9829-4ede-94d8-7dc6b9a37864",
+      "id": "e747220c-3a81-4f3c-b918-f8b5a4da2f0b",
       "name": "callout",
       "startOperations": [
         {
-          "id": "1092c759-d6c0-4221-a6f6-70089ed0a109",
+          "id": "cb714a23-2bec-427d-8696-16d15f8e63c2",
           "systemName": "selectElement"
         },
         {
-          "id": "f3b1c12c-2de7-43e0-a61c-130949605f35",
+          "id": "c563f466-53cb-47d5-b97d-769e476bddd3",
           "systemName": "setElementContent"
         },
         {
-          "id": "71df9c66-1391-4ed7-82de-dbb895f7dd6e",
+          "id": "42cc9f66-63b0-4090-ae28-07d0cbf84867",
           "systemName": "addClass",
           "operationData": {
             "className": "show"
@@ -274,36 +274,36 @@
       "endOperations": []
     },
     {
-      "id": "b8f8e50c-1062-4c7f-8d5a-c77ae5b67eb8",
+      "id": "25cc879c-cb0a-46a2-a00e-c4f54c646b47",
       "name": "narrate",
       "startOperations": [
         {
-          "id": "c297cb6b-8c5f-479c-880e-ccd5e26d56ab",
+          "id": "88688494-4910-4133-8f0e-c5b48d79a3e7",
           "systemName": "selectElement",
           "operationData": {
             "selector": "#narration"
           }
         },
         {
-          "id": "e2783623-cad7-492b-971c-c6c8526ab53b",
+          "id": "e51f33a3-ad3d-4244-b6f4-52f7112a5485",
           "systemName": "setElementContent"
         },
         {
-          "id": "bef20918-d903-45cd-b07f-00dc1120e69b",
+          "id": "f335c11f-29d2-4b40-a791-0c62c4c944bd",
           "systemName": "addClass",
           "operationData": {
             "className": "fresh"
           }
         },
         {
-          "id": "f53a8bd4-06af-448d-b396-fc3c7581279b",
+          "id": "0a9685e9-0195-4d96-80bd-232d2cafca07",
           "systemName": "wait",
           "operationData": {
             "milliseconds": 50
           }
         },
         {
-          "id": "8cfeb1f7-80f6-4a5e-9fcd-1e79ebe92f4e",
+          "id": "6f7872a5-3edf-436b-b40e-4cf44a90e3e8",
           "systemName": "removeClass",
           "operationData": {
             "className": "fresh"
@@ -313,22 +313,22 @@
       "endOperations": []
     },
     {
-      "id": "cd388a04-2bf5-4f2e-b92d-b36f80316241",
+      "id": "a35e8c01-8ad9-4d50-bba3-76c64b436fa5",
       "name": "demo",
       "startOperations": [
         {
-          "id": "2fc85a05-b6e7-457a-8901-d4612eb0bb8f",
+          "id": "77f95d65-a70e-4dcd-b727-516db4847f27",
           "systemName": "selectElement"
         },
         {
-          "id": "4c8bac51-39c7-4d44-b8ba-a0b4374474d9",
+          "id": "0ef5d2de-560d-4f95-b5a4-f7b794810da1",
           "systemName": "addClass",
           "operationData": {
             "className": "active"
           }
         },
         {
-          "id": "ad84e5a2-28e7-487e-b0dc-07522ce121b5",
+          "id": "7ef3205e-e8b6-479c-bc11-07500e40622b",
           "systemName": "scrollToElement",
           "operationData": {
             "behavior": "smooth",
@@ -336,7 +336,7 @@
           }
         },
         {
-          "id": "52c1feb3-4feb-4ec5-958b-ebf0ef08d566",
+          "id": "d7de6d97-1033-4704-9536-ccb990a47dc8",
           "systemName": "animate",
           "operationData": {
             "animationProperties": {
@@ -349,15 +349,15 @@
       "endOperations": []
     },
     {
-      "id": "574795c0-1e23-4138-b938-e2d5c244cd8e",
+      "id": "d066ed6b-8e71-468c-bca7-2d88774fd1c2",
       "name": "revealCard",
       "startOperations": [
         {
-          "id": "ba1b6b58-8e0d-4c5e-912c-07a26a603272",
+          "id": "eaf135e9-dbef-4e3f-9794-655b567ac055",
           "systemName": "selectElement"
         },
         {
-          "id": "6be9b0ec-f6e9-4250-a820-8fb1203aa69e",
+          "id": "60899335-bd28-4914-9fdb-2afc6edf337b",
           "systemName": "addClass",
           "operationData": {
             "className": "in"
@@ -367,15 +367,15 @@
       "endOperations": []
     },
     {
-      "id": "e5913325-407b-48a0-9b33-ab0dda4d6081",
+      "id": "db5e8b40-0fae-4357-8d28-b3a9efcc5b5f",
       "name": "showView",
       "startOperations": [
         {
-          "id": "b9fbbe24-b349-4bd4-8802-eed1bd1c738c",
+          "id": "5af2dad6-fb87-4acc-90be-3c8e3ce0e662",
           "systemName": "selectElement"
         },
         {
-          "id": "9b1eab32-d753-4523-a6dd-2916a675ce7e",
+          "id": "b42b3e95-c8c0-4ba0-b4ea-dbd6aad5fd5d",
           "systemName": "addClass",
           "operationData": {
             "className": "is-active"
@@ -385,15 +385,15 @@
       "endOperations": []
     },
     {
-      "id": "47f7eda0-87bb-4226-8b77-fda35a1cf7ce",
+      "id": "54995c5a-55f3-4e2d-861a-a1628af20433",
       "name": "hideView",
       "startOperations": [
         {
-          "id": "e6561acd-97d2-47d2-ac4a-def2a3bca754",
+          "id": "630a85c1-0b82-46b2-a97e-4c5d984045eb",
           "systemName": "selectElement"
         },
         {
-          "id": "68c4f21f-94ac-417a-89dc-e06cbaedc223",
+          "id": "cc8b3187-88e5-4718-a965-19fabe9dc30f",
           "systemName": "removeClass",
           "operationData": {
             "className": "is-active"
@@ -403,11 +403,11 @@
       "endOperations": []
     },
     {
-      "id": "c847635a-f30e-4392-9ae2-80486cba806f",
+      "id": "057369df-63cc-4620-8b22-6fc00bf8f624",
       "name": "__nav__timeline_time_096a5465",
       "startOperations": [
         {
-          "id": "0582625c-6e0e-4f19-9442-53f7e545d2d7",
+          "id": "89e1b7f3-cd37-4ba9-abee-43f324310bec",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -421,11 +421,11 @@
       "endOperations": []
     },
     {
-      "id": "f1d9119c-cd83-47e7-950b-99d537563c87",
+      "id": "c912b901-9662-4a84-9e0f-c3ebf48dca26",
       "name": "__nav__actions_e65fb504",
       "startOperations": [
         {
-          "id": "0a7bc6ef-7b05-4703-9f0b-d5966ad2c97d",
+          "id": "bf77c67e-5e6d-4c1c-9bee-bd941706720d",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -439,11 +439,11 @@
       "endOperations": []
     },
     {
-      "id": "bb02280e-3b8a-4011-b882-0c0eb19c3dad",
+      "id": "2b50a171-27c1-4b79-a299-1e9b4115c871",
       "name": "__nav__logic_5aedf3b1",
       "startOperations": [
         {
-          "id": "0ac979e8-b32d-4f1e-8998-06d29223bf59",
+          "id": "25b303f8-ef4e-48a5-8331-11d19a61ef8a",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -457,11 +457,11 @@
       "endOperations": []
     },
     {
-      "id": "5ed873b2-fd5a-4d00-93f5-1a0d9645179b",
+      "id": "67e6c165-ec2a-4099-a1d8-a511fa802d3b",
       "name": "__nav__timeline_power_tools_7df5a7d8",
       "startOperations": [
         {
-          "id": "29480297-5599-41e1-bcd9-f29faadafe45",
+          "id": "564721d7-2cd7-455f-99d7-2bad7fa7bf78",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -475,11 +475,11 @@
       "endOperations": []
     },
     {
-      "id": "eab9a659-2f50-4b78-98a1-91f2f6ec1792",
+      "id": "77680d7f-89c1-4690-b15d-3cb6aef09dfe",
       "name": "__nav__engine_reach_70252e34",
       "startOperations": [
         {
-          "id": "ac013d5f-0465-4fff-90bf-65f4710091ff",
+          "id": "8353abd9-c1c7-43b3-bb06-10fb9296dd67",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -493,11 +493,11 @@
       "endOperations": []
     },
     {
-      "id": "c167ac1f-de16-4d59-8e21-520ae72101d9",
+      "id": "7a8f46cf-4156-4237-ae02-9ac18bbcb385",
       "name": "__nav__tooling_magic_85471e56",
       "startOperations": [
         {
-          "id": "3e75fb72-d7d0-4678-bdf7-3a7d62a9f09e",
+          "id": "17fef88e-91f7-4587-af46-42e927b29b24",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -511,11 +511,11 @@
       "endOperations": []
     },
     {
-      "id": "e1bd3a95-5d96-4890-9ba0-a7baf138422c",
+      "id": "0f6bf613-69c5-43d0-b2c8-7345b1f0b55a",
       "name": "__nav__hub_4717fc8c",
       "startOperations": [
         {
-          "id": "b76933f4-40df-49ff-9b01-e4990797448c",
+          "id": "1782d05f-5f0b-46dd-979b-68c504b2338e",
           "systemName": "broadcastEvent",
           "operationData": {
             "eventName": "request-timeline-uri",
@@ -531,19 +531,19 @@
   ],
   "eventActions": [
     {
-      "id": "9058dcac-8c02-4824-8591-af941341043d",
+      "id": "084bb8b4-5b80-4fa3-96c2-a98f45540ce7",
       "name": "ch5OnPing",
       "eventName": "tour-ping",
       "startOperations": [
         {
-          "id": "f25e71e9-ae92-41f7-972d-0696bd14edd3",
+          "id": "401a990e-c0d3-4cea-93a3-c8acd460bfcf",
           "systemName": "selectElement",
           "operationData": {
             "selector": "$operationData.eventArgs.0"
           }
         },
         {
-          "id": "c47044f2-5527-4a8b-93ed-78a98a619573",
+          "id": "86e8d360-541c-4888-a087-76f0d22dfb59",
           "systemName": "addClass",
           "operationData": {
             "className": "in"
@@ -554,7 +554,7 @@
   ],
   "timelines": [
     {
-      "id": "9da9d2c5-0749-4810-8ea4-ffcb7ae90b89",
+      "id": "9ab51d79-8c4f-47ad-a377-43350c2034b6",
       "uri": "Hub",
       "type": "animation",
       "duration": 0,
@@ -562,18 +562,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "d1bdefbe-35ab-4d58-b7bf-cd5f5843604f",
+          "id": "b780cebe-6b96-4a5a-ae80-677e044c31b9",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "34860522-2463-4e31-9956-61a2bdd5bdd9",
+              "id": "fe83e133-2875-4e1f-bc43-cd0269b4e4aa",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "e5449db1-b4ee-4a94-8e6d-d6f2d0feaafb",
+              "id": "89dcf131-0168-4b8d-bd38-15a3b61addfb",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -582,21 +582,21 @@
               }
             },
             {
-              "id": "23fbc7d1-1dec-4209-bf43-9a4c71ac9e8a",
+              "id": "9936208f-58cf-4f58-be51-7c6dcfd5e9a7",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#card-ch1"
               }
             },
             {
-              "id": "77555468-b4c5-4716-9d6f-df196b95a992",
+              "id": "8c3b11e9-e668-4b6c-81b0-1f6ba30c3ea5",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "3b30fa82-cab9-4bfa-a4b3-bc54f5bccc23",
+              "id": "00b01f7f-afcb-42d6-b016-a0cac95ce4be",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -606,21 +606,21 @@
               }
             },
             {
-              "id": "5ab22287-09b3-4afa-8cf1-cbd2e9199f29",
+              "id": "4692e91f-7632-491a-b56d-be03db883196",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#card-ch2"
               }
             },
             {
-              "id": "d98288a1-9e4e-43cb-b1fe-4841a85ea361",
+              "id": "8f750f15-2217-4dd4-840c-726b23d1b6b0",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "ddf45996-cba6-4d88-bdf3-33db0fd12f90",
+              "id": "47413e5f-c8fe-48a1-a7e8-c4a97a9bdf72",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -630,21 +630,21 @@
               }
             },
             {
-              "id": "f506c3f4-6690-478a-8431-298c6f5138ae",
+              "id": "00bb0e3b-359b-48ba-938d-2f2b69f49bac",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#card-ch3"
               }
             },
             {
-              "id": "263a1dec-ca3a-480f-94a6-9dc86983c0e5",
+              "id": "e23841df-9bfa-4dc2-a60a-910dfdd3e15b",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "942874f8-61f4-4f65-b8db-d12ea48c8546",
+              "id": "8aa200fe-72c4-4a87-a8ca-f37442115e84",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -654,21 +654,21 @@
               }
             },
             {
-              "id": "ef93f8c5-d210-4cff-ab59-ba72e3145f5c",
+              "id": "27faf8c0-c2b1-469f-9c61-3a0f0d8df915",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#card-ch4"
               }
             },
             {
-              "id": "fc67e01a-c2e1-4145-a30c-27e52b40ab30",
+              "id": "00e1348b-1da5-449f-997f-9516eacaa708",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "e0a0d9a7-b40b-4078-bb18-b4a0178d283c",
+              "id": "50c9d165-bbe2-4a1b-a1f5-ffe1a86a4643",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -678,21 +678,21 @@
               }
             },
             {
-              "id": "41b399b8-3bc8-473a-9135-42ee17b2bb30",
+              "id": "324e26a2-6eea-4bd9-9d03-1df43e4f775c",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#card-ch5"
               }
             },
             {
-              "id": "346ff588-7c51-4315-bb04-43cd6cba6599",
+              "id": "d2860acb-7eb0-4f79-8c84-f16cdc6ed745",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "b1021d37-f6a4-45bd-a58d-4ec3016d4c69",
+              "id": "a324caad-e462-4d85-aa72-fefbeb430ac3",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -702,21 +702,21 @@
               }
             },
             {
-              "id": "58de1cd8-fba1-468c-b4f8-564d41c8516e",
+              "id": "441066e5-0079-4587-9089-903de89ed218",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#card-ch6"
               }
             },
             {
-              "id": "9bf16ded-4a2f-4c01-81a7-433891229700",
+              "id": "88b81393-a142-47dc-86b0-fae94c9295b8",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "d764a5e7-3ce8-4fdf-89a6-b59ba9c8f120",
+              "id": "2889c8f5-0c4e-4faa-a52d-06c35991ffe2",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -728,14 +728,14 @@
           ],
           "endOperations": [
             {
-              "id": "a8f1def3-a7f6-4e14-8916-dd728f529cd5",
+              "id": "362c9ade-84a4-4c25-ab3a-95204bf91b64",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "cd92f719-1f23-4e06-a26b-4147541d0166",
+              "id": "e8e16d1a-a301-4466-9214-36f722d051d9",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -751,7 +751,7 @@
       ]
     },
     {
-      "id": "69662776-4e42-4d67-a929-0fc9ee5d2d8d",
+      "id": "925a0417-896f-42e5-bd89-f8f1d1dbe191",
       "uri": "Timeline & Time",
       "type": "animation",
       "duration": 42,
@@ -759,18 +759,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "8c97a7e1-7b26-4d75-9de9-2068b4698c20",
+          "id": "386affbd-2432-454a-945d-e3cc37ee280c",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "6c62a488-b5d5-4f26-a487-8a5f4d2f5110",
+              "id": "fe24f537-d879-46f1-8d65-1387aeb34b16",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "7b207b20-0bae-4c19-9166-a6b66690e011",
+              "id": "5f325737-a4dc-4b45-83b1-57eed49a765b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -779,14 +779,14 @@
               }
             },
             {
-              "id": "9ec7a777-93c2-4f83-8ca5-0f016539dcd0",
+              "id": "e354dc9e-525b-48d5-b05b-cdad8555af41",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "e8707bfe-1fd0-4497-91f7-27e41c43b1d2",
+              "id": "45ad2196-103b-4eed-acfd-c42c2f6280cc",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -795,21 +795,21 @@
               }
             },
             {
-              "id": "e52a7c0e-6d2c-42a2-a75d-2cae78847341",
+              "id": "45e52632-14c1-4445-b7bb-ed2a4d064868",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#c1-to-hub"
               }
             },
             {
-              "id": "fea67b65-a672-42fb-be76-858c60347aba",
+              "id": "577937f1-b5b3-410d-a84e-2cd10cc1833a",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "4e6b4b2c-65b1-4760-bb0a-3a80ddc42587",
+              "id": "0d114251-52c2-467b-9faa-9a40fdc63904",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -821,14 +821,14 @@
           ],
           "endOperations": [
             {
-              "id": "de4283d1-b5c2-4917-8ed8-a63f63b54a17",
+              "id": "8b8149ad-a8ae-410b-8286-91613faf61a7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "e6826f7d-f843-4473-a231-6fcbb6f76187",
+              "id": "939cdca5-866f-4f9e-bcd1-b8e50bdb85ea",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -837,14 +837,14 @@
               }
             },
             {
-              "id": "3fe6f19e-1579-4fa4-af1e-71e855e70d2e",
+              "id": "161dd9a0-9b4a-4f47-99ee-295163604ca4",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "346bf6b4-e726-4f1d-8603-5f6efd736d93",
+              "id": "af832f48-1ed7-4a91-ab73-3b3e4dd6d84a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -858,18 +858,18 @@
           }
         },
         {
-          "id": "80282e9b-7db4-42d7-aa8b-b387e9cda070",
+          "id": "fe1d1445-5911-405d-ab12-a26bb9142c0e",
           "name": "timeline-action-0-6",
           "startOperations": [
             {
-              "id": "d4736ed6-2b5b-46a5-ab80-c1f690913a86",
+              "id": "4ef42a45-1a22-49aa-b0f4-5ea2376a376a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "d81a5dfb-24b1-4f46-b8a4-56bce736a72d",
+              "id": "94e38bd9-6c86-401e-b9ca-1149e9a02e57",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -878,14 +878,14 @@
               }
             },
             {
-              "id": "bb4d15b8-dddb-4949-90a0-e4af02c5f8fd",
+              "id": "67ff6044-3d92-4cbc-b7e4-e09acd5937ac",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "5ef6d233-bff3-48f5-b464-74782f78f66f",
+              "id": "60091d6c-d255-4e18-acec-c709147435fb",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -894,14 +894,14 @@
               }
             },
             {
-              "id": "bb616357-bd05-4e5d-8595-25e6439cd8a6",
+              "id": "ec911c53-ee39-45d7-b311-155163bfb12a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "15ac1d08-3d88-4a62-a686-ce6ec0c0c4ea",
+              "id": "044f2074-91f1-46ca-977d-27a29bc8d500",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -910,14 +910,14 @@
               }
             },
             {
-              "id": "d6a57cc8-0072-4795-ac98-1d0307eb5f43",
+              "id": "9bbbbc8d-0234-4d92-8da6-970fbd209cae",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "942f1267-b16e-43c1-9ed5-7021a8805a10",
+              "id": "c02c8d68-949d-4fdd-baf7-69868e6163b9",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -927,14 +927,14 @@
               }
             },
             {
-              "id": "a743b61c-b0b7-49dd-b72b-bc61a517fb02",
+              "id": "079f5a22-5f9a-41fc-9c10-e530b544a44f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "f6657cad-a172-4341-bbc5-c11933b88b0e",
+              "id": "cc2f1285-b1a7-4096-8179-1cdb07d9043b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -950,32 +950,32 @@
           }
         },
         {
-          "id": "a7e3fb3a-2c60-46a7-97f9-860fbd793ac3",
+          "id": "bc2a3a47-8e71-4a93-b4b3-7d34b6c5bfb1",
           "name": "timeline-action-6-12",
           "startOperations": [
             {
-              "id": "6dae0799-3458-43eb-86fc-4a283ff1bced",
+              "id": "76f251d5-93ad-487c-b4b3-b8b9d1aa31d6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "4b3b8542-e5fb-4aec-b233-a5f73839d0f6",
+              "id": "eceb5a4d-dfe1-48f5-abd1-80cffe624f30",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "58d6b6ee-da97-4914-8d71-cb21c5df7211",
+              "id": "1560d8f1-ecdc-43e9-8f0a-22c3d5fbbbb0",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "8986cd52-f55d-4b1a-a60e-5d38b62cd114",
+              "id": "38d336fa-203c-4de7-a33d-9518ad0f6347",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -984,14 +984,14 @@
               }
             },
             {
-              "id": "6566f3e0-e541-436c-966e-6e03670f6998",
+              "id": "3b7ec644-5857-403f-aabc-6b1516984400",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "cede3c31-17b5-4b6f-9fc9-f298d0774689",
+              "id": "0df42d8c-3fda-4e7f-9375-c9fc185f2c44",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1000,14 +1000,14 @@
               }
             },
             {
-              "id": "3473d56b-6f7b-4c08-bfe2-571d5f051169",
+              "id": "7aad619d-bc37-45c7-b578-017e97cfd921",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "3c5b4835-e1ed-4c62-a4ad-42da54c5745a",
+              "id": "58ddb186-d898-4a40-9a22-722498850311",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1017,14 +1017,14 @@
               }
             },
             {
-              "id": "2aa81279-4660-4622-835f-149a6558995a",
+              "id": "98bce8fe-0553-497e-8eb6-70ee4d41d779",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "41648392-ef34-41c0-adc4-9c61e4056dc8",
+              "id": "bd94f611-b0bd-4b90-8bc7-107aaf365e78",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1040,32 +1040,32 @@
           }
         },
         {
-          "id": "71b73735-a1cc-44a1-a590-cdda063ee095",
+          "id": "e8e8a368-4b8d-4287-a252-bf40fe6f836c",
           "name": "timeline-action-12-20",
           "startOperations": [
             {
-              "id": "c1ff4442-2ad5-4152-8441-a8c7f64e3711",
+              "id": "f9c43bfa-cf3a-4e67-be55-e7682678a373",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "b80324f8-0d37-4734-be3d-063341ec50b2",
+              "id": "67e41a97-ec3a-4fa1-883f-b5bf94f51b8d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b8a80d47-1f3f-4591-b244-2048444df226",
+              "id": "e61de6d5-ef49-47b1-90de-724ff14ad5ef",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "e62eb29e-dbec-4952-87ca-150b1dc7ff0e",
+              "id": "63f73cbe-789b-45dd-b81b-b09c212f5b96",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1074,14 +1074,14 @@
               }
             },
             {
-              "id": "7606c887-3382-4ff6-aa62-8de600994a7b",
+              "id": "b9613234-9c95-4054-bbec-fc9830f38f6d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "253e42cd-c0ff-4901-a3e9-08c04f20de7c",
+              "id": "6e9e0c3a-7620-4461-b440-12817fccdc4d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1090,14 +1090,14 @@
               }
             },
             {
-              "id": "56a2bdb9-d19d-45ba-9235-46486ea83fd7",
+              "id": "a9256352-99ea-41da-bf5e-220bf3cabb72",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "a4e9bc66-9d55-4571-ab24-7163914acbab",
+              "id": "f182ed90-1d6b-4501-b77f-939ee67aca98",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1106,14 +1106,14 @@
               }
             },
             {
-              "id": "a4e92e86-76eb-4758-b882-ee2fb61b58a6",
+              "id": "629fd0fb-8250-49fa-b278-2b362241077c",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "34d4e6fc-70ab-4bc5-938e-4391c16264e0",
+              "id": "88463319-3745-4227-b724-abe1b6fd66cb",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1123,14 +1123,14 @@
               }
             },
             {
-              "id": "3f0d52be-e5e5-4e76-9083-51e4eff09788",
+              "id": "9753e6cb-3d02-471c-a3c2-695aeb19a1ad",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "0c045f93-a73e-435f-9f14-e14934e3fd7a",
+              "id": "6c840f66-49f7-4421-a813-d9f7bfd697a0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1146,32 +1146,32 @@
           }
         },
         {
-          "id": "eb65a7d0-75fe-4abc-920c-fb38eb453e79",
+          "id": "cc560375-1933-4f2a-8b0e-779ac0ea9695",
           "name": "timeline-action-20-27",
           "startOperations": [
             {
-              "id": "3fe086b8-bd7d-4e8a-84b3-b79ba9f08b46",
+              "id": "691f8e03-65c3-4a16-a797-be35730801c9",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "de9da0e0-0175-4500-9f69-c083693d0e50",
+              "id": "50aa1948-bc85-447d-a19b-ad7230b90230",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "98fc89ea-a02d-4dfe-b3ad-e37ef5c08f2f",
+              "id": "9a897f4d-72a7-4919-9fe8-92bd7347fb3e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "4b3a5f87-540a-4a11-aca5-23928e082822",
+              "id": "022fd5d3-1189-4f0f-8ca0-9351d4cc5717",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1180,14 +1180,14 @@
               }
             },
             {
-              "id": "49fd02e1-0689-4898-858c-a93fb91ee61b",
+              "id": "18c721c3-d25a-42f7-bd0f-d6045aaa26e3",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "6d4241cf-572c-42e5-9d3d-c1220e29daed",
+              "id": "13754b26-9f67-4238-88d6-567e98e3a1d5",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1196,14 +1196,14 @@
               }
             },
             {
-              "id": "655d8622-64f6-49bf-9522-0b051e68949d",
+              "id": "754a2f06-9d84-4433-b4f0-2ac16664a64e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "f5a33a5f-762c-4e49-9528-73c6ee12c9e1",
+              "id": "1f8042f3-7054-41b0-9950-dcfd5dd2d333",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1213,14 +1213,14 @@
               }
             },
             {
-              "id": "b4732f85-19d4-4a3b-a52b-831cd4164d4c",
+              "id": "aaaf4419-1f5b-4b8f-b231-f68bdc43ee4d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "4f0ac477-ced3-4f1c-a88d-288d6c226f46",
+              "id": "cac95b7f-6e91-46c4-932c-8dcbc24c42a9",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1236,32 +1236,32 @@
           }
         },
         {
-          "id": "5b461085-cc89-48a8-9d7d-42261abd14cb",
+          "id": "169bb305-3e1d-4c94-a7a4-40d29df87718",
           "name": "timeline-action-27-35",
           "startOperations": [
             {
-              "id": "6c0ad1cd-fcd9-4229-9484-7bdde906e480",
+              "id": "8179194e-28a5-42fd-85e1-f2475953661e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "39947d00-c904-4b4d-9920-789457a90de3",
+              "id": "b0b39865-f321-4344-ac0e-87fa070204fa",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "3534463b-92e1-450c-9200-6ac4dd0067f9",
+              "id": "28776f68-67a1-43cf-8eb9-ac20e4ce84ed",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "6146bd67-d5c4-42ee-9bdc-2d0db75589ea",
+              "id": "e8ef41ad-4293-4293-8b87-7fd262bd807a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1270,14 +1270,14 @@
               }
             },
             {
-              "id": "06dabb0d-452d-4eaa-bb16-7212b3ba1493",
+              "id": "bdedb296-51b6-4680-8cc1-6e4ac931cc47",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "12efa6fb-d325-4a8f-a74d-4d2108060fd2",
+              "id": "cf02ad42-5e17-4634-8d20-b3bdd47d268f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1286,14 +1286,14 @@
               }
             },
             {
-              "id": "b546a0f2-4e0c-420e-99e6-2ddc653dcea4",
+              "id": "d366a111-2dca-4e87-a1bc-3a4837bbae64",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "f28dbbb8-fd77-41ac-a22f-64709de3a315",
+              "id": "6ead3395-8a50-465b-ac09-cd4dfbefc722",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1302,14 +1302,14 @@
               }
             },
             {
-              "id": "88e33c9a-4637-4164-8b00-6004c6ca36ed",
+              "id": "73b46436-a796-4bf0-bff8-05ac25700f40",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "30d4d465-3246-429c-99d3-2eb1e918320c",
+              "id": "1c8548fc-a7e1-4ace-8cbb-26c7e3a7b89f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1319,14 +1319,14 @@
               }
             },
             {
-              "id": "0b77e257-7d0d-46b2-b248-b98f3fd73271",
+              "id": "a6fe2d91-46ab-412f-89c3-139fea9da75e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "b0e4d1ac-ab9a-48a3-b02f-ae0f408a8ddf",
+              "id": "6e55f7d0-dafa-4c59-b3b1-7c6b5b374ccf",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1342,32 +1342,32 @@
           }
         },
         {
-          "id": "3762ce8f-581d-4044-9eb6-1dc1376b61f7",
+          "id": "d121f71f-bf4b-4778-a65d-788a1bc40516",
           "name": "timeline-action-35-42",
           "startOperations": [
             {
-              "id": "60d53f48-2dee-4ce7-b192-e7e2b34816b3",
+              "id": "50f18bc3-cf84-43f4-a02d-21d65060917d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "e3933e8a-a846-472d-bbe0-dec45743175b",
+              "id": "d664d9f0-23bf-453b-b2fa-7ce170e36be4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "a393bb0f-7810-40df-a34a-955bee48954f",
+              "id": "d7a57b02-cb34-4a4a-88df-c91e91aa0244",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "2255bc77-221a-4ed7-8062-84b4c84e01a5",
+              "id": "0a55d6da-c133-4e8a-98f7-f14e4cc7912a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1376,14 +1376,14 @@
               }
             },
             {
-              "id": "77f9404f-5e83-4dbc-b555-d786baf7ae9e",
+              "id": "adc7580f-17ad-4972-8d3f-e19a485f9534",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "c405f476-eac3-4947-9374-71112cc0ca1f",
+              "id": "0fbf3992-27ae-4552-80e1-7ec2b2069f8a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1392,14 +1392,14 @@
               }
             },
             {
-              "id": "53413b92-fc90-4238-8fa4-99088d35831e",
+              "id": "089772b2-ede8-4d2f-8196-a7514de1cef2",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "6bd50912-1b61-490e-ba46-6a461f4aa5f9",
+              "id": "dcb65cce-ba8e-4380-8462-3a70bbcf4263",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1417,7 +1417,7 @@
       ]
     },
     {
-      "id": "983dddfd-e7de-4c4b-a23d-0358bebb9e3a",
+      "id": "19cafd43-81ed-4e9c-881c-428db21a03ee",
       "uri": "Actions",
       "type": "animation",
       "duration": 46,
@@ -1425,18 +1425,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "cb435f90-b38b-4173-bb94-84d6cd8d363e",
+          "id": "ab8fba33-bfb7-4255-b574-ca6de3d37ef8",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "21f1541d-f342-454e-9392-e8095d33ebc5",
+              "id": "16694466-c381-4789-a404-71044a6e4a81",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "9fddc672-bd36-4c29-94ac-115bc6017696",
+              "id": "5329a1d8-ee8c-4e5e-b78f-adf8d30c42ca",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1445,14 +1445,14 @@
               }
             },
             {
-              "id": "14ce9a24-9948-4b6e-a03b-dbef3deb259d",
+              "id": "0a49e2f2-89ee-4073-80d8-c06a10c0f3ac",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "c3b3759c-4e88-4ddb-b362-495528c68940",
+              "id": "b3c02b22-2a6a-418d-80f5-022f831aa144",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1461,21 +1461,21 @@
               }
             },
             {
-              "id": "c1eb2ed3-2bb2-48f9-9bf9-a88592db9d77",
+              "id": "c64d0df9-b459-4184-99ff-58c5fcb363ff",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#c2-to-hub"
               }
             },
             {
-              "id": "e7613648-5510-463c-894d-28f969bb1f34",
+              "id": "6b54426b-8c49-4276-add7-e230543962f2",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "f133e5cf-e926-4514-a2e7-2377d7a0cdb0",
+              "id": "6676a9c6-f12f-4c3e-b503-bd96d7dbc254",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -1487,14 +1487,14 @@
           ],
           "endOperations": [
             {
-              "id": "a6888b37-cea9-49f2-95bb-8618984e3cab",
+              "id": "8b484f99-a96e-422d-b65f-c02b68088152",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "44a62bc7-dd08-4d11-8a29-110a1007632b",
+              "id": "b7bbdbfe-c7b7-4e0c-b695-a4d025b5daab",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1503,14 +1503,14 @@
               }
             },
             {
-              "id": "3ce93696-1c9e-4bd8-a5d8-c0cb26bc8c1c",
+              "id": "2718b4e2-0d2f-4809-8b6f-44c3c2cb9a6a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "f15bfb23-249d-4bac-a677-8e29a2d5b4a1",
+              "id": "732bace2-2609-4b16-9a9f-80f0ca07dc21",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1524,18 +1524,32 @@
           }
         },
         {
-          "id": "8a580df2-ade5-4384-94d1-6c5831d8f4ff",
-          "name": "timeline-action-0-7",
+          "id": "0f6eede2-aefe-4f85-9b47-36bbee47371c",
+          "name": "sequence-item-0-7",
           "startOperations": [
             {
-              "id": "e1666dfa-e437-4550-9190-18dde2ff9052",
+              "id": "151a7202-629f-4453-a610-61158f919f24",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "099cc954-4b34-4605-a21c-ba343cf048a9",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "584c4f02-3974-49ea-b3c6-e4ef4d6c5431",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "0d57f8f0-5a40-4a64-8154-d7ddd7294253",
+              "id": "0a86d720-93d8-4382-8e56-0e024c38e30a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1544,14 +1558,14 @@
               }
             },
             {
-              "id": "2fbca4a1-ead3-4530-b53f-647e4883fd6f",
+              "id": "cc268507-f35b-49a3-a995-b4de92bf54db",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "7c9b65be-c04b-4997-b62a-00e410f1b495",
+              "id": "6969075d-b514-4686-89c9-1576028ac844",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1560,14 +1574,14 @@
               }
             },
             {
-              "id": "ea1cd6f8-76e7-4c87-a863-316ceef36ad3",
+              "id": "fbc1ec57-c85d-4807-828b-03adc5e2a698",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "fec6abe6-3518-403a-aa40-9e3367241b0e",
+              "id": "770e3e7a-e43c-4c1a-87e5-718d46bbad0e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1576,14 +1590,14 @@
               }
             },
             {
-              "id": "bee1070b-009e-496a-965a-5f80deae8115",
+              "id": "382eef5f-1f8e-44e0-b6d4-e4bdba6708d7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "422b2e21-95d2-4473-9dc6-8db9b8f38f7d",
+              "id": "39e6dc37-9f06-4011-a861-9544d63031d1",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1593,14 +1607,14 @@
               }
             },
             {
-              "id": "a6cd2baa-2d99-48ec-8c03-62ea09ba24e3",
+              "id": "ba2c8f1b-96ce-422a-8d77-cb16309fe7df",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "c4dbdf76-136e-4878-bdd1-29d97ec3d6bd",
+              "id": "fd6cd975-6ccc-45c1-85e4-bb6f6ac1fd3a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1616,32 +1630,32 @@
           }
         },
         {
-          "id": "86b0a1b4-38b4-425f-8e15-cd6af25fecc7",
-          "name": "timeline-action-7-14",
+          "id": "31848600-d8d2-4f86-bfa9-3bc90cb24500",
+          "name": "sequence-item-7-14",
           "startOperations": [
             {
-              "id": "079eb637-68b8-4925-a524-ddbbd97efd13",
+              "id": "2a2800b8-73e4-4fc6-84cd-15924a0a777a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "6c12e6f7-0ea3-44a4-83da-04c9aadf18d9",
+              "id": "49d68fa2-7bd8-4fd0-b3cc-04ef85e3743f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "4210bd0c-cfdd-4bdf-91cc-550f994219f0",
+              "id": "e347ced5-d17b-43ef-a0c4-55a8ec6e5344",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "afc1e21f-3a9b-455d-a680-82f5d091c3aa",
+              "id": "bf915030-626a-4d20-afcc-8e2e22869060",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1650,14 +1664,14 @@
               }
             },
             {
-              "id": "13773dad-4fe0-4b28-9fe0-7f00531bc700",
+              "id": "082d1a6e-72b4-422b-9fce-6d12ba8130f5",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "f2b44d92-c23c-4ae0-9a76-3952d204b21a",
+              "id": "85f14d6c-0686-4827-8c0c-0d9fb6016558",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1666,14 +1680,14 @@
               }
             },
             {
-              "id": "f72df0de-aed7-444b-aaa7-872c243ff927",
+              "id": "02eedbe2-1b2f-44b2-a193-4d2293308395",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "49083e53-1337-4d9a-bf03-722b9470de02",
+              "id": "af2e97e7-9f42-4d44-a45a-146d743771d8",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1682,14 +1696,14 @@
               }
             },
             {
-              "id": "630d4a09-e50c-4bea-bb6c-d1f78bc7d467",
+              "id": "f54982eb-4237-4dde-bb85-7f4f43ac4e4f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "8a5f36c9-3535-4794-af84-db6fc1556063",
+              "id": "26edeeff-072a-4962-9170-6f25e1d78626",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1699,14 +1713,14 @@
               }
             },
             {
-              "id": "87a9767d-990e-4403-9e9e-b2053f86698e",
+              "id": "f6d88ba7-2780-452a-978c-ea2a0103d2c7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "eaf7b632-a603-4238-8c39-d4a54a76f47b",
+              "id": "d8aa3278-6760-4c92-aa9e-7a53f82f66dd",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1722,32 +1736,32 @@
           }
         },
         {
-          "id": "26176606-6882-4155-a913-810785a146fe",
-          "name": "timeline-action-14-22",
+          "id": "6305cc63-b78c-4af7-a561-cbedcfbd6f21",
+          "name": "sequence-item-14-22",
           "startOperations": [
             {
-              "id": "663e8bc6-9787-4a82-a525-4a24943dec49",
+              "id": "c44e3822-6862-4b89-a529-ebfeb1c7f5fc",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "26ad877e-f134-4c65-8e49-42d6bc3638d6",
+              "id": "ea5c3b05-bcfd-4837-be03-faec12a90dc4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b9d9a38b-83e2-4625-967c-e5e4d157ae72",
+              "id": "15bd10a7-9943-4f8f-8f9f-7735b2e9cace",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "620a98a8-eae8-4680-afa1-6d50f4a93c88",
+              "id": "b30d2444-551e-4770-9df7-54e52467d29e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1756,14 +1770,14 @@
               }
             },
             {
-              "id": "547a1929-537f-467a-ab93-ed3efff08447",
+              "id": "46c2dda7-8ed4-4b71-882d-caf46771b67a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "fcffbf7d-d90e-443c-9d65-c88fe763e1c3",
+              "id": "d59e1577-118f-4370-aa2b-ee0eb76fedca",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1772,14 +1786,14 @@
               }
             },
             {
-              "id": "078aecd0-ff04-4656-ae69-6bbf27ef5f9d",
+              "id": "36ca2947-2431-49ff-baf8-12da17a3fc89",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "78686ba0-066b-4383-8748-9d11cd953679",
+              "id": "897f2ad7-935f-4cc7-bebf-29161073e54a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1788,14 +1802,14 @@
               }
             },
             {
-              "id": "80b67e17-fb6b-4c88-beb6-110cc780d987",
+              "id": "c9024215-b718-40f0-90e2-1cb426ef34bb",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "63873bb6-5b7d-4ade-9a6c-a61abe2fd687",
+              "id": "4217125e-fb42-474d-bea1-7a905de68108",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1805,14 +1819,14 @@
               }
             },
             {
-              "id": "dbfcb9dd-0992-4b7b-98c1-e117eb94d7de",
+              "id": "e210ea7e-5e60-4cf8-925b-25fa2b5a09d3",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "d8a71583-b1ba-4773-9315-bf7beb1fc4fe",
+              "id": "178f362e-efe1-4939-86fb-8009e5ff23e5",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1828,32 +1842,32 @@
           }
         },
         {
-          "id": "23e87763-5c79-4672-b219-918d2640749c",
-          "name": "timeline-action-22-30",
+          "id": "846fdc4b-ae4d-4949-9db4-ad2a7dc19375",
+          "name": "sequence-item-22-30",
           "startOperations": [
             {
-              "id": "f3da6d3f-c700-41e6-b316-a72d926ed17c",
+              "id": "8ef37edc-83ad-415e-9e2d-548a9692f5c8",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "07f5495a-17a2-4ad5-906e-2257f83e0dcb",
+              "id": "ffccb48b-aa28-4113-8f23-ef6f8cd373b1",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "6d08175f-e703-40d4-b7a6-9e9092be0cf7",
+              "id": "83f99751-0a21-41e3-b62b-14925a51c730",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "d6874394-af5c-4bca-962f-38d4aed585da",
+              "id": "c21df38e-4bf9-4a8d-840d-ae1f9ddc4df8",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1862,14 +1876,14 @@
               }
             },
             {
-              "id": "c469031c-697b-4fb7-82ef-9c0019852878",
+              "id": "d8e47a33-5d46-4f78-b675-da93b170f3d3",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "2c763617-5db3-4f6a-8ca1-731bfc59d132",
+              "id": "642ab534-520b-44f0-a2f2-bbc352813ec0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1878,14 +1892,14 @@
               }
             },
             {
-              "id": "44421953-7d3e-4996-8b94-c3bc13f8cfa7",
+              "id": "23b5e7f0-1b9f-4e86-9dfc-f59380f04de5",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "b88f43ae-0f56-458b-81d5-ed885cc7181f",
+              "id": "e9f51618-45f1-4a51-9851-76ee552c475f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1894,14 +1908,14 @@
               }
             },
             {
-              "id": "6f65c2cf-3998-463f-b632-a2685e61ef96",
+              "id": "7f6cf362-ea98-4bd9-bad1-68f22da95690",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "e7e5d081-1e8b-47a4-9ac9-58d439850401",
+              "id": "ae8eac1b-6183-4159-826f-99f930e73130",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1911,14 +1925,14 @@
               }
             },
             {
-              "id": "dd3a2869-62e6-4e74-8c7c-0c7cc6edf3e8",
+              "id": "3fdf283d-b612-4e1b-b3e9-bfbb9183c43f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "66467ac5-79de-4b10-8be6-d0faaaf3dab7",
+              "id": "94b47c4b-f5d3-4954-8407-12413acfde04",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1934,32 +1948,32 @@
           }
         },
         {
-          "id": "d3e79bd6-cc02-414a-8ac8-a5b7e6619271",
-          "name": "timeline-action-30-38",
+          "id": "e84f4a2c-1d42-47df-907c-b6ee2b0da13d",
+          "name": "sequence-item-30-38",
           "startOperations": [
             {
-              "id": "4f235c49-e55c-4374-9710-6342c93597f6",
+              "id": "3cb1824e-13f0-4cfb-bad7-d81b1bb1d3a6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "2d4bb304-969b-40e1-a280-00b71bbaecf9",
+              "id": "2c6612f4-9164-4899-8d88-749c22ce8534",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "21aadff1-903a-4aca-92cf-59edc569029e",
+              "id": "5f4597f5-e64c-449e-81d4-c8dad598a31a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "dd3fca38-5ec3-4e86-acf4-dd68f646d1ac",
+              "id": "9249b31f-c02d-43af-9306-62cf22e723d3",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1968,14 +1982,14 @@
               }
             },
             {
-              "id": "2c5785b2-3de8-4579-a981-ef0330f8d343",
+              "id": "d0bdb603-76b4-45b7-b18a-149c280d943a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "c514a731-1098-4c70-b8c9-8e172a789c7b",
+              "id": "0c011983-97a5-436d-a746-65bf123db5ca",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -1984,14 +1998,14 @@
               }
             },
             {
-              "id": "dfc62664-eb94-4014-8e03-03c30cb1dc98",
+              "id": "afe507d3-644d-49cc-9265-65c90cb60af7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "33c30a22-97fb-4324-958e-289563d24d81",
+              "id": "e8c528bb-69d2-4b34-bc38-1071884f041c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2000,14 +2014,14 @@
               }
             },
             {
-              "id": "7b15a902-b723-4902-8826-c2e4391422e7",
+              "id": "00486838-fbdb-4947-b579-be13c44dfaab",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "7b72e512-1c24-4ac2-9dc4-504a55f8704a",
+              "id": "48c35f1c-f80a-4bcb-b3d3-4b9dac0cf3db",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2017,14 +2031,14 @@
               }
             },
             {
-              "id": "5350448f-12ce-4024-b8a6-ef4dc28e0475",
+              "id": "f3d66ec2-dd51-49a9-b823-2541f9a5b79d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "17050311-0502-4a2f-acf3-36009bb070e2",
+              "id": "1586210e-0a32-4e9b-95bc-57a7390070ed",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2040,32 +2054,32 @@
           }
         },
         {
-          "id": "145bd028-759d-4fe0-9772-0a4945e95a65",
-          "name": "timeline-action-38-46",
+          "id": "1cdd9c83-225e-437c-a79f-14777048485b",
+          "name": "sequence-item-38-46",
           "startOperations": [
             {
-              "id": "d2f4259e-f825-47c5-8978-9e58e7659099",
+              "id": "547a67a4-bfc2-4960-bd76-31f4ba259a33",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "c111e5f0-2ce1-4c34-8250-05992d57c03c",
+              "id": "5ff4955e-efc5-4400-a76a-fd9785ef0f3b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "d10d545d-0c96-49e9-b794-20281d9bc329",
+              "id": "a3f2e202-0449-4adc-8f9f-49a2a1ab9487",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "6f6f67a1-4574-42bf-91c0-a90e500e3c6c",
+              "id": "5cc52b90-ef29-45bc-813f-b15ff8d4d8e7",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2074,14 +2088,14 @@
               }
             },
             {
-              "id": "91b3ccf1-2558-4b72-be38-51807e39270f",
+              "id": "342cb1b3-eb18-4c26-8c16-a34a23eca7f3",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "59a71ade-096e-4da5-9bbe-da7f934f0a9d",
+              "id": "c24eb08d-1179-4968-bbf8-3ad0aecebfeb",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2090,14 +2104,14 @@
               }
             },
             {
-              "id": "dcef4d8d-62ca-416a-92f5-e37f7e3284c3",
+              "id": "7cc79afa-566f-4d6c-83a6-9ebb20d643dc",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "e9f84a41-74d1-4593-bbcf-413912e6b8d9",
+              "id": "ccfdcd45-6efb-446b-941c-c0892265cf58",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2115,7 +2129,7 @@
       ]
     },
     {
-      "id": "909395c9-b8c7-4bf0-8ca8-dddd5fa446c4",
+      "id": "dbf8ddbe-202b-4b0c-a765-93205eba2ea6",
       "uri": "Logic",
       "type": "animation",
       "duration": 48,
@@ -2123,18 +2137,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "fc0c7024-71b8-45fd-9d95-17e3ae168df2",
+          "id": "9d28a15c-7ca2-4f25-8d93-b9a5f8b1e63e",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "7f01cf8b-ea44-4087-874b-6dc7916cf495",
+              "id": "f1f34d33-3e80-4f4e-8f73-63c8e919dd59",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "92c96f35-f1d5-4fe7-a570-04def116e0e7",
+              "id": "09e34672-63e3-4128-b39a-d74d979fda1e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2143,14 +2157,14 @@
               }
             },
             {
-              "id": "8e9921ec-5cca-4790-a46b-69094a7f9680",
+              "id": "618c14b5-f512-45f4-86ce-f444142ffe6d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "7c24b2f8-a635-403d-b1ea-9fd0e39c70e7",
+              "id": "45d37a8e-997b-4479-8842-2a391c5c340c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2159,21 +2173,21 @@
               }
             },
             {
-              "id": "c962d6f0-60be-4d42-b3e0-2c806e7669d6",
+              "id": "98b3e16f-1ae0-43b0-b74e-879b8f6f5b46",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#c3-to-hub"
               }
             },
             {
-              "id": "722f73df-117b-43b9-a804-c1e1e53b8d8a",
+              "id": "6f22e9ff-5289-493e-abfe-c26e47b7bd02",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "e4ab2891-baf9-429d-98a9-c9386790e52e",
+              "id": "c7e7d18a-b379-46ae-a5b9-576b5f60e1a3",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -2185,14 +2199,14 @@
           ],
           "endOperations": [
             {
-              "id": "e848711c-5046-4267-8965-e7f3386021ad",
+              "id": "cef1e3ef-d95f-4555-9f4a-bba4b8bbad91",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "eb9011f2-0eb6-42d9-8935-3c2f22fe5b8a",
+              "id": "479badd8-334a-4d14-8dba-3b65071887a6",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2201,14 +2215,14 @@
               }
             },
             {
-              "id": "351c4f9a-df60-4d72-bf6b-fd9bc1d68be2",
+              "id": "aa945998-f75c-4ce1-9c3e-b74c22dcbed2",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "dbbfd6a4-a442-4251-adb4-8622f0e2bff5",
+              "id": "0b982936-320e-4b00-b421-159dd04dbf69",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2222,18 +2236,32 @@
           }
         },
         {
-          "id": "1f8c461e-b1d3-4c48-a208-c4de20337501",
-          "name": "timeline-action-0-7",
+          "id": "2b40569d-6dc5-477d-93dd-a2aa7862aa87",
+          "name": "sequence-item-0-7",
           "startOperations": [
             {
-              "id": "e1341a0d-d46f-48cf-b035-f1cf8147d70e",
+              "id": "141d56dd-6eec-4409-91aa-1db0d6516460",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "0ce6e226-aa7b-4731-990b-b3b2b9e9ecf1",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "ed655ef7-04d3-4768-9f87-a583af86099f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "e1f63f18-cdf3-4512-9f34-eb367eb4e06c",
+              "id": "945f3423-97f2-4047-99ce-7eec3465afb8",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2242,14 +2270,14 @@
               }
             },
             {
-              "id": "264cb001-c875-4d14-87ae-67a5af416df1",
+              "id": "3826814d-169b-42e0-ab68-69b2f5cbcecd",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "9bac3eb6-f9ca-4fc0-a91c-87e814f579e2",
+              "id": "0ef97f84-c751-4ff8-905a-3dbe8c18965d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2258,14 +2286,14 @@
               }
             },
             {
-              "id": "a329a9c3-7154-478d-8ab7-d9a152eca589",
+              "id": "0eb18ff6-01dd-4a96-b0d5-2f3e33af4d36",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "5763eccc-37fb-4de9-990a-6cf3d8a8ae3c",
+              "id": "4321dc74-30e4-43db-b27b-a0736128c578",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2274,14 +2302,14 @@
               }
             },
             {
-              "id": "6a412fd8-2a26-4830-89e1-aaeabf5d8b4c",
+              "id": "217ccbce-de3b-46a9-ad7d-52846746b715",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "c00087c2-b7d8-4068-9691-5204acd7a431",
+              "id": "96694fde-37f5-4abd-b574-05a4b0019e19",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2291,14 +2319,14 @@
               }
             },
             {
-              "id": "e7131739-7c84-4769-9c17-5b7645c10308",
+              "id": "af51d2b4-cf4e-4e99-b648-4372d1edf0a0",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "68a1d62b-a92a-46e0-a349-0ee725c84ebd",
+              "id": "53949afd-6efe-46fd-9930-eb711466ba83",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2314,32 +2342,32 @@
           }
         },
         {
-          "id": "a5b921aa-13b1-4e1b-b178-680deda9861e",
-          "name": "timeline-action-7-14",
+          "id": "426ba69b-f796-4281-9bd1-21bdad86b8f1",
+          "name": "sequence-item-7-14",
           "startOperations": [
             {
-              "id": "f195de03-9b93-4ea3-a0dc-4d1934d4ce8d",
+              "id": "4241ab0a-3309-486e-95f6-54377090526b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "5bd3b016-8d27-436c-9ccf-9e41cd078b04",
+              "id": "39b4457f-951d-4928-8413-a97d11ec2fa9",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "65d836c2-b1b4-42c0-ac2b-9b230029f8ee",
+              "id": "774c55c6-4e54-4b60-84bc-33acfa2e102b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "8f4c9d98-1618-48a5-a602-80dcf3cc71d2",
+              "id": "0d7a9f29-c0d7-49c7-b106-319931778cab",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2348,14 +2376,14 @@
               }
             },
             {
-              "id": "275e3156-9c9e-4138-8682-df0053412361",
+              "id": "c0ec669d-c790-4583-83ec-10db6e0781a0",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "cd872828-b1b6-418c-a5e7-6513cc5d4971",
+              "id": "f9fa7e80-a7ba-45be-adc5-e7e055182b70",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2364,14 +2392,14 @@
               }
             },
             {
-              "id": "21c278cb-6aad-49e2-9d8c-215fa37b5673",
+              "id": "d7d3b092-2fce-4423-9bd6-b891cb917872",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "4581b10a-f766-48d7-94ae-f5c72bf2444a",
+              "id": "660db287-8862-42e8-9ebe-068314c84972",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2380,14 +2408,14 @@
               }
             },
             {
-              "id": "5329bdb5-2719-4295-87c3-3c73020a83dd",
+              "id": "291ff00d-7853-4cac-bcce-239e67351b55",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "8762c9d6-6691-4116-9dcc-0056355fe967",
+              "id": "5a719e34-17d7-444b-87db-04016f2f968b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2397,14 +2425,14 @@
               }
             },
             {
-              "id": "8f412b1f-3077-44e3-99ed-5e7819e253ab",
+              "id": "416f37bd-8f31-4aa6-a088-2490c592f21c",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "1d66dd5f-b74a-4fe2-ae4e-50f72e29174f",
+              "id": "da64cc19-45f3-4765-9352-fefd8229e3f6",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2420,32 +2448,32 @@
           }
         },
         {
-          "id": "83040a29-4c1e-4075-be5a-4cf7a5f96919",
-          "name": "timeline-action-14-23",
+          "id": "bac845a6-5e1c-428a-93d0-44c850a66ed3",
+          "name": "sequence-item-14-23",
           "startOperations": [
             {
-              "id": "03ea5866-f780-4d75-b8da-d9e31dba9402",
+              "id": "bca9237b-6bbf-4c74-9d96-53fc53d1d5b1",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "96ed711c-8d11-4983-a95e-e01c13888de1",
+              "id": "ef16a9be-154c-4ad4-ad8a-5f481bf6a17a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b35831b8-2e70-4fe2-843a-6640fa30cf33",
+              "id": "d7728755-89df-47aa-982f-a2e66e43ada8",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "69024223-83a0-44cc-8dcd-ee08540c5e51",
+              "id": "e5004f93-9ba3-4b2f-ac96-6d4d43f01884",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2454,14 +2482,14 @@
               }
             },
             {
-              "id": "8532a66e-9541-4a8c-94fc-8eebac2ad7d9",
+              "id": "c18f2444-358a-4629-b3d9-f1a22dd67d19",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "b9620e04-2ea4-492f-a269-fdbac3164f7b",
+              "id": "f7d42e7d-71be-4858-98c7-eb4fe63fcf6b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2470,14 +2498,14 @@
               }
             },
             {
-              "id": "389198fd-583e-422c-bff4-24041c1319dd",
+              "id": "d2cca147-5f25-47cd-854b-a22675e72ddf",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "0304a206-2d25-441b-bfe4-20f6bee7f585",
+              "id": "ee4f9afe-2dd3-4247-97e7-382ad05658b7",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2486,14 +2514,14 @@
               }
             },
             {
-              "id": "8d863b98-7d27-496e-8ea2-2a1e732b4d63",
+              "id": "703949ef-f7e7-45b9-90e4-249df29344b6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "44eeeaf7-8471-426b-a2fc-3bd99e2c7a86",
+              "id": "47c94cc2-10e7-41a8-8ef1-52dc2b547657",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2503,14 +2531,14 @@
               }
             },
             {
-              "id": "06e79080-3977-4676-af36-4f0fe39e129c",
+              "id": "971b6fe9-24ac-4f06-a34f-6ec16c95d4fe",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "1c83342e-3de8-4bbd-8c89-c4559a88dc65",
+              "id": "30a4c0c6-3019-4ae6-bcad-88f5d58485f3",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2519,14 +2547,14 @@
               }
             },
             {
-              "id": "7011bad9-0044-4b7c-973f-af2c72b8d521",
+              "id": "2ed8b1b3-a1f7-4da6-a285-62a3837577e7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "ch3ToggleBadge"
               }
             },
             {
-              "id": "f9dcd107-84f7-423e-892d-3d4f59942bb1",
+              "id": "c53a412b-cf6e-401a-a8c4-b6c3ac65ad4c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2542,32 +2570,32 @@
           }
         },
         {
-          "id": "249d28ca-db2a-4992-b8d0-035e547968b7",
-          "name": "timeline-action-23-32",
+          "id": "b9b11d1d-0e9f-4561-b484-4f7de0449297",
+          "name": "sequence-item-23-32",
           "startOperations": [
             {
-              "id": "6246eb6e-9d9c-4740-8b3e-f124baa9b567",
+              "id": "7ab11316-97fe-41bd-99fc-5366772e5178",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "eb232f8d-9555-4074-9330-7dd7a2ea3e7e",
+              "id": "7f7b67b2-cf90-443f-bb0e-d2ea60fd3632",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "0fe47ff5-dd59-435b-a6bb-cc1f33c6e95e",
+              "id": "2eda2ade-e589-4fc6-81fc-fafb2349db46",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "939c251e-a85a-44d0-bc00-ffa3b6159c64",
+              "id": "4e3874ec-0724-444b-a426-2ff3910f5ea1",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2576,14 +2604,14 @@
               }
             },
             {
-              "id": "0eb36606-c51a-4fb8-9d6e-92550f486180",
+              "id": "17f4ed2c-ca42-4b56-a0fa-62ed82d9aa70",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "5acf261b-2618-4aa7-9796-5a23fc4bd0bc",
+              "id": "ef6cc425-308b-49e1-9e95-4cc065633dc5",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2592,14 +2620,14 @@
               }
             },
             {
-              "id": "f6bdac55-7f1b-4121-94ad-2b29b41c0aba",
+              "id": "9764ff09-cb2e-4c7b-a8e7-fb1bdb8710cb",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "2dfbf634-8b29-409a-840e-eb627dc41a90",
+              "id": "c2b03599-ab21-483f-96b3-8b7f620f7124",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2608,14 +2636,14 @@
               }
             },
             {
-              "id": "48233556-a485-4780-ae86-99649aefd0bb",
+              "id": "64d766b7-a4ae-4c8a-9951-7558de9b87cf",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "20c25109-d199-4ab4-8f3e-6c4fa64a2f77",
+              "id": "1746b42e-b0bd-418d-aa3d-58e9fb264e5c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2625,14 +2653,14 @@
               }
             },
             {
-              "id": "ff2b031c-96aa-4634-8132-4994b7b72a48",
+              "id": "9927e31c-8ba1-40ce-98b4-9bf7da7af79e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "a66e7f23-a823-4f62-adfb-83cad163e9ec",
+              "id": "285563db-6d78-449c-a358-2c2e994d8292",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2641,14 +2669,14 @@
               }
             },
             {
-              "id": "9d0da92e-d052-4a1b-96c0-e831b369a35b",
+              "id": "b353fa7c-cefc-4d98-98a7-a603b4971683",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "ch3RevealBullets"
               }
             },
             {
-              "id": "86cc2cb1-f56d-4cc8-8c00-c95fd0c0c202",
+              "id": "7c2b6751-9413-494d-9b2d-1992613d37f6",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
@@ -2662,32 +2690,32 @@
           }
         },
         {
-          "id": "fa158f1b-2a9c-48a3-af45-150d8bd50073",
-          "name": "timeline-action-32-40",
+          "id": "3cf524a5-7682-49fd-9b9d-996741e54566",
+          "name": "sequence-item-32-40",
           "startOperations": [
             {
-              "id": "7a83ebcb-bbcd-47a3-a41f-e524666edbe6",
+              "id": "ec2722ed-a2d3-46d9-805b-616dcb1aee71",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "79aef230-efcf-496b-848d-faed01c83708",
+              "id": "8b785810-7cfe-4389-9e76-4e53dd3bceea",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "65531e86-4d81-4f45-adde-9d2731d5361a",
+              "id": "bd45310c-2157-45f4-9b0c-06c923104f6f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "a020e0fb-b749-4f1f-bf51-c844c9a057c0",
+              "id": "ac586ed6-fad0-452d-bd32-fedfd3cd59d0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2696,14 +2724,14 @@
               }
             },
             {
-              "id": "70230f35-0583-4873-8826-6e750d3c9602",
+              "id": "ad47ebd9-4456-4d1a-8749-bc83979a8ab9",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "b453ffe0-fb8a-49f3-b951-a42c72d6aff4",
+              "id": "8200d618-31fd-4624-a673-fdd6cdf5de76",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2712,14 +2740,14 @@
               }
             },
             {
-              "id": "ce569e2c-2c65-41f8-8b12-42bc577831e7",
+              "id": "1a52eb61-3de3-42c0-b7bc-b7216e2f215b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "69ac977d-1a9b-493d-aa5b-df656f656614",
+              "id": "c7a2e306-9843-454e-b301-01be45b71b41",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2728,14 +2756,14 @@
               }
             },
             {
-              "id": "22663604-aa0b-4b11-ae35-6bc59fd6f3d5",
+              "id": "240d44ef-f483-4484-84a8-6f47cb863b1a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "3f48b934-9f2a-441f-b713-dc3b7ca968fc",
+              "id": "05f3033c-4d69-4c6c-bf12-3acef69844e0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2745,14 +2773,14 @@
               }
             },
             {
-              "id": "959f8624-e056-4a79-81f7-5b262e7e1ceb",
+              "id": "f508f5ac-250c-4ab8-bfe1-a46902056534",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "a7ccca74-39db-4903-b7c8-6d01957b6ac4",
+              "id": "208c1b00-3ae3-4f40-ae98-02032d305c87",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2768,32 +2796,32 @@
           }
         },
         {
-          "id": "58a2793c-5b25-40eb-b97f-631f6f02ccc5",
-          "name": "timeline-action-40-48",
+          "id": "66580f87-0777-4cb0-8d3a-46fb4df540fc",
+          "name": "sequence-item-40-48",
           "startOperations": [
             {
-              "id": "59726b55-4d74-4f0a-a7b6-94d732ec92fe",
+              "id": "dce8d7fb-3d6f-4b65-953e-fb69a327aba6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "fb0b0535-7c85-4e93-b3b1-751440956575",
+              "id": "3827f7a0-8c9c-45a5-a350-751c21b4ce38",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "9e09a61e-c331-485c-8e00-94c9ec1d4728",
+              "id": "cf4b7451-3c84-48c7-944f-f43a48bef497",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "f250d964-5376-4475-b5dc-0a9baa431a98",
+              "id": "366479a2-623b-455a-bfa2-ff1b5f83c66d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2802,14 +2830,14 @@
               }
             },
             {
-              "id": "1d7e2425-2b06-463c-9b9f-3e2b03e3812e",
+              "id": "47300ed6-7c84-4309-b7c3-a7184fb2f5e7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "2ebe9676-e55b-4357-b9ab-dec766cfd9bc",
+              "id": "8a08462f-fd58-40f6-a8a8-9b84940eb473",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2818,14 +2846,14 @@
               }
             },
             {
-              "id": "dc55d751-82f7-4f4f-8c54-accbad004040",
+              "id": "9e16531b-b909-41d5-a395-d405d483e1e6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "10029468-5c72-4842-9a5c-0a851acc9385",
+              "id": "0c3b4088-ec69-404e-b51b-88da1e4761a0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2834,14 +2862,14 @@
               }
             },
             {
-              "id": "6ef7c30a-e080-4973-b8fd-ed1a98106ba7",
+              "id": "00d5a87c-2cbf-4ddd-a6bc-ab841a826b1f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "1fd41fb8-7792-40a7-8d70-102ac44335be",
+              "id": "e67b3340-2eec-4f20-b914-39a9e8f6520f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2859,7 +2887,7 @@
       ]
     },
     {
-      "id": "e3e0e25b-5f7a-49de-8b43-afac16424825",
+      "id": "251103f0-27c1-489b-835c-56b99143292b",
       "uri": "Timeline Power Tools",
       "type": "animation",
       "duration": 47,
@@ -2867,18 +2895,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "5215091e-be65-4296-8336-5f5a778b591d",
+          "id": "1d84a685-d6fe-4d58-a787-888f3a8d7b98",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "cc48e2c5-6f16-43d3-a302-1a3209a4a78a",
+              "id": "e5cbe4d9-d15c-4abd-8180-b23b99213f16",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "555ad95a-bf40-4a71-8474-ca35da66fe51",
+              "id": "565f12ec-47f3-4377-894f-1e694432875c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2887,14 +2915,14 @@
               }
             },
             {
-              "id": "a3c799fb-35a5-4b96-abab-be220a2c7716",
+              "id": "95d06260-7b8f-4916-bca1-3a58564d6259",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "dd9f4ee2-760c-4a13-a05e-871286627a5d",
+              "id": "ebb76efd-8b79-46ff-a80e-f9bb1fd011df",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2903,21 +2931,21 @@
               }
             },
             {
-              "id": "0b17b65a-f6c3-47cc-8d84-d81fd3a13a9d",
+              "id": "febbaa41-558b-4248-afba-055ca5994149",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#c4-to-hub"
               }
             },
             {
-              "id": "3c3eae2d-4f08-4469-b9c1-a9dce1e1b66e",
+              "id": "b482e9bb-f33a-4a2c-a643-48b91f1bdb44",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "4de75085-7303-4500-b871-412688293187",
+              "id": "7901bf35-40d1-446e-beb6-df08c1f8b9c6",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -2929,14 +2957,14 @@
           ],
           "endOperations": [
             {
-              "id": "cb803bef-cb47-4eb2-9ed6-101088540f45",
+              "id": "2af124cb-6a2e-44e6-84cc-f764c70399e1",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "d5a136e6-3305-466a-9a5e-5fcf38ba1083",
+              "id": "d1222fca-be3b-400a-b8e3-a01f7b3798b3",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2945,14 +2973,14 @@
               }
             },
             {
-              "id": "e45dacea-e005-49ea-8c87-4868c9f702a8",
+              "id": "31086e11-a56b-4099-be18-e9af7d305dc9",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "5189c59e-d36e-4a51-a835-961e4b1c7901",
+              "id": "5e2956c6-0a6a-42fe-8465-116302f4a7dc",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2966,18 +2994,32 @@
           }
         },
         {
-          "id": "5c99c339-8c08-4387-9776-636190a26521",
-          "name": "timeline-action-0-7",
+          "id": "2ef1a15c-7dbe-452c-ae42-d13e6f083e2c",
+          "name": "sequence-item-0-7",
           "startOperations": [
             {
-              "id": "03771741-8ea3-4c12-9126-3056be09ff47",
+              "id": "f0e2fd6d-243d-4753-98ed-a2befea62f48",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "207f2b6a-128c-43e4-8cbf-dd6e6d438eff",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "a193032b-8252-4b87-ae1a-5360e9734819",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "a37d6a4d-ac69-4b90-823a-e0e58fe32acf",
+              "id": "64fe4d8a-10dc-452f-a394-40d3e9f0b714",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -2986,14 +3028,14 @@
               }
             },
             {
-              "id": "2a416d73-7f92-49ac-bb89-0e86e9aa4d45",
+              "id": "1f3f4d7c-f5fc-4be5-ac2a-723a2c5f2206",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "45eec979-440e-46f8-a68b-8f9609c31bd7",
+              "id": "ec64d08a-a4a0-42d7-9841-8481cc5fc933",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3002,14 +3044,14 @@
               }
             },
             {
-              "id": "01650a00-7944-480a-b0eb-a5fa9d6a80d4",
+              "id": "76e46c41-9773-4384-98e9-0615eed153aa",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "6fd1eeca-8f81-4731-acd7-6b82a5873659",
+              "id": "f3c13e21-9b1a-4cb8-b4ef-cf0e008e07f6",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3019,14 +3061,14 @@
               }
             },
             {
-              "id": "1fbca324-fe3f-4ee3-8b25-37b0d42feb62",
+              "id": "d9ec9f7a-06a2-4828-8eea-7da811d0dc52",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "32dd3970-56c4-411e-9f60-97d2087571f4",
+              "id": "4dec0544-c495-4406-b5bf-c6aa39536c24",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3042,32 +3084,32 @@
           }
         },
         {
-          "id": "49a3d9cb-c357-46a9-a900-35ad75bba4ea",
-          "name": "timeline-action-7-15",
+          "id": "badfa768-5b54-46fb-9548-ec391fb42abf",
+          "name": "sequence-item-7-15",
           "startOperations": [
             {
-              "id": "3725022a-b224-47af-8f2b-a28193586f11",
+              "id": "b1867888-dce0-4467-93ed-6867ac2c9168",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "04fc9082-bfe6-4c73-92f6-313c67e20213",
+              "id": "8321ea17-af55-4349-a440-0fc700bca355",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b6337a48-83ea-42fc-a6d2-5505b585e07d",
+              "id": "a86de492-c8ac-453f-aca1-585c66fc5dd1",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "7ca00f92-f7d5-45bf-9f26-6ea443e7ae11",
+              "id": "41339597-0ee7-4e83-870d-01aa733d0e4e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3076,14 +3118,14 @@
               }
             },
             {
-              "id": "25d86986-177c-4592-b8b8-0b87f0e36401",
+              "id": "f8994026-fa45-427e-a3c9-daeab3188e7c",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "1c944def-f99d-4c1b-9884-1f7bf97d6c69",
+              "id": "6378dcb9-ac22-4b7d-8354-d8a26db13301",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3092,14 +3134,14 @@
               }
             },
             {
-              "id": "fce815ed-67d7-4c29-a163-17ef1353f14f",
+              "id": "9c66f831-a5c7-4eee-8fd0-0c20ce5c681a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "d617f1e9-92d5-479b-a495-b89cdf31e347",
+              "id": "48f94886-f0b8-45bc-833f-9b007bd7917c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3108,14 +3150,14 @@
               }
             },
             {
-              "id": "6dd45dc2-f96f-4392-8909-0ba49e20f56d",
+              "id": "10e5b587-a5df-4254-995c-bc282c28c08c",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "4bfb909b-749c-42d2-b811-9d1a9062672d",
+              "id": "93ea2d81-a4e0-408a-92c6-625259812d93",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3125,14 +3167,14 @@
               }
             },
             {
-              "id": "6c7c7efa-7380-4e35-b44c-f4463da99936",
+              "id": "9938b50e-778a-481f-9beb-89e828f1ac5b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "e50d84cc-571d-4ec4-b02d-96514c47173b",
+              "id": "99fc9722-3c7d-4794-af0d-23d4f80a7199",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3148,32 +3190,32 @@
           }
         },
         {
-          "id": "0a399cc2-c135-4323-a246-2391716e040d",
-          "name": "timeline-action-15-22",
+          "id": "3fbc6534-6fb8-4b20-bfde-1387736a8fa1",
+          "name": "sequence-item-15-22",
           "startOperations": [
             {
-              "id": "cbf24ac2-2bb8-4f1f-8af4-3197acd45383",
+              "id": "a259fcd6-88cd-48a1-8f37-d35f98779424",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "e5816d45-fffe-4d82-94ff-607e26b1682f",
+              "id": "6cda4a46-bf4d-4455-8145-50ce32b90527",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "9e38dc41-bd0d-4a61-8a2d-e33595bc9171",
+              "id": "9ec4b432-0b62-4dfa-9c96-65654fbb7b9b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "56254165-f585-4ee6-a1c2-d89b80ff473c",
+              "id": "9aa7e9fb-ae16-4d92-95a4-b01cd1829ea0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3182,14 +3224,14 @@
               }
             },
             {
-              "id": "ef87b19e-0a85-40b9-95bb-ffeccfffa9eb",
+              "id": "fef9f325-b98c-492f-a81f-1538b1e78b94",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "2e5fe0dc-b8bb-4206-b9ee-4518ba9282dd",
+              "id": "bfe6fd1f-9703-4e42-9fb4-385903ff27e5",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3199,14 +3241,14 @@
               }
             },
             {
-              "id": "af486937-35f1-4067-88b5-da8d725d03ca",
+              "id": "873b737f-675e-42e8-ad09-9d7b83e814db",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "536e807f-34ef-45fc-b210-3ab1cd959138",
+              "id": "a9be40c4-bc14-4ab1-ab8c-27947ce1f57a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3222,113 +3264,32 @@
           }
         },
         {
-          "id": "7c368839-b6df-4521-a252-83c604573a95",
-          "name": "stagger-revealCard-0-22-23.5",
+          "id": "6cbadd2d-fe54-44ac-9fe4-dffb5a13b08a",
+          "name": "sequence-item-22-31",
           "startOperations": [
             {
-              "id": "080127ac-8476-4d4f-b156-e72872ec8152",
-              "systemName": "requestAction",
-              "operationData": {
-                "systemName": "revealCard"
-              }
-            },
-            {
-              "id": "0b6e84b4-e953-473b-bfc2-110395ae7abe",
-              "systemName": "startAction",
-              "operationData": {
-                "actionOperationData": {
-                  "selector": "#c4-card-1"
-                }
-              }
-            }
-          ],
-          "endOperations": [],
-          "duration": {
-            "start": 22,
-            "end": 23.5
-          }
-        },
-        {
-          "id": "aa092faa-45e2-4b13-ab6c-0e30deafdb11",
-          "name": "stagger-revealCard-1-22.2-23.7",
-          "startOperations": [
-            {
-              "id": "a457b447-eba5-4f0b-9be7-6a3d6cd381da",
-              "systemName": "requestAction",
-              "operationData": {
-                "systemName": "revealCard"
-              }
-            },
-            {
-              "id": "b3148fb6-0e93-4edc-a40e-1fcd644dedc6",
-              "systemName": "startAction",
-              "operationData": {
-                "actionOperationData": {
-                  "selector": "#c4-card-2"
-                }
-              }
-            }
-          ],
-          "endOperations": [],
-          "duration": {
-            "start": 22.2,
-            "end": 23.7
-          }
-        },
-        {
-          "id": "474a79f1-667a-428e-a4a5-846181f5aecb",
-          "name": "stagger-revealCard-2-22.4-23.9",
-          "startOperations": [
-            {
-              "id": "6ab90e57-8cf4-47d4-9dba-da6aed6d2ae5",
-              "systemName": "requestAction",
-              "operationData": {
-                "systemName": "revealCard"
-              }
-            },
-            {
-              "id": "99518862-5bf6-40a2-807b-1b971264a63e",
-              "systemName": "startAction",
-              "operationData": {
-                "actionOperationData": {
-                  "selector": "#c4-card-3"
-                }
-              }
-            }
-          ],
-          "endOperations": [],
-          "duration": {
-            "start": 22.4,
-            "end": 23.9
-          }
-        },
-        {
-          "id": "3bad9f89-d924-4339-8bbb-f298fe6403c5",
-          "name": "timeline-action-22-31",
-          "startOperations": [
-            {
-              "id": "1ce82824-092d-4ced-a7b4-3c97a0ac5a75",
+              "id": "bfa93cd9-e6e5-43ca-9fb0-4d61f792e884",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "16f55980-5055-42b9-a39d-4c06cd61aaea",
+              "id": "b2e5031a-5f62-4520-87fb-1cb3c690dc08",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "365fd477-4c0a-406c-bbe9-9a3fc8825474",
+              "id": "60eab323-a383-4ba6-879e-98a5d573f3c9",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "39e3c771-d794-4e64-8312-83cdcdb1b068",
+              "id": "17d5ef07-4e80-4abc-9e30-5a2248810456",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3337,14 +3298,14 @@
               }
             },
             {
-              "id": "2e2b2640-9f1e-4701-a44a-4b171ca541e2",
+              "id": "58a10954-d919-4333-879e-31a82dbe17ee",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "6e91f165-817b-44ca-8452-9b50a87e298d",
+              "id": "fe44a576-8d62-4941-9483-1db2e9559f9e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3353,14 +3314,14 @@
               }
             },
             {
-              "id": "6237dd50-2bea-44d0-ab78-8fb0caed67ac",
+              "id": "6aa609b4-ff94-4ccb-89e5-6b091fd3b9c0",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "096a2b43-14cf-438a-aead-1c8dce9b1936",
+              "id": "866dea12-a88c-499e-b96b-690b9b5fbc7a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3369,14 +3330,14 @@
               }
             },
             {
-              "id": "cdcfe1e5-af26-4350-b770-1ec6a8403046",
+              "id": "54055c73-cb63-4990-af55-9bdf080b1161",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "e054dd36-d326-482c-96ee-8cc690f7f87a",
+              "id": "6bd5a670-323d-461c-baaa-fc56386229c2",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3386,14 +3347,14 @@
               }
             },
             {
-              "id": "b84731f4-995f-44a4-a33c-da8035250295",
+              "id": "f59bad0b-6541-4351-bf05-12e82772632b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "97cc9b28-5bc7-4afb-a18e-ef0ba075a69d",
+              "id": "b58d8770-c0e7-452b-9713-8b8434664f99",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3409,32 +3370,32 @@
           }
         },
         {
-          "id": "e93269f8-f104-4781-aeda-34ba70f03077",
-          "name": "timeline-action-31-39",
+          "id": "c40d74bf-1f23-47ca-9f67-6afd7da46315",
+          "name": "sequence-item-31-39",
           "startOperations": [
             {
-              "id": "874c9ed6-58c2-4086-91d3-f6703ed59b33",
+              "id": "e9757854-b991-4da6-90cc-b99dc94fffea",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "5584ebff-2d86-41bd-a4c9-05c32544da81",
+              "id": "eb68d5b2-e36f-4e71-8d4d-acbbe48fd390",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "138af08c-f682-4791-94f0-c38e5f97fcf9",
+              "id": "5a6eb7ac-4ec2-49cd-95b4-e038ece6d1a4",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "58ccfe54-0d31-4009-b43d-d6f777924d80",
+              "id": "299223c6-3e9c-431b-96b0-7b8c5486f1ce",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3443,14 +3404,14 @@
               }
             },
             {
-              "id": "74edcdde-37c7-4143-b61c-352fb5b3fc3d",
+              "id": "468c61e8-a774-4825-8771-03cf2b7c8ce2",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "bc23d674-e8e5-4d07-8a4f-154c90bdf26c",
+              "id": "44a09ce7-80d3-48ce-9522-fa41f790e154",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3459,14 +3420,14 @@
               }
             },
             {
-              "id": "7f4637df-a681-44b7-8644-ca5096bbb6a8",
+              "id": "4594436e-5262-40e0-a1ad-c8d58720ed45",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "bb301066-a883-4b8e-b697-9fc1fa7eca57",
+              "id": "a8355435-0e55-4bfe-8abf-6f1c6586e613",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3476,14 +3437,14 @@
               }
             },
             {
-              "id": "69dcf70a-e37d-47c7-b080-f5c0fdccfd48",
+              "id": "07a99780-e8d8-436f-a059-12cc16ba420b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "e17789f4-1ba3-427b-9ba3-1bebce955778",
+              "id": "8f57df77-95b8-4e40-b30f-d060997bbca0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3499,32 +3460,32 @@
           }
         },
         {
-          "id": "e71d9787-0e7d-4125-bb76-93195568e252",
-          "name": "timeline-action-39-47",
+          "id": "8d8c1a9a-9c9b-4f20-9f95-4d1bcbbd5674",
+          "name": "sequence-item-39-47",
           "startOperations": [
             {
-              "id": "b403807d-bd90-4642-bc0d-9e1f787d89c7",
+              "id": "403e5ac5-bb2d-49a9-938a-26a9d6ea0c2c",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "de7be4aa-7844-4d6a-8fe3-edd37dab0980",
+              "id": "93dd6309-b6d8-4012-926d-43cfd67847d4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b8e528d4-71fb-48be-93dd-23fb88e5cc95",
+              "id": "3fb8ec19-9d53-48d3-b5c8-e0a6eb757c8b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "487fcf78-491b-46ad-862f-986334264553",
+              "id": "17455589-2f02-4c5b-8ae1-4e92778a52e9",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3533,14 +3494,14 @@
               }
             },
             {
-              "id": "d5e799ab-c844-48f8-96b7-dfefff8bee5d",
+              "id": "ab10a6e4-091e-4eee-8c67-c3ef0ea6dc79",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "9d05905b-6e20-40c3-9942-6351532d1d64",
+              "id": "4dbe72fd-3b9d-4edc-b9f9-bfd756f63172",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3549,14 +3510,14 @@
               }
             },
             {
-              "id": "565c9cf6-5937-4e4e-b2ee-8df513e1aca5",
+              "id": "e225afad-f18c-423d-b2a8-5c0c3ca69be8",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "be4886db-4e65-42a6-a465-b4da03157413",
+              "id": "744f03e0-f3c8-4ef6-aea9-4ede3165f5d0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3565,14 +3526,14 @@
               }
             },
             {
-              "id": "70d81e14-ee18-4140-bf56-019e95d09441",
+              "id": "6e905b27-71e0-4bd2-be73-fdc99ab38601",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "85ef68bf-72fa-4a0c-8f44-6e3cabfe25fb",
+              "id": "33ee5d91-3d11-4f85-a26f-547f9a86f74d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3586,11 +3547,92 @@
             "start": 39,
             "end": 47
           }
+        },
+        {
+          "id": "427fb7d5-cdc6-403c-b89f-7fd78208a069",
+          "name": "stagger-revealCard-0-22-23.5",
+          "startOperations": [
+            {
+              "id": "3161114a-494b-42ed-9f8e-2ee52570b200",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealCard"
+              }
+            },
+            {
+              "id": "6431c418-ecaf-4de1-b4dd-f68e2255b1ab",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-card-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22,
+            "end": 23.5
+          }
+        },
+        {
+          "id": "e12758ba-8864-4762-ba1c-a5ed041f403b",
+          "name": "stagger-revealCard-1-22.2-23.7",
+          "startOperations": [
+            {
+              "id": "a4b26750-f32c-4411-904c-3e5625b14fca",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealCard"
+              }
+            },
+            {
+              "id": "55f4a2ba-3783-470e-affe-a7b056897fbb",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-card-2"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22.2,
+            "end": 23.7
+          }
+        },
+        {
+          "id": "3cdef25f-4b42-48e1-a045-672204d79e71",
+          "name": "stagger-revealCard-2-22.4-23.9",
+          "startOperations": [
+            {
+              "id": "58fb67fc-e160-4eb1-b7cc-d34dfb8f762c",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealCard"
+              }
+            },
+            {
+              "id": "241115b7-4fa9-4a73-af6b-9a563e9e1245",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c4-card-3"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 22.4,
+            "end": 23.9
+          }
         }
       ]
     },
     {
-      "id": "8811c71d-7138-4535-b2c0-3249a19fd1e3",
+      "id": "7543a929-3484-40a0-886d-8a0a2ed1ad59",
       "uri": "Engine Reach",
       "type": "animation",
       "duration": 48,
@@ -3598,18 +3640,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "f44cdc13-d185-44e5-8bd4-316c125d86c4",
+          "id": "a9aef4c1-4d1d-42a5-8d7d-642594f85670",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "0456fd18-ef4b-4816-bdf0-8d5a3a5bf6c4",
+              "id": "a18f99e1-bb27-4682-8659-7cc3fbdf2373",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "fb9f82ff-8e2a-482e-b639-c8df90ccf9bb",
+              "id": "7fe525f5-4160-404c-9a76-74415805a03f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3618,14 +3660,14 @@
               }
             },
             {
-              "id": "0fb7b132-0a69-4d83-93c9-b40624e2c102",
+              "id": "0c4f6913-3a12-4ef9-a81d-8abf3ea676ee",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "4e94a0eb-80cc-4408-b472-aba259f2b367",
+              "id": "d25b8ae6-470a-4393-95a9-1049edbd35ec",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3634,21 +3676,21 @@
               }
             },
             {
-              "id": "011d3d5e-a797-4446-bbb4-74741f161afe",
+              "id": "9c1fd6c9-2531-43e3-92f5-6d8acf435c83",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#c5-to-hub"
               }
             },
             {
-              "id": "8e1651a3-7669-452b-98b6-059f6cfc3712",
+              "id": "8ad5b103-7d40-4e23-aaa8-c84faecf440a",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "3a67b3b3-dbb4-4ede-bb47-cf26eb38932a",
+              "id": "cc70abb8-2793-4325-a7a5-356b47c648fb",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -3660,14 +3702,14 @@
           ],
           "endOperations": [
             {
-              "id": "0abea607-86b8-4244-95f1-394f116deecc",
+              "id": "7412465d-1656-47ae-888d-200253437238",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "be780adc-8044-4ab4-940d-8d73e093ac4f",
+              "id": "b16bc47a-a99f-42b6-94e4-110f0628ddd4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3676,14 +3718,14 @@
               }
             },
             {
-              "id": "732c7435-9d6e-4f1e-be12-6b8b461a4b65",
+              "id": "1ac7942f-d766-4139-8e1c-b534c76a7494",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "85c7cafe-10dd-4dc3-8d1d-3e0d890b5321",
+              "id": "59bfe3d6-8e49-46b0-a69f-e913fcd27a7b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3697,18 +3739,32 @@
           }
         },
         {
-          "id": "7ce5e950-799d-4836-ae2d-97da1f17cf3a",
-          "name": "timeline-action-0-7",
+          "id": "5975a2a8-fc22-43f0-af7e-46813f9648f9",
+          "name": "sequence-item-0-7",
           "startOperations": [
             {
-              "id": "b3ee32ba-3512-4388-b72c-6361b23d45dc",
+              "id": "7e37b59f-566f-483e-b963-02eff1fb846d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "e07901ad-4793-4572-a4ba-a428b498cdac",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "ee3f8789-5f53-4a21-af93-d23a98a6afc4",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "e9576057-1d36-4d73-8da2-94a6b5de33f3",
+              "id": "4de1b8a7-f5ab-44ed-a7bb-1b4217ef3172",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3717,14 +3773,14 @@
               }
             },
             {
-              "id": "5a23d105-94fc-4b7b-b42b-ad2cb83b1c7b",
+              "id": "7ca758d4-4e41-4e9e-b307-7db421dc4e1a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "b87f4124-0727-4084-89e9-9df9421be3c6",
+              "id": "0707a0c7-3570-4869-8969-020c94e1ab3e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3733,14 +3789,14 @@
               }
             },
             {
-              "id": "9c32d994-c6fb-40e2-a9be-68655b63a24b",
+              "id": "16413f94-e991-4af9-a5cc-6baa374367cf",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "216949f6-4396-4a81-896b-211943cfb7f0",
+              "id": "91cab83c-2283-45fb-845a-e8c9b0a94ec7",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3750,14 +3806,14 @@
               }
             },
             {
-              "id": "b444b6a6-4835-41e6-bff8-6a48c88e858d",
+              "id": "b319fa20-2188-4633-8996-824a8e37632e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "a5b1817b-daf7-46a5-ade2-23179e2efee3",
+              "id": "84e8a18e-c5de-446b-9932-0c914f2435f2",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3773,32 +3829,32 @@
           }
         },
         {
-          "id": "34d56f58-edcc-4f97-bb81-a508360a6e29",
-          "name": "timeline-action-7-15",
+          "id": "501de3a9-8398-4498-bc0b-ba2e2ecbc1ee",
+          "name": "sequence-item-7-15",
           "startOperations": [
             {
-              "id": "c0ab11a3-102c-4b74-a16c-866b1a80a7a1",
+              "id": "c7f0839c-a5a3-4a84-802f-237e651e2267",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "e29e0bf3-1749-48eb-839c-215313fd09f8",
+              "id": "2e05841f-6dd6-43d1-a6ac-fdd016d9dee0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "29818627-d49e-45fb-83ff-0ed546044b2e",
+              "id": "ace24ee5-422f-487e-990c-f41296a3482d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "acea0fa4-378d-48a1-8454-fca093f80ad0",
+              "id": "6a4ed480-d0a5-4c87-b40d-9e7b9446c088",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3807,14 +3863,14 @@
               }
             },
             {
-              "id": "b5c6633d-b99d-4e05-b982-b3dc296734bf",
+              "id": "0cfe28b7-1f17-4871-bdab-e4e8ce0ac053",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "6a9e7d93-bbfe-40b2-830b-17561d8d5a7e",
+              "id": "c29bfa42-12c5-4309-9a1b-1f399862c27b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3823,14 +3879,14 @@
               }
             },
             {
-              "id": "08b332d5-c054-4a3a-9d04-8b402192927b",
+              "id": "1394db09-4762-47b8-9917-ed5129bd1e6f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "eb847e04-8e38-49d9-aea1-8260cd542a7f",
+              "id": "e5c063f3-dfe4-4e0c-af1e-cd3bab9671ee",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3839,14 +3895,14 @@
               }
             },
             {
-              "id": "c21dde7d-2534-4248-bf81-86386fb270aa",
+              "id": "08656aac-e1ad-428c-afa5-3a007b3b0da2",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "a5e6aa02-b6e6-453d-94a0-fc10b81e938c",
+              "id": "fdb63c3b-451c-4038-92c1-4d66ef7e7f90",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3856,14 +3912,14 @@
               }
             },
             {
-              "id": "2c126994-cce5-43fb-a412-28aa90735d19",
+              "id": "8b5de8c7-aa32-422c-93cb-ed1a8d90f2b1",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "591055c9-23a3-4db0-a217-4a232c3a60b3",
+              "id": "8700bb81-65eb-46ac-b86c-b49ff2a3cb85",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3879,32 +3935,32 @@
           }
         },
         {
-          "id": "32059129-3528-44a0-baf4-b32beb534f07",
-          "name": "timeline-action-15-24",
+          "id": "411ce39b-abb4-46c0-a7cd-0ea47a70fa97",
+          "name": "sequence-item-15-24",
           "startOperations": [
             {
-              "id": "2881bdc0-5430-4df6-b9b1-e1996f7f69ff",
+              "id": "d772a559-f50b-48a9-a858-e93cc49c93f6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "f5b11be5-305c-4f41-a9aa-789b69e15c37",
+              "id": "f89c40ce-34b5-4e1e-a2f1-226153e25c05",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "48f61280-9b00-4944-b7a3-9d8ab06eb5d0",
+              "id": "b8128b76-69bb-4e65-af00-4c345294fbe2",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "394e6e35-a19c-41b2-87ae-231020c46c4f",
+              "id": "48aa0954-6aa1-45ac-967b-9b48a2bf8b9e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3913,14 +3969,14 @@
               }
             },
             {
-              "id": "928db8b7-04f0-4383-aaa0-6b9fc5c99c27",
+              "id": "f859b9d6-04bd-428b-8ee7-c39baef42609",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "4da32b6a-17b9-4607-8bde-68f6d870e27f",
+              "id": "3b280dfe-bbfc-4aa9-a9e5-6dc9ab64ac6c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3929,14 +3985,14 @@
               }
             },
             {
-              "id": "dae235ec-3c1a-400d-9f21-28a8320d6f0a",
+              "id": "a3e92084-0569-41a6-83b0-683fc6c52856",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "c379b67c-81ed-451d-980b-15bca86ab8c0",
+              "id": "93f17a03-7b24-43d7-b205-a7a6a80c67b7",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3945,14 +4001,14 @@
               }
             },
             {
-              "id": "bd1ac0b5-c482-4634-b2e9-1e26737abc6d",
+              "id": "6f2c1d3d-f96d-4f38-9ceb-bde93adbeef1",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "b1fe9781-4f28-40e4-bf58-e8ae71ef4844",
+              "id": "7223443a-610c-43d1-82c0-82dc921a5302",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3962,14 +4018,14 @@
               }
             },
             {
-              "id": "a0b5e662-187a-4687-a8a1-90367e67d68c",
+              "id": "7d4fef13-7b47-44fb-acd6-0e158a1e365f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "40afef58-1da6-4210-9f71-e0a8bfa65148",
+              "id": "39c7f1af-be50-4776-a2fc-f7999b1df246",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -3985,32 +4041,32 @@
           }
         },
         {
-          "id": "51f27315-f9df-46a0-b2cf-a0effc1c5187",
-          "name": "timeline-action-24-32",
+          "id": "8400bdd9-a3d5-48fa-a5e5-8661b903ebe0",
+          "name": "sequence-item-24-32",
           "startOperations": [
             {
-              "id": "a43560ea-967e-4eb2-9ca8-03cc4c7504e1",
+              "id": "9fbcddc4-e7c6-4bbc-b254-39dca440fed3",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "023d646b-ddaa-4286-a079-dde1366a5c6d",
+              "id": "f181ba2f-2790-4017-82d8-a6ad104863a2",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "58fb7c88-198b-412b-966c-12c022aef1de",
+              "id": "a6da83bd-8b3f-4b08-949a-5f84b5cfaef7",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "3fcbdd69-9fab-41f7-9c5a-d48ee4756fde",
+              "id": "b187c74d-104f-47eb-93fa-bc8385b8e5fb",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4019,14 +4075,14 @@
               }
             },
             {
-              "id": "e25cf19c-9c3c-4f03-9da4-d3acf47e8d33",
+              "id": "8f53839e-01ad-44a9-a980-8127dffe9047",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "22c7c216-9d36-4838-9a69-b2ce8de4a173",
+              "id": "c014544a-aa6c-420e-8b45-dc372e1e7640",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4035,14 +4091,14 @@
               }
             },
             {
-              "id": "39377371-136c-4378-a131-992a20ff8e6a",
+              "id": "4b8a0444-08c1-4240-abc8-c82bab9b5365",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "8d16d9fd-8999-424f-aa3a-d8c2b5c0f6e9",
+              "id": "24fe7702-0d0f-4500-9aea-d7bf76f635ad",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4051,14 +4107,14 @@
               }
             },
             {
-              "id": "076e7096-4495-4474-ad39-d2bb1a43b012",
+              "id": "d5f06eb5-dfca-48f2-8f4e-6f0c62fbfe38",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "0cfd792e-957d-4352-86d6-87f732b72c46",
+              "id": "34c0ed9c-f7df-4a93-b0a1-0c94ad7d399d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4068,14 +4124,14 @@
               }
             },
             {
-              "id": "b4c1be72-e2d9-4689-8c2a-f9fd55d6d714",
+              "id": "0a878367-fbb5-4c7f-81de-a9e465fd9e29",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "755ba536-0c4e-47a5-b651-cf4a349571ad",
+              "id": "164dce6e-3ff3-4642-9d33-ee8e7fea9d2f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4084,14 +4140,14 @@
               }
             },
             {
-              "id": "0c503802-fc47-466b-ab86-ec0225dda3a9",
+              "id": "5ce87120-96d7-47a6-bcba-4455c2145be9",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "ch5WireButton"
               }
             },
             {
-              "id": "9fe29546-6edd-45c9-890c-6a67571400d3",
+              "id": "254962ad-dd72-4cbb-9e2e-8d1a8e8d867e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
@@ -4105,32 +4161,32 @@
           }
         },
         {
-          "id": "f0a4daf7-9fcd-45a1-a298-bc4bd5287652",
-          "name": "timeline-action-32-40",
+          "id": "437f2088-e91a-46bc-9719-5f9f398eee2e",
+          "name": "sequence-item-32-40",
           "startOperations": [
             {
-              "id": "b2884000-3abd-4c8d-92c0-6c78ea25af88",
+              "id": "6a8e1dba-7746-4c3a-8d8d-03adf0b485db",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "d06e353b-c1a5-4882-bcde-32bd7417389a",
+              "id": "30874fd3-f6ce-45ec-85cd-280c394003aa",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b7f71b5e-28a3-42ac-bbfb-c13af93cbc31",
+              "id": "bfa54738-e4c7-4d9f-9507-49439df35906",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "873b1952-cd4a-4cc1-8d21-e45ca4ff2cd3",
+              "id": "c83589d5-8e14-4482-b712-e5bda8686de4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4139,14 +4195,14 @@
               }
             },
             {
-              "id": "af3b1be6-8619-43ed-bdf7-7c768927e6ec",
+              "id": "c523a8de-afb9-4842-936b-9346ad799897",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "0e020de2-de9c-48d0-83d7-88e7567abee1",
+              "id": "a52a6293-605e-4d34-947a-f9546b600b32",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4155,14 +4211,14 @@
               }
             },
             {
-              "id": "eddc0447-6bbc-475b-9e08-41cd8b6b1f68",
+              "id": "e03d8f62-23ae-4839-bc9f-f36eab30e77d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "9f2b3e49-52ab-4120-9319-7720a4461f47",
+              "id": "6cc9d3a9-b2ff-401f-94d5-f6a2abf854bd",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4171,14 +4227,14 @@
               }
             },
             {
-              "id": "14895563-faed-48d9-aa9e-583cb5b25fdf",
+              "id": "59dde763-03d5-4701-bc51-3dc14d549684",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "3a78d161-71e8-4bac-9713-dce0c8bba734",
+              "id": "2e68acc0-ac23-41cd-86c3-475a7092b985",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4188,14 +4244,14 @@
               }
             },
             {
-              "id": "13d66a9c-68e9-4d51-881a-bcf694431ae1",
+              "id": "7afa39ad-8783-45d7-a0d8-de2a8a72afb0",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "98bd558d-6f94-4b6a-b990-223c6b784555",
+              "id": "ff63819e-1f9d-4d82-8c73-31d1adcba365",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4211,32 +4267,32 @@
           }
         },
         {
-          "id": "b56bd4c1-6a00-4d06-9668-c043ba2dd0ec",
-          "name": "timeline-action-40-48",
+          "id": "379a23a2-5a37-48c4-938e-0c45315d619f",
+          "name": "sequence-item-40-48",
           "startOperations": [
             {
-              "id": "8aed3bc4-e379-4c5b-b4f2-9bc042576915",
+              "id": "d7dd871d-a309-43fb-9dcd-d1e37d673f9a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "5b2ed076-6990-4034-8b8c-aaafa184c35d",
+              "id": "a3323490-8dba-444b-8911-a7a009ccc0f6",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "b4767026-4ac6-4f52-87ef-6c8f9bcd4ef2",
+              "id": "44d116fd-61cc-4a80-a46b-47d3ecf0c862",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "6c370beb-d706-4794-a6d3-20110cf2bc12",
+              "id": "e9dab850-9fae-4b7b-af69-3bdba3082b8f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4245,14 +4301,14 @@
               }
             },
             {
-              "id": "82de5a9b-7228-49ef-8666-6648768d7eac",
+              "id": "4bb0ae52-4e7b-4fe1-b38b-4e2dda70c34b",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "7f5afb37-141f-4d17-8c31-ff5878eb4743",
+              "id": "6a90e45a-7d7b-4f26-b338-a4107421a08f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4261,14 +4317,14 @@
               }
             },
             {
-              "id": "8f72d0e8-66c5-4c19-9018-8e6219f05baf",
+              "id": "abc754e8-ae9b-48ec-8861-b40e52de2c40",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "d4fc24d8-7ed3-4b72-8106-227fa78e3d98",
+              "id": "eebc515b-c1ab-4e55-9b35-6063d4f5b995",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4277,14 +4333,14 @@
               }
             },
             {
-              "id": "0aa43925-96f0-46ca-8dcb-c2ee69c762c2",
+              "id": "9128f750-a596-487d-9d4b-62154882e3ed",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "f5d9eead-9e23-4937-81c8-d52f8153561b",
+              "id": "3df7866a-5690-4083-a6ec-083d9bcbb921",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4302,7 +4358,7 @@
       ]
     },
     {
-      "id": "934abb6a-6213-48c6-aac1-5f7241b9a176",
+      "id": "a1bfa59e-d3c2-4c5f-be11-3714fa5f16a5",
       "uri": "Tooling Magic",
       "type": "animation",
       "duration": 48,
@@ -4310,18 +4366,18 @@
       "selector": "#stage",
       "timelineActions": [
         {
-          "id": "38faa021-e110-4acc-bb52-64e17f7fa170",
+          "id": "a85d9740-25aa-48af-87f9-54c5e1e95c4b",
           "name": "timeline-lifecycle",
           "startOperations": [
             {
-              "id": "a57fe72e-e97f-4679-aaaf-dc95d457e6e8",
+              "id": "7e473599-3ae9-47ad-97eb-948712deed00",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "a3a1ae82-1d16-4965-af7f-d11a11aba4fa",
+              "id": "c99de98b-938a-4a92-8f65-3b886417565a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4330,14 +4386,14 @@
               }
             },
             {
-              "id": "00306662-c86c-47c8-a01c-0621f5fa6c54",
+              "id": "30621ea2-2ea2-42fd-847e-980ab7c59ba3",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "showView"
               }
             },
             {
-              "id": "819f066d-b28d-4194-a95c-fd62d1884854",
+              "id": "4011242a-d991-4796-a3ea-52595d2392c6",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4346,21 +4402,21 @@
               }
             },
             {
-              "id": "c50fda34-ab4c-43a0-8af1-fb3bda59ffed",
+              "id": "c02ab67a-a2d8-471e-b0f8-03faff9cb6df",
               "systemName": "selectElement",
               "operationData": {
                 "selector": "#c6-to-hub"
               }
             },
             {
-              "id": "4ffceb63-2b95-4b08-a735-497509ec6f37",
+              "id": "35f34853-d717-4d65-bf44-de53a29f3448",
               "systemName": "getControllerInstance",
               "operationData": {
                 "systemName": "DOMEventListenerController"
               }
             },
             {
-              "id": "2e222cef-5700-4b19-963f-1bd507ee8157",
+              "id": "0f28cf11-b8da-434f-b83f-cc54535e3b09",
               "systemName": "addControllerToElement",
               "operationData": {
                 "eventName": "click",
@@ -4372,14 +4428,14 @@
           ],
           "endOperations": [
             {
-              "id": "68f3bc52-a784-4764-a169-0a6c0456c23e",
+              "id": "690279b2-e0bd-47b2-a1e9-fc1228e15bef",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "b378c031-2741-436d-ab56-4f9e8b68c7bc",
+              "id": "b37c1080-f2ee-407f-b333-47b930e55cb9",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4388,14 +4444,14 @@
               }
             },
             {
-              "id": "2bfc79fa-532b-45c3-bcb8-226c445f2666",
+              "id": "044921ca-d903-4645-b21f-d3bdab0ffa42",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "hideView"
               }
             },
             {
-              "id": "39d35068-f552-4ab5-85d3-8f581cbabfd7",
+              "id": "b282febb-28ed-4d77-8d01-be1a2e8f4417",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4409,18 +4465,32 @@
           }
         },
         {
-          "id": "67931524-fb5c-40ae-911c-1f0a3eb1370f",
-          "name": "timeline-action-0-7",
+          "id": "81aefc33-9125-490f-a4a9-4442497613c6",
+          "name": "sequence-item-0-7",
           "startOperations": [
             {
-              "id": "4820bad2-d7fb-4e05-b112-66fd0ffa9596",
+              "id": "b484d5a1-e1e6-4d30-855e-15a1fd14572f",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "clearSpots"
+              }
+            },
+            {
+              "id": "16e1d8bc-9e9f-4a05-8844-cddae266e867",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "id": "8839feb0-5db4-4fcf-8e3b-73f9100e46ef",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "c16cecc4-bc53-41c5-9f62-8b1d3093632b",
+              "id": "5101eba6-4295-482b-b2c8-f62017243a10",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4429,14 +4499,14 @@
               }
             },
             {
-              "id": "f7208535-5282-4dd5-9736-85db428a5ea4",
+              "id": "543cf9e4-25e1-41bf-8f02-af7490edb3af",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "1af1aaaa-0053-461c-a481-13355d48af9a",
+              "id": "ede45af9-0de1-40aa-afa3-205b6de74fe3",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4445,14 +4515,14 @@
               }
             },
             {
-              "id": "432eb207-e0a5-4c26-a5e1-a21be356cdce",
+              "id": "4634eff2-d07d-47d8-8da4-70a00fa95c39",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "40334ccb-d3e9-4326-8bef-b46f7733d038",
+              "id": "e984c436-fbd1-44f5-96e3-afbf30841e22",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4462,14 +4532,14 @@
               }
             },
             {
-              "id": "836df02a-25ac-4331-ad19-31418fb71678",
+              "id": "841d2bcc-e2b4-4e19-9cc3-becedff802b8",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "f9537d01-de9e-4922-9f94-1d6b06afcd06",
+              "id": "d49d5b77-a69e-428c-b691-1120b276fc8f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4485,32 +4555,32 @@
           }
         },
         {
-          "id": "6c93157c-527d-45e7-9113-fe68dba4f730",
-          "name": "timeline-action-7-15",
+          "id": "3e389b4d-4885-4ff6-acc3-62592b4c71e7",
+          "name": "sequence-item-7-15",
           "startOperations": [
             {
-              "id": "86816d7b-9f7f-4909-be49-ea36c200cddf",
+              "id": "59f9a3e9-58f2-4a6d-a77d-59516255a08a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "912ce4c1-6755-4657-b3d9-02a184ac3d6d",
+              "id": "6fc0100c-8fe2-4f40-9102-e49ae27ad212",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "6ce5e4d0-8119-4ec2-bd78-15fe4b090bde",
+              "id": "210f9f76-5de3-42d7-8084-a7d406d4419d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "522310cd-9767-4a66-b37b-902af9dd01c7",
+              "id": "cebe739f-8fa9-41b6-85c3-8226abab833e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4519,14 +4589,14 @@
               }
             },
             {
-              "id": "06dcd3fd-63a2-41c4-9521-1ab445328f82",
+              "id": "a6a01eb8-b0f9-4564-8c88-08cbf604edb0",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "aac6c18d-3b80-490c-a188-345aa0c080d3",
+              "id": "377be278-85d8-40f0-b4dc-7cb5ce9597c4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4535,14 +4605,14 @@
               }
             },
             {
-              "id": "12c825fc-5b2d-4f61-885f-47a41deee4d7",
+              "id": "45c596b0-2325-4b17-8f5f-6fdddfe1b856",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "8195e130-a3c3-42f4-b2a9-59727e18f89c",
+              "id": "90562c39-9e68-4323-9eee-dd5682a86340",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4551,14 +4621,14 @@
               }
             },
             {
-              "id": "d76f978d-bc82-4f03-82fb-74fa0f3819ac",
+              "id": "8f98e60d-cdef-4c98-8df5-ee3f7a2d8f0e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "7cb9847c-9dea-4e21-b6de-bbcd4cc97d8d",
+              "id": "446547ee-46ea-461e-ac08-3ccee55a2e09",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4568,14 +4638,14 @@
               }
             },
             {
-              "id": "a1890c9c-792d-43fa-acbd-e87a08bbd811",
+              "id": "1a25e4d4-e4ce-40dd-9ebc-1b908776fd69",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "c24f785a-b29a-4e1d-883b-c3cf362a0b44",
+              "id": "d74e971d-cff5-4d55-a385-247684e5c80d",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4591,32 +4661,32 @@
           }
         },
         {
-          "id": "2a00748e-ea7d-40e6-a749-4295f79ae405",
-          "name": "timeline-action-15-24",
+          "id": "468c3e50-0f69-44df-9ba0-2c42b70dc92f",
+          "name": "sequence-item-15-24",
           "startOperations": [
             {
-              "id": "80dc82e7-98c3-47c9-9df9-1faaae5f1fad",
+              "id": "9ebf18fb-6e97-4527-af07-abebbf029bff",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "6187ab2c-f45d-4316-a054-88dd1d14630b",
+              "id": "39dddecf-a9df-44fb-8d7f-ddac4e153d60",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "77a90218-40ef-414a-8e5f-a45e9b4a6971",
+              "id": "bdf840f4-6fee-4d8f-ad73-0aa9d87386ed",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "5949b628-0093-46ed-9e15-2f2aef567a39",
+              "id": "92fb596c-a63b-40a6-b81b-ab45cbfdff5f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4625,14 +4695,14 @@
               }
             },
             {
-              "id": "16f6f288-aba9-4d88-84ee-c90a038bbbbc",
+              "id": "4c876605-7fb7-4fa3-ad03-0711fbd294ab",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "94c3f995-8893-41cd-8e73-d20e6977d696",
+              "id": "eb2a9a9a-296f-4486-a0e0-a782797f70dc",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4641,14 +4711,14 @@
               }
             },
             {
-              "id": "47b4d85b-dde9-4783-ae95-a4542f549a3f",
+              "id": "ed632a15-1b29-4720-9d19-a9a9acd49a1a",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "34f78824-a7ec-4224-a540-2228480edf06",
+              "id": "bc2e1191-46fc-4bce-a7bc-9a0ccf4f8ea0",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4657,14 +4727,14 @@
               }
             },
             {
-              "id": "8e5aef74-38fb-4dbb-8191-96ffa69710ba",
+              "id": "4134d927-c64a-4a3d-9d3f-e4b866c1cf21",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "fda50107-a724-42eb-8e87-bed3ba1e2b96",
+              "id": "710b29c9-0430-4f8e-8e8f-e984040c42f2",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4674,14 +4744,14 @@
               }
             },
             {
-              "id": "3aa85208-5573-4ced-aa1c-d21425ddacf1",
+              "id": "8d16e66d-9d8b-4529-b11d-db7d559fa85f",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "f6b80b14-0f62-4afd-b92a-50d5d920aba1",
+              "id": "76c40870-0ff2-47ef-a4c0-991e93f83796",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4697,32 +4767,32 @@
           }
         },
         {
-          "id": "0507c76e-9dca-4fee-8c11-22c1b96dcd72",
-          "name": "timeline-action-24-32",
+          "id": "c125b706-5b67-4259-931e-cd49de62b6f0",
+          "name": "sequence-item-24-32",
           "startOperations": [
             {
-              "id": "020c65cf-aa05-4e28-a757-6f63c7961fd3",
+              "id": "221f3c7d-f8b9-4b1a-a85b-9a8145adfe39",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "eede18e4-8f26-46df-89d1-4e4407b02a46",
+              "id": "663d7946-ce82-43ae-8409-ad6173030460",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "0adcf9ff-f63e-4cbb-830d-cf8f4c2b5a53",
+              "id": "a501a3e5-7650-4aca-b111-789db05427ba",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "d77af167-be8f-42e1-af4f-ae494144e83b",
+              "id": "9a8f2d0d-77ae-44b7-998f-541c1b567271",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4731,14 +4801,14 @@
               }
             },
             {
-              "id": "d7969cd3-0983-4d8f-acf6-090978b3ab24",
+              "id": "bc61527e-ea5c-4b37-8b73-84e611891dfd",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "94dcd04d-cd2a-48d1-bfe8-843490c75cd3",
+              "id": "573df712-7dd5-4b68-80fa-12c5bc08790e",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4747,14 +4817,14 @@
               }
             },
             {
-              "id": "a92a5490-2d12-4ffa-8c80-db43124d1d1f",
+              "id": "9c024c1b-82ed-416f-8546-6fc1d4fcfe7d",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "755a17b3-5659-4c2e-99dc-623ae4afa3f4",
+              "id": "5f7ec86a-5bba-477c-aaef-6132255a11a4",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4763,14 +4833,14 @@
               }
             },
             {
-              "id": "3dcfd4df-0aa3-4364-9f7a-923daf99cadb",
+              "id": "1ccc657d-1f55-4cfc-b307-0842b6b21734",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "55348796-2cc2-449d-ac50-13c0a904d926",
+              "id": "b161e98d-f62b-4180-b169-f18fb919d54a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4780,14 +4850,14 @@
               }
             },
             {
-              "id": "2cdf37cc-6124-40e3-8268-81c6b551fafd",
+              "id": "40f120e1-1cc8-4d8f-89ad-2561d854a8f4",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "c1b16c1b-8e69-44f5-8411-8c90e366ec53",
+              "id": "9701b2fe-17da-472c-8b35-5ab93f863f37",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4803,32 +4873,32 @@
           }
         },
         {
-          "id": "70419e52-7748-47ff-8062-38e8ce89669e",
-          "name": "timeline-action-32-40",
+          "id": "7d6bfd4a-a99a-41b5-8959-a9f0d7b3b716",
+          "name": "sequence-item-32-40",
           "startOperations": [
             {
-              "id": "a1fd3f56-fe96-4176-8235-0a5f77fe930a",
+              "id": "be5bc45e-758f-418c-86fe-95b29fd4be91",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "e67d3998-aedc-40c2-afe2-88dffd91070a",
+              "id": "634ee749-72f6-4daa-9950-aa90862b233b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "44e2723a-6d52-4c48-ace1-8b71559a4654",
+              "id": "83b467ae-b0f2-4066-8ab9-a986b300c328",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "0b1fcc87-591b-48f5-b057-8052c12c3b51",
+              "id": "173d754f-8f58-4374-9349-0d188f35f08f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4837,14 +4907,14 @@
               }
             },
             {
-              "id": "fd8e2afd-f5a8-4886-a02a-02c588cfbdd9",
+              "id": "d85d971f-a6ae-49ab-a944-4e287ed3aa53",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "652ec274-4a21-41c3-b321-fe0a763be93e",
+              "id": "1e038305-d284-4ba6-bf85-f14a64717e8a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4853,14 +4923,14 @@
               }
             },
             {
-              "id": "2bb5dd80-e05b-4db6-8e90-da496e725cd1",
+              "id": "fbf05d12-c559-4fea-9485-6e084385710e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "cea0aea3-d578-42bb-a013-930c945d3477",
+              "id": "f7cd2271-a8d8-439f-9310-c76148b7fc00",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4869,14 +4939,14 @@
               }
             },
             {
-              "id": "c54c92a8-3c93-452d-b70d-7f50fc63c7e1",
+              "id": "16a46983-4132-49ea-82bf-4d548425dfc6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "callout"
               }
             },
             {
-              "id": "8117f461-723a-4fb3-8a9f-fd73307e50e7",
+              "id": "f7799366-9789-4051-b85c-972d0a64b78c",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4886,14 +4956,14 @@
               }
             },
             {
-              "id": "f6a48af7-c071-4475-b0e3-f2cc48c7c183",
+              "id": "4c3cc0bd-f6b4-4e61-a12e-2345eb0df3e4",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "61b0144a-ecfa-4fca-a0b8-2c8bb5c4dfd6",
+              "id": "77d2c1a6-59c3-41f0-992d-bddfc7e5a0f1",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4909,32 +4979,32 @@
           }
         },
         {
-          "id": "04c3773d-e75f-4a5f-b8b3-37f0dc2a70b9",
-          "name": "timeline-action-40-48",
+          "id": "d78b480c-c724-4703-a47e-f9048b47643f",
+          "name": "sequence-item-40-48",
           "startOperations": [
             {
-              "id": "601cfb20-cfef-40ed-bba0-866f110ebbc9",
+              "id": "a4457375-8b18-4d71-917f-28b1d3b25e4e",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "clearSpots"
               }
             },
             {
-              "id": "2e445c12-6023-42b5-b1c0-0666d3a94842",
+              "id": "39c93d0a-7741-4aea-adc0-28c7685d12d3",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {}
               }
             },
             {
-              "id": "22cdb30f-5543-4a06-9ca2-a517296f69f6",
+              "id": "ed48be39-2b86-46ca-b246-a8ec80cab3f5",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "narrate"
               }
             },
             {
-              "id": "83086f32-caf2-4e79-8a0e-ac9a63ef5c21",
+              "id": "22a022d8-8ac3-41eb-b30d-9839242ef87f",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4943,14 +5013,14 @@
               }
             },
             {
-              "id": "092058a0-20be-4ba6-8a57-18767c6a3b1c",
+              "id": "a847ecf0-14c7-433a-b99c-1459f6c03cb6",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "revealBlock"
               }
             },
             {
-              "id": "81c3adf7-2922-4495-aa6b-e6655bd0de24",
+              "id": "751d98d3-18cb-4bfe-bcff-8891746fa14b",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4959,14 +5029,14 @@
               }
             },
             {
-              "id": "29b48220-c432-489d-8653-9ee91690be0e",
+              "id": "854fb5fa-4dd1-4041-a051-96ffba312257",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "spotlight"
               }
             },
             {
-              "id": "2b3bd0cf-7c3b-4ac6-b15d-e7210e63c7e0",
+              "id": "925cbf64-0ff1-43a0-9c6d-075a500e6933",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {
@@ -4975,14 +5045,14 @@
               }
             },
             {
-              "id": "1c6ece7d-4469-455b-b4a0-ed16f998d251",
+              "id": "b9b8b042-775b-4379-b34b-140a8b5a352c",
               "systemName": "requestAction",
               "operationData": {
                 "systemName": "demo"
               }
             },
             {
-              "id": "0e64553b-637c-49ea-83af-eb87734791b7",
+              "id": "f1e442f9-b445-4c2a-9ee1-2c9ba7456d7a",
               "systemName": "startAction",
               "operationData": {
                 "actionOperationData": {

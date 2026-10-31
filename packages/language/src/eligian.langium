@@ -592,10 +592,27 @@ TimelineAction:
  *   at 5s..15s { main() }
  */
 SequenceBlock:
-    'sequence' '{' (items += SequenceItem)* '}';
+    'sequence'
+    ('each' '[' (prelude += OperationStatement)* ']' ('then' '[' (postlude += OperationStatement)* ']')?)?
+    '{' (items += SequenceItem)* '}';
 
+/**
+ * Sequence item (idea #11): an action call, or inline start (and end) blocks,
+ * for a duration; optionally labeled (`as intro`) for `intro.start` /
+ * `intro.end` in later times (idea #10).
+ *
+ *   sequence each [ clearSpots() ] then [ log("beat done") ] {
+ *     intro() for 5s
+ *     for 7s as explain [ narrate("…") revealBlock("#code") ] [ hideBlock("#code") ]
+ *   }
+ *
+ * `each [ .. ]` runs before every item's start operations, `then [ .. ]` after
+ * every item's end operations.
+ */
 SequenceItem:
-    actionCall=OperationCall 'for' duration=TimeExpression;
+    actionCall=OperationCall 'for' duration=TimeExpression ('as' name=Identifier)? |
+    'for' duration=TimeExpression ('as' name=Identifier)?
+    '[' (startOps += OperationStatement)* ']' ('[' (endOps += OperationStatement)* ']')?;
 
 /**
  * Stagger Block - Staggered events with incremental start times (T192)
@@ -676,7 +693,10 @@ PrimaryTime infers TimeExpression:
  * 7s`) is referred to as `@beat` (VariableReference above).
  */
 EventTimeReference:
-    event=[TimedEvent:Identifier] '.' edge=ID;
+    event=[LabeledEvent:Identifier] '.' edge=ID;
+
+/** What an event time reference can name: a labeled `at` event or sequence item. */
+type LabeledEvent = TimedEvent | SequenceItem;
 
 /**
  * Relative Time Literal - Time offset from previous event (T189)
@@ -903,7 +923,7 @@ Identifier returns string:
     | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
     | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
-    | 'duration' | 'loop' | 'enter' | 'leave';
+    | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:
