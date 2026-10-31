@@ -152,9 +152,9 @@ timeline "Timeline & Time" in "#stage" using raf {
   // Beat 4 — time speaks four units
   at 20s..27s [
     clearSpots()
-    narrate("Times take units. No unit means milliseconds.")
+    narrate("Times take units. No unit means seconds.")
     revealBlock("#code-units")
-    callout("#cl-units", "42 = 42ms · 500ms · 2s · 1.5m · 0.5h")
+    callout("#cl-units", "42 = 42s · 500ms · 2s · 1.5m · 0.5h")
     demo("#fx-ruler")
   ]
 

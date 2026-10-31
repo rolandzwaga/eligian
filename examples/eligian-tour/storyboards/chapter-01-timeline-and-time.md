@@ -99,16 +99,16 @@ Each beat: **click to advance**. A beat = (narration swap) + (spotlight move) + 
 
 ### Beat 4 — "Time speaks four units" (20s–27s)
 
-- **Narration:** "Times take units. No unit means milliseconds."
+- **Narration:** "Times take units. No unit means seconds."
 - **Code:**
   ```eligian
-  at 42      …   // 42 ms (bare number = ms)
+  at 42      …   // 42 s (bare number = seconds)
   at 500ms   …
   at 2s      …
   at 1.5m    …
   at 0.5h    …
   ```
-- **Callouts:** spotlight each literal; the bare `42` gets the "= 42ms" gotcha chip.
+- **Callouts:** spotlight each literal; the bare `42` gets the "= 42s" gotcha chip.
 - **Effect pane:** a ruler that rescales as each unit is highlighted (ms → s → m → h), driving the point home visually.
 
 ### Beat 5 — "Do arithmetic on time" + relative time (27s–35s)

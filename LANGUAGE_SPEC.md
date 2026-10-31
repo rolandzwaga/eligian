@@ -226,7 +226,8 @@ m           // Minutes
 h           // Hours
 ```
 
-**Default**: If no unit is specified, value is treated as milliseconds.
+**Default**: If no unit is specified, the value is in seconds (`42` = `42s`). This is also what
+makes `2s * 3` six seconds: a unitless number in time arithmetic is a plain factor.
 
 ---
 
@@ -1980,7 +1981,7 @@ stagger 200ms ["#a", "#b"] at +2s with reveal() for 1.5s            // 2s after 
 #### Time Literals
 
 ```eligian
-42          // 42 milliseconds (default unit)
+42          // 42 seconds (no unit = seconds)
 500ms       // 500 milliseconds
 2s          // 2 seconds
 1.5m        // 1.5 minutes
@@ -2044,7 +2045,7 @@ timeline "Tools" in "#stage" using raf duration closing.end + 1s {
 
 - **Time constants:** `const beat = 7s` (any unit; arithmetic on times, numbers and other time
   constants is allowed). In a time it is written `@beat`, like every constant reference. A
-  number constant used in a time counts like a unitless time literal. A time constant only exists
+  number constant used in a time counts in seconds, like a unitless time literal. A time constant only exists
   at compile time: it cannot be used in operation arguments, and a time like `7s` cannot appear
   outside a program-level const.
 - **Event labels:** `at <range> as <name> [ ... ]` names a timed event. `<name>.start` and
