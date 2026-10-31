@@ -48,10 +48,6 @@ export class OperationCallValidator extends BaseValidator {
     this.parameters.checkParameterTypes(operation, accept);
   }
 
-  checkDependencies(operation: OperationCall, accept: ValidationAcceptor): void {
-    this.parameters.checkDependencies(operation, accept);
-  }
-
   checkClassNameParameter(operation: OperationCall, accept: ValidationAcceptor): void {
     this.css.checkClassNameParameter(operation, accept);
   }

@@ -28,6 +28,13 @@ export class OperationDataTracker {
   private availableProperties: Set<string> = new Set();
 
   /**
+   * True once an operation changed operationData in a way that cannot be known
+   * statically (e.g. `setOperationData` with a non-literal argument). Any
+   * property may then be present, so no dependency is reported as missing.
+   */
+  private unknown = false;
+
+  /**
    * History of property additions/removals for debugging and error messages.
    */
   private history: Array<{
@@ -65,14 +72,8 @@ export class OperationDataTracker {
       return [];
     }
 
-    const missingDependencies: string[] = [];
-
     // Step 1: Check dependencies (properties operation expects to find on operationData)
-    for (const dep of signature.dependencies) {
-      if (!this.availableProperties.has(dep.name)) {
-        missingDependencies.push(dep.name);
-      }
-    }
+    const missingDependencies = this.missingDependencies(operationName);
 
     // Step 2: Parameters.
     // - Not erased: the value stays on operationData for subsequent operations.
@@ -101,6 +102,64 @@ export class OperationDataTracker {
     return missingDependencies;
   }
 
+  /**
+   * The dependencies of `operationName` that are not available, without
+   * changing the state. Empty when the state is unknown.
+   */
+  missingDependencies(operationName: string): string[] {
+    const signature = getOperationSignature(operationName);
+    if (!signature || this.unknown) {
+      return [];
+    }
+    return signature.dependencies
+      .map(dep => dep.name)
+      .filter(name => !this.availableProperties.has(name));
+  }
+
+  /**
+   * Make `property` available without recording a history entry: an action's
+   * parameters, and requirements assumed to be provided by its callers.
+   */
+  assume(property: string): void {
+    this.availableProperties.add(property);
+  }
+
+  /** Add properties written by an operation with dynamic outputs (e.g. setOperationData). */
+  addProperties(operation: string, properties: readonly string[]): void {
+    for (const property of properties) {
+      this.add(operation, property);
+    }
+  }
+
+  /** Remove properties deleted by an operation (recorded as erasures). */
+  removeProperties(operation: string, properties: readonly string[]): void {
+    for (const property of properties) {
+      this.remove(operation, property);
+    }
+  }
+
+  /** Replace the whole state with `properties` (setOperationData with override). */
+  replaceWith(operation: string, properties: readonly string[]): void {
+    this.clearAll(operation);
+    this.addProperties(operation, properties);
+  }
+
+  /** Remove every property (clearOperationData without a property list). */
+  clearAll(operation: string): void {
+    this.removeProperties(operation, Array.from(this.availableProperties));
+    this.unknown = false;
+  }
+
+  /** Mark the state as statically unknown (see {@link unknown}). */
+  markUnknown(): void {
+    this.unknown = true;
+  }
+
+  /** Whether the state is statically unknown (any property may be present). */
+  isUnknown(): boolean {
+    return this.unknown;
+  }
+
   private add(operation: string, property: string): void {
     this.availableProperties.add(property);
     this.history.push({ operation, action: 'added', property });
@@ -117,7 +176,7 @@ export class OperationDataTracker {
    * Check if a property is currently available on operationData.
    */
   hasProperty(propertyName: string): boolean {
-    return this.availableProperties.has(propertyName);
+    return this.unknown || this.availableProperties.has(propertyName);
   }
 
   /**
@@ -160,6 +219,7 @@ export class OperationDataTracker {
     const cloned = new OperationDataTracker();
     cloned.availableProperties = new Set(this.availableProperties);
     cloned.history = [...this.history];
+    cloned.unknown = this.unknown;
     return cloned;
   }
 
@@ -176,6 +236,8 @@ export class OperationDataTracker {
       }
     }
     this.availableProperties = intersection;
+    // Unknown in either branch: any property may be present after the join.
+    this.unknown = this.unknown || other.unknown;
 
     // Merge histories. Branch trackers are clones of the same pre-branch
     // tracker, so they share its history entries (same objects) as a prefix:

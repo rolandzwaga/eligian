@@ -21,8 +21,10 @@ import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
 import type { EligianServices } from './eligian-module.js';
 import {
+  type ActionDefinition,
   isActionDefinition,
   isDefaultImport,
+  isEndableActionDefinition,
   isEventActionDefinition,
   isLanguagesBlock,
   isNamedImport,
@@ -40,6 +42,7 @@ import { formatJSDocAsMarkdown } from './jsdoc/jsdoc-formatter.js';
 import type { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
 import { createMarkdownHover } from './utils/hover-utils.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import { createDataflow } from './validators/dataflow-validator.js';
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   private cssHoverProvider = new CSSHoverProvider();
@@ -162,7 +165,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
             if (jsdoc) {
               // Format JSDoc as markdown for hover display
               const markdown = formatJSDocAsMarkdown(jsdoc, actionDef.name);
-              return createMarkdownHover(markdown);
+              return createMarkdownHover(markdown + this.requirementsMarkdown(actionDef));
             }
           }
 
@@ -174,7 +177,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
             })
             .join(', ');
           const markdown = `### ${actionDef.name}\n\n\`${actionDef.name}(${params})\``;
-          return createMarkdownHover(markdown);
+          return createMarkdownHover(markdown + this.requirementsMarkdown(actionDef));
         }
       }
     }
@@ -199,9 +202,34 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
    * hover content for other node types (e.g., action definitions,
    * variable declarations, etc.).
    */
-  protected override getAstNodeHoverContent(_node: AstNode): string | undefined {
-    // For now, delegate to the default behavior (multiline comments)
-    // Future: Add custom hover content for other node types here
+  protected override getAstNodeHoverContent(node: AstNode): string | undefined {
+    // Action definitions: the operationData their callers must provide (spec 047)
+    if (isActionDefinition(node)) {
+      const requirements = this.requirementsMarkdown(node);
+      return requirements ? `### ${node.name}${requirements}` : undefined;
+    }
     return undefined;
+  }
+
+  /**
+   * The inferred contract of an action (spec 047): properties it reads from
+   * operationData without creating them, which its callers must provide.
+   * Empty when there are none.
+   */
+  private requirementsMarkdown(action: ActionDefinition): string {
+    const dataflow = createDataflow(this.services);
+    const phases = isEndableActionDefinition(action)
+      ? (['start', 'end'] as const)
+      : (['start'] as const);
+    const lines = phases.flatMap(phase =>
+      dataflow.requirementsOf(action, phase).map(r => {
+        const where = r.action !== action.name ? ` in '${r.action}'` : '';
+        const block = phase === 'end' ? ', end block' : '';
+        return `- \`${r.property}\` (used by ${r.operation}${where}${block})`;
+      })
+    );
+    return lines.length > 0
+      ? `\n\n**Requires from the caller** (operationData):\n${lines.join('\n')}`
+      : '';
   }
 }

@@ -132,7 +132,7 @@ describe('ActionValidator audit regressions', () => {
       expect(errorsWithCode(diagnostics, 'missing-dependency')).toHaveLength(0);
     });
 
-    test('property created only in the then-branch (no else) is still missing afterwards', async () => {
+    test('property created only in the then-branch (no else) is still required from the caller', async () => {
       const { diagnostics } = await ctx.parseAndValidate(`
         styles "./styles.css"
         action t [
@@ -141,14 +141,14 @@ describe('ActionValidator audit regressions', () => {
           }
           addClass("button")
         ]
-        timeline "t" in "#container" using raf {}
+        timeline "t" in "#container" using raf { at 0s..1s t() }
       `);
-      const missing = errorsWithCode(diagnostics, 'missing-dependency');
+      const missing = errorsWithCode(diagnostics, 'missing-action-dependency');
       expect(missing).toHaveLength(1);
       expect(missing[0].message).toContain('selectedElement');
     });
 
-    test('property created in only one of two branches is still missing afterwards', async () => {
+    test('property created in only one of two branches is still required from the caller', async () => {
       const { diagnostics } = await ctx.parseAndValidate(`
         styles "./styles.css"
         action t [
@@ -159,9 +159,9 @@ describe('ActionValidator audit regressions', () => {
           }
           addClass("button")
         ]
-        timeline "t" in "#container" using raf {}
+        timeline "t" in "#container" using raf { at 0s..1s t() }
       `);
-      expect(errorsWithCode(diagnostics, 'missing-dependency')).toHaveLength(1);
+      expect(errorsWithCode(diagnostics, 'missing-action-dependency')).toHaveLength(1);
     });
 
     test('nested if/else joins propagate outward', async () => {
@@ -184,7 +184,7 @@ describe('ActionValidator audit regressions', () => {
       expect(errorsWithCode(diagnostics, 'missing-dependency')).toHaveLength(0);
     });
 
-    test('a for loop body still does not make its properties available afterwards', async () => {
+    test('a for loop body does not make its properties available afterwards (required from the caller)', async () => {
       const { diagnostics } = await ctx.parseAndValidate(`
         styles "./styles.css"
         action t(items) [
@@ -193,9 +193,9 @@ describe('ActionValidator audit regressions', () => {
           }
           addClass("button")
         ]
-        timeline "t" in "#container" using raf {}
+        timeline "t" in "#container" using raf { at 0s..1s t([1]) }
       `);
-      expect(errorsWithCode(diagnostics, 'missing-dependency')).toHaveLength(1);
+      expect(errorsWithCode(diagnostics, 'missing-action-dependency')).toHaveLength(1);
     });
   });
 

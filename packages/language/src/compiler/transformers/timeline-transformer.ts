@@ -32,7 +32,6 @@ import {
   transformForStatement,
   transformIfStatement,
   transformOperationStatement,
-  validateOperationSequence,
 } from './operation-transformer.js';
 import { createRuntimeConcatCollector, lowerNodeOperations } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
@@ -691,18 +690,6 @@ const transformTimedEvent = (
         allActions
       );
       startOperations.push(...ifOps);
-    }
-
-    // T173: Validate dependencies in timeline event operations
-    yield* validateOperationSequence(
-      startOperations,
-      `timeline event at ${start}s..${end}s start operations`
-    );
-    if (endOperations.length > 0) {
-      yield* validateOperationSequence(
-        endOperations,
-        `timeline event at ${start}s..${end}s end operations`
-      );
     }
 
     return {

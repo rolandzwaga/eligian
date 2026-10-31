@@ -3,6 +3,7 @@ import { LANGUAGE_CODE_REGEX } from './compiler/constants.js';
 import type { EligianServices } from './eligian-module.js';
 import type { EligianAstType } from './generated/ast.js';
 import { ActionValidator } from './validators/action-validator.js';
+import { DataflowValidator } from './validators/dataflow-validator.js';
 import { EventActionValidator } from './validators/event-action-validator.js';
 import { ExpressionValidator } from './validators/expression-validator.js';
 import { ImportValidator } from './validators/import-validator.js';
@@ -69,6 +70,7 @@ export class EligianValidator {
   readonly navigate: NavigateValidator;
   readonly expression: ExpressionValidator;
   readonly operationSequence: OperationSequenceValidator;
+  readonly dataflow: DataflowValidator;
 
   constructor(services: EligianServices) {
     this.program = new ProgramValidator(services);
@@ -81,6 +83,7 @@ export class EligianValidator {
     this.navigate = new NavigateValidator(services);
     this.expression = new ExpressionValidator(services);
     this.operationSequence = new OperationSequenceValidator(services);
+    this.dataflow = new DataflowValidator(services);
   }
 }
 
@@ -158,8 +161,6 @@ export function registerValidationChecks(services: EligianServices) {
       v.operationCall.checkClassNameParameter, // Feature 013 T017: Validate className parameters
       v.operationCall.checkSelectorParameter, // Feature 013 T020: Validate selector parameters
       v.operationCall.checkLabelIDParameter, // Feature 034: Validate label ID parameters
-      // TODO T216: Re-enable checkDependencies once we implement proper dependency tracking across sequences
-      // validator.checkDependencies
     ],
   };
   registry.register(operationCallChecks, v.operationCall);
@@ -172,7 +173,6 @@ export function registerValidationChecks(services: EligianServices) {
       v.action.checkRecursiveActionCalls, // Detect infinite recursion
       v.action.checkActionParameters, // Duplicate / reserved parameter names
       v.action.checkControlFlowPairing,
-      v.action.checkErasedPropertiesInAction, // T254-T255: Erased property validation
       v.action.checkPrivateOnlyInLibraries, // T056: US3 - Validate 'private' only in libraries
     ],
     EndableActionDefinition: [
@@ -181,15 +181,11 @@ export function registerValidationChecks(services: EligianServices) {
       v.action.checkActionParameters, // Duplicate / reserved parameter names
       v.action.checkControlFlowPairingInStartOps,
       v.action.checkControlFlowPairingInEndOps,
-      v.action.checkErasedPropertiesInStartOps, // T254-T255: Erased property validation
-      v.action.checkErasedPropertiesInEndOps, // T254-T255: Erased property validation
       v.action.checkPrivateOnlyInLibraries, // T056: US3 - Validate 'private' only in libraries
     ],
     InlineEndableAction: [
       v.action.checkControlFlowPairingInInlineStart,
       v.action.checkControlFlowPairingInInlineEnd,
-      v.action.checkErasedPropertiesInInlineStart, // T254-T255: Erased property validation
-      v.action.checkErasedPropertiesInInlineEnd, // T254-T255: Erased property validation
     ],
   };
   registry.register(actionChecks, v.action);
@@ -219,16 +215,18 @@ export function registerValidationChecks(services: EligianServices) {
   // lists outside action definitions (event action bodies, inline stagger
   // blocks). A separate group, so EventActionDefinition has checks in two groups.
   const operationSequenceChecks: ValidationChecks<EligianAstType> = {
-    EventActionDefinition: [
-      v.operationSequence.checkControlFlowPairingInEventAction,
-      v.operationSequence.checkErasedPropertiesInEventAction,
-    ],
-    StaggerBlock: [
-      v.operationSequence.checkControlFlowPairingInStagger,
-      v.operationSequence.checkErasedPropertiesInStagger,
-    ],
+    EventActionDefinition: [v.operationSequence.checkControlFlowPairingInEventAction],
+    StaggerBlock: [v.operationSequence.checkControlFlowPairingInStagger],
   };
   registry.register(operationSequenceChecks, v.operationSequence);
+
+  // Spec 047: operation-data dependencies with inferred action contracts, one
+  // pass per document (replaces the per-action erased-property checks)
+  const dataflowChecks: ValidationChecks<EligianAstType> = {
+    Program: v.dataflow.checkOperationData,
+    Library: v.dataflow.checkOperationData,
+  };
+  registry.register(dataflowChecks, v.dataflow);
 
   const navigateChecks: ValidationChecks<EligianAstType> = {
     NavigateStatement: [

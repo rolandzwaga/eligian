@@ -5,6 +5,9 @@
 **Status**: Living Document - Updated with every language feature change
 
 **Recent Changes** (v1.8.0):
+- Operation-data dependencies use inferred action contracts (Feature 047, section 4.7): a called
+  action may rely on its caller's operation data; missing properties are reported where the
+  action is entered (timelines, event actions, controller action lists)
 - Runtime string concatenation (Feature 046, section 7.4): `"#" + slideId` in operation and action
   call arguments and action-level consts compiles to Eligius's `concatenateStrings`
 - Runtime values (parameters, variables, system properties, property chains) passed to an
@@ -1243,6 +1246,50 @@ timeline "demo" in "#app" using raf {
   at 6s..8s selectElement("#box")      // Built-in operation
 }
 ```
+
+### 4.7 Operation Data and Action Contracts (Feature 047)
+
+Eligius passes one `operationData` object through an action's operations. Operations read
+properties from it (dependencies, e.g. `addClass` needs `selectedElement`) and add properties
+to it (outputs, e.g. `selectElement` adds `selectedElement`). Some operations erase properties
+after use.
+
+A called action starts with its caller's operation data, so it may rely on the caller:
+
+```eligian
+action highlight() [
+  addClass("on")            // needs selectedElement: required from the caller
+]
+
+action show() [
+  selectElement("#box")
+  highlight()               // ✅ show provides selectedElement
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..1s show()          // ✅
+  at 1s..2s highlight()     // ❌ Action 'highlight' requires 'selectedElement' ...
+}
+```
+
+- **Contracts are inferred.** Each action's contract is the set of properties it reads without
+  creating them. Contracts propagate through calls, and the editor shows them in the action's
+  hover ("Requires from the caller").
+- **Reported at entry points.** Errors appear where the starting data is known: timeline
+  events, `sequence`/`stagger` items and inline blocks (start empty), event actions (start
+  with only `eventArgs`), and `DOMEventListenerController` action lists (only `eventTarget`
+  and the controller's `actionOperationData`, plus what earlier listed actions return).
+- **Erasures are always errors**, wherever they occur: using a property that an earlier
+  operation erased on the same path.
+- **Outputs don't flow back.** A called action's outputs are not visible to its caller: after
+  the call, the caller continues with its own operation data.
+- **Branches and loops:** after `if/else`, only properties available in both branches remain.
+  A `for` body may run zero times, so it adds nothing afterwards.
+- **Dynamic outputs:** `setOperationData`, `setData` (`$operationdata.` targets),
+  `removePropertiesFromOperationData` and `clearOperationData` are modelled from literal
+  arguments. A non-literal argument stops further checking on that path.
+- **Libraries:** a library action is checked where a program calls it, never in the library
+  file on its own.
 
 ---
 
@@ -2860,7 +2907,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.8.0 | 2026-10-31 | **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
+| 1.8.0 | 2026-10-31 | **Feature 047 - Operation-data contracts** (section 4.7): dependencies are checked by one dataflow analysis shared by the editor and the compiler; called actions inherit their caller's state through inferred contracts. **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
 | 1.7.0 | 2026-10-17 | **Feature 045 - Locales Import**: `labels` import replaced by `locales` (section 3.2.4); nested JSON format keyed by locale code, compiles to `config.locales`, requires a `languages` block; translation keys referenced via `LabelController`. **Feature 029 corrections**: event names are restricted to the 43 Eligius events (sections 5.5, 5.10); the previous event list contained non-existent events. Duplicate event handlers documented as warnings; noted that the compiler fails on any diagnostic. Keyword list and grammar summary updated. |
 | 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |

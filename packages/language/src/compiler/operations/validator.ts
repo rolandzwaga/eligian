@@ -22,7 +22,6 @@ import { validateOperationExists } from './validation/existence.js';
 import { validateParameterCount } from './validation/parameter-count.js';
 
 export { validateControlFlowPairing } from './validation/control-flow.js';
-export { trackOutputs, validateDependencies } from './validation/dependencies.js';
 // Re-export the decomposed validation stages and error types.
 export type {
   ControlFlowError,

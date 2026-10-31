@@ -22,6 +22,7 @@
  */
 
 import { Effect } from 'effect';
+import { OperationDataflow } from '../dataflow/operation-dataflow.js';
 import type { TransformError } from '../errors/index.js';
 import type { Program } from '../generated/ast.js';
 import {
@@ -45,7 +46,7 @@ import {
   transformLanguagesBlock,
 } from './transformers/config-builder.js';
 import { transformExpression } from './transformers/expression-transformer.js';
-import { resolveActionScopes } from './transformers/library-imports.js';
+import { resolveActionScopes, resolveCompilerAction } from './transformers/library-imports.js';
 import {
   buildNavTargetAction,
   resolveNavPosition,
@@ -257,6 +258,20 @@ export const transformAST = (
 
     // T012: Transform languages block (Feature 037)
     const languagesConfig = transformLanguagesBlock(program.languages);
+
+    // Operation-data dependencies (spec 047): the same analysis the IDE runs,
+    // after transformation so transform errors are reported first
+    const [dependencyProblem] = new OperationDataflow({
+      resolveAction: resolveCompilerAction,
+    }).analyzeDocument(program);
+    if (dependencyProblem) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: dependencyProblem.message,
+        location: getSourceLocation(dependencyProblem.node),
+      });
+    }
 
     // Build complete IEngineConfiguration (T281)
     const config: IEngineConfiguration = {

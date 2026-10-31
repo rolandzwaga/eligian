@@ -2,7 +2,6 @@ import type { AstNode, ValidationAcceptor } from 'langium';
 import {
   getOperationSignature,
   hasOperation,
-  validateDependencies,
   validateParameterCount,
   validateParameterTypes,
 } from '../../compiler/index.js';
@@ -152,52 +151,6 @@ export class ParameterValidator extends BaseValidator {
         node: operation,
         property: 'args',
         index: error.parameterIndex,
-        code: error.code.toLowerCase(),
-      });
-    }
-  }
-
-  /**
-   * Validate dependencies for operation calls.
-   *
-   * Note: This is a simplified implementation that only checks if the operation
-   * HAS dependencies (warns user they need to ensure dependencies are available).
-   * Full dependency tracking across operation sequences would require analyzing
-   * the entire action/event context, which is more complex and will be implemented
-   * in a future enhancement.
-   *
-   * For now, we just inform users about required dependencies.
-   */
-  checkDependencies(operation: OperationCall, accept: ValidationAcceptor): void {
-    const opName = operation.operationName.$refText;
-
-    // Only validate if operation exists (avoid duplicate errors)
-    if (!hasOperation(opName)) {
-      return;
-    }
-
-    const signature = getOperationSignature(opName)!;
-
-    // If operation has no dependencies, no validation needed
-    if (signature.dependencies.length === 0) {
-      return;
-    }
-
-    // For now, we just validate against an empty set (no outputs available)
-    // This will warn about ALL dependencies since we don't track outputs yet
-    // TODO: Enhance this to track outputs across operation sequences in the same action/event
-    const availableOutputs = new Set<string>();
-    const errors = validateDependencies(signature, availableOutputs);
-
-    // Report dependency warnings
-    for (const error of errors) {
-      const message = formatValidationMessage(error.message, error.hint);
-
-      // Use 'warning' instead of 'error' for now since we can't track dependencies perfectly
-      // Once we implement full dependency tracking, change this to 'error'
-      accept('warning', message, {
-        node: operation,
-        property: 'operationName',
         code: error.code.toLowerCase(),
       });
     }

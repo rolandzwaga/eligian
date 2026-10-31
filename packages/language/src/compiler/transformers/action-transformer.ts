@@ -21,7 +21,7 @@ import type {
   OperationConfigIR,
   TOperationData,
 } from '../types/eligius-ir.js';
-import { transformOperationStatement, validateOperationSequence } from './operation-transformer.js';
+import { transformOperationStatement } from './operation-transformer.js';
 import { createParameterContext, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
 
@@ -91,15 +91,6 @@ export const transformActionDefinition = (
         );
         startOperations.push(...ops);
       }
-    }
-
-    // T173: Validate dependencies in operation sequences
-    yield* validateOperationSequence(
-      startOperations,
-      `action '${actionDef.name}' start operations`
-    );
-    if (endOperations.length > 0) {
-      yield* validateOperationSequence(endOperations, `action '${actionDef.name}' end operations`);
     }
 
     return {
@@ -185,12 +176,6 @@ export const transformEventAction = (
       );
       operationIRs.push(...ops);
     }
-
-    // T173: Validate dependencies in the operation sequence, as for regular
-    // actions and timeline events. Helper operations inserted by runtime-value
-    // lowering (setOperationData, concatenateStrings, ...) declare no
-    // dependencies and remove no outputs, so they pass through transparently.
-    yield* validateOperationSequence(operationIRs, `event action '${eventAction.name}'`);
 
     // Convert OperationConfigIR[] to IOperationConfiguration[]
     const startOperations: IOperationConfiguration<TOperationData>[] = operationIRs.map(opIR => ({

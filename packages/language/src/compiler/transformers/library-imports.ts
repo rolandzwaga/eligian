@@ -29,7 +29,7 @@
  * emitted names (see {@link ActionToEmit.systemNames}).
  */
 import { Effect } from 'effect';
-import { AstUtils } from 'langium';
+import { type AstNode, AstUtils } from 'langium';
 import type { TransformError } from '../../errors/index.js';
 import type { ActionDefinition, Library, Program } from '../../generated/ast.js';
 import { isLibrary, isLibraryImport, isOperationCall } from '../../generated/ast.js';
@@ -82,6 +82,20 @@ const resolveCompilerLibrary: LibraryResolver = (fromUri, importPath) => {
 };
 
 /** `definition` renamed to `name` (a copy when the names differ). */
+/**
+ * Resolve an action called by `name` from the scope of `context` (local and
+ * imported actions, aliases included), with the compiler's library resolver.
+ */
+export function resolveCompilerAction(
+  context: AstNode,
+  name: string
+): ActionDefinition | undefined {
+  const root = getActionScopeRoot(context);
+  return root
+    ? findCallableAction(name, getCallableActions(root, resolveCompilerLibrary))?.action
+    : undefined;
+}
+
 function renamed(definition: ActionDefinition, name: string): ActionDefinition {
   return name === definition.name ? definition : { ...definition, name };
 }

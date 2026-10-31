@@ -376,11 +376,12 @@ describe('Eligian Grammar - Validation', () => {
                 action test [
                     addClass("highlight")
                 ]
-                timeline "test" in ".test-container" using raf {}
+                timeline "test" in ".test-container" using raf { at 0s..1s test() }
             `;
       const { errors } = await ctx.parseAndValidate(code);
 
-      // addClass requires 'selectedElement' which was never created
+      // addClass requires 'selectedElement': the action's inferred contract,
+      // reported where the timeline starts it with empty operation data
       expect(errors.length).toBeGreaterThan(0);
       expect(
         errors.some(
@@ -469,7 +470,7 @@ describe('Eligian Grammar - Validation', () => {
                 ] [
                     addClass("hidden")
                 ]
-                timeline "test" in ".test-container" using raf {}
+                timeline "test" in ".test-container" using raf { at 0s..1s test() }
             `;
       const { errors } = await ctx.parseAndValidate(code);
 

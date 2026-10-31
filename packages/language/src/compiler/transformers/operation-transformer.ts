@@ -27,7 +27,7 @@ import { constantValueType, evaluateExpression } from '../expression-evaluator.j
 import { findActionByName } from '../name-resolver.js';
 import { getOperationSignature } from '../operations/index.js';
 import { mapParameters } from '../operations/mapper.js';
-import { trackOutputs, validateDependencies, validateOperation } from '../operations/validator.js';
+import { validateOperation } from '../operations/validator.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
 import { transformCondition } from './condition-transformer.js';
@@ -40,49 +40,6 @@ import {
 import { withRuntimeValueLowering } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
-
-/**
- * Validate operation dependencies in a sequence (T173: Dependency Tracking)
- *
- * Checks that each operation's required dependencies are available from previous operations.
- * Tracks outputs as operations are processed to maintain dependency chain.
- */
-export const validateOperationSequence = (
-  operations: OperationConfigIR[],
-  contextName: string
-): Effect.Effect<void, TransformError> =>
-  Effect.gen(function* () {
-    const availableOutputs = new Set<string>();
-
-    for (const op of operations) {
-      const signature = getOperationSignature(op.systemName);
-      if (!signature) {
-        continue; // Already validated in transformOperationCall
-      }
-
-      // Validate dependencies
-      const depErrors = validateDependencies(signature, availableOutputs);
-      if (depErrors.length > 0) {
-        const firstError = depErrors[0];
-        return yield* Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message: `In ${contextName}: ${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
-          location: op.sourceLocation || {
-            file: undefined,
-            line: 1,
-            column: 1,
-            length: 0,
-          },
-        });
-      }
-
-      // Track outputs for next operation
-      trackOutputs(signature, availableOutputs);
-    }
-
-    return undefined;
-  });
 
 /**
  * Transform OperationCall → OperationConfigIR

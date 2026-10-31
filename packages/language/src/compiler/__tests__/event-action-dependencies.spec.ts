@@ -25,43 +25,42 @@ describe('event action dependency validation', () => {
   }
 
   test('an operation whose dependency is never provided fails the transform', async () => {
-    const eventAction = await eventActionOf(
-      'on event "language-change" action handler(a) [ addClass("x") ]'
+    // Event actions start with only { eventArgs }, so the missing property is an error
+    const document = await ctx.parse(
+      `on event "language-change" action handler(a) [ addClass("x") ]
+       timeline "T" in "#stage" using raf { at 0s..1s [ selectElement("#a") ] [] }`
     );
 
-    const result = Effect.runSync(Effect.result(transformEventAction(eventAction)));
+    const failure = await Effect.runPromise(Effect.flip(transformAST(document.parseResult.value)));
 
-    expect(Result.isFailure(result)).toBe(true);
-    if (Result.isFailure(result)) {
-      expect(result.failure._tag).toBe('TransformError');
-      expect(result.failure.kind).toBe('ValidationError');
-      expect(result.failure.message).toContain("event action 'handler'");
-      expect(result.failure.message).toContain(
-        "Operation 'addClass' requires 'selectedElement' but it is not available"
-      );
-      // Located at the offending operation, not a placeholder 1:1
-      expect(result.failure.location.line).toBe(1);
-      expect(result.failure.location.column).toBeGreaterThan(1);
-    }
+    expect(failure._tag).toBe('TransformError');
+    expect(failure.kind).toBe('ValidationError');
+    expect(failure.message).toBe(
+      "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)"
+    );
+    // Located at the offending operation, not a placeholder 1:1
+    expect(failure.location.line).toBe(1);
+    expect(failure.location.column).toBeGreaterThan(1);
   });
 
-  test('transformAST surfaces the same failure as a regular action does', async () => {
-    const timeline = 'timeline "T" in "#stage" using raf { at 0s..1s [ selectElement("#a") ] [] }';
-    const eventDoc = await ctx.parse(
-      `on event "language-change" action handler(a) [ addClass("x") ]\n${timeline}`
+  test('a regular action relies on its caller; the timeline call that cannot provide it fails', async () => {
+    const callerOk = await ctx.parse(
+      `action hh() [ addClass("x") ]
+       timeline "T" in "#stage" using raf { at 0s..1s [ selectElement("#a") hh() ] [] }`
     );
-    const actionDoc = await ctx.parse(`action hh() [ addClass("x") ]\n${timeline}`);
-
-    const eventFailure = await Effect.runPromise(
-      Effect.flip(transformAST(eventDoc.parseResult.value))
-    );
-    const actionFailure = await Effect.runPromise(
-      Effect.flip(transformAST(actionDoc.parseResult.value))
+    const callerMissing = await ctx.parse(
+      `action hh() [ addClass("x") ]
+       timeline "T" in "#stage" using raf { at 0s..1s hh() }`
     );
 
-    expect(eventFailure.kind).toBe('ValidationError');
-    expect(actionFailure.kind).toBe('ValidationError');
-    expect(eventFailure.message).toContain("requires 'selectedElement'");
+    const ok = await Effect.runPromise(Effect.result(transformAST(callerOk.parseResult.value)));
+    const failure = await Effect.runPromise(
+      Effect.flip(transformAST(callerMissing.parseResult.value))
+    );
+
+    expect(ok._tag).toBe('Success');
+    expect(failure.kind).toBe('ValidationError');
+    expect(failure.message).toContain("Action 'hh' requires 'selectedElement'");
   });
 
   test('a satisfied dependency chain still compiles', async () => {

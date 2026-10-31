@@ -124,7 +124,7 @@ describe('erased-property-access diagnostic (audit #28)', () => {
   test('a dependency that was never created is still missing-dependency', async () => {
     const { diagnostics } = await ctx.parseAndValidate(`
       styles "./styles.css"
-      action t [
+      on event "language-change" action t() [
         selectElement("#a")
         log()
       ]
@@ -132,8 +132,9 @@ describe('erased-property-access diagnostic (audit #28)', () => {
     `);
 
     expect(errorsWithCode(diagnostics, 'erased-property-access')).toHaveLength(0);
+    // An event action starts with only eventArgs, so the missing property is an error here
     expect(errorsWithCode(diagnostics, 'missing-dependency').map(d => d.message)).toEqual([
-      "Property 'template' is not available - ensure it is created by a previous operation",
+      "Property 'template' is not available - ensure it is created by a previous operation (for example with createElement)",
     ]);
   });
 });
