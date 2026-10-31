@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Cause, Effect, Exit, Option } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   collectAssets,
   mapConfigAssetRefs,
@@ -252,11 +252,19 @@ describe('#45 temp directory cleanup and error causes', () => {
     await writeValid(input);
     const before = new Set(bundleTempDirs());
 
-    const exit = await Effect.runPromiseExit(
-      createBundle(input, { outputDir: path.join(tmpdir, 'out'), force: true })
-    );
+    // Make the runtime bundling step fail, after the temp dir has been created
+    vi.resetModules();
+    vi.doMock('../bundler/runtime-bundler.js', async importOriginal => ({
+      ...(await importOriginal<typeof import('../bundler/runtime-bundler.js')>()),
+      bundleRuntime: () => Effect.fail(new Error('simulated esbuild failure')),
+    }));
+    const { createBundle: createFailingBundle } = await import('../bundler/index.js');
 
-    // The input lives outside the workspace, so 'eligius' cannot be resolved
+    const exit = await Effect.runPromiseExit(
+      createFailingBundle(input, { outputDir: path.join(tmpdir, 'out'), force: true })
+    );
+    vi.doUnmock('../bundler/runtime-bundler.js');
+
     expect(Exit.isFailure(exit)).toBe(true);
     const leaked = bundleTempDirs().filter(name => !before.has(name));
     expect(leaked).toEqual([]);

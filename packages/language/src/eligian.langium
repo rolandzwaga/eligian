@@ -27,9 +27,16 @@ grammar Eligian
  * - Library: Library files with 'library' keyword, containing only actions
  *
  * Disambiguation: Presence of 'library' keyword determines file type.
+ *
+ * Program: an optional languages block, then the program statements. The
+ * languages block (if present) MUST be the first declaration, enforced here by
+ * placing it before the statements (Feature 037). Program is written inline
+ * because it can match an empty file, which Langium only allows for the entry
+ * rule ("This parser rule potentially consumes no input").
  */
 entry EligianFile:
-    Program | Library;
+    Library |
+    {infer Program} languages=LanguagesBlock? (statements += ProgramStatement)*;
 
 /**
  * Library - Reusable action library file (Feature 023)
@@ -63,17 +70,7 @@ Library:
 // Program Structure
 // ============================================================================
 
-/**
- * Program - Main program structure with optional languages block
- *
- * The languages block (if present) MUST be the first declaration.
- * This is enforced at the grammar level by placing it before statements.
- *
- * Feature 037: Languages Declaration Syntax
- */
-Program:
-    languages=LanguagesBlock?
-    (statements += ProgramStatement)*;
+// Program itself is the second alternative of the EligianFile entry rule.
 
 ProgramStatement:
     ImportStatement | ProgramElement;

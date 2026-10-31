@@ -331,6 +331,9 @@ export function bundleRuntime(
           },
           // Additional paths to search for node_modules (like NODE_PATH env var)
           nodePaths: nodePaths ?? [],
+          // Errors are returned in RuntimeBundleError and warnings printed below;
+          // esbuild's own console output would report each of them twice
+          logLevel: 'silent',
         }),
       catch: error => {
         const esbuildError = error as esbuild.BuildFailure;
@@ -352,6 +355,10 @@ export function bundleRuntime(
     // Get bundled content
     if (!result.outputFiles || result.outputFiles.length === 0) {
       return yield* Effect.fail(new RuntimeBundleError('esbuild produced no output'));
+    }
+
+    for (const warning of result.warnings) {
+      console.warn(`⚠ esbuild: ${warning.text}`);
     }
 
     const bundledContent = result.outputFiles[0].text;

@@ -8,6 +8,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import { CompileError, compileFile } from '../compile-file.js';
@@ -95,6 +96,9 @@ async function directoryExists(dirPath: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Directory of this module: inside the installed CLI package (dist/ or src/bundler/). */
+const CLI_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Find node_modules directories by walking up from a starting directory
@@ -231,9 +235,15 @@ export function createBundle(
       }),
       tempDir =>
         Effect.gen(function* () {
-          // Find node_modules paths for esbuild to resolve 'eligius' and 'jquery'
+          // Find node_modules paths for esbuild to resolve 'eligius' and 'jquery':
+          // the project's own first (its versions win), then the CLI's, which
+          // declares both as dependencies, so a project without them still bundles
           const nodePaths = yield* Effect.tryPromise({
-            try: () => findNodeModulesPaths(basePath),
+            try: async () => {
+              const projectPaths = await findNodeModulesPaths(basePath);
+              const cliPaths = await findNodeModulesPaths(CLI_DIR);
+              return [...new Set([...projectPaths, ...cliPaths])];
+            },
             catch: e => new BundleError(`Failed to find node_modules paths: ${describeError(e)}`),
           });
 
