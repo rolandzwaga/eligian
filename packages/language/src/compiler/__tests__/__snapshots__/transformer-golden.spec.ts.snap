@@ -435,7 +435,15 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
         {
           "id": "<uuid-5>",
           "operationData": {
-            "animationDuration": "$operationdata.duration",
+            "properties": {
+              "animationDuration": "$operationdata.duration",
+            },
+          },
+          "systemName": "setOperationData",
+        },
+        {
+          "id": "<uuid-6>",
+          "operationData": {
             "animationProperties": {
               "opacity": 1,
             },
@@ -447,32 +455,32 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
     {
       "endOperations": [
         {
-          "id": "<uuid-9>",
+          "id": "<uuid-10>",
           "operationData": {
             "selector": "$operationdata.target",
           },
           "systemName": "selectElement",
         },
         {
-          "id": "<uuid-10>",
+          "id": "<uuid-11>",
           "operationData": {
             "className": "on",
           },
           "systemName": "removeClass",
         },
       ],
-      "id": "<uuid-6>",
+      "id": "<uuid-7>",
       "name": "highlight",
       "startOperations": [
         {
-          "id": "<uuid-7>",
+          "id": "<uuid-8>",
           "operationData": {
             "selector": "$operationdata.target",
           },
           "systemName": "selectElement",
         },
         {
-          "id": "<uuid-8>",
+          "id": "<uuid-9>",
           "operationData": {
             "className": "on",
           },
@@ -510,7 +518,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
   "timelines": [
     {
       "duration": 10,
-      "id": "<uuid-11>",
+      "id": "<uuid-12>",
       "loop": false,
       "selector": "#root",
       "timelineActions": [
@@ -520,18 +528,18 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
             "start": 0,
           },
           "endOperations": [],
-          "id": "<uuid-12>",
+          "id": "<uuid-13>",
           "name": "timeline-action-0-5",
           "startOperations": [
             {
-              "id": "<uuid-13>",
+              "id": "<uuid-14>",
               "operationData": {
                 "systemName": "fadeIn",
               },
               "systemName": "requestAction",
             },
             {
-              "id": "<uuid-14>",
+              "id": "<uuid-15>",
               "operationData": {
                 "actionOperationData": {
                   "duration": 500,
@@ -549,14 +557,14 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
           },
           "endOperations": [
             {
-              "id": "<uuid-18>",
+              "id": "<uuid-19>",
               "operationData": {
                 "systemName": "highlight",
               },
               "systemName": "requestAction",
             },
             {
-              "id": "<uuid-19>",
+              "id": "<uuid-20>",
               "operationData": {
                 "actionOperationData": {
                   "target": "#b",
@@ -565,18 +573,18 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > regular + 
               "systemName": "endAction",
             },
           ],
-          "id": "<uuid-15>",
+          "id": "<uuid-16>",
           "name": "timeline-action-5-10",
           "startOperations": [
             {
-              "id": "<uuid-16>",
+              "id": "<uuid-17>",
               "operationData": {
                 "systemName": "highlight",
               },
               "systemName": "requestAction",
             },
             {
-              "id": "<uuid-17>",
+              "id": "<uuid-18>",
               "operationData": {
                 "actionOperationData": {
                   "target": "#b",

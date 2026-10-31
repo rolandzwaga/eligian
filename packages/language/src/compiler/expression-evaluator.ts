@@ -255,7 +255,11 @@ export const ARITHMETIC_OPERATORS: ReadonlySet<string> = new Set(['+', ...NUMERI
 export function runtimeOperatorMessage(op: string, unary = false): string {
   const operands = 'runtime values (parameters, variables, system properties, property chains)';
   if (unary || ARITHMETIC_OPERATORS.has(op)) {
-    return `Arithmetic operator '${op}' cannot be applied to ${operands}: Eligius has no runtime arithmetic in expressions. Use the calc operation instead (its result is $operationdata.calculationResult)`;
+    const concatHint =
+      op === '+' && !unary
+        ? ". For string concatenation, make one operand a string: a string literal or a parameter annotated ': string'"
+        : '';
+    return `Arithmetic operator '${op}' cannot be applied to ${operands}: Eligius has no runtime arithmetic in expressions. Use the calc operation instead (its result is $operationdata.calculationResult)${concatHint}`;
   }
   return `Operator '${op}' on ${operands} is only supported inside if/when conditions`;
 }

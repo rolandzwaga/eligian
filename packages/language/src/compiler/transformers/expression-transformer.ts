@@ -12,8 +12,14 @@ import {
   resolveConstant,
   runtimeOperatorMessage,
 } from '../expression-evaluator.js';
+import {
+  getConcatOperands,
+  RUNTIME_CONCAT_CONTEXT_MESSAGE,
+  RUNTIME_CONCAT_OPERAND_MESSAGE,
+} from '../runtime-concat.js';
 import type { ConstantMap } from '../types/constant-folding.js';
 import type { JsonValue } from '../types/eligius-ir.js';
+import { registerRuntimeConcat } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
 
@@ -169,6 +175,12 @@ export const transformExpression = (
       }
 
       case 'BinaryExpression': {
+        // Runtime string concatenation: "#" + slideId (runtime-concat.ts).
+        // Constant concatenations ("a" + "b", "v" + @VERSION) still fold below.
+        const concatOperands = getConcatOperands(expr);
+        if (concatOperands && !evaluateExpression(expr, constantsInScope(scope)).canEvaluate) {
+          return yield* transformRuntimeConcat(expr, concatOperands, scope);
+        }
         // Binary expression: 10 + 5
         // Transform the operands first so their own errors (unresolved
         // references, runtime negation, ...) surface at the innermost node.
@@ -226,6 +238,55 @@ export const transformExpression = (
           location: getSourceLocation(expr),
         });
     }
+  });
+
+/**
+ * Transform a runtime string concatenation into a placeholder for its result.
+ *
+ * Each operand is transformed on its own, so a non-string operation inside the
+ * chain (`"a" + (x * 2)`) reports its own error. Constant operands become
+ * strings at compile time with JavaScript's `+` semantics; runtime operands stay
+ * property chains for `concatenateStrings` to join (a runtime null/undefined
+ * becomes an empty string there, as in Array.join).
+ */
+const transformRuntimeConcat = (
+  expr: Expression,
+  operands: readonly Expression[],
+  scope: ScopeContext
+): Effect.Effect<JsonValue, TransformError> =>
+  Effect.gen(function* () {
+    const parts: JsonValue[] = [];
+    let previousIsConstant = false;
+    for (const operand of operands) {
+      const value = yield* transformExpression(operand, scope);
+      if (value !== null && typeof value === 'object') {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: RUNTIME_CONCAT_OPERAND_MESSAGE,
+          location: getSourceLocation(operand),
+        });
+      }
+      const constant = evaluateExpression(operand, constantsInScope(scope));
+      const part = constant.canEvaluate ? String(value) : value;
+      // Merge adjacent constant parts: ["#", "item-"] → ["#item-"]
+      if (constant.canEvaluate && previousIsConstant) {
+        parts[parts.length - 1] = `${parts[parts.length - 1]}${part}`;
+      } else {
+        parts.push(part);
+      }
+      previousIsConstant = constant.canEvaluate;
+    }
+
+    if (!scope.runtimeConcats) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidExpression' as const,
+        message: RUNTIME_CONCAT_CONTEXT_MESSAGE,
+        location: getSourceLocation(expr),
+      });
+    }
+    return registerRuntimeConcat(scope.runtimeConcats, parts);
   });
 
 /** Program and action-scoped constants visible to an expression (scoped ones win). */

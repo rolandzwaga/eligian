@@ -213,7 +213,16 @@ timeline "T" in ".container" using raf {
 
     const handler = ir.config.eventActions!.find(e => e.name === 'handler');
     expect(handler).toBeDefined();
-    expect(systemNames(handler?.startOperations ?? [])).toEqual(['requestAction', 'startAction']);
+    // The event argument is resolved by a setOperationData before startAction:
+    // startAction does not resolve the chains in actionOperationData itself
+    expect(systemNames(handler?.startOperations ?? [])).toEqual([
+      'requestAction',
+      'setOperationData',
+      'startAction',
+    ]);
+    expect(handler?.startOperations[1].operationData).toEqual({
+      properties: { actionOperationData: { selector: '$operationData.eventArgs.0' } },
+    });
     expect(requested(handler?.startOperations ?? [])).toEqual(['lf']);
     // The called action is emitted
     expect(actionNamed(ir, 'lf')).toBeDefined();

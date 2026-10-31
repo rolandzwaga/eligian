@@ -1,10 +1,17 @@
 # Eligian Language Specification
 
-**Version**: 1.7.0
-**Last Updated**: 2026-10-17
+**Version**: 1.8.0
+**Last Updated**: 2026-10-31
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.7.0):
+**Recent Changes** (v1.8.0):
+- Runtime string concatenation (Feature 046, section 7.4): `"#" + slideId` in operation and action
+  call arguments and action-level consts compiles to Eligius's `concatenateStrings`
+- Runtime values (parameters, variables, system properties, property chains) passed to an
+  operation that does not resolve property chains itself are resolved before it runs; they used
+  to arrive as the literal chain text (e.g. `setElementContent(label)` showed `$operationdata.label`)
+
+**Previous Changes** (v1.7.0):
 - `labels` import replaced by `locales` import (Feature 045); the `labels` keyword no longer exists
 - Locales JSON uses the Eligius 2.2 nested format keyed by locale code; compiles to `config.locales`
 - Locales import requires a `languages` block
@@ -1984,7 +1991,68 @@ compile-time constants (literals and `const` values). There is no implicit type 
 - An operator applied to a runtime value (parameter, variable, system property, property chain)
   is a compile error. Comparisons, `&&`, `||` and `!` on runtime values are supported only inside
   `if` conditions. Arithmetic on runtime values is not supported anywhere; use the `calc`
-  operation (its result is `$operationdata.calculationResult`).
+  operation (its result is `$operationdata.calculationResult`). The exception is string
+  concatenation, below.
+
+#### Runtime string concatenation
+
+`+` concatenates runtime values when it is a string concatenation: one of its operands is
+statically a string. That is a string literal, a parameter annotated `: string`, a `const` with a
+string value, or another string concatenation.
+
+```eligian
+action showSlide(slideId, duration: number) [
+  selectElement("#" + slideId)                  // "#intro"
+  setElementContent("Slide " + slideId + "!")   // any operation, any parameter
+  setStyle({ width: duration + "px" })          // inside object and array arguments
+]
+
+action highlight(prefix: string, id) [
+  selectElement(prefix + id)                    // a ': string' parameter makes it a concatenation
+]
+```
+
+- **Allowed in**: operation arguments, action call arguments (in actions and timelines) and
+  action-level `const` declarations, at any depth of object and array literals.
+- **Not allowed in**: `if` conditions, `for` collections, time expressions and program-level
+  constants. These are compile errors with an editor diagnostic.
+- **Evaluation**: left to right, as in JavaScript. `a + b + "px"` with untyped `a` and `b` is an
+  addition followed by a concatenation, and the addition is a compile error. Write
+  `"" + a + b + "px"` or annotate a parameter to concatenate both.
+- **Operands**: constants are converted to strings at compile time (`"v" + 1.5` is `"v1.5"`). A
+  runtime `null` or `undefined` becomes an empty string. Objects and arrays are compile errors.
+- **Constant concatenations** (`"#" + "box"`, `"v" + @VERSION`) still fold at compile time.
+
+**Compilation**: each concatenation becomes a `setOperationData` that resolves the parts and a
+`concatenateStrings` that joins them into `$operationdata.result`:
+
+```json
+{ "systemName": "setOperationData", "operationData": { "properties": { "strings": ["#", "$operationdata.slideId"] } } },
+{ "systemName": "concatenateStrings", "operationData": {} },
+{ "systemName": "selectElement", "operationData": { "selector": "$operationdata.result" } }
+```
+
+With several concatenations in one operation, each result is copied to a private key
+(`__eligianConcat0`, ...) that is removed after the operation. When the surrounding action uses
+`$operationdata.result` itself, its value is saved and restored around the concatenations.
+
+#### Runtime values in operation arguments
+
+Eligius resolves property chains only inside the operations that resolve their own inputs:
+`selectElement` (selector), `setStyle`, `createElement`, `calc`, `math`, `forEach`
+(collection), `broadcastEvent` (eventArgs), `setData`, `setOperationData` and `when`. For every
+other operation, an argument that contains a runtime value is resolved by a `setOperationData`
+emitted just before it:
+
+```eligian
+action show(label) [
+  selectElement("#box")
+  setElementContent(label)   // → setOperationData({ properties: { template: "$operationdata.label" } })
+]                            //   setElementContent()
+```
+
+An argument that forwards a parameter of the same name needs nothing extra, because Eligius
+already passes action parameters as operation data.
 
 ### 7.5 Unary Expressions
 
@@ -2755,6 +2823,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.8.0 | 2026-10-31 | **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
 | 1.7.0 | 2026-10-17 | **Feature 045 - Locales Import**: `labels` import replaced by `locales` (section 3.2.4); nested JSON format keyed by locale code, compiles to `config.locales`, requires a `languages` block; translation keys referenced via `LabelController`. **Feature 029 corrections**: event names are restricted to the 43 Eligius events (sections 5.5, 5.10); the previous event list contained non-existent events. Duplicate event handlers documented as warnings; noted that the compiler fails on any diagnostic. Keyword list and grammar summary updated. |
 | 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |

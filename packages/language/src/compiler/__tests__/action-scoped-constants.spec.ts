@@ -13,6 +13,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
+import { inputsOf } from './operation-inputs.js';
 
 describe('Action-Scoped Constant Folding', () => {
   let services: ReturnType<typeof createEligianServices>;
@@ -120,16 +121,18 @@ describe('Action-Scoped Constant Folding', () => {
     const result = await Effect.runPromise(transformAST(program));
 
     const action = result.config.actions[0];
-    const setVarOp = action.startOperations.find(op => op.systemName === 'setVariable');
-    const waitOp = action.startOperations.find(op => op.systemName === 'wait');
+    const ops = action.startOperations;
+    const setVarOp = ops.find(op => op.systemName === 'setVariable');
+    const waitOp = ops.find(op => op.systemName === 'wait');
 
     // Cannot evaluate because 'duration' is a parameter (runtime value)
     // So setVariable should still exist
     expect(setVarOp).toBeDefined();
     expect(setVarOp?.operationData?.name).toBe('ADJUSTED');
 
-    // Reference should still use $scope.variables
-    expect(waitOp?.operationData?.milliseconds).toContain('$scope.variables.ADJUSTED');
+    // Reference should still use $scope.variables (resolved by a preceding setOperationData,
+    // since wait does not resolve property chains itself)
+    expect(inputsOf(ops, waitOp).milliseconds).toBe('$scope.variables.ADJUSTED');
   });
 
   test('should handle block-scoped constants in if statement', async () => {
@@ -274,11 +277,11 @@ describe('Action-Scoped Constant Folding', () => {
       const setVarX = ops.find(
         op => op.systemName === 'setVariable' && op.operationData?.name === 'x'
       );
-      expect(setVarX?.operationData?.value).toBe('$operationdata.foo');
+      expect(inputsOf(ops, setVarX).value).toBe('$operationdata.foo');
 
       const contentOps = ops.filter(op => op.systemName === 'setElementContent');
       expect(contentOps).toHaveLength(2);
-      expect(contentOps[0].operationData?.template).toBe('$scope.variables.x');
+      expect(inputsOf(ops, contentOps[0]).template).toBe('$scope.variables.x');
     });
 
     test('derived const is not folded against the shadowed global', async () => {
@@ -290,10 +293,10 @@ describe('Action-Scoped Constant Folding', () => {
         op => op.systemName === 'setVariable' && op.operationData?.name === 'y'
       );
       expect(setVarY).toBeDefined();
-      expect(setVarY?.operationData?.value).not.toEqual([1, 10]);
+      expect(inputsOf(ops, setVarY).value).toEqual(['$scope.variables.x', 10]);
 
       const contentOps = ops.filter(op => op.systemName === 'setElementContent');
-      expect(contentOps[1].operationData?.template).toBe('$scope.variables.y');
+      expect(inputsOf(ops, contentOps[1]).template).toBe('$scope.variables.y');
     });
 
     test('a global const is still inlined in an action that does not shadow it', async () => {

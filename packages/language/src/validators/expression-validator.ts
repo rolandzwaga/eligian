@@ -5,6 +5,14 @@ import {
   evaluateExpression,
   runtimeOperatorMessage,
 } from '../compiler/expression-evaluator.js';
+import {
+  getConcatOperands,
+  isConcatenation,
+  isConcatRoot,
+  isInConcatContext,
+  RUNTIME_CONCAT_CONTEXT_MESSAGE,
+  RUNTIME_CONCAT_OPERAND_MESSAGE,
+} from '../compiler/runtime-concat.js';
 import type { ConstantMap } from '../compiler/types/constant-folding.js';
 import {
   type BinaryExpression,
@@ -47,6 +55,14 @@ export const RUNTIME_OPERATOR_CODE = 'runtime_operator_operand';
 export const INVALID_CONSTANT_CODE = 'invalid_constant_expression';
 
 /**
+ * Diagnostic codes for runtime string concatenation (`"#" + id`, compiler/runtime-concat.ts):
+ * used outside operation/action-call arguments and action-level consts, or with an object or
+ * array operand.
+ */
+export const RUNTIME_CONCAT_CONTEXT_CODE = 'runtime_concat_context';
+export const RUNTIME_CONCAT_OPERAND_CODE = 'runtime_concat_operand';
+
+/**
  * Diagnostic code for a reference, in the end block of an endable action or inline stagger
  * block, to a runtime (non-foldable) const of the start block.
  */
@@ -71,6 +87,8 @@ type OperatorExpression = BinaryExpression | UnaryExpression;
 interface Problem {
   message: string;
   code: string;
+  /** Node to report on, when not the operator expression itself. */
+  node?: AstNode;
 }
 
 /**
@@ -96,7 +114,7 @@ export class ExpressionValidator extends BaseValidator {
     if (operandsOf(node).some(hasProblemWithin)) return;
 
     accept('error', problem.message, {
-      node,
+      node: problem.node ?? node,
       data: { code: problem.code },
     });
   }
@@ -151,6 +169,9 @@ function operatorProblem(node: OperatorExpression): Problem | undefined {
   if (operands.length !== (isBinaryExpression(node) ? 2 : 1)) return undefined;
 
   const constness = combine(operands, new Set());
+  if (constness === 'runtime' && isConcatenation(node)) {
+    return concatenationProblem(node);
+  }
   if (constness === 'runtime') {
     if (isUnaryExpression(node) && node.op === '!') {
       return isInsideIfCondition(node)
@@ -170,6 +191,35 @@ function operatorProblem(node: OperatorExpression): Problem | undefined {
     return reason ? { message: reason, code: INVALID_CONSTANT_CODE } : undefined;
   }
   return undefined;
+}
+
+/**
+ * A runtime string concatenation is lowered by the compiler (transformers/runtime-values.ts),
+ * so it is valid where the compiler can place the extra operations. Like the compiler, which
+ * flattens a concatenation chain into its outermost `+`, only the root of a chain is checked.
+ */
+function concatenationProblem(node: BinaryExpression): Problem | undefined {
+  if (!isConcatRoot(node)) return undefined;
+  for (const operand of getConcatOperands(node) ?? []) {
+    if (isObjectOrArray(operand)) {
+      return {
+        message: RUNTIME_CONCAT_OPERAND_MESSAGE,
+        code: RUNTIME_CONCAT_OPERAND_CODE,
+        node: operand,
+      };
+    }
+  }
+  if (!isInConcatContext(node)) {
+    return { message: RUNTIME_CONCAT_CONTEXT_MESSAGE, code: RUNTIME_CONCAT_CONTEXT_CODE };
+  }
+  return undefined;
+}
+
+/** An object/array literal, or a constant whose value is one. */
+function isObjectOrArray(expr: Expression): boolean {
+  if (expr.$type === 'ObjectLiteral' || expr.$type === 'ArrayLiteral') return true;
+  const result = evaluateExpression(expr, constantsReferencedBy(expr, new Set()));
+  return result.canEvaluate && result.value !== null && typeof result.value === 'object';
 }
 
 /**

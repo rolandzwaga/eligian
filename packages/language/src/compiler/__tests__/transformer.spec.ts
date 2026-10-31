@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
+import { inputsOf } from './operation-inputs.js';
 
 describe('AST Transformer', () => {
   let services: ReturnType<typeof createEligianServices>;
@@ -264,9 +265,13 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const [select, setVar] = result.config.actions[0].startOperations;
-      expect(select.operationData?.selector).toBe('$globaldata.selector');
-      expect(setVar.operationData?.value).toBe('$scope.variables.mode');
+      const ops = result.config.actions[0].startOperations;
+      const select = ops.find(op => op.systemName === 'selectElement');
+      const setVar = ops.find(op => op.systemName === 'setVariable');
+      // selectElement resolves its selector itself; setVariable receives the
+      // value through a preceding setOperationData that resolves it
+      expect(select?.operationData?.selector).toBe('$globaldata.selector');
+      expect(inputsOf(ops, setVar).value).toBe('$scope.variables.mode');
     });
 
     test('should keep action parameters passed under a different operation parameter name', async () => {
@@ -315,7 +320,7 @@ describe('AST Transformer', () => {
       );
       // Action-level variables stay scope variables
       expect(
-        ops.filter(op => op.systemName === 'setVariable').slice(-1)[0]?.operationData?.value
+        inputsOf(ops, ops.filter(op => op.systemName === 'setVariable').slice(-1)[0]).value
       ).toBe('$scope.variables.local');
     });
 
@@ -337,7 +342,7 @@ describe('AST Transformer', () => {
       // @@<name>.<prop> compiles to $scope.<name>.<prop> (property access on
       // system scope properties — incl. object loop items).
       expect((select?.operationData as any)?.selector).toBe('$scope.currentItem.sel');
-      expect((add?.operationData as any)?.className).toBe('$scope.currentItem.cls');
+      expect(inputsOf(ops, add).className).toBe('$scope.currentItem.cls');
     });
 
     // C5 regression: a direct property-chain reference used as a `for` collection
@@ -1123,8 +1128,9 @@ describe('AST Transformer', () => {
       // Eligius provides action parameters via startAction's actionOperationData.
       expect(selectOp?.operationData).toBeUndefined(); // selector → selector
 
-      // animate reads 'animationDuration', not 'duration', so the reference is kept
-      expect(animateOp?.operationData).toEqual({
+      // animate reads 'animationDuration', not 'duration', so the reference is kept.
+      // animate does not resolve property chains, so a preceding setOperationData does.
+      expect(inputsOf(action.startOperations, animateOp)).toEqual({
         animationProperties: { opacity: 1 },
         animationDuration: '$operationdata.duration',
       });
@@ -1156,8 +1162,11 @@ describe('AST Transformer', () => {
         className: 'my-class',
       });
 
-      // wait reads 'milliseconds', so the 'duration' reference is kept
-      expect(waitOp?.operationData).toEqual({ milliseconds: '$operationdata.duration' });
+      // wait reads 'milliseconds', so the 'duration' reference is kept (and resolved by a
+      // preceding setOperationData, since wait does not resolve property chains)
+      expect(inputsOf(action.startOperations, waitOp)).toEqual({
+        milliseconds: '$operationdata.duration',
+      });
     });
   });
 

@@ -12,6 +12,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
 import { transformAST } from '../ast-transformer.js';
 import type { IEngineConfiguration } from '../operations/types.js';
+import { inputsOf, userOperations } from './operation-inputs.js';
 
 describe('Event Action Integration Tests (T012)', () => {
   let ctx: TestContext;
@@ -48,15 +49,15 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(eventAction.eventTopic).toBeUndefined();
     expect(eventAction).toHaveProperty('startOperations');
     expect(Array.isArray(eventAction.startOperations)).toBe(true);
-    expect(eventAction.startOperations).toHaveLength(2);
+    expect(userOperations(eventAction.startOperations)).toHaveLength(2);
 
     // Verify UUID v4 format
     const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     expect(eventAction.id).toMatch(uuidV4Regex);
 
     // Verify operations have correct names
-    expect(eventAction.startOperations[0].systemName).toBe('selectElement');
-    expect(eventAction.startOperations[1].systemName).toBe('setElementContent');
+    expect(userOperations(eventAction.startOperations)[0].systemName).toBe('selectElement');
+    expect(userOperations(eventAction.startOperations)[1].systemName).toBe('setElementContent');
 
     // Verify no endOperations property
     expect(eventAction).not.toHaveProperty('endOperations');
@@ -82,19 +83,19 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions![0].name).toBe('HandleLogin');
     expect(config.eventActions![0].eventName).toBe('user-login');
     expect(config.eventActions![0].eventTopic).toBeUndefined();
-    expect(config.eventActions![0].startOperations).toHaveLength(3);
+    expect(userOperations(config.eventActions![0].startOperations)).toHaveLength(3);
 
     // Second event action: HandleLogout
     expect(config.eventActions![1].name).toBe('HandleLogout');
     expect(config.eventActions![1].eventName).toBe('user-logout');
     expect(config.eventActions![1].eventTopic).toBeUndefined();
-    expect(config.eventActions![1].startOperations).toHaveLength(3);
+    expect(userOperations(config.eventActions![1].startOperations)).toHaveLength(3);
 
     // Third event action: SyncData
     expect(config.eventActions![2].name).toBe('SyncData');
     expect(config.eventActions![2].eventName).toBe('data-sync');
     expect(config.eventActions![2].eventTopic).toBeUndefined();
-    expect(config.eventActions![2].startOperations).toHaveLength(2);
+    expect(userOperations(config.eventActions![2].startOperations)).toHaveLength(2);
   });
 
   test('should compile DSL file with zero-parameter event action', async () => {
@@ -115,7 +116,7 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions![0].name).toBe('Initialize');
     expect(config.eventActions![0].eventName).toBe('app-ready');
     expect(config.eventActions![0].eventTopic).toBeUndefined();
-    expect(config.eventActions![0].startOperations).toHaveLength(2);
+    expect(userOperations(config.eventActions![0].startOperations)).toHaveLength(2);
   });
 
   test('should compile DSL file with multiple-parameter event action', async () => {
@@ -136,24 +137,25 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions![0].name).toBe('UpdateUserDisplay');
     expect(config.eventActions![0].eventName).toBe('user-updated');
     expect(config.eventActions![0].eventTopic).toBeUndefined();
-    expect(config.eventActions![0].startOperations).toHaveLength(6);
+    expect(userOperations(config.eventActions![0].startOperations)).toHaveLength(6);
 
     // T022: Verify parameter mapping to eventArgs indices
     // Fixture has: UpdateUserDisplay(userId, userName, userRole)
     // Operations: selectElement(".user-id"), setElementContent(userId), selectElement(".user-name"), setElementContent(userName), ...
-    const ops = config.eventActions![0].startOperations;
+    const all = config.eventActions![0].startOperations;
+    const ops = userOperations(all);
 
     // First param (userId) → eventArgs[0]
     expect(ops[1].systemName).toBe('setElementContent');
-    expect(ops[1].operationData).toHaveProperty('template', '$operationData.eventArgs.0');
+    expect(inputsOf(all, ops[1]).template).toBe('$operationData.eventArgs.0');
 
     // Second param (userName) → eventArgs[1]
     expect(ops[3].systemName).toBe('setElementContent');
-    expect(ops[3].operationData).toHaveProperty('template', '$operationData.eventArgs.1');
+    expect(inputsOf(all, ops[3]).template).toBe('$operationData.eventArgs.1');
 
     // Third param (userRole) → eventArgs[2]
     expect(ops[5].systemName).toBe('setElementContent');
-    expect(ops[5].operationData).toHaveProperty('template', '$operationData.eventArgs.2');
+    expect(inputsOf(all, ops[5]).template).toBe('$operationData.eventArgs.2');
   });
 
   test('should compile DSL file with event actions using topics (T040)', async () => {
@@ -176,13 +178,13 @@ describe('Event Action Integration Tests (T012)', () => {
     expect(config.eventActions![0].name).toBe('HandleNavClick');
     expect(config.eventActions![0].eventName).toBe('click');
     expect(config.eventActions![0].eventTopic).toBe('navigation');
-    expect(config.eventActions![0].startOperations).toHaveLength(2);
+    expect(userOperations(config.eventActions![0].startOperations)).toHaveLength(2);
 
     // Second event action: HandleFormClick with topic "form"
     expect(config.eventActions![1].name).toBe('HandleFormClick');
     expect(config.eventActions![1].eventName).toBe('click');
     expect(config.eventActions![1].eventTopic).toBe('form');
-    expect(config.eventActions![1].startOperations).toHaveLength(2);
+    expect(userOperations(config.eventActions![1].startOperations)).toHaveLength(2);
   });
 
   test('should compile event action with topic and include eventTopic in JSON (T040)', async () => {

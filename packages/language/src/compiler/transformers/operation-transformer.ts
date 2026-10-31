@@ -37,6 +37,7 @@ import {
   resolveNavPosition,
   syntheticNavActionName,
 } from './navigate-operations.js';
+import { withRuntimeValueLowering } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
 
@@ -209,6 +210,21 @@ export const transformOperationStatement = (
   program?: Program,
   allActions?: ActionDefinition[]
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
+  // Operation calls, action calls and action-level consts may hold runtime
+  // concatenations and forwarded runtime values; see runtime-values.ts.
+  stmt.$type === 'OperationCall' || stmt.$type === 'VariableDeclaration'
+    ? withRuntimeValueLowering(stmt, scope, statementScope =>
+        transformStatement(stmt, statementScope, isEndOperation, program, allActions)
+      )
+    : transformStatement(stmt, scope, isEndOperation, program, allActions);
+
+const transformStatement = (
+  stmt: OperationStatement,
+  scope: ScopeContext,
+  isEndOperation: boolean,
+  program: Program | undefined,
+  allActions: ActionDefinition[] | undefined
+): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* () {
     switch (stmt.$type) {
       case 'OperationCall': {
@@ -324,6 +340,14 @@ export const transformOperationStatement = (
             for (let i = 0; i < parameters.length; i++) {
               const paramName = parameters[i].name;
               const argValue = yield* transformExpression(stmt.args[i], scope);
+              // Inside an action body, an argument that forwards the caller's
+              // parameter of the same name is omitted: startAction merges the
+              // caller's operation data into the called action's, so it already
+              // has that value. (Passing the chain would overwrite it with the
+              // literal '$operationdata.<name>' string.)
+              if (scope.inActionBody && argValue === `$operationdata.${paramName}`) {
+                continue;
+              }
               actionOperationData[paramName] = argValue;
             }
           }

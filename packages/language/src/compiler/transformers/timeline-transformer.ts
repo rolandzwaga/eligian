@@ -34,6 +34,7 @@ import {
   transformOperationStatement,
   validateOperationSequence,
 } from './operation-transformer.js';
+import { createRuntimeConcatCollector, lowerNodeOperations } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
 import { evaluateTimeExpression, transformTimeExpression } from './time-transformer.js';
@@ -190,6 +191,8 @@ const transformSequenceBlock = (
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
 
       // Transform action arguments to actionOperationData
+      const concats = createRuntimeConcatCollector();
+      const argScope = { ...createEmptyScope(programConstants), runtimeConcats: concats };
       let actionOperationData: Record<string, JsonValue> | undefined;
       if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
         const parameters = actionRef.parameters || [];
@@ -207,23 +210,26 @@ const transformSequenceBlock = (
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* transformExpression(args[i], createEmptyScope(programConstants));
+          const argValue = yield* transformExpression(args[i], argScope);
           actionOperationData[paramName] = argValue;
         }
       }
 
       // Build start and end operations for this sequence item
       const itemLocation = getSourceLocation(item);
-      const startOperations: OperationConfigIR[] = buildActionCallOperations(
-        actionName,
-        actionOperationData,
-        itemLocation,
-        'startAction'
+      const startOperations: OperationConfigIR[] = lowerNodeOperations(
+        actionCall,
+        concats,
+        buildActionCallOperations(actionName, actionOperationData, itemLocation, 'startAction')
       );
 
       // End operations: Only generate for endable actions
       const endOperations: OperationConfigIR[] = isEndableAction
-        ? buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
+        ? lowerNodeOperations(
+            actionCall,
+            concats,
+            buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
+          )
         : [];
 
       // Create timeline action for this sequence item
@@ -309,6 +315,7 @@ const transformStaggerBlock = (
         const endTime = startTime + duration;
 
         // Build actionOperationData with the item as first argument
+        const concats = createRuntimeConcatCollector();
         let actionOperationData: Record<string, JsonValue> | undefined;
         if (actionRef) {
           const parameters = actionRef.parameters || [];
@@ -323,10 +330,10 @@ const transformStaggerBlock = (
             const args = actionCall.args || [];
             for (let j = 0; j < args.length && j + 1 < parameters.length; j++) {
               const paramName = parameters[j + 1].name;
-              const argValue = yield* transformExpression(
-                args[j],
-                createEmptyScope(programConstants)
-              );
+              const argValue = yield* transformExpression(args[j], {
+                ...createEmptyScope(programConstants),
+                runtimeConcats: concats,
+              });
               actionOperationData[paramName] = argValue;
             }
           }
@@ -334,16 +341,24 @@ const transformStaggerBlock = (
 
         // Build start and end operations
         const staggerLocation = getSourceLocation(stagger);
-        const startOperations: OperationConfigIR[] = buildActionCallOperations(
-          actionName,
-          actionOperationData,
-          staggerLocation,
-          'startAction'
+        const startOperations: OperationConfigIR[] = lowerNodeOperations(
+          actionCall,
+          concats,
+          buildActionCallOperations(actionName, actionOperationData, staggerLocation, 'startAction')
         );
 
         // End operations: Only generate for endable actions
         const endOperations: OperationConfigIR[] = isEndableAction
-          ? buildActionCallOperations(actionName, actionOperationData, staggerLocation, 'endAction')
+          ? lowerNodeOperations(
+              actionCall,
+              concats,
+              buildActionCallOperations(
+                actionName,
+                actionOperationData,
+                staggerLocation,
+                'endAction'
+              )
+            )
           : [];
 
         actions.push({
@@ -593,6 +608,7 @@ const transformTimedEvent = (
       const isEndableAction = actionDef.$type === 'EndableActionDefinition';
 
       // Transform arguments to actionOperationData
+      const concats = createRuntimeConcatCollector();
       let actionOperationData: Record<string, JsonValue> | undefined;
       if (action.args && action.args.length > 0) {
         const parameters = actionDef.parameters || [];
@@ -609,10 +625,10 @@ const transformTimedEvent = (
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* transformExpression(
-            action.args[i],
-            createEmptyScope(programConstants)
-          );
+          const argValue = yield* transformExpression(action.args[i], {
+            ...createEmptyScope(programConstants),
+            runtimeConcats: concats,
+          });
           actionOperationData[paramName] = argValue;
         }
       }
@@ -621,13 +637,21 @@ const transformTimedEvent = (
       // endable actions)
       const actionLocation = getSourceLocation(action);
       startOperations.push(
-        ...buildActionCallOperations(callName, actionOperationData, actionLocation, 'startAction')
+        ...lowerNodeOperations(
+          action,
+          concats,
+          buildActionCallOperations(callName, actionOperationData, actionLocation, 'startAction')
+        )
       );
 
       // End operations: Only for endable actions
       if (isEndableAction) {
         endOperations.push(
-          ...buildActionCallOperations(callName, actionOperationData, actionLocation, 'endAction')
+          ...lowerNodeOperations(
+            action,
+            concats,
+            buildActionCallOperations(callName, actionOperationData, actionLocation, 'endAction')
+          )
         );
       }
     } else if (action.$type === 'ForStatement') {
