@@ -26,6 +26,7 @@ import { EligianValidator, registerValidationChecks } from './eligian-validator.
 import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
 import { HTMLRegistryService } from './html/html-registry.js';
+import { EligianCodeLensProvider } from './lsp/eligian-code-lens-provider.js';
 import { EligianInlayHintProvider } from './lsp/eligian-inlay-hint-provider.js';
 import { EligianSignatureHelpProvider } from './lsp/eligian-signature-help-provider.js';
 import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
@@ -44,6 +45,7 @@ export type EligianAddedServices = {
     CodeActionProvider: EligianCodeActionProvider;
     SignatureHelp: EligianSignatureHelpProvider;
     InlayHintProvider: EligianInlayHintProvider;
+    CodeLensProvider: EligianCodeLensProvider;
   };
   css: {
     CSSRegistry: CSSRegistryService;
@@ -84,6 +86,7 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       CompletionProvider: services => new EligianCompletionProvider(services),
       SignatureHelp: services => new EligianSignatureHelpProvider(services),
       InlayHintProvider: services => new EligianInlayHintProvider(services),
+      CodeLensProvider: services => new EligianCodeLensProvider(services),
       CodeActionProvider: services => new EligianCodeActionProvider(services),
       Formatter: services => new EligianFormatter(services),
     },

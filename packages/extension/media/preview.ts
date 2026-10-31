@@ -20,15 +20,29 @@ import {
   type IEngineFactoryResult,
   type IEventbus,
   type IEventbusListener,
+  type TLanguageCode,
 } from 'eligius';
 import $ from 'jquery';
 import { createEngineLifecycleQueue } from './engine-lifecycle-queue.js';
 import {
   capturePlayhead,
+  jumpTo,
   keepPositionEnabled,
+  type PlayheadJump,
   restorePlayhead,
   withKeepPosition,
 } from './playhead.js';
+import {
+  fillPicker,
+  initialLanguage,
+  languageOptions,
+  pickedLanguage,
+  showPlayhead,
+  timelineOptions,
+  timelinesOf,
+  timeReadout,
+  withPickedLanguage,
+} from './preview-controls.js';
 import {
   applyCSSLoad,
   applyCSSReload,
@@ -70,18 +84,32 @@ const eventbus: IEventbus = new Eventbus();
 // listeners (which would multiply every state update / postMessage per re-init).
 let timelineListenerRemovers: Array<() => void> = [];
 
+// Scrubber, timeline and language pickers (audit idea #5)
+/** The configuration of the running engine */
+let currentConfig: IEngineConfiguration | null = null;
+/** Removers of the listeners on the current engine (time, duration, timeline changes) */
+let engineListenerRemovers: Array<() => void> = [];
+/** A jump requested while no engine was ready (e.g. "Preview from 22s" opening the preview) */
+let pendingJump: PlayheadJump | undefined;
+/** True while an engine is being (re)created: jumps wait for it */
+let initializing = false;
+/** True while the user drags the scrubber: time updates do not move it */
+let scrubbing = false;
+
 /**
  * Initialize the Eligius engine with the given configuration.
  *
  * Timeline container elements are automatically created by Eligius via the layoutTemplate.
  */
 async function initializeEngine(config: IEngineConfiguration): Promise<void> {
+  initializing = true;
   try {
     // Keep the playhead across recompiles (idea #8): read it before teardown
     const snapshot = keepPositionEnabled(vscode.getState()) ? capturePlayhead(engine) : undefined;
     setPlayheadStatus(undefined);
 
     // Clean up previous engine if exists (Eligius 2.0.0: use factoryResult.destroy())
+    removeEngineListeners();
     if (factoryResult) {
       await factoryResult.destroy();
       factoryResult = null;
@@ -107,14 +135,28 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     // Set up timeline event listeners for UI state updates
     setupTimelineEventListeners();
 
-    // Show playback controls
+    // Show playback controls, the scrubber and the pickers
     showControls();
+    currentConfig = config;
+    bindEngineListeners(engine);
+    fillPicker(
+      byId<HTMLSelectElement>('timeline-select'),
+      timelineOptions(config),
+      engine.currentTimelineUri
+    );
 
-    // Back to the same timeline and position, playing if it was
-    if (snapshot) {
-      const timelineUris = (config.timelines ?? []).map(timeline => timeline.uri);
-      setPlayheadStatus(await restorePlayhead(engine, snapshot, timelineUris));
+    // A requested jump wins over keeping the old position; otherwise back to
+    // the same timeline and position, playing if it was
+    const timelines = timelinesOf(config);
+    const jump = pendingJump;
+    pendingJump = undefined;
+    if (jump) {
+      setPlayheadStatus(await jumpTo(engine, jump, timelines));
+    } else if (snapshot) {
+      setPlayheadStatus(await restorePlayhead(engine, snapshot, timelines));
     }
+    applyLanguage(config);
+    refreshPlayhead();
 
     // Scroll timelines: can the container actually scroll in the rendered layout?
     reportScrollContainer(config);
@@ -141,6 +183,73 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
       type: 'initialized',
       payload: { success: false },
     });
+  } finally {
+    initializing = false;
+  }
+}
+
+const byId = <T extends HTMLElement = HTMLElement>(id: string): T =>
+  document.getElementById(id) as T;
+
+/** Keep the scrubber, readout and timeline picker in step with the engine. */
+function bindEngineListeners(current: IEligiusEngine): void {
+  removeEngineListeners();
+  engineListenerRemovers = [
+    current.on('time', position => {
+      if (!scrubbing) refreshPlayhead(position);
+    }),
+    current.on('duration', () => refreshPlayhead()),
+    current.on('seekComplete', position => refreshPlayhead(position)),
+    current.on('timelineChange', uri => {
+      byId<HTMLSelectElement>('timeline-select').value = uri;
+      refreshPlayhead();
+    }),
+  ];
+}
+
+function removeEngineListeners(): void {
+  for (const remove of engineListenerRemovers) {
+    remove();
+  }
+  engineListenerRemovers = [];
+}
+
+/** Show the engine's position (or `position`) on the scrubber and readout. */
+function refreshPlayhead(position = engine?.position ?? 0): void {
+  const scrubber = byId<HTMLInputElement>('scrubber');
+  const readout = byId('time-readout');
+  if (scrubber && readout) showPlayhead(scrubber, readout, position, engine?.duration);
+}
+
+/**
+ * Go to a timeline and position: now when an engine is ready, else as soon as
+ * the next one is (the preview may still be compiling).
+ */
+async function requestJump(jump: PlayheadJump): Promise<void> {
+  if (!engine || initializing || !currentConfig) {
+    pendingJump = jump;
+    return;
+  }
+  setPlayheadStatus(await jumpTo(engine, jump, timelinesOf(currentConfig)));
+  refreshPlayhead();
+}
+
+/** Fill the language picker and switch to the language picked before, if any. */
+function applyLanguage(config: IEngineConfiguration): void {
+  const language = initialLanguage(config, pickedLanguage(vscode.getState()));
+  fillPicker(byId<HTMLSelectElement>('language-select'), languageOptions(config), language);
+  if (language && language !== config.language) {
+    eventbus.broadcast('language-change', [language as TLanguageCode]);
+  }
+}
+
+/** Switch the preview to `language` and remember it across recompiles. */
+function pickLanguage(language: string): void {
+  vscode.setState(withPickedLanguage(vscode.getState(), language));
+  const select = byId<HTMLSelectElement>('language-select');
+  if (select) select.value = language;
+  if (engine && !initializing) {
+    eventbus.broadcast('language-change', [language as TLanguageCode]);
   }
 }
 
@@ -150,6 +259,8 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
  * Implementation is idempotent per FR-007 - safe to call multiple times.
  */
 async function destroyEngine(): Promise<void> {
+  removeEngineListeners();
+  currentConfig = null;
   if (factoryResult) {
     try {
       await factoryResult.destroy();
@@ -412,6 +523,38 @@ window.addEventListener('message', async event => {
       await engineQueue.destroy();
       break;
 
+    // Scrubbing, timelines and languages (audit idea #5)
+    case 'previewAt':
+      // "▶ Preview from 22s": go there and play
+      await requestJump({
+        timelineUri: message.payload.timelineUri,
+        position: message.payload.position,
+        play: true,
+      });
+      break;
+
+    case 'seek':
+      if (engine) {
+        await requestJump({
+          timelineUri: engine.currentTimelineUri,
+          position: message.payload.position,
+          play: false,
+        });
+      }
+      break;
+
+    case 'switchTimeline':
+      await requestJump({
+        timelineUri: message.payload.uri,
+        position: message.payload.position ?? 0,
+        play: engine?.playState === 'playing',
+      });
+      break;
+
+    case 'setLanguage':
+      pickLanguage(message.payload.language);
+      break;
+
     // CSS injection and hot-reload (Feature 011)
     case 'css-load': {
       const { cssId, content, loadOrder } = message.payload;
@@ -614,6 +757,45 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('error-container')!.style.display = 'none';
     document.getElementById('loading')!.style.display = 'block';
   });
+});
+
+// Scrubber and pickers (audit idea #5), delegated so they work on whatever
+// elements the document holds
+document.addEventListener('input', event => {
+  const target = event.target as HTMLInputElement | null;
+  if (target?.id !== 'scrubber') return;
+  // Show the dragged position; time updates leave the scrubber alone meanwhile
+  scrubbing = true;
+  byId('time-readout').textContent = timeReadout(Number(target.value), engine?.duration);
+});
+
+document.addEventListener('change', event => {
+  const target = event.target as HTMLInputElement | HTMLSelectElement | null;
+  switch (target?.id) {
+    case 'scrubber':
+      // Seek on release
+      scrubbing = false;
+      if (engine) {
+        void requestJump({
+          timelineUri: engine.currentTimelineUri,
+          position: Number(target.value),
+          play: false,
+        });
+      }
+      break;
+    case 'timeline-select':
+      // Start of the picked timeline, playing if it was
+      void requestJump({
+        timelineUri: target.value,
+        position: 0,
+        play: engine?.playState === 'playing',
+      });
+      break;
+    case 'language-select':
+      // Like a language switch in the presentation: Eligius' 'language-change'
+      pickLanguage(target.value);
+      break;
+  }
 });
 
 // Send ready message to extension

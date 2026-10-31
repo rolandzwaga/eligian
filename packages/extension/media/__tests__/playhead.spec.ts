@@ -4,6 +4,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
   capturePlayhead,
+  jumpTo,
   KEEP_POSITION_STATE_KEY,
   keepPositionEnabled,
   type PlayheadEngine,
@@ -24,6 +25,9 @@ function fakeEngine(state: Partial<PlayheadEngine> = {}) {
   };
   return engine;
 }
+
+/** Timelines of a configuration, with optional compiled durations. */
+const timelines = (...uris: string[]) => uris.map(uri => ({ uri }));
 
 describe('capturePlayhead', () => {
   test('records the timeline, position and whether it was playing', () => {
@@ -52,7 +56,7 @@ describe('restorePlayhead', () => {
     const status = await restorePlayhead(
       engine,
       { timelineUri: 'intro', position: 31, playing: true },
-      ['intro', 'outro']
+      timelines('intro', 'outro')
     );
 
     expect(status).toBeUndefined();
@@ -64,10 +68,11 @@ describe('restorePlayhead', () => {
   test('switches to another timeline at the old position and stays paused', async () => {
     const engine = fakeEngine();
 
-    await restorePlayhead(engine, { timelineUri: 'outro', position: 5, playing: false }, [
-      'intro',
-      'outro',
-    ]);
+    await restorePlayhead(
+      engine,
+      { timelineUri: 'outro', position: 5, playing: false },
+      timelines('intro', 'outro')
+    );
 
     expect(engine.switchTimeline).toHaveBeenCalledWith('outro', 5);
     expect(engine.start).not.toHaveBeenCalled();
@@ -76,9 +81,11 @@ describe('restorePlayhead', () => {
   test('clamps the position to the new duration', async () => {
     const engine = fakeEngine({ duration: 20 });
 
-    await restorePlayhead(engine, { timelineUri: 'intro', position: 31, playing: false }, [
-      'intro',
-    ]);
+    await restorePlayhead(
+      engine,
+      { timelineUri: 'intro', position: 31, playing: false },
+      timelines('intro')
+    );
 
     expect(engine.seek).toHaveBeenCalledWith(20);
   });
@@ -89,7 +96,7 @@ describe('restorePlayhead', () => {
     const status = await restorePlayhead(
       engine,
       { timelineUri: 'removed', position: 10, playing: true },
-      ['intro']
+      timelines('intro')
     );
 
     expect(status).toBe("Timeline 'removed' no longer exists: showing 'intro' from the start");
@@ -104,7 +111,7 @@ describe('restorePlayhead', () => {
     const status = await restorePlayhead(
       engine,
       { timelineUri: 'intro', position: 3, playing: true },
-      ['intro']
+      timelines('intro')
     );
 
     expect(status).toBe('Kept position 3.0s, but playback could not resume (autoplay blocked)');
@@ -117,10 +124,57 @@ describe('restorePlayhead', () => {
     const status = await restorePlayhead(
       engine,
       { timelineUri: 'intro', position: 3, playing: true },
-      ['intro']
+      timelines('intro')
     );
 
     expect(status).toContain('Could not restore the position (not seekable)');
+    expect(engine.start).not.toHaveBeenCalled();
+  });
+});
+
+describe('jumpTo (scrubber, timeline picker, Preview from here)', () => {
+  test('seeks on the current timeline, also back to 0s, and starts playback', async () => {
+    const engine = fakeEngine({ position: 12 });
+
+    expect(
+      await jumpTo(engine, { timelineUri: 'intro', position: 0, play: true }, timelines('intro'))
+    ).toBeUndefined();
+
+    expect(engine.seek).toHaveBeenCalledWith(0);
+    expect(engine.start).toHaveBeenCalled();
+  });
+
+  test('switches timeline, clamped to the compiled duration of that timeline', async () => {
+    const engine = fakeEngine({ duration: 60 });
+
+    await jumpTo(engine, { timelineUri: 'outro', position: 45, play: false }, [
+      { uri: 'intro', duration: 60 },
+      { uri: 'outro', duration: 30 },
+    ]);
+
+    expect(engine.switchTimeline).toHaveBeenCalledWith('outro', 30);
+    expect(engine.start).not.toHaveBeenCalled();
+  });
+
+  test('does not restart a timeline that is already playing', async () => {
+    const engine = fakeEngine({ playState: 'playing', position: 5 });
+
+    await jumpTo(engine, { timelineUri: 'intro', position: 20, play: true }, timelines('intro'));
+
+    expect(engine.seek).toHaveBeenCalledWith(20);
+    expect(engine.start).not.toHaveBeenCalled();
+  });
+
+  test('reports an unknown timeline and a failed seek', async () => {
+    const engine = fakeEngine();
+    expect(
+      await jumpTo(engine, { timelineUri: 'gone', position: 3, play: true }, timelines('intro'))
+    ).toBe("Timeline 'gone' is not in the preview: compile the file to update it");
+
+    engine.seek.mockRejectedValueOnce(new Error('not seekable'));
+    expect(
+      await jumpTo(engine, { timelineUri: 'intro', position: 3, play: true }, timelines('intro'))
+    ).toBe('Could not go to 3.0s (not seekable)');
     expect(engine.start).not.toHaveBeenCalled();
   });
 });

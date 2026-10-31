@@ -41,6 +41,11 @@
     "configuration": {
       "title": "Eligian",
       "properties": {
+        "eligian.codeLens.preview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show '▶ Preview' and '▶ Preview from 22s' above timelines, timed events, sequence items and stagger blocks: opens the preview there and plays."
+        },
         "eligian.inlayHints.parameterNames": {
           "type": "string",
           "enum": [
@@ -91,6 +96,11 @@
         "icon": "$(preview)"
       },
       {
+        "command": "eligian.previewAt",
+        "title": "Eligian: Preview From Time",
+        "category": "Eligian"
+      },
+      {
         "command": "eligian.openLabelEditor",
         "title": "Eligian: Edit Locales",
         "category": "Eligian",
@@ -116,6 +126,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "eligian.previewAt",
+          "when": "false"
+        },
         {
           "command": "eligian.compile",
           "when": "editorLangId == eligian"

@@ -69,6 +69,14 @@ export class PreviewPanel {
   private compileSeq = 0;
   /** Set by the webview's first 'ready'; any later 'ready' is a reload. */
   private webviewLoadedOnce = false;
+  /**
+   * Compiled timeline uri → the uri in the config the webview runs, from the
+   * latest successful compile (MediaResolver rewrites video/audio sources to
+   * webview URIs). Undefined until the first successful compile.
+   */
+  private timelineUris: Map<string, string> | undefined;
+  /** A "Preview from here" request waiting for the first successful compile */
+  private pendingPreviewAt: { timelineUri: string; seconds: number } | undefined;
 
   /**
    * Initialize the static diagnostics collection (called once per extension activation).
@@ -235,6 +243,19 @@ export class PreviewPanel {
   }
 
   /**
+   * Show the timeline with compiled uri `timelineUri` from `seconds` and play
+   * ("▶ Preview from 22s", audit idea #5). Before the first successful compile
+   * the request waits for it.
+   */
+  public previewAt(timelineUri: string, seconds: number): void {
+    if (!this.timelineUris) {
+      this.pendingPreviewAt = { timelineUri, seconds };
+      return;
+    }
+    void this.engineService.previewAt(this.timelineUris.get(timelineUri) ?? timelineUri, seconds);
+  }
+
+  /**
    * Register a callback to be invoked when the panel is disposed.
    *
    * @param callback - Function to call on disposal
@@ -380,6 +401,21 @@ export class PreviewPanel {
         await this.engineService.initialize(resolvedConfig);
         if (isStale()) {
           return;
+        }
+
+        // Map compiled timeline uris to the resolved ones, then send a waiting
+        // "Preview from here" (the webview applies it once the engine is up)
+        const resolvedTimelines = resolvedConfig.timelines ?? [];
+        this.timelineUris = new Map(
+          (result.config.timelines ?? []).map((timeline, index) => [
+            timeline.uri,
+            resolvedTimelines[index]?.uri ?? timeline.uri,
+          ])
+        );
+        const pending = this.pendingPreviewAt;
+        this.pendingPreviewAt = undefined;
+        if (pending) {
+          this.previewAt(pending.timelineUri, pending.seconds);
         }
 
         // Replace the injected CSS with exactly this compile's set: stylesheets

@@ -13,7 +13,7 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { disposeCompilerOutputChannel, registerCompileCommand } from './commands/compile.js';
 import { registerGenerateJSDocCommand, registerJSDocAutoCompletion } from './commands/jsdoc.js';
 import { registerOpenLocaleEditorCommand } from './commands/locale.js';
-import { registerPreviewCommand } from './commands/preview.js';
+import { registerPreviewAtCommand, registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
 import { HTMLWatcherManager } from './html-watcher.js';
@@ -109,6 +109,7 @@ function registerClientIndependentFeatures(context: vscode.ExtensionContext): vo
 
   // Register preview command
   context.subscriptions.push(registerPreviewCommand(context));
+  context.subscriptions.push(registerPreviewAtCommand(context));
 
   // B48: tear down the lazily-created PreviewManager singleton on deactivation
   // (it owns all open preview panels and an active-editor listener).

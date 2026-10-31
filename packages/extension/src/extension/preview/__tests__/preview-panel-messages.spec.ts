@@ -378,3 +378,40 @@ describe("PreviewPanel 'scrollContainer' (Feature 049)", () => {
     await vi.waitFor(() => expect(warnings()).toEqual([]));
   });
 });
+
+describe('PreviewPanel.previewAt (audit idea #5)', () => {
+  test('waits for the first compile, then sends the jump with the resolved timeline uri', async () => {
+    fs.writeFileSync(path.join(tmp, 'clip.mp4'), '');
+    h.compileResults.push({
+      success: true,
+      config: {
+        id: 'cfg',
+        timelines: [
+          { uri: 'main', type: 'animation' },
+          { uri: './clip.mp4', type: 'mediaplayer' },
+        ],
+      },
+      errors: [],
+      timestamp: 0,
+    });
+    const opened = openPanel();
+    opened.previewAt('./clip.mp4', 4);
+
+    await vi.waitFor(() => expect(count('previewAt')).toBe(1));
+    const types = h.messages.map(m => m.type);
+    expect(types.indexOf('previewAt')).toBeGreaterThan(types.indexOf('initialize'));
+    const jump = h.messages.find(m => m.type === 'previewAt')!;
+    // MediaResolver turned the video source into a webview URI
+    expect(jump.payload.timelineUri).toContain('vscode-webview://');
+    expect(jump.payload.timelineUri).toContain('clip.mp4');
+    expect(jump.payload.position).toBe(4);
+
+    // Once compiled, a jump is sent right away; a raf timeline keeps its name
+    opened.previewAt('main', 2);
+    await vi.waitFor(() => expect(count('previewAt')).toBe(2));
+    expect(h.messages.filter(m => m.type === 'previewAt')[1].payload).toEqual({
+      timelineUri: 'main',
+      position: 2,
+    });
+  });
+});

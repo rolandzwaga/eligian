@@ -125,6 +125,30 @@
             opacity: 0.8;
         }
 
+        #scrub-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        #scrubber {
+            flex: 1;
+            min-width: 160px;
+        }
+        #time-readout {
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            min-width: 90px;
+        }
+        #scrub-row select {
+            background-color: var(--vscode-dropdown-background);
+            color: var(--vscode-dropdown-foreground);
+            border: 1px solid var(--vscode-dropdown-border);
+            font-family: var(--vscode-font-family);
+            font-size: 12px;
+            max-width: 200px;
+        }
+
         #controls button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -255,6 +279,12 @@
             <input type="checkbox" id="keep-position" checked /> Keep position on reload
         </label>
         <span id="playhead-status"></span>
+        <div id="scrub-row">
+            <select id="timeline-select" title="Timeline" aria-label="Timeline"></select>
+            <input type="range" id="scrubber" min="0" max="0" step="0.1" value="0" aria-label="Position" />
+            <span id="time-readout">0.0s</span>
+            <select id="language-select" title="Language" aria-label="Language"></select>
+        </div>
     </div>
 
     <!-- EventBus Debug Viewer (floating, draggable panel) -->

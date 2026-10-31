@@ -19,6 +19,13 @@ const h = vi.hoisted(() => ({
   posted: [] as Array<{ type: string; payload?: any }>,
   destroyCalls: 0,
   initCalls: 0,
+  broadcasts: [] as Array<[string, unknown[]]>,
+  /** Calls on the current fake engine: ['seek', 3], ['switchTimeline', 'b', 0], ['start'] */
+  engineCalls: [] as unknown[][],
+  /** Listeners on the current fake engine, by event name */
+  engineListeners: new Map<string, (...args: any[]) => void>(),
+  /** State of the next fake engine */
+  engineState: { duration: 60, currentTimelineUri: 'intro' },
 }));
 
 vi.mock('eligius', () => {
@@ -26,7 +33,9 @@ vi.mock('eligius', () => {
     on(): () => void {
       return () => {};
     }
-    broadcast(): void {}
+    broadcast(name: string, args: unknown[]): void {
+      h.broadcasts.push([name, args]);
+    }
     registerEventlistener(): () => void {
       return () => {};
     }
@@ -35,8 +44,25 @@ vi.mock('eligius', () => {
     createEngine() {
       return {
         engine: {
+          position: 0,
+          playState: 'stopped',
+          ...h.engineState,
           init: async () => {
             h.initCalls++;
+          },
+          on(event: string, handler: (...args: any[]) => void) {
+            h.engineListeners.set(event, handler);
+            return () => h.engineListeners.delete(event);
+          },
+          async seek(position: number) {
+            h.engineCalls.push(['seek', position]);
+            return position;
+          },
+          async switchTimeline(uri: string, position?: number) {
+            h.engineCalls.push(['switchTimeline', uri, position]);
+          },
+          async start() {
+            h.engineCalls.push(['start']);
           },
         },
         destroy: async () => {
@@ -86,6 +112,8 @@ beforeEach(() => {
     tag.remove();
   });
   h.posted.length = 0;
+  h.broadcasts.length = 0;
+  h.engineCalls.length = 0;
 });
 
 describe('preview.ts showError (#64, #60)', () => {
@@ -161,5 +189,110 @@ describe('preview.ts CSS messages (#52)', () => {
 
     send({ type: 'css-remove', payload: { cssId: 'b' } });
     expect(injectedIds()).toEqual(['a', 'c']);
+  });
+});
+
+describe('preview.ts scrubber, timeline and language pickers (audit idea #5)', () => {
+  const config = {
+    id: 'cfg',
+    language: 'en-US',
+    availableLanguages: [
+      { id: '1', languageCode: 'en-US', label: 'English' },
+      { id: '2', languageCode: 'nl-NL', label: 'Nederlands' },
+    ],
+    timelines: [
+      { uri: 'intro', duration: 60 },
+      { uri: 'outro', duration: 30 },
+    ],
+  };
+
+  async function initialize(): Promise<void> {
+    const inits = h.initCalls;
+    send({ type: 'initialize', payload: { config } });
+    await vi.waitFor(() => expect(h.initCalls).toBe(inits + 1));
+    await vi.waitFor(() =>
+      expect(h.posted.some(m => m.type === 'initialized' && m.payload.success)).toBe(true)
+    );
+  }
+
+  test('fills the pickers and the scrubber from the configuration', async () => {
+    await initialize();
+
+    const timelines = byId('timeline-select') as HTMLSelectElement;
+    expect(Array.from(timelines.options).map(o => o.value)).toEqual(['intro', 'outro']);
+    expect(timelines.value).toBe('intro');
+    const languages = byId('language-select') as HTMLSelectElement;
+    expect(Array.from(languages.options).map(o => o.textContent)).toEqual([
+      'English (en-US)',
+      'Nederlands (nl-NL)',
+    ]);
+    expect((byId('scrubber') as HTMLInputElement).max).toBe('60');
+    expect(byId('time-readout').textContent).toBe('0.0s / 1:00.0');
+
+    h.engineListeners.get('time')?.(12.34);
+    expect(byId('time-readout').textContent).toBe('12.3s / 1:00.0');
+  });
+
+  test('a previewAt sent before the engine exists is applied once it is initialized', async () => {
+    send({ type: 'destroy' });
+    await vi.waitFor(() => expect(h.posted.some(m => m.type === 'destroyed')).toBe(true));
+
+    send({ type: 'previewAt', payload: { timelineUri: 'outro', position: 45 } });
+    expect(h.engineCalls).toEqual([]);
+    await initialize();
+
+    // Clamped to the compiled duration of 'outro', then played
+    await vi.waitFor(() =>
+      expect(h.engineCalls).toEqual([['switchTimeline', 'outro', 30], ['start']])
+    );
+  });
+
+  test('previewAt on a running engine seeks and plays', async () => {
+    await initialize();
+    h.engineCalls.length = 0;
+
+    send({ type: 'previewAt', payload: { timelineUri: 'intro', position: 22 } });
+
+    await vi.waitFor(() => expect(h.engineCalls).toEqual([['seek', 22], ['start']]));
+  });
+
+  test('picking a language broadcasts language-change', async () => {
+    await initialize();
+
+    const languages = byId('language-select') as HTMLSelectElement;
+    languages.value = 'nl-NL';
+    languages.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(h.broadcasts).toContainEqual(['language-change', ['nl-NL']]);
+  });
+});
+
+describe('preview.ts controls: scrubbing and switching timelines (audit idea #5)', () => {
+  test('releasing the scrubber seeks, picking a timeline switches to its start', async () => {
+    const inits = h.initCalls;
+    send({
+      type: 'initialize',
+      payload: { config: { id: 'c', timelines: [{ uri: 'intro' }, { uri: 'outro' }] } },
+    });
+    await vi.waitFor(() => expect(h.initCalls).toBe(inits + 1));
+    await vi.waitFor(() => expect(byId('timeline-select').childElementCount).toBe(2));
+    h.engineCalls.length = 0;
+
+    const scrubber = byId('scrubber') as HTMLInputElement;
+    scrubber.value = '7.5';
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(byId('time-readout').textContent).toBe('7.5s / 1:00.0');
+    scrubber.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(h.engineCalls).toEqual([['seek', 7.5]]));
+
+    const timelines = byId('timeline-select') as HTMLSelectElement;
+    timelines.value = 'outro';
+    timelines.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() =>
+      expect(h.engineCalls).toEqual([
+        ['seek', 7.5],
+        ['switchTimeline', 'outro', 0],
+      ])
+    );
   });
 });

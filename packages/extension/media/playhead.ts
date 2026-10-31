@@ -35,10 +35,16 @@ export function capturePlayhead(engine: PlayheadEngine | null): PlayheadSnapshot
   return { timelineUri, position, playing: playState === 'playing' };
 }
 
+/** A timeline of the running configuration, with its compiled duration (seconds). */
+export interface PlayheadTimeline {
+  readonly uri: string;
+  readonly duration?: number;
+}
+
 /**
  * Restore `snapshot` on a freshly initialized `engine` whose configuration has
- * the timelines `timelineUris`. Returns a status message for the user when the
- * playhead could not be fully restored, undefined when it was.
+ * `timelines`. Returns a status message for the user when the playhead could
+ * not be fully restored, undefined when it was.
  *
  * - The same timeline still exists: switch to it (when the engine starts on
  *   another one) or seek, to the old position clamped to its new duration.
@@ -48,37 +54,96 @@ export function capturePlayhead(engine: PlayheadEngine | null): PlayheadSnapshot
 export async function restorePlayhead(
   engine: PlayheadEngine,
   snapshot: PlayheadSnapshot,
-  timelineUris: readonly string[]
+  timelines: readonly PlayheadTimeline[]
 ): Promise<string | undefined> {
-  if (!timelineUris.includes(snapshot.timelineUri)) {
+  const target = timelines.find(timeline => timeline.uri === snapshot.timelineUri);
+  if (!target) {
     return `Timeline '${snapshot.timelineUri}' no longer exists: showing '${engine.currentTimelineUri}' from the start`;
   }
+  return moveTo(engine, target, snapshot.position, snapshot.playing, {
+    move: error => `Could not restore the position (${error}): showing the timeline from the start`,
+    play: (position, error) =>
+      `Kept position ${position.toFixed(1)}s, but playback could not resume (${error})`,
+  });
+}
 
-  const duration = engine.duration;
-  const position =
-    duration !== undefined && Number.isFinite(duration)
-      ? Math.max(0, Math.min(snapshot.position, duration))
-      : Math.max(0, snapshot.position);
+/** A request to show `timelineUri` at `position` (audit idea #5: scrubber, timeline picker, CodeLens). */
+export interface PlayheadJump {
+  readonly timelineUri: string;
+  readonly position: number;
+  /** Start playback there (otherwise the play state is left as it is) */
+  readonly play: boolean;
+}
 
+/**
+ * Move `engine` to `jump`: switch timeline when needed, seek to the position
+ * clamped to that timeline's duration, and start playback when asked. Returns
+ * a status message when that did not fully work, undefined when it did.
+ */
+export async function jumpTo(
+  engine: PlayheadEngine,
+  jump: PlayheadJump,
+  timelines: readonly PlayheadTimeline[]
+): Promise<string | undefined> {
+  const target = timelines.find(timeline => timeline.uri === jump.timelineUri);
+  if (!target) {
+    return `Timeline '${jump.timelineUri}' is not in the preview: compile the file to update it`;
+  }
+  return moveTo(engine, target, jump.position, jump.play, {
+    move: error => `Could not go to ${jump.position.toFixed(1)}s (${error})`,
+    play: (position, error) =>
+      `At ${position.toFixed(1)}s, but playback could not start (${error})`,
+  });
+}
+
+interface MoveMessages {
+  move(error: string): string;
+  play(position: number, error: string): string;
+}
+
+async function moveTo(
+  engine: PlayheadEngine,
+  target: PlayheadTimeline,
+  requested: number,
+  play: boolean,
+  messages: MoveMessages
+): Promise<string | undefined> {
+  const position = clampToDuration(engine, target, requested);
   try {
-    if (snapshot.timelineUri !== engine.currentTimelineUri) {
-      await engine.switchTimeline(snapshot.timelineUri, position);
-    } else if (position > 0) {
+    if (target.uri !== engine.currentTimelineUri) {
+      await engine.switchTimeline(target.uri, position);
+    } else if (position > 0 || engine.position !== 0) {
       await engine.seek(position);
     }
   } catch (error) {
-    return `Could not restore the position (${errorText(error)}): showing the timeline from the start`;
+    return messages.move(errorText(error));
   }
 
-  if (snapshot.playing) {
+  if (play && engine.playState !== 'playing') {
     try {
       await engine.start();
     } catch (error) {
       // e.g. a media provider whose autoplay the webview blocks
-      return `Kept position ${position.toFixed(1)}s, but playback could not resume (${errorText(error)})`;
+      return messages.play(position, errorText(error));
     }
   }
   return undefined;
+}
+
+/**
+ * `position` within 0 and the target timeline's duration: the engine's, when it
+ * is on that timeline, else the compiled one. Unknown durations do not clamp.
+ */
+function clampToDuration(
+  engine: PlayheadEngine,
+  target: PlayheadTimeline,
+  position: number
+): number {
+  const duration = target.uri === engine.currentTimelineUri ? engine.duration : target.duration;
+  const lower = Math.max(0, position);
+  return duration !== undefined && Number.isFinite(duration) && duration > 0
+    ? Math.min(lower, duration)
+    : lower;
 }
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));

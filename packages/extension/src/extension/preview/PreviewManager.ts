@@ -62,14 +62,14 @@ export class PreviewManager {
    *
    * @param documentUri - URI of the .eligian file to preview
    */
-  public showPreview(documentUri: vscode.Uri): void {
+  public showPreview(documentUri: vscode.Uri): PreviewPanel {
     const key = documentUri.toString();
 
     // Reuse existing panel if it exists
     const existingPanel = this.panels.get(key);
     if (existingPanel) {
       existingPanel.reveal();
-      return;
+      return existingPanel;
     }
 
     // Create new panel
@@ -80,6 +80,15 @@ export class PreviewManager {
     panel.onDispose(() => {
       this.panels.delete(key);
     });
+    return panel;
+  }
+
+  /**
+   * Open (or reveal) the preview of `documentUri` and show the timeline with
+   * compiled uri `timelineUri` from `seconds` ("▶ Preview from 22s", idea #5).
+   */
+  public previewAt(documentUri: vscode.Uri, timelineUri: string, seconds: number): void {
+    this.showPreview(documentUri).previewAt(timelineUri, seconds);
   }
 
   /**

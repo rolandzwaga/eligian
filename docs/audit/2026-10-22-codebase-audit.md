@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3, #4, #7, #8, #9 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3, #4, #5, #7, #8, #9 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3370,6 +3370,8 @@ sequence {
 - **Rationale:** Five other items build on the shared resolver: the preview CodeLens, the Outline, snippet default start times, time markers and the `for` form. That puts it ahead of them. Fixing the NaN, `**` and floating-point bugs is required for the hints to be trustworthy.
 
 ### #5 Preview scrubber, timeline picker, language switcher and a 'Preview from here' CodeLens
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (seek, switchTimeline, setLanguage and previewAt engine commands; scrubber, readout, timeline and language pickers in the preview; `▶ Preview from …` CodeLenses from the shared time resolver running `eligian.previewAt`; jumps use timeline uris, translated to the webview URIs MediaResolver gives video/audio sources. The 'Loop 22s..31s' lens of the example was not built)
 
 - **Area:** ide · **Effort:** M · **Score:** 8.7
 - **Problem:** The preview offers only Play, Pause, Stop and Restart. EngineCommand has no seek or switch, and spec 001 deferred scrubbing. Checking Chapter 4 Beat 4 means clicking the hub and waiting 22 seconds every time. Multilingual presentations always run in the default language, and the preview never broadcasts 'language-change'. Two of the ideation angles proposed the same scrubber and CodeLens.

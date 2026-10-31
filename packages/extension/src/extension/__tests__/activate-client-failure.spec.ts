@@ -85,6 +85,10 @@ vi.mock('../commands/preview.js', () => ({
     h.commandIds.push('eligian.preview');
     return disposable();
   },
+  registerPreviewAtCommand: () => {
+    h.commandIds.push('eligian.previewAt');
+    return disposable();
+  },
 }));
 vi.mock('../css-watcher.js', () => ({
   CSSWatcherManager: class {
@@ -139,6 +143,7 @@ function makeContext() {
 const INDEPENDENT_COMMANDS = [
   'eligian.compile',
   'eligian.preview',
+  'eligian.previewAt',
   'eligian.openLocaleEditor',
   'eligian.openLocaleFile',
   'eligian.createLabelsFile',

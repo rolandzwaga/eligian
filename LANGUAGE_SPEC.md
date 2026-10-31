@@ -2764,7 +2764,15 @@ The preview opens in a side panel and displays the rendered Eligius timeline wit
 - HTML layout from `layout` import
 - CSS styles from `styles` imports
 - Timeline playback controls
+- A scrubber with a time readout, a timeline picker (one entry per `timeline`) and, for a
+  program with `languages`, a language picker that broadcasts Eligius' `language-change`.
+  The picked language is kept across recompiles
 - Real-time synchronization with source code
+
+**Preview from here**: the editor shows a `▶ Preview` CodeLens above each timeline and
+`▶ Preview from 22s` above each timed event, sequence item and stagger block whose start time is
+known statically. It opens the preview, switches to that timeline, seeks to that time and plays.
+The setting `eligian.codeLens.preview` turns the lenses off.
 
 ### 13.2 CSS Injection
 

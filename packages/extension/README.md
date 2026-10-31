@@ -9,7 +9,8 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Validation**: Real-time error checking and semantic validation
 - **Compilation**: Compile `.eligian` files directly from VS Code
 - **Diagnostics**: View errors and warnings in the Problems panel
-- **Live Preview**: Interactive preview with Eligius engine integration
+- **Live Preview**: Interactive preview with Eligius engine integration, with a scrubber and time readout, a timeline picker and a language picker
+- **Preview from here**: `▶ Preview` / `▶ Preview from 22s` CodeLenses above timelines, timed events, sequence items and stagger blocks open the preview at that time and play (setting `eligian.codeLens.preview`)
 - **CSS Hot-Reload**: Import CSS files with instant hot-reload (no preview restart)
 - **Snippets**: `action`, `endable action`, `on event`, `timeline`, `chapter`, `languages` and `library` skeletons
 - **Signature help**: typing `(` or `,` in a call shows its parameters (types, optional ones, descriptions from the operation metadata or the action's JSDoc), including a controller's parameters in `addController`
