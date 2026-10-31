@@ -127,7 +127,7 @@
     "lottie-web": "5.13.0",
     "video.js": "10.2.0",
     "vscode-languageclient": "9.0.1",
-    "vscode-languageserver": "9.0.1"
+    "vscode-languageserver": "11.0.0"
   },
   "devDependencies": {
     "@types/jquery": "4.0.1",
