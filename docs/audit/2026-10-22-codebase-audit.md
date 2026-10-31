@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3, #8 and #9 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3, #8, #9 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3485,6 +3485,8 @@ $ eligian init my-talk --template chapters
 - **Rationale:** This merges '`eligian init` starters + fix the installed bin' with the scaffolding command from 'Project scaffolding, snippets and timeline-event completion'. The snippets half is #13. The bin fix is the cheapest way to give new users a first command that works. The value outside the monorepo depends on publishing the CLI.
 
 ### #13 Snippets and timeline-event completion (resolve the completeTimelineEvents TODO)
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (timeline event snippets with the previous event's end as default start; extension snippets for top-level constructs; completion context fixed for the cursor between events)
 
 - **Area:** ide · **Effort:** S · **Score:** 7.2
 - **Problem:** eligian-completion-provider.ts line 271 still has `// completeTimelineEvents(...)` commented out, so a timeline body offers no `at`, `sequence` or `stagger` skeletons. The extension contributes no snippets (package.json has no 'snippets' entry).

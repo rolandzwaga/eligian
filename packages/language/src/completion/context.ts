@@ -5,7 +5,15 @@
  * The context determines which completion items should be shown (operations, actions, keywords, etc.).
  */
 
-import { AstUtils, type CstNode, CstUtils, GrammarUtils, type LangiumDocument } from 'langium';
+import {
+  type AstNode,
+  AstUtils,
+  type CstNode,
+  CstUtils,
+  GrammarUtils,
+  isLeafCstNode,
+  type LangiumDocument,
+} from 'langium';
 import type { Position } from 'vscode-languageserver-protocol';
 import {
   type ActionDefinition,
@@ -121,6 +129,20 @@ export function detectContext(document: LangiumDocument, position: Position): Cu
   // This will at least return valid (but empty) context
   if (!astNode) {
     astNode = document.parseResult.value;
+  }
+
+  // In whitespace after a complete timeline event the node before the cursor is
+  // that event's closing token, but the cursor is in the timeline body, where
+  // the next event goes (idea #13: event snippets there, no operations).
+  const enclosingEvent = astNode
+    ? AstUtils.getContainerOfType(astNode, isTimelineEvent)
+    : undefined;
+  if (
+    enclosingEvent &&
+    isTimeline(enclosingEvent.$container) &&
+    isEventClosedBefore(enclosingEvent, offset)
+  ) {
+    astNode = enclosingEvent.$container;
   }
 
   // Initialize context with all flags false
@@ -416,6 +438,25 @@ function detectControllerContext(
  * the `with action()` form has no blocks, and in the block form the offset must be past the
  * first `[` that belongs to the stagger block itself (an items array literal has its own CST).
  */
+/**
+ * True when `offset` lies after a complete timeline event: there is text between
+ * the event and the cursor, and the event's last token closes the event itself
+ * (the `]` of its inline block, the `)` of its action call, the `}` of its
+ * sequence, for or if). An unclosed block (`at 0s..1s [ selectElement("#a") `)
+ * ends with a token of an inner node, so the cursor is still inside it.
+ */
+function isEventClosedBefore(event: AstNode, offset: number): boolean {
+  const cst = event.$cstNode;
+  if (!cst || offset <= cst.end) return false;
+  let last: CstNode | undefined;
+  for (const node of CstUtils.streamCst(cst)) {
+    if (isLeafCstNode(node) && !node.hidden) last = node;
+  }
+  if (!last || !['}', ']', ')'].includes(last.text)) return false;
+  const owner = last.astNode;
+  return owner === event || owner.$container === event;
+}
+
 function isInStaggerOperationBlock(stagger: StaggerBlock, offset: number): boolean {
   if (stagger.actionCall !== undefined || !stagger.$cstNode) return false;
   return CstUtils.streamCst(stagger.$cstNode).some(

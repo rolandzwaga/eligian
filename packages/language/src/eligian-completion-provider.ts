@@ -36,6 +36,7 @@ import { handleEventCompletion } from './completion/event-completion-handler.js'
 import { handleHtmlCompletion } from './completion/html-completion-handler.js';
 import { HTMLElementCompletionProvider } from './completion/html-elements.js';
 import { getOperationCompletions } from './completion/operations.js';
+import { getTimelineEventCompletions } from './completion/timeline-events.js';
 import { getVariableCompletions } from './completion/variables.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
@@ -308,10 +309,19 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         }
       }
 
-      // If inside timeline, provide timeline-specific completions
-      if (cursorContext.isInsideTimeline && !cursorContext.isInsideEvent) {
-        // TODO: Call timeline events completion module
-        // completeTimelineEvents(context, acceptor, cursorContext);
+      // Timeline body: event snippets (idea #13). completionFor runs once per
+      // expected token, so they are added only for the `at` keyword, which every
+      // event position expects; the plain keywords stay as they are.
+      if (
+        cursorContext.isInsideTimeline &&
+        !cursorContext.isInsideEvent &&
+        cursorContext.timeline &&
+        GrammarAST.isKeyword(next.feature) &&
+        next.feature.value === 'at'
+      ) {
+        for (const item of getTimelineEventCompletions(cursorContext.timeline, context.offset)) {
+          acceptor(context, item);
+        }
       }
 
       // IMPORTANT: Don't call super if this is an OperationCall operationName completion

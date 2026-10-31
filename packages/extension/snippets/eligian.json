@@ -1,0 +1,50 @@
+{
+  "Action": {
+    "prefix": "action",
+    "description": "Action: a named list of operations",
+    "body": ["action ${1:name}(${2}) [", "\t$0", "]"]
+  },
+  "Endable action": {
+    "prefix": "endable action",
+    "description": "Endable action: start operations and end operations",
+    "body": ["endable action ${1:name}(${2}) [", "\t$3", "] [", "\t$0", "]"]
+  },
+  "Event action": {
+    "prefix": "on event",
+    "description": "Event action: runs when an Eligius event is broadcast",
+    "body": ["on event \"${1:language-change}\" action ${2:handler}(${3}) [", "\t$0", "]"]
+  },
+  "Timeline": {
+    "prefix": "timeline",
+    "description": "Timeline with one timed event",
+    "body": [
+      "timeline \"${1:Main}\" in \"${2:#stage}\" using ${3|raf,video,audio,scroll|} {",
+      "\tat 0s for ${4:5s} [",
+      "\t\t$0",
+      "\t]",
+      "}"
+    ]
+  },
+  "Chapter timeline": {
+    "prefix": "chapter",
+    "description": "Chapter timeline with a link back to another timeline",
+    "body": [
+      "timeline \"${1:Chapter}\" in \"${2:#stage}\" using raf {",
+      "\tat 0s for ${3:3600s} [",
+      "\t\ton click \"${4:#back}\" navigate \"${5:Hub}\"",
+      "\t\t$0",
+      "\t]",
+      "}"
+    ]
+  },
+  "Languages block": {
+    "prefix": "languages",
+    "description": "Presentation languages (the * marks the default)",
+    "body": ["languages {", "\t* \"${1:en-US}\" \"${2:English}\"", "\t$0", "}"]
+  },
+  "Library": {
+    "prefix": "library",
+    "description": "Library file: actions only, imported by programs",
+    "body": ["library ${1:name}", "", "action ${2:helper}(${3}) [", "\t$0", "]"]
+  }
+}

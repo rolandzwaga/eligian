@@ -32,6 +32,12 @@
         "path": "syntaxes/eligian.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "eligian",
+        "path": "./snippets/eligian.json"
+      }
+    ],
     "commands": [
       {
         "command": "eligian.compile",

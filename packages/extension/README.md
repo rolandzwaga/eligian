@@ -11,6 +11,8 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Diagnostics**: View errors and warnings in the Problems panel
 - **Live Preview**: Interactive preview with Eligius engine integration
 - **CSS Hot-Reload**: Import CSS files with instant hot-reload (no preview restart)
+- **Snippets**: `action`, `endable action`, `on event`, `timeline`, `chapter`, `languages` and `library` skeletons
+- **Timeline event completion**: inside a timeline, `at … for … [ ]` (starting where the previous event ends), `sequence { }` and `stagger … with …`
 
 ## Installation
 
@@ -32,7 +34,7 @@ Simply open any `.eligian` file in VS Code. The extension activates automaticall
 
 - Syntax highlighting
 - Error detection
-- Autocompletion (basic keywords)
+- Autocompletion (operations, actions, CSS classes, events, timeline events) and snippets
 - Hover information
 
 ### Compiling
