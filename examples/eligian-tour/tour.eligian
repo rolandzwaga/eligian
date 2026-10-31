@@ -366,8 +366,8 @@ timeline "Timeline Power Tools" in "#stage" using raf {
     demo("#c4-fx-seq")
   ]
 
-  // Beat 3 — edit one, the rest follow
-  at 15s..22s [
+  // Beat 3 — edit one, the rest follow (labeled: the stagger below starts at its end)
+  at 15s..22s as editBeat [
     clearSpots()
     narrate("Because starts are computed, changing one duration shifts everything after it.")
     callout("#c4-cl-edit", "shorten 'main' and 'outro' slides left — no re-numbering")
@@ -375,8 +375,9 @@ timeline "Timeline Power Tools" in "#stage" using raf {
   ]
 
   // Beat 4 ⭐ — a REAL stagger reveals the card row (fires at 22s, with the beat).
-  // Placed here so its base time = end of Beat 3 (22s); cards reveal 22s..23.9s.
-  stagger 200ms ["#c4-card-1", "#c4-card-2", "#c4-card-3"] with revealCard() for 1.5s
+  // Anchored at Beat 3's end ('at editBeat.end' = 22s), wherever it sits in the
+  // timeline; cards reveal 22s..23.9s.
+  stagger 200ms ["#c4-card-1", "#c4-card-2", "#c4-card-3"] at editBeat.end with revealCard() for 1.5s
 
   at 22s..31s [
     clearSpots()

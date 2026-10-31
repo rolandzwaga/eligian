@@ -25,6 +25,7 @@ import type {
   RegularActionDefinition,
   StringLiteral,
   SystemPropertyReference,
+  TimeValue,
   UnaryExpression,
   VariableDeclaration,
   VariableReference,
@@ -147,6 +148,13 @@ export class EligianTypeSystem implements LangiumTypeSystemDefinition<EligianSpe
       .inferenceRule({
         languageKey: 'NumberLiteral',
         matching: (node: AstNode): node is NumberLiteral => node.$type === 'NumberLiteral',
+      })
+      // Idea #10: a time with a unit (`7s`) is a number of seconds. Misplaced
+      // ones (outside a const value) get one clear error from the timeline
+      // validator, not a type error on top.
+      .inferenceRule({
+        languageKey: 'TimeValue',
+        matching: (node: AstNode): node is TimeValue => node.$type === 'TimeValue',
       })
       .finish();
 

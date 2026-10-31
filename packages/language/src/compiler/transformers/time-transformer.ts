@@ -6,7 +6,13 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import type { TimeExpression as AstTimeExpression } from '../../generated/ast.js';
+import type { TimeExpression as AstTimeExpression, TimedEvent } from '../../generated/ast.js';
+import {
+  eventEdgeMessage,
+  isEventEdge,
+  laterEventMessage,
+  timeConstantValue,
+} from '../../utils/time-constants.js';
 import { convertTimeToSeconds } from '../../utils/time-units.js';
 import type { TimeExpression } from '../types/eligius-ir.js';
 import { getSourceLocation } from './source-location.js';
@@ -21,14 +27,23 @@ export function propertyChainTimeMessage(chain: { scope: string; properties: str
   return `Property references are not supported in time expressions: ${name}. Use a literal time (e.g. 2s) or a constant expression.`;
 }
 
+/** Start and end (seconds) of the labeled events compiled so far (`at … as intro`, idea #10). */
+export type EventLabelTimes = ReadonlyMap<
+  TimedEvent,
+  { readonly start: number; readonly end: number }
+>;
+
 /**
  * Transform TimeExpression → TimeExpression IR
  *
  * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
+ * Idea #10: `@beat` (a time constant) and `intro.end` (a labeled event before
+ * this one, from `labels`) become literals.
  */
 export const transformTimeExpression = (
   expr: AstTimeExpression,
-  previousEventEndTime: number = 0
+  previousEventEndTime: number = 0,
+  labels: EventLabelTimes = new Map()
 ): Effect.Effect<TimeExpression, TransformError> =>
   Effect.gen(function* () {
     switch (expr.$type) {
@@ -62,9 +77,42 @@ export const transformTimeExpression = (
           location: getSourceLocation(expr),
         });
       }
+      case 'VariableReference': {
+        const constant = timeConstantValue(expr);
+        if (constant.error !== undefined) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: constant.error,
+            location: getSourceLocation(expr),
+          });
+        }
+        return { kind: 'literal' as const, value: constant.seconds };
+      }
+      case 'EventTimeReference': {
+        if (!isEventEdge(expr.edge)) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: eventEdgeMessage(expr),
+            location: getSourceLocation(expr),
+          });
+        }
+        const event = expr.event?.ref;
+        const times = event ? labels.get(event) : undefined;
+        if (!times) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: laterEventMessage(expr.event?.$refText ?? '?'),
+            location: getSourceLocation(expr),
+          });
+        }
+        return { kind: 'literal' as const, value: times[expr.edge] };
+      }
       case 'BinaryTimeExpression': {
-        const left = yield* transformTimeExpression(expr.left, previousEventEndTime);
-        const right = yield* transformTimeExpression(expr.right, previousEventEndTime);
+        const left = yield* transformTimeExpression(expr.left, previousEventEndTime, labels);
+        const right = yield* transformTimeExpression(expr.right, previousEventEndTime, labels);
         return {
           kind: 'binary' as const,
           op: expr.op as '+' | '-' | '*' | '/',

@@ -13,16 +13,19 @@ import {
   isArrayLiteral,
   isSequenceBlock,
   isStaggerBlock,
+  isTimedEvent,
   isVariableDeclaration,
   isVariableReference,
   type SequenceItem,
   type StaggerBlock,
+  type TimedEvent,
   type TimeExpression,
   type Timeline,
   type TimelineEvent,
   type VariableDeclaration,
 } from '../../generated/ast.js';
 import { containsRelativeTime } from '../../type-system-typir/utils/time-expression.js';
+import { isEventEdge, timeConstantValue } from '../../utils/time-constants.js';
 import { convertTimeToSeconds } from '../../utils/time-units.js';
 import {
   inferredDuration,
@@ -55,7 +58,8 @@ export interface ResolveOptions {
  */
 export function evaluateTimeAt(
   expr: TimeExpression | undefined,
-  base: number | undefined
+  base: number | undefined,
+  labels: ReadonlyMap<TimedEvent, TimeSpan> = new Map()
 ): number | undefined {
   if (!expr) return undefined;
   switch (expr.$type) {
@@ -63,9 +67,18 @@ export function evaluateTimeAt(
       return convertTimeToSeconds(expr.value, expr.unit);
     case 'RelativeTimeLiteral':
       return base === undefined ? undefined : base + convertTimeToSeconds(expr.value, expr.unit);
+    case 'VariableReference':
+      // Idea #10: a time constant (`@beat`)
+      return timeConstantValue(expr).seconds;
+    case 'EventTimeReference': {
+      // Idea #10: `intro.end`, a labeled event resolved earlier in this timeline
+      const event = expr.event?.ref;
+      const span = event ? labels.get(event) : undefined;
+      return span && isEventEdge(expr.edge) ? span[expr.edge] : undefined;
+    }
     case 'BinaryTimeExpression': {
-      const left = evaluateTimeAt(expr.left, base);
-      const right = evaluateTimeAt(expr.right, base);
+      const left = evaluateTimeAt(expr.left, base, labels);
+      const right = evaluateTimeAt(expr.right, base, labels);
       if (left === undefined || right === undefined) return undefined;
       switch (expr.op) {
         case '+':
@@ -107,13 +120,15 @@ export function resolveTimelineTimes(
   const itemCount = options.itemCount ?? (stagger => literalItemCount(stagger.items));
   const events = new Map<TimelineEvent, readonly TimeSpan[]>();
   const sequenceItems = new Map<SequenceItem, TimeSpan>();
+  const labels = new Map<TimedEvent, TimeSpan>();
   let base: number | undefined = 0;
   let allResolved = true;
 
   for (const event of timeline.events) {
-    const spans = resolveEvent(event, base, itemCount, sequenceItems);
+    const spans = resolveEvent(event, base, itemCount, sequenceItems, labels);
     if (spans) {
       events.set(event, spans);
+      if (isTimedEvent(event) && event.name) labels.set(event, spans[0]);
       base = nextBase(base ?? 0, spans);
     } else {
       allResolved = false;
@@ -125,7 +140,7 @@ export function resolveTimelineTimes(
   if (timeline.duration) {
     duration = containsRelativeTime(timeline.duration)
       ? undefined
-      : evaluateTimeAt(timeline.duration, 0);
+      : evaluateTimeAt(timeline.duration, 0, labels);
     if (duration !== undefined) duration = roundTime(duration);
   } else if (allResolved) {
     duration = inferredDuration([...events.values()].flat());
@@ -137,7 +152,8 @@ function resolveEvent(
   event: TimelineEvent,
   base: number | undefined,
   itemCount: (stagger: StaggerBlock) => number | undefined,
-  sequenceItems: Map<SequenceItem, TimeSpan>
+  sequenceItems: Map<SequenceItem, TimeSpan>,
+  labels: ReadonlyMap<TimedEvent, TimeSpan>
 ): TimeSpan[] | undefined {
   if (isSequenceBlock(event)) {
     if (base === undefined) return undefined;
@@ -145,7 +161,7 @@ function resolveEvent(
     let current = base;
     for (const item of event.items) {
       // A relative literal in an item's duration counts from that item's start
-      const duration = evaluateTimeAt(item.duration, current);
+      const duration = evaluateTimeAt(item.duration, current, labels);
       if (duration === undefined) return undefined;
       const [span] = sequenceSpans(current, [duration]);
       spans.push(span);
@@ -156,23 +172,26 @@ function resolveEvent(
   }
 
   if (isStaggerBlock(event)) {
-    if (base === undefined) return undefined;
-    const delay = evaluateTimeAt(event.delay, base);
-    const duration = evaluateTimeAt(event.duration, base);
+    // Idea #10: `stagger … at <time>` anchors the first item (relative times
+    // count from the base); an absolute anchor resolves even without a base
+    const start = event.anchor ? evaluateTimeAt(event.anchor, base, labels) : base;
+    const delay = evaluateTimeAt(event.delay, base, labels);
+    const duration = evaluateTimeAt(event.duration, base, labels);
     const count = itemCount(event);
-    if (delay === undefined || duration === undefined || count === undefined) return undefined;
-    return staggerSpans(base, delay, duration, count);
+    if (start === undefined || delay === undefined || duration === undefined) return undefined;
+    if (count === undefined) return undefined;
+    return staggerSpans(start, delay, duration, count);
   }
 
   // TimedEvent
   const range = event.timeRange;
-  const start = evaluateTimeAt(range?.start, base);
+  const start = evaluateTimeAt(range?.start, base, labels);
   if (start === undefined || !range) return undefined;
   if (range.duration) {
     if (containsRelativeTime(range.duration)) return undefined;
-    const duration = evaluateTimeAt(range.duration, 0);
+    const duration = evaluateTimeAt(range.duration, 0, labels);
     return duration === undefined ? undefined : [timedEventSpanFor(start, duration)];
   }
-  const end = evaluateTimeAt(range.end, base);
+  const end = evaluateTimeAt(range.end, base, labels);
   return end === undefined ? undefined : [timedEventSpan(start, end)];
 }

@@ -1,17 +1,24 @@
-import type { ValidationAcceptor } from 'langium';
+import { type AstNode, AstUtils, type ValidationAcceptor } from 'langium';
 import { propertyChainTimeMessage } from '../compiler/transformers/time-transformer.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import { parseSelector } from '../css/selector-parser.js';
 import {
+  type EventTimeReference,
+  isBinaryExpression,
   isBinaryTimeExpression,
   isNavigateStatement,
+  isProgram,
   isSequenceItem,
   isStaggerBlock,
   isTimedEvent,
   isTimeline,
   isTimeRange,
+  isUnaryExpression,
+  isVariableDeclaration,
   type PropertyChainReference,
   type Timeline,
+  type TimeValue,
+  type VariableReference,
 } from '../generated/ast.js';
 import { readLayoutHtml, scanLayoutElements } from '../html/layout-elements.js';
 import {
@@ -19,6 +26,15 @@ import {
   extractTimeValue,
   parseTimeRange,
 } from '../type-system-typir/utils/time-expression.js';
+import {
+  eventEdgeMessage,
+  isEventEdge,
+  isTimeConstant,
+  laterEventMessage,
+  TIME_VALUE_PLACEMENT_MESSAGE,
+  timeConstantMisuseMessage,
+  timeConstantValue,
+} from '../utils/time-constants.js';
 import {
   RELATIVE_DURATION_MESSAGE,
   SCROLL_DURATION_REQUIRED_MESSAGE,
@@ -324,6 +340,99 @@ export class TimelineValidator extends BaseValidator {
     });
   }
 
+  /**
+   * Idea #10: a time with a unit (`7s`) is only a program-level const's value
+   * (also inside arithmetic: `const outro = @beat * 2 + 500ms`).
+   */
+  checkTimeValuePlacement(node: TimeValue, accept: ValidationAcceptor): void {
+    let current: AstNode | undefined = node.$container;
+    while (isBinaryExpression(current) || isUnaryExpression(current)) {
+      current = current.$container;
+    }
+    if (isVariableDeclaration(current) && isProgram(current.$container)) return;
+    accept('error', TIME_VALUE_PLACEMENT_MESSAGE, { node, code: 'time_value_placement' });
+  }
+
+  /**
+   * Idea #10: `@beat` in a time must be a time constant; a time constant may
+   * only be used in times and in other constants' values.
+   */
+  checkTimeConstantReference(node: VariableReference, accept: ValidationAcceptor): void {
+    const declaration = node.variable?.ref;
+    if (isTimeSlot(node)) {
+      if (isNavigateStatement(node.$container)) return; // checked by the navigate rules
+      const value = timeConstantValue(node);
+      if (value.error !== undefined) {
+        accept('error', value.error, { node, code: 'invalid_time_constant' });
+      }
+      return;
+    }
+    if (!isVariableDeclaration(declaration) || !isTimeConstant(declaration)) return;
+    let current: AstNode | undefined = node.$container;
+    while (isBinaryExpression(current) || isUnaryExpression(current)) {
+      current = current.$container;
+    }
+    if (isVariableDeclaration(current) && isProgram(current.$container)) return;
+    accept('error', timeConstantMisuseMessage(declaration.name), {
+      node,
+      code: 'time_constant_misuse',
+    });
+  }
+
+  /**
+   * Idea #10: `intro.start` / `intro.end` name an event labeled earlier in the
+   * same timeline (any label from the timeline header's `duration`).
+   */
+  checkEventTimeReference(node: EventTimeReference, accept: ValidationAcceptor): void {
+    if (!isEventEdge(node.edge)) {
+      accept('error', eventEdgeMessage(node), {
+        node,
+        property: 'edge',
+        code: 'invalid_event_edge',
+      });
+      return;
+    }
+    const target = node.event?.ref;
+    if (!target) return; // unresolved: reported by the linker
+    if (AstUtils.getContainerOfType(node, isNavigateStatement)) {
+      accept(
+        'error',
+        "Event labels can only be used in their timeline's own times, not in a navigate position",
+        { node, code: 'event_label_outside_timeline' }
+      );
+      return;
+    }
+    const timeline = AstUtils.getContainerOfType(node, isTimeline);
+    if (!timeline) return;
+    const referencing = timeline.events.find(event =>
+      AstUtils.streamAst(event).some(child => child === node)
+    );
+    // Outside the events: the header's `duration`, evaluated after all events
+    if (!referencing) return;
+    if (timeline.events.indexOf(referencing) <= timeline.events.indexOf(target)) {
+      accept('error', laterEventMessage(node.event?.$refText ?? '?'), {
+        node,
+        code: 'event_label_not_before',
+      });
+    }
+  }
+
+  /** Idea #10: event labels are unique within a timeline. */
+  checkEventLabels(timeline: Timeline, accept: ValidationAcceptor): void {
+    const seen = new Set<string>();
+    for (const event of timeline.events) {
+      if (!isTimedEvent(event) || !event.name) continue;
+      if (seen.has(event.name)) {
+        accept('error', `Duplicate event label '${event.name}' in this timeline`, {
+          node: event,
+          property: 'name',
+          code: 'duplicate_event_label',
+        });
+      }
+      seen.add(event.name);
+    }
+  }
+
   // Time-range validation (start < end, non-negative start, positive durations and
   // delays) lives in exactly one place: the Typir rules in
   // type-system-typir/validation/event-validation.ts, which are unit-aware and
@@ -333,14 +442,16 @@ export class TimelineValidator extends BaseValidator {
 }
 
 /** True when `node` sits where the grammar expects a TimeExpression. */
-function isTimeSlot(node: PropertyChainReference): boolean {
+function isTimeSlot(node: AstNode): boolean {
   const container = node.$container;
   const property = node.$containerProperty;
   if (isBinaryTimeExpression(container)) return true;
   if (isTimeRange(container)) {
     return property === 'start' || property === 'end' || property === 'duration';
   }
-  if (isStaggerBlock(container)) return property === 'delay' || property === 'duration';
+  if (isStaggerBlock(container)) {
+    return property === 'delay' || property === 'duration' || property === 'anchor';
+  }
   if (isSequenceItem(container)) return property === 'duration';
   if (isNavigateStatement(container)) return property === 'position';
   if (isTimeline(container)) return property === 'duration';

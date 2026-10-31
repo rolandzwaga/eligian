@@ -1967,6 +1967,14 @@ stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
 // at 0.4s..2.4s { fadeIn(".item-3") }
 ```
 
+The first item starts where the previous event ends. `at <time>` after the items anchors it
+explicitly instead, so moving the stagger in the timeline does not change its times:
+
+```eligian
+stagger 200ms ["#a", "#b"] at editBeat.end with reveal() for 1.5s   // first item at editBeat's end
+stagger 200ms ["#a", "#b"] at +2s with reveal() for 1.5s            // 2s after the previous event
+```
+
 ### 6.3 Time Expressions
 
 #### Time Literals
@@ -2017,6 +2025,34 @@ at +0s for 3s    // Starts where the previous event ends, lasts 3s
   (`‹22s..23.8s ×3›`), after relative, computed and `for` ranges, and the inferred duration on a
   timeline header without `duration`. A time that depends on a runtime value (`$globaldata.end`),
   and any relative time after it, has no hint.
+
+#### Time Constants and Event Labels
+
+A program-level `const` can hold a time, and an `at` event can be labeled with `as <name>`.
+Later times refer to them:
+
+```eligian
+const beat = 7s
+const outro = @beat * 2 + 500ms
+
+timeline "Tools" in "#stage" using raf duration closing.end + 1s {
+  at 15s for @beat as editBeat [ narrate("edit one, the rest follow") ]
+  stagger 200ms ["#card-1", "#card-2"] at editBeat.end with revealCard() for 1.5s
+  at editBeat.start + 3s for @outro as closing [ narrate("done") ]
+}
+```
+
+- **Time constants:** `const beat = 7s` (any unit; arithmetic on times, numbers and other time
+  constants is allowed). In a time it is written `@beat`, like every constant reference. A
+  number constant used in a time counts like a unitless time literal. A time constant only exists
+  at compile time: it cannot be used in operation arguments, and a time like `7s` cannot appear
+  outside a program-level const.
+- **Event labels:** `at <range> as <name> [ ... ]` names a timed event. `<name>.start` and
+  `<name>.end` are its absolute times. A time can only refer to events **earlier** in the same
+  timeline (so times never depend on each other in a cycle); the timeline header's `duration` may
+  refer to any label. Labels are unique within a timeline.
+- The editor's inlay hints and `▶ Preview from …` CodeLenses resolve constants, labels and
+  anchors the same way the compiler does.
 
 ---
 
@@ -2936,14 +2972,15 @@ Lifecycle       := 'on' ('enter' | 'leave') '[' OperationStatement* ']'
 Provider        := 'video' | 'audio' | 'raf' | 'custom'
 
 TimelineEvent   := TimedEvent | SequenceBlock | StaggerBlock
-TimedEvent      := 'at' TimeRange (NamedAction | InlineAction)
+TimedEvent      := 'at' TimeRange ('as' Identifier)? (NamedAction | InlineAction)
 SequenceBlock   := 'sequence' '{' SequenceItem* '}'
-StaggerBlock    := 'stagger' TimeExpr Expression 'with' ActionCall 'for' TimeExpr
-                 | 'stagger' TimeExpr Expression 'for' TimeExpr
+StaggerBlock    := 'stagger' TimeExpr Expression ('at' TimeExpr)? 'with' ActionCall 'for' TimeExpr
+                 | 'stagger' TimeExpr Expression ('at' TimeExpr)? 'for' TimeExpr
                    '[' Operations ']' '[' Operations ']'
 
 TimeRange       := TimeExpression '..' TimeExpression
 TimeExpression  := TimeLiteral | RelativeTimeLiteral | BinaryTimeExpr
+                 | '@' ConstName | EventLabel '.' ('start' | 'end')
 TimeLiteral     := NUMBER TimeUnit?
 RelativeTimeLiteral := '+' NUMBER TimeUnit?
 TimeUnit        := 'ms' | 's' | 'm' | 'h'

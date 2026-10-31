@@ -31,6 +31,7 @@ import {
   getTimelines,
   getVariables,
 } from '../utils/program-helpers.js';
+import { isTimeConstant } from '../utils/time-constants.js';
 import { buildConstantMapWithFailures } from './constant-folder.js';
 import {
   transformActionDefinition,
@@ -121,7 +122,10 @@ export const transformAST = (
     // Extract program-level variable declarations (T182: Global variables)
     // CONSTANT FOLDING (T008): Filter out constants - they will be inlined, not stored in globalData
     // FEATURE 015: HTML imports are treated as constants (loaded in buildConstantMap, inlined during transformation)
-    const variableDeclarations = getVariables(program).filter(el => !constantMap.has(el.name));
+    // Idea #10: time constants (`const beat = 7s`) only exist at compile time, in times
+    const variableDeclarations = getVariables(program).filter(
+      el => !constantMap.has(el.name) && !isTimeConstant(el)
+    );
 
     // Transform program-level variables to initActions
     // T274: initActions must be IEndableActionConfiguration[], not IOperationConfiguration[]

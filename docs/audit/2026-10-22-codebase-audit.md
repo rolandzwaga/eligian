@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2, #3, #4, #5, #6, #7, #8, #9 and #13 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #10 and #13 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3512,6 +3512,8 @@ inside a timeline, `at` + Tab → at 31s for 5s [ | ]   (31s = previous event's 
 ### Tier: next
 
 ### #10 Time constants, named event markers and explicit stagger anchors
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 051). Prerequisites 1 (evaluator shadowing, `65fdd0f`) and 4 (raw throw, `c7a75df`) were already fixed. Constants are written `@beat` in times (not bare `beat`), like every other constant reference; labels need no cycle detection because only earlier events can be referenced. The tour's chapter 4 stagger is anchored at its beat.
 
 - **Area:** dsl · **Effort:** M · **Score:** 7.8
 - **Problem:** Time expressions accept only literals, relative literals and `$` chains, and a chain crashes the compiler: `at $globaldata.beat..10s` reports 'Unknown Error: {}', because time-transformer.ts:104 throws a raw Error out of the Effect pipeline. Authors cannot write `const beat = 7s` or refer to another event's start or end. Stagger takes its base time from the event's position in the document, so reordering events breaks it.

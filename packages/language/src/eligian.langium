@@ -573,7 +573,7 @@ TimelineEvent:
     StaggerBlock | SequenceBlock | TimedEvent;
 
 TimedEvent:
-    'at' timeRange=TimeRange (action=TimelineAction);
+    'at' timeRange=TimeRange ('as' name=Identifier)? (action=TimelineAction);
 
 TimelineAction:
     InlineEndableAction | OperationCall | ForStatement | IfStatement;
@@ -617,8 +617,11 @@ SequenceItem:
  *   ]
  */
 StaggerBlock:
-    'stagger' delay=TimeExpression items=Expression 'with' actionCall=OperationCall 'for' duration=TimeExpression |
-    'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' ('[' (endOps += OperationStatement)* ']')?;
+    'stagger' delay=TimeExpression items=Expression ('at' anchor=TimeExpression)?
+    (
+        'with' actionCall=OperationCall 'for' duration=TimeExpression |
+        'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' ('[' (endOps += OperationStatement)* ']')?
+    );
 
 
 /**
@@ -658,7 +661,22 @@ PrimaryTime infers TimeExpression:
     '(' TimeExpression ')' |
     RelativeTimeLiteral |
     TimeLiteral |
-    PropertyChainReference;
+    PropertyChainReference |
+    VariableReference |
+    EventTimeReference;
+
+/**
+ * The start or end of a labeled event of the same timeline (audit idea #10):
+ *
+ *   at 15s for 7s as editBeat [ ... ]
+ *   stagger 200ms ["#a", "#b"] at editBeat.end with reveal() for 1.5s
+ *
+ * Only events before the referencing one can be referred to (validated), so
+ * times never depend on each other in a cycle. A time constant (`const beat =
+ * 7s`) is referred to as `@beat` (VariableReference above).
+ */
+EventTimeReference:
+    event=[TimedEvent:Identifier] '.' edge=ID;
 
 /**
  * Relative Time Literal - Time offset from previous event (T189)
@@ -806,7 +824,15 @@ ParameterReference:
 // ============================================================================
 
 Literal:
-    StringLiteral | NumberLiteral | BooleanLiteral | NullLiteral;
+    StringLiteral | TimeValue | NumberLiteral | BooleanLiteral | NullLiteral;
+
+/**
+ * A time with a unit as a constant's value (audit idea #10): `const beat = 7s`,
+ * used in times as `@beat` (`at 15s for @beat`). Only valid in a program-level
+ * const (validated); in time positions a time is a TimeLiteral.
+ */
+TimeValue:
+    value=NUMBER unit=TimeUnit;
 
 StringLiteral:
     value=STRING;

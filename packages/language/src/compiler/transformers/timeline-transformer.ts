@@ -51,7 +51,11 @@ import {
   timedEventSpan,
   timedEventSpanFor,
 } from './time-schedule.js';
-import { evaluateTimeExpression, transformTimeExpression } from './time-transformer.js';
+import {
+  type EventLabelTimes,
+  evaluateTimeExpression,
+  transformTimeExpression,
+} from './time-transformer.js';
 
 // Start/end arithmetic (rounding, sequences, staggers) lives in time-schedule.ts,
 // shared with the IDE's time resolver so editor hints match the compiled times.
@@ -75,6 +79,8 @@ export const buildTimelineConfig = (
     // Track previous event end time for relative time expressions and sequence blocks
     const timelineActions: TimelineActionIR[] = [];
     let previousEventEndTime = 0;
+    // Idea #10: times of labeled events (`at … as intro`), for `intro.start` / `intro.end`
+    const labels = new Map<TimedEvent, { start: number; end: number }>();
 
     for (const event of timeline.events) {
       // T190/T192: Check event type (sequence, stagger, or timed)
@@ -85,7 +91,8 @@ export const buildTimelineConfig = (
           previousEventEndTime,
           program,
           allActions,
-          programConstants
+          programConstants,
+          labels
         );
         timelineActions.push(...sequenceActions);
 
@@ -104,7 +111,8 @@ export const buildTimelineConfig = (
           previousEventEndTime,
           program,
           allActions,
-          programConstants
+          programConstants,
+          labels
         );
         timelineActions.push(...staggerActions);
 
@@ -123,9 +131,16 @@ export const buildTimelineConfig = (
           previousEventEndTime,
           program,
           allActions,
-          programConstants
+          programConstants,
+          labels
         );
         timelineActions.push(timelineAction);
+        if (event.name) {
+          labels.set(event, {
+            start: timelineAction.duration.start as number,
+            end: timelineAction.duration.end as number,
+          });
+        }
 
         // Update previous event end time for next event
         previousEventEndTime =
@@ -163,7 +178,7 @@ export const buildTimelineConfig = (
         });
       }
       duration = roundTime(
-        evaluateTimeExpression(yield* transformTimeExpression(timeline.duration))
+        evaluateTimeExpression(yield* transformTimeExpression(timeline.duration, 0, labels))
       );
     }
 
@@ -283,7 +298,8 @@ const transformSequenceBlock = (
   previousEventEndTime: number,
   _program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  labels: EventLabelTimes
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
@@ -291,7 +307,7 @@ const transformSequenceBlock = (
 
     for (const item of sequence.items) {
       // Transform duration expression to number
-      const durationExpr = yield* transformTimeExpression(item.duration, currentTime);
+      const durationExpr = yield* transformTimeExpression(item.duration, currentTime, labels);
       const duration = evaluateTimeExpression(durationExpr);
 
       // Calculate time range: start at currentTime, end at currentTime + duration
@@ -382,17 +398,31 @@ const transformStaggerBlock = (
   previousEventEndTime: number,
   program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  labels: EventLabelTimes
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
 
+    // Idea #10: `stagger … at <time>` anchors the first item explicitly
+    // (relative times count from the previous event, as everywhere); without
+    // it the first item starts where the previous event ends
+    const base = stagger.anchor
+      ? evaluateTimeExpression(
+          yield* transformTimeExpression(stagger.anchor, previousEventEndTime, labels)
+        )
+      : previousEventEndTime;
+
     // Transform delay expression to milliseconds
-    const delayExpr = yield* transformTimeExpression(stagger.delay, previousEventEndTime);
+    const delayExpr = yield* transformTimeExpression(stagger.delay, previousEventEndTime, labels);
     const delay = evaluateTimeExpression(delayExpr);
 
     // Transform duration expression to milliseconds
-    const durationExpr = yield* transformTimeExpression(stagger.duration, previousEventEndTime);
+    const durationExpr = yield* transformTimeExpression(
+      stagger.duration,
+      previousEventEndTime,
+      labels
+    );
     const duration = evaluateTimeExpression(durationExpr);
 
     // Transform items array
@@ -424,7 +454,7 @@ const transformStaggerBlock = (
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
 
       // Generate one timeline action per item
-      const spans = staggerSpans(previousEventEndTime, delay, duration, itemsValue.length);
+      const spans = staggerSpans(base, delay, duration, itemsValue.length);
       for (let i = 0; i < itemsValue.length; i++) {
         const item = itemsValue[i];
         const { start: startTime, end: endTime } = spans[i];
@@ -488,7 +518,7 @@ const transformStaggerBlock = (
     } else {
       // Form 2: stagger delay items for duration [ startOps ] [ endOps ]
       // Generate one timeline action per item with inline operations
-      const spans = staggerSpans(previousEventEndTime, delay, duration, itemsValue.length);
+      const spans = staggerSpans(base, delay, duration, itemsValue.length);
       for (let i = 0; i < itemsValue.length; i++) {
         const { start: startTime, end: endTime } = spans[i];
 
@@ -650,7 +680,8 @@ const transformTimedEvent = (
   previousEventEndTime: number,
   program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  labels: EventLabelTimes
 ): Effect.Effect<TimelineActionIR, TransformError> =>
   Effect.gen(function* () {
     const timeRange = event.timeRange;
@@ -665,7 +696,7 @@ const transformTimedEvent = (
 
     // Transform start and end times to numbers
     // T189: Pass previousEventEndTime for relative time resolution
-    const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime);
+    const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime, labels);
     const startTime = evaluateTimeExpression(startExpr);
     let span: TimeSpan;
     if (timeRange.duration) {
@@ -678,10 +709,10 @@ const transformTimedEvent = (
           location: getSourceLocation(timeRange.duration),
         });
       }
-      const durationExpr = yield* transformTimeExpression(timeRange.duration);
+      const durationExpr = yield* transformTimeExpression(timeRange.duration, 0, labels);
       span = timedEventSpanFor(startTime, evaluateTimeExpression(durationExpr));
     } else if (timeRange.end) {
-      const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
+      const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime, labels);
       span = timedEventSpan(startTime, evaluateTimeExpression(endExpr));
     } else {
       return yield* Effect.fail({

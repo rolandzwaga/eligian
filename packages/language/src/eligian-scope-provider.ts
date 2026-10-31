@@ -26,12 +26,15 @@ import {
   isActionDefinition,
   isActionImport,
   isEventActionDefinition,
+  isEventTimeReference,
   isLibrary,
   isLibraryImport,
   isNamedImport,
   isOperationCall,
   isParameterReference,
   isProgram,
+  isTimedEvent,
+  isTimeline,
   isVariableDeclaration,
   isVariableReference,
   type NamedImport,
@@ -86,6 +89,11 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     // Feature 007: Handle action references in OperationCall nodes
     if (isOperationCall(context.container) && context.property === 'operationName') {
       return this.getScopeForActionReference(context);
+    }
+
+    // Idea #10: `intro.end` names a labeled event (`at … as intro`) of the same timeline
+    if (isEventTimeReference(context.container) && context.property === 'event') {
+      return this.getScopeForEventLabel(context);
     }
 
     // Feature 023: Handle action imports (filter private actions from library exports)
@@ -218,6 +226,21 @@ export class EligianScopeProvider extends DefaultScopeProvider {
 
     // Create scope from descriptions
     return this.createScope(descriptions);
+  }
+
+  /**
+   * The labeled events of the timeline containing the reference. Labels of
+   * later events are in scope too, so a forward reference resolves and the
+   * validator can say why it is not allowed (rather than 'unknown name').
+   */
+  private getScopeForEventLabel(context: ReferenceInfo): Scope {
+    const timeline = AstUtils.getContainerOfType(context.container, isTimeline);
+    if (!timeline) return EMPTY_SCOPE;
+    const document = AstUtils.getDocument(context.container);
+    const labeled = timeline.events.filter(isTimedEvent).filter(event => event.name);
+    return this.createScope(
+      labeled.map(event => this.descriptions.createDescription(event, event.name!, document))
+    );
   }
 
   /**

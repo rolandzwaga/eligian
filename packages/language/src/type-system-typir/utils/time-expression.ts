@@ -11,6 +11,7 @@
  */
 
 import type { TimeExpression, TimeRange } from '../../generated/ast.js';
+import { timeConstantValue } from '../../utils/time-constants.js';
 import { convertTimeToSeconds } from '../../utils/time-units.js';
 
 /**
@@ -73,8 +74,16 @@ function evaluateLinearTime(timeExpr: TimeExpression | undefined): LinearTime | 
       }
     }
 
+    case 'VariableReference': {
+      // Idea #10: a time constant (`@beat`)
+      const constant = timeConstantValue(timeExpr);
+      return constant.error === undefined ? { offset: constant.seconds, relative: 0 } : undefined;
+    }
+
     default:
-      // PropertyChainReference: runtime value, not statically known
+      // PropertyChainReference: runtime value, not statically known.
+      // EventTimeReference (`intro.end`): needs the times of earlier events
+      // (resolved by compiler/transformers/time-resolver.ts), not known here.
       return undefined;
   }
 }

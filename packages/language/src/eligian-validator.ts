@@ -144,11 +144,16 @@ export function registerValidationChecks(services: EligianServices) {
       v.timeline.checkSourceRequired,
       v.timeline.checkTimelineOptions, // Feature 049: scroll / loop / duration header options
       v.timeline.checkTimelineLifecycle, // Audit idea #6: one `on enter` / `on leave` each
+      v.timeline.checkEventLabels, // Audit idea #10: unique `at … as <label>`
       v.timeline.checkScrollContainer, // Feature 049: scroll container exists and can scroll
       v.timeline.checkTimelineContainerSelector, // Feature 013: Validate timeline container selector against CSS
     ],
     // A property chain used as a time compiles to nothing (the compiler rejects it)
     PropertyChainReference: v.timeline.checkPropertyChainInTime,
+    // Idea #10: time constants and event labels
+    TimeValue: v.timeline.checkTimeValuePlacement,
+    VariableReference: v.timeline.checkTimeConstantReference,
+    EventTimeReference: v.timeline.checkEventTimeReference,
     // TimelineEvent time ranges are validated by the Typir rules
     // (type-system-typir/validation/event-validation.ts), not here.
   };

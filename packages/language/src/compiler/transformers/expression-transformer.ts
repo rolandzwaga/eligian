@@ -6,7 +6,12 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import { type Expression, isProgram } from '../../generated/ast.js';
+import { type Expression, isProgram, isVariableDeclaration } from '../../generated/ast.js';
+import {
+  isTimeConstant,
+  TIME_VALUE_PLACEMENT_MESSAGE,
+  timeConstantMisuseMessage,
+} from '../../utils/time-constants.js';
 import {
   evaluateExpression,
   resolveConstant,
@@ -104,6 +109,16 @@ export const transformExpression = (
         const constant = resolveConstant(expr, scope.scopedConstants, scope.programConstants);
         if (constant) {
           return constant.value;
+        }
+
+        // Idea #10: a time constant has no runtime value
+        if (isVariableDeclaration(expr.variable.ref) && isTimeConstant(expr.variable.ref)) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: timeConstantMisuseMessage(varName),
+            location: getSourceLocation(expr),
+          });
         }
 
         // Program-level variables are stored in global data (see the setData
@@ -229,6 +244,15 @@ export const transformExpression = (
             });
         }
       }
+
+      case 'TimeValue':
+        // Idea #10: `7s` only means something as a time constant's value
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: TIME_VALUE_PLACEMENT_MESSAGE,
+          location: getSourceLocation(expr),
+        });
 
       default:
         return yield* Effect.fail({

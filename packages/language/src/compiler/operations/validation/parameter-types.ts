@@ -25,6 +25,9 @@ function inferArgumentType(arg: any): string {
     case 'StringLiteral':
       return 'string';
     case 'NumberLiteral':
+    // Idea #10: `2s` is a number of seconds; outside a const it gets one
+    // placement error from the timeline validator, not a type error too
+    case 'TimeValue':
       return 'number';
     case 'BooleanLiteral':
       return 'boolean';
