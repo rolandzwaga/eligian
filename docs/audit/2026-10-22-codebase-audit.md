@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1, #2 and #3 (done) and #12 (partly done).
+The feature ideas below are still open except #1, #2, #3 and #8 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3428,6 +3428,8 @@ broadcastEvent(eventArgs: ["#c5-fx-panel"], eventName: "tour-ping")
 - **Rationale:** This helps every day for any author who has not memorised the operation catalogue, and the metadata already exists. It costs a moderate amount because it shares the inlay-hint provider with #4.
 
 ### #8 Hot reload keeps the playhead (and timeline)
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (timeline, position and play state survive a recompile; "Keep position on reload" toggle persisted in webview state; status line when the timeline is gone or playback cannot resume)
 
 - **Area:** ide · **Effort:** S · **Score:** 8.3
 - **Problem:** Every .eligian save calls initializeEngine, which destroys and recreates the engine, so playback restarts at 0s on the first timeline. CSS hot reload keeps the timeline running, but a DSL edit loses your position. Tuning a beat at 40s means watching 40 seconds again after every save.

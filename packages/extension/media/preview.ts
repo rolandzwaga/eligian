@@ -24,6 +24,12 @@ import {
 import $ from 'jquery';
 import { createEngineLifecycleQueue } from './engine-lifecycle-queue.js';
 import {
+  capturePlayhead,
+  keepPositionEnabled,
+  restorePlayhead,
+  withKeepPosition,
+} from './playhead.js';
+import {
   applyCSSLoad,
   applyCSSReload,
   applyCSSRemove,
@@ -70,6 +76,10 @@ let timelineListenerRemovers: Array<() => void> = [];
  */
 async function initializeEngine(config: IEngineConfiguration): Promise<void> {
   try {
+    // Keep the playhead across recompiles (idea #8): read it before teardown
+    const snapshot = keepPositionEnabled(vscode.getState()) ? capturePlayhead(engine) : undefined;
+    setPlayheadStatus(undefined);
+
     // Clean up previous engine if exists (Eligius 2.0.0: use factoryResult.destroy())
     if (factoryResult) {
       await factoryResult.destroy();
@@ -98,6 +108,12 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
 
     // Show playback controls
     showControls();
+
+    // Back to the same timeline and position, playing if it was
+    if (snapshot) {
+      const timelineUris = (config.timelines ?? []).map(timeline => timeline.uri);
+      setPlayheadStatus(await restorePlayhead(engine, snapshot, timelineUris));
+    }
 
     // Notify extension of successful initialization
     vscode.postMessage({
@@ -442,6 +458,12 @@ function updateControlStates(isPlaying: boolean): void {
   }
 }
 
+/** Show (or clear, with undefined) the playhead status next to the controls. */
+function setPlayheadStatus(message: string | undefined): void {
+  const status = document.getElementById('playhead-status');
+  if (status) status.textContent = message ?? '';
+}
+
 /**
  * Show playback controls after engine initialization.
  */
@@ -514,6 +536,15 @@ window.addEventListener('DOMContentLoaded', () => {
   const pauseBtn = document.getElementById('pause-btn')!;
   const stopBtn = document.getElementById('stop-btn')!;
   const restartBtn = document.getElementById('restart-btn')!;
+
+  // "Keep position on reload" (idea #8), persisted in the webview state
+  const keepPosition = document.getElementById('keep-position') as HTMLInputElement | null;
+  if (keepPosition) {
+    keepPosition.checked = keepPositionEnabled(vscode.getState());
+    keepPosition.addEventListener('change', () => {
+      vscode.setState(withKeepPosition(vscode.getState(), keepPosition.checked));
+    });
+  }
 
   // Wire up button click handlers to broadcast timeline control events
   playBtn.addEventListener('click', () => {

@@ -113,6 +113,18 @@
         #controls button:active {
             background-color: var(--vscode-button-activeBackground);
         }
+        #keep-position-label {
+            margin-left: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        #playhead-status {
+            margin-left: 8px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
         #controls button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -239,6 +251,10 @@
         <button id="stop-btn" disabled>Stop</button>
         <button id="restart-btn" disabled>Restart</button>
         <button id="debug-toggle-btn">Debug Events</button>
+        <label id="keep-position-label" title="After a recompile, continue on the same timeline at the same position">
+            <input type="checkbox" id="keep-position" checked /> Keep position on reload
+        </label>
+        <span id="playhead-status"></span>
     </div>
 
     <!-- EventBus Debug Viewer (floating, draggable panel) -->
