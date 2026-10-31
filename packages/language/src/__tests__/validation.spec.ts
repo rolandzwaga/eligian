@@ -264,7 +264,7 @@ describe('Eligian Grammar - Validation', () => {
       const code = `
                 styles "./styles.css"
                 action test [
-                    setData({ "operationdata.name": $scope.currentItem })
+                    setData({ "$operationdata.name": $scope.currentItem })
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;

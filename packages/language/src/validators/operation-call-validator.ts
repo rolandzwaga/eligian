@@ -6,6 +6,7 @@ import { CssParameterValidator } from './operation-call/css-parameter-validator.
 import { LabelParameterValidator } from './operation-call/label-parameter-validator.js';
 import { OperationExistenceValidator } from './operation-call/operation-existence-validator.js';
 import { ParameterValidator } from './operation-call/parameter-validator.js';
+import { SetDataValidator } from './operation-call/set-data-validator.js';
 
 /**
  * Validations for operation calls (Eligius operations, action calls, CSS/label parameters).
@@ -23,6 +24,7 @@ export class OperationCallValidator extends BaseValidator {
   private readonly parameters: ParameterValidator;
   private readonly css: CssParameterValidator;
   private readonly labels: LabelParameterValidator;
+  private readonly setData: SetDataValidator;
 
   constructor(services: EligianServices) {
     super(services);
@@ -30,6 +32,11 @@ export class OperationCallValidator extends BaseValidator {
     this.parameters = new ParameterValidator(services);
     this.css = new CssParameterValidator(services);
     this.labels = new LabelParameterValidator(services);
+    this.setData = new SetDataValidator(services);
+  }
+
+  checkSetDataTargets(operation: OperationCall, accept: ValidationAcceptor): void {
+    this.setData.checkSetDataTargets(operation, accept);
   }
 
   checkOperationExists(operation: OperationCall, accept: ValidationAcceptor): void {

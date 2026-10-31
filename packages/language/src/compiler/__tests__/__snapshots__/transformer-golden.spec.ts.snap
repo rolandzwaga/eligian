@@ -169,7 +169,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > event acti
           "id": "<uuid-5>",
           "operationData": {
             "properties": {
-              "operationdata.v": "$operationData.eventArgs.1",
+              "$operationdata.v": "$operationData.eventArgs.1",
             },
           },
           "systemName": "setData",
@@ -242,7 +242,7 @@ exports[`AST Transformer — golden output (W2 decomposition guard) > global var
           "id": "<uuid-5>",
           "operationData": {
             "properties": {
-              "operationdata.total": 150,
+              "$operationdata.total": 150,
             },
           },
           "systemName": "setData",

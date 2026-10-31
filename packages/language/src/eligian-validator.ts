@@ -161,6 +161,7 @@ export function registerValidationChecks(services: EligianServices) {
       v.operationCall.checkClassNameParameter, // Feature 013 T017: Validate className parameters
       v.operationCall.checkSelectorParameter, // Feature 013 T020: Validate selector parameters
       v.operationCall.checkLabelIDParameter, // Feature 034: Validate label ID parameters
+      v.operationCall.checkSetDataTargets, // setData keys must be $operationdata./$globaldata./$scope. targets
     ],
   };
   registry.register(operationCallChecks, v.operationCall);

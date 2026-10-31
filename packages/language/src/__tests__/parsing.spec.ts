@@ -280,7 +280,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse operation call with property chain reference', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.name": $scope.currentItem })
+          setData({ "$operationdata.name": $scope.currentItem })
         ]
       `);
 
@@ -320,7 +320,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse action with boolean type annotation', async () => {
       const program = await parseEligian(`
         action toggle(enabled: boolean) [
-          setData({"operationdata.flag": enabled})
+          setData({"$operationdata.flag": enabled})
         ]
       `);
 
@@ -332,7 +332,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse action with object type annotation', async () => {
       const program = await parseEligian(`
         action setConfig(config: object) [
-          setData({"operationdata.config": config})
+          setData({"$operationdata.config": config})
         ]
       `);
 
@@ -344,7 +344,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse action with array type annotation', async () => {
       const program = await parseEligian(`
         action process(items: array) [
-          setData({"operationdata.items": items})
+          setData({"$operationdata.items": items})
         ]
       `);
 
@@ -495,7 +495,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse boolean literals', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.flag": true })
+          setData({ "$operationdata.flag": true })
         ]
       `);
 
@@ -507,7 +507,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse array literals', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.items": [1, 2, 3] })
+          setData({ "$operationdata.items": [1, 2, 3] })
         ]
       `);
 

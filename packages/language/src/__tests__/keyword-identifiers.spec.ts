@@ -52,9 +52,14 @@ describe('Keywords as names', () => {
     return Effect.runPromise(transformAST(ast));
   }
 
+  /**
+   * Properties of the action's setOperationData, used as a neutral container for
+   * values (its keys are free-form; setData keys must be `$operationdata.`-style
+   * targets).
+   */
   function setDataProps(result: Awaited<ReturnType<typeof compiled>>, actionIndex = 0) {
     return result.config.actions[actionIndex].startOperations.find(
-      op => op.systemName === 'setData'
+      op => op.systemName === 'setOperationData'
     )?.operationData?.properties;
   }
 
@@ -74,7 +79,7 @@ describe('Keywords as names', () => {
       'scope',
     ])('action f(%s) parses, resolves and compiles', async name => {
       const result = await compiled(
-        program(`action f(${name}) [ selectElement("#a") setData({"v": ${name}}) ]`)
+        program(`action f(${name}) [ selectElement("#a") setOperationData({"v": ${name}}) ]`)
       );
       expect(setDataProps(result)).toEqual({ v: `$operationdata.${name}` });
     });
@@ -82,7 +87,7 @@ describe('Keywords as names', () => {
     test('event action parameter named `event`', async () => {
       const result = await compiled(
         program(
-          'on event "dom-mutation" action hh(event) [ selectElement("#a") setData({"v": event}) ]\naction init [ selectElement("#a") ]'
+          'on event "dom-mutation" action hh(event) [ selectElement("#a") setOperationData({"v": event}) ]\naction init [ selectElement("#a") ]'
         )
       );
       expect(JSON.stringify(result.config)).toContain('$operationData.eventArgs.0');
@@ -96,14 +101,16 @@ describe('Keywords as names', () => {
   describe('const, for-loop item and import names', () => {
     test('const s = 5 folds through @s', async () => {
       const result = await compiled(
-        program('const s = 5\naction f [ selectElement("#a") setData({"v": @s}) ]')
+        program('const s = 5\naction f [ selectElement("#a") setOperationData({"v": @s}) ]')
       );
       expect(setDataProps(result)).toEqual({ v: 5 });
     });
 
     test('for (s in items) aliases @@s', async () => {
       const result = await compiled(
-        program('action f(items) [ for (s in items) { selectElement("#a") setData({"v": @@s}) } ]')
+        program(
+          'action f(items) [ for (s in items) { selectElement("#a") setOperationData({"v": @@s}) } ]'
+        )
       );
       expect(JSON.stringify(result.config)).toContain('$scope.currentItem');
     });
@@ -128,7 +135,7 @@ describe('Keywords as names', () => {
     test('reserved keywords as object keys', async () => {
       const result = await compiled(
         program(
-          'action f [ selectElement("#a") setData({ if: 1, for: 2, true: 3, null: 4, on: 5, const: 6 }) ]'
+          'action f [ selectElement("#a") setOperationData({ if: 1, for: 2, true: 3, null: 4, on: 5, const: 6 }) ]'
         )
       );
       expect(setDataProps(result)).toEqual({ if: 1, for: 2, true: 3, null: 4, on: 5, const: 6 });
@@ -143,7 +150,7 @@ describe('Keywords as names', () => {
       ['@@event', '$scope.event'],
     ])('%s', async (source, expected) => {
       const result = await compiled(
-        program(`action f [ selectElement("#a") setData({"v": ${source}}) ]`)
+        program(`action f [ selectElement("#a") setOperationData({"v": ${source}}) ]`)
       );
       expect(setDataProps(result)).toEqual({ v: expected });
     });
