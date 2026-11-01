@@ -212,17 +212,20 @@ export function generateEntryPoint(config: IEngineConfiguration, operations: str
 
   // Auto-init on DOMContentLoaded
   lines.push('// Auto-init on DOMContentLoaded');
+  // `ready` resolves with the auto-started engine (eligian dev resumes the
+  // playhead through it after a reload)
   lines.push("document.addEventListener('DOMContentLoaded', () => {");
   lines.push('  const container = document.querySelector(CONFIG.containerSelector);');
   lines.push('  if (container) {');
-  lines.push('    init(container).catch(console.error);');
+  lines.push('    window.EligiusBundled.ready = init(container);');
+  lines.push('    window.EligiusBundled.ready.catch(console.error);');
   lines.push('  }');
   lines.push('});');
   lines.push('');
 
   // Export for manual initialization
   lines.push('// Export for manual initialization');
-  lines.push('window.EligiusBundled = { init, CONFIG };');
+  lines.push('window.EligiusBundled = { init, CONFIG, ready: undefined };');
   lines.push('');
 
   return lines.join('\n');

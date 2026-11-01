@@ -26,6 +26,7 @@ import {
   IOError,
   ParseError,
 } from './compile-file.js';
+import { startDevServer } from './dev/dev-server.js';
 import { runFmt } from './fmt.js';
 import { runInit } from './init.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
@@ -298,7 +299,7 @@ export default function main(): void {
     .version(packageVersion)
     .addHelpText(
       'after',
-      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, init) for its options."
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init) for its options."
     );
 
   // Check command: every diagnostic of every matched file
@@ -351,6 +352,35 @@ export default function main(): void {
       if (outcome.output) console.log(outcome.output);
       if (outcome.error) console.error(chalk.red(outcome.error));
       process.exit(outcome.exitCode);
+    });
+
+  // Dev command (idea #23): the presentation in the browser, rebuilt on change
+  program
+    .command('dev')
+    .description(
+      'serve a presentation in the browser and rebuild it when its files change (keeps the playhead)'
+    )
+    .argument('<input>', 'input .eligian file')
+    .option('-p, --port <port>', 'port (the next free one is used when it is taken)', '5180')
+    .option('--open', 'open it in the default browser', false)
+    .action(async (input: string, cmdOptions: Record<string, unknown>) => {
+      const port = Number(cmdOptions.port);
+      if (!Number.isInteger(port) || port < 0 || port > 65535) {
+        console.error(`Error: --port must be a port number (got "${cmdOptions.port}")`);
+        process.exit(2);
+      }
+      const time = () => new Date().toTimeString().slice(0, 8);
+      const server = await startDevServer(input, {
+        port,
+        open: cmdOptions.open === true,
+        log: line => console.log(chalk.gray(`[${time()}] `) + line),
+      });
+      console.log(
+        `${chalk.green('eligian dev')} ${input} → ${chalk.cyan(server.url)} (Ctrl+C to stop)`
+      );
+      const stop = () => void server.close().then(() => process.exit(0));
+      process.on('SIGINT', stop);
+      process.on('SIGTERM', stop);
     });
 
   // Smoke command (idea #21): play every timeline headlessly

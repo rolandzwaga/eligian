@@ -245,7 +245,7 @@ describe('CLI - Version and Help', () => {
 
     expect(result).toContain('compile [options] <input>');
     expect(result).toContain('check [options] <patterns...>');
-    expect(result).toContain("'eligian <command> --help' (compile, check, fmt, smoke, init)");
+    expect(result).toContain("'eligian <command> --help' (compile, check, fmt, smoke, dev, init)");
   });
 
   it('should display bundle options in help', () => {

@@ -98,6 +98,28 @@ warnings, **2** nothing matched or an invalid option.
 
 `eligian <input>` is short for `eligian compile <input>`.
 
+### Work in the Browser (`eligian dev`)
+
+```bash
+eligian dev examples/eligian-tour/tour.eligian --open
+  [12:04:02] built in 505ms
+  eligian dev examples/eligian-tour/tour.eligian → http://localhost:5180/ (Ctrl+C to stop)
+  [12:04:31] tour.css changed → rebuilt in 351ms, styles swapped
+  [12:04:40] presentation.eligian changed → rebuilt in 293ms, reloading 1 page
+```
+
+Serves the bundle (the same as `--bundle`) on `localhost` and rebuilds it when a file in the
+entry's directory changes: the program, libraries, layout, styles, locales and media.
+
+- A stylesheet change swaps the styles in place: the presentation keeps running.
+- Any other change reloads the page, which resumes at the same timeline and position (and
+  stays paused when it was paused).
+- A build error shows as an overlay in the page (the same message as `eligian compile`) until
+  the file is fixed.
+- `--port <n>` (default 5180; the next free port is used when it is taken), `--open` opens the
+  default browser. Media is served with Range requests, so video can seek.
+- Only files under the entry's directory are watched.
+
 ### Play Every Timeline (`eligian smoke`)
 
 ```bash
@@ -175,6 +197,7 @@ eligian fmt --write src               # rewrite them
 Usage: eligian [compile] [options] <input>
        eligian check [options] <patterns...>
        eligian fmt [--check | --write] <patterns...>
+       eligian dev [--port <n>] [--open] <input>
        eligian smoke [--strict] [--format pretty|github|json] <patterns...>
        eligian init [dir] [--template blank|chapters|video|library] [--title <title>] [--force]
 
