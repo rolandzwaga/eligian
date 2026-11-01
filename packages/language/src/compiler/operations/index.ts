@@ -5,7 +5,9 @@
  * It exports the generated registry and provides lookup/query functions.
  */
 
+import type { AstNode } from 'langium';
 import { findSimilar } from '../utils/string-similarity.js';
+import { findHostOperation, hostSignature } from './host-operations.js';
 import { OPERATION_REGISTRY as GENERATED_REGISTRY } from './registry.generated.js';
 import type { OperationSignature } from './types.js';
 
@@ -75,8 +77,14 @@ export {
  * if (signature) {
  * }
  */
-export function getOperationSignature(name: string): OperationSignature | undefined {
-  return hasOperation(name) ? OPERATION_REGISTRY[name] : undefined;
+export function getOperationSignature(
+  name: string,
+  context?: AstNode
+): OperationSignature | undefined {
+  if (isBuiltInOperation(name)) return OPERATION_REGISTRY[name];
+  // Idea #24: an operation the program declares in its extensions import
+  const host = context ? findHostOperation(name, context) : undefined;
+  return host ? hostSignature(host) : undefined;
 }
 
 /**
@@ -90,7 +98,15 @@ export function getOperationSignature(name: string): OperationSignature | undefi
  *   // Safe to use addClass operation
  * }
  */
-export function hasOperation(name: string): boolean {
+export function hasOperation(name: string, context?: AstNode): boolean {
+  return (
+    isBuiltInOperation(name) ||
+    (context !== undefined && findHostOperation(name, context) !== undefined)
+  );
+}
+
+/** Whether `name` is an Eligius operation (not a host one). */
+export function isBuiltInOperation(name: string): boolean {
   // Own properties only: `in` would accept toString/constructor/valueOf/...
   return Object.getOwnPropertyDescriptor(OPERATION_REGISTRY, name) !== undefined;
 }

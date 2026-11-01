@@ -3,7 +3,10 @@ import * as path from 'node:path';
 import type { AstNode, ValidationAcceptor } from 'langium';
 import { URI } from 'vscode-uri';
 import { getOperationSignature } from '../../compiler/index.js';
-import { getController, isController } from '../../completion/metadata/controllers.generated.js';
+import {
+  controllerMetadata,
+  isKnownController,
+} from '../../compiler/operations/host-operations.js';
 import type { OperationCall, Program } from '../../generated/ast.js';
 import { extractLanguageCodes } from '../../labels/index.js';
 import { extractTranslationKeys } from '../../locales/translation-key-extractor.js';
@@ -77,7 +80,7 @@ export class LabelParameterValidator extends BaseValidator {
     const controllerName = firstArg.value;
 
     // Check if controller exists
-    if (!isController(controllerName)) {
+    if (!isKnownController(controllerName, operation)) {
       accept('error', `Unknown controller: '${controllerName}'.`, {
         node: firstArg,
         data: { code: 'unknown_controller' },
@@ -86,7 +89,7 @@ export class LabelParameterValidator extends BaseValidator {
     }
 
     // Get controller metadata
-    const controller = getController(controllerName);
+    const controller = controllerMetadata(controllerName, operation);
     if (!controller) {
       return; // Should not happen if isController returned true
     }
@@ -302,7 +305,7 @@ export class LabelParameterValidator extends BaseValidator {
     if (!operationName) return;
 
     // Check if this operation has label ID parameters
-    const operationSignature = getOperationSignature(operationName);
+    const operationSignature = getOperationSignature(operationName, operation);
     if (!operationSignature) return; // Unknown operation (caught by checkOperationExists)
 
     // Find label ID parameter indices (both single and array with @itemType)

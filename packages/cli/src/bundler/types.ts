@@ -1,3 +1,4 @@
+import type { HostModule } from '@eligian/language';
 /**
  * Standalone Bundle Compilation Types
  *
@@ -523,6 +524,12 @@ export interface RuntimeBundleConfig {
    * Operations used in the configuration (for tree-shaking)
    */
   usedOperations: string[];
+
+  /**
+   * Idea #24: the program's extensions module (absolute path) and the names it
+   * declares; imported into the bundle and registered with the engine
+   */
+  host?: HostModule;
 
   /**
    * Whether to minify output

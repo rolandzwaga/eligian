@@ -112,7 +112,7 @@
         },
         {
           "name": "keyword.control.import.eligian",
-          "match": "(?<![\\w.])(?:import|from|as|layout|styles|provider|locales)(?![\\w])"
+          "match": "(?<![\\w.])(?:import|from|as|layout|styles|provider|locales|extensions)(?![\\w])"
         },
         {
           "name": "storage.modifier.eligian",
@@ -121,6 +121,10 @@
         {
           "name": "storage.type.declaration.eligian",
           "match": "(?<![\\w.])(?:action|const|library|languages)(?![\\w])"
+        },
+        {
+          "name": "storage.type.declaration.eligian",
+          "match": "(?<![\\w.])(?:operation|controller|function)(?![\\w])(?!\\s*\\()"
         },
         {
           "name": "storage.type.primitive.eligian",

@@ -4,6 +4,7 @@
  * Extracted verbatim from `operations/validator.ts` (W3 decomposition).
  */
 
+import type { AstNode } from 'langium';
 import { hasOperation, OPERATION_REGISTRY, suggestSimilarOperations } from '../index.js';
 import type { UnknownOperationError } from './errors.js';
 
@@ -18,8 +19,12 @@ import type { UnknownOperationError } from './errors.js';
  * const error = validateOperationExists('adClass'); // typo
  * // error.suggestions = ['addClass', 'toggleClass', 'removeClass']
  */
-export function validateOperationExists(operationName: string): UnknownOperationError | undefined {
-  if (hasOperation(operationName)) {
+export function validateOperationExists(
+  operationName: string,
+  context?: AstNode
+): UnknownOperationError | undefined {
+  // `context`: its program's host operations (idea #24) exist too
+  if (hasOperation(operationName, context)) {
     return undefined; // Operation exists, no error
   }
 

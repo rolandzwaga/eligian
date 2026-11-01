@@ -17,10 +17,12 @@
 import {
   type EligianMap,
   type EngineErrorInfo,
+  type HostModule,
   locateEngineError,
   type SourceLocation,
 } from '@eligian/language';
 import type { IEngineConfiguration } from 'eligius';
+import { loadHostModule } from '../dev/host-module.js';
 import { loadEligius, smokeWindow } from './dom-environment.js';
 
 export interface SmokeProblem {
@@ -50,6 +52,8 @@ export interface SmokeResult {
 export interface SmokeOptions {
   /** Also report selectors that match no element */
   readonly strict?: boolean;
+  /** Idea #24: the program's host module, registered with the engine */
+  readonly host?: HostModule;
   /** Longest a single step (init, seek, switch) may take (default 10 s) */
   readonly stepTimeoutMs?: number;
 }
@@ -95,7 +99,19 @@ export async function smokeConfig(
   const restore = captureRuntime(report, config, map, options.strict === true);
   const timeout = options.stepTimeoutMs ?? 10000;
   try {
-    const { engine } = new EngineFactory(new EligiusResourceImporter(), window, {
+    // Idea #24: the declared host operations, controllers and functions
+    let registrations = {};
+    if (options.host) {
+      const loaded = await loadHostModule(options.host);
+      registrations = loaded.registrations;
+      for (const name of loaded.missing) {
+        report({
+          severity: 'error',
+          message: `the extensions module ${options.host.path} does not export ${name}`,
+        });
+      }
+    }
+    const { engine } = new EngineFactory(new EligiusResourceImporter(registrations), window, {
       input: { playToggle: false, resize: false },
     }).createEngine(runnable);
     engine.on('error', error => {

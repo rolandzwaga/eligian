@@ -98,11 +98,11 @@ export class ParameterValidator extends BaseValidator {
     }
 
     // Only validate built-in operations if not an action
-    if (!hasOperation(opName)) {
+    if (!hasOperation(opName, operation)) {
       return;
     }
 
-    const signature = getOperationSignature(opName)!;
+    const signature = getOperationSignature(opName, operation)!;
 
     // Use compiler validation logic
     const error = validateParameterCount(signature, argumentCount);
@@ -134,11 +134,11 @@ export class ParameterValidator extends BaseValidator {
     }
 
     // Only validate if operation exists (avoid duplicate errors)
-    if (!hasOperation(opName)) {
+    if (!hasOperation(opName, operation)) {
       return;
     }
 
-    const signature = getOperationSignature(opName)!;
+    const signature = getOperationSignature(opName, operation)!;
 
     // Use compiler validation logic
     const errors = validateParameterTypes(signature, operation.args);

@@ -179,7 +179,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         }
 
         // First, check if this is a built-in operation
-        const signature = getOperationSignature(opName);
+        const signature = getOperationSignature(opName, operationCall);
         if (signature) {
           const markdown = buildOperationHoverMarkdown(signature);
           return createMarkdownHover(markdown);

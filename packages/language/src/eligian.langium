@@ -143,7 +143,43 @@ LanguageEntry:
  * - LibraryImport: import { action1, action2 } from './library.eligian' (Feature 023)
  */
 ImportStatement:
-    DefaultImport | NamedImport | LibraryImport;
+    DefaultImport | NamedImport | LibraryImport | ExtensionsImport;
+
+/**
+ * Extensions Import (audit idea #24) - app-specific JavaScript / TypeScript:
+ * custom operations, controllers and functions, declared here so the editor
+ * and the compiler know them, and bundled with the presentation.
+ *
+ *   extensions "./host.ts" {
+ *     operation trackEvent(eventName: string, data?: object)
+ *     controller Confetti(count: number)
+ *     function formatPrice
+ *   }
+ *
+ * The module exports `operations`, `controllers` and `functions` objects with
+ * those names (Eligius' resource registrations). A host operation is called
+ * like a built-in one (`trackEvent("intro")`), a controller with
+ * `addController("Confetti", 5)`, a function with `customFunction("formatPrice")`.
+ * One per program.
+ */
+ExtensionsImport:
+    'extensions' path=STRING '{' (declarations += HostDeclaration)* '}';
+
+HostDeclaration:
+    HostOperation | HostController | HostFunction;
+
+HostOperation:
+    'operation' name=ActionName '(' (parameters += HostParameter (',' parameters += HostParameter)*)? ')';
+
+HostController:
+    'controller' name=ActionName '(' (parameters += HostParameter (',' parameters += HostParameter)*)? ')';
+
+HostFunction:
+    'function' name=ActionName;
+
+/** A host operation or controller parameter: `name`, `name?` (optional), `name: string`. */
+HostParameter:
+    name=Identifier (optional?='?')? (':' type=TypeAnnotation)?;
 
 /**
  * Default Import - Auto-assignment to configuration properties
@@ -455,7 +491,8 @@ ContinueStatement:
  * still be called `toggle` or `play`.
  */
 ActionName returns string:
-    ID | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key';
+    ID | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key'
+    | 'extensions' | 'operation' | 'controller' | 'function';
 
 /**
  * DOM Event Name - the event of `on <event> "<sel>" <verb>`: an ID, or one of
@@ -968,7 +1005,8 @@ Identifier returns string:
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
     | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
     | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then' | 'target'
-    | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key';
+    | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key'
+    | 'extensions' | 'operation' | 'controller' | 'function';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:

@@ -33,7 +33,7 @@ export class OperationExistenceValidator extends BaseValidator {
     }
 
     // Use compiler validation logic
-    const error = validateOperationExists(opName);
+    const error = validateOperationExists(opName, operation);
 
     if (error) {
       const message = formatValidationMessage(error.message, error.hint);
@@ -76,7 +76,7 @@ export class OperationExistenceValidator extends BaseValidator {
     }
 
     // Check if it's an operation (ERROR - operations not allowed as direct timeline actions)
-    if (hasOperation(callName)) {
+    if (hasOperation(callName, call)) {
       accept(
         'error',
         `Operation '${callName}' cannot be used directly in timeline events. Define an action that calls this operation, then call the action.`,

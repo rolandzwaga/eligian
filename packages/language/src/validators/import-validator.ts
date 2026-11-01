@@ -297,7 +297,7 @@ export class ImportValidator extends BaseValidator {
   checkImportAliasCollision(libraryImport: LibraryImport, accept: ValidationAcceptor): void {
     for (const actionImport of libraryImport.actions) {
       // Check if alias conflicts with built-in operation
-      if (actionImport.alias && hasOperation(actionImport.alias)) {
+      if (actionImport.alias && hasOperation(actionImport.alias, libraryImport)) {
         accept(
           'error',
           `Cannot use alias '${actionImport.alias}': name conflicts with built-in operation`,

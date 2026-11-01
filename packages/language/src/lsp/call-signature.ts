@@ -8,8 +8,8 @@
  * the controller's own parameters after the controller name.
  */
 import type { CommentProvider } from 'langium';
+import { controllerMetadata } from '../compiler/operations/host-operations.js';
 import { getOperationSignature } from '../compiler/operations/index.js';
-import { getController } from '../completion/metadata/controllers.generated.js';
 import { parameterRoles } from '../css/parameter-roles.js';
 import {
   type ActionDefinition,
@@ -85,7 +85,7 @@ export function getCallSignature(
   const name = getOperationCallName(call);
   if (name === 'addController') {
     const controllerName = isStringLiteral(call.args[0]) ? call.args[0].value : undefined;
-    const controller = controllerName ? getController(controllerName) : undefined;
+    const controller = controllerName ? controllerMetadata(controllerName, call) : undefined;
     return {
       name,
       kind: 'controller',
@@ -107,7 +107,7 @@ export function getCallSignature(
     };
   }
 
-  const signature = getOperationSignature(name);
+  const signature = getOperationSignature(name, call);
   if (!signature) return undefined;
   return {
     name,

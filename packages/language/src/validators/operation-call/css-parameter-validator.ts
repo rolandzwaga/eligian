@@ -87,7 +87,7 @@ export class CssParameterValidator extends BaseValidator {
     if (!operationName) return;
 
     // Check if this operation has className parameters
-    const operationSignature = getOperationSignature(operationName);
+    const operationSignature = getOperationSignature(operationName, operation);
     if (!operationSignature) return; // Unknown operation (will be caught by checkOperationExists)
 
     // Find className parameter indices
@@ -172,7 +172,7 @@ export class CssParameterValidator extends BaseValidator {
     if (!operationName) return;
 
     // Check if this operation has selector parameters
-    const operationSignature = getOperationSignature(operationName);
+    const operationSignature = getOperationSignature(operationName, operation);
     if (!operationSignature) return;
 
     // Find selector parameter indices

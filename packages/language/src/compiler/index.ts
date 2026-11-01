@@ -145,3 +145,12 @@ export type {
  * Compiler version
  */
 export const VERSION = '0.0.1';
+
+// Idea #24: host operations, controllers and functions (extensions import)
+export {
+  controllerMetadata,
+  type HostModule,
+  hostModuleOf,
+  hostOperations,
+  isKnownController,
+} from './operations/host-operations.js';

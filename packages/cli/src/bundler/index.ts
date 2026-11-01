@@ -250,6 +250,7 @@ export function createBundle(
           return yield* bundleRuntime({
             eligiusConfig: bundleConfig,
             usedOperations: extractUsedOperations(bundleConfig),
+            host: compileResult.host,
             minify: resolvedOptions.minify,
             sourcemap: resolvedOptions.sourcemap,
             tempDir,

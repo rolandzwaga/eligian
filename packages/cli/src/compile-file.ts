@@ -14,7 +14,9 @@ import {
   type EligianMap,
   formatErrors,
   getProgramWarnings,
+  type HostModule,
   hasImports,
+  hostModuleOf,
   type IEngineConfiguration,
   loadProgramAssets,
   type Program,
@@ -61,6 +63,8 @@ export interface CompileResult {
   assetCount: number;
   /** Non-fatal diagnostics (warnings / info / hints), in document order */
   warnings: CompileWarning[];
+  /** Idea #24: the program's extensions module (absolute path) and its declared names */
+  host?: HostModule;
 }
 
 /**
@@ -326,5 +330,17 @@ export async function compileFile(
   // Generate output JSON
   const json = minify ? JSON.stringify(config) : JSON.stringify(config, null, 2);
 
-  return { config, json, map: { ...map, source: absoluteInputPath }, assetCount, warnings };
+  const declared = hostModuleOf(program);
+  const host = declared
+    ? { ...declared, path: path.resolve(path.dirname(absoluteInputPath), declared.path) }
+    : undefined;
+
+  return {
+    config,
+    json,
+    map: { ...map, source: absoluteInputPath },
+    assetCount,
+    warnings,
+    ...(host ? { host } : {}),
+  };
 }

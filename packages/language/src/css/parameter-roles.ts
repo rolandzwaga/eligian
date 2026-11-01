@@ -12,7 +12,7 @@
  * validated and completed like one passed to the operation itself:
  * `spotlight("#tok-timelin")` → Unknown CSS ID … Did you mean: tok-timeline?
  */
-import { AstUtils } from 'langium';
+import { type AstNode, AstUtils } from 'langium';
 import { getOperationSignature } from '../compiler/operations/index.js';
 import {
   type ActionDefinition,
@@ -28,8 +28,12 @@ import { getOperationCallName } from '../utils/operation-call-utils.js';
 export type ParameterRole = 'selector' | 'className';
 
 /** The role of an operation's parameter at `index`, from its registry type tags. */
-function operationParameterRole(name: string, index: number): ParameterRole | undefined {
-  const parameter = getOperationSignature(name)?.parameters[index];
+function operationParameterRole(
+  name: string,
+  index: number,
+  context: AstNode
+): ParameterRole | undefined {
+  const parameter = getOperationSignature(name, context)?.parameters[index];
   const types = Array.isArray(parameter?.type) ? (parameter.type as readonly unknown[]) : [];
   if (types.includes('ParameterType:selector')) return 'selector';
   if (types.includes('ParameterType:className')) return 'className';
@@ -49,7 +53,7 @@ export function argumentRole(call: OperationCall, index: number): ParameterRole 
     const parameter = action.parameters[index];
     return parameter ? parameterRoles(action).get(parameter.name) : undefined;
   }
-  return operationParameterRole(getOperationCallName(call), index);
+  return operationParameterRole(getOperationCallName(call), index, call);
 }
 
 /**
@@ -82,7 +86,7 @@ export function parameterRoles(
           const parameter = callee.parameters[index];
           note(arg, parameter ? parameterRoles(callee, visiting).get(parameter.name) : undefined);
         } else {
-          note(arg, operationParameterRole(getOperationCallName(node), index));
+          note(arg, operationParameterRole(getOperationCallName(node), index, node));
         }
       });
     }

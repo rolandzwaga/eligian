@@ -16,6 +16,7 @@
  * `compiler/index.ts` barrel) are unchanged (W3 decomposition).
  */
 
+import type { AstNode } from 'langium';
 import { getOperationSignature, type OperationSignature } from './index.js';
 import type { OperationValidationError } from './validation/errors.js';
 import { validateOperationExists } from './validation/existence.js';
@@ -62,18 +63,22 @@ export type ValidationResult =
  *   console.error(result.errors);
  * }
  */
-export function validateOperation(operationName: string, argumentCount?: number): ValidationResult {
+export function validateOperation(
+  operationName: string,
+  argumentCount?: number,
+  context?: AstNode
+): ValidationResult {
   const errors: OperationValidationError[] = [];
 
   // T213: Check operation exists
-  const existenceError = validateOperationExists(operationName);
+  const existenceError = validateOperationExists(operationName, context);
   if (existenceError) {
     errors.push(existenceError);
     return { success: false, errors };
   }
 
   // Operation exists - get signature
-  const signature = getOperationSignature(operationName)!;
+  const signature = getOperationSignature(operationName, context)!;
 
   // T214: Check parameter count (if provided)
   if (argumentCount !== undefined) {

@@ -6,6 +6,7 @@ import { ActionValidator } from './validators/action-validator.js';
 import { DataflowValidator } from './validators/dataflow-validator.js';
 import { EventActionValidator } from './validators/event-action-validator.js';
 import { ExpressionValidator } from './validators/expression-validator.js';
+import { ExtensionsValidator } from './validators/extensions-validator.js';
 import { ImportValidator } from './validators/import-validator.js';
 import { LanguagesValidator } from './validators/languages-validator.js';
 import { NavigateValidator } from './validators/navigate-validator.js';
@@ -68,6 +69,7 @@ export class EligianValidator {
   readonly languages: LanguagesValidator;
   readonly eventAction: EventActionValidator;
   readonly navigate: NavigateValidator;
+  readonly extensions: ExtensionsValidator;
   readonly expression: ExpressionValidator;
   readonly operationSequence: OperationSequenceValidator;
   readonly dataflow: DataflowValidator;
@@ -81,6 +83,7 @@ export class EligianValidator {
     this.languages = new LanguagesValidator(services);
     this.eventAction = new EventActionValidator(services);
     this.navigate = new NavigateValidator(services);
+    this.extensions = new ExtensionsValidator(services);
     this.expression = new ExpressionValidator(services);
     this.operationSequence = new OperationSequenceValidator(services);
     this.dataflow = new DataflowValidator(services);
@@ -240,6 +243,14 @@ export function registerValidationChecks(services: EligianServices) {
     Library: v.dataflow.checkOperationData,
   };
   registry.register(dataflowChecks, v.dataflow);
+
+  // Idea #24: the extensions import (host operations, controllers, functions)
+  const extensionsChecks: ValidationChecks<EligianAstType> = {
+    Program: v.extensions.checkSingleExtensionsImport,
+    ExtensionsImport: v.extensions.checkExtensionsImport,
+    OperationCall: v.extensions.checkCustomFunctionName,
+  };
+  registry.register(extensionsChecks, v.extensions);
 
   const navigateChecks: ValidationChecks<EligianAstType> = {
     InteractionStatement: [

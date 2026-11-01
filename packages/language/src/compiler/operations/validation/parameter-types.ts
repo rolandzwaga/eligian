@@ -115,7 +115,12 @@ function isTypeSingleCompatible(argType: string, paramTypeStr: string): boolean 
       paramTypeStr.includes('selector') ||
       paramTypeStr.includes('htmlElementName') ||
       paramTypeStr.includes('actionName') ||
-      paramTypeStr.includes('eventName')
+      paramTypeStr.includes('eventName') ||
+      // Names and text Eligius takes as strings (customFunction("formatPrice"),
+      // getControllerInstance("…"), a topic, a URL, a label id, …)
+      /ParameterType:(systemName|controllerName|eventTopic|url|htmlContent|labelId|ImagePath|expression|languagecode|mathfunction)$/.test(
+        paramTypeStr
+      )
     );
   }
 

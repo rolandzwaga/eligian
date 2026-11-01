@@ -377,7 +377,7 @@ export class OperationDataflow {
       return;
     }
 
-    if (hasOperation(name)) {
+    if (hasOperation(name, call)) {
       this.applyOperation(name, call, state, ctx, call.args);
     }
     // Unknown names are reported by the operation-existence validator
@@ -554,7 +554,7 @@ export class OperationDataflow {
     if (isActionDefinition(ref)) return ref;
     const name = getOperationCallName(call);
     // Unified call syntax: actions first; an unlinked call may still name an action
-    if (name === 'addController' || hasOperation(name)) return undefined;
+    if (name === 'addController' || hasOperation(name, call)) return undefined;
     return this.env.resolveAction(call, name);
   }
 

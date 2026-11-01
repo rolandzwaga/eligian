@@ -96,7 +96,7 @@ export class NavigateValidator extends BaseValidator {
     if (!isActionDefinition(call.operationName?.ref)) {
       // An unknown name is reported by the operation-existence validator
       const name = getOperationCallName(call);
-      if (hasOperation(name)) {
+      if (hasOperation(name, call)) {
         accept(
           'error',
           `'run' starts an action, and '${name}' is an operation: wrap it in an action`,

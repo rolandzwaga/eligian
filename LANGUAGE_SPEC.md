@@ -532,6 +532,55 @@ locales "./missing.json"
 
 **Compilation**: The file content is assigned verbatim to `config.locales` in the compiled Eligius configuration.
 
+#### 3.2.5 Extensions Import: host operations, controllers and functions
+
+App-specific JavaScript or TypeScript (a tracking call, a formatter, a custom controller)
+comes from a host module that the presentation declares and that is bundled with it:
+
+```eligian
+extensions "./host.ts" {
+  operation trackEvent(eventName: string, data?: object)
+  controller Confetti(count: number)
+  function formatPrice
+}
+
+action intro() [
+  trackEvent("intro", { page: 1 })          // like an Eligius operation
+  selectElement("#stage")
+  addController("Confetti", 25)             // like an Eligius controller
+  customFunction("formatPrice")
+]
+```
+
+The module exports `operations`, `controllers` and `functions` objects with those names (Eligius'
+resource registrations):
+
+```ts
+export const operations = {
+  trackEvent(operationData: { eventName: string; data?: object }) {
+    analytics.send(operationData.eventName, operationData.data);
+    return operationData;
+  },
+};
+export const controllers = { Confetti };              // classes implementing IController
+export const functions = { formatPrice: (value: number) => value.toFixed(2) };
+```
+
+- **Declarations** give the editor and the compiler the signatures: validation (argument
+  count and types), completion and signature help work as for Eligius operations. A parameter
+  is `name`, `name?` (optional) or `name: string|number|boolean|object|array`; an untyped one
+  takes any value. The arguments become the operation data under the parameter names.
+- **Rules:** one extensions import per program; a relative path to a `.js`, `.mjs`, `.ts`,
+  `.mts`, `.jsx` or `.tsx` file; no name of an Eligius operation or controller (Eligius refuses
+  to register one), no duplicates. An action cannot have a host operation's name.
+  `customFunction("x")` warns when `x` is not a declared function.
+- **Bundling:** `--bundle`, `eligian dev` and `eligian smoke` bundle the module with esbuild
+  (TypeScript and npm imports included) and register the declared names with the engine.
+  `smoke` reports a declared name the module does not export.
+- **Preview:** in a trusted workspace the VS Code preview bundles and runs the module too; in an
+  untrusted one the host operations do nothing (the preview says so).
+- The declarations must match the module: Eligian does not read the module's code.
+
 ### 3.3 Library Import Statements (Feature 023)
 
 Library import statements allow you to import reusable actions from library files.

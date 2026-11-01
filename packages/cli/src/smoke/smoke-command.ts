@@ -64,8 +64,8 @@ export async function runSmoke(
 
 async function smokeFile(file: string, options: SmokeCommandOptions): Promise<SmokeResult> {
   try {
-    const { config, map } = await compileFile(file);
-    return await smokeConfig(config, map, options);
+    const { config, map, host } = await compileFile(file);
+    return await smokeConfig(config, map, { ...options, host });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const details = (error as { errors?: { message: string }[] }).errors

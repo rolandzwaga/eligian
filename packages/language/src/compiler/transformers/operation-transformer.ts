@@ -8,7 +8,6 @@
  * and operation-sequence dependency validation.
  */
 import { Effect } from 'effect';
-import { getController, isController } from '../../completion/metadata/controllers.generated.js';
 import type { TransformError } from '../../errors/index.js';
 import type {
   ActionDefinition,
@@ -25,6 +24,7 @@ import type {
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { constantValueType, evaluateExpression } from '../expression-evaluator.js';
 import { findActionByName } from '../name-resolver.js';
+import { controllerMetadata, isKnownController } from '../operations/host-operations.js';
 import { getOperationSignature } from '../operations/index.js';
 import { mapParameters } from '../operations/mapper.js';
 import { validateOperation } from '../operations/validator.js';
@@ -81,7 +81,7 @@ export const transformOperationCall = (
     }
 
     // T218: Validate operation before transforming
-    const validationResult = validateOperation(operationName, args.length);
+    const validationResult = validateOperation(operationName, args.length, opCall);
     if (!validationResult.success) {
       // Collect all validation errors and fail with first error
       const firstError = validationResult.errors[0];
@@ -94,7 +94,7 @@ export const transformOperationCall = (
     }
 
     // T223: Use parameter mapper to transform arguments to operationData
-    const signature = getOperationSignature(operationName);
+    const signature = getOperationSignature(operationName, opCall);
     if (!signature) {
       // This should never happen after validation, but handle defensively
       return yield* Effect.fail({
@@ -222,7 +222,7 @@ const transformStatement = (
           const controllerName = args[0].value;
 
           // Validate controller exists
-          if (!isController(controllerName)) {
+          if (!isKnownController(controllerName, stmt)) {
             return yield* Effect.fail({
               _tag: 'TransformError' as const,
               kind: 'ValidationError' as const,
@@ -231,7 +231,7 @@ const transformStatement = (
             });
           }
 
-          const controller = getController(controllerName);
+          const controller = controllerMetadata(controllerName, stmt);
           if (!controller) {
             return yield* Effect.fail({
               _tag: 'TransformError' as const,

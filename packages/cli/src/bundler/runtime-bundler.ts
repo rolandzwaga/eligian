@@ -7,6 +7,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import type { HostModule } from '@eligian/language';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import * as esbuild from 'esbuild';
@@ -131,7 +132,14 @@ export function extractUsedSystemEntries(config: IEngineConfiguration): string[]
  * - Embeds the configuration
  * - Sets up initialization on DOMContentLoaded
  */
-export function generateEntryPoint(config: IEngineConfiguration, operations: string[]): string {
+export function generateEntryPoint(
+  config: IEngineConfiguration,
+  allOperations: string[],
+  host?: HostModule
+): string {
+  // Idea #24: host operations and controllers come from the extensions module, not eligius
+  const hostNames = new Set([...(host?.operations ?? []), ...(host?.controllers ?? [])]);
+  const operations = allOperations.filter(op => !hostNames.has(op));
   const lines: string[] = [];
 
   // Header comment
@@ -154,12 +162,21 @@ export function generateEntryPoint(config: IEngineConfiguration, operations: str
 
   // System entries (timeline position sources, controllers) — resolved by the
   // engine via the importer map, so they must be imported and registered too.
-  const systemEntries = extractUsedSystemEntries(config).filter(e => !operations.includes(e));
+  const systemEntries = extractUsedSystemEntries(config).filter(
+    e => !operations.includes(e) && !hostNames.has(e)
+  );
   if (systemEntries.length > 0) {
     lines.push('// System entries (position sources, controllers)');
     for (const entry of systemEntries) {
       lines.push(`import { ${entry} } from 'eligius';`);
     }
+    lines.push('');
+  }
+
+  // Host module (idea #24): its operations, controllers and functions
+  if (host) {
+    lines.push('// Host module (extensions import)');
+    lines.push(`import * as host from ${JSON.stringify(host.path.split(path.sep).join('/'))};`);
     lines.push('');
   }
 
@@ -177,6 +194,17 @@ export function generateEntryPoint(config: IEngineConfiguration, operations: str
   lines.push('  EligiusEngine: { EligiusEngine },');
   for (const entry of systemEntries) {
     lines.push(`  ${entry}: { ${entry} },`);
+  }
+  for (const [kind, names] of [
+    ['operations', host?.operations ?? []],
+    ['controllers', host?.controllers ?? []],
+    ['functions', host?.functions ?? []],
+  ] as const) {
+    for (const name of names) {
+      lines.push(
+        `  ${JSON.stringify(name)}: { ${JSON.stringify(name)}: host.${kind}?.[${JSON.stringify(name)}] },`
+      );
+    }
   }
   lines.push('};');
   lines.push('');
@@ -245,10 +273,10 @@ export function bundleRuntime(
   config: RuntimeBundleConfig
 ): Effect.Effect<string, RuntimeBundleError> {
   return Effect.gen(function* () {
-    const { eligiusConfig, usedOperations, minify, sourcemap, tempDir, nodePaths } = config;
+    const { eligiusConfig, usedOperations, minify, sourcemap, tempDir, nodePaths, host } = config;
 
     // Generate entry point content
-    const entryPointContent = generateEntryPoint(eligiusConfig, usedOperations);
+    const entryPointContent = generateEntryPoint(eligiusConfig, usedOperations, host);
 
     // Create temporary entry point file
     const entryPointPath = path.join(tempDir, `entry-${Date.now()}.js`);

@@ -31,7 +31,7 @@ export class ActionValidator extends BaseValidator {
     accept: ValidationAcceptor
   ): void {
     // T040: Check if action.name exists in operation registry
-    if (hasOperation(action.name)) {
+    if (hasOperation(action.name, action)) {
       // T041: Emit error with code and message
       // Feature 023 US5: Use consistent error code
       accept(
