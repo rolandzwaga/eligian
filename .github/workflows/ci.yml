@@ -78,6 +78,11 @@ jobs:
       - name: Check examples (eligian check)
         run: pnpm run check:examples --format github
 
+      # Every example's timelines must play on the real engine (jsdom) without
+      # runtime failures; they show as pull-request annotations
+      - name: Play examples (eligian smoke)
+        run: pnpm run smoke:examples --format github
+
       - name: Run tests with coverage
         run: pnpm run test:coverage:ci
 

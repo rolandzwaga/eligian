@@ -31,6 +31,7 @@ import { validateOperation } from '../operations/validator.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
 import { transformCondition } from './condition-transformer.js';
+import { preserveErasedParameters } from './erased-parameters.js';
 import { transformExpression } from './expression-transformer.js';
 import {
   buildInteractionOperations,
@@ -172,14 +173,22 @@ export const transformOperationStatement = (
   isEndOperation: boolean = false,
   program?: Program,
   allActions?: ActionDefinition[]
-): Effect.Effect<OperationConfigIR[], TransformError> =>
+): Effect.Effect<OperationConfigIR[], TransformError> => {
   // Operation calls, action calls and action-level consts may hold runtime
   // concatenations and forwarded runtime values; see runtime-values.ts.
-  stmt.$type === 'OperationCall' || stmt.$type === 'VariableDeclaration'
-    ? withRuntimeValueLowering(stmt, scope, statementScope =>
-        transformStatement(stmt, statementScope, isEndOperation, program, allActions)
-      )
-    : transformStatement(stmt, scope, isEndOperation, program, allActions);
+  const operations =
+    stmt.$type === 'OperationCall' || stmt.$type === 'VariableDeclaration'
+      ? withRuntimeValueLowering(stmt, scope, statementScope =>
+          transformStatement(stmt, statementScope, isEndOperation, program, allActions)
+        )
+      : transformStatement(stmt, scope, isEndOperation, program, allActions);
+  // A parameter that these operations erase (`selectElement(selector)` removes
+  // `selector`) is kept when the block still uses it; see erased-parameters.ts.
+  // Blocks (if, for, with) do this for the statements inside them.
+  return stmt.$type === 'OperationCall' || stmt.$type === 'InteractionStatement'
+    ? Effect.map(operations, ops => preserveErasedParameters(stmt, ops, scope))
+    : operations;
+};
 
 const transformStatement = (
   stmt: OperationStatement,
@@ -381,7 +390,7 @@ const transformStatement = (
             ))
           );
         }
-        return [...select, ...body];
+        return [...preserveErasedParameters(stmt, select, scope), ...body];
       }
 
       case 'InteractionStatement': {

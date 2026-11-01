@@ -1285,6 +1285,12 @@ timeline "main" in "#app" using raf {
   and the controller's `actionOperationData`, plus what earlier listed actions return).
 - **Erasures are always errors**, wherever they occur: using a property that an earlier
   operation erased on the same path.
+- **Parameters are not erased.** A parameter is a property of the action's operation data
+  under its own name, and some operations erase a property of that name (`selectElement`
+  removes `selector`). The compiler keeps such a parameter around the operation when the
+  block uses it again (later in the same start or end block, or in the next iteration of a
+  loop), so `action twice(selector) [ selectElement(selector) … selectElement(selector) … ]`
+  and forwarding `inner(selector)` after `selectElement(selector)` work.
 - **Outputs don't flow back.** A called action's outputs are not visible to its caller: after
   the call, the caller continues with its own operation data.
 - **Branches and loops:** after `if/else`, only properties available in both branches remain.
