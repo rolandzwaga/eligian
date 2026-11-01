@@ -32,6 +32,7 @@ export {
   type EngineErrorCandidate,
   type EngineErrorInfo,
   type LocatedEngineError,
+  locateConfigPath,
   locateEngineError,
 } from './eligian-map.js';
 // Error formatting exports

@@ -25,6 +25,7 @@ import {
   activeTimelineActions,
   buildEligianMap,
   type EligianMap,
+  locateConfigPath,
   locateEngineError,
 } from '../eligian-map.js';
 import { compileWithMap, emitJSON, optimize, typeCheck } from '../pipeline.js';
@@ -127,6 +128,23 @@ describe('Eligian map (audit idea #14)', () => {
       alternatives: [],
     });
     expect(locateEngineError(map, { actionId: 'nope', phase: 'start' })).toBeUndefined();
+  });
+
+  test('locates a JSON path into the config (eligius/lint findings) at its operation or action', async () => {
+    const { config, map } = await compiled();
+    const innerIndex = config.actions.findIndex(a => a.name === 'inner');
+    const line = (jsonPath: string) => locateConfigPath(map, config, jsonPath)?.line;
+
+    // An operation of a timeline action, and a property inside its data
+    expect(line('timelines[0].timelineActions[0].startOperations[0]')).toBe(9);
+    expect(line(`actions[${innerIndex}].startOperations[1].operationData.text`)).toBe(3);
+    // The end phase
+    expect(line(`actions[${innerIndex}].endOperations[1]`)).toBe(6);
+    // The action itself; a path above every action; a path that leads nowhere
+    expect(line(`actions[${innerIndex}].name`)).toBe(1);
+    expect(line('timelines[0].uri')).toBeUndefined();
+    expect(line('actions[99].startOperations[0]')).toBeUndefined();
+    expect(line('')).toBeUndefined();
   });
 
   test('knows which timeline events run at a position (live playhead)', async () => {

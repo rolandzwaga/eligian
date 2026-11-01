@@ -38,7 +38,7 @@ Research/reference (read-only, do NOT import):
 - `pnpm check` (Biome format+lint, autofix — run after each task) · `pnpm lint` · `pnpm run ci` (no writes; bare `pnpm ci` is pnpm's clean-install, never run it)
 - `pnpm langium:generate` (after editing `eligian.langium`) · `pnpm generate:html-metadata` (regenerates HTML completion metadata)
 - `pnpm test:coverage` (local pruned coverage report via `tools/pruned-coverage.ts`)
-- `pnpm run check:examples` (`eligian check` on every example; CI runs it with `--format github`)
+- `pnpm run check:examples` (`eligian check` on every example; CI runs it with `--format github`). `check` also runs Eligius' `lintConfiguration` (`eligius/lint`) over each clean program's compiled config, findings at their source via `locateConfigPath` (`packages/cli/src/check/lint.ts`; `eligius-<rule>` codes; W111 left out; `--no-lint`)
 - `eligian dev <entry> [--port] [--open]`: the bundle in the browser, rebuilt on change in a temp dir (`packages/cli/src/dev/`: node:http + SSE; CSS swapped in place, otherwise reload resuming the timeline / position via `window.EligiusBundled.ready`, build errors as an overlay)
 - `pnpm run smoke:examples` (`eligian smoke`: plays every timeline in jsdom on the real engine, runtime failures at their source; `packages/cli/src/smoke/`. CI runs it with `--format github`)
 - `eligian init [dir] --template blank|chapters|video|library` writes a starter project; the starters live in `packages/language/src/starters/starters.ts` (shared with the extension's *Eligian: New Presentation…*) and `packages/cli/src/__tests__/init.spec.ts` checks every one clean

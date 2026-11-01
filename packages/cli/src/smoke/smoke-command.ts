@@ -5,10 +5,12 @@
  * not compile, 2 when no file matched.
  */
 import * as fs from 'node:fs/promises';
-import { expandPatterns } from '../check/check-command.js';
+import { expandPatterns, isLibrary } from '../check/check-command.js';
 import { displayPath, escapeData, escapeProperty } from '../check/reporters.js';
 import { compileFile } from '../compile-file.js';
 import { type SmokeProblem, type SmokeResult, smokeConfig } from './smoke-runner.js';
+
+export { isLibrary };
 
 export type SmokeFormat = 'pretty' | 'github' | 'json';
 export const SMOKE_FORMATS: readonly SmokeFormat[] = ['pretty', 'github', 'json'];
@@ -30,12 +32,6 @@ interface FileResult extends SmokeResult {
   readonly file: string;
   /** A library file: only actions, nothing to play */
   readonly library?: boolean;
-}
-
-/** Whether a source is a library file (`library name` after any comments). */
-export function isLibrary(source: string): boolean {
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  return /^\s*library\b/.test(code);
 }
 
 export function parseSmokeFormat(value: string): SmokeFormat | undefined {

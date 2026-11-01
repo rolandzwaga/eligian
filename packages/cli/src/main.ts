@@ -310,6 +310,7 @@ export default function main(): void {
     .option('--format <format>', `output format: ${CHECK_FORMATS.join(', ')}`, 'pretty')
     .option('--max-warnings <n>', 'fail when there are more than <n> warnings')
     .option('--warnings-as-errors', 'fail on any warning (same as --max-warnings 0)', false)
+    .option('--no-lint', "skip Eligius' configuration lint of the compiled programs (eligius/lint)")
     .option(
       '--selector-not-in-layout <mode>',
       'warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
@@ -346,6 +347,7 @@ export default function main(): void {
         format,
         maxWarnings,
         warningsAsErrors: cmdOptions.warningsAsErrors === true,
+        lint: cmdOptions.lint !== false,
         cwd: process.cwd(),
         version: packageVersion,
       });

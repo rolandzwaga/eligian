@@ -83,6 +83,12 @@ eligian check "**/*.eligian" --format github   # GitHub Actions annotations
   in the checked set. Library files in the set are checked too.
 - **Compile errors:** programs without validation errors are also compiled, so
   errors only the compiler finds are reported as well.
+- **Eligius lint:** each program without errors is also checked by Eligius' own
+  configuration lint (`eligius/lint`) as the engine would get it, and each finding
+  is reported at its source line with the code `eligius-<rule>`, for example
+  `eligius-E120` for `scrollToElement(200, "nowhere")` (not an allowed `block`).
+  A finding in an imported library is reported in the library. W111 is left out:
+  Eligian checks action parameters at every call. `--no-lint` skips it.
 - **`--selector-not-in-layout <off|ids|all>`:** also warn about selector ids
   (`ids`), or ids and classes (`all`), that the CSS defines but the layout HTML
   does not contain (the editor setting `eligian.validation.selectorNotInLayout`).
@@ -92,6 +98,7 @@ eligian check "**/*.eligian" --format github   # GitHub Actions annotations
 | `--format pretty\|json\|sarif\|github` | Output format (default `pretty`). `sarif` is SARIF 2.1.0 for code scanning; `github` prints workflow commands that annotate pull requests. |
 | `--max-warnings <n>` | Fail when there are more than `n` warnings. |
 | `--warnings-as-errors` | Fail on any warning (same as `--max-warnings 0`). |
+| `--no-lint` | Skip the Eligius lint of the compiled programs. |
 
 Exit codes: **0** clean (warnings within the limit), **1** errors or too many
 warnings, **2** nothing matched or an invalid option.

@@ -198,6 +198,53 @@ export function locateEngineError(
   };
 }
 
+/**
+ * The source of a JSON path into the compiled configuration, in the notation
+ * of Eligius' resolver and `lintConfiguration`
+ * (`timelines[0].timelineActions[2].startOperations[1].operationData.selector`):
+ * the operation the path is in, else the action, else nothing (a path above
+ * every action, or an operation the compiler generated without a location).
+ */
+export function locateConfigPath(
+  map: EligianMap,
+  config: IEngineConfiguration,
+  jsonPath: string
+): SourceLocation | undefined {
+  let value: unknown = config;
+  let action: EligianMapAction | undefined;
+  let phase: 'start' | 'end' | undefined;
+  let operationIndex: number | undefined;
+  let previousKey: string | undefined;
+  for (const [, key, index, quoted] of jsonPath.matchAll(/([^.[\]]+)|\[(\d+)\]|\["([^"]*)"\]/g)) {
+    if (value === null || typeof value !== 'object') break;
+    const step = key ?? quoted;
+    value =
+      index !== undefined
+        ? (value as unknown[])[Number(index)]
+        : (value as Record<string, unknown>)[step!];
+    if (
+      index !== undefined &&
+      (previousKey === 'startOperations' || previousKey === 'endOperations')
+    ) {
+      phase = previousKey === 'startOperations' ? 'start' : 'end';
+      operationIndex = Number(index);
+    }
+    const id = (value as { id?: unknown } | undefined)?.id;
+    if (typeof id === 'string' && map.actions[id]) {
+      action = map.actions[id];
+      phase = undefined;
+      operationIndex = undefined;
+    }
+    previousKey = step;
+  }
+  if (!action) return undefined;
+  const operation =
+    phase !== undefined && operationIndex !== undefined
+      ? (phase === 'start' ? action.start : action.end)[operationIndex]
+      : undefined;
+  return operation?.location ?? action.location;
+}
+
 /** The timeline actions of `timelineUri` running at `position` (seconds), closed ranges excluded. */
 export function activeTimelineActions(
   map: EligianMap,
