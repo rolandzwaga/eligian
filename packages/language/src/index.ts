@@ -71,6 +71,8 @@ export {
 export * from './lsp/html-notifications.js';
 // Locales validation exports (Feature 045: renamed from labels)
 export * from './lsp/labels-notifications.js';
+// Idea #20 phase 2: the timeline (Gantt) view
+export * from './lsp/timeline-gantt.js';
 // Idea #12: project starters for `eligian init` and 'Eligian: New Presentation…'
 export {
   findStarter,

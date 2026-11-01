@@ -21,6 +21,7 @@ import { CompilationService } from './CompilationService.js';
 import { EligiusEngineService, type EngineEvent } from './EligiusEngineService.js';
 import { FileWatcher } from './FileWatcher.js';
 import { MediaResolver } from './MediaResolver.js';
+import { firePreviewPlayhead } from './playhead-events.js';
 import {
   computeInitialRootDirectories,
   createRecordingWebview,
@@ -307,6 +308,7 @@ export class PreviewPanel {
     PreviewPanel.diagnostics?.delete(this.documentUri);
     this.clearRuntimeErrors();
     this.playheadDecorator?.dispose();
+    firePreviewPlayhead({ documentUri: this.documentUri.toString(), playhead: null });
 
     // Destroy Eligius engine
     this.engineService.destroy();
@@ -614,15 +616,17 @@ export class PreviewPanel {
       case 'playhead':
         // Idea #14: mark the events running at the playhead in the editor
         this.playheadDecorator ??= new PlayheadDecorator(this.documentUri);
-        this.playheadDecorator.update(
-          this.eligianMap,
-          message.payload
+        {
+          const playhead = message.payload
             ? {
                 timelineUri: this.compiledTimelineUri(message.payload.timelineUri),
                 position: message.payload.position,
               }
-            : null
-        );
+            : null;
+          this.playheadDecorator.update(this.eligianMap, playhead);
+          // Idea #20: the timeline view draws the playhead too
+          firePreviewPlayhead({ documentUri: this.documentUri.toString(), playhead });
+        }
         break;
 
       // Route engine events to engine service

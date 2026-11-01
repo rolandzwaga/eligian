@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   commandIds: [] as string[],
+  webviewViews: [] as string[],
   commandHandlers: new Map<string, (...args: unknown[]) => unknown>(),
   showErrorMessage: vi.fn(),
   clientStart: vi.fn(),
@@ -34,9 +35,16 @@ vi.mock('vscode', () => ({
     showErrorMessage: (...args: unknown[]) => h.showErrorMessage(...args),
     registerCustomEditorProvider: () => disposable(),
     onDidChangeActiveTextEditor: () => disposable(),
+    registerWebviewViewProvider: (id: string) => {
+      h.webviewViews.push(id);
+      return disposable();
+    },
     activeTextEditor: undefined,
   },
-  languages: { registerDocumentLinkProvider: () => disposable() },
+  languages: {
+    registerDocumentLinkProvider: () => disposable(),
+    onDidChangeDiagnostics: () => disposable(),
+  },
   workspace: { onDidChangeTextDocument: () => disposable() },
   Uri: { parse: (s: string) => ({ toString: () => s }) },
 }));
@@ -154,6 +162,7 @@ describe('activate', () => {
   beforeEach(() => {
     h.commandIds.length = 0;
     h.commandHandlers.clear();
+    h.webviewViews.length = 0;
     h.watchers.length = 0;
     h.showErrorMessage.mockReset();
     h.clientStart.mockReset();
@@ -171,6 +180,9 @@ describe('activate', () => {
       expect(h.commandIds).toContain(id);
     }
     expect(h.commandIds).toContain('eligian.generateJSDoc');
+    // Idea #20: the timeline view needs the language server
+    expect(h.webviewViews).toEqual(['eligian.timelineView']);
+    expect(h.commandIds).toContain('eligian.showTimelineView');
     expect(h.watchers.sort()).toEqual(['css', 'html', 'labels']);
     expect(h.onNotification).toHaveBeenCalledTimes(3);
     expect(h.showErrorMessage).not.toHaveBeenCalled();

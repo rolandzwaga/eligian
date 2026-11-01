@@ -101,7 +101,7 @@ export class EligianDocumentSymbolProvider implements DocumentSymbolProvider {
 
   private lifecycle(block: TimelineLifecycle): DocumentSymbol[] {
     return symbol(block, `on ${block.kind}`, SymbolKind.Event, {
-      detail: calls(block.operations),
+      detail: eventSummary(block.operations),
       selection: property(block, 'kind'),
     });
   }
@@ -121,7 +121,7 @@ export class EligianDocumentSymbolProvider implements DocumentSymbolProvider {
     // An inline [start] [end] block: its start operations; else the call or control flow itself
     const body = isInlineEndableAction(action) ? action.startOperations : action ? [action] : [];
     return symbol(event, `at ${range}${label}`, SymbolKind.Event, {
-      detail: calls(body),
+      detail: eventSummary(body),
       selection: property(event, 'timeRange'),
     });
   }
@@ -142,7 +142,7 @@ export class EligianDocumentSymbolProvider implements DocumentSymbolProvider {
     const range = resolved ? span(resolved) : `for ${text(item.duration)}`;
     const label = item.name ? ` as ${item.name}` : '';
     return symbol(item, `${range}${label}`, SymbolKind.Event, {
-      detail: calls(item.actionCall ? [item.actionCall] : item.startOps),
+      detail: eventSummary(item.actionCall ? [item.actionCall] : item.startOps),
       selection: property(item, item.actionCall ? 'actionCall' : 'duration'),
     });
   }
@@ -153,7 +153,7 @@ export class EligianDocumentSymbolProvider implements DocumentSymbolProvider {
         ? ` ${span(outer(spans))} ×${spans.length}`
         : ` ${text(block.items)}`;
     return symbol(block, `stagger${range}`, SymbolKind.Event, {
-      detail: calls(block.actionCall ? [block.actionCall] : block.startOps),
+      detail: eventSummary(block.actionCall ? [block.actionCall] : block.startOps),
       selection: keyword(block),
     });
   }
@@ -197,7 +197,7 @@ export class EligianDocumentSymbolProvider implements DocumentSymbolProvider {
  * {@link MAX_CALLS}, then `…`; preceded by the first argument that reads as
  * text (`narrate("A timeline is…")`), which tells otherwise alike beats apart.
  */
-function calls(statements: readonly AstNode[]): string {
+export function eventSummary(statements: readonly AstNode[]): string {
   const names: string[] = [];
   let quote: string | undefined;
   for (const statement of statements) {

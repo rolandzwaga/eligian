@@ -25,6 +25,7 @@ import { LocaleEditorProvider } from './locale-editor/LocaleEditorProvider.js';
 import { LocaleLinkProvider } from './locale-link-provider.js';
 import { PreviewManager } from './preview/PreviewManager.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
+import { TIMELINE_VIEW_ID, TimelineViewProvider } from './timeline-view/TimelineViewProvider.js';
 
 let client: LanguageClient;
 // T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
@@ -150,6 +151,17 @@ function registerClientIndependentFeatures(context: vscode.ExtensionContext): vo
  * label decorations.
  */
 function registerClientFeatures(context: vscode.ExtensionContext, client: LanguageClient): void {
+  // Idea #20: the "Eligian Timeline" view (a swimlane per timeline, a bar per event)
+  const timelineView = new TimelineViewProvider(context.extensionUri, client);
+  context.subscriptions.push(
+    timelineView,
+    vscode.window.registerWebviewViewProvider(TIMELINE_VIEW_ID, timelineView),
+    // VS Code generates `<view id>.focus` for every view
+    vscode.commands.registerCommand('eligian.showTimelineView', () =>
+      vscode.commands.executeCommand(`${TIMELINE_VIEW_ID}.focus`)
+    )
+  );
+
   // T023: Initialize shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
   // This watcher sends LSP notifications when CSS files change, triggering re-validation
   // It's separate from preview-specific watchers and exists for the extension lifetime

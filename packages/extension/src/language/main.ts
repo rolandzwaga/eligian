@@ -21,6 +21,9 @@ import {
   type LabelsUpdatedParams,
   type Program,
   parseCSS,
+  TIMELINE_GANTT_REQUEST,
+  type TimelineGanttParams,
+  timelineGantt,
   validateLocalesJSON,
 } from '@eligian/language';
 import { DocumentState } from 'langium';
@@ -265,6 +268,15 @@ connection.onRequest(BLOCK_LABELS_REQUEST, (params: BlockLabelsParams) => {
     return [];
   }
   return extractBlockLabels(document.parseResult.value as Program);
+});
+
+// Timeline view (idea #20 phase 2): the timelines and their bars, from the built AST
+connection.onRequest(TIMELINE_GANTT_REQUEST, (params: TimelineGanttParams) => {
+  const document = shared.workspace.LangiumDocuments.getDocument(
+    URI.parse(params.textDocument.uri)
+  );
+  const root = document?.parseResult.value;
+  return root && root.$type === 'Program' ? timelineGantt(root as Program) : [];
 });
 
 // Start the language server with the shared services

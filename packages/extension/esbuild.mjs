@@ -85,15 +85,31 @@ const localeEditorCtx = await esbuild.context({
   plugins,
 });
 
+// Build the timeline view webview script (Browser, idea #20)
+const timelineViewCtx = await esbuild.context({
+  entryPoints: ['media/timeline-view.ts'],
+  outdir: 'out/media',
+  bundle: true,
+  target: 'es2020',
+  format: 'iife',
+  platform: 'browser',
+  sourcemap: !minify,
+  minify,
+  plugins,
+});
+
 if (watch) {
   await ctx.watch();
   await webviewCtx.watch();
   await localeEditorCtx.watch();
+  await timelineViewCtx.watch();
 } else {
   await ctx.rebuild();
   await webviewCtx.rebuild();
   await localeEditorCtx.rebuild();
+  await timelineViewCtx.rebuild();
   ctx.dispose();
   webviewCtx.dispose();
   localeEditorCtx.dispose();
+  timelineViewCtx.dispose();
 }

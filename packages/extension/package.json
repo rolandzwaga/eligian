@@ -130,6 +130,11 @@
         "title": "Eligian: Edit Locales",
         "category": "Eligian",
         "icon": "$(edit)"
+      },
+      {
+        "command": "eligian.showTimelineView",
+        "title": "Eligian: Show Timeline View",
+        "category": "Eligian"
       }
     ],
     "menus": {
@@ -188,7 +193,27 @@
         ],
         "priority": "option"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "eligian",
+          "title": "Eligian",
+          "icon": "resources/timeline.svg"
+        }
+      ]
+    },
+    "views": {
+      "eligian": [
+        {
+          "type": "webview",
+          "id": "eligian.timelineView",
+          "name": "Timeline",
+          "icon": "resources/timeline.svg",
+          "contextualTitle": "Eligian Timeline"
+        }
+      ]
+    }
   },
   "activationEvents": [
     "onLanguage:eligian"
