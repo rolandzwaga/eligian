@@ -1,5 +1,5 @@
 import type { AstNode, ValidationAcceptor } from 'langium';
-import { selectorNames } from '../css/selector-sources.js';
+import { reportNotInLayout, selectorNames } from '../css/selector-sources.js';
 import { reportSelectorIssues } from '../css/selector-validation.js';
 import {
   isStringLiteral,
@@ -69,6 +69,7 @@ export class NavigateValidator extends BaseValidator {
     this.ensureCSSImportsRegistered(program, documentUri);
     const { classes, ids } = selectorNames(this.services, program, documentUri);
     reportSelectorIssues(selector, reportNode, classes, ids, accept, property);
+    reportNotInLayout(selector, reportNode, this.services, program, documentUri, accept, property);
   }
 
   /**
@@ -86,5 +87,6 @@ export class NavigateValidator extends BaseValidator {
     // Idea #18: classes and ids of the imported CSS and of the layout HTML
     const { classes, ids } = selectorNames(this.services, program, documentUri);
     reportSelectorIssues(node.selector, node, classes, ids, accept);
+    reportNotInLayout(node.selector, node, this.services, program, documentUri, accept, 'selector');
   }
 }

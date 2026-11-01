@@ -2,7 +2,7 @@ import type { ValidationAcceptor } from 'langium';
 import { getOperationSignature } from '../../compiler/index.js';
 import { findSimilarClasses } from '../../css/levenshtein.js';
 import { calledAction, parameterRoles } from '../../css/parameter-roles.js';
-import { selectorNames } from '../../css/selector-sources.js';
+import { reportNotInLayout, selectorNames } from '../../css/selector-sources.js';
 import { reportSelectorIssues } from '../../css/selector-validation.js';
 import { isStringLiteral, type OperationCall } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
@@ -41,6 +41,7 @@ export class CssParameterValidator extends BaseValidator {
       if (role === 'selector') {
         names ??= selectorNames(this.services!, program, documentUri);
         reportSelectorIssues(arg.value, arg, names.classes, names.ids, accept);
+        reportNotInLayout(arg.value, arg, this.services!, program, documentUri, accept);
         return;
       }
       const classes = this.services!.css.CSSRegistry.getClassesForDocument(documentUri);
@@ -210,6 +211,7 @@ export class CssParameterValidator extends BaseValidator {
 
       // Parse + report unknown classes/IDs (shared with the navigate check).
       reportSelectorIssues(selectorString, arg, availableClasses, availableIDs, accept);
+      reportNotInLayout(selectorString, arg, this.services, program, documentUri, accept);
     }
   }
 }

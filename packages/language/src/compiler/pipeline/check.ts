@@ -15,6 +15,7 @@ import type { LangiumDocument } from 'langium';
 import { URI } from 'langium';
 import { DiagnosticSeverity } from 'vscode-languageserver-protocol';
 import { isLibrary, isProgram, type Library, type Program } from '../../generated/ast.js';
+import type { SelectorNotInLayout } from '../../validators/validation-settings.js';
 import { compile } from '../pipeline.js';
 import {
   extractLibraryImports,
@@ -57,13 +58,28 @@ const SEVERITY: Record<number, CheckSeverity> = {
  * Check `filePaths` (absolute or relative to the cwd). Never fails: unreadable
  * files and unexpected crashes are reported as error diagnostics of that file.
  */
+export interface CheckOptions {
+  /** `eligian.validation.selectorNotInLayout` for this check (default: off) */
+  readonly selectorNotInLayout?: SelectorNotInLayout;
+}
+
 export const checkFiles = (
-  filePaths: readonly string[]
+  filePaths: readonly string[],
+  options: CheckOptions = {}
 ): Effect.Effect<readonly CheckFileResult[], never> =>
   Effect.promise(async () => {
     const files = [...new Set(filePaths.map(p => path.resolve(p)))];
     const results = new Map<string, CheckDiagnostic[]>(files.map(f => [f, []]));
-    const validated = await validateFiles(files, results);
+    // The services are shared: set the option for this check only
+    const settings = getOrCreateServices().Eligian.validation.Settings;
+    const previous = settings.selectorNotInLayout;
+    settings.selectorNotInLayout = options.selectorNotInLayout ?? 'off';
+    let validated: Set<string>;
+    try {
+      validated = await validateFiles(files, results);
+    } finally {
+      settings.selectorNotInLayout = previous;
+    }
 
     // Compile the programs that validate cleanly: compile-only errors
     for (const file of files) {

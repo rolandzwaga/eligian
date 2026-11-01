@@ -4,13 +4,15 @@
  * where most ids live. Class-name arguments (`addClass("x")`) still need a CSS
  * class: only selectors are matched against the layout as well.
  */
+import type { AstNode, ValidationAcceptor } from 'langium';
 import type { EligianServices } from '../eligian-module.js';
-import type { Program } from '../generated/ast.js';
+import { isDefaultImport, type Program } from '../generated/ast.js';
 import {
   type LayoutElements,
   readLayoutHtml,
   scanLayoutElements,
 } from '../html/layout-elements.js';
+import { parseSelector } from './selector-parser.js';
 
 export interface SelectorNames {
   readonly classes: Set<string>;
@@ -57,4 +59,53 @@ export function selectorNames(
   for (const name of layout?.classes ?? []) classes.add(name);
   for (const id of layout?.ids ?? []) ids.add(id);
   return { classes, ids };
+}
+
+/**
+ * `eligian.validation.selectorNotInLayout` (off by default): warn about a
+ * selector id (and, with `all`, class) that the CSS defines but the imported
+ * layout HTML does not contain, so it only matches an element an operation
+ * creates at runtime. Names in neither are already errors; without a layout
+ * import there is nothing to compare with.
+ */
+export function reportNotInLayout(
+  selector: string,
+  node: AstNode,
+  services: EligianServices,
+  program: Program,
+  documentUri: string,
+  accept: ValidationAcceptor,
+  property?: string
+): void {
+  const mode = services.validation.Settings.selectorNotInLayout;
+  if (mode === 'off') return;
+  const layout = layoutElementsOf(services, program, documentUri);
+  if (!layout) return;
+  const { classes, ids, valid } = parseSelector(selector);
+  if (!valid) return;
+  const cssRegistry = services.css.CSSRegistry;
+  const layoutFile = layoutFileName(program);
+  const report = (name: string) =>
+    accept(
+      'warning',
+      `'${name}' is not in the layout (${layoutFile}): the selector only matches an element that an operation creates at runtime`,
+      { node, ...(property ? { property: property as never } : {}), code: 'selector_not_in_layout' }
+    );
+  for (const id of ids) {
+    if (!layout.ids.has(id) && cssRegistry.getIDsForDocument(documentUri).has(id)) report(`#${id}`);
+  }
+  if (mode !== 'all') return;
+  for (const name of classes) {
+    if (!layout.classes.has(name) && cssRegistry.getClassesForDocument(documentUri).has(name)) {
+      report(`.${name}`);
+    }
+  }
+}
+
+/** `layout.html` (the file name of the layout import), for messages. */
+function layoutFileName(program: Program): string {
+  const layout = program.statements.find(s => isDefaultImport(s) && s.type === 'layout');
+  return layout && isDefaultImport(layout)
+    ? (layout.path.split(/[/]/).pop() ?? layout.path)
+    : 'layout';
 }

@@ -3638,7 +3638,7 @@ action clearSpots() [ with ".tok" { removeClass("spot") } with ".callout" { remo
 
 ### #18 Selector and class validation through action parameters, checked against layout HTML
 
-- **Status:** ✅ Done on `fix/audit-high-findings` (spec 056), except the configurable 'not in layout' warning (point 3). Roles are computed per call (not cached: a library action can change without its callers' AST changing). The layout HTML is added to the names *selectors* may use everywhere (operations, navigate, target/with, timeline container); class-name arguments stay CSS-only. Ids got did-you-mean suggestions, and a new *Change to '…'* quick fix applies them. Both prerequisites were already fixed.
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 056). The 'not in layout' warning (point 3) is the setting `eligian.validation.selectorNotInLayout` / `eligian check --selector-not-in-layout` (`off` by default, `ids`, `all`). Roles are computed per call (not cached: a library action can change without its callers' AST changing). The layout HTML is added to the names *selectors* may use everywhere (operations, navigate, target/with, timeline container); class-name arguments stay CSS-only. Ids got did-you-mean suggestions, and a new *Change to '…'* quick fix applies them. Both prerequisites were already fixed.
 
 - **Area:** ide · **Effort:** M · **Score:** 6.9
 - **Problem:** css-parameter-validator only checks string literals passed directly to built-in className or selector parameters. In real files most selectors go through actions (`spotlight("#tok-timeline")`, about 150 call sites in the tour), so typos get no squiggle, completion or did-you-mean. IDs are checked against the CSS, not against the imported layout HTML, where they actually live.

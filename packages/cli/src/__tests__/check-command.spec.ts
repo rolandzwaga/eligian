@@ -229,3 +229,54 @@ timeline "t" in ".c" using raf { at 0s..1s a() at 1s..2s [ selectElement("#a") a
     }, 60000);
   });
 });
+
+describe('eligian check --selector-not-in-layout (audit idea #18)', () => {
+  const CLI = path.join(__dirname, '../../bin/cli.js');
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-not-in-layout-'));
+    fs.writeFileSync(
+      path.join(dir, 's.css'),
+      '#stage, #a, #runtime { color: red; } .on { color: blue; }'
+    );
+    fs.writeFileSync(
+      path.join(dir, 'layout.html'),
+      '<div id="stage"><div id="a" class="on"></div></div>'
+    );
+    fs.writeFileSync(
+      path.join(dir, 'p.eligian'),
+      [
+        'styles "./s.css"',
+        'layout "./layout.html"',
+        'timeline "t" in "#stage" using raf {',
+        '  at 0s..1s [ selectElement("#runtime") addClass("on") ]',
+        '  at 1s..2s [ selectElement("#a") addClass("on") ]',
+        '}',
+      ].join('\n')
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const run = (...args: string[]) =>
+    spawnSync('node', [CLI, 'check', path.join(dir, 'p.eligian'), ...args], { encoding: 'utf-8' });
+
+  it('is off by default; `ids` warns about an id the layout does not contain', () => {
+    expect(run().stdout).toContain('0 errors, 0 warnings');
+
+    const ids = run('--selector-not-in-layout', 'ids');
+    expect(ids.stdout).toContain("'#runtime' is not in the layout (layout.html)");
+    expect(ids.stdout).toContain('selector_not_in_layout');
+    expect(ids.stdout).toContain('0 errors, 1 warning');
+    expect(ids.status).toBe(0);
+  });
+
+  it('rejects an unknown mode', () => {
+    const result = run('--selector-not-in-layout', 'sometimes');
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('must be one of off, ids, all');
+  });
+});

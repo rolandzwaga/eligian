@@ -83,6 +83,11 @@ export {
   stripImportQuotes,
 } from './utils/path-utils.js';
 export { validateLocalesJSON } from './validators/locale-import-validator.js';
+// Idea #18: `eligian.validation.selectorNotInLayout` / `eligian check --selector-not-in-layout`
+export {
+  parseSelectorNotInLayout,
+  type SelectorNotInLayout,
+} from './validators/validation-settings.js';
 
 // Re-export everything from AST except TimeExpression to avoid conflict
 // Export AstTimeExpression explicitly to avoid conflict with compiler's TimeExpression

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `fix/audit-high-findings` (implemented on the audit branch at the maintainer's request)
 **Created**: 2026-11-01
-**Status**: Implemented (the configurable 'not in layout' warning is not done)
+**Status**: Implemented
 **Input**: Feature idea #18 of the 2026-10-22 codebase audit.
 
 ## Problem
@@ -41,6 +41,18 @@ actions calling it changing.
 - The hover of an action lists its role-tagged parameters; signature help shows "CSS selector" /
   "CSS class name" in the parameter documentation.
 
-## Not done
+## Optional 'not in layout' warning
 
-- A configurable 'not in layout' warning for selectors that only match the CSS.
+`eligian.validation.selectorNotInLayout` (`validators/validation-settings.ts`, read from the client
+configuration, documents re-validated on change) and `eligian check --selector-not-in-layout`:
+
+| Mode | Warns about (code `selector_not_in_layout`) |
+|---|---|
+| `off` (default) | nothing |
+| `ids` | a selector id the CSS defines but the layout HTML does not contain |
+| `all` | the same for classes |
+
+Only with a `layout` import; names in neither the CSS nor the layout are errors already. Every
+selector slot reports it (operations, action parameters, navigate, target / with, the timeline
+container). It is off by default because elements created at runtime (and classes added at
+runtime) are legitimate.

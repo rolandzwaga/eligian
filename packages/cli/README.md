@@ -60,6 +60,9 @@ eligian check "**/*.eligian" --format github   # GitHub Actions annotations
   in the checked set. Library files in the set are checked too.
 - **Compile errors:** programs without validation errors are also compiled, so
   errors only the compiler finds are reported as well.
+- **`--selector-not-in-layout <off|ids|all>`:** also warn about selector ids
+  (`ids`), or ids and classes (`all`), that the CSS defines but the layout HTML
+  does not contain (the editor setting `eligian.validation.selectorNotInLayout`).
 
 | Option | Meaning |
 |---|---|

@@ -36,6 +36,7 @@ import {
 } from './lsp/eligian-timeline-providers.js';
 import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
 import { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
+import { ValidationSettings } from './validators/validation-settings.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -43,6 +44,8 @@ import { LabelRegistryService } from './type-system-typir/utils/label-registry.j
 export type EligianAddedServices = {
   validation: {
     EligianValidator: EligianValidator;
+    /** User-configurable validation options (`eligian.validation.*`) */
+    Settings: ValidationSettings;
   };
   lsp: {
     HoverProvider: EligianHoverProvider;
@@ -87,6 +90,7 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
     validation: {
       EligianValidator: services => new EligianValidator(services),
       DocumentValidator: services => new EligianDocumentValidator(services),
+      Settings: services => new ValidationSettings(services),
     },
     lsp: {
       HoverProvider: services =>

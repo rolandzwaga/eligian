@@ -2,7 +2,7 @@ import { type AstNode, AstUtils, type ValidationAcceptor } from 'langium';
 import { propertyChainTimeMessage } from '../compiler/transformers/time-transformer.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import { parseSelector } from '../css/selector-parser.js';
-import { selectorNames } from '../css/selector-sources.js';
+import { reportNotInLayout, selectorNames } from '../css/selector-sources.js';
 import {
   type EventTimeReference,
   isBinaryExpression,
@@ -327,6 +327,17 @@ export class TimelineValidator extends BaseValidator {
         });
       }
     }
+
+    // Optional (eligian.validation.selectorNotInLayout): in the CSS but not the layout
+    reportNotInLayout(
+      timeline.containerSelector,
+      timeline,
+      this.services,
+      program,
+      documentUri,
+      accept,
+      'containerSelector'
+    );
   }
 
   /**

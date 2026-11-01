@@ -9,6 +9,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as url from 'node:url';
+import { parseSelectorNotInLayout } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
@@ -306,6 +307,11 @@ export default function main(): void {
     .option('--format <format>', `output format: ${CHECK_FORMATS.join(', ')}`, 'pretty')
     .option('--max-warnings <n>', 'fail when there are more than <n> warnings')
     .option('--warnings-as-errors', 'fail on any warning (same as --max-warnings 0)', false)
+    .option(
+      '--selector-not-in-layout <mode>',
+      'warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
+      'off'
+    )
     .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
       const format = parseCheckFormat(String(cmdOptions.format));
       if (!format) {
@@ -325,7 +331,15 @@ export default function main(): void {
         }
       }
 
+      const selectorNotInLayout = parseSelectorNotInLayout(cmdOptions.selectorNotInLayout);
+      if (!selectorNotInLayout) {
+        console.error(
+          `Error: --selector-not-in-layout must be one of off, ids, all (got "${cmdOptions.selectorNotInLayout}")`
+        );
+        process.exit(2);
+      }
       const outcome = await runCheck(patterns, {
+        selectorNotInLayout,
         format,
         maxWarnings,
         warningsAsErrors: cmdOptions.warningsAsErrors === true,

@@ -7,7 +7,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { checkFiles } from '@eligian/language';
+import { checkFiles, type SelectorNotInLayout } from '@eligian/language';
 import { Effect } from 'effect';
 import { glob } from 'tinyglobby';
 import { CHECK_FORMATS, type CheckFormat, formatResults, summarize } from './reporters.js';
@@ -20,6 +20,8 @@ export interface CheckOptions {
   readonly warningsAsErrors: boolean;
   readonly cwd: string;
   readonly version: string;
+  /** Warn about selector names in the CSS but not in the layout HTML (default: off) */
+  readonly selectorNotInLayout?: SelectorNotInLayout;
 }
 
 export interface CheckOutcome {
@@ -89,7 +91,9 @@ export async function runCheck(
     };
   }
 
-  const results = await Effect.runPromise(checkFiles(files));
+  const results = await Effect.runPromise(
+    checkFiles(files, { selectorNotInLayout: options.selectorNotInLayout })
+  );
   const summary = summarize(results);
   const output = formatResults(options.format, results, options.cwd, options.version);
 

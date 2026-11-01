@@ -2841,6 +2841,10 @@ spotlight("#tok-timelin")
   where most ids live. Class-name arguments still need a class in the CSS.
 - Ids in selectors get *did you mean* suggestions as well.
 - Hovering an action and its signature help show the parameters' roles.
+- Optional check `eligian.validation.selectorNotInLayout` (`eligian check --selector-not-in-layout`):
+  `off` (default), `ids` (warn when a selector's id is in the CSS but not in the layout HTML, so it
+  only matches an element an operation creates at runtime) or `all` (classes too; noisier, since
+  classes are often added at runtime). It needs a `layout` import; only string selectors are checked.
 
 ### 12.4 Hot-Reload Validation
 

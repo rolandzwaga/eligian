@@ -41,6 +41,21 @@
     "configuration": {
       "title": "Eligian",
       "properties": {
+        "eligian.validation.selectorNotInLayout": {
+          "type": "string",
+          "enum": [
+            "off",
+            "ids",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Selectors may use any id or class of the imported CSS or the layout HTML",
+            "Warn when a selector's id is defined in the CSS but is not in the imported layout HTML",
+            "Also warn about classes (noisier: classes are often added at runtime)"
+          ],
+          "default": "off",
+          "description": "Warn about selectors that only match elements an operation creates at runtime: ids (and classes) that the CSS defines but the layout HTML does not contain."
+        },
         "eligian.preview.highlightActiveEvents": {
           "type": "boolean",
           "default": true,
