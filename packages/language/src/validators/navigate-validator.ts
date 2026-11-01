@@ -1,29 +1,41 @@
-import type { AstNode, ValidationAcceptor } from 'langium';
+import { type AstNode, AstUtils, type ValidationAcceptor } from 'langium';
+import { hasOperation } from '../compiler/operations/index.js';
 import { reportNotInLayout, selectorNames } from '../css/selector-sources.js';
 import { reportSelectorIssues } from '../css/selector-validation.js';
 import {
+  type InteractionStatement,
+  isActionDefinition,
+  isParameterReference,
+  isPropertyChainReference,
   isStringLiteral,
+  isSystemPropertyReference,
   isTimedEvent,
-  type NavigateStatement,
+  isVariableDeclaration,
+  isVariableReference,
   type TimedEvent,
   type WithStatement,
 } from '../generated/ast.js';
+import { DOM_EVENTS, similarDomEvents } from '../utils/dom-events.js';
+import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { getTimelines } from '../utils/program-helpers.js';
 import { BaseValidator } from './base-validator.js';
 
 /**
- * Validates `navigate` statements (hub ↔ chapter timeline switching).
+ * Validates interaction statements (`on <event> "<sel>" <verb>`: `navigate` for
+ * hub ↔ chapter timeline switching, the playback verbs and `run`, idea #19).
  *
  * - The target must name a timeline declared in the same program (hard error);
  *   a click that switches to a non-existent timeline can never succeed.
  * - The selector is validated against imported CSS, like operation-call
  *   selectors (Feature 013) — every selector must resolve to imported CSS.
+ * - The event should be a DOM event (warning: custom events exist).
+ * - `run` starts an action, with arguments known at compile time.
  */
 export class NavigateValidator extends BaseValidator {
   /**
    * The navigate target must match a timeline name in the same program.
    */
-  checkNavigateTarget(node: NavigateStatement, accept: ValidationAcceptor): void {
+  checkNavigateTarget(node: InteractionStatement, accept: ValidationAcceptor): void {
     const program = this.getProgram(node);
     if (!program) return;
     // Partial AST (recovered after a syntax error): the parse error is enough.
@@ -40,6 +52,52 @@ export class NavigateValidator extends BaseValidator {
         property: 'target',
         data: { code: 'unknown_navigate_target' },
       });
+    }
+  }
+
+  /** Idea #19: the event of an interaction should be a DOM event name. */
+  checkInteractionEvent(node: InteractionStatement, accept: ValidationAcceptor): void {
+    if (node.event === undefined || DOM_EVENTS.has(node.event)) return;
+    const similar = similarDomEvents(node.event);
+    const hint =
+      similar.length > 0 ? ` Did you mean: ${similar.map(e => `'${e}'`).join(', ')}?` : '';
+    accept('warning', `'${node.event}' is not a known DOM event.${hint}`, {
+      node,
+      property: 'event',
+      code: 'unknown_dom_event',
+      data: { suggestions: similar },
+    });
+  }
+
+  /**
+   * Idea #19: `run` starts an action (DOMEventListenerController runs actions,
+   * not operations) and its arguments are stored in the listener, so they must
+   * be known when it is attached: no parameters, loop items or property chains.
+   */
+  checkRunCall(node: InteractionStatement, accept: ValidationAcceptor): void {
+    const call = node.call;
+    if (node.verb !== 'run' || !call) return;
+    if (!isActionDefinition(call.operationName?.ref)) {
+      // An unknown name is reported by the operation-existence validator
+      const name = getOperationCallName(call);
+      if (hasOperation(name)) {
+        accept(
+          'error',
+          `'run' starts an action, and '${name}' is an operation: wrap it in an action`,
+          { node: call, property: 'operationName', code: 'run_not_an_action' }
+        );
+      }
+      return;
+    }
+    for (const argument of call.args) {
+      const runtime = runtimeValueIn(argument);
+      if (runtime) {
+        accept(
+          'error',
+          `A 'run' argument must be known when the listener is attached (a literal or constant): '${runtime.$cstNode?.text ?? '?'}' is a runtime value`,
+          { node: runtime, code: 'run_runtime_argument' }
+        );
+      }
     }
   }
 
@@ -75,7 +133,7 @@ export class NavigateValidator extends BaseValidator {
   /**
    * The navigate selector must resolve against imported CSS.
    */
-  checkNavigateSelector(node: NavigateStatement, accept: ValidationAcceptor): void {
+  checkNavigateSelector(node: InteractionStatement, accept: ValidationAcceptor): void {
     if (!this.services) return;
 
     const program = this.getProgram(node);
@@ -89,4 +147,22 @@ export class NavigateValidator extends BaseValidator {
     reportSelectorIssues(node.selector, node, classes, ids, accept);
     reportNotInLayout(node.selector, node, this.services, program, documentUri, accept, 'selector');
   }
+}
+
+/**
+ * The first part of `expression` that is only known at runtime: a parameter,
+ * a loop item (`@@item`), a property chain, or a constant holding one.
+ */
+function runtimeValueIn(expression: AstNode, visiting = new Set<AstNode>()): AstNode | undefined {
+  for (const node of AstUtils.streamAst(expression)) {
+    if (isParameterReference(node) || isSystemPropertyReference(node)) return node;
+    if (isPropertyChainReference(node)) return node;
+    if (isVariableReference(node)) {
+      const declaration = node.variable?.ref;
+      if (!isVariableDeclaration(declaration) || visiting.has(declaration)) continue;
+      visiting.add(declaration);
+      if (declaration.value && runtimeValueIn(declaration.value, visiting)) return node;
+    }
+  }
+  return undefined;
 }

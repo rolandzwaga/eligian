@@ -1,4 +1,5 @@
 import { type AstNode, AstUtils, type ValidationAcceptor } from 'langium';
+import { interactionLabelTimes } from '../compiler/transformers/navigate-operations.js';
 import { propertyChainTimeMessage } from '../compiler/transformers/time-transformer.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import { parseSelector } from '../css/selector-parser.js';
@@ -7,7 +8,7 @@ import {
   type EventTimeReference,
   isBinaryExpression,
   isBinaryTimeExpression,
-  isNavigateStatement,
+  isInteractionStatement,
   isProgram,
   isSequenceBlock,
   isSequenceItem,
@@ -374,7 +375,7 @@ export class TimelineValidator extends BaseValidator {
   checkTimeConstantReference(node: VariableReference, accept: ValidationAcceptor): void {
     const declaration = node.variable?.ref;
     if (isTimeSlot(node)) {
-      if (isNavigateStatement(node.$container)) return; // checked by the navigate rules
+      if (isInteractionStatement(node.$container)) return; // checked by the navigate rules
       const value = timeConstantValue(node);
       if (value.error !== undefined) {
         accept('error', value.error, { node, code: 'invalid_time_constant' });
@@ -408,12 +409,18 @@ export class TimelineValidator extends BaseValidator {
     }
     const target = node.event?.ref;
     if (!target) return; // unresolved: reported by the linker
-    if (AstUtils.getContainerOfType(node, isNavigateStatement)) {
-      accept(
-        'error',
-        "Event labels can only be used in their timeline's own times, not in a navigate position",
-        { node, code: 'event_label_outside_timeline' }
-      );
+    const interaction = AstUtils.getContainerOfType(node, isInteractionStatement);
+    if (interaction) {
+      // Idea #19: a seek position uses the labels of its own timeline, a
+      // navigate position those of the target timeline (the scope), in any
+      // order: the position is not one of the timeline's own times
+      if (!interactionLabelTimes(interaction).has(target)) {
+        accept(
+          'error',
+          `The time of '${node.event?.$refText ?? '?'}' is not known at compile time`,
+          { node, code: 'event_label_time_unknown' }
+        );
+      }
       return;
     }
     const timeline = AstUtils.getContainerOfType(node, isTimeline);
@@ -491,7 +498,7 @@ function isTimeSlot(node: AstNode): boolean {
     return property === 'delay' || property === 'duration' || property === 'anchor';
   }
   if (isSequenceItem(container)) return property === 'duration';
-  if (isNavigateStatement(container)) return property === 'position';
+  if (isInteractionStatement(container)) return property === 'position';
   if (isTimeline(container)) return property === 'duration';
   return false;
 }

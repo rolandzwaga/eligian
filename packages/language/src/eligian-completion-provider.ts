@@ -41,13 +41,14 @@ import { getVariableCompletions } from './completion/variables.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
 import { navigateTargetCompletions } from './lsp/timeline-symbols.js';
+import { DOM_EVENTS } from './utils/dom-events.js';
 
 /**
  * Keyword-tolerant name rules in eligian.langium. The keywords they list are
  * accepted as names (`action f(event)`, `{ from: 0 }`), not syntax, so they are
  * never offered as keyword completions.
  */
-const NAME_RULES: ReadonlySet<string> = new Set(['Identifier', 'FeatureName']);
+const NAME_RULES: ReadonlySet<string> = new Set(['Identifier', 'FeatureName', 'ActionName']);
 
 /** Cached custom-action completion items and the names they are offered under. */
 interface ActionCompletionData {
@@ -146,6 +147,24 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     try {
       // Get document and position from context
       const document = context.document;
+
+      // Idea #19: DOM event names after `on` in an operation list. The event is
+      // an Identifier, whose alternatives (ID and the contextual keywords) all
+      // come here with property 'event': the events are added once, for ID,
+      // and the keywords are not offered.
+      if (next.property === 'event' && next.type !== 'EventTimeReference') {
+        if (GrammarAST.isRuleCall(next.feature)) {
+          for (const [name, description] of DOM_EVENTS) {
+            acceptor(context, {
+              label: name,
+              kind: CompletionItemKind.Event,
+              detail: description,
+              sortText: `0_${name}`,
+            });
+          }
+        }
+        return;
+      }
 
       // NOTE: JSDoc completion is now handled in getCompletion() above
 

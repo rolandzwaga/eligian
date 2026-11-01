@@ -16,7 +16,7 @@ import type {
   ContinueStatement,
   ForStatement,
   IfStatement,
-  NavigateStatement,
+  InteractionStatement,
   OperationCall,
   OperationStatement,
   Program,
@@ -34,8 +34,8 @@ import { transformCondition } from './condition-transformer.js';
 import { transformExpression } from './expression-transformer.js';
 import {
   buildNavigateOperations,
-  resolveNavPosition,
-  syntheticNavActionName,
+  interactionActionName,
+  resolveInteractionPosition,
 } from './navigate-operations.js';
 import {
   createRuntimeConcatCollector,
@@ -382,16 +382,25 @@ const transformStatement = (
         return [...select, ...body];
       }
 
-      case 'NavigateStatement': {
-        // on click "#sel" navigate "Target" [at <time>] →
+      case 'InteractionStatement': {
+        // on <event> "#sel" <verb> →
         //   selectElement + getControllerInstance + addControllerToElement.
         // The synthetic broadcast action it references is emitted centrally in
-        // transformAST (one per distinct target+position); its name is derived
-        // purely so both sites agree.
-        const navStmt = stmt as NavigateStatement;
-        const position = yield* resolveNavPosition(navStmt.position);
-        const actionName = syntheticNavActionName(navStmt.target, position);
-        return buildNavigateOperations(navStmt.selector, actionName, getSourceLocation(navStmt));
+        // transformAST (one per distinct verb, target and position); its name is
+        // derived purely so both sites agree. `run` names the called action.
+        const interaction = stmt as InteractionStatement;
+        const location = getSourceLocation(interaction);
+        if (interaction.verb === 'run') {
+          return yield* transformRunInteraction(interaction, scope, program, allActions);
+        }
+        const position = yield* resolveInteractionPosition(interaction);
+        const actionName = interactionActionName(interaction.verb, interaction.target, position);
+        return buildNavigateOperations(
+          interaction.selector,
+          actionName,
+          location,
+          interaction.event
+        );
       }
 
       default:
@@ -402,6 +411,58 @@ const transformStatement = (
           location: getSourceLocation(stmt),
         });
     }
+  });
+
+/**
+ * `on <event> "#sel" run action(args)` (idea #19): the DOM listener starts the
+ * action itself, with the arguments (compile-time values, validated) as its
+ * `actionOperationData`.
+ */
+const transformRunInteraction = (
+  interaction: InteractionStatement,
+  scope: ScopeContext,
+  program: Program | undefined,
+  allActions: ActionDefinition[] | undefined
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.gen(function* () {
+    const location = getSourceLocation(interaction);
+    const call = interaction.call;
+    const name = call ? getOperationCallName(call) : undefined;
+    const actionDef =
+      name === undefined
+        ? undefined
+        : allActions
+          ? findActionByName(name, allActions)
+          : findActionByName(name, program ?? (yield* getProgram(interaction)));
+    if (!call || name === undefined || !actionDef) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `'run' starts an action, and '${name ?? '?'}' is not one`,
+        location,
+      });
+    }
+    const parameters = actionDef.parameters || [];
+    if (call.args.length !== parameters.length) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `Action '${name}' expects ${parameters.length} argument(s) but got ${call.args.length}. Expected: ${parameters.map(p => p.name).join(', ')}`,
+        location: getSourceLocation(call),
+      });
+    }
+    const actionOperationData: Record<string, JsonValue> = {};
+    for (let i = 0; i < parameters.length; i++) {
+      actionOperationData[parameters[i].name] = yield* transformExpression(call.args[i], scope);
+    }
+    return buildNavigateOperations(
+      interaction.selector,
+      // Library helpers are emitted under library-qualified names
+      scope.actionSystemNames?.get(name) ?? name,
+      location,
+      interaction.event,
+      actionOperationData
+    );
   });
 
 /**

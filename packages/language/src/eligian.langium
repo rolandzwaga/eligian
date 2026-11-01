@@ -225,7 +225,7 @@ LibraryImport:
  * - Type checking for imported action parameters
  */
 ActionImport:
-    action=[ActionDefinition:ID] ('as' alias=ID)?;
+    action=[ActionDefinition:ActionName] ('as' alias=ActionName)?;
 
 // ============================================================================
 // Action Definitions
@@ -267,7 +267,7 @@ ActionImport:
 EventActionDefinition:
     'on' 'event' eventName=STRING?
     ('topic' eventTopic=STRING)?
-    'action' name=ID
+    'action' name=ActionName
     ('(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')')?
     '[' operations+=OperationStatement* ']';
 
@@ -310,11 +310,11 @@ ActionDefinition:
     EndableActionDefinition | RegularActionDefinition;
 
 RegularActionDefinition:
-    (visibility='private')? 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
+    (visibility='private')? 'action' name=ActionName ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (operations += OperationStatement)* ']';
 
 EndableActionDefinition:
-    (visibility='private')? 'endable' 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
+    (visibility='private')? 'endable' 'action' name=ActionName ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (startOperations += OperationStatement)* ']'
     '[' (endOperations += OperationStatement)* ']';
 
@@ -355,7 +355,7 @@ TypeAnnotation returns string:
  * - Variable declarations (const varName = value)
  */
 OperationStatement:
-    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | NavigateStatement | WithStatement | OperationCall;
+    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | InteractionStatement | WithStatement | OperationCall;
 
 /**
  * With Statement (audit idea #17) - select an element, then run operations:
@@ -450,27 +450,41 @@ ContinueStatement:
     {infer ContinueStatement} 'continue';
 
 /**
- * Navigate Statement - Click-to-switch-timeline sugar (hub ↔ chapter nav)
- *
- * Wires a click handler on an element that switches the engine to another
- * timeline (by its name/uri). Designed for hub-and-chapter presentations.
- *
- * Example:
- *   on click "#card-ch1" navigate "Timeline & Time"
- *   on click "#resume" navigate "Timeline & Time" at 5s
- *
- * Compiles to:
- *   selectElement("#card-ch1")
- *   getControllerInstance("DOMEventListenerController")
- *   addControllerToElement({ eventName: "click", actions: ["<synthetic action>"] })
- * plus one synthetic action per distinct (target, position) that does:
- *   broadcastEvent("request-timeline-uri", ["<target>", <position>])
- *
- * Both selector and target must be string literals. The optional `at <time>`
- * sets the position to switch to (defaults to 0).
+ * Action Name - an action's name: an ID or one of the interaction verbs (idea
+ * #19), which are keywords only after `on <event> "<sel>"`, so an action can
+ * still be called `toggle` or `play`.
  */
-NavigateStatement:
-    'on' 'click' selector=STRING 'navigate' target=STRING ('at' position=TimeExpression)?;
+ActionName returns string:
+    ID | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run';
+
+/**
+ * Interaction Statement (audit idea #19) - a DOM event on an element runs a verb
+ *
+ *   on click "#card-ch1" navigate "Timeline & Time"     switch timelines
+ *   on click "#resume" navigate "Timeline & Time" at 5s  … at a position
+ *   on click "#play" toggle                              play / pause / toggle / stop
+ *   on click "#skip" seek intro.end                      seek the current timeline
+ *   on mouseenter "#card" run highlight("#card", 2)       start an action
+ *
+ * The event is a DOM event name (click, dblclick, mouseenter, …). Compiles to:
+ *   selectElement("#sel")
+ *   getControllerInstance("DOMEventListenerController")
+ *   addControllerToElement({ eventName, actions: ["<action>"] (, actionOperationData) })
+ * where the action is a synthetic one broadcasting the engine request
+ * (request-timeline-uri, timeline-play-request, timeline-seek-request, …), one
+ * per distinct verb, or for `run` the called action with its arguments.
+ *
+ * The selector, the navigate target and `run` arguments are known at compile
+ * time; positions are constant times. A `seek` position may use the labels of
+ * the timeline it is in, a navigate position those of the target timeline.
+ */
+InteractionStatement:
+    'on' event=Identifier selector=STRING (
+        verb='navigate' target=STRING ('at' position=TimeExpression)?
+      | verb=('play' | 'pause' | 'toggle' | 'stop')
+      | verb='seek' position=TimeExpression
+      | verb='run' call=OperationCall
+    );
 
 /**
  * Variable Declaration - Declare a constant variable
@@ -503,7 +517,7 @@ VariableDeclaration:
  *   animate({ opacity: 1 }, 500) // Built-in operation (ref undefined)
  */
 OperationCall:
-    operationName=[ActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
+    operationName=[ActionDefinition:ActionName] '(' (args += Expression (',' args += Expression)*)? ')';
 
 // ============================================================================
 // Timeline Definitions
@@ -935,12 +949,13 @@ ArrayLiteral:
  */
 Identifier returns string:
     ID
-    | 'array' | 'as' | 'at' | 'audio' | 'boolean' | 'click' | 'css' | 'custom'
+    | 'array' | 'as' | 'at' | 'audio' | 'boolean' | 'css' | 'custom'
     | 'event' | 'from' | 'globaldata' | 'h' | 'html' | 'in' | 'languages'
     | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
     | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
-    | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then' | 'target';
+    | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then' | 'target'
+    | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:

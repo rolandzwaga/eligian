@@ -8,20 +8,20 @@
  * These helpers provide backward-compatible access to imports and elements.
  */
 
-import { AstUtils } from 'langium';
+import { type AstNode, AstUtils } from 'langium';
 import type {
   ActionDefinition,
   EventActionDefinition,
   ImportStatement,
+  InteractionStatement,
   LibraryImport,
   NamedImport,
-  NavigateStatement,
   Program,
   ProgramElement,
   Timeline,
   VariableDeclaration,
 } from '../generated/ast.js';
-import { isNavigateStatement, isTimeline, isVariableDeclaration } from '../generated/ast.js';
+import { isInteractionStatement, isTimeline, isVariableDeclaration } from '../generated/ast.js';
 import { inferAssetType } from './asset-type-inference.js';
 import {
   isActionDefinition,
@@ -125,15 +125,21 @@ export function getEventActions(program: Program): EventActionDefinition[] {
 }
 
 /**
- * Get all navigate statements anywhere in a program (Feature: navigate sugar).
+ * Get all interaction statements (`on click "#sel" navigate "Hub"`, `on click
+ * "#play" toggle`, …) anywhere in a program or library (navigate sugar, idea #19).
  *
- * Navigate statements nest arbitrarily deep (inside timelines, inline endable
- * blocks, actions, if/for bodies), so this streams the entire AST rather than
- * only the top-level elements.
+ * They nest arbitrarily deep (inside timelines, inline endable blocks, actions,
+ * if/for bodies), so this streams the entire AST rather than only the
+ * top-level elements.
  *
- * @param program - Program AST node
- * @returns Array of navigate statement nodes
+ * @param root - Program or library AST node (or an action of one)
+ * @returns Array of interaction statement nodes
  */
-export function getNavigateStatements(program: Program): NavigateStatement[] {
-  return [...AstUtils.streamAllContents(program)].filter(isNavigateStatement);
+export function getInteractionStatements(root: AstNode): InteractionStatement[] {
+  return [...AstUtils.streamAllContents(root)].filter(isInteractionStatement);
+}
+
+/** The `navigate` interaction statements of a program (see {@link getInteractionStatements}). */
+export function getNavigateStatements(program: Program): InteractionStatement[] {
+  return getInteractionStatements(program).filter(statement => statement.verb === 'navigate');
 }

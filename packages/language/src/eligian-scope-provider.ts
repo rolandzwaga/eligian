@@ -20,6 +20,7 @@ import {
   WorkspaceCache,
 } from 'langium';
 import { resolveLibraryPath } from './compiler/pipeline.js';
+import { labelTimeline } from './compiler/transformers/navigate-operations.js';
 import type { EligianServices } from './eligian-module.js';
 import {
   type ActionDefinition,
@@ -27,6 +28,7 @@ import {
   isActionImport,
   isEventActionDefinition,
   isEventTimeReference,
+  isInteractionStatement,
   isLibrary,
   isLibraryImport,
   isNamedImport,
@@ -234,7 +236,11 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    * validator can say why it is not allowed (rather than 'unknown name').
    */
   private getScopeForEventLabel(context: ReferenceInfo): Scope {
-    const timeline = AstUtils.getContainerOfType(context.container, isTimeline);
+    // Idea #19: in a navigate position the labels of the target timeline
+    const interaction = AstUtils.getContainerOfType(context.container, isInteractionStatement);
+    const timeline = interaction
+      ? labelTimeline(interaction)
+      : AstUtils.getContainerOfType(context.container, isTimeline);
     if (!timeline) return EMPTY_SCOPE;
     const document = AstUtils.getDocument(context.container);
     // `at … as x` events and (idea #11) labeled sequence items

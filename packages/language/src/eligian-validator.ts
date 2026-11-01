@@ -242,9 +242,11 @@ export function registerValidationChecks(services: EligianServices) {
   registry.register(dataflowChecks, v.dataflow);
 
   const navigateChecks: ValidationChecks<EligianAstType> = {
-    NavigateStatement: [
+    InteractionStatement: [
       v.navigate.checkNavigateTarget, // navigate target must name an existing timeline
       v.navigate.checkNavigateSelector, // navigate selector must resolve against imported CSS
+      v.navigate.checkInteractionEvent, // idea #19: a DOM event name
+      v.navigate.checkRunCall, // idea #19: run starts an action with compile-time arguments
     ],
     // Idea #17: `at … target "<sel>"` and `with "<sel>" { }` selectors
     TimedEvent: v.navigate.checkTargetSelector,

@@ -107,6 +107,10 @@
           "match": "(?<![\\w.])(?:on|event|topic|click|navigate)(?![\\w])"
         },
         {
+          "name": "keyword.control.event.eligian",
+          "match": "(?<![\\w.])(?:play|pause|toggle|stop|seek|run)(?![\\w])(?!\\s*\\()"
+        },
+        {
           "name": "keyword.control.import.eligian",
           "match": "(?<![\\w.])(?:import|from|as|layout|styles|provider|locales)(?![\\w])"
         },

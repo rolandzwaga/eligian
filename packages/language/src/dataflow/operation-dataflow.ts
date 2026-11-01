@@ -42,8 +42,8 @@ import {
   isForStatement,
   isIfStatement,
   isInlineEndableAction,
+  isInteractionStatement,
   isLibrary,
-  isNavigateStatement,
   isObjectLiteral,
   isOperationCall,
   isProgram,
@@ -321,7 +321,7 @@ export class OperationDataflow {
         // Idea #17: selectElement(<selector>), then the body; the selection stays
         this.applyOperation('selectElement', statement, current, ctx, [statement.selector]);
         current = this.walk(statement.body, current, ctx);
-      } else if (isNavigateStatement(statement)) {
+      } else if (isInteractionStatement(statement)) {
         // Compiles to selectElement + getControllerInstance + addControllerToElement
         for (const operation of [
           'selectElement',
@@ -329,6 +329,10 @@ export class OperationDataflow {
           'addControllerToElement',
         ]) {
           this.applyOperation(operation, statement, current, ctx);
+        }
+        // Idea #19: the listener starts a `run` action later, with fresh data
+        if (statement.verb === 'run' && statement.call && ctx.report) {
+          this.checkRunAction(statement.call, ctx.report);
         }
       }
       // const/break/continue do not change operationData
@@ -427,6 +431,26 @@ export class OperationDataflow {
         state.assume(property);
       }
       if (exit.isUnknown()) state.markUnknown();
+    }
+  }
+
+  /**
+   * `on <event> "<sel>" run action(args)` (idea #19): DOMEventListenerController
+   * starts the action with only eventTarget and its arguments.
+   */
+  private checkRunAction(call: OperationCall, report: (d: DataflowDiagnostic) => void): void {
+    const action = this.calleeOf(call);
+    if (!action) return; // `run` of a non-action: reported by the interaction validator
+    const state = new OperationDataTracker();
+    for (const property of DOM_EVENT_CONTROLLER_PROVIDES) state.assume(property);
+    for (const parameter of action.parameters ?? []) state.assume(parameter.name);
+    for (const requirement of this.contractOf({ action, phase: 'start' }).values()) {
+      if (state.hasProperty(requirement.property)) continue;
+      report({
+        node: call,
+        code: 'missing-action-dependency',
+        message: `Action '${action.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available when the event runs it: ${DOM_EVENT_CONTROLLER} starts it with only eventTarget and its arguments${providerHint(requirement.property)}`,
+      });
     }
   }
 

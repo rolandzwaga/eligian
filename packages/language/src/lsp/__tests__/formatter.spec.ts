@@ -175,6 +175,14 @@ describe('formatter (audit idea #15)', () => {
     expect((await formatSource(source)).text).toBe(source);
   });
 
+  test('interaction verbs are spaced, an action called toggle is not (idea #19)', async () => {
+    const source =
+      'action toggle(sel) [ selectElement(sel) on  click "#a"   toggle  toggle("#b") ]';
+    expect((await formatSource(source)).text).toBe(
+      'action toggle(sel) [ selectElement(sel) on click "#a" toggle toggle("#b") ]'
+    );
+  });
+
   test('a document with syntax errors is not formatted', async () => {
     const result = await formatSource('action a( [ ');
     expect(result.changed).toBe(false);

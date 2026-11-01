@@ -1893,11 +1893,46 @@ action clearSpots() [
   an `at` event.
 - `target` is a contextual keyword (still a valid name).
 
-#### Navigation: `on click … navigate`
+#### Interactions: `on <event> "<selector>" <verb>`
 
-`on click "<selector>" navigate "<timeline>" (at <time>)?`, an operation statement, switches to
-another timeline of the same program when the element is clicked (optionally at a position). The
-target must be the name of a timeline in the program. In the editor a target is a symbol of that
+An operation statement that attaches a DOM event listener to an element. The verb runs each
+time the event fires:
+
+```eligian
+on click "#card-ch1" navigate "Timeline & Time"     // switch timelines
+on click "#resume" navigate "Timeline & Time" at 5s  // … at a position
+on click "#play" toggle                              // play / pause / toggle / stop
+on click "#skip" seek intro.end                      // seek the current timeline
+on mouseenter "#card" run highlight("#card", 2)       // start an action
+```
+
+| Verb | Does |
+|---|---|
+| `navigate "<timeline>" (at <time>)?` | switch to another timeline of the program (at a position, default 0) |
+| `play` / `pause` / `toggle` / `stop` | the playback of the current timeline |
+| `seek <time>` | seek the current timeline |
+| `run <action>(<args>)` | start an action, with the arguments |
+
+- **Event:** a DOM event name (`click`, `dblclick`, `mouseenter`, `keydown`, `input`, …);
+  completion offers them. An unknown name is a warning with *did you mean* (custom events exist).
+  Key events only fire while the element has focus; there is no key filter yet.
+- **Positions** are constant times (`5s`, `@beat`, `1s + 500ms`). A `seek` may use the labels of the
+  timeline it is in, in any order (`seek intro.end`); a `navigate` position those of the target
+  timeline (`navigate "Chapter" at beat.start`).
+- **`run`** starts an action (not an operation: wrap it in an action). The listener stores the
+  arguments, so they must be known at compile time: literals and constants, not parameters,
+  loop items or property chains. The action starts with only `eventTarget` (the element the
+  event fired on) and its arguments, so it selects its own element: one that needs the selected
+  element of the surrounding block is an error.
+- **Compiles to** `selectElement` + `getControllerInstance("DOMEventListenerController")` +
+  `addControllerToElement`, so the statement selects its element like `selectElement` does. The
+  listener runs a synthetic action per verb that broadcasts the engine request
+  (`request-timeline-uri`, `timeline-play-request`, `timeline-pause-request`,
+  `timeline-play-toggle-request`, `timeline-stop-request`, `timeline-seek-request`), or the
+  `run` action.
+- The verbs are contextual keywords: an action can still be called `toggle` or `play`.
+
+`navigate`: the target must be the name of a timeline in the program. In the editor a target is a symbol of that
 timeline: Go to Definition, Find References and Rename (renaming a timeline updates every
 `navigate` to it) work on both, completion after `navigate` offers the timeline names, and an
 unknown target offers *Change to "<closest name>"* and *Create timeline "<name>"*.

@@ -18,10 +18,10 @@ import {
 } from 'vscode-languageserver-protocol';
 import { levenshteinDistance } from '../css/levenshtein.js';
 import {
-  isNavigateStatement,
+  type InteractionStatement,
+  isInteractionStatement,
   isProgram,
   isTimeline,
-  type NavigateStatement,
   type Program,
   type Timeline,
 } from '../generated/ast.js';
@@ -51,7 +51,7 @@ export function timelineSymbolAt(
   const leaf = CstUtils.findLeafNodeAtOffset(root, offset);
   const node = leaf?.astNode;
   if (!leaf) return undefined;
-  if (isNavigateStatement(node) && node.target !== undefined) {
+  if (isInteractionStatement(node) && node.target !== undefined) {
     const token = GrammarUtils.findNodeForProperty(node.$cstNode, 'target');
     if (token && token.offset <= offset && offset <= token.end) {
       return { name: node.target, token, program };
@@ -72,9 +72,9 @@ export function timelineNamed(program: Program, name: string): Timeline | undefi
 }
 
 /** Every `navigate` statement of `program` that targets `name`. */
-export function navigatesTo(program: Program, name: string): NavigateStatement[] {
+export function navigatesTo(program: Program, name: string): InteractionStatement[] {
   return AstUtils.streamAllContents(program)
-    .filter(isNavigateStatement)
+    .filter(isInteractionStatement)
     .filter(statement => statement.target === name)
     .toArray();
 }

@@ -1,36 +1,68 @@
 /**
- * `navigate` sugar expansion helpers (hub ↔ chapter timeline switching).
+ * Interaction statement expansion helpers (`on <event> "<sel>" <verb>`;
+ * `navigate` for hub ↔ chapter timeline switching, audit idea #19 for the
+ * other verbs).
  *
- * A `NavigateStatement` (`on click "#sel" navigate "Target" at 5s`) expands to
- * two cooperating pieces:
+ * An `InteractionStatement` (`on click "#sel" navigate "Target" at 5s`) expands
+ * to two cooperating pieces:
  *
- *  1. Three call-site operations that attach a DOM click listener:
+ *  1. Three call-site operations that attach a DOM event listener:
  *       selectElement(selector)
  *       getControllerInstance("DOMEventListenerController")
- *       addControllerToElement({ eventName: "click", actions: [<synthetic name>] })
+ *       addControllerToElement({ eventName, actions: [<action name>] })
  *
- *  2. One synthetic action per DISTINCT (target, position) that the listener
- *     invokes, which broadcasts the engine's timeline-switch request:
- *       broadcastEvent({ eventName: "request-timeline-uri", eventArgs: [uri, position] })
- *     The engine switches by timeline `uri` (`switchTimeline(uri, position)`),
- *     so the target name is resolved to its timeline's uri ({@link timelineUri}):
- *     the name for a `raf` timeline, the media source for a video/audio one.
+ *  2. For every verb but `run`, one synthetic action per DISTINCT verb (and
+ *     target, position) that the listener invokes, broadcasting the engine
+ *     request: `request-timeline-uri` [uri, position] for navigate (the engine
+ *     switches by timeline `uri`, see {@link timelineUri}),
+ *     `timeline-play-request`, `timeline-pause-request`,
+ *     `timeline-play-toggle-request`, `timeline-stop-request` and
+ *     `timeline-seek-request` [position]. `run` names the called action itself
+ *     and passes its arguments as the listener's `actionOperationData`.
  *
  * The synthetic action name must match between the call-site expansion
  * (operation-transformer) and the central action generator (ast-transformer),
- * which never share state — so it is derived purely from (target, position) via
- * {@link syntheticNavActionName}.
+ * which never share state — so it is derived purely from the verb, target and
+ * position via {@link interactionActionName}.
  */
 import { Effect } from 'effect';
+import { AstUtils } from 'langium';
 import type { TransformError } from '../../errors/index.js';
-import type { TimeExpression as AstTimeExpression, Timeline } from '../../generated/ast.js';
+import {
+  type TimeExpression as AstTimeExpression,
+  type InteractionStatement,
+  isProgram,
+  isSequenceItem,
+  isTimeline,
+  type LabeledEvent,
+  type Timeline,
+} from '../../generated/ast.js';
+import { getTimelines } from '../../utils/program-helpers.js';
+import { labeledEvents } from '../../utils/time-constants.js';
 import type { SourceLocation } from '../types/common.js';
-import type { EndableActionIR, OperationConfigIR } from '../types/eligius-ir.js';
+import type { EndableActionIR, JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { getSourceLocation } from './source-location.js';
-import { evaluateTimeExpression, transformTimeExpression } from './time-transformer.js';
+import { resolveTimelineTimes } from './time-resolver.js';
+import {
+  type EventLabelTimes,
+  evaluateTimeExpression,
+  transformTimeExpression,
+} from './time-transformer.js';
 
 /** Eligius eventbus event the engine listens on to switch timelines. */
 const REQUEST_TIMELINE_URI = 'request-timeline-uri';
+
+/** A verb that broadcasts a playback request for the current timeline (idea #19). */
+export type PlaybackVerb = 'play' | 'pause' | 'toggle' | 'stop' | 'seek';
+
+/** The eventbus event each playback verb broadcasts (handled by the engine). */
+const PLAYBACK_REQUESTS: Record<PlaybackVerb, string> = {
+  play: 'timeline-play-request',
+  pause: 'timeline-pause-request',
+  toggle: 'timeline-play-toggle-request',
+  stop: 'timeline-stop-request',
+  seek: 'timeline-seek-request',
+};
 
 /** The controller used to attach a DOM click listener to an element. */
 const DOM_EVENT_LISTENER_CONTROLLER = 'DOMEventListenerController';
@@ -91,34 +123,94 @@ export function syntheticNavActionName(target: string, position: number): string
 }
 
 /**
- * Resolve the optional `at <time>` position of a navigate to a numeric
- * (seconds) value. Absent → 0. Must be a constant time expression.
+ * Deterministic synthetic action name of an interaction verb (all but `run`):
+ * {@link syntheticNavActionName} for navigate, `__on__<verb>` for the playback
+ * verbs, with the position for seek.
+ */
+export function interactionActionName(
+  verb: 'navigate' | PlaybackVerb,
+  target: string | undefined,
+  position: number
+): string {
+  if (verb === 'navigate') return syntheticNavActionName(target ?? '', position);
+  return verb === 'seek' ? `__on__seek__${encodePosition(position)}` : `__on__${verb}`;
+}
+
+/**
+ * The labels a position may use, with their times: for `seek` those of the
+ * timeline the statement is in (the engine seeks the current timeline), for
+ * `navigate` those of the target timeline. Labels whose time cannot be
+ * resolved at compile time are left out.
+ */
+export function interactionLabelTimes(statement: InteractionStatement): EventLabelTimes {
+  const timeline = labelTimeline(statement);
+  const times = new Map<LabeledEvent, { start: number; end: number }>();
+  if (!timeline) return times;
+  const resolved = resolveTimelineTimes(timeline);
+  for (const label of labeledEvents(timeline)) {
+    const span = isSequenceItem(label)
+      ? resolved.sequenceItems.get(label)
+      : resolved.events.get(label)?.[0];
+    if (span) times.set(label, span);
+  }
+  return times;
+}
+
+/** The timeline whose labels an interaction position refers to (see {@link interactionLabelTimes}). */
+export function labelTimeline(statement: InteractionStatement): Timeline | undefined {
+  if (statement.verb === 'seek') return AstUtils.getContainerOfType(statement, isTimeline);
+  if (statement.verb !== 'navigate' || statement.target === undefined) return undefined;
+  const program = AstUtils.getContainerOfType(statement, isProgram);
+  return program && getTimelines(program).find(timeline => timeline.name === statement.target);
+}
+
+/**
+ * The position (seconds) of a navigate or seek: its constant time expression,
+ * or 0 when there is none.
+ */
+export const resolveInteractionPosition = (
+  statement: InteractionStatement
+): Effect.Effect<number, TransformError> =>
+  resolveNavPosition(statement.position, interactionLabelTimes(statement), statement.verb);
+
+/**
+ * Resolve the optional `at <time>` position of a navigate (or a seek position)
+ * to a numeric (seconds) value. Absent → 0. Must be a constant time expression;
+ * `labels` gives the times of the labels it may use.
  */
 export const resolveNavPosition = (
-  position: AstTimeExpression | undefined
+  position: AstTimeExpression | undefined,
+  labels: EventLabelTimes = new Map(),
+  verb = 'navigate'
 ): Effect.Effect<number, TransformError> =>
   Effect.gen(function* () {
     if (!position) {
       return 0;
     }
-    const ir = yield* transformTimeExpression(position);
+    const ir = yield* transformTimeExpression(position, 0, labels);
     return yield* Effect.try({
       try: () => evaluateTimeExpression(ir),
       catch: () =>
         ({
           _tag: 'TransformError' as const,
           kind: 'InvalidExpression' as const,
-          message: 'navigate position must be a constant time expression',
+          message: `${verb} position must be a constant time expression`,
           location: getSourceLocation(position),
         }) satisfies TransformError,
     });
   });
 
-/** The three call-site operations a `navigate` expands to. */
+/**
+ * The three call-site operations an interaction expands to: a DOM `eventName`
+ * listener on `selector` that runs `actionName` (with `actionOperationData`,
+ * the arguments of a `run` call).
+ */
 export function buildNavigateOperations(
   selector: string,
   actionName: string,
-  sourceLocation: SourceLocation
+  sourceLocation: SourceLocation,
+  eventName = 'click',
+  actionOperationData?: Record<string, JsonValue>
 ): OperationConfigIR[] {
   return [
     {
@@ -136,7 +228,13 @@ export function buildNavigateOperations(
     {
       id: crypto.randomUUID(),
       systemName: 'addControllerToElement',
-      operationData: { eventName: 'click', actions: [actionName] },
+      operationData: {
+        eventName,
+        actions: [actionName],
+        ...(actionOperationData && Object.keys(actionOperationData).length > 0
+          ? { actionOperationData }
+          : {}),
+      },
       sourceLocation,
     },
   ];
@@ -163,6 +261,35 @@ export function buildNavTargetAction(
         id: crypto.randomUUID(),
         systemName: 'broadcastEvent',
         operationData: { eventName: REQUEST_TIMELINE_URI, eventArgs: [uri, position] },
+        sourceLocation,
+      },
+    ],
+    endOperations: [],
+    sourceLocation,
+  };
+}
+
+/**
+ * The synthetic action of a playback verb (idea #19): broadcasts the engine
+ * request, with the position for `seek`.
+ */
+export function buildPlaybackAction(
+  verb: PlaybackVerb,
+  position: number,
+  sourceLocation: SourceLocation
+): EndableActionIR {
+  return {
+    id: crypto.randomUUID(),
+    name: interactionActionName(verb, undefined, position),
+    startOperations: [
+      {
+        id: crypto.randomUUID(),
+        systemName: 'broadcastEvent',
+        // broadcastEvent requires eventArgs
+        operationData: {
+          eventName: PLAYBACK_REQUESTS[verb],
+          eventArgs: verb === 'seek' ? [position] : [],
+        },
         sourceLocation,
       },
     ],

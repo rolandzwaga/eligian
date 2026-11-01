@@ -22,12 +22,13 @@
  */
 
 import { Effect } from 'effect';
+import { AstUtils } from 'langium';
 import { OperationDataflow } from '../dataflow/operation-dataflow.js';
 import type { TransformError } from '../errors/index.js';
 import type { Program } from '../generated/ast.js';
 import {
   getEventActions,
-  getNavigateStatements,
+  getInteractionStatements,
   getTimelines,
   getVariables,
 } from '../utils/program-helpers.js';
@@ -50,8 +51,9 @@ import { transformExpression } from './transformers/expression-transformer.js';
 import { resolveActionScopes, resolveCompilerAction } from './transformers/library-imports.js';
 import {
   buildNavTargetAction,
-  resolveNavPosition,
-  syntheticNavActionName,
+  buildPlaybackAction,
+  interactionActionName,
+  resolveInteractionPosition,
   timelineUri,
 } from './transformers/navigate-operations.js';
 import { createEmptyScope, createParameterContext } from './transformers/scope.js';
@@ -187,26 +189,40 @@ export const transformAST = (
       actions.push(action);
     }
 
-    // navigate sugar: emit one synthetic broadcast action per DISTINCT
-    // (target, position). Each `on click … navigate …` call site expands to a
-    // DOMEventListenerController whose `actions` reference these by name (the
-    // name is derived purely from target+position so both sites agree). The
-    // engine resolves them via request-action at runtime. The broadcast
-    // carries the target timeline's uri: the engine switches timelines by uri,
-    // which for a video/audio timeline is its media source, not its name.
-    const navStatements = getNavigateStatements(program);
-    const seenNavActions = new Set<string>();
-    for (const navStmt of navStatements) {
-      const position = yield* resolveNavPosition(navStmt.position);
-      const navActionName = syntheticNavActionName(navStmt.target, position);
-      if (seenNavActions.has(navActionName)) {
+    // Interaction sugar (navigate, idea #19): emit one synthetic broadcast
+    // action per DISTINCT verb (+ target, position). Each `on <event> … <verb>`
+    // call site expands to a DOMEventListenerController whose `actions`
+    // reference these by name (derived purely from verb, target and position so
+    // both sites agree). The engine resolves them via request-action at runtime.
+    // A navigate broadcast carries the target timeline's uri: the engine
+    // switches timelines by uri, which for a video/audio timeline is its media
+    // source, not its name. `run` needs none: it names the called action.
+    // Library actions the program reaches can hold interactions too.
+    const programDocument = AstUtils.getDocument(program);
+    const interactions = new Set(getInteractionStatements(program));
+    for (const { definition } of actionsToEmit) {
+      if (AstUtils.getDocument(definition) === programDocument) continue;
+      for (const statement of getInteractionStatements(definition)) interactions.add(statement);
+    }
+    const seenInteractionActions = new Set<string>();
+    for (const interaction of interactions) {
+      if (interaction.verb === 'run') continue;
+      const position = yield* resolveInteractionPosition(interaction);
+      const name = interactionActionName(interaction.verb, interaction.target, position);
+      if (seenInteractionActions.has(name)) {
         continue;
       }
-      seenNavActions.add(navActionName);
+      seenInteractionActions.add(name);
+      const location = getSourceLocation(interaction);
+      if (interaction.verb !== 'navigate') {
+        actions.push(buildPlaybackAction(interaction.verb, position, location));
+        continue;
+      }
       // An unknown target is reported by the navigate validator
-      const targetTimeline = timelineNodes.find(timeline => timeline.name === navStmt.target);
-      const uri = targetTimeline ? timelineUri(targetTimeline) : navStmt.target;
-      actions.push(buildNavTargetAction(navStmt.target, position, getSourceLocation(navStmt), uri));
+      const target = interaction.target ?? '';
+      const targetTimeline = timelineNodes.find(timeline => timeline.name === target);
+      const uri = targetTimeline ? timelineUri(targetTimeline) : target;
+      actions.push(buildNavTargetAction(target, position, location, uri));
     }
 
     // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
