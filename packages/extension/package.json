@@ -110,6 +110,11 @@
         "category": "Eligian"
       },
       {
+        "command": "eligian.newPresentation",
+        "title": "Eligian: New Presentation…",
+        "category": "Eligian"
+      },
+      {
         "command": "eligian.preview",
         "title": "Eligian: Preview Timeline",
         "category": "Eligian",

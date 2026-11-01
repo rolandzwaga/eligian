@@ -9,7 +9,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as url from 'node:url';
-import { parseSelectorNotInLayout } from '@eligian/language';
+import { parseSelectorNotInLayout, STARTERS } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
@@ -27,6 +27,7 @@ import {
   ParseError,
 } from './compile-file.js';
 import { runFmt } from './fmt.js';
+import { runInit } from './init.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
@@ -296,7 +297,7 @@ export default function main(): void {
     .version(packageVersion)
     .addHelpText(
       'after',
-      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian compile --help', 'eligian check --help' or 'eligian fmt --help' for their options."
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian compile --help', 'eligian check --help', 'eligian fmt --help' or 'eligian init --help' for their options."
     );
 
   // Check command: every diagnostic of every matched file
@@ -348,6 +349,30 @@ export default function main(): void {
       });
       if (outcome.output) console.log(outcome.output);
       if (outcome.error) console.error(chalk.red(outcome.error));
+      process.exit(outcome.exitCode);
+    });
+
+  // Init command (idea #12): write a starter project
+  program
+    .command('init')
+    .description('create a starter presentation project')
+    .argument('[dir]', 'directory to create it in (created if missing)', '.')
+    .option(
+      '-t, --template <name>',
+      `starter: ${STARTERS.map(s => `${s.name} (${s.description})`).join('; ')}`,
+      'blank'
+    )
+    .option('--title <title>', 'presentation title (default: from the directory name)')
+    .option('--force', 'overwrite existing files', false)
+    .action(async (dir: string, cmdOptions: Record<string, unknown>) => {
+      const outcome = await runInit(dir, {
+        template: String(cmdOptions.template),
+        title: cmdOptions.title as string | undefined,
+        force: cmdOptions.force === true,
+        cwd: process.cwd(),
+      });
+      if (outcome.exitCode === 0) console.log(outcome.output);
+      else console.error(chalk.red(outcome.output));
       process.exit(outcome.exitCode);
     });
 

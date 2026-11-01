@@ -12,6 +12,29 @@ npm install -g @eligian/cli
 
 ## Usage
 
+### Start a Project (`eligian init`)
+
+```bash
+eligian init my-talk                      # blank starter in ./my-talk
+eligian init my-talk --template chapters  # a hub with two chapters
+eligian init . --template library --title "Product Tour"
+```
+
+Writes a presentation that checks without errors (`main.eligian`), its `layout.html`,
+`styles.css` and `locales.json` (with a two-language `languages` block), a `package.json` with
+`check`, `build` and `fmt` scripts, and a README. Templates:
+
+| Template | What it shows |
+|---|---|
+| `blank` (default) | one timeline, timed events, play / pause buttons |
+| `chapters` | a hub and two chapters: `on enter` / `on leave`, `navigate`, `on key`, labels |
+| `video` | a timeline driven by a video, with captions (add `media/intro.mp4`) |
+| `library` | reusable actions in `lib/effects.eligian`, imported by the presentation |
+
+Existing files are never overwritten unless you pass `--force`; the title defaults to the
+directory name (`my-talk` → "My Talk"). VS Code: *Eligian: New Presentation…* writes the same
+starters.
+
 ### Basic Compilation
 
 Compile a single `.eligian` file:
@@ -124,6 +147,7 @@ eligian fmt --write src               # rewrite them
 Usage: eligian [compile] [options] <input>
        eligian check [options] <patterns...>
        eligian fmt [--check | --write] <patterns...>
+       eligian init [dir] [--template blank|chapters|video|library] [--title <title>] [--force]
 
 Eligian DSL compiler - compile .eligian files to Eligius JSON
 

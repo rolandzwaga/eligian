@@ -13,6 +13,7 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { disposeCompilerOutputChannel, registerCompileCommand } from './commands/compile.js';
 import { registerGenerateJSDocCommand, registerJSDocAutoCompletion } from './commands/jsdoc.js';
 import { registerOpenLocaleEditorCommand } from './commands/locale.js';
+import { registerNewPresentationCommand } from './commands/new-presentation.js';
 import { registerPreviewAtCommand, registerPreviewCommand } from './commands/preview.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
@@ -117,6 +118,9 @@ function registerClientIndependentFeatures(context: vscode.ExtensionContext): vo
 
   // B49: dispose the shared compiler output channel if it was ever created.
   context.subscriptions.push({ dispose: () => disposeCompilerOutputChannel() });
+
+  // Idea #12: "Eligian: New Presentation…" (starters shared with `eligian init`)
+  context.subscriptions.push(registerNewPresentationCommand());
 
   // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
   context.subscriptions.push(registerOpenLocaleEditorCommand());

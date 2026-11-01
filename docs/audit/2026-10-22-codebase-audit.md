@@ -3472,7 +3472,7 @@ timeline "Ambient" in "#bg" using raf loop duration 30s { … }
 
 ### #12 Fix the installed bin and add `eligian init` / 'New Presentation…' starters
 
-- **Status:** 🟡 Partly done: the bin was fixed in `65fdd0f`; `eligian init` and the starters are still open
+- **Status:** ✅ Done on `fix/audit-high-findings`. The bin was fixed in `65fdd0f` (with `package-bin.spec.ts`). `eligian init [dir] --template blank|chapters|video|library [--title] [--force]` and the extension's *Eligian: New Presentation…* write the same starters (`packages/language/src/starters/`); `init.spec.ts` checks every starter with warnings as errors and `--selector-not-in-layout ids`. Left out: `.vscode/extensions.json`, because the extension has no Marketplace id yet.
 
 - **Area:** docs-onboarding · **Effort:** S · **Score:** 7.3
 - **Problem:** KNOWN_ISSUES B1b: the package.json bin points at dist/cli.mjs, which does not call main, and bin/cli.js is missing from `files`, so a new user's `eligian --version` prints nothing. There is no scaffold, so authors must work out the required timeline header, the languages and locales pairing and the hub/chapter pattern from scratch.

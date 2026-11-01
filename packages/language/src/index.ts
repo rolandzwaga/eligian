@@ -71,6 +71,17 @@ export {
 export * from './lsp/html-notifications.js';
 // Locales validation exports (Feature 045: renamed from labels)
 export * from './lsp/labels-notifications.js';
+// Idea #12: project starters for `eligian init` and 'Eligian: New Presentation…'
+export {
+  findStarter,
+  packageNameFor,
+  STARTER_ENTRY,
+  STARTERS,
+  type Starter,
+  type StarterName,
+  type StarterOptions,
+  starterFiles,
+} from './starters/starters.js';
 export { extractLocaleMetadata } from './type-system-typir/utils/locale-metadata-extractor.js';
 // AST helper exports (for language server)
 export { isDefaultImport } from './utils/ast-helpers.js';
