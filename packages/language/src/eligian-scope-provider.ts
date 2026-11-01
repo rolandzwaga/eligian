@@ -219,11 +219,15 @@ export class EligianScopeProvider extends DefaultScopeProvider {
 
     // Create descriptions for all nodes
     // HTML imports are treated as VariableDeclarations for scoping purposes
+    // A declaration whose name did not parse (`const = 5`) is left out: a scope
+    // entry without a name makes the linker throw
     const descriptions = [
-      ...htmlImports.map(imp => this.descriptions.createDescription(imp, imp.name, document)),
-      ...visibleVariables.map(varDecl =>
-        this.descriptions.createDescription(varDecl, varDecl.name, document)
-      ),
+      ...htmlImports
+        .filter(imp => imp.name)
+        .map(imp => this.descriptions.createDescription(imp, imp.name, document)),
+      ...visibleVariables
+        .filter(varDecl => varDecl.name)
+        .map(varDecl => this.descriptions.createDescription(varDecl, varDecl.name, document)),
     ];
 
     // Create scope from descriptions
@@ -391,7 +395,10 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     }
 
     // Filter actions to only include public ones (exclude private actions)
-    const publicActions = (library.actions || []).filter(action => action.visibility !== 'private');
+    // Nameless actions (a name that did not parse) cannot be imported
+    const publicActions = (library.actions || []).filter(
+      action => action.visibility !== 'private' && action.name
+    );
 
     if (publicActions.length === 0) {
       // No public actions available in library

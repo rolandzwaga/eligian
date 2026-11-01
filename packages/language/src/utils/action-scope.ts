@@ -115,7 +115,7 @@ export function getImportedCallableActions(
   for (const libraryImport of getLibraryImportsOf(root)) {
     for (const actionImport of libraryImport.actions) {
       const action = resolveActionImport(actionImport, libraryImport, fromUri, resolveLibrary);
-      if (action) {
+      if (action && (actionImport.alias ?? action.name)) {
         result.push({ name: actionImport.alias ?? action.name, action, imported: true });
       }
     }
@@ -134,9 +134,11 @@ export function getCallableActions(
   root: ActionScopeRoot,
   resolveLibrary: LibraryResolver
 ): CallableAction[] {
-  const own = getOwnActions(root).map(
-    (action): CallableAction => ({ name: action.name, action, imported: false })
-  );
+  // An action whose name did not parse (`action loop()`: a keyword) has none:
+  // it cannot be called, and a scope entry without a name makes the linker throw
+  const own = getOwnActions(root)
+    .filter(action => Boolean(action.name))
+    .map((action): CallableAction => ({ name: action.name, action, imported: false }));
   return [...own, ...getImportedCallableActions(root, resolveLibrary)];
 }
 
