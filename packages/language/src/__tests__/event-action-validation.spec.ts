@@ -173,11 +173,11 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
     const { diagnostics } = await ctx.parseAndValidate(code);
     const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
 
-    // Expecting parse error (keywords rejected at grammar level)
+    // A parse error that says why: keywords cannot be names
     expect(errors.length).toBeGreaterThan(0);
-    expect(
-      errors.some(e => e.message.includes('Expecting') || e.message.includes('unexpected'))
-    ).toBe(true);
+    expect(errors.some(e => e.message.includes('is a keyword and cannot be used as a name'))).toBe(
+      true
+    );
   });
 
   test('should reject "for" as parameter name (parse error)', async () => {
@@ -198,11 +198,11 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
     const { diagnostics } = await ctx.parseAndValidate(code);
     const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
 
-    // Expecting parse error (keywords rejected at grammar level)
+    // A parse error that says why: keywords cannot be names
     expect(errors.length).toBeGreaterThan(0);
-    expect(
-      errors.some(e => e.message.includes('Expecting') || e.message.includes('unexpected'))
-    ).toBe(true);
+    expect(errors.some(e => e.message.includes('is a keyword and cannot be used as a name'))).toBe(
+      true
+    );
   });
 
   test('should reject "break" as parameter name (parse error)', async () => {
@@ -223,11 +223,11 @@ describe('Event Action Validation - Reserved Keyword Parameters (T028)', () => {
     const { diagnostics } = await ctx.parseAndValidate(code);
     const errors = diagnostics.filter(d => d.severity === DiagnosticSeverity.Error);
 
-    // Expecting parse error (keywords rejected at grammar level)
+    // A parse error that says why: keywords cannot be names
     expect(errors.length).toBeGreaterThan(0);
-    expect(
-      errors.some(e => e.message.includes('Expecting') || e.message.includes('unexpected'))
-    ).toBe(true);
+    expect(errors.some(e => e.message.includes('is a keyword and cannot be used as a name'))).toBe(
+      true
+    );
   });
 
   test('should accept valid parameter name', async () => {

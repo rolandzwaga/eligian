@@ -20,6 +20,7 @@ import { EligianDocumentBuilder } from './eligian-document-builder.js';
 import { EligianDocumentValidator } from './eligian-document-validator.js';
 import { EligianFormatter } from './eligian-formatter.js';
 import { EligianHoverProvider } from './eligian-hover-provider.js';
+import { EligianParserErrorMessageProvider } from './eligian-parser-error-provider.js';
 import { EligianScopeComputation } from './eligian-scope-computation.js';
 import { EligianScopeProvider } from './eligian-scope-provider.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
@@ -85,6 +86,10 @@ export type EligianServices = LangiumServices & EligianAddedServices;
  */
 export const EligianModule: Module<EligianServices, PartialLangiumServices & EligianAddedServices> =
   {
+    // Readable syntax errors (no 50-line token lists)
+    parser: {
+      ParserErrorMessageProvider: services => new EligianParserErrorMessageProvider(services),
+    },
     references: {
       ScopeProvider: services => new EligianScopeProvider(services),
       ScopeComputation: services => new EligianScopeComputation(services),
