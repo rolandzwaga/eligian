@@ -29,6 +29,7 @@ import {
 import { runFmt } from './fmt.js';
 import { runInit } from './init.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
+import { parseSmokeFormat, runSmoke, SMOKE_FORMATS } from './smoke/smoke-command.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const packagePath = path.resolve(__dirname, '..', 'package.json');
@@ -297,7 +298,7 @@ export default function main(): void {
     .version(packageVersion)
     .addHelpText(
       'after',
-      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian compile --help', 'eligian check --help', 'eligian fmt --help' or 'eligian init --help' for their options."
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, init) for its options."
     );
 
   // Check command: every diagnostic of every matched file
@@ -349,6 +350,33 @@ export default function main(): void {
       });
       if (outcome.output) console.log(outcome.output);
       if (outcome.error) console.error(chalk.red(outcome.error));
+      process.exit(outcome.exitCode);
+    });
+
+  // Smoke command (idea #21): play every timeline headlessly
+  program
+    .command('smoke')
+    .description(
+      'play every timeline of .eligian programs headlessly (jsdom) and report runtime failures'
+    )
+    .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
+    .option('--format <format>', `output format: ${SMOKE_FORMATS.join(', ')}`, 'pretty')
+    .option('--strict', 'also fail on selectElement selectors that match no element', false)
+    .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
+      const format = parseSmokeFormat(String(cmdOptions.format));
+      if (!format) {
+        console.error(
+          `Error: --format must be one of ${SMOKE_FORMATS.join(', ')} (got "${cmdOptions.format}")`
+        );
+        process.exit(2);
+      }
+      const outcome = await runSmoke(patterns, {
+        format,
+        strict: cmdOptions.strict === true,
+        cwd: process.cwd(),
+      });
+      if (outcome.exitCode === 2) console.error(chalk.red(outcome.output));
+      else console.log(outcome.output);
       process.exit(outcome.exitCode);
     });
 

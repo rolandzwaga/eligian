@@ -98,6 +98,34 @@ warnings, **2** nothing matched or an invalid option.
 
 `eligian <input>` is short for `eligian compile <input>`.
 
+### Play Every Timeline (`eligian smoke`)
+
+```bash
+eligian smoke examples/eligian-tour/tour.eligian
+eligian smoke "examples/**/*.eligian" --strict --format github
+```
+
+Compiles each program and plays its timelines on the real Eligius engine in a headless
+browser (jsdom): it switches to each timeline (`on enter`), seeks to every start and end time
+(each event's start and end operations) and switches on (`on leave`). What fails at runtime is
+reported at its `.eligian` source, with the timeline and the time:
+
+```
+tour.eligian
+  timeline 'Logic': 7 positions FAIL (1)
+  error  start operation selectElement (in boom): selectElement: selector is either empty or not defined.
+         tour.eligian:3:17 — 'Logic' at 9s
+```
+
+- Reported: failing operations (also inside called and library actions), unhandled rejections
+  and `console.error` output. `--strict` also reports `selectElement` selectors that match no
+  element.
+- `--format pretty` (default), `github` (annotations) or `json`. Exit code 1 when something
+  failed or did not compile, 2 when no file matched.
+- Library files are skipped (nothing to play), and so are video / audio timelines (jsdom plays
+  no media). jsdom has no layout: scrolling, media playback and observers are no-ops, so what
+  depends on sizes or positions is not checked.
+
 ### Optimization & Minification
 
 ```bash
@@ -147,6 +175,7 @@ eligian fmt --write src               # rewrite them
 Usage: eligian [compile] [options] <input>
        eligian check [options] <patterns...>
        eligian fmt [--check | --write] <patterns...>
+       eligian smoke [--strict] [--format pretty|github|json] <patterns...>
        eligian init [dir] [--template blank|chapters|video|library] [--title <title>] [--force]
 
 Eligian DSL compiler - compile .eligian files to Eligius JSON

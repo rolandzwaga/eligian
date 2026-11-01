@@ -23,6 +23,7 @@
     "typecheck:tests": "tsc -p packages/language/tsconfig.test.json && tsc -p packages/cli/tsconfig.test.json && tsc -p packages/extension/tsconfig.test.json && tsc -p packages/shared-utils/tsconfig.test.json",
     "fmt:examples": "node packages/cli/bin/cli.js fmt \"examples/**/*.eligian\" \"!examples/libraries/errors/**\"",
     "check:examples": "node packages/cli/bin/cli.js check \"examples/**/*.eligian\" \"!examples/libraries/errors/**\" \"!examples/libraries/nested/cycle-*.eligian\" --max-warnings 0",
+    "smoke:examples": "node packages/cli/bin/cli.js smoke \"examples/**/*.eligian\" \"!examples/libraries/errors/**\" \"!examples/libraries/nested/cycle-*.eligian\"",
     "effect:check": "pnpm effect:check:language && pnpm effect:check:cli",
     "effect:check:language": "effect-tsgo diagnostics --project packages/language/tsconfig.src.json --format text --strict",
     "effect:check:cli": "effect-tsgo diagnostics --project packages/cli/tsconfig.json --format text --strict",

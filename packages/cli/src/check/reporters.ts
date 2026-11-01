@@ -184,10 +184,12 @@ const GITHUB_COMMAND: Record<CheckDiagnostic['severity'], 'error' | 'warning' | 
   hint: 'notice',
 };
 
-/** GitHub Actions workflow-command escaping (data and property values). */
-const escapeData = (s: string) =>
+/** GitHub Actions workflow-command escaping: a message (data). */
+export const escapeData = (s: string) =>
   s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
-const escapeProperty = (s: string) => escapeData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+/** … and a property value (file, title). */
+export const escapeProperty = (s: string) =>
+  escapeData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
 
 /** GitHub Actions workflow commands: annotations on the pull request diff. */
 export function formatGithub(results: readonly CheckFileResult[], cwd: string): string {
