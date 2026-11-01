@@ -86,15 +86,19 @@ describe('Eligian map (audit idea #14)', () => {
     const { config, map } = await compiled();
     const actionId = timelineActionId(config, 0);
 
-    // Operation 0 of the start phase is the timeline action's own selectElement
-    expect(
-      locateEngineError(map, {
-        actionId,
-        phase: 'start',
-        operationSystemName: 'selectElement',
-        operationIndex: 0,
-      })?.location?.line
-    ).toBe(9);
+    // Operation 0 of the start phase is the timeline action's own selectElement,
+    // or inner's: Eligius names only the innermost operation, so both match
+    const ambiguous = locateEngineError(map, {
+      actionId,
+      phase: 'start',
+      operationSystemName: 'selectElement',
+      operationIndex: 0,
+    });
+    expect(ambiguous?.location?.line).toBe(9);
+    expect(ambiguous?.via).toEqual([]);
+    expect(ambiguous?.alternatives.map(a => [a.operation.location?.line, a.via])).toEqual([
+      [2, ['inner']],
+    ]);
 
     // Operation 1 is not setElementContent in the timeline action: it is inner's start operation 1
     const nested = locateEngineError(map, {
@@ -105,6 +109,7 @@ describe('Eligian map (audit idea #14)', () => {
     });
     expect(nested?.location?.line).toBe(3);
     expect(nested?.via).toEqual(['inner']);
+    expect(nested?.alternatives).toEqual([]);
 
     // In the end phase the called action's end operations apply (endAction)
     expect(
@@ -117,7 +122,10 @@ describe('Eligian map (audit idea #14)', () => {
     ).toBe(6);
 
     // Without an operation the action's own location is used
-    expect(locateEngineError(map, { actionId, phase: 'start' })?.location?.line).toBe(9);
+    expect(locateEngineError(map, { actionId, phase: 'start' })).toMatchObject({
+      location: { line: 9 },
+      alternatives: [],
+    });
     expect(locateEngineError(map, { actionId: 'nope', phase: 'start' })).toBeUndefined();
   });
 
@@ -144,6 +152,44 @@ timeline "t" in "#stage" using raf { at 0s..1s [ selectElement("#a") ] }`;
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test('an error in a called action at an index the caller shares: both places', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const { config, map } = await compiled(`action inner() [
+  getControllerInstance("NoSuchController")
+]
+timeline "t" in "#stage" using raf {
+  at 0s..5s [
+    getControllerInstance("LabelController")
+    inner()
+  ]
+}`);
+    const runnable = {
+      ...config,
+      containerSelector: '#app',
+      layoutTemplate: '<div id="stage"></div>',
+    } as unknown as IEngineConfiguration;
+    const { engine } = new EngineFactory(new EligiusResourceImporter(), window).createEngine(
+      runnable
+    );
+    const errors: IEngineActionError[] = [];
+    engine.on('error', error => errors.push(error));
+    await engine.init();
+    await engine.seek(1);
+    await vi.waitFor(() => expect(errors.length).toBeGreaterThan(0));
+    await engine.destroy();
+
+    // The engine reports getControllerInstance at index 0: the timeline
+    // action's own (line 6) matches as well as inner's (line 2), which failed
+    const [error] = errors;
+    expect([error.operationSystemName, error.operationIndex]).toEqual(['getControllerInstance', 0]);
+    const located = locateEngineError(map as EligianMap, error);
+    const places = [located, ...(located?.alternatives ?? [])].map(
+      c => c?.operation?.location?.line
+    );
+    expect(places).toEqual([6, 2]);
+    expect(located?.alternatives[0].via).toEqual(['inner']);
   });
 
   test("an error the real engine reports maps to the failing operation's source line", async () => {

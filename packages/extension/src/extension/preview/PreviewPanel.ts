@@ -13,6 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   type EligianMap,
+  type EngineErrorCandidate,
   type HostModule,
   locateEngineError,
   type SourceLocation,
@@ -760,8 +761,13 @@ export class PreviewPanel {
         : undefined;
     const location = located?.location;
     const uri = location?.file ? vscode.Uri.file(location.file) : this.documentUri;
+    const alternatives = located?.alternatives ?? [];
+    const others =
+      alternatives.length === 0
+        ? ''
+        : ` or ${alternatives.length} other place${alternatives.length === 1 ? '' : 's'}`;
     const where = location
-      ? ` (${path.basename(uri.fsPath)}:${location.line}:${location.column})`
+      ? ` (${path.basename(uri.fsPath)}:${location.line}:${location.column}${others})`
       : '';
     const text = `Eligian Preview Runtime Error: ${payload.message ?? 'unknown error'}${where}`;
 
@@ -772,14 +778,15 @@ export class PreviewPanel {
     void Promise.resolve(vscode.window.showErrorMessage(text, 'Go to Source')).then(choice => {
       if (choice === 'Go to Source') void this.revealLocation(uri, location);
     });
-    void this.addRuntimeDiagnostic(uri, location, payload, located?.via ?? []);
+    void this.addRuntimeDiagnostic(uri, location, payload, located?.via ?? [], alternatives);
   }
 
   private async addRuntimeDiagnostic(
     uri: vscode.Uri,
     location: SourceLocation,
     payload: RuntimeErrorPayload,
-    via: readonly string[]
+    via: readonly string[],
+    alternatives: readonly EngineErrorCandidate[] = []
   ): Promise<void> {
     const diagnostics = PreviewPanel.runtimeDiagnostics;
     if (!diagnostics || this.isDisposed) return;
@@ -788,7 +795,7 @@ export class PreviewPanel {
       payload.position !== undefined
         ? ` at ${Math.round(payload.position * 10) / 10}s of '${this.compiledTimelineUri(payload.timelineUri ?? '')}'`
         : '';
-    const through = via.length > 0 ? ` (in ${via.map(name => `'${name}'`).join(' → ')})` : '';
+    const through = PreviewPanel.through(via);
     const diagnostic = new vscode.Diagnostic(
       range,
       `Runtime error${at}${through}: ${payload.message ?? 'unknown error'}`,
@@ -796,6 +803,21 @@ export class PreviewPanel {
     );
     diagnostic.source = 'eligius-runtime';
     diagnostic.code = 'runtime_error';
+    // Eligius names only the innermost operation (name and index): the same
+    // operation at the same index elsewhere in the call chain matches as well
+    const related: vscode.DiagnosticRelatedInformation[] = [];
+    for (const alternative of alternatives) {
+      const at = alternative.operation.location;
+      if (!at) continue;
+      const otherUri = at.file ? vscode.Uri.file(at.file) : this.documentUri;
+      related.push(
+        new vscode.DiagnosticRelatedInformation(
+          new vscode.Location(otherUri, await this.rangeOf(otherUri, at)),
+          `Or here${PreviewPanel.through(alternative.via)}: Eligius reports only the operation's name and index, which match here too`
+        )
+      );
+    }
+    if (related.length > 0) diagnostic.relatedInformation = related;
     const existing = diagnostics.get(uri) ?? [];
     // The same failure repeats (every loop, every replay): report it once per place
     if (
@@ -810,6 +832,11 @@ export class PreviewPanel {
     }
     diagnostics.set(uri, [...existing, diagnostic]);
     this.runtimeErrorUris.set(uri.toString(), uri);
+  }
+
+  /** ` (in 'a' → 'b')`: the actions called on the way to an operation. */
+  private static through(via: readonly string[]): string {
+    return via.length > 0 ? ` (in ${via.map(name => `'${name}'`).join(' → ')})` : '';
   }
 
   private clearRuntimeErrors(): void {

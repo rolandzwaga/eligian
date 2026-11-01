@@ -115,6 +115,13 @@ export interface EngineErrorInfo {
   readonly operationIndex?: number;
 }
 
+/** An operation an engine error can come from, with the actions called on the way. */
+export interface EngineErrorCandidate {
+  readonly operation: EligianMapOperation;
+  /** Names of the actions the timeline action called on the way to the operation */
+  readonly via: readonly string[];
+}
+
 export interface LocatedEngineError {
   /** The failing timeline action */
   readonly action: EligianMapAction;
@@ -124,15 +131,24 @@ export interface LocatedEngineError {
   readonly via: readonly string[];
   /** Where to report: the operation, else the action */
   readonly location?: SourceLocation;
+  /**
+   * Other operations that match the report as well. Eligius names only the
+   * innermost operation (system name and index in its own list), so when the
+   * timeline action and an action it calls both have that operation at that
+   * index, the error can come from either.
+   */
+  readonly alternatives: readonly EngineErrorCandidate[];
 }
 
 const MAX_CALL_DEPTH = 8;
 
 /**
- * Find the source of an engine error: the operation at the reported index in
- * the action's phase when its system name matches, otherwise the first action
- * it calls (through requestAction + startAction / endAction, recursively)
- * whose operation at that index matches. Falls back to the action itself.
+ * Find the source of an engine error: the operations with the reported system
+ * name at the reported index, in the action's phase and in the actions it
+ * calls (through requestAction + startAction / endAction, recursively). The
+ * action's own operation comes first, then the called actions' in call order;
+ * the first is reported, the others are `alternatives`. Falls back to the
+ * action itself.
  */
 export function locateEngineError(
   map: EligianMap,
@@ -148,34 +164,37 @@ export function locateEngineError(
   }
 
   const { operationIndex: index, operationSystemName: systemName } = error;
-  const search = (
-    ops: readonly EligianMapOperation[],
-    via: readonly string[],
-    depth: number
-  ): { operation: EligianMapOperation; via: readonly string[] } | undefined => {
-    if (index === undefined) return undefined;
+  const candidates: EngineErrorCandidate[] = [];
+  const seen = new Set<EligianMapOperation>();
+  const search = (ops: readonly EligianMapOperation[], via: readonly string[], depth: number) => {
+    if (index === undefined) return;
     const direct = ops[index];
-    if (direct && (systemName === undefined || direct.systemName === systemName)) {
-      return { operation: direct, via };
+    if (
+      direct &&
+      (systemName === undefined || direct.systemName === systemName) &&
+      !seen.has(direct)
+    ) {
+      seen.add(direct);
+      candidates.push({ operation: direct, via });
     }
-    if (depth >= MAX_CALL_DEPTH) return undefined;
+    if (depth >= MAX_CALL_DEPTH) return;
     for (let i = 0; i < ops.length; i++) {
       const called = ops[i].calls ? byName.get(ops[i].calls!) : undefined;
       if (!called) continue;
       // requestAction is followed by startAction (its start ops) or endAction (its end ops)
       const phase = ops[i + 1]?.systemName === 'endAction' ? called.end : called.start;
-      const found = search(phase, [...via, called.name], depth + 1);
-      if (found) return found;
+      search(phase, [...via, called.name], depth + 1);
     }
-    return undefined;
   };
 
-  const found = search(error.phase === 'end' ? action.end : action.start, [], 0);
+  search(error.phase === 'end' ? action.end : action.start, [], 0);
+  const [found, ...alternatives] = candidates;
   return {
     action,
     operation: found?.operation,
     via: found?.via ?? [],
     location: found?.operation.location ?? action.location,
+    alternatives,
   };
 }
 

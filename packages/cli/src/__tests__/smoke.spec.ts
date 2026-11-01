@@ -42,6 +42,14 @@ timeline "Broken" in "#stage" using raf {
 }
 `
     );
+    write(
+      'shared.eligian',
+      `${HEADER}action boom() [ selectElement($globaldata.nothing) ]
+timeline "Shared" in "#stage" using raf {
+  at 0s..1s [ selectElement("#a") boom() ]
+}
+`
+    );
     write('lib.eligian', '// helpers\nlibrary helpers\naction noop() [ selectElement("#a") ]\n');
     write(
       'media.eligian',
@@ -86,6 +94,20 @@ timeline "Broken" in "#stage" using raf {
         time: 1,
         location: expect.objectContaining({ line: 3, column: 17 }),
       },
+    ]);
+  });
+
+  it('names the other place when a called action shares the operation and index', async () => {
+    // Eligius reports selectElement at index 0: boom's (which failed) and the
+    // timeline action's own both match
+    const outcome = await smoke(['shared.eligian'], 'json');
+    const [result] = JSON.parse(outcome.output);
+    expect(result.problems).toEqual([
+      expect.objectContaining({
+        message:
+          'start operation selectElement: selectElement: selector is either empty or not defined. [or at shared.eligian:3:17 (in boom)]',
+        location: expect.objectContaining({ line: 5 }),
+      }),
     ]);
   });
 

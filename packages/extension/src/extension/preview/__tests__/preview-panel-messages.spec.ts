@@ -148,6 +148,18 @@ vi.mock('vscode', async () => {
       ) {}
     },
     DiagnosticSeverity: { Error: 0, Warning: 1 },
+    Location: class {
+      constructor(
+        public uri: MockUri,
+        public range: unknown
+      ) {}
+    },
+    DiagnosticRelatedInformation: class {
+      constructor(
+        public location: { uri: MockUri; range: unknown },
+        public message: string
+      ) {}
+    },
   };
 });
 
@@ -471,5 +483,65 @@ describe('PreviewPanel runtime errors (audit idea #14)', () => {
     expect(diagnostic.source).toBe('eligius-runtime');
     expect(diagnostic.message).toContain("at 1.3s of 't'");
     expect([diagnostic.range.startLine, diagnostic.range.startCharacter]).toEqual([5, 4]);
+  });
+  test('an error that matches the same operation in a called action lists both places', async () => {
+    const op = (line: number) => ({
+      systemName: 'getControllerInstance',
+      location: { line, column: 5, length: 30 },
+    });
+    h.compileResults.push({
+      success: true,
+      config: { id: 'cfg', timelines: [{ uri: 't' }] },
+      map: {
+        version: 1,
+        actions: {
+          a1: {
+            name: 'timeline-action-0-5',
+            kind: 'timeline',
+            location: { line: 4, column: 3, length: 20 },
+            start: [
+              op(5),
+              { systemName: 'requestAction', calls: 'inner' },
+              { systemName: 'startAction' },
+            ],
+            end: [],
+            timelineUri: 't',
+            duration: { start: 0, end: 5 },
+          },
+          a2: { name: 'inner', kind: 'action', start: [op(2)], end: [] },
+        },
+      },
+      errors: [],
+      timestamp: 0,
+    } as CompileResult);
+    openPanel();
+    await vi.waitFor(() => expect(count('initialize')).toBe(1));
+    h.errorMessages.length = 0;
+
+    h.receive?.({
+      type: 'runtimeError',
+      payload: {
+        message: 'no controller',
+        actionId: 'a1',
+        phase: 'start',
+        operationSystemName: 'getControllerInstance',
+        operationIndex: 0,
+      },
+    });
+
+    expect(h.errorMessages).toEqual([
+      'Eligian Preview Runtime Error: no controller (story.eligian:5:5 or 1 other place)',
+    ]);
+    await vi.waitFor(() => expect(h.diagnostics.get(documentPath)?.length).toBe(1));
+    const [diagnostic] = h.diagnostics.get(documentPath) as Array<{
+      relatedInformation?: Array<{
+        message: string;
+        location: { uri: MockUri; range: { startLine: number } };
+      }>;
+    }>;
+    expect(
+      diagnostic.relatedInformation?.map(r => [r.location.uri.fsPath, r.location.range.startLine])
+    ).toEqual([[documentPath, 1]]);
+    expect(diagnostic.relatedInformation?.[0].message).toMatch(/^Or here \(in 'inner'\): /);
   });
 });

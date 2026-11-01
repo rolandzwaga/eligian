@@ -14,8 +14,10 @@
  *
  * Media timelines (video / audio) are skipped: jsdom plays no media.
  */
+import * as nodePath from 'node:path';
 import {
   type EligianMap,
+  type EngineErrorCandidate,
   type EngineErrorInfo,
   type HostModule,
   locateEngineError,
@@ -120,7 +122,9 @@ export async function smokeConfig(
       const timelineUri = located?.action.timelineUri;
       problems.push({
         severity: 'error',
-        message: errorMessage(info, located?.operation?.systemName, located?.via),
+        message:
+          errorMessage(info, located?.operation?.systemName, located?.via) +
+          alsoAt(located?.alternatives ?? [], map),
         ...context,
         // A raf timeline's uri is its name
         ...(timelineUri !== undefined ? { timeline: timelineUri } : {}),
@@ -179,6 +183,20 @@ function errorMessage(
   const where = `${error.phase ?? 'start'} operation${op ? ` ${op}` : ''}`;
   const path = via && via.length > 0 ? ` (in ${via.join(' → ')})` : '';
   return `${where}${path}: ${cause || error.message}`;
+}
+
+/**
+ * The other operations that match the report: Eligius names only the
+ * innermost operation (name and index), which can repeat in the call chain.
+ */
+function alsoAt(alternatives: readonly EngineErrorCandidate[], map: EligianMap): string {
+  const places = alternatives.flatMap(alternative => {
+    const at = inFile(alternative.operation.location, map);
+    if (!at) return [];
+    const path = alternative.via.length > 0 ? ` (in ${alternative.via.join(' → ')})` : '';
+    return [`${nodePath.basename(at.file)}:${at.line}:${at.column}${path}`];
+  });
+  return places.length > 0 ? ` [or at ${places.join(', ')}]` : '';
 }
 
 /** A location with its file (the compiled file when the map does not name one). */

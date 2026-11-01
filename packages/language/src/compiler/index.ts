@@ -29,6 +29,7 @@ export {
   type EligianMap,
   type EligianMapAction,
   type EligianMapOperation,
+  type EngineErrorCandidate,
   type EngineErrorInfo,
   type LocatedEngineError,
   locateEngineError,

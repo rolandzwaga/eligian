@@ -40,11 +40,15 @@ operationIndex }` for a timeline action the engine started or ended. The operati
 **innermost** failing one: when it failed inside an action the timeline action called, the
 index is that action's. `locateEngineError(map, error)`:
 
-1. the operation at the index in the action's phase, when its system name matches;
-2. otherwise, for each `requestAction` in that phase, the requested action's operations (start
-   operations when followed by `startAction`, end operations for `endAction`), recursively (8
-   levels), first match wins; `via` lists the actions followed;
-3. otherwise the timeline action's own location.
+1. every operation at the index whose system name matches: in the action's phase, then, for each
+   `requestAction` in that phase, in the requested action's operations (start operations when
+   followed by `startAction`, end operations for `endAction`), recursively (8 levels); `via`
+   lists the actions followed;
+2. the first is reported (the action's own operation before the called actions'), the others are
+   `alternatives`: the index alone cannot tell them apart. The preview adds them to the
+   diagnostic as related information ("Or here (in 'inner')"), the notification says "or N other
+   places", `eligian smoke` appends "[or at file:line:col (in inner)]";
+3. no match: the timeline action's own location.
 
 ## Preview
 
