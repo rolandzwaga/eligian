@@ -3,8 +3,8 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "./out",
-    "tsBuildInfoFile": "./out/.tsbuildinfo",
+    "outDir": "./out/tsc",
+    "tsBuildInfoFile": "./out/tsc/.tsbuildinfo",
     "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },
   "references": [
