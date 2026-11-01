@@ -44,6 +44,8 @@ const h = vi.hoisted(() => ({
   diagnostics: new Map<string, unknown[]>(),
   diagnosticDeletes: [] as string[],
   errorMessages: [] as string[],
+  /** eligian.preview.eligiusLint (off unless a test turns it on: most tests use fake configs) */
+  lintEnabled: false,
 }));
 
 vi.mock('vscode', async () => {
@@ -107,6 +109,10 @@ vi.mock('vscode', async () => {
       },
     },
     workspace: {
+      getConfiguration: () => ({
+        get: (key: string, fallback: unknown) =>
+          key === 'preview.eligiusLint' ? h.lintEnabled : fallback,
+      }),
       openTextDocument: async (uri: MockUri) => ({
         getText: () => nodeFs.readFileSync(uri.fsPath, 'utf-8'),
       }),
@@ -543,5 +549,73 @@ describe('PreviewPanel runtime errors (audit idea #14)', () => {
       diagnostic.relatedInformation?.map(r => [r.location.uri.fsPath, r.location.range.startLine])
     ).toEqual([[documentPath, 1]]);
     expect(diagnostic.relatedInformation?.[0].message).toMatch(/^Or here \(in 'inner'\): /);
+  });
+});
+
+describe('PreviewPanel Eligius lint', () => {
+  afterEach(() => {
+    h.lintEnabled = false;
+  });
+
+  /** A real compile: scrollToElement's block 'nowhere' is not one of its allowed values. */
+  async function compiledWithLintError(): Promise<CompileResult> {
+    const { compileWithMap } = await import('@eligian/language');
+    const { Effect } = await import('effect');
+    fs.writeFileSync(path.join(tmp, 's.css'), '#stage {}\n#a {}\n');
+    const source = [
+      'styles "./s.css"',
+      'timeline "t" in "#stage" using raf {',
+      '  at 0s..1s [',
+      '    selectElement("#a")',
+      '    scrollToElement(200, "nowhere")',
+      '  ]',
+      '}',
+    ].join('\n');
+    fs.writeFileSync(documentPath, source);
+    const { config, map } = await Effect.runPromise(
+      compileWithMap(source, { sourceUri: documentPath })
+    );
+    return {
+      success: true,
+      config: config as unknown as Record<string, unknown>,
+      map,
+      errors: [],
+      timestamp: 0,
+    };
+  }
+
+  test('a successful compile shows the lint findings at their source line', async () => {
+    h.lintEnabled = true;
+    h.compileResults.push(await compiledWithLintError());
+    openPanel();
+    await vi.waitFor(() => expect(h.diagnostics.get(documentPath)?.length).toBe(1));
+    const [diagnostic] = h.diagnostics.get(documentPath) as Array<{
+      message: string;
+      source?: string;
+      code?: string;
+      severity: number;
+      range: { startLine: number; startCharacter: number };
+    }>;
+    expect(diagnostic.source).toBe('Eligius lint');
+    expect(diagnostic.code).toBe('E120');
+    expect(diagnostic.severity).toBe(0);
+    expect(diagnostic.message).toMatch(/^scrollToElement: 'block' must be one of .*'nowhere'/);
+    expect([diagnostic.range.startLine, diagnostic.range.startCharacter]).toEqual([4, 4]);
+
+    // A failed compile takes them away (they belong to the last good one)
+    h.compileResults.push(failure('Unexpected token'));
+    h.receive?.({ type: 'retry' });
+    await vi.waitFor(() => expect(h.diagnosticDeletes).toContain(documentPath));
+  });
+
+  test('the setting turns it off', async () => {
+    h.compileResults.push(await compiledWithLintError());
+    openPanel();
+    await vi.waitFor(() => expect(count('initialize')).toBe(1));
+    expect(
+      ((h.diagnostics.get(documentPath) ?? []) as Array<{ source?: string }>).filter(
+        d => d.source === 'Eligius lint'
+      )
+    ).toEqual([]);
   });
 });

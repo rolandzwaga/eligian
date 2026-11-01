@@ -59,10 +59,27 @@ const ctxErrors = await esbuild.context({
   plugins,
 });
 
+// Eligius' configuration lint as a separate bundle: it brings the resolver of
+// eligius/lint (about 150 KB), which the language server must not carry. The
+// main bundle is CommonJS, so its consumers cannot tree-shake it.
+const ctxLint = await esbuild.context({
+  entryPoints: ['src/compiler/eligius-lint.ts'],
+  outfile: 'dist/eligius-lint/index.cjs',
+  bundle: true,
+  target: 'ES2017',
+  format: 'cjs',
+  loader: { '.ts': 'ts', '.json': 'json' },
+  external: ['vscode'],
+  platform: 'node',
+  sourcemap: !minify,
+  minify,
+  plugins,
+});
+
+const contexts = [ctxCjs, ctxErrors, ctxLint];
 if (watch) {
-  await Promise.all([ctxCjs.watch(), ctxErrors.watch()]);
+  await Promise.all(contexts.map(ctx => ctx.watch()));
 } else {
-  await Promise.all([ctxCjs.rebuild(), ctxErrors.rebuild()]);
-  ctxCjs.dispose();
-  ctxErrors.dispose();
+  await Promise.all(contexts.map(ctx => ctx.rebuild()));
+  for (const ctx of contexts) ctx.dispose();
 }

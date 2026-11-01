@@ -21,6 +21,10 @@
     "./errors": {
       "types": "./out/errors/index.d.ts",
       "default": "./dist/errors/index.cjs"
+    },
+    "./eligius-lint": {
+      "types": "./out/compiler/eligius-lint.d.ts",
+      "default": "./dist/eligius-lint/index.cjs"
     }
   },
   "typesVersions": {

@@ -67,6 +67,11 @@
           "default": true,
           "description": "While the preview plays, mark the timeline events that are running in the .eligian editor."
         },
+        "eligian.preview.eligiusLint": {
+          "type": "boolean",
+          "default": true,
+          "description": "After each preview compile, check the compiled configuration with Eligius' own lint (eligius/lint) and show its findings in Problems at their source line (source 'Eligius lint'), for example a value outside an operation's allowed values."
+        },
         "eligian.codeLens.preview": {
           "type": "boolean",
           "default": true,

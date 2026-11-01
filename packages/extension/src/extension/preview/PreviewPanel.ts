@@ -18,6 +18,8 @@ import {
   locateEngineError,
   type SourceLocation,
 } from '@eligian/language';
+import { lintCompiledConfig } from '@eligian/language/eligius-lint';
+import type { IEngineConfiguration } from 'eligius';
 import * as vscode from 'vscode';
 import type { HostPayload } from '../../../media/host-registrations.js';
 import { collectCSSImporters, extractCSSFiles } from '../css-loader.js';
@@ -65,6 +67,8 @@ export class PreviewPanel {
   private static diagnostics: vscode.DiagnosticCollection | null = null;
   /** Idea #14: errors the engine reports while the preview runs (source 'eligius-runtime') */
   private static runtimeDiagnostics: vscode.DiagnosticCollection | null = null;
+  /** Eligius' configuration lint of each compile (source 'Eligius lint') */
+  private static lintDiagnostics: vscode.DiagnosticCollection | null = null;
 
   private panel: vscode.WebviewPanel;
   private documentUri: vscode.Uri;
@@ -105,6 +109,8 @@ export class PreviewPanel {
   private eligianMap: EligianMap | undefined;
   /** Files this panel reported runtime errors for (cleared on recompile and close) */
   private runtimeErrorUris = new Map<string, vscode.Uri>();
+  /** Files this panel reported Eligius lint findings for (the program and its libraries) */
+  private lintUris = new Map<string, vscode.Uri>();
   /** Idea #24: bundles the host module (created on first use) and the one being watched */
   private hostBundler: HostBundler | undefined;
   private watchedHost: vscode.Uri | undefined;
@@ -124,6 +130,9 @@ export class PreviewPanel {
       PreviewPanel.runtimeDiagnostics =
         vscode.languages.createDiagnosticCollection('eligius-runtime');
     }
+    if (!PreviewPanel.lintDiagnostics) {
+      PreviewPanel.lintDiagnostics = vscode.languages.createDiagnosticCollection('eligius-lint');
+    }
     return PreviewPanel.diagnostics;
   }
 
@@ -137,6 +146,8 @@ export class PreviewPanel {
     }
     PreviewPanel.runtimeDiagnostics?.dispose();
     PreviewPanel.runtimeDiagnostics = null;
+    PreviewPanel.lintDiagnostics?.dispose();
+    PreviewPanel.lintDiagnostics = null;
   }
 
   /**
@@ -327,6 +338,7 @@ export class PreviewPanel {
     // (In-flight compiles stop applying results once isDisposed is set.)
     PreviewPanel.diagnostics?.delete(this.documentUri);
     this.clearRuntimeErrors();
+    this.clearLint();
     this.playheadDecorator?.dispose();
     this.hostBundler?.dispose();
     firePreviewPlayhead({ documentUri: this.documentUri.toString(), playhead: null });
@@ -482,6 +494,11 @@ export class PreviewPanel {
         // Idea #14: a new engine runs, so earlier runtime errors are stale
         this.eligianMap = result.map;
         this.clearRuntimeErrors();
+        // Eligius' own lint of the compiled configuration, at the source
+        await this.reportLint(result.config, result.map, result.host);
+        if (isStale()) {
+          return;
+        }
 
         const resolvedTimelines = resolvedConfig.timelines ?? [];
         this.timelineUris = new Map(
@@ -513,6 +530,8 @@ export class PreviewPanel {
 
         console.log(`[Preview] ✓ Successfully compiled ${path.basename(this.documentUri.fsPath)}`);
       } else {
+        // The lint findings belong to the last successful compile
+        this.clearLint();
         // Add diagnostics to Problems panel
         if (PreviewPanel.diagnostics) {
           const vsDiagnostics = result.errors.map(error => {
@@ -837,6 +856,65 @@ export class PreviewPanel {
   /** ` (in 'a' → 'b')`: the actions called on the way to an operation. */
   private static through(via: readonly string[]): string {
     return via.length > 0 ? ` (in ${via.map(name => `'${name}'`).join(' → ')})` : '';
+  }
+
+  /**
+   * Eligius' configuration lint (`eligius/lint`) over the compiled
+   * configuration, as `eligian check` runs it: each finding becomes a
+   * diagnostic (source 'Eligius lint', code the rule) at its source, in the
+   * program or in the library whose action it is in. Setting
+   * `eligian.preview.eligiusLint`.
+   */
+  private async reportLint(
+    config: IEngineConfiguration,
+    map: EligianMap | undefined,
+    host: HostModule | undefined
+  ): Promise<void> {
+    this.clearLint();
+    const diagnostics = PreviewPanel.lintDiagnostics;
+    if (!diagnostics || !map) return;
+    // The lint is extra information: a failure must never stop the preview
+    let findings: ReturnType<typeof lintCompiledConfig>;
+    try {
+      const enabled = vscode.workspace
+        .getConfiguration('eligian')
+        .get<boolean>('preview.eligiusLint', true);
+      if (!enabled) return;
+      findings = lintCompiledConfig(config, map, host);
+    } catch (error) {
+      console.error('[Preview] Eligius lint failed:', error);
+      return;
+    }
+    const byFile = new Map<string, { uri: vscode.Uri; list: vscode.Diagnostic[] }>();
+    for (const finding of findings) {
+      const { location } = finding;
+      const uri = location?.file ? vscode.Uri.file(location.file) : this.documentUri;
+      const range = location ? await this.rangeOf(uri, location) : new vscode.Range(0, 0, 0, 1);
+      const diagnostic = new vscode.Diagnostic(
+        range,
+        `${finding.message} (at ${finding.path || 'the configuration'} in the compiled JSON)`,
+        finding.severity === 'error'
+          ? vscode.DiagnosticSeverity.Error
+          : vscode.DiagnosticSeverity.Warning
+      );
+      diagnostic.source = 'Eligius lint';
+      diagnostic.code = finding.rule;
+      const entry = byFile.get(uri.toString()) ?? { uri, list: [] };
+      entry.list.push(diagnostic);
+      byFile.set(uri.toString(), entry);
+    }
+    if (this.isDisposed) return;
+    for (const [key, { uri, list }] of byFile) {
+      diagnostics.set(uri, list);
+      this.lintUris.set(key, uri);
+    }
+  }
+
+  private clearLint(): void {
+    for (const uri of this.lintUris.values()) {
+      PreviewPanel.lintDiagnostics?.delete(uri);
+    }
+    this.lintUris.clear();
   }
 
   private clearRuntimeErrors(): void {
