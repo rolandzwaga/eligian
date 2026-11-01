@@ -108,7 +108,7 @@
         },
         {
           "name": "keyword.control.event.eligian",
-          "match": "(?<![\\w.])(?:play|pause|toggle|stop|seek|run)(?![\\w])(?!\\s*\\()"
+          "match": "(?<![\\w.])(?:play|pause|toggle|stop|seek|run|key)(?![\\w])(?!\\s*\\()"
         },
         {
           "name": "keyword.control.import.eligian",

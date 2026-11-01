@@ -103,9 +103,10 @@ const DOM_EVENT_CONTROLLER = 'DOMEventListenerController';
  * positions (event or keys, actions, actionOperationData): the DOM event
  * listener and (Eligius 3.1) the KeyboardController.
  */
+const KEYBOARD_CONTROLLER = 'KeyboardController';
 const ACTION_CONTROLLERS: ReadonlySet<string> = new Set([
   DOM_EVENT_CONTROLLER,
-  'KeyboardController',
+  KEYBOARD_CONTROLLER,
 ]);
 
 /**
@@ -347,7 +348,11 @@ export class OperationDataflow {
         }
         // Idea #19: the listener starts a `run` action later, with fresh data
         if (statement.verb === 'run' && statement.call && ctx.report) {
-          this.checkRunAction(statement.call, ctx.report);
+          this.checkRunAction(
+            statement.call,
+            statement.keys === undefined ? DOM_EVENT_CONTROLLER : KEYBOARD_CONTROLLER,
+            ctx.report
+          );
         }
       }
       // const/break/continue do not change operationData
@@ -454,7 +459,11 @@ export class OperationDataflow {
    * `on <event> "<sel>" run action(args)` (idea #19): DOMEventListenerController
    * starts the action with only eventTarget, eventKey and its arguments.
    */
-  private checkRunAction(call: OperationCall, report: (d: DataflowDiagnostic) => void): void {
+  private checkRunAction(
+    call: OperationCall,
+    controller: string,
+    report: (d: DataflowDiagnostic) => void
+  ): void {
     const action = this.calleeOf(call);
     if (!action) return; // `run` of a non-action: reported by the interaction validator
     const state = new OperationDataTracker();
@@ -465,7 +474,7 @@ export class OperationDataflow {
       report({
         node: call,
         code: 'missing-action-dependency',
-        message: `Action '${action.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available when the event runs it: ${DOM_EVENT_CONTROLLER} starts it with only eventTarget, eventKey and its arguments${providerHint(requirement.property)}`,
+        message: `Action '${action.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available when the event runs it: ${controller} starts it with only eventTarget, eventKey and its arguments${providerHint(requirement.property)}`,
       });
     }
   }

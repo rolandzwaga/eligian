@@ -33,8 +33,10 @@ import { buildActionCallOperations } from './action-call-operations.js';
 import { transformCondition } from './condition-transformer.js';
 import { transformExpression } from './expression-transformer.js';
 import {
-  buildNavigateOperations,
+  buildInteractionOperations,
+  type InteractionListener,
   interactionActionName,
+  interactionListener,
   resolveInteractionPosition,
 } from './navigate-operations.js';
 import {
@@ -390,17 +392,13 @@ const transformStatement = (
         // derived purely so both sites agree. `run` names the called action.
         const interaction = stmt as InteractionStatement;
         const location = getSourceLocation(interaction);
+        const listener = yield* listenerOf(interaction, program);
         if (interaction.verb === 'run') {
-          return yield* transformRunInteraction(interaction, scope, program, allActions);
+          return yield* transformRunInteraction(interaction, listener, scope, program, allActions);
         }
         const position = yield* resolveInteractionPosition(interaction);
         const actionName = interactionActionName(interaction.verb, interaction.target, position);
-        return buildNavigateOperations(
-          interaction.selector,
-          actionName,
-          location,
-          interaction.event
-        );
+        return buildInteractionOperations(listener, actionName, location);
       }
 
       default:
@@ -420,6 +418,7 @@ const transformStatement = (
  */
 const transformRunInteraction = (
   interaction: InteractionStatement,
+  listener: InteractionListener,
   scope: ScopeContext,
   program: Program | undefined,
   allActions: ActionDefinition[] | undefined
@@ -455,15 +454,30 @@ const transformRunInteraction = (
     for (let i = 0; i < parameters.length; i++) {
       actionOperationData[parameters[i].name] = yield* transformExpression(call.args[i], scope);
     }
-    return buildNavigateOperations(
-      interaction.selector,
+    return buildInteractionOperations(
+      listener,
       // Library helpers are emitted under library-qualified names
       scope.actionSystemNames?.get(name) ?? name,
       location,
-      interaction.event,
       actionOperationData
     );
   });
+
+/** The listener of an interaction; `on key` needs an element to attach to. */
+const listenerOf = (
+  interaction: InteractionStatement,
+  program: Program | undefined
+): Effect.Effect<InteractionListener, TransformError> => {
+  const listener = interactionListener(interaction, program);
+  return listener
+    ? Effect.succeed(listener)
+    : Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `'on key' outside a timeline needs an element: on key "${interaction.keys}" in "<selector>" …`,
+        location: getSourceLocation(interaction),
+      });
+};
 
 /**
  * Transform IfStatement → when/otherwise/endWhen operations (T177)

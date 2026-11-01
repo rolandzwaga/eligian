@@ -230,3 +230,84 @@ describe('interaction statements: completion (idea #19)', () => {
     );
   });
 });
+
+describe('on key (KeyboardController, Eligius 3.1)', () => {
+  let parse: ReturnType<typeof parseHelper<Program>>;
+  let ctx: TestContext;
+
+  beforeAll(() => {
+    parse = parseHelper<Program>(createEligianServices(EmptyFileSystem).Eligian);
+    ctx = createTestContext();
+  });
+
+  const SOURCE = `languages { * "en-US" "English" }
+action mark(sel) [ selectElement(sel) addClass("on") ]
+action wire() [ on key "space" run mark("#c") ]
+timeline "t" in "#stage" using raf {
+  on enter [
+    on key "ArrowRight" seek intro.end
+    on key "Escape, q" in "#dialog" stop
+  ]
+  at 0s for 4s as intro [ wire() ] [ selectElement("#a") ]
+}`;
+
+  test('compiles to a KeyboardController on the timeline container, or on the in element', async () => {
+    const document = await parse(SOURCE);
+    expect(document.parseResult.parserErrors).toEqual([]);
+    const ir = await Effect.runPromise(transformAST(document.parseResult.value));
+    const lifecycle = ir.config.timelines[0].timelineActions.find(
+      a => a.duration.end === undefined
+    );
+    const ops = (lifecycle?.startOperations ?? []).map(o => [o.systemName, o.operationData]);
+    expect(ops).toEqual([
+      ['selectElement', { selector: '#stage' }],
+      ['getControllerInstance', { systemName: 'KeyboardController' }],
+      ['addControllerToElement', { keys: 'ArrowRight', actions: ['__on__seek__4'] }],
+      ['selectElement', { selector: '#dialog' }],
+      ['getControllerInstance', { systemName: 'KeyboardController' }],
+      ['addControllerToElement', { keys: 'Escape, q', scope: 'element', actions: ['__on__stop'] }],
+    ]);
+    // Outside a timeline (an action): the container of the program's first timeline
+    const wire = ir.config.actions.find(a => a.name === 'wire');
+    expect(wire?.startOperations.map(o => o.operationData)).toEqual([
+      { selector: '#stage' },
+      { systemName: 'KeyboardController' },
+      { keys: 'space', actions: ['mark'], actionOperationData: { sel: '#c' } },
+    ]);
+  });
+
+  test('an unknown key name is an error', async () => {
+    const result = await ctx.parseAndValidate(`languages { * "en-US" "English" }
+timeline "t" in "#stage" using raf {
+  at 0s..1s [ on key "ArrowRigth" toggle on key "shift+ArrowRight, F5, ctrl+," toggle on key "" toggle ] []
+}`);
+    const keyErrors = result.diagnostics.filter(
+      d =>
+        (d.data as { code?: string } | undefined)?.code === 'unknown_key' ||
+        d.code === 'unknown_key'
+    );
+    expect(keyErrors.map(d => d.message)).toEqual([
+      expect.stringContaining("Unknown key 'ArrowRigth'"),
+      expect.stringContaining('needs at least one key'),
+    ]);
+  });
+
+  test('a name called key still works', async () => {
+    const document = await parse(`languages { * "en-US" "English" }
+action key(key) [ selectElement(key) addClass("on") ]
+timeline "t" in "#stage" using raf { at 0s..1s key("#a") }`);
+    expect(document.parseResult.parserErrors).toEqual([]);
+  });
+
+  test('completion offers key names after on key', async () => {
+    let labels: string[] = [];
+    await expectCompletion(ctx.services.Eligian)({
+      text: 'timeline "t" in "#stage" using raf {\n  at 0s..1s [ on key "<|>" toggle ] []\n}',
+      index: 0,
+      assert: (completions: CompletionList) => {
+        labels = completions.items.map(i => i.label);
+      },
+    });
+    expect(labels).toEqual(expect.arrayContaining(['ArrowRight', 'space', 'Escape']));
+  });
+});

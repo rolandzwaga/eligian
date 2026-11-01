@@ -56,6 +56,7 @@ const SPACED_KEYWORDS = [
   'if',
   'import',
   'in',
+  'key',
   'languages',
   'layout',
   'library',

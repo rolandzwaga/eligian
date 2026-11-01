@@ -35,6 +35,7 @@ import {
   isSequenceItem,
   isTimeline,
   type LabeledEvent,
+  type Program,
   type Timeline,
 } from '../../generated/ast.js';
 import { getTimelines } from '../../utils/program-helpers.js';
@@ -64,8 +65,61 @@ const PLAYBACK_REQUESTS: Record<PlaybackVerb, string> = {
   seek: 'timeline-seek-request',
 };
 
-/** The controller used to attach a DOM click listener to an element. */
+/** The controller used to attach a DOM event listener to an element. */
 const DOM_EVENT_LISTENER_CONTROLLER = 'DOMEventListenerController';
+
+/** The controller of `on key "<keys>"` (Eligius 3.1). */
+export const KEYBOARD_CONTROLLER = 'KeyboardController';
+
+/**
+ * The listener an interaction attaches: the element it is attached to, the
+ * controller and its operation data (besides the actions).
+ */
+export interface InteractionListener {
+  readonly selector: string;
+  readonly controller: string;
+  readonly data: Record<string, JsonValue>;
+}
+
+/**
+ * The listener of an interaction: a DOMEventListenerController for
+ * `on <event> "<sel>"`; a KeyboardController for `on key "<keys>"`, on the
+ * `in "<sel>"` element (scope 'element') or else, with the default scope
+ * 'document', on the container of the timeline the statement is in, or of the
+ * program's first timeline (any element of the presentation will do: the
+ * controller listens on the engine root). Undefined when a key listener has
+ * no element (in a library action compiled without a program).
+ */
+export function interactionListener(
+  statement: InteractionStatement,
+  program?: Program
+): InteractionListener | undefined {
+  if (statement.keys === undefined) {
+    return {
+      selector: statement.selector ?? '',
+      controller: DOM_EVENT_LISTENER_CONTROLLER,
+      data: { eventName: statement.event ?? 'click' },
+    };
+  }
+  if (statement.selector !== undefined) {
+    return {
+      selector: statement.selector,
+      controller: KEYBOARD_CONTROLLER,
+      data: { keys: statement.keys, scope: 'element' },
+    };
+  }
+  const owner = program ?? AstUtils.getContainerOfType(statement, isProgram);
+  const timeline =
+    AstUtils.getContainerOfType(statement, isTimeline) ??
+    (owner ? getTimelines(owner)[0] : undefined);
+  return timeline
+    ? {
+        selector: timeline.containerSelector,
+        controller: KEYBOARD_CONTROLLER,
+        data: { keys: statement.keys },
+      }
+    : undefined;
+}
 
 /**
  * The engine `uri` of a timeline (T272): its name for an animation (`raf`)
@@ -201,9 +255,9 @@ export const resolveNavPosition = (
   });
 
 /**
- * The three call-site operations an interaction expands to: a DOM `eventName`
- * listener on `selector` that runs `actionName` (with `actionOperationData`,
- * the arguments of a `run` call).
+ * The three call-site operations a DOM-event interaction expands to: a DOM
+ * `eventName` listener on `selector` that runs `actionName` (with
+ * `actionOperationData`, the arguments of a `run` call).
  */
 export function buildNavigateOperations(
   selector: string,
@@ -212,24 +266,44 @@ export function buildNavigateOperations(
   eventName = 'click',
   actionOperationData?: Record<string, JsonValue>
 ): OperationConfigIR[] {
+  return buildInteractionOperations(
+    { selector, controller: DOM_EVENT_LISTENER_CONTROLLER, data: { eventName } },
+    actionName,
+    sourceLocation,
+    actionOperationData
+  );
+}
+
+/**
+ * The three call-site operations an interaction expands to: `selectElement`,
+ * `getControllerInstance` and `addControllerToElement` with the listener's
+ * data and `actions: [actionName]` (and `actionOperationData`, the arguments
+ * of a `run` call).
+ */
+export function buildInteractionOperations(
+  listener: InteractionListener,
+  actionName: string,
+  sourceLocation: SourceLocation,
+  actionOperationData?: Record<string, JsonValue>
+): OperationConfigIR[] {
   return [
     {
       id: crypto.randomUUID(),
       systemName: 'selectElement',
-      operationData: { selector },
+      operationData: { selector: listener.selector },
       sourceLocation,
     },
     {
       id: crypto.randomUUID(),
       systemName: 'getControllerInstance',
-      operationData: { systemName: DOM_EVENT_LISTENER_CONTROLLER },
+      operationData: { systemName: listener.controller },
       sourceLocation,
     },
     {
       id: crypto.randomUUID(),
       systemName: 'addControllerToElement',
       operationData: {
-        eventName,
+        ...listener.data,
         actions: [actionName],
         ...(actionOperationData && Object.keys(actionOperationData).length > 0
           ? { actionOperationData }

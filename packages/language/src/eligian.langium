@@ -455,7 +455,14 @@ ContinueStatement:
  * still be called `toggle` or `play`.
  */
 ActionName returns string:
-    ID | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run';
+    ID | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key';
+
+/**
+ * DOM Event Name - the event of `on <event> "<sel>" <verb>`: an ID, or one of
+ * the keywords that are also DOM events. Not `key`, which starts the key form.
+ */
+DomEventName returns string:
+    ID | 'play' | 'pause' | 'scroll';
 
 /**
  * Interaction Statement (audit idea #19) - a DOM event on an element runs a verb
@@ -465,8 +472,14 @@ ActionName returns string:
  *   on click "#play" toggle                              play / pause / toggle / stop
  *   on click "#skip" seek intro.end                      seek the current timeline
  *   on mouseenter "#card" run highlight("#card", 2)       start an action
+ *   on key "ArrowRight" seek intro.end                   a key press (Eligius KeyboardController)
+ *   on key "Escape" in "#dialog" stop                     … only while focus is in #dialog
  *
- * The event is a DOM event name (click, dblclick, mouseenter, …). Compiles to:
+ * The event is a DOM event name (click, dblclick, mouseenter, …), or `key` with
+ * keys in hotkeys-js syntax ("right", "shift+right, space", or KeyboardEvent.key
+ * names such as "ArrowRight"); a key listener uses a KeyboardController,
+ * attached to the `in` element (scope 'element') or to the timeline container
+ * (scope 'document': focus anywhere in the presentation, or nowhere). Compiles to:
  *   selectElement("#sel")
  *   getControllerInstance("DOMEventListenerController")
  *   addControllerToElement({ eventName, actions: ["<action>"] (, actionOperationData) })
@@ -479,7 +492,7 @@ ActionName returns string:
  * the timeline it is in, a navigate position those of the target timeline.
  */
 InteractionStatement:
-    'on' event=Identifier selector=STRING (
+    'on' ('key' keys=STRING ('in' selector=STRING)? | event=DomEventName selector=STRING) (
         verb='navigate' target=STRING ('at' position=TimeExpression)?
       | verb=('play' | 'pause' | 'toggle' | 'stop')
       | verb='seek' position=TimeExpression
@@ -955,7 +968,7 @@ Identifier returns string:
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
     | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
     | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then' | 'target'
-    | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run';
+    | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:

@@ -1893,10 +1893,10 @@ action clearSpots() [
   an `at` event.
 - `target` is a contextual keyword (still a valid name).
 
-#### Interactions: `on <event> "<selector>" <verb>`
+#### Interactions: `on <event> "<selector>" <verb>` and `on key "<keys>" <verb>`
 
-An operation statement that attaches a DOM event listener to an element. The verb runs each
-time the event fires:
+An operation statement that attaches a DOM event listener to an element, or a key listener. The
+verb runs each time the event fires or the key is pressed:
 
 ```eligian
 on click "#card-ch1" navigate "Timeline & Time"     // switch timelines
@@ -1904,6 +1904,8 @@ on click "#resume" navigate "Timeline & Time" at 5s  // … at a position
 on click "#play" toggle                              // play / pause / toggle / stop
 on click "#skip" seek intro.end                      // seek the current timeline
 on mouseenter "#card" run highlight("#card", 2)       // start an action
+on key "ArrowRight" seek intro.end                   // a key press
+on key "Escape" in "#dialog" stop                     // … only while the focus is in #dialog
 ```
 
 | Verb | Does |
@@ -1915,22 +1917,36 @@ on mouseenter "#card" run highlight("#card", 2)       // start an action
 
 - **Event:** a DOM event name (`click`, `dblclick`, `mouseenter`, `keydown`, `input`, …);
   completion offers them. An unknown name is a warning with *did you mean* (custom events exist).
-  Key events only fire while the element has focus; there is no key filter yet.
+  `keydown` on an element only fires while it has focus and does not filter keys: use `on key`.
+- **Keys** (`on key "<keys>"`, Eligius KeyboardController): comma separated shortcuts in
+  hotkeys-js syntax, case insensitive: key names such as `right`, `space`, `enter`, `esc`,
+  `pageup`, `f1`, the `KeyboardEvent.key` names of the same keys (`ArrowRight`, `Escape`,
+  `PageDown`), a letter or digit, or punctuation (`,` `.` `/` `;` `'` `[` `]` `-` `=`), after
+  `+`-joined modifiers (`shift`, `alt`, `ctrl`, `meta`): `"shift+ArrowRight, space"`. An unknown
+  name is an error; completion offers common keys. Without `in`, the keys work while the focus is
+  anywhere in the presentation or nowhere; with `in "<selector>"`, only while the focus is inside
+  that element. Presses in input fields are ignored, a held key runs once, and a key the
+  presentation binds for playback (space, the arrow keys of a keyboard timeline) is taken over.
+  The listener is attached to the `in` element, else to the container of the timeline the
+  statement is in (in an action: of the first timeline).
 - **Positions** are constant times (`5s`, `@beat`, `1s + 500ms`). A `seek` may use the labels of the
   timeline it is in, in any order (`seek intro.end`); a `navigate` position those of the target
   timeline (`navigate "Chapter" at beat.start`).
 - **`run`** starts an action (not an operation: wrap it in an action). The listener stores the
   arguments, so they must be known at compile time: literals and constants, not parameters,
   loop items or property chains. The action starts with only `eventTarget` (the element the
-  event fired on) and its arguments, so it selects its own element: one that needs the selected
+  event fired on, or the focused element), `eventKey` (the `KeyboardEvent.key` of a key event)
+  and its arguments, so it selects its own element: one that needs the selected
   element of the surrounding block is an error.
-- **Compiles to** `selectElement` + `getControllerInstance("DOMEventListenerController")` +
-  `addControllerToElement`, so the statement selects its element like `selectElement` does. The
+- **Compiles to** `selectElement` + `getControllerInstance("DOMEventListenerController")`
+  (`"KeyboardController"` for `on key`) + `addControllerToElement`, so the statement selects its
+  element like `selectElement` does. The
   listener runs a synthetic action per verb that broadcasts the engine request
   (`request-timeline-uri`, `timeline-play-request`, `timeline-pause-request`,
   `timeline-play-toggle-request`, `timeline-stop-request`, `timeline-seek-request`), or the
   `run` action.
-- The verbs are contextual keywords: an action can still be called `toggle` or `play`.
+- The verbs and `key` are contextual keywords: an action can still be called `toggle`, `play`
+  or `key`.
 
 `navigate`: the target must be the name of a timeline in the program. In the editor a target is a symbol of that
 timeline: Go to Definition, Find References and Rename (renaming a timeline updates every

@@ -78,3 +78,59 @@ test('interaction verbs drive the engine', async () => {
   await vi.waitFor(() => expect(engine.position).toBe(2));
   await engine.destroy();
 });
+
+// keydown then keyup: hotkeys-js tracks the keys held down
+const press = (key: string, target: EventTarget = document.body) => {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+  target.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
+};
+
+test('on key drives the engine through a KeyboardController', async () => {
+  document.body.innerHTML = '<div id="app"></div>';
+  const parse = parseHelper<Program>(createEligianServices(EmptyFileSystem).Eligian);
+  const doc = await parse(`
+    timeline "Hub" in "#stage" using raf {
+      on enter [
+        on key "ArrowRight" seek intro.end
+        on key "Escape" in "#dialog" seek 1s
+      ]
+      at 0s for 4s as intro [ selectElement("#a") ] [ selectElement("#a") ]
+      at 4s..6s [ selectElement("#a") ] [ selectElement("#a") ]
+    }`);
+  expect(doc.parseResult.parserErrors).toEqual([]);
+  const config = await Effect.runPromise(
+    transformAST(doc.parseResult.value).pipe(
+      Effect.flatMap(typeCheck),
+      Effect.flatMap(optimize),
+      Effect.flatMap(emitJSON)
+    )
+  );
+  const runnable = {
+    ...config,
+    containerSelector: '#app',
+    layoutTemplate:
+      '<div id="stage"><div id="a"></div><div id="dialog"><button id="close"></button></div></div>',
+  } as unknown as IEngineConfiguration;
+  const { engine } = new EngineFactory(new EligiusResourceImporter(), window).createEngine(
+    runnable
+  );
+  await engine.init();
+  await engine.seek(0);
+  await vi.waitFor(() => expect(document.getElementById('close')).not.toBeNull());
+
+  // Nothing has focus: the document-scope key works
+  press('ArrowRight');
+  await vi.waitFor(() => expect(engine.position).toBe(4));
+
+  // Escape is scoped to #dialog: ignored while nothing has focus there...
+  press('Escape');
+  await new Promise(resolve => setTimeout(resolve, 50));
+  expect(engine.position).toBe(4);
+
+  // ...and handled while the focus is inside it
+  const close = document.getElementById('close') as HTMLButtonElement;
+  close.focus();
+  press('Escape', close);
+  await vi.waitFor(() => expect(engine.position).toBe(1));
+  await engine.destroy();
+});

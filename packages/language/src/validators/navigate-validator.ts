@@ -16,6 +16,7 @@ import {
   type WithStatement,
 } from '../generated/ast.js';
 import { DOM_EVENTS, similarDomEvents } from '../utils/dom-events.js';
+import { invalidKeyName } from '../utils/key-names.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { getTimelines } from '../utils/program-helpers.js';
 import { BaseValidator } from './base-validator.js';
@@ -53,6 +54,21 @@ export class NavigateValidator extends BaseValidator {
         data: { code: 'unknown_navigate_target' },
       });
     }
+  }
+
+  /**
+   * `on key "<keys>"`: every shortcut must be one the KeyboardController can
+   * match (it throws in init otherwise).
+   */
+  checkInteractionKeys(node: InteractionStatement, accept: ValidationAcceptor): void {
+    if (node.keys === undefined) return;
+    const invalid = invalidKeyName(node.keys);
+    if (invalid === undefined) return;
+    const message =
+      invalid === ''
+        ? '\'on key\' needs at least one key, such as "ArrowRight" or "shift+right, space"'
+        : `Unknown key '${invalid}' in "${node.keys}". Use key names such as "ArrowRight", "space", "Enter", "Escape", "PageDown", "F1", a letter or digit, joined to modifiers (shift, alt, ctrl, meta) with '+' and separated by ','`;
+    accept('error', message, { node, property: 'keys', code: 'unknown_key' });
   }
 
   /** Idea #19: the event of an interaction should be a DOM event name. */
@@ -135,6 +151,9 @@ export class NavigateValidator extends BaseValidator {
    */
   checkNavigateSelector(node: InteractionStatement, accept: ValidationAcceptor): void {
     if (!this.services) return;
+    // `on key "…"` without `in "<sel>"`: attached to the timeline container
+    const selector = node.selector;
+    if (selector === undefined) return;
 
     const program = this.getProgram(node);
     const documentUri = program?.$document?.uri?.toString();
@@ -144,8 +163,8 @@ export class NavigateValidator extends BaseValidator {
 
     // Idea #18: classes and ids of the imported CSS and of the layout HTML
     const { classes, ids } = selectorNames(this.services, program, documentUri);
-    reportSelectorIssues(node.selector, node, classes, ids, accept);
-    reportNotInLayout(node.selector, node, this.services, program, documentUri, accept, 'selector');
+    reportSelectorIssues(selector, node, classes, ids, accept);
+    reportNotInLayout(selector, node, this.services, program, documentUri, accept, 'selector');
   }
 }
 

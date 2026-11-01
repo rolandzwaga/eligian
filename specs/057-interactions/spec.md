@@ -2,7 +2,7 @@
 
 **Feature Branch**: `fix/audit-high-findings` (implemented on the audit branch at the maintainer's request)
 **Created**: 2026-11-01
-**Status**: Implemented (without `on key`, see Open)
+**Status**: Implemented (`on key` with Eligius 4's KeyboardController)
 **Input**: Feature idea #19 of the 2026-10-22 codebase audit.
 
 ## Problem
@@ -17,7 +17,7 @@ already handles timeline play, pause, toggle, seek and stop requests
 
 ```
 InteractionStatement:
-    'on' event=Identifier selector=STRING (
+    'on' ('key' keys=STRING ('in' selector=STRING)? | event=DomEventName selector=STRING) (
         verb='navigate' target=STRING ('at' position=TimeExpression)?
       | verb=('play' | 'pause' | 'toggle' | 'stop')
       | verb='seek' position=TimeExpression
@@ -26,7 +26,8 @@ InteractionStatement:
 ```
 
 `NavigateStatement` is renamed `InteractionStatement`; `click` is no longer a keyword (an event
-name is an Identifier). The verbs are contextual keywords: they are in `Identifier` and in the new
+name is a `DomEventName`: an ID, `play`, `pause` or `scroll`; not `key`, which starts the key
+form, so the two forms are not ambiguous). The verbs are contextual keywords: they are in `Identifier` and in the new
 `ActionName` rule (action names, calls and action imports), so an action can still be called
 `toggle` or `play`.
 
@@ -43,6 +44,11 @@ Every verb compiles at the call site to `selectElement(sel)` +
 | `seek p` | `__on__seek__<p>` | `timeline-seek-request` [p] |
 | `run a(args)` | `a` (its library-qualified name) | none: `actionOperationData` = `{ param: arg }` |
 
+`on key "<keys>"` uses `KeyboardController` instead, with `{ keys }` on the container of the
+timeline the statement is in (in an action: of the program's first timeline; the default scope
+'document' listens on the engine root, so any element of the presentation will do), or with
+`{ keys, scope: 'element' }` on the `in "<sel>"` element.
+
 The synthetic actions are emitted once per name by `transformAST`, from the program's interaction
 statements and those of the library actions it reaches.
 
@@ -57,23 +63,22 @@ compile time is an error (`event_label_time_unknown`).
 ## Validation
 
 - `unknown_dom_event` (warning): the event is not in `utils/dom-events.ts`, with suggestions.
+- `unknown_key`: a key the KeyboardController cannot match (it would throw in init);
+  `utils/key-names.ts` mirrors Eligius `findInvalidKeyName` and the hotkeys-js 4 key map.
 - `run_not_an_action`: `run` of an operation.
 - `run_runtime_argument`: an argument holds a parameter, a loop item (`@@…`), a property chain or a
   constant holding one (the listener stores the arguments when it is attached).
 - `missing-action-dependency` (dataflow): the `run` action needs a property (such as
-  `selectedElement`) that DOMEventListenerController does not provide (only `eventTarget` and the
-  arguments).
+  `selectedElement`) that the controller does not provide (only `eventTarget`, `eventKey` and the
+  arguments). `addController("KeyboardController", …)` action lists are checked the same way.
 - Unchanged: unknown navigate target, selector checks against the CSS and layout.
 
 ## Editor
 
-Completion offers the DOM events after `on` and the verbs after the selector; the verbs are
+Completion offers the DOM events and `key` after `on`, common keys in `on key "…"`, and the
+verbs after the selector; the verbs are
 highlighted as keywords (except as a call, `toggle(…)`); the formatter spaces them.
 
 ## Open
 
-- `on key "<Key>" <verb>`: DOMEventListenerController passes only `eventTarget` to its actions, so
-  a listener cannot filter on the key, and a document-level listener needs an element. This needs
-  an Eligius change (a key filter on the controller, or a hotkey controller like the
-  EngineInputAdapter's hotkeys-js toggle).
 - `next` / `prev` (to the next or previous label).

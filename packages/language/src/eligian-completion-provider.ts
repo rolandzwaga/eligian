@@ -35,6 +35,7 @@ import { handleCssCompletion } from './completion/css-completion-handler.js';
 import { handleEventCompletion } from './completion/event-completion-handler.js';
 import { handleHtmlCompletion } from './completion/html-completion-handler.js';
 import { HTMLElementCompletionProvider } from './completion/html-elements.js';
+import { keyNameCompletions } from './completion/key-completions.js';
 import { getOperationCompletions } from './completion/operations.js';
 import { getTimelineEventCompletions } from './completion/timeline-events.js';
 import { getVariableCompletions } from './completion/variables.js';
@@ -48,7 +49,12 @@ import { DOM_EVENTS } from './utils/dom-events.js';
  * accepted as names (`action f(event)`, `{ from: 0 }`), not syntax, so they are
  * never offered as keyword completions.
  */
-const NAME_RULES: ReadonlySet<string> = new Set(['Identifier', 'FeatureName', 'ActionName']);
+const NAME_RULES: ReadonlySet<string> = new Set([
+  'Identifier',
+  'FeatureName',
+  'ActionName',
+  'DomEventName',
+]);
 
 /** Cached custom-action completion items and the names they are offered under. */
 interface ActionCompletionData {
@@ -117,6 +123,12 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       return { items: timelineNames, isIncomplete: false };
     }
 
+    // Key names after `on key` (KeyboardController)
+    const keyNames = keyNameCompletions(document, document.textDocument.offsetAt(params.position));
+    if (keyNames) {
+      return { items: keyNames, isIncomplete: false };
+    }
+
     // Controller name / label ID string-literal completions (Feature 035 US3)
     const stringLiteralCompletion = resolveStringLiteralCompletion(document, params, this.services);
     if (stringLiteralCompletion !== null) {
@@ -163,6 +175,17 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
             });
           }
         }
+        return;
+      }
+      // … and `key` (on key "ArrowRight"), the only keyword that follows `on`
+      // in an operation list: only the keyword, not the statement completions
+      if (GrammarAST.isKeyword(next.feature) && next.feature.value === 'key') {
+        acceptor(context, {
+          label: 'key',
+          kind: CompletionItemKind.Keyword,
+          detail: 'on key "<keys>" <verb>: a key press (KeyboardController)',
+          sortText: '1_key',
+        });
         return;
       }
 
