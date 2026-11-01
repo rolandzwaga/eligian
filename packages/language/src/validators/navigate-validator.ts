@@ -1,6 +1,12 @@
-import type { ValidationAcceptor } from 'langium';
+import type { AstNode, ValidationAcceptor } from 'langium';
 import { reportSelectorIssues } from '../css/selector-validation.js';
-import type { NavigateStatement } from '../generated/ast.js';
+import {
+  isStringLiteral,
+  isTimedEvent,
+  type NavigateStatement,
+  type TimedEvent,
+  type WithStatement,
+} from '../generated/ast.js';
 import { getTimelines } from '../utils/program-helpers.js';
 import { BaseValidator } from './base-validator.js';
 
@@ -34,6 +40,41 @@ export class NavigateValidator extends BaseValidator {
         data: { code: 'unknown_navigate_target' },
       });
     }
+  }
+
+  /**
+   * Idea #17: the selector of `at … target "<sel>"` and of a `with "<sel>" { }`
+   * block resolve against imported CSS like every selector (a `with` selector
+   * that is not a string literal is checked at runtime).
+   */
+  checkTargetSelector(node: TimedEvent | WithStatement, accept: ValidationAcceptor): void {
+    if (!this.services) return;
+    const program = this.getProgram(node);
+    const documentUri = program?.$document?.uri?.toString();
+    if (!program || !documentUri) return;
+
+    let selector: string | undefined;
+    let reportNode: AstNode = node;
+    let property: string | undefined;
+    if (isTimedEvent(node)) {
+      selector = node.target;
+      property = 'target';
+    } else if (isStringLiteral(node.selector)) {
+      selector = node.selector.value;
+      reportNode = node.selector;
+    }
+    if (selector === undefined) return;
+
+    this.ensureCSSImportsRegistered(program, documentUri);
+    const cssRegistry = this.services.css.CSSRegistry;
+    reportSelectorIssues(
+      selector,
+      reportNode,
+      cssRegistry.getClassesForDocument(documentUri),
+      cssRegistry.getIDsForDocument(documentUri),
+      accept,
+      property
+    );
   }
 
   /**

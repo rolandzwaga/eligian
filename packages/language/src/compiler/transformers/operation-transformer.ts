@@ -37,7 +37,11 @@ import {
   resolveNavPosition,
   syntheticNavActionName,
 } from './navigate-operations.js';
-import { withRuntimeValueLowering } from './runtime-values.js';
+import {
+  createRuntimeConcatCollector,
+  lowerNodeOperations,
+  withRuntimeValueLowering,
+} from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
 
@@ -346,6 +350,37 @@ const transformStatement = (
       case 'ContinueStatement':
         // continue → continueForEach operation
         return yield* transformContinueStatement(stmt, scope);
+
+      case 'WithStatement': {
+        // Idea #17: with <selector> { ops } → selectElement(<selector>) + ops.
+        // A runtime selector (`"#" + id`) is lowered like an operation argument.
+        const concats = createRuntimeConcatCollector();
+        const selector = yield* transformExpression(stmt.selector, {
+          ...scope,
+          runtimeConcats: concats,
+        });
+        const select = lowerNodeOperations(stmt, concats, [
+          {
+            id: crypto.randomUUID(),
+            systemName: 'selectElement',
+            operationData: { selector },
+            sourceLocation: getSourceLocation(stmt),
+          },
+        ]);
+        const body: OperationConfigIR[] = [];
+        for (const statement of stmt.body) {
+          body.push(
+            ...(yield* transformOperationStatement(
+              statement,
+              scope,
+              isEndOperation,
+              program,
+              allActions
+            ))
+          );
+        }
+        return [...select, ...body];
+      }
 
       case 'NavigateStatement': {
         // on click "#sel" navigate "Target" [at <time>] →

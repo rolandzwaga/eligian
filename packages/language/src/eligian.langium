@@ -355,7 +355,18 @@ TypeAnnotation returns string:
  * - Variable declarations (const varName = value)
  */
 OperationStatement:
-    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | NavigateStatement | OperationCall;
+    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | NavigateStatement | WithStatement | OperationCall;
+
+/**
+ * With Statement (audit idea #17) - select an element, then run operations:
+ *
+ *   with ".callout" { removeClass("show") }
+ *
+ * Compiles to selectElement(<selector>) followed by the operations. The
+ * selection stays after the block (there is nothing to restore it to).
+ */
+WithStatement:
+    'with' selector=Expression '{' (body += OperationStatement)* '}';
 
 /**
  * If/Else Statement - Syntactic sugar for when/otherwise/endWhen
@@ -572,8 +583,14 @@ TimelineProvider returns string:
 TimelineEvent:
     StaggerBlock | SequenceBlock | TimedEvent;
 
+/**
+ * `target "<sel>"` (audit idea #17) selects the element at the head of the
+ * event's start (and end) operations:
+ *
+ *   at 0s..5s target "#box" [ addClass("visible") ] [ removeClass("visible") ]
+ */
 TimedEvent:
-    'at' timeRange=TimeRange ('as' name=Identifier)? (action=TimelineAction);
+    'at' timeRange=TimeRange ('as' name=Identifier)? ('target' target=STRING)? (action=TimelineAction);
 
 TimelineAction:
     InlineEndableAction | OperationCall | ForStatement | IfStatement;
@@ -923,7 +940,7 @@ Identifier returns string:
     | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
     | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
     | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
-    | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then';
+    | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then' | 'target';
 
 /**
  * FeatureName - A property name in a position where any word is unambiguous:

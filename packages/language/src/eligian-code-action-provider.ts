@@ -21,6 +21,7 @@ import type { EligianServices } from './eligian-module.js';
 import { MISSING_LABELS_FILE_CODE } from './eligian-validator.js';
 import type { Program } from './generated/ast.js';
 import { LanguageBlockCodeActionProvider } from './labels/language-block-code-actions.js';
+import { selectElementCodeActions } from './lsp/select-element-fix.js';
 import { navigateTargetCodeActions } from './lsp/timeline-symbols.js';
 import { createTimeRangeActions } from './timeline/time-range-actions.js';
 import type {
@@ -116,6 +117,9 @@ export class EligianCodeActionProvider implements CodeActionProvider {
 
       // Idea #16: unknown navigate target → 'Change to "<closest>"' / 'Create timeline'
       actions.push(...navigateTargetCodeActions(document, params.context.diagnostics));
+
+      // Idea #17: 'Insert selectElement(…)' when nothing is selected yet
+      actions.push(...selectElementCodeActions(document, params.context.diagnostics));
 
       // Future: Add more code action providers here
       // - Refactoring actions (extract action, inline action, etc.)

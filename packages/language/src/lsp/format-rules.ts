@@ -27,7 +27,6 @@ import {
   isBinaryTimeExpression,
   isEndableActionDefinition,
   isEventActionDefinition,
-  isInlineEndableAction,
   isLanguagesBlock,
   isLibrary,
   isObjectLiteral,
@@ -35,7 +34,6 @@ import {
   isProgram,
   isRegularActionDefinition,
   isRelativeTimeLiteral,
-  isStaggerBlock,
   isTimeLiteral,
   isTimeline,
   isTimeValue,
@@ -69,6 +67,7 @@ const SPACED_KEYWORDS = [
   'sequence',
   'stagger',
   'styles',
+  'target',
   'then',
   'timeline',
   'topic',
@@ -225,12 +224,11 @@ function formatBlocks(node: AstNode, formatter: NodeFormatter<AstNode>): void {
         openRegion.prepend(Formatting.oneSpace());
       }
     });
-    // A `{` / `[` that opens a block follows its header with one space
+    // A `{` / `[` that opens a block follows its header (on the same line) with one space
     for (const openNode of opens) {
-      if (isTimeline(node) || isStaggerBlock(node) || open === '{' || isInlineEndableAction(node)) {
-        if (CstUtils.getPreviousNode(openNode, true)) {
-          region(formatter, [openNode]).prepend(Formatting.oneSpace());
-        }
+      const previous = CstUtils.getPreviousNode(openNode, false);
+      if (previous && previous.range.end.line === openNode.range.start.line) {
+        region(formatter, [openNode]).prepend(Formatting.oneSpace());
       }
     }
   }

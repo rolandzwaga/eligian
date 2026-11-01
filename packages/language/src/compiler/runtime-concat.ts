@@ -22,12 +22,13 @@ import {
   isOperationCall,
   isProgram,
   isVariableDeclaration,
+  isWithStatement,
   type VariableDeclaration,
 } from '../generated/ast.js';
 
 /** Reported for a runtime concatenation outside the places the compiler can lower it. */
 export const RUNTIME_CONCAT_CONTEXT_MESSAGE =
-  'String concatenation with runtime values (parameters, variables, system properties, property chains) is only supported in operation arguments, action call arguments and action-level const declarations';
+  'String concatenation with runtime values (parameters, variables, system properties, property chains) is only supported in operation arguments, action call arguments, with selectors and action-level const declarations';
 
 /** Reported for an object or array operand of a runtime concatenation. */
 export const RUNTIME_CONCAT_OPERAND_MESSAGE =
@@ -113,7 +114,7 @@ export function isConcatRoot(expr: AstNode): expr is BinaryExpression {
 /**
  * True when a concatenation at `node` can be lowered by the compiler: inside the
  * arguments of an operation or action call (at any depth of object and array
- * literals), or as the value of an action-level `const`.
+ * literals), a `with` selector, or as the value of an action-level `const`.
  *
  * Everything else has no place to put the extra operations: `if` conditions
  * (serialized to a `when` expression), `for` collections, time expressions and
@@ -127,6 +128,8 @@ export function isInConcatContext(node: AstNode): boolean {
     parent = parent.$container;
   }
   if (isOperationCall(parent)) return child.$containerProperty === 'args';
+  // Idea #17: `with "#" + id { }` is a selectElement argument
+  if (isWithStatement(parent)) return child.$containerProperty === 'selector';
   if (isVariableDeclaration(parent)) {
     return child.$containerProperty === 'value' && !isProgram(parent.$container);
   }

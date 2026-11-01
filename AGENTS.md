@@ -106,6 +106,7 @@ Typir-based, in `type-system-typir/` (the old standalone `type-system/` dir was 
 - **Time constants, labels, anchors**: `const beat = 7s` used as `@beat` in times; `at … as intro [..]` then `intro.start`/`intro.end` (earlier events only); `stagger … at <time>` anchors the first item. Shared evaluator `utils/time-constants.ts` (compiler, IDE resolver, validators). (spec 051)
 - **Sequence items**: `sequence each [ prelude ] then [ postlude ] { call() for 5s  for 7s as x [ start ] [ end ] }`: inline items, a prelude before every item's start ops, a postlude after every item's end ops, labeled items. (spec 052)
 - **Eligian map / runtime errors**: `compileWithMap` → `{ config, map }` (`compiler/eligian-map.ts`: action/operation ids → source locations, `locateEngineError`, `activeTimelineActions`); CLI `--eligian-map`; the preview maps engine `error` events to `eligius-runtime` diagnostics and marks the running events. (spec 053)
+- **target / with**: `at … target "<sel>" [..] [..]` prepends selectElement to the event's start (and end) ops; `with <sel> { ops }` = selectElement + ops (selection stays); quick fix *Insert selectElement* / *Add target* on the missing-selectedElement dataflow error. (spec 055)
 - **Languages + locales**: `languages { * "en-US" "English" ... }` block plus `locales "./file"` import for typed labels; `locales` is the keyword (not `labels`). (specs 037/045)
 
 ## Testing

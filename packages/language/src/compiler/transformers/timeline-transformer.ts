@@ -895,6 +895,19 @@ const transformTimedEvent = (
       startOperations.push(...ifOps);
     }
 
+    // Idea #17: `target "<sel>"` selects the element at the head of the start
+    // operations, and of the end operations when there are any
+    if (event.target !== undefined) {
+      const select = (): OperationConfigIR => ({
+        id: crypto.randomUUID(),
+        systemName: 'selectElement',
+        operationData: { selector: event.target! },
+        sourceLocation: getSourceLocation(event),
+      });
+      startOperations.unshift(select());
+      if (endOperations.length > 0) endOperations.unshift(select());
+    }
+
     return {
       // Constitution VII: UUID v4 for globally unique action ID
       id: crypto.randomUUID(),

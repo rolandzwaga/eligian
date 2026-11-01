@@ -52,6 +52,7 @@ import {
   isStringLiteral,
   isTimedEvent,
   isTimeline,
+  isWithStatement,
   type Library,
   type OperationCall,
   type OperationStatement,
@@ -203,17 +204,26 @@ export class OperationDataflow {
   private analyzeTimelineEvent(event: AstNode, report: (d: DataflowDiagnostic) => void): void {
     if (isTimedEvent(event)) {
       const action = event.action;
+      // Idea #17: `target "<sel>"` selects the element before each block
+      const fresh = () => {
+        const state = new OperationDataTracker();
+        if (event.target !== undefined) {
+          this.applyOperation(
+            'selectElement',
+            event,
+            state,
+            entryContext('', false, () => {})
+          );
+        }
+        return state;
+      };
       if (isInlineEndableAction(action)) {
-        this.walk(
-          action.startOperations,
-          new OperationDataTracker(),
-          entryContext('', false, report)
-        );
-        this.walk(action.endOperations, new OperationDataTracker(), entryContext('', true, report));
+        this.walk(action.startOperations, fresh(), entryContext('', false, report));
+        this.walk(action.endOperations, fresh(), entryContext('', true, report));
       } else if (isOperationCall(action)) {
-        this.analyzeTimelineCall(action, report);
+        this.analyzeTimelineCall(action, report, fresh);
       } else {
-        this.walk([action], new OperationDataTracker(), entryContext('', false, report));
+        this.walk([action], fresh(), entryContext('', false, report));
       }
     } else if (isSequenceBlock(event)) {
       // Idea #11: every item runs `each [..]` first and `then [..]` after its end;
@@ -254,15 +264,19 @@ export class OperationDataflow {
    * A timeline-level call: an action started (and, when endable, ended) by the
    * engine with only its arguments, or a plain operation.
    */
-  private analyzeTimelineCall(call: OperationCall, report: (d: DataflowDiagnostic) => void): void {
+  private analyzeTimelineCall(
+    call: OperationCall,
+    report: (d: DataflowDiagnostic) => void,
+    fresh: () => OperationDataTracker = () => new OperationDataTracker()
+  ): void {
     const callee = this.calleeOf(call);
     if (!callee) {
-      this.walk([call], new OperationDataTracker(), entryContext('', false, report));
+      this.walk([call], fresh(), entryContext('', false, report));
       return;
     }
     const seen = new Set<string>();
     for (const phase of phasesOf(callee)) {
-      this.checkCall(call, callee, phase, new OperationDataTracker(), {
+      this.checkCall(call, callee, phase, fresh(), {
         ...entryContext('', phase === 'end', report),
         // The same requirement of start and end blocks is reported once
         report: d => {
@@ -303,6 +317,10 @@ export class OperationDataflow {
       } else if (isForStatement(statement)) {
         // The body may run zero times, so its resulting state is discarded
         this.walk(statement.body, current.clone(), ctx);
+      } else if (isWithStatement(statement)) {
+        // Idea #17: selectElement(<selector>), then the body; the selection stays
+        this.applyOperation('selectElement', statement, current, ctx, [statement.selector]);
+        current = this.walk(statement.body, current, ctx);
       } else if (isNavigateStatement(statement)) {
         // Compiles to selectElement + getControllerInstance + addControllerToElement
         for (const operation of [

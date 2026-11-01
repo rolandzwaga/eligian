@@ -1865,6 +1865,34 @@ timeline "Logic" in "#stage" using raf {
   A timeline with only lifecycle blocks (a menu that waits for clicks) has duration 0.
 - `enter` and `leave` are contextual keywords (still valid parameter and variable names).
 
+#### Selecting the element: `target` and `with`
+
+Every start and end block starts with empty operation data, so operations that need
+`selectedElement` (addClass, setStyle, animate, …) need a `selectElement` first. Two shorthands:
+
+```eligian
+// target: selectElement("#box") at the head of the start block, and of the end block
+at 0s..5s target "#box" [ addClass("visible") ] [ removeClass("visible") ]
+at 5s..6s target "#box" highlight()         // also for action calls, if and for
+
+action clearSpots() [
+  with ".tok" { removeClass("spot") }       // selectElement(".tok"), then the block
+  with ".callout" { removeClass("show") }
+]
+```
+
+- `at <range> (as <label>)? target "<selector>" …`: the selector is a string; it is checked
+  against the imported CSS like every selector.
+- `with <selector> { <operations> }` is an operation statement (in any block). The selector is
+  any expression (`with "#" + id { … }`, `with sel { … }`); a string is checked against the CSS.
+  It compiles to `selectElement(<selector>)` followed by the operations, and the selection **stays**
+  after the block: there is no previous selection to restore.
+- When an operation needs `selectedElement` and nothing is selected, the editor offers *Insert
+  selectElement("…")* (with the selector of the sibling start/end block, an earlier
+  `selectElement` or a selector parameter), or *Add target "…"* for an action called directly as
+  an `at` event.
+- `target` is a contextual keyword (still a valid name).
+
 #### Navigation: `on click … navigate`
 
 `on click "<selector>" navigate "<timeline>" (at <time>)?`, an operation statement, switches to
@@ -3007,7 +3035,7 @@ Lifecycle       := 'on' ('enter' | 'leave') '[' OperationStatement* ']'
 Provider        := 'video' | 'audio' | 'raf' | 'custom'
 
 TimelineEvent   := TimedEvent | SequenceBlock | StaggerBlock
-TimedEvent      := 'at' TimeRange ('as' Identifier)? (NamedAction | InlineAction)
+TimedEvent      := 'at' TimeRange ('as' Identifier)? ('target' STRING)? (NamedAction | InlineAction)
 SequenceBlock   := 'sequence' ('each' '[' Operations ']' ('then' '[' Operations ']')?)?
                    '{' SequenceItem* '}'
 SequenceItem    := ActionCall 'for' TimeExpr ('as' Identifier)?
@@ -3023,8 +3051,10 @@ TimeLiteral     := NUMBER TimeUnit?
 RelativeTimeLiteral := '+' NUMBER TimeUnit?
 TimeUnit        := 'ms' | 's' | 'm' | 'h'
 
-Operations      := (OperationCall | IfStatement | ForStatement |
+Operations      := (OperationCall | IfStatement | ForStatement | WithStatement |
                    VariableDeclaration | BreakStatement | ContinueStatement)*
+
+WithStatement   := 'with' Expression '{' Operations '}'
 
 IfStatement     := 'if' '(' Expression ')' '{' Operations '}'
                    ('else' '{' Operations '}')?

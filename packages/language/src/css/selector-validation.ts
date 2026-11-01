@@ -18,13 +18,16 @@ export function reportSelectorIssues(
   node: AstNode,
   availableClasses: Set<string>,
   availableIDs: Set<string>,
-  accept: ValidationAcceptor
+  accept: ValidationAcceptor,
+  /** The node property holding the selector, to highlight just it (idea #17) */
+  property?: string
 ): void {
   const { classes, ids, valid, error } = parseSelector(selectorString);
 
   if (!valid) {
     accept('error', `Invalid CSS selector syntax: ${error}`, {
       node,
+      ...(property ? { property } : {}),
       data: { code: 'invalid_css_selector' },
     });
     return;
@@ -39,6 +42,7 @@ export function reportSelectorIssues(
       }
       accept('error', message, {
         node,
+        ...(property ? { property } : {}),
         data: { code: 'unknown_css_class_in_selector' },
       });
     }
@@ -48,6 +52,7 @@ export function reportSelectorIssues(
     if (!availableIDs.has(idName)) {
       accept('error', `Unknown CSS ID in selector: '${idName}'.`, {
         node,
+        ...(property ? { property } : {}),
         data: { code: 'unknown_css_id_in_selector' },
       });
     }

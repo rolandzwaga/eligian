@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 to #11 and #13 to #16 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #11 and #13 to #17 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3614,6 +3614,8 @@ on click "#card-ch4" navigate "Timeline Power Tool"
 - **Rationale:** The IDE work is cheap, but it is only useful once three navigate and duplicate-name bugs are fixed, which puts it in 'next'.
 
 ### #17 Target-scoped events and blocks (`at … target "<sel>"`, `with "<sel>" { }`) plus an 'Insert selectElement' quick fix
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 055). `target` also applies to action calls and `if`/`for` events (the called action inherits the selection); the `with` selector is any expression, and the selection stays after the block. With call-site inheritance the missing-selectedElement error of an action called as an event is at the call, so that case gets 'Add target "…"' instead of an insertion. The prerequisite was already fixed (`c7a75df`). The tour's `clearSpots` uses `with` (same compiled output).
 
 - **Area:** dsl · **Effort:** S · **Score:** 7.0
 - **Problem:** Start and end chains each begin from an empty `{}`, so every block must open with selectElement(...). 'Re-select in every block' is the first rule in the tour's notes on the execution model. The selector is repeated in start blocks, end blocks and actions, and the 'requires selectedElement' error has no quick fix.

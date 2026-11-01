@@ -245,6 +245,9 @@ export function registerValidationChecks(services: EligianServices) {
       v.navigate.checkNavigateTarget, // navigate target must name an existing timeline
       v.navigate.checkNavigateSelector, // navigate selector must resolve against imported CSS
     ],
+    // Idea #17: `at … target "<sel>"` and `with "<sel>" { }` selectors
+    TimedEvent: v.navigate.checkTargetSelector,
+    WithStatement: v.navigate.checkTargetSelector,
   };
   registry.register(navigateChecks, v.navigate);
 
