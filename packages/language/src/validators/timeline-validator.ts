@@ -2,6 +2,7 @@ import { type AstNode, AstUtils, type ValidationAcceptor } from 'langium';
 import { propertyChainTimeMessage } from '../compiler/transformers/time-transformer.js';
 import { findSimilarClasses } from '../css/levenshtein.js';
 import { parseSelector } from '../css/selector-parser.js';
+import { selectorNames } from '../css/selector-sources.js';
 import {
   type EventTimeReference,
   isBinaryExpression,
@@ -247,8 +248,6 @@ export class TimelineValidator extends BaseValidator {
       return;
     }
 
-    const cssRegistry = this.services.css.CSSRegistry;
-
     // Find the root Program node
     const program = this.getProgram(timeline);
     const documentUri = program?.$document?.uri?.toString();
@@ -259,12 +258,12 @@ export class TimelineValidator extends BaseValidator {
     // Register CSS imports before validation
     this.ensureCSSImportsRegistered(program, documentUri);
 
-    // Get available CSS classes and IDs
-    const availableClasses = cssRegistry.getClassesForDocument(documentUri);
-    const availableIDs = cssRegistry.getIDsForDocument(documentUri);
-
-    // Note: If no CSS files are imported (empty sets), we still validate.
-    // With no CSS imported, ALL classes/IDs are invalid since there's no external CSS in Eligian.
+    // Idea #18: classes and ids of the imported CSS and of the layout HTML
+    const { classes: availableClasses, ids: availableIDs } = selectorNames(
+      this.services,
+      program,
+      documentUri
+    );
 
     // Guard against incomplete parses: `containerSelector` is mandatory in the
     // grammar, but Langium error-recovery yields partial Timeline nodes with an

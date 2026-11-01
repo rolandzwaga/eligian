@@ -52,7 +52,8 @@ action fadeIn(selector: string, duration: number) [
     await fsp.writeFile(path.join(LIBRARY_TEST_DIR, 'animations.eligian'), libraryContent);
 
     // Create CSS file for validation
-    const cssContent = `.container { display: block; }`;
+    // Selectors passed to library actions are checked too (idea #18)
+    const cssContent = `.container { display: block; } #element { color: red; }`;
     await fsp.writeFile(path.join(LIBRARY_TEST_DIR, 'test.css'), cssContent);
 
     // Create main program that imports from library
@@ -119,7 +120,7 @@ action highlight(selector: string) [
     await fsp.writeFile(path.join(LIBRARY_TEST_DIR, 'utils.eligian'), utilsLibrary);
 
     // Create CSS file
-    const cssContent = `.container { display: block; } .highlighted { background: yellow; }`;
+    const cssContent = `.container { display: block; } .highlighted { background: yellow; } #box { color: red; }`;
     await fsp.writeFile(path.join(LIBRARY_TEST_DIR, 'test.css'), cssContent);
 
     // Create main program importing from both libraries
@@ -185,7 +186,10 @@ action selectLogAndAnimate(selector: string, duration: number) [
     await fsp.writeFile(path.join(libsDir, 'extended.eligian'), extendedLibrary);
 
     // Create CSS file
-    await fsp.writeFile(path.join(LIBRARY_TEST_DIR, 'test.css'), `.container { display: block; }`);
+    await fsp.writeFile(
+      path.join(LIBRARY_TEST_DIR, 'test.css'),
+      `.container { display: block; } #box { color: red; }`
+    );
 
     // Create main program
     const mainContent = `styles "./test.css"

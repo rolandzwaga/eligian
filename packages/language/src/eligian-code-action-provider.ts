@@ -17,6 +17,7 @@ import type {
 } from 'vscode-languageserver-protocol';
 import { CodeActionKind } from 'vscode-languageserver-protocol';
 import { CSSCodeActionProvider } from './css/css-code-actions.js';
+import { didYouMeanCodeActions } from './css/did-you-mean-fix.js';
 import type { EligianServices } from './eligian-module.js';
 import { MISSING_LABELS_FILE_CODE } from './eligian-validator.js';
 import type { Program } from './generated/ast.js';
@@ -88,6 +89,8 @@ export class EligianCodeActionProvider implements CodeActionProvider {
         readFile
       );
 
+      // Idea #18: 'Change to …' for unknown classes/ids with suggestions (first)
+      actions.push(...didYouMeanCodeActions(document, params.context.diagnostics));
       actions.push(...cssActions);
 
       // Get language block code actions

@@ -2819,6 +2819,29 @@ action setup() [
 ]
 ```
 
+### 12.3a Selectors and Class Names Through Action Parameters (idea #18)
+
+Most selectors are passed to actions, not to operations directly. A parameter has the role
+**selector** when its action passes it to a selector input (`selectElement(sel)`, `with sel { }`)
+or to a selector parameter of an action it calls, and **className** for
+className inputs (`addClass(name)`); roles follow nested calls into imported libraries. A
+parameter used for both, or only inside an expression (`"#" + id`), has no role.
+
+```eligian
+action spotlight(selector: string) [ selectElement(selector) addClass("spot") ]
+
+spotlight("#tok-timelin")
+//        ~~~~~~~~~~~~~~ Unknown CSS ID in selector: 'tok-timelin'. Did you mean: tok-timeline?
+```
+
+- A string literal passed for a role-tagged parameter is validated like one passed to the
+  operation, with completion and a *Change to '…'* quick fix for the suggestions.
+- **Selectors** (in operations, actions, `navigate`, `target`, `with` and the timeline container)
+  may use the classes and ids of the imported CSS **and of the layout HTML** (`layout "./x.html"`),
+  where most ids live. Class-name arguments still need a class in the CSS.
+- Ids in selectors get *did you mean* suggestions as well.
+- Hovering an action and its signature help show the parameters' roles.
+
 ### 12.4 Hot-Reload Validation
 
 CSS validation automatically updates when CSS files change at runtime.

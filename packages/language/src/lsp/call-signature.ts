@@ -10,6 +10,7 @@
 import type { CommentProvider } from 'langium';
 import { getOperationSignature } from '../compiler/operations/index.js';
 import { getController } from '../completion/metadata/controllers.generated.js';
+import { parameterRoles } from '../css/parameter-roles.js';
 import {
   type ActionDefinition,
   isActionDefinition,
@@ -49,6 +50,12 @@ function displayType(
 
 function actionSignature(action: ActionDefinition, comments?: CommentProvider): CallSignature {
   const jsdoc = comments ? extractJSDoc(action, comments) : null;
+  // Idea #18: parameters that end up as a CSS selector / class name
+  const roles = parameterRoles(action);
+  const roleNote = (name: string) => {
+    const role = roles.get(name);
+    return role === 'selector' ? 'CSS selector' : role === 'className' ? 'CSS class name' : '';
+  };
   return {
     name: action.name,
     kind: 'action',
@@ -59,7 +66,9 @@ function actionSignature(action: ActionDefinition, comments?: CommentProvider): 
         name: parameter.name,
         type: parameter.type ?? doc?.type,
         optional: doc?.optional === true,
-        description: doc?.description,
+        description:
+          [roleNote(parameter.name), doc?.description ?? ''].filter(Boolean).join(' · ') ||
+          undefined,
       };
     }),
   };

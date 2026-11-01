@@ -1,8 +1,10 @@
 import type { ValidationAcceptor } from 'langium';
 import { getOperationSignature } from '../../compiler/index.js';
 import { findSimilarClasses } from '../../css/levenshtein.js';
+import { calledAction, parameterRoles } from '../../css/parameter-roles.js';
+import { selectorNames } from '../../css/selector-sources.js';
 import { reportSelectorIssues } from '../../css/selector-validation.js';
-import type { OperationCall } from '../../generated/ast.js';
+import { isStringLiteral, type OperationCall } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
 
@@ -14,6 +16,45 @@ import { BaseValidator } from '../base-validator.js';
  * "CSS class / selector parameter" check family.
  */
 export class CssParameterValidator extends BaseValidator {
+  /**
+   * Idea #18: string literals passed to an action's selector or className
+   * parameters (css/parameter-roles.ts), checked like literals passed to the
+   * operations themselves: `spotlight("#tok-timelin")`.
+   */
+  checkActionCallCssArguments(call: OperationCall, accept: ValidationAcceptor): void {
+    if (!this.services) return;
+    const action = calledAction(call);
+    if (!action) return;
+    const program = this.getProgram(call);
+    const documentUri = program?.$document?.uri?.toString();
+    if (!program || !documentUri) return;
+
+    const roles = parameterRoles(action);
+    if (roles.size === 0) return;
+    this.ensureCSSImportsRegistered(program, documentUri);
+    let names: ReturnType<typeof selectorNames> | undefined;
+
+    call.args.forEach((arg, index) => {
+      const parameter = action.parameters[index];
+      const role = parameter ? roles.get(parameter.name) : undefined;
+      if (!role || !isStringLiteral(arg)) return;
+      if (role === 'selector') {
+        names ??= selectorNames(this.services!, program, documentUri);
+        reportSelectorIssues(arg.value, arg, names.classes, names.ids, accept);
+        return;
+      }
+      const classes = this.services!.css.CSSRegistry.getClassesForDocument(documentUri);
+      if (!classes.has(arg.value)) {
+        const suggestions = findSimilarClasses(arg.value, classes, 2, 3);
+        accept(
+          'error',
+          `Unknown CSS class: '${arg.value}'.${suggestions.length > 0 ? ` Did you mean: ${suggestions.join(', ')}?` : ''}`,
+          { node: arg, data: { code: 'unknown_css_class' } }
+        );
+      }
+    });
+  }
+
   /**
    * Feature 013 - T017: Validate className parameters in operation calls
    *
@@ -116,8 +157,6 @@ export class CssParameterValidator extends BaseValidator {
       return;
     }
 
-    const cssRegistry = this.services.css.CSSRegistry;
-
     // Find the root Program node
     const program = this.getProgram(operation);
     const documentUri = program?.$document?.uri?.toString();
@@ -149,9 +188,12 @@ export class CssParameterValidator extends BaseValidator {
 
     if (selectorParamIndices.length === 0) return;
 
-    // Get available CSS classes and IDs from imported CSS files
-    const availableClasses = cssRegistry.getClassesForDocument(documentUri);
-    const availableIDs = cssRegistry.getIDsForDocument(documentUri);
+    // Idea #18: classes and ids of the imported CSS and of the layout HTML
+    const { classes: availableClasses, ids: availableIDs } = selectorNames(
+      this.services,
+      program,
+      documentUri
+    );
 
     // Note: If no CSS files are imported (empty sets), we still validate.
     // With no CSS imported, ALL classes/IDs are invalid since there's no external CSS in Eligian.

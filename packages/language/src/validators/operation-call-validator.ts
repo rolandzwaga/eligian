@@ -63,6 +63,11 @@ export class OperationCallValidator extends BaseValidator {
     this.css.checkSelectorParameter(operation, accept);
   }
 
+  /** Idea #18: selectors and class names passed through action parameters. */
+  checkActionCallCssArguments(operation: OperationCall, accept: ValidationAcceptor): void {
+    this.css.checkActionCallCssArguments(operation, accept);
+  }
+
   checkControllerCall(operation: OperationCall, accept: ValidationAcceptor): void {
     this.labels.checkControllerCall(operation, accept);
   }

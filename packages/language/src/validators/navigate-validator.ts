@@ -1,4 +1,5 @@
 import type { AstNode, ValidationAcceptor } from 'langium';
+import { selectorNames } from '../css/selector-sources.js';
 import { reportSelectorIssues } from '../css/selector-validation.js';
 import {
   isStringLiteral,
@@ -66,15 +67,8 @@ export class NavigateValidator extends BaseValidator {
     if (selector === undefined) return;
 
     this.ensureCSSImportsRegistered(program, documentUri);
-    const cssRegistry = this.services.css.CSSRegistry;
-    reportSelectorIssues(
-      selector,
-      reportNode,
-      cssRegistry.getClassesForDocument(documentUri),
-      cssRegistry.getIDsForDocument(documentUri),
-      accept,
-      property
-    );
+    const { classes, ids } = selectorNames(this.services, program, documentUri);
+    reportSelectorIssues(selector, reportNode, classes, ids, accept, property);
   }
 
   /**
@@ -89,10 +83,8 @@ export class NavigateValidator extends BaseValidator {
 
     this.ensureCSSImportsRegistered(program, documentUri);
 
-    const cssRegistry = this.services.css.CSSRegistry;
-    const availableClasses = cssRegistry.getClassesForDocument(documentUri);
-    const availableIDs = cssRegistry.getIDsForDocument(documentUri);
-
-    reportSelectorIssues(node.selector, node, availableClasses, availableIDs, accept);
+    // Idea #18: classes and ids of the imported CSS and of the layout HTML
+    const { classes, ids } = selectorNames(this.services, program, documentUri);
+    reportSelectorIssues(node.selector, node, classes, ids, accept);
   }
 }

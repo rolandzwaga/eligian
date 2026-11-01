@@ -12,10 +12,11 @@
 
 import { AstUtils, CstUtils } from 'langium';
 import type { CompletionContext } from 'langium/lsp';
-import { isOperationCall } from '../generated/ast.js';
+import { isOperationCall, type OperationCall } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { isOffsetInStringLiteral } from '../utils/string-utils.js';
 import { CLASS_NAME_OPERATIONS, SELECTOR_OPERATIONS } from './css-operations.js';
+import { argumentRole, calledAction } from './parameter-roles.js';
 
 /**
  * Types of completion contexts for CSS
@@ -64,6 +65,21 @@ export function detectCompletionContext(context: CompletionContext): CompletionC
 
   const operationName = getOperationCallName(operationCall);
 
+  // Idea #18: an action parameter with a selector / className role
+  const action = calledAction(operationCall);
+  if (action) {
+    const role = argumentRole(operationCall, argumentIndexAt(operationCall, offset));
+    if (role === 'className' && isCursorInStringLiteral(context, offset)) {
+      return CompletionContextType.ClassName;
+    }
+    if (role === 'selector') {
+      const prefixChar = getSelectorPrefixChar(context, offset);
+      if (prefixChar === '.') return CompletionContextType.SelectorClass;
+      if (prefixChar === '#') return CompletionContextType.SelectorID;
+    }
+    return CompletionContextType.None;
+  }
+
   // Check if inside className operation
   if (CLASS_NAME_OPERATIONS.has(operationName)) {
     // Check if cursor is inside a string literal argument
@@ -100,6 +116,15 @@ export function detectCompletionContext(context: CompletionContext): CompletionC
   }
 
   return CompletionContextType.None;
+}
+
+/** The index of the call argument the cursor at `offset` is in (or would start). */
+function argumentIndexAt(call: OperationCall, offset: number): number {
+  const inside = call.args.findIndex(
+    arg => arg.$cstNode !== undefined && arg.$cstNode.offset <= offset && offset <= arg.$cstNode.end
+  );
+  if (inside >= 0) return inside;
+  return call.args.filter(arg => arg.$cstNode !== undefined && arg.$cstNode.end < offset).length;
 }
 
 /**

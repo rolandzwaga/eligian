@@ -19,6 +19,7 @@ import { getOperationSignature } from './compiler/operations/index.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
+import { parameterRoles } from './css/parameter-roles.js';
 import type { EligianServices } from './eligian-module.js';
 import {
   type ActionDefinition,
@@ -46,6 +47,23 @@ import type { LabelRegistryService } from './type-system-typir/utils/label-regis
 import { createMarkdownHover } from './utils/hover-utils.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
 import { createDataflow } from './validators/dataflow-validator.js';
+
+/**
+ * Idea #18: the parameters that end up as a CSS selector or class name, which
+ * are checked (and completed) at call sites. Empty when there are none.
+ */
+function rolesMarkdown(action: ActionDefinition): string {
+  const roles = parameterRoles(action);
+  if (roles.size === 0) return '';
+  const lines = [...roles].map(([name, role]) => {
+    const what =
+      role === 'selector'
+        ? 'CSS selector (checked against the CSS and the layout)'
+        : 'CSS class name (checked against the CSS)';
+    return `- \`${name}\`: ${what}`;
+  });
+  return `\n\n**Parameters checked at call sites:**\n${lines.join('\n')}`;
+}
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   private cssHoverProvider = new CSSHoverProvider();
@@ -219,8 +237,8 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
   protected override getAstNodeHoverContent(node: AstNode): string | undefined {
     // Action definitions: the operationData their callers must provide (spec 047)
     if (isActionDefinition(node)) {
-      const requirements = this.requirementsMarkdown(node);
-      return requirements ? `### ${node.name}${requirements}` : undefined;
+      const details = this.requirementsMarkdown(node) + rolesMarkdown(node);
+      return details ? `### ${node.name}${details}` : undefined;
     }
     return undefined;
   }

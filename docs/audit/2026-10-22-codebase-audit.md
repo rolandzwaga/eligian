@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 to #11 and #13 to #17 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #11 and #13 to #18 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3637,6 +3637,8 @@ action clearSpots() [ with ".tok" { removeClass("spot") } with ".callout" { remo
 - **Rationale:** It removes the most common runtime mistake at small cost. It ranks below the timing sugar because the quick fix alone delivers most of the value, and the keyword choice needs a short design discussion.
 
 ### #18 Selector and class validation through action parameters, checked against layout HTML
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 056), except the configurable 'not in layout' warning (point 3). Roles are computed per call (not cached: a library action can change without its callers' AST changing). The layout HTML is added to the names *selectors* may use everywhere (operations, navigate, target/with, timeline container); class-name arguments stay CSS-only. Ids got did-you-mean suggestions, and a new *Change to '…'* quick fix applies them. Both prerequisites were already fixed.
 
 - **Area:** ide · **Effort:** M · **Score:** 6.9
 - **Problem:** css-parameter-validator only checks string literals passed directly to built-in className or selector parameters. In real files most selectors go through actions (`spotlight("#tok-timeline")`, about 150 call sites in the tour), so typos get no squiggle, completion or did-you-mean. IDs are checked against the CSS, not against the imported layout HTML, where they actually live.

@@ -50,7 +50,10 @@ export function reportSelectorIssues(
 
   for (const idName of ids) {
     if (!availableIDs.has(idName)) {
-      accept('error', `Unknown CSS ID in selector: '${idName}'.`, {
+      // Idea #18: ids get suggestions too (from the CSS and the layout HTML)
+      const suggestions = findSimilarClasses(idName, availableIDs, 2, 3);
+      const hint = suggestions.length > 0 ? ` Did you mean: ${suggestions.join(', ')}?` : '';
+      accept('error', `Unknown CSS ID in selector: '${idName}'.${hint}`, {
         node,
         ...(property ? { property } : {}),
         data: { code: 'unknown_css_id_in_selector' },
