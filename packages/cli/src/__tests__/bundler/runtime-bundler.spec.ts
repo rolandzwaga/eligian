@@ -378,7 +378,7 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       expect(entryPoint).toContain('DOMEventListenerController: { DOMEventListenerController }');
     });
 
-    test('should include video.js import for video provider', () => {
+    test('a video provider needs no player library (Eligius 4: native <video>)', () => {
       const config = createVideoProviderConfig();
       const operations = ['selectElement'];
       const providers: TimelineProviderType[] = ['video'];
@@ -386,7 +386,7 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const entryPoint = generateEntryPoint(config, operations, providers);
 
       expect(entryPoint).toContain('VideoTimelineProvider');
-      expect(entryPoint).toContain('video.js');
+      expect(entryPoint).not.toContain('video.js');
     });
 
     test('should include lottie-web import for lottie provider', () => {
@@ -593,7 +593,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const result = await Effect.runPromise(bundleRuntime(bundleConfig));
 
       expect(result).toBeDefined();
-      // Note: actual video.js bundling would increase bundle size significantly
     });
 
     test('should handle empty operations list', async () => {

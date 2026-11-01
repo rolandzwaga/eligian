@@ -186,8 +186,8 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `@eligian/language@workspace:*` - Core compiler and LSP
 - `@eligian/shared-utils@workspace:*` - Error types
 - `vscode-languageclient@9.0.1`, `vscode-languageserver@9.0.1` - LSP implementation
-- `eligius@2.2.0` - Webview timeline engine (inherited from root)
-- `jquery@3.7.1`, `video.js@8.23.4`, `lottie-web@^5.13.0` - Webview UI dependencies
+- `eligius@4.0.0` - Webview timeline engine (inherited from root; plays media with a native `<video>`, no player library)
+- `jquery@4.0.0`, `lottie-web@5.13.0` - Webview UI dependencies
 
 **VS Code Integration**:
 - **Language ID**: `eligian`
@@ -1973,9 +1973,8 @@ yarn install  # Will cause dependency conflicts!
   "dependencies": {
     "vscode-languageclient": "9.0.1",  // LSP client
     "vscode-languageserver": "9.0.1",  // LSP server
-    "jquery": "3.7.1",                 // Webview UI
-    "video.js": "8.23.4",              // Video playback
-    "lottie-web": "^5.13.0"            // Animation playback
+    "jquery": "4.0.0",                 // Webview UI
+    "lottie-web": "5.13.0"             // Animation playback
   }
 }
 ```

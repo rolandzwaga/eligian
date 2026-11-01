@@ -57,7 +57,6 @@ import { scrollContainerProblem, scrollSelectorOf } from './scroll-check.js';
 (window as any).jQuery = $;
 
 import lottie from 'lottie-web';
-import 'video.js';
 
 // Make lottie available globally for Eligius operations
 (window as any).lottie = lottie;

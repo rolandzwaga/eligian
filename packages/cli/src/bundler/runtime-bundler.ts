@@ -184,7 +184,6 @@ export function generateEntryPoint(
   if (providers.includes('video')) {
     lines.push('// Video provider');
     lines.push("import { VideoTimelineProvider } from 'eligius';");
-    lines.push("import videojs from 'video.js';");
     lines.push('');
   }
 

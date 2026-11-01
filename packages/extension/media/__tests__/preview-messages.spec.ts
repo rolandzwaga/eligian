@@ -76,7 +76,6 @@ vi.mock('eligius', () => {
 });
 vi.mock('jquery', () => ({ default: () => {} }));
 vi.mock('lottie-web', () => ({ default: {} }));
-vi.mock('video.js', () => ({}));
 
 const templatePath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

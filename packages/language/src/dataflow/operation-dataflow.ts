@@ -10,7 +10,8 @@
  * - timeline actions, sequence/stagger items: empty (plus the call's arguments)
  * - event actions: `{ eventArgs }`
  * - startAction/endAction from another action: the caller's whole operationData
- * - DOMEventListenerController: `actionOperationData` + `eventTarget`, each
+ * - DOMEventListenerController, KeyboardController, `on <event> … run`:
+ *   `actionOperationData` + `eventTarget` + `eventKey`, each
  *   listed action's result merging into the next
  *
  * So a regular action may rely on its caller: `action highlight() [ addClass("on") ]`
@@ -94,11 +95,25 @@ export interface DataflowEnvironment {
   resolveAction(context: AstNode, name: string): ActionDefinition | undefined;
 }
 
-/** Name of the controller that starts actions listed by name. */
+/** Name of the controller that starts actions listed by name on a DOM event. */
 const DOM_EVENT_CONTROLLER = 'DOMEventListenerController';
 
-/** What a DOMEventListenerController gives the actions it starts, besides actionOperationData. */
-const DOM_EVENT_CONTROLLER_PROVIDES = ['eventTarget'];
+/**
+ * Controllers that start actions listed by name, with the same parameter
+ * positions (event or keys, actions, actionOperationData): the DOM event
+ * listener and (Eligius 3.1) the KeyboardController.
+ */
+const ACTION_CONTROLLERS: ReadonlySet<string> = new Set([
+  DOM_EVENT_CONTROLLER,
+  'KeyboardController',
+]);
+
+/**
+ * What these controllers give the actions they start, besides
+ * actionOperationData: the event target and (Eligius 3.1) `eventKey`, the
+ * KeyboardEvent.key (undefined for other DOM events).
+ */
+const DOM_EVENT_CONTROLLER_PROVIDES = ['eventTarget', 'eventKey'];
 
 interface WalkContext {
   /** Entry body: its starting state is known, so unmet dependencies are errors. */
@@ -386,7 +401,8 @@ export class OperationDataflow {
 
   /**
    * `addController("DOMEventListenerController", event, ["a", "end:b"], data?)`
-   * starts the listed actions with only `actionOperationData` + `eventTarget`,
+   * (or `addController("KeyboardController", keys, [...], data?)`) starts the
+   * listed actions with only `actionOperationData` + `eventTarget` + `eventKey`,
    * each one's result merging into the next. A non-literal list is an unknown
    * caller and is not checked.
    */
@@ -395,7 +411,7 @@ export class OperationDataflow {
     report: (d: DataflowDiagnostic) => void
   ): void {
     const [controller, , actions, data] = call.args;
-    if (!isStringLiteral(controller) || controller.value !== DOM_EVENT_CONTROLLER) return;
+    if (!isStringLiteral(controller) || !ACTION_CONTROLLERS.has(controller.value)) return;
     if (!isArrayLiteral(actions)) return;
 
     const state = new OperationDataTracker();
@@ -422,7 +438,7 @@ export class OperationDataflow {
         report({
           node: element,
           code: 'missing-action-dependency',
-          message: `Action '${name}' requires '${requirement.property}' (${usedBy(requirement)}), which ${DOM_EVENT_CONTROLLER} does not provide: it starts its actions with only eventTarget and actionOperationData${providerHint(requirement.property)}`,
+          message: `Action '${name}' requires '${requirement.property}' (${usedBy(requirement)}), which ${controller.value} does not provide: it starts its actions with only eventTarget, eventKey and actionOperationData${providerHint(requirement.property)}`,
         });
       }
       // This action's result is the next one's starting data
@@ -436,7 +452,7 @@ export class OperationDataflow {
 
   /**
    * `on <event> "<sel>" run action(args)` (idea #19): DOMEventListenerController
-   * starts the action with only eventTarget and its arguments.
+   * starts the action with only eventTarget, eventKey and its arguments.
    */
   private checkRunAction(call: OperationCall, report: (d: DataflowDiagnostic) => void): void {
     const action = this.calleeOf(call);
@@ -449,7 +465,7 @@ export class OperationDataflow {
       report({
         node: call,
         code: 'missing-action-dependency',
-        message: `Action '${action.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available when the event runs it: ${DOM_EVENT_CONTROLLER} starts it with only eventTarget and its arguments${providerHint(requirement.property)}`,
+        message: `Action '${action.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available when the event runs it: ${DOM_EVENT_CONTROLLER} starts it with only eventTarget, eventKey and its arguments${providerHint(requirement.property)}`,
       });
     }
   }

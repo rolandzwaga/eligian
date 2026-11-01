@@ -203,6 +203,16 @@ describe('operation-data dataflow (spec 047)', () => {
       `);
       expect(errors).toEqual([]);
     });
+
+    test('KeyboardController (Eligius 3.1) action lists are checked the same way', async () => {
+      const { errors } = await check(`
+        action onKey() [ addClass("on") ]
+        action wireKeys() [ selectElement("#b") addController("KeyboardController", "right", ["onKey"]) ]
+        ${timeline('at 0s..1s wireKeys()')}
+      `);
+      expect(errors.map(e => e.text)).toEqual(['"onKey"']);
+      expect(errors[0].message).toContain('KeyboardController does not provide');
+    });
   });
 
   describe('operations with dynamic outputs', () => {

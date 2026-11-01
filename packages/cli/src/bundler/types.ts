@@ -514,7 +514,7 @@ export interface HTMLGeneratorConfig {
  * Timeline provider types that may require additional bundling
  */
 export type TimelineProviderType =
-  | 'video' // Requires video.js
+  | 'video' // Native <video> element (VideoPositionSource; no player library since Eligius 4)
   | 'animationFrame' // Built-in
   | 'audio' // Built-in
   | 'lottie'; // Requires lottie-web
