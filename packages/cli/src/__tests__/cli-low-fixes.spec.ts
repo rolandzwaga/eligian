@@ -65,11 +65,6 @@ afterEach(async () => {
   await fsp.rm(tmpdir, { recursive: true, force: true }).catch(() => {});
 });
 
-/** Directories in the OS temp dir created by the bundler for esbuild */
-function bundleTempDirs(): string[] {
-  return fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('eligian-bundle-'));
-}
-
 interface MediaSources {
   mediaplayer: { positionSource: { sources: Array<{ src: string; type: string }> } };
 }
@@ -249,13 +244,17 @@ describe('#45 temp directory cleanup and error causes', () => {
   it('createBundle removes the eligian-bundle-* temp dir when runtime bundling fails', async () => {
     const input = path.join(tmpdir, 'a.eligian');
     await writeValid(input);
-    const before = new Set(bundleTempDirs());
-
-    // Make the runtime bundling step fail, after the temp dir has been created
+    // Make the runtime bundling step fail, after the temp dir has been created.
+    // The dir it was given is checked, not a count of eligian-bundle-* dirs:
+    // other test files bundle at the same time.
+    const tempDirs: string[] = [];
     vi.resetModules();
     vi.doMock('../bundler/runtime-bundler.js', async importOriginal => ({
       ...(await importOriginal<typeof import('../bundler/runtime-bundler.js')>()),
-      bundleRuntime: () => Effect.fail(new Error('simulated esbuild failure')),
+      bundleRuntime: (config: { tempDir: string }) => {
+        tempDirs.push(config.tempDir);
+        return Effect.fail(new Error('simulated esbuild failure'));
+      },
     }));
     const { createBundle: createFailingBundle } = await import('../bundler/index.js');
 
@@ -265,8 +264,9 @@ describe('#45 temp directory cleanup and error causes', () => {
     vi.doUnmock('../bundler/runtime-bundler.js');
 
     expect(Exit.isFailure(exit)).toBe(true);
-    const leaked = bundleTempDirs().filter(name => !before.has(name));
-    expect(leaked).toEqual([]);
+    expect(tempDirs).toHaveLength(1);
+    expect(path.basename(tempDirs[0])).toMatch(/^eligian-bundle-/);
+    expect(fs.existsSync(tempDirs[0])).toBe(false);
   });
 
   it('includes the underlying cause when the output directory cannot be created', async () => {

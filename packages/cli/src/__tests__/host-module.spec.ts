@@ -77,12 +77,12 @@ describe('host modules in the CLI', () => {
     expect(entry).toContain(
       `import * as host from ${JSON.stringify(host!.path.split(path.sep).join('/'))};`
     );
-    expect(entry).not.toContain("import { trackEvent } from 'eligius'");
-    expect(entry).not.toContain("import { Confetti } from 'eligius'");
-    expect(entry).toContain("import { selectElement } from 'eligius'");
-    expect(entry).toContain('"trackEvent": { "trackEvent": host.operations?.["trackEvent"] },');
-    expect(entry).toContain('"Confetti": { "Confetti": host.controllers?.["Confetti"] },');
-    expect(entry).toContain('"formatPrice": { "formatPrice": host.functions?.["formatPrice"] },');
+    expect(entry).not.toMatch(/import \{[^}]*\btrackEvent\b[^}]*\} from 'eligius/);
+    expect(entry).not.toMatch(/import \{[^}]*\bConfetti\b[^}]*\} from 'eligius/);
+    expect(entry).toContain("import { selectElement } from 'eligius/runtime';");
+    expect(entry).toContain('"trackEvent": host.operations?.["trackEvent"],');
+    expect(entry).toContain('"Confetti": host.controllers?.["Confetti"],');
+    expect(entry).toContain('"formatPrice": host.functions?.["formatPrice"],');
   });
 
   it('bundles the TypeScript host module', async () => {

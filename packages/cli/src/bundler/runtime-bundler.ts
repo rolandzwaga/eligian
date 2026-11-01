@@ -60,53 +60,60 @@ export function extractUsedOperations(config: IEngineConfiguration): string[] {
   return [...operations];
 }
 
-/**
- * Extract non-operation system entries the engine resolves at runtime.
- *
- * The engine's resource importer is asked for more than operations:
- * - timeline **position sources** / providers, named in `timelineProviderSettings`
- *   (e.g. `RafPositionSource` for `using raf`);
- * - **controllers**, named as the `systemName` in `getControllerInstance` operation
- *   data (e.g. `DOMEventListenerController`, which `navigate`/`addController` emit).
- *
- * Each is a named `eligius` export keyed by its systemName, so the bundle must
- * import it and register it in the importer map — otherwise the engine throws
- * `Unknown systemName: …` at init/runtime. (These were previously omitted, so any
- * bundle using a provider or controller rendered blank / crashed.)
- */
-export function extractUsedSystemEntries(config: IEngineConfiguration): string[] {
-  const entries = new Set<string>();
+/** The classes the engine resolves by name besides operations. */
+export interface UsedSystemEntries {
+  /** Position sources, container providers and playlists */
+  readonly providers: readonly string[];
+  /** Controllers named by getControllerInstance */
+  readonly controllers: readonly string[];
+}
 
-  // Timeline provider position sources / container providers / playlists.
+/**
+ * Extract the non-operation system entries the engine resolves at runtime.
+ *
+ * - **Providers**: the position source, container provider and playlist of
+ *   each `timelineProviderSettings` entry (e.g. `RafPositionSource` for
+ *   `using raf`), and a timeline's own `positionSource` / `containerProvider`
+ *   override (`ScrollPositionSource` for `using scroll`).
+ * - **Controllers**: the `systemName` in `getControllerInstance` operation data
+ *   (e.g. `DOMEventListenerController`, which interactions and `addController`
+ *   emit).
+ *
+ * They stay apart because `createImporter` checks each map's shape (a
+ * position source is not a controller).
+ */
+export function extractUsedSystemEntries(config: IEngineConfiguration): UsedSystemEntries {
+  const providers = new Set<string>();
+  const controllers = new Set<string>();
+  const addProvider = (entry: unknown) => {
+    const systemName = (entry as { systemName?: unknown } | undefined)?.systemName;
+    if (typeof systemName === 'string' && systemName) providers.add(systemName);
+  };
+
   const settings = config.timelineProviderSettings as
-    | Record<string, Record<string, { systemName?: string } | undefined>>
+    | Record<string, Record<string, unknown> | undefined>
     | undefined;
-  if (settings) {
-    for (const setting of Object.values(settings)) {
-      if (!setting) continue;
-      for (const key of ['positionSource', 'containerProvider', 'playlist']) {
-        const systemName = setting[key]?.systemName;
-        if (systemName) entries.add(systemName);
-      }
+  for (const setting of Object.values(settings ?? {})) {
+    for (const key of ['positionSource', 'container', 'playlist']) {
+      addProvider(setting?.[key]);
     }
   }
+  for (const timeline of config.timelines ?? []) {
+    const overrides = timeline as { positionSource?: unknown; containerProvider?: unknown };
+    addProvider(overrides.positionSource);
+    addProvider(overrides.containerProvider);
+  }
 
-  // Controllers, referenced by getControllerInstance(operationData.systemName).
   function walkControllers(
     ops: Array<{ systemName?: string; operationData?: { systemName?: string } }> | undefined
   ) {
-    if (!ops) return;
-    for (const op of ops) {
+    for (const op of ops ?? []) {
       if (op.systemName === 'getControllerInstance' && op.operationData?.systemName) {
-        entries.add(op.operationData.systemName);
+        controllers.add(op.operationData.systemName);
       }
     }
   }
-  for (const action of config.initActions ?? []) {
-    walkControllers(action.startOperations);
-    walkControllers(action.endOperations);
-  }
-  for (const action of config.actions ?? []) {
+  for (const action of [...(config.initActions ?? []), ...(config.actions ?? [])]) {
     walkControllers(action.startOperations);
     walkControllers(action.endOperations);
   }
@@ -120,15 +127,22 @@ export function extractUsedSystemEntries(config: IEngineConfiguration): string[]
     }
   }
 
-  return [...entries];
+  return { providers: [...providers], controllers: [...controllers] };
 }
+
+/** `{ a, b }`, or `{}` for none: shorthand entries of a generated object literal. */
+const shorthand = (names: readonly string[]) =>
+  names.length === 0 ? '{}' : `{ ${names.join(', ')} }`;
 
 /**
  * Generate the entry point JavaScript content
  *
  * Creates a self-contained entry point that:
- * - Imports required operations statically
- * - Imports the position sources and controllers the engine resolves by name
+ * - Imports the operations, position sources and controllers the configuration
+ *   names from `eligius/runtime` (without the fluent API and
+ *   `EligiusResourceImporter`, which reference every operation and controller,
+ *   so the bundle keeps only what is used)
+ * - Registers them, and the host module's exports, with `createImporter`
  * - Embeds the configuration
  * - Sets up initialization on DOMContentLoaded
  */
@@ -138,8 +152,13 @@ export function generateEntryPoint(
   host?: HostModule
 ): string {
   // Idea #24: host operations and controllers come from the extensions module, not eligius
-  const hostNames = new Set([...(host?.operations ?? []), ...(host?.controllers ?? [])]);
-  const operations = allOperations.filter(op => !hostNames.has(op));
+  const hostOperations = host?.operations ?? [];
+  const hostControllers = host?.controllers ?? [];
+  const hostFunctions = host?.functions ?? [];
+  const operations = allOperations.filter(op => !hostOperations.includes(op));
+  const used = extractUsedSystemEntries(config);
+  const controllers = used.controllers.filter(name => !hostControllers.includes(name));
+  const providers = used.providers;
   const lines: string[] = [];
 
   // Header comment
@@ -147,29 +166,18 @@ export function generateEntryPoint(
   lines.push('');
 
   // Core Eligius imports
-  lines.push("import { EngineFactory, EligiusEngine } from 'eligius';");
+  lines.push("import { createImporter, EngineFactory } from 'eligius/runtime';");
   lines.push("import $ from 'jquery';");
   lines.push('');
 
-  // Operation imports
-  if (operations.length > 0) {
-    lines.push('// Operation imports');
-    for (const op of operations) {
-      lines.push(`import { ${op} } from 'eligius';`);
-    }
-    lines.push('');
-  }
-
-  // System entries (timeline position sources, controllers) — resolved by the
-  // engine via the importer map, so they must be imported and registered too.
-  const systemEntries = extractUsedSystemEntries(config).filter(
-    e => !operations.includes(e) && !hostNames.has(e)
-  );
-  if (systemEntries.length > 0) {
-    lines.push('// System entries (position sources, controllers)');
-    for (const entry of systemEntries) {
-      lines.push(`import { ${entry} } from 'eligius';`);
-    }
+  for (const [comment, names] of [
+    ['// Operations', operations],
+    ['// Position sources, container providers, playlists', providers],
+    ['// Controllers', controllers],
+  ] as const) {
+    if (names.length === 0) continue;
+    lines.push(comment);
+    lines.push(`import { ${names.join(', ')} } from 'eligius/runtime';`);
     lines.push('');
   }
 
@@ -185,40 +193,32 @@ export function generateEntryPoint(
   lines.push(`const CONFIG = ${JSON.stringify(config, null, 2)};`);
   lines.push('');
 
-  // Build imports map for resource importer
-  lines.push('// Resource imports map');
-  lines.push('const imports = {');
-  for (const op of operations) {
-    lines.push(`  ${op}: { ${op} },`);
+  // The importer: exactly the resources the configuration names. A declared
+  // host name the module does not export fails here, at init, with
+  // createImporter's message (`resources.operations.<name> must be a function`).
+  const hostEntries = (kind: string, names: readonly string[]) =>
+    names.map(name => `    ${JSON.stringify(name)}: host.${kind}?.[${JSON.stringify(name)}],`);
+  const map = (kind: string, builtIn: readonly string[], hostNames: readonly string[]) => {
+    if (hostNames.length === 0) return [`  ${kind}: ${shorthand(builtIn)},`];
+    return [
+      `  ${kind}: {`,
+      ...(builtIn.length > 0 ? [`    ${builtIn.join(', ')},`] : []),
+      ...hostEntries(kind, hostNames),
+      '  },',
+    ];
+  };
+  lines.push('// Resource importer');
+  lines.push('function createBundleImporter() {');
+  lines.push('  return createImporter({');
+  for (const line of [
+    ...map('operations', operations, hostOperations),
+    ...map('controllers', controllers, hostControllers),
+    `  providers: ${shorthand(providers)},`,
+    ...map('functions', [], hostFunctions),
+  ]) {
+    lines.push(`  ${line}`);
   }
-  lines.push('  EligiusEngine: { EligiusEngine },');
-  for (const entry of systemEntries) {
-    lines.push(`  ${entry}: { ${entry} },`);
-  }
-  for (const [kind, names] of [
-    ['operations', host?.operations ?? []],
-    ['controllers', host?.controllers ?? []],
-    ['functions', host?.functions ?? []],
-  ] as const) {
-    for (const name of names) {
-      lines.push(
-        `  ${JSON.stringify(name)}: { ${JSON.stringify(name)}: host.${kind}?.[${JSON.stringify(name)}] },`
-      );
-    }
-  }
-  lines.push('};');
-  lines.push('');
-
-  // BundledResourceImporter class
-  lines.push('// Bundled resource importer');
-  lines.push('class BundledResourceImporter {');
-  lines.push('  import(name) {');
-  lines.push('    if (imports.hasOwnProperty(name)) {');
-  lines.push('      return imports[name];');
-  lines.push('    }');
-  // biome-ignore lint/suspicious/noTemplateCurlyInString: This is generated code that should contain the template literal
-  lines.push('    throw new Error(`Unknown systemName: ${name}`);');
-  lines.push('  }');
+  lines.push('  });');
   lines.push('}');
   lines.push('');
 
@@ -230,11 +230,15 @@ export function generateEntryPoint(
   // first timeline's view setup) never fire — the page would render blank.
   // engine.start() activates the provider, which emits position 0 immediately and
   // begins ticking. Returns the engine so callers can drive it (pause/seek/etc.).
+  // The importer is created here, so its errors reject `ready` instead of
+  // stopping the module before window.EligiusBundled exists.
   lines.push('// Initialization');
   lines.push('function init(containerOrSelector) {');
-  lines.push('  const factory = new EngineFactory(new BundledResourceImporter(), window);');
-  lines.push('  const { engine } = factory.createEngine(CONFIG);');
-  lines.push('  return engine.init().then(() => engine.start()).then(() => engine);');
+  lines.push('  return Promise.resolve().then(() => {');
+  lines.push('    const factory = new EngineFactory(createBundleImporter(), window);');
+  lines.push('    const { engine } = factory.createEngine(CONFIG);');
+  lines.push('    return engine.init().then(() => engine.start()).then(() => engine);');
+  lines.push('  });');
   lines.push('}');
   lines.push('');
 
@@ -265,7 +269,7 @@ export function generateEntryPoint(
  * Creates a browser-compatible JavaScript bundle containing:
  * - Eligius runtime
  * - Required operations
- * - Position sources and controllers (system entries)
+ * - Position sources, container providers, playlists and controllers
  * - Embedded configuration
  * - Auto-initialization code
  */

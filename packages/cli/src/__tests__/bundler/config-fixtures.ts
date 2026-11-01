@@ -88,14 +88,16 @@ export function buildConfig(input: LooseConfigInput): IEngineConfiguration {
       : {}),
     initActions: input.initActions.map(toAction),
     actions: input.actions.map(toAction),
-    timelines: input.timelines.map(timeline => ({
+    timelines: input.timelines.map(({ uri, timelineActions, ...other }) => ({
       id: nextId('timeline'),
-      uri: timeline.uri,
       type: 'animation' as const,
       duration: 0,
       loop: false,
       selector: '',
-      timelineActions: timeline.timelineActions.map(action => ({
+      // The other fields as given (type, selector, positionSource, ...)
+      ...other,
+      uri,
+      timelineActions: timelineActions.map(action => ({
         ...toAction({ name: '', ...action }),
         duration: { start: action.startTime ?? 0, end: action.endTime },
       })),

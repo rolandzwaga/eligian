@@ -186,7 +186,7 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `@eligian/language@workspace:*` - Core compiler and LSP
 - `@eligian/shared-utils@workspace:*` - Error types
 - `vscode-languageclient@9.0.1`, `vscode-languageserver@9.0.1` - LSP implementation
-- `eligius@4.0.0` - Webview timeline engine (inherited from root; plays media with a native `<video>`, no player library)
+- `eligius@4.1.0` - Webview timeline engine (inherited from root; plays media with a native `<video>`, no player library). Bundles import from its `eligius/runtime` entry and register exactly the used operations, controllers and providers with `createImporter`
 - `jquery@4.0.0`, `lottie-web@5.13.0` - Webview UI dependencies
 
 **VS Code Integration**:

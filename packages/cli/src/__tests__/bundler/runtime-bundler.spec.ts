@@ -272,25 +272,64 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
   });
 
   describe('extractUsedSystemEntries', () => {
-    test('should collect the timeline position source', () => {
+    test('should collect the timeline position source as a provider', () => {
       const config = createConfigWithSystemEntries();
       const entries = extractUsedSystemEntries(config);
 
-      expect(entries).toContain('RafPositionSource');
+      expect(entries.providers).toEqual(['RafPositionSource']);
     });
 
     test('should collect controllers referenced via getControllerInstance', () => {
       const config = createConfigWithSystemEntries();
       const entries = extractUsedSystemEntries(config);
 
-      expect(entries).toContain('DOMEventListenerController');
+      expect(entries.controllers).toEqual(['DOMEventListenerController']);
     });
 
-    test('should return empty array when there are no providers or controllers', () => {
+    test("a timeline's own positionSource / containerProvider and the settings' container and playlist are providers", () => {
+      const config = buildConfig({
+        containerSelector: '#app',
+        timelineProviderSettings: {
+          animation: {
+            positionSource: { systemName: 'RafPositionSource' },
+            container: { systemName: 'DomContainerProvider' },
+            playlist: { systemName: 'SimplePlaylist' },
+          },
+        },
+        initActions: [],
+        actions: [],
+        timelines: [
+          {
+            id: 't1',
+            uri: 'story',
+            type: 'animation',
+            duration: 10,
+            loop: false,
+            selector: '#stage',
+            positionSource: { systemName: 'ScrollPositionSource', selector: '#scroller' },
+            containerProvider: { systemName: 'MyContainer' },
+            timelineActions: [],
+          },
+        ],
+      });
+
+      expect(extractUsedSystemEntries(config)).toEqual({
+        providers: [
+          'RafPositionSource',
+          'DomContainerProvider',
+          'SimplePlaylist',
+          'ScrollPositionSource',
+          'MyContainer',
+        ],
+        controllers: [],
+      });
+    });
+
+    test('should return no entries when there are no providers or controllers', () => {
       const config = createMinimalConfig();
       const entries = extractUsedSystemEntries(config);
 
-      expect(entries).toEqual([]);
+      expect(entries).toEqual({ providers: [], controllers: [] });
     });
   });
 
@@ -320,31 +359,38 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const config = createConfigWithSystemEntries();
       const entryPoint = generateEntryPoint(config, ['selectElement']);
 
-      // imported from eligius...
-      expect(entryPoint).toContain("import { RafPositionSource } from 'eligius';");
-      expect(entryPoint).toContain("import { DOMEventListenerController } from 'eligius';");
-      // ...and registered in the resource-importer map.
-      expect(entryPoint).toContain('RafPositionSource: { RafPositionSource }');
-      expect(entryPoint).toContain('DOMEventListenerController: { DOMEventListenerController }');
+      // imported from eligius/runtime...
+      expect(entryPoint).toContain("import { RafPositionSource } from 'eligius/runtime';");
+      expect(entryPoint).toContain("import { DOMEventListenerController } from 'eligius/runtime';");
+      // ...and registered with createImporter, each in its own map
+      expect(entryPoint).toContain('providers: { RafPositionSource },');
+      expect(entryPoint).toContain('controllers: { DOMEventListenerController },');
     });
 
     test('a media timeline imports its VideoPositionSource, and no player library', () => {
       const entryPoint = generateEntryPoint(createMediaConfig(), ['selectElement']);
 
-      expect(entryPoint).toContain("import { VideoPositionSource } from 'eligius';");
-      expect(entryPoint).toContain('VideoPositionSource: { VideoPositionSource }');
+      expect(entryPoint).toContain("import { VideoPositionSource } from 'eligius/runtime';");
+      expect(entryPoint).toContain('providers: { VideoPositionSource },');
       expect(entryPoint).not.toContain('video.js');
       expect(entryPoint).not.toContain('TimelineProvider');
     });
 
-    test('should generate BundledResourceImporter class', () => {
+    test('registers the operations with createImporter from eligius/runtime', () => {
       const config = createMinimalConfig();
       const operations = ['selectElement', 'addClass'];
 
       const entryPoint = generateEntryPoint(config, operations);
 
-      expect(entryPoint).toContain('BundledResourceImporter');
-      expect(entryPoint).toContain('import(name)');
+      expect(entryPoint).toContain(
+        "import { createImporter, EngineFactory } from 'eligius/runtime';"
+      );
+      expect(entryPoint).toContain("import { selectElement, addClass } from 'eligius/runtime';");
+      expect(entryPoint).toContain('operations: { selectElement, addClass },');
+      // Nothing from the main entry: it keeps every operation and controller alive
+      expect(entryPoint).not.toMatch(/from 'eligius';/);
+      // createImporter supplies the engine (engines defaults to { EligiusEngine })
+      expect(entryPoint).not.toMatch(/import \{[^}]*EligiusEngine/);
     });
 
     test('should include DOMContentLoaded auto-init', () => {
