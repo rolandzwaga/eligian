@@ -27,6 +27,7 @@ import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
 import { HTMLRegistryService } from './html/html-registry.js';
 import { EligianCodeLensProvider } from './lsp/eligian-code-lens-provider.js';
+import { EligianDocumentSymbolProvider } from './lsp/eligian-document-symbol-provider.js';
 import { EligianInlayHintProvider } from './lsp/eligian-inlay-hint-provider.js';
 import { EligianSignatureHelpProvider } from './lsp/eligian-signature-help-provider.js';
 import {
@@ -54,6 +55,7 @@ export type EligianAddedServices = {
     SignatureHelp: EligianSignatureHelpProvider;
     InlayHintProvider: EligianInlayHintProvider;
     CodeLensProvider: EligianCodeLensProvider;
+    DocumentSymbolProvider: EligianDocumentSymbolProvider;
     DefinitionProvider: EligianDefinitionProvider;
     ReferencesProvider: EligianReferencesProvider;
     RenameProvider: EligianRenameProvider;
@@ -99,6 +101,8 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       SignatureHelp: services => new EligianSignatureHelpProvider(services),
       InlayHintProvider: services => new EligianInlayHintProvider(services),
       CodeLensProvider: services => new EligianCodeLensProvider(services),
+      // Idea #20: timeline events in the Outline, breadcrumbs and Go to Symbol
+      DocumentSymbolProvider: () => new EligianDocumentSymbolProvider(),
       // Idea #16: timeline names (navigate targets) as symbols
       DefinitionProvider: services => new EligianDefinitionProvider(services),
       ReferencesProvider: services => new EligianReferencesProvider(services),
