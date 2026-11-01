@@ -184,6 +184,8 @@ eligian fmt --write src               # rewrite them
 
 - `--check` (the default) exits with 1 when a file is not formatted, so it can
   run in CI; `--write` rewrites the files. Patterns work as for `eligian check`.
+- `--format github` also prints a GitHub Actions annotation per unformatted file,
+  at its first changed line.
 - Files with syntax errors are reported and left alone (exit code 2).
 - The rules: one statement per line, 2-space indentation inside multi-line
   `[ ]` / `{ }` blocks (one-line blocks stay on one line), `] [` between start
@@ -196,7 +198,7 @@ eligian fmt --write src               # rewrite them
 ```
 Usage: eligian [compile] [options] <input>
        eligian check [options] <patterns...>
-       eligian fmt [--check | --write] <patterns...>
+       eligian fmt [--check | --write] [--format text|github] <patterns...>
        eligian dev [--port <n>] [--open] <input>
        eligian smoke [--strict] [--format pretty|github|json] <patterns...>
        eligian init [dir] [--template blank|chapters|video|library] [--title <title>] [--force]

@@ -78,6 +78,11 @@ jobs:
       - name: Check examples (eligian check)
         run: pnpm run check:examples --format github
 
+      # Every example must be formatted (eligian fmt, the editor's Format
+      # Document rules); unformatted files show as pull-request annotations
+      - name: Format examples (eligian fmt --check)
+        run: pnpm run fmt:examples --format github
+
       # Every example's timelines must play on the real engine (jsdom) without
       # runtime failures; they show as pull-request annotations
       - name: Play examples (eligian smoke)

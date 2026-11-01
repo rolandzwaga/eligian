@@ -27,7 +27,7 @@ import {
   ParseError,
 } from './compile-file.js';
 import { startDevServer } from './dev/dev-server.js';
-import { runFmt } from './fmt.js';
+import { FMT_FORMATS, runFmt } from './fmt.js';
 import { runInit } from './init.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
 import { parseSmokeFormat, runSmoke, SMOKE_FORMATS } from './smoke/smoke-command.js';
@@ -447,14 +447,22 @@ export default function main(): void {
       false
     )
     .option('--write', 'rewrite the files that are not formatted', false)
+    .option('--format <format>', `output format: ${FMT_FORMATS.join(', ')}`, 'text')
     .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
       if (cmdOptions.check === true && cmdOptions.write === true) {
         console.error('Error: --check and --write cannot be combined');
         process.exit(2);
       }
+      if (!(FMT_FORMATS as readonly string[]).includes(String(cmdOptions.format))) {
+        console.error(
+          `Error: --format must be one of ${FMT_FORMATS.join(', ')} (got "${cmdOptions.format}")`
+        );
+        process.exit(2);
+      }
       const outcome = await runFmt(patterns, {
         write: cmdOptions.write === true,
         cwd: process.cwd(),
+        github: cmdOptions.format === 'github',
       });
       if (outcome.output) console.log(outcome.output);
       process.exit(outcome.exitCode);

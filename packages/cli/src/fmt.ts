@@ -6,16 +6,21 @@
  *   diff of the lines that would change; exit code 1 when there are any.
  * - `--write`: rewrites those files.
  * Files with syntax errors are reported and left alone (exit code 2).
+ * - `--format github`: each problem is also a GitHub Actions annotation.
  */
 import * as fs from 'node:fs/promises';
 import { formatSource } from '@eligian/language';
 import { expandPatterns } from './check/check-command.js';
-import { displayPath } from './check/reporters.js';
+import { displayPath, escapeData, escapeProperty } from './check/reporters.js';
 
 export interface FmtOptions {
   readonly write: boolean;
   readonly cwd: string;
+  /** Also print GitHub Actions annotations (`--format github`) */
+  readonly github?: boolean;
 }
+
+export const FMT_FORMATS = ['text', 'github'] as const;
 
 export interface FmtOutcome {
   readonly output: string;
@@ -69,6 +74,18 @@ export function lineDiff(before: string, after: string): string {
   return out.join('\n');
 }
 
+/** The first line (1-based) where `before` and `after` differ. */
+export function firstDifference(before: string, after: string): number {
+  const a = before.split(/\r?\n/);
+  const b = after.split(/\r?\n/);
+  let line = 0;
+  while (line < a.length && line < b.length && a[line] === b[line]) line++;
+  return line + 1;
+}
+
+const annotation = (file: string, line: number, title: string, message: string) =>
+  `::error file=${escapeProperty(file)},line=${line},title=${escapeProperty(title)}::${escapeData(message)}`;
+
 export async function runFmt(
   patterns: readonly string[],
   options: FmtOptions
@@ -86,6 +103,9 @@ export async function runFmt(
     const result = await formatSource(source);
     if (result.errors.length > 0) {
       failed++;
+      if (options.github) {
+        out.push(annotation(name, 1, 'Syntax error', `Not formatted: ${result.errors[0]}`));
+      }
       out.push(`${name}: not formatted, it has syntax errors (${result.errors[0]})`);
       continue;
     }
@@ -95,6 +115,16 @@ export async function runFmt(
       await fs.writeFile(file, result.text, 'utf-8');
       out.push(`Formatted ${name}`);
     } else {
+      if (options.github) {
+        out.push(
+          annotation(
+            name,
+            firstDifference(source, result.text),
+            'Not formatted',
+            `Run 'eligian fmt --write ${name}'`
+          )
+        );
+      }
       out.push(name, lineDiff(source, result.text), '');
     }
   }

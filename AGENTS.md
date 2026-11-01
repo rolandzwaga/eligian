@@ -42,7 +42,7 @@ Research/reference (read-only, do NOT import):
 - `eligian dev <entry> [--port] [--open]`: the bundle in the browser, rebuilt on change in a temp dir (`packages/cli/src/dev/`: node:http + SSE; CSS swapped in place, otherwise reload resuming the timeline / position via `window.EligiusBundled.ready`, build errors as an overlay)
 - `pnpm run smoke:examples` (`eligian smoke`: plays every timeline in jsdom on the real engine, runtime failures at their source; `packages/cli/src/smoke/`. CI runs it with `--format github`)
 - `eligian init [dir] --template blank|chapters|video|library` writes a starter project; the starters live in `packages/language/src/starters/starters.ts` (shared with the extension's *Eligian: New Presentation…*) and `packages/cli/src/__tests__/init.spec.ts` checks every one clean
-- `pnpm run fmt:examples` (`eligian fmt --check` on every example; `eligian fmt --write <patterns>` formats). Formatter rules: `packages/language/src/lsp/format-rules.ts` (whitespace only; spec 054)
+- `pnpm run fmt:examples` (`eligian fmt --check` on every example; `eligian fmt --write <patterns>` formats; CI runs it with `--format github`). Formatter rules: `packages/language/src/lsp/format-rules.ts` (whitespace only; spec 054)
 - `pnpm effect:check` (Effect LSP diagnostics; also `:language` / `:cli`) — see Effect LSP above
 
 ### Task completion checklist

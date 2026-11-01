@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { lineDiff, runFmt } from '../fmt.js';
+import { firstDifference, lineDiff, runFmt } from '../fmt.js';
 
 const CLI_PATH = path.join(__dirname, '../../bin/cli.js');
 const MESSY = 'action a(sel) [\nselectElement( sel )\n]\n';
@@ -63,6 +63,40 @@ describe('eligian fmt (audit idea #15)', () => {
       encoding: 'utf-8',
     });
     expect(both.status).toBe(2);
+  });
+
+  it('--format github: an annotation per unformatted file, at its first changed line', async () => {
+    fs.writeFileSync(path.join(dir, 'broken.eligian'), 'action a( [');
+    const outcome = await runFmt(['.'], { write: false, cwd: dir, github: true });
+    expect(outcome.output).toContain(
+      "::error file=messy.eligian,line=2,title=Not formatted::Run 'eligian fmt --write messy.eligian'"
+    );
+    expect(outcome.output).toMatch(
+      /^::error file=broken\.eligian,line=1,title=Syntax error::Not formatted: /m
+    );
+    // The diff is still printed for the log
+    expect(outcome.output).toContain('+   selectElement(sel)');
+    const plain = await runFmt(['.'], { write: false, cwd: dir });
+    expect(plain.output).not.toContain('::error');
+  });
+
+  it('--format must be text or github', () => {
+    const run = spawnSync('node', [CLI_PATH, 'fmt', dir, '--format', 'json'], {
+      encoding: 'utf-8',
+    });
+    expect(run.status).toBe(2);
+    expect(run.stderr).toContain('--format must be one of text, github');
+    const github = spawnSync('node', [CLI_PATH, 'fmt', '.', '--format', 'github'], {
+      encoding: 'utf-8',
+      cwd: dir,
+    });
+    expect(github.status).toBe(1);
+    expect(github.stdout).toContain('::error file=messy.eligian,line=2');
+  });
+
+  it('firstDifference is the first changed line (1-based)', () => {
+    expect(firstDifference('a\nb\nc', 'a\nB\nc')).toBe(2);
+    expect(firstDifference('a\r\nb', 'a\nb\nc')).toBe(3);
   });
 
   it('lineDiff shows changed lines with one line of context', () => {
