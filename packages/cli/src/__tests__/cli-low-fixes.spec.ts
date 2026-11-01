@@ -235,7 +235,6 @@ describe('#45 temp directory cleanup and error causes', () => {
       bundleRuntime({
         eligiusConfig: { containerSelector: '#app' } as unknown as IEngineConfiguration,
         usedOperations: [],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,

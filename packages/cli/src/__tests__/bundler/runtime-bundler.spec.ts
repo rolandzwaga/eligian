@@ -18,11 +18,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   bundleRuntime,
   extractUsedOperations,
-  extractUsedProviders,
   extractUsedSystemEntries,
   generateEntryPoint,
 } from '../../bundler/runtime-bundler.js';
-import type { RuntimeBundleConfig, TimelineProviderType } from '../../bundler/types.js';
+import type { RuntimeBundleConfig } from '../../bundler/types.js';
 import { buildConfig } from './config-fixtures.js';
 
 /**
@@ -149,41 +148,33 @@ function createConfigWithOperations() {
 }
 
 /**
- * Configuration with video provider settings
+ * A media timeline as Eligian compiles it (`using video from "..."`): the
+ * mediaplayer type with a VideoPositionSource, the timeline's own selector and
+ * sources.
  */
-function createVideoProviderConfig() {
+function createMediaConfig() {
   return buildConfig({
-    containerSelector: '#video-player',
+    containerSelector: '#app',
     timelineProviderSettings: {
-      video: {
-        selector: '#video-element',
-      },
+      mediaplayer: { positionSource: { systemName: 'VideoPositionSource', selector: '' } },
     },
     initActions: [],
     actions: [],
     timelines: [
       {
-        uri: 'main',
+        id: 'media-timeline',
+        uri: 'intro.mp4',
+        type: 'mediaplayer',
+        duration: 0,
+        loop: false,
+        selector: '#stage',
+        positionSource: {
+          selector: '#stage',
+          sources: [{ src: 'intro.mp4', type: 'video/mp4' }],
+        },
         timelineActions: [],
       },
     ],
-  });
-}
-
-/**
- * Configuration with lottie provider settings
- */
-function createLottieProviderConfig() {
-  return buildConfig({
-    containerSelector: '#lottie-container',
-    timelineProviderSettings: {
-      lottie: {
-        path: './animation.json',
-      },
-    },
-    initActions: [],
-    actions: [],
-    timelines: [],
   });
 }
 
@@ -280,46 +271,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     });
   });
 
-  describe('extractUsedProviders', () => {
-    test('should detect video provider', () => {
-      const config = createVideoProviderConfig();
-      const providers = extractUsedProviders(config);
-
-      expect(providers).toContain('video');
-    });
-
-    test('should detect lottie provider', () => {
-      const config = createLottieProviderConfig();
-      const providers = extractUsedProviders(config);
-
-      expect(providers).toContain('lottie');
-    });
-
-    test('should return empty array when no provider settings', () => {
-      const config = createMinimalConfig();
-      const providers = extractUsedProviders(config);
-
-      expect(providers).toEqual([]);
-    });
-
-    test('should detect multiple providers', () => {
-      const config = buildConfig({
-        containerSelector: '#app',
-        timelineProviderSettings: {
-          video: { selector: '#video' },
-          lottie: { path: './anim.json' },
-        },
-        initActions: [],
-        actions: [],
-        timelines: [],
-      });
-      const providers = extractUsedProviders(config);
-
-      expect(providers).toContain('video');
-      expect(providers).toContain('lottie');
-    });
-  });
-
   describe('extractUsedSystemEntries', () => {
     test('should collect the timeline position source', () => {
       const config = createConfigWithSystemEntries();
@@ -347,9 +298,8 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     test('should generate valid JavaScript entry point', () => {
       const config = createMinimalConfig();
       const operations = ['selectElement'];
-      const providers: TimelineProviderType[] = [];
 
-      const entryPoint = generateEntryPoint(config, operations, providers);
+      const entryPoint = generateEntryPoint(config, operations);
 
       expect(entryPoint).toContain('import');
       expect(entryPoint).toContain('eligius');
@@ -361,14 +311,14 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     test('should start playback (init + start), not init alone', () => {
       // A standalone bundle must start the engine or it renders blank.
       const config = createMinimalConfig();
-      const entryPoint = generateEntryPoint(config, ['selectElement'], []);
+      const entryPoint = generateEntryPoint(config, ['selectElement']);
 
       expect(entryPoint).toContain('engine.start()');
     });
 
     test('should import and register position sources and controllers', () => {
       const config = createConfigWithSystemEntries();
-      const entryPoint = generateEntryPoint(config, ['selectElement'], []);
+      const entryPoint = generateEntryPoint(config, ['selectElement']);
 
       // imported from eligius...
       expect(entryPoint).toContain("import { RafPositionSource } from 'eligius';");
@@ -378,34 +328,20 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       expect(entryPoint).toContain('DOMEventListenerController: { DOMEventListenerController }');
     });
 
-    test('a video provider needs no player library (Eligius 4: native <video>)', () => {
-      const config = createVideoProviderConfig();
-      const operations = ['selectElement'];
-      const providers: TimelineProviderType[] = ['video'];
+    test('a media timeline imports its VideoPositionSource, and no player library', () => {
+      const entryPoint = generateEntryPoint(createMediaConfig(), ['selectElement']);
 
-      const entryPoint = generateEntryPoint(config, operations, providers);
-
-      expect(entryPoint).toContain('VideoTimelineProvider');
+      expect(entryPoint).toContain("import { VideoPositionSource } from 'eligius';");
+      expect(entryPoint).toContain('VideoPositionSource: { VideoPositionSource }');
       expect(entryPoint).not.toContain('video.js');
-    });
-
-    test('should include lottie-web import for lottie provider', () => {
-      const config = createLottieProviderConfig();
-      const operations: string[] = [];
-      const providers: TimelineProviderType[] = ['lottie'];
-
-      const entryPoint = generateEntryPoint(config, operations, providers);
-
-      expect(entryPoint).toContain('LottieTimelineProvider');
-      expect(entryPoint).toContain('lottie-web');
+      expect(entryPoint).not.toContain('TimelineProvider');
     });
 
     test('should generate BundledResourceImporter class', () => {
       const config = createMinimalConfig();
       const operations = ['selectElement', 'addClass'];
-      const providers: TimelineProviderType[] = [];
 
-      const entryPoint = generateEntryPoint(config, operations, providers);
+      const entryPoint = generateEntryPoint(config, operations);
 
       expect(entryPoint).toContain('BundledResourceImporter');
       expect(entryPoint).toContain('import(name)');
@@ -414,9 +350,8 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     test('should include DOMContentLoaded auto-init', () => {
       const config = createMinimalConfig();
       const operations = ['selectElement'];
-      const providers: TimelineProviderType[] = [];
 
-      const entryPoint = generateEntryPoint(config, operations, providers);
+      const entryPoint = generateEntryPoint(config, operations);
 
       expect(entryPoint).toContain('DOMContentLoaded');
       expect(entryPoint).toContain('init');
@@ -425,9 +360,8 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
     test('should export EligiusBundled to window', () => {
       const config = createMinimalConfig();
       const operations: string[] = [];
-      const providers: TimelineProviderType[] = [];
 
-      const entryPoint = generateEntryPoint(config, operations, providers);
+      const entryPoint = generateEntryPoint(config, operations);
 
       expect(entryPoint).toContain('window.EligiusBundled');
     });
@@ -443,7 +377,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: createMinimalConfig(),
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -462,7 +395,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: createMinimalConfig(),
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -484,7 +416,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const unminifiedConfig: RuntimeBundleConfig = {
         eligiusConfig: config,
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -494,7 +425,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const minifiedConfig: RuntimeBundleConfig = {
         eligiusConfig: config,
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: true,
         sourcemap: false,
         tempDir: tmpdir,
@@ -512,7 +442,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: createMinimalConfig(),
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: true,
         tempDir: tmpdir,
@@ -529,7 +458,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: createMinimalConfig(),
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -547,7 +475,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: config,
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -564,7 +491,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: createConfigWithOperations(),
         usedOperations: ['selectElement', 'addClass', 'animate', 'requestAction', 'startAction'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -577,13 +503,10 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       expect(typeof result).toBe('string');
     });
 
-    // Skip: VideoTimelineProvider is not currently exported from eligius package
-    // This test will be enabled once eligius exports timeline providers
-    test.skip('should handle video provider inclusion', async () => {
+    test('bundles a media timeline with the native video position source', async () => {
       const bundleConfig: RuntimeBundleConfig = {
-        eligiusConfig: createVideoProviderConfig(),
+        eligiusConfig: createMediaConfig(),
         usedOperations: [],
-        usedProviders: ['video'],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -604,7 +527,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
           timelines: [],
         }),
         usedOperations: [],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,
@@ -621,7 +543,6 @@ describe('Runtime Bundler (Feature 040, Phase 3)', () => {
       const bundleConfig: RuntimeBundleConfig = {
         eligiusConfig: createMinimalConfig(),
         usedOperations: ['selectElement'],
-        usedProviders: [],
         minify: false,
         sourcemap: false,
         tempDir: tmpdir,

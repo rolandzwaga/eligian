@@ -511,15 +511,6 @@ export interface HTMLGeneratorConfig {
 }
 
 /**
- * Timeline provider types that may require additional bundling
- */
-export type TimelineProviderType =
-  | 'video' // Native <video> element (VideoPositionSource; no player library since Eligius 4)
-  | 'animationFrame' // Built-in
-  | 'audio' // Built-in
-  | 'lottie'; // Requires lottie-web
-
-/**
  * Configuration for runtime bundler
  */
 export interface RuntimeBundleConfig {
@@ -532,11 +523,6 @@ export interface RuntimeBundleConfig {
    * Operations used in the configuration (for tree-shaking)
    */
   usedOperations: string[];
-
-  /**
-   * Timeline provider types used
-   */
-  usedProviders: TimelineProviderType[];
 
   /**
    * Whether to minify output

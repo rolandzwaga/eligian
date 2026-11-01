@@ -10,11 +10,7 @@ import * as path from 'node:path';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
 import * as esbuild from 'esbuild';
-import {
-  type RuntimeBundleConfig,
-  RuntimeBundleError,
-  type TimelineProviderType,
-} from './types.js';
+import { type RuntimeBundleConfig, RuntimeBundleError } from './types.js';
 
 /**
  * Extract used operations from an Eligius configuration
@@ -61,26 +57,6 @@ export function extractUsedOperations(config: IEngineConfiguration): string[] {
   }
 
   return [...operations];
-}
-
-/**
- * Extract used timeline providers from configuration
- *
- * Detects which providers are needed based on timelineProviderSettings.
- */
-export function extractUsedProviders(config: IEngineConfiguration): TimelineProviderType[] {
-  const providers = new Set<TimelineProviderType>();
-
-  const settings = config.timelineProviderSettings;
-  if (settings) {
-    for (const type of Object.keys(settings)) {
-      if (['video', 'animationFrame', 'audio', 'lottie'].includes(type)) {
-        providers.add(type as TimelineProviderType);
-      }
-    }
-  }
-
-  return [...providers];
 }
 
 /**
@@ -151,15 +127,11 @@ export function extractUsedSystemEntries(config: IEngineConfiguration): string[]
  *
  * Creates a self-contained entry point that:
  * - Imports required operations statically
- * - Imports timeline providers if needed
+ * - Imports the position sources and controllers the engine resolves by name
  * - Embeds the configuration
  * - Sets up initialization on DOMContentLoaded
  */
-export function generateEntryPoint(
-  config: IEngineConfiguration,
-  operations: string[],
-  providers: TimelineProviderType[]
-): string {
+export function generateEntryPoint(config: IEngineConfiguration, operations: string[]): string {
   const lines: string[] = [];
 
   // Header comment
@@ -177,20 +149,6 @@ export function generateEntryPoint(
     for (const op of operations) {
       lines.push(`import { ${op} } from 'eligius';`);
     }
-    lines.push('');
-  }
-
-  // Provider imports
-  if (providers.includes('video')) {
-    lines.push('// Video provider');
-    lines.push("import { VideoTimelineProvider } from 'eligius';");
-    lines.push('');
-  }
-
-  if (providers.includes('lottie')) {
-    lines.push('// Lottie provider');
-    lines.push("import { LottieTimelineProvider } from 'eligius';");
-    lines.push("import lottie from 'lottie-web';");
     lines.push('');
   }
 
@@ -217,12 +175,6 @@ export function generateEntryPoint(
     lines.push(`  ${op}: { ${op} },`);
   }
   lines.push('  EligiusEngine: { EligiusEngine },');
-  if (providers.includes('video')) {
-    lines.push('  VideoTimelineProvider: { VideoTimelineProvider },');
-  }
-  if (providers.includes('lottie')) {
-    lines.push('  LottieTimelineProvider: { LottieTimelineProvider },');
-  }
   for (const entry of systemEntries) {
     lines.push(`  ${entry}: { ${entry} },`);
   }
@@ -282,7 +234,7 @@ export function generateEntryPoint(
  * Creates a browser-compatible JavaScript bundle containing:
  * - Eligius runtime
  * - Required operations
- * - Timeline providers (if needed)
+ * - Position sources and controllers (system entries)
  * - Embedded configuration
  * - Auto-initialization code
  */
@@ -290,11 +242,10 @@ export function bundleRuntime(
   config: RuntimeBundleConfig
 ): Effect.Effect<string, RuntimeBundleError> {
   return Effect.gen(function* () {
-    const { eligiusConfig, usedOperations, usedProviders, minify, sourcemap, tempDir, nodePaths } =
-      config;
+    const { eligiusConfig, usedOperations, minify, sourcemap, tempDir, nodePaths } = config;
 
     // Generate entry point content
-    const entryPointContent = generateEntryPoint(eligiusConfig, usedOperations, usedProviders);
+    const entryPointContent = generateEntryPoint(eligiusConfig, usedOperations);
 
     // Create temporary entry point file
     const entryPointPath = path.join(tempDir, `entry-${Date.now()}.js`);

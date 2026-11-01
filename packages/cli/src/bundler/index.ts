@@ -17,7 +17,7 @@ import { type CollectOptions, collectAssets, rewriteConfigAssetRefs } from './as
 import { processCSS } from './css-processor.js';
 import { generateHTML, rewriteHTMLUrls } from './html-generator.js';
 import { calculateInlineOverhead } from './inline-overhead.js';
-import { bundleRuntime, extractUsedOperations, extractUsedProviders } from './runtime-bundler.js';
+import { bundleRuntime, extractUsedOperations } from './runtime-bundler.js';
 import {
   BundleError,
   type BundleFile,
@@ -250,7 +250,6 @@ export function createBundle(
           return yield* bundleRuntime({
             eligiusConfig: bundleConfig,
             usedOperations: extractUsedOperations(bundleConfig),
-            usedProviders: extractUsedProviders(bundleConfig),
             minify: resolvedOptions.minify,
             sourcemap: resolvedOptions.sourcemap,
             tempDir,

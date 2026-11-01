@@ -29,6 +29,8 @@ export interface LooseTimelineAction {
 export interface LooseTimeline {
   uri: string;
   timelineActions: LooseTimelineAction[];
+  /** Other timeline fields (type, selector, positionSource, ...) */
+  [key: string]: unknown;
 }
 
 export interface LooseConfigInput {
