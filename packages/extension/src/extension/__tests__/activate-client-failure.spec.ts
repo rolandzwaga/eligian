@@ -43,10 +43,16 @@ vi.mock('vscode', () => ({
   },
   languages: {
     registerDocumentLinkProvider: () => disposable(),
+    registerCodeLensProvider: () => disposable(),
     onDidChangeDiagnostics: () => disposable(),
   },
   workspace: { onDidChangeTextDocument: () => disposable() },
   Uri: { parse: (s: string) => ({ toString: () => s }) },
+  EventEmitter: class {
+    event = () => disposable();
+    fire() {}
+    dispose() {}
+  },
 }));
 
 vi.mock('vscode-languageclient/node.js', () => ({
@@ -183,6 +189,8 @@ describe('activate', () => {
     // Idea #20: the timeline view needs the language server
     expect(h.webviewViews).toEqual(['eligian.timelineView']);
     expect(h.commandIds).toContain('eligian.showTimelineView');
+    // Idea #22
+    expect(h.commandIds).toContain('eligian.findEligianReferences');
     expect(h.watchers.sort()).toEqual(['css', 'html', 'labels']);
     expect(h.onNotification).toHaveBeenCalledTimes(3);
     expect(h.showErrorMessage).not.toHaveBeenCalled();

@@ -59,6 +59,15 @@ export { extractTranslationKeys } from './locales/translation-key-extractor.js';
 export * from './lsp/asset-notifications.js';
 // Block-label detection (parse-free core + LSP request contract)
 export * from './lsp/block-labels.js';
+// Idea #22: navigation between .eligian, CSS and the layout HTML
+export {
+  CSS_REFERENCE_LENSES_REQUEST,
+  CSS_REFERENCES_REQUEST,
+  type CssReferenceLens,
+  type CssReferencesParams,
+  cssReferenceLenses,
+  cssReferences,
+} from './lsp/css-navigation.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
 // Idea #15: format .eligian text headlessly (`eligian fmt`)

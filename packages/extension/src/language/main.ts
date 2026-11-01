@@ -4,11 +4,16 @@ import {
   type BlockLabelsParams,
   CSS_ERROR_NOTIFICATION,
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
+  CSS_REFERENCE_LENSES_REQUEST,
+  CSS_REFERENCES_REQUEST,
   CSS_UPDATED_NOTIFICATION,
   type CSSErrorParams,
   type CSSUpdatedParams,
+  type CssReferencesParams,
   createEligianServices,
   createEmptyCSSMetadata,
+  cssReferenceLenses,
+  cssReferences,
   extractBlockLabels,
   extractTranslationKeys,
   findActionBelow,
@@ -278,6 +283,14 @@ connection.onRequest(TIMELINE_GANTT_REQUEST, (params: TimelineGanttParams) => {
   const root = document?.parseResult.value;
   return root && root.$type === 'Program' ? timelineGantt(root as Program) : [];
 });
+
+// Idea #22: from a CSS / HTML file to the .eligian strings that use its classes and ids
+connection.onRequest(CSS_REFERENCES_REQUEST, (params: CssReferencesParams) =>
+  cssReferences(Eligian, params)
+);
+connection.onRequest(CSS_REFERENCE_LENSES_REQUEST, (params: { uri: string }) =>
+  cssReferenceLenses(Eligian, params.uri)
+);
 
 // Start the language server with the shared services
 startLanguageServer(shared);

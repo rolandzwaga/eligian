@@ -104,6 +104,20 @@ export class CSSRegistryService {
   }
 
   /**
+   * Like {@link getMetadata}, but matching the file however its URI is written
+   * (VS Code encodes `f:` as `f%3A`, drive letters differ in case).
+   */
+  findMetadata(fileUri: string): CSSMetadata | undefined {
+    const exact = this.metadataByFile.get(fileUri);
+    if (exact) return exact;
+    const target = normalizeFileUri(fileUri);
+    for (const [uri, metadata] of this.metadataByFile) {
+      if (normalizeFileUri(uri) === target) return metadata;
+    }
+    return undefined;
+  }
+
+  /**
    * Remove CSS file from the registry.
    *
    * Called when:

@@ -15,6 +15,7 @@ import { registerGenerateJSDocCommand, registerJSDocAutoCompletion } from './com
 import { registerOpenLocaleEditorCommand } from './commands/locale.js';
 import { registerNewPresentationCommand } from './commands/new-presentation.js';
 import { registerPreviewAtCommand, registerPreviewCommand } from './commands/preview.js';
+import { registerCssReferenceFeatures } from './css-references/css-reference-features.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
 import { HTMLWatcherManager } from './html-watcher.js';
@@ -151,6 +152,9 @@ function registerClientIndependentFeatures(context: vscode.ExtensionContext): vo
  * label decorations.
  */
 function registerClientFeatures(context: vscode.ExtensionContext, client: LanguageClient): void {
+  // Idea #22: from CSS / HTML files to the .eligian strings that use their classes and ids
+  context.subscriptions.push(...registerCssReferenceFeatures(client));
+
   // Idea #20: the "Eligian Timeline" view (a swimlane per timeline, a bar per event)
   const timelineView = new TimelineViewProvider(context.extensionUri, client);
   context.subscriptions.push(

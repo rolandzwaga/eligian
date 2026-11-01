@@ -21,6 +21,8 @@ import type {
   TextDocumentPositionParams,
   WorkspaceEdit,
 } from 'vscode-languageserver-protocol';
+import type { EligianServices } from '../eligian-module.js';
+import { cssDefinitions } from './css-navigation.js';
 import {
   innerRange,
   invalidTimelineName,
@@ -34,6 +36,10 @@ const symbolAt = (document: LangiumDocument, position: { line: number; character
   timelineSymbolAt(document, document.textDocument.offsetAt(position));
 
 export class EligianDefinitionProvider extends DefaultDefinitionProvider {
+  constructor(private readonly eligian: EligianServices) {
+    super(eligian);
+  }
+
   override getDefinition(
     document: LangiumDocument,
     params: DefinitionParams,
@@ -52,6 +58,9 @@ export class EligianDefinitionProvider extends DefaultDefinitionProvider {
         },
       ];
     }
+    // Idea #22: a class or id in a className / selector string → its CSS rule and layout element
+    const css = cssDefinitions(this.eligian, document, params.position);
+    if (css) return css;
     return super.getDefinition(document, params, cancelToken);
   }
 }

@@ -66,6 +66,11 @@
           "default": true,
           "description": "Show '▶ Preview' and '▶ Preview from 22s' above timelines, timed events, sequence items and stagger blocks: opens the preview there and plays."
         },
+        "eligian.codeLens.cssReferences": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show 'N Eligian references' above CSS rules whose classes or ids .eligian files use (in selectors and class names)."
+        },
         "eligian.inlayHints.parameterNames": {
           "type": "string",
           "enum": [
@@ -135,6 +140,11 @@
         "command": "eligian.showTimelineView",
         "title": "Eligian: Show Timeline View",
         "category": "Eligian"
+      },
+      {
+        "command": "eligian.findEligianReferences",
+        "title": "Eligian: Find Eligian References",
+        "category": "Eligian"
       }
     ],
     "menus": {
@@ -153,6 +163,11 @@
           "when": "resourceLangId == eligian",
           "command": "eligian.openLabelEditor",
           "group": "eligian"
+        },
+        {
+          "when": "resourceLangId == css || resourceLangId == html",
+          "command": "eligian.findEligianReferences",
+          "group": "navigation"
         }
       ],
       "commandPalette": [
@@ -171,6 +186,10 @@
         {
           "command": "eligian.openLabelEditor",
           "when": "editorLangId == eligian"
+        },
+        {
+          "command": "eligian.findEligianReferences",
+          "when": "editorLangId == css || editorLangId == html"
         }
       ]
     },
