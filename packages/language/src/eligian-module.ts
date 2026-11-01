@@ -29,6 +29,11 @@ import { HTMLRegistryService } from './html/html-registry.js';
 import { EligianCodeLensProvider } from './lsp/eligian-code-lens-provider.js';
 import { EligianInlayHintProvider } from './lsp/eligian-inlay-hint-provider.js';
 import { EligianSignatureHelpProvider } from './lsp/eligian-signature-help-provider.js';
+import {
+  EligianDefinitionProvider,
+  EligianReferencesProvider,
+  EligianRenameProvider,
+} from './lsp/eligian-timeline-providers.js';
 import { type EligianSpecifics, EligianTypeSystem } from './type-system-typir/index.js';
 import { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
 
@@ -46,6 +51,9 @@ export type EligianAddedServices = {
     SignatureHelp: EligianSignatureHelpProvider;
     InlayHintProvider: EligianInlayHintProvider;
     CodeLensProvider: EligianCodeLensProvider;
+    DefinitionProvider: EligianDefinitionProvider;
+    ReferencesProvider: EligianReferencesProvider;
+    RenameProvider: EligianRenameProvider;
   };
   css: {
     CSSRegistry: CSSRegistryService;
@@ -87,6 +95,10 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
       SignatureHelp: services => new EligianSignatureHelpProvider(services),
       InlayHintProvider: services => new EligianInlayHintProvider(services),
       CodeLensProvider: services => new EligianCodeLensProvider(services),
+      // Idea #16: timeline names (navigate targets) as symbols
+      DefinitionProvider: services => new EligianDefinitionProvider(services),
+      ReferencesProvider: services => new EligianReferencesProvider(services),
+      RenameProvider: services => new EligianRenameProvider(services),
       CodeActionProvider: services => new EligianCodeActionProvider(services),
       Formatter: services => new EligianFormatter(services),
     },

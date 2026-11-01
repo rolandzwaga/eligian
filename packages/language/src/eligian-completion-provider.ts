@@ -40,6 +40,7 @@ import { getTimelineEventCompletions } from './completion/timeline-events.js';
 import { getVariableCompletions } from './completion/variables.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
+import { navigateTargetCompletions } from './lsp/timeline-symbols.js';
 
 /**
  * Keyword-tolerant name rules in eligian.langium. The keywords they list are
@@ -106,6 +107,15 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     params: CompletionParams,
     cancelToken?: CancellationToken
   ): Promise<CompletionList | undefined> {
+    // Idea #16: timeline names after `navigate`
+    const timelineNames = navigateTargetCompletions(
+      document,
+      document.textDocument.offsetAt(params.position)
+    );
+    if (timelineNames) {
+      return { items: timelineNames, isIncomplete: false };
+    }
+
     // Controller name / label ID string-literal completions (Feature 035 US3)
     const stringLiteralCompletion = resolveStringLiteralCompletion(document, params, this.services);
     if (stringLiteralCompletion !== null) {

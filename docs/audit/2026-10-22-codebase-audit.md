@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 to #11 and #13 to #15 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #11 and #13 to #16 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3596,6 +3596,8 @@ $ eligian fmt --check "**/*.eligian"
 - **Rationale:** A Format Document command that does nothing is a basic IDE gap. Effort is M because comments must not be lost. The decompiler (#25) also needs a working formatter to produce readable output.
 
 ### #16 Timeline names as symbols: completion, go-to-definition, references, rename and a 'Did you mean' fix for navigate targets
+
+- **Status:** ✅ Done on `fix/audit-high-findings`, without grammar changes (`lsp/timeline-symbols.ts`, `lsp/eligian-timeline-providers.ts`). The three prerequisites were already fixed (`c7a75df`, `e6b5c32`). Rename refuses a name that already exists or contains quotes/backslashes/line breaks.
 
 - **Area:** ide · **Effort:** S · **Score:** 7.1
 - **Problem:** `navigate target=STRING` is a plain string. navigate-validator reports 'unknown_navigate_target', but no code action handles it. Timeline names get no completion, Ctrl+Click or Find References, and renaming a timeline silently breaks every navigate that targets it.

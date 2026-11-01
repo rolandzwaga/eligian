@@ -1865,6 +1865,15 @@ timeline "Logic" in "#stage" using raf {
   A timeline with only lifecycle blocks (a menu that waits for clicks) has duration 0.
 - `enter` and `leave` are contextual keywords (still valid parameter and variable names).
 
+#### Navigation: `on click … navigate`
+
+`on click "<selector>" navigate "<timeline>" (at <time>)?`, an operation statement, switches to
+another timeline of the same program when the element is clicked (optionally at a position). The
+target must be the name of a timeline in the program. In the editor a target is a symbol of that
+timeline: Go to Definition, Find References and Rename (renaming a timeline updates every
+`navigate` to it) work on both, completion after `navigate` offers the timeline names, and an
+unknown target offers *Change to "<closest name>"* and *Create timeline "<name>"*.
+
 This replaces the `at 0s..3600s [ setup ] [ teardown ]` trick, which gave every timeline a
 duration of an hour and pushed relative times after it an hour out.
 
