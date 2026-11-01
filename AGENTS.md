@@ -39,6 +39,7 @@ Research/reference (read-only, do NOT import):
 - `pnpm langium:generate` (after editing `eligian.langium`) · `pnpm generate:html-metadata` (regenerates HTML completion metadata)
 - `pnpm test:coverage` (local pruned coverage report via `tools/pruned-coverage.ts`)
 - `pnpm run check:examples` (`eligian check` on every example; CI runs it with `--format github`)
+- `pnpm run fmt:examples` (`eligian fmt --check` on every example; `eligian fmt --write <patterns>` formats). Formatter rules: `packages/language/src/lsp/format-rules.ts` (whitespace only; spec 054)
 - `pnpm effect:check` (Effect LSP diagnostics; also `:language` / `:cli`) — see Effect LSP above
 
 ### Task completion checklist

@@ -1,7 +1,8 @@
 /**
  * Eligian Formatter
  *
- * Handles document formatting, including JSDoc template auto-generation when typing `/**`.
+ * Handles document formatting (rules in lsp/format-rules.ts, audit idea #15),
+ * including JSDoc template auto-generation when typing `/**`.
  */
 
 import type { AstNode, LangiumDocument } from 'langium';
@@ -14,6 +15,7 @@ import type {
 } from 'vscode-languageserver-protocol';
 import type { EligianServices } from './eligian-module.js';
 import { generateJSDocTemplate } from './jsdoc/jsdoc-template-generator.js';
+import { formatNode } from './lsp/format-rules.js';
 import { findActionAtOrAfterOffset } from './utils/ast-navigation.js';
 
 /** Closes an otherwise unterminated `/**` so the document below it can still be parsed. */
@@ -27,11 +29,9 @@ export class EligianFormatter extends AbstractFormatter {
     this.services = services;
   }
 
-  /**
-   * Format AST nodes (not used currently, but required by AbstractFormatter)
-   */
-  protected format(): void {
-    // No special formatting rules for now
+  /** Format Document / `eligian fmt` (audit idea #15): the rules are in lsp/format-rules.ts. */
+  protected format(node: AstNode): void {
+    formatNode(node, this.getNodeFormatter(node));
   }
 
   /**

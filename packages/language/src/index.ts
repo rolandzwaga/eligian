@@ -61,6 +61,12 @@ export * from './lsp/asset-notifications.js';
 export * from './lsp/block-labels.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
+// Idea #15: format .eligian text headlessly (`eligian fmt`)
+export {
+  type FormatSourceOptions,
+  type FormatSourceResult,
+  formatSource,
+} from './lsp/format-source.js';
 // HTML validation exports
 export * from './lsp/html-notifications.js';
 // Locales validation exports (Feature 045: renamed from labels)

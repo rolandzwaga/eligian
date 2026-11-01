@@ -166,10 +166,10 @@ timeline "Eligian Demo" in "#container" using raf {
     selectElement("#intro")
     setElementContent(@title)
     addClass("fade-in")
-    animate({opacity: 1}, 1000)
+    animate({ opacity: 1 }, 1000)
   ] [
     selectElement("#intro")
-    animate({opacity: 0}, 500)
+    animate({ opacity: 0 }, 500)
     removeClass("fade-in")
   ]
 
@@ -213,7 +213,7 @@ timeline "Eligian Demo" in "#container" using raf {
   at 15s..25s [
     selectElement("#demo-section")
     addClass("active")
-    animate({opacity: 1}, 500)
+    animate({ opacity: 1 }, 500)
   ] [
     selectElement("#demo-section")
     removeClass("active")
@@ -251,7 +251,7 @@ timeline "Eligian Demo" in "#container" using raf {
     showSlide("outro", 1500)
     selectElement("#outro")
     addClass("closing")
-    animate({opacity: 1, transform: "scale(1.2)"}, 2000)
+    animate({ opacity: 1, transform: "scale(1.2)" }, 2000)
   ] [
     selectElement("#outro")
     removeClass("closing")

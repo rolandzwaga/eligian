@@ -5,7 +5,7 @@ import { fadeIn } from "./c.eligian"
 
 action slideAndFade(selector: string) [
   selectElement(selector)
-  setStyle({transform: "translateX(-100px)"})
-  animate({transform: "translateX(0)"}, 500)
+  setStyle({ transform: "translateX(-100px)" })
+  animate({ transform: "translateX(0)" }, 500)
   fadeIn(selector, 500)
 ]

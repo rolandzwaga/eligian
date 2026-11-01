@@ -25,6 +25,7 @@ import {
   IOError,
   ParseError,
 } from './compile-file.js';
+import { runFmt } from './fmt.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
@@ -294,7 +295,7 @@ export default function main(): void {
     .version(packageVersion)
     .addHelpText(
       'after',
-      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian compile --help' or 'eligian check --help' for their options."
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian compile --help', 'eligian check --help' or 'eligian fmt --help' for their options."
     );
 
   // Check command: every diagnostic of every matched file
@@ -333,6 +334,32 @@ export default function main(): void {
       });
       if (outcome.output) console.log(outcome.output);
       if (outcome.error) console.error(chalk.red(outcome.error));
+      process.exit(outcome.exitCode);
+    });
+
+  // Format command (idea #15): the editor's Format Document rules
+  program
+    .command('fmt')
+    .description(
+      'format .eligian files (whitespace only); --check lists unformatted files with a diff'
+    )
+    .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
+    .option(
+      '--check',
+      'report files that are not formatted (the default); exit code 1 if any',
+      false
+    )
+    .option('--write', 'rewrite the files that are not formatted', false)
+    .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
+      if (cmdOptions.check === true && cmdOptions.write === true) {
+        console.error('Error: --check and --write cannot be combined');
+        process.exit(2);
+      }
+      const outcome = await runFmt(patterns, {
+        write: cmdOptions.write === true,
+        cwd: process.cwd(),
+      });
+      if (outcome.output) console.log(outcome.output);
       process.exit(outcome.exitCode);
     });
 

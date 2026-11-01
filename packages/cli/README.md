@@ -96,11 +96,31 @@ Suppress success messages:
 eligian input.eligian --quiet
 ```
 
+### Format Files (`eligian fmt`)
+
+Format files with the rules of the editor's *Format Document* (whitespace only:
+comments and code are kept).
+
+```bash
+eligian fmt "**/*.eligian"            # same as --check: list unformatted files with a diff
+eligian fmt --write src               # rewrite them
+```
+
+- `--check` (the default) exits with 1 when a file is not formatted, so it can
+  run in CI; `--write` rewrites the files. Patterns work as for `eligian check`.
+- Files with syntax errors are reported and left alone (exit code 2).
+- The rules: one statement per line, 2-space indentation inside multi-line
+  `[ ]` / `{ }` blocks (one-line blocks stay on one line), `] [` between start
+  and end blocks, at most one blank line between entries, one space around
+  operators and after keywords and commas, no space inside `( )` or around
+  `..`, `5s` not `5 s`, `{ a: 1 }` and `["#a", "#b"]`.
+
 ## Options
 
 ```
 Usage: eligian [compile] [options] <input>
        eligian check [options] <patterns...>
+       eligian fmt [--check | --write] <patterns...>
 
 Eligian DSL compiler - compile .eligian files to Eligius JSON
 

@@ -10,6 +10,7 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Compilation**: Compile `.eligian` files directly from VS Code
 - **Diagnostics**: View errors and warnings in the Problems panel
 - **Live Preview**: Interactive preview with Eligius engine integration, with a scrubber and time readout, a timeline picker and a language picker
+- **Format Document**: whitespace-only formatting (indentation of multi-line `[ ]` / `{ }` blocks, `] [`, spacing around operators, keywords and commas, `5s`); comments are kept. The same rules as `eligian fmt`
 - **Runtime errors in the source**: an error the Eligius engine reports while the preview runs is shown on the failing operation (Problems view, source `eligius-runtime`) with a *Go to Source* notification, also inside called actions and imported libraries
 - **Live playhead**: while the preview plays, the running events are marked in the editor (setting `eligian.preview.highlightActiveEvents`)
 - **Preview from here**: `▶ Preview` / `▶ Preview from 22s` CodeLenses above timelines, timed events, sequence items and stagger blocks open the preview at that time and play (setting `eligian.codeLens.preview`)

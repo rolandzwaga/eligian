@@ -18,7 +18,7 @@ Follow-up work on the same branch, prompted by the audit:
 - `11e5ad1`: `setData` target keys are validated, with a quick fix for a missing `.
 - `c47f7bd`: bundling works outside a project; build warnings cleaned up.
 
-The feature ideas below are still open except #1 to #11, #13 and #14 (done) and #12 (partly done).
+The feature ideas below are still open except #1 to #11 and #13 to #15 (done) and #12 (partly done).
 
 
 ## Summary
@@ -3578,6 +3578,8 @@ addClass (end op #2 of inline action at tour.eligian:212:9): 'selectedElement' i
 - **Rationale:** This merges 'Engine-to-source bridge: runtime errors as diagnostics, live playhead and timeline breakpoints' with 'Runtime source maps', and takes the live-highlight part of the first preview idea. Effort is M rather than L because the IR already holds the locations, and breakpoints are left for later to keep it at M. The smoke runner (#21) and the dev server (#23) reuse it.
 
 ### #15 Implement the formatter and `eligian fmt --check`
+
+- **Status:** ✅ Done on `fix/audit-high-findings` (spec 054), whitespace only. Not done: sorting/deduplicating named imports (that changes code, not whitespace: better a code action) and the optional `eligian.format.alignTimeRanges` setting. One-line blocks stay on one line instead of being expanded; `languages` entries keep their alignment. `eligian fmt` defaults to `--check`. Every example and fixture is checked for unchanged text without whitespace, an unchanged AST and stability; the examples are formatted.
 
 - **Area:** tooling · **Effort:** M · **Score:** 7.4
 - **Problem:** EligianFormatter.format() contains only `// No special formatting rules for now`, so Format Document does nothing in VS Code. There is no CLI formatter either, so files with several authors end up with inconsistent indentation and layout of `[ ] [ ]` blocks and imports.

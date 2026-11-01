@@ -3,6 +3,6 @@ library animations
 
 action fadeIn(selector: string, duration: number) [
   selectElement(selector)
-  setStyle({opacity: "0"})
-  animate({opacity: 1}, duration)
+  setStyle({ opacity: "0" })
+  animate({ opacity: 1 }, duration)
 ]
