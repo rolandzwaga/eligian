@@ -11,8 +11,14 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { type EligianMap, locateEngineError, type SourceLocation } from '@eligian/language';
+import {
+  type EligianMap,
+  type HostModule,
+  locateEngineError,
+  type SourceLocation,
+} from '@eligian/language';
 import * as vscode from 'vscode';
+import type { HostPayload } from '../../../media/host-registrations.js';
 import { collectCSSImporters, extractCSSFiles } from '../css-loader.js';
 import { CSSWatcherManager } from '../css-watcher.js';
 import { PlayheadDecorator } from '../decorations/playhead-decoration-provider.js';
@@ -20,6 +26,7 @@ import { WebviewCSSInjector } from '../webview-css-injector.js';
 import { CompilationService } from './CompilationService.js';
 import { EligiusEngineService, type EngineEvent } from './EligiusEngineService.js';
 import { FileWatcher } from './FileWatcher.js';
+import { HostBundler } from './host-bundler.js';
 import { MediaResolver } from './MediaResolver.js';
 import { firePreviewPlayhead } from './playhead-events.js';
 import {
@@ -97,6 +104,11 @@ export class PreviewPanel {
   private eligianMap: EligianMap | undefined;
   /** Files this panel reported runtime errors for (cleared on recompile and close) */
   private runtimeErrorUris = new Map<string, vscode.Uri>();
+  /** Idea #24: bundles the host module (created on first use) and the one being watched */
+  private hostBundler: HostBundler | undefined;
+  private watchedHost: vscode.Uri | undefined;
+  private static untrustedHostNoticeShown = false;
+
   /** Idea #14: marks the running events in the editor; created on the first playhead */
   private playheadDecorator: PlayheadDecorator | undefined;
 
@@ -163,6 +175,13 @@ export class PreviewPanel {
     // Set up Eligius engine service
     this.engineService = new EligiusEngineService(this.panel.webview);
     this.engineService.onEvent(event => this.handleEngineEvent(event));
+
+    // Idea #24: once the workspace is trusted, the host module runs: recompile
+    if (typeof vscode.workspace.onDidGrantWorkspaceTrust === 'function') {
+      this.disposables.push(
+        vscode.workspace.onDidGrantWorkspaceTrust(() => void this.compileAndUpdate())
+      );
+    }
 
     // Set up CSS injector for hot-reload (Feature 011)
     this.workspaceRoot =
@@ -308,6 +327,7 @@ export class PreviewPanel {
     PreviewPanel.diagnostics?.delete(this.documentUri);
     this.clearRuntimeErrors();
     this.playheadDecorator?.dispose();
+    this.hostBundler?.dispose();
     firePreviewPlayhead({ documentUri: this.documentUri.toString(), playhead: null });
 
     // Destroy Eligius engine
@@ -407,6 +427,18 @@ export class PreviewPanel {
           referencedFiles.add(filePath);
         }
 
+        // Idea #24: the host module, bundled (trusted workspace) or stubbed
+        const host = await this.prepareHost(result.host);
+        if (isStale()) {
+          return;
+        }
+        if (host === 'failed') {
+          return;
+        }
+        if (host?.file) {
+          referencedFiles.add(host.file);
+        }
+
         // Must happen before anything below is posted (it may reload the webview)
         this.ensureResourceRoots(referencedFiles);
 
@@ -429,7 +461,17 @@ export class PreviewPanel {
 
         // Initialize Eligius engine with the compiled config
         console.log('[Preview] Initializing Eligius engine');
-        await this.engineService.initialize(resolvedConfig);
+        await this.engineService.initialize(
+          resolvedConfig,
+          host
+            ? {
+                ...host.payload,
+                ...(host.file
+                  ? { url: this.panel.webview.asWebviewUri(vscode.Uri.file(host.file)).toString() }
+                  : {}),
+              }
+            : undefined
+        );
         if (isStale()) {
           return;
         }
@@ -650,6 +692,54 @@ export class PreviewPanel {
       if (webviewUri === resolved) return compiled;
     }
     return resolved;
+  }
+
+  /**
+   * Idea #24: the program's host module for the preview. In a trusted workspace
+   * it is bundled (esbuild-wasm, in a worker) into a file the webview imports;
+   * a bundling error is shown like a compile error ('failed'). In an untrusted
+   * workspace the names get stand-ins (once said in a notification). The
+   * module is watched: saving it recompiles.
+   */
+  private async prepareHost(
+    host: HostModule | undefined
+  ): Promise<{ payload: HostPayload; file?: string } | 'failed' | undefined> {
+    if (this.watchedHost) {
+      this.fileWatcher.unwatch(this.watchedHost);
+      this.watchedHost = undefined;
+    }
+    if (!host) return undefined;
+    const absolute = path.resolve(path.dirname(this.documentUri.fsPath), host.path);
+    this.watchedHost = vscode.Uri.file(absolute);
+    this.fileWatcher.watch(this.watchedHost, () => this.compileAndUpdate());
+    const payload: HostPayload = {
+      path: host.path,
+      operations: host.operations,
+      controllers: host.controllers,
+      functions: host.functions,
+    };
+    if (!vscode.workspace.isTrusted) {
+      if (!PreviewPanel.untrustedHostNoticeShown) {
+        PreviewPanel.untrustedHostNoticeShown = true;
+        void vscode.window.showWarningMessage(
+          `Eligian preview: the workspace is not trusted, so the host code of ${host.path} does not run (its operations do nothing). Trust the workspace to run it.`
+        );
+      }
+      return { payload: { ...payload, stub: true } };
+    }
+    this.hostBundler ??= new HostBundler(this.extensionUri.fsPath);
+    const bundle = await this.hostBundler.bundle(absolute);
+    if ('errors' in bundle) {
+      await this.panel.webview.postMessage({
+        type: 'showError',
+        payload: {
+          sourceFile: path.basename(absolute),
+          errors: bundle.errors.map(message => ({ message, severity: 'error' })),
+        },
+      });
+      return 'failed';
+    }
+    return { payload, file: bundle.file };
   }
 
   /**

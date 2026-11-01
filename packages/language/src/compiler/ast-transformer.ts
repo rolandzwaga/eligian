@@ -34,6 +34,7 @@ import {
 } from '../utils/program-helpers.js';
 import { isTimeConstant } from '../utils/time-constants.js';
 import { buildConstantMapWithFailures } from './constant-folder.js';
+import { hostModuleOf } from './operations/host-operations.js';
 import {
   transformActionDefinition,
   transformEventAction,
@@ -314,9 +315,11 @@ export const transformAST = (
     };
 
     // Return new EligiusIR wrapper (T279)
+    const host = hostModuleOf(program);
     const result = {
       config,
       sourceMap,
+      ...(host ? { host } : {}),
       metadata: {
         dslVersion: '1.0.0',
         compilerVersion: '0.0.1',

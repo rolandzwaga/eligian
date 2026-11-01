@@ -10,12 +10,13 @@
  */
 
 import type { IEngineConfiguration } from 'eligius';
+import type { HostPayload } from '../../../media/host-registrations.js';
 
 /**
  * Commands that can be sent to the webview to control the Eligius engine.
  */
 type EngineCommand =
-  | { type: 'initialize'; payload: { config: IEngineConfiguration } }
+  | { type: 'initialize'; payload: { config: IEngineConfiguration; host?: HostPayload } }
   | { type: 'play' }
   | { type: 'pause' }
   | { type: 'stop' }
@@ -111,12 +112,12 @@ export class EligiusEngineService {
    * @param config - Eligius engine configuration (compiled from .eligian source)
    * @returns Promise that resolves when initialization command is sent
    */
-  public async initialize(config: IEngineConfiguration): Promise<void> {
+  public async initialize(config: IEngineConfiguration, host?: HostPayload): Promise<void> {
     console.log('[EligiusEngineService] Initializing engine with config:', config.id);
 
     const command: EngineCommand = {
       type: 'initialize',
-      payload: { config },
+      payload: { config, ...(host ? { host } : {}) },
     };
 
     await this.webview.postMessage(command);

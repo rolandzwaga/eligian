@@ -1,5 +1,11 @@
 //@ts-check
+import { copyFileSync, mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
+
+// Idea #24: the WebAssembly esbuild the host-bundler worker loads at runtime
+mkdirSync('out', { recursive: true });
+copyFileSync(createRequire(import.meta.url).resolve('esbuild-wasm/esbuild.wasm'), 'out/esbuild.wasm');
 
 const watch = process.argv.includes('--watch');
 const minify = process.argv.includes('--minify');
@@ -31,7 +37,12 @@ const plugins = [
 // Build extension and language server (Node.js)
 const ctx = await esbuild.context({
   // Entry points for the vscode extension and the language server
-  entryPoints: ['src/extension/main.ts', 'src/language/main.ts'],
+  // Idea #24: the worker that bundles host modules for the preview (esbuild-wasm)
+  entryPoints: [
+    'src/extension/main.ts',
+    'src/language/main.ts',
+    'src/extension/preview/host-bundler-worker.ts',
+  ],
   outdir: 'out',
   bundle: true,
   target: 'ES2017',

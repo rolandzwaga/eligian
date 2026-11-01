@@ -24,6 +24,7 @@ import {
 } from 'eligius';
 import $ from 'jquery';
 import { createEngineLifecycleQueue } from './engine-lifecycle-queue.js';
+import { type HostPayload, hostRegistrations } from './host-registrations.js';
 import {
   capturePlayhead,
   jumpTo,
@@ -100,7 +101,13 @@ let scrubbing = false;
  *
  * Timeline container elements are automatically created by Eligius via the layoutTemplate.
  */
-async function initializeEngine(config: IEngineConfiguration): Promise<void> {
+/** What 'initialize' carries: the config, and (idea #24) the host module. */
+interface EngineInit {
+  readonly config: IEngineConfiguration;
+  readonly host?: HostPayload;
+}
+
+async function initializeEngine({ config, host }: EngineInit): Promise<void> {
   initializing = true;
   try {
     // Keep the playhead across recompiles (idea #8): read it before teardown
@@ -119,7 +126,9 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     // (no need to manually create them here)
 
     // Create engine factory with shared eventbus
-    factory = new EngineFactory(new EligiusResourceImporter(), window, {
+    // Idea #24: the program's host operations, controllers and functions
+    const registrations = await hostRegistrations(host);
+    factory = new EngineFactory(new EligiusResourceImporter(registrations), window, {
       eventbus, // Pass our eventbus so we can control playback
     });
 
@@ -480,7 +489,7 @@ const debugViewer = new EventbusDebugViewer();
 // Serialize engine lifecycle work: the async message listener below is not
 // awaited between events, so overlapping 'initialize' messages would otherwise
 // destroy an engine that is still in `await engine.init()`.
-const engineQueue = createEngineLifecycleQueue<IEngineConfiguration>({
+const engineQueue = createEngineLifecycleQueue<EngineInit>({
   initialize: initializeEngine,
   destroy: destroyEngine,
 });
@@ -538,7 +547,7 @@ window.addEventListener('message', async event => {
 
     // Engine commands
     case 'initialize':
-      await engineQueue.initialize(message.payload.config);
+      await engineQueue.initialize({ config: message.payload.config, host: message.payload.host });
       break;
 
     // Playback commands broadcast the corresponding timeline request on the

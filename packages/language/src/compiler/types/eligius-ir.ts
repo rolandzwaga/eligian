@@ -25,6 +25,7 @@ import type {
   TOperationData,
   TTimelineProviderSettings,
 } from 'eligius';
+import type { HostModule } from '../operations/host-operations.js';
 import type { JsonValue, SourceLocation } from './common.js';
 
 // Re-export for external use
@@ -61,6 +62,8 @@ export type EligiusIR = {
   readonly config: IEngineConfiguration;
   readonly sourceMap: SourceMap;
   readonly metadata?: MetadataIR;
+  /** Idea #24: the extensions module (path as written) and its declared names */
+  readonly host?: HostModule;
 };
 
 /**

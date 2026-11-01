@@ -42,6 +42,7 @@ import { getImports } from '../utils/program-helpers.js';
 import { transformAST } from './ast-transformer.js';
 import { buildEligianMap, type EligianMap } from './eligian-map.js';
 import { emitJSON } from './emitter.js';
+import type { HostModule } from './operations/host-operations.js';
 import { optimize } from './optimizer.js';
 import { type DocumentWarning, extractDocumentWarnings } from './pipeline/document-errors.js';
 import { parseSourceTracked, validateAST } from './pipeline/parser.js';
@@ -263,11 +264,15 @@ export const compile = (
 export const compileWithMap = (
   source: string,
   options: CompileOptions = {}
-): Effect.Effect<{ config: IEngineConfiguration; map: EligianMap }, CompileError> =>
+): Effect.Effect<
+  { config: IEngineConfiguration; map: EligianMap; host?: HostModule },
+  CompileError
+> =>
   Effect.gen(function* () {
     const ir = yield* compileToIR(source, options);
     const config = yield* emitJSON(ir);
-    return { config, map: buildEligianMap(ir) };
+    // Idea #24: the extensions module, for the preview and the bundler
+    return { config, map: buildEligianMap(ir), ...(ir.host ? { host: ir.host } : {}) };
   });
 
 /**

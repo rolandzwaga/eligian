@@ -11,6 +11,12 @@
   "categories": [
     "Programming Languages"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In an untrusted workspace the preview does not run host modules (extensions imports): their operations do nothing."
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -263,6 +269,7 @@
     "@types/vscode": "1.140.0",
     "@vitest/ui": "5.0.5",
     "concurrently": "10.0.6",
+    "esbuild-wasm": "0.28.2",
     "jsdom": "30.1.3"
   },
   "vsce": {
