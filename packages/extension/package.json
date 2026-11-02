@@ -292,7 +292,7 @@
     "@eligian/shared-utils": "workspace:*",
     "jquery": "4.0.0",
     "lottie-web": "5.13.0",
-    "vscode-languageclient": "9.0.1",
+    "vscode-languageclient": "11.0.0",
     "vscode-languageserver": "9.0.1"
   },
   "devDependencies": {
