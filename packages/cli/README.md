@@ -1,4 +1,4 @@
-# @eligian/cli
+# eligian
 
 **Eligian CLI** - Command-line compiler for the Eligian DSL.
 
@@ -7,8 +7,11 @@ Compile `.eligian` files to Eligius JSON configuration from the command line.
 ## Installation
 
 ```bash
-npm install -g @eligian/cli
+npm install -g eligian        # the `eligian` command
+npx eligian init my-talk      # or without installing
 ```
+
+Requires Node.js 22.12 or later. A project can also add it as a dev dependency (`npm install -D eligian`); `eligian init` writes a `package.json` that does.
 
 ## Usage
 
@@ -317,27 +320,6 @@ Validation Error: Unknown CSS class: 'visble'. Did you mean: visible?
                     ^^^^^^^^
   7 |   ] []
   8 | }
-```
-
-## Programmatic Usage
-
-You can also use the compiler programmatically:
-
-```typescript
-import { compile } from '@eligian/language';
-import { Effect } from 'effect';
-import * as fs from 'node:fs/promises';
-
-const sourceCode = await fs.readFile('input.eligian', 'utf-8');
-
-const compileEffect = compile(sourceCode, {
-  optimize: true,
-  minify: false
-});
-
-const config = await Effect.runPromise(compileEffect);
-
-await fs.writeFile('output.json', JSON.stringify(config, null, 2));
 ```
 
 ## Development

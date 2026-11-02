@@ -1,4 +1,4 @@
-# @eligian/cli — Known Issues
+# eligian (CLI) — Known Issues
 
 Found 2026-06-17 while building `examples/eligian-tour/` (first serious end-user
 of the CLI). Each entry has a minimal repro, expected vs actual, root cause with

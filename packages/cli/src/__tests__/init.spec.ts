@@ -37,6 +37,17 @@ describe('eligian init', () => {
     expect(JSON.parse(read('my-talk/package.json')).name).toBe('my-talk');
   });
 
+  it("the starter's package.json depends on this package, in its major version", async () => {
+    const cli = JSON.parse(
+      fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'package.json'), 'utf-8')
+    ) as { name: string; version: string };
+    await runInit('.', { template: 'blank', force: false, cwd });
+    const major = cli.version.split('.')[0];
+    expect(JSON.parse(read('package.json')).devDependencies).toEqual({
+      [cli.name]: `^${major}.0.0`,
+    });
+  });
+
   it('never overwrites existing files without --force', async () => {
     fs.writeFileSync(path.join(cwd, 'main.eligian'), 'keep me');
     const refused = await runInit('.', { template: 'blank', force: false, cwd });

@@ -52,7 +52,7 @@ jobs:
 
       # Only the CLI and the workspace packages it depends on (not the extension).
       - name: Build CLI
-        run: pnpm --filter "@eligian/cli..." build
+        run: pnpm --filter "eligian..." build
 
       - name: Bundle the tour
         run: node packages/cli/bin/cli.js examples/eligian-tour/tour.eligian --bundle -o "$RUNNER_TEMP/site"

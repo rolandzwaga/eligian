@@ -114,7 +114,8 @@ function packageJson(name: string): string {
         fmt: `eligian fmt --write ${STARTER_ENTRY}`,
       },
       devDependencies: {
-        '@eligian/cli': '*',
+        // The npm package of the `eligian` command (packages/cli; init.spec checks the range)
+        eligian: '^1.0.0',
       },
     },
     null,

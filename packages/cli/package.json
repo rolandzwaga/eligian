@@ -1,38 +1,54 @@
 {
-  "name": "@eligian/cli",
-  "description": "Eligian DSL compiler CLI and library - compile .eligian files to Eligius JSON",
-  "version": "0.0.1",
+  "name": "eligian",
+  "description": "Compiler and command line for Eligian, a concise DSL for Eligius presentations: check, compile, bundle, play and format .eligian files.",
+  "version": "1.0.0",
   "type": "module",
+  "license": "MIT",
+  "author": "Roland Zwaga",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rolandzwaga/eligian.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/rolandzwaga/eligian/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/rolandzwaga/eligian/issues"
+  },
+  "keywords": [
+    "eligian",
+    "eligius",
+    "dsl",
+    "compiler",
+    "cli",
+    "presentation",
+    "timeline",
+    "storytelling"
+  ],
   "engines": {
     "node": ">=22.12.0"
   },
   "files": [
-    "bin",
-    "dist",
-    "out"
+    "bin/cli.js",
+    "dist/cli.mjs"
   ],
-  "main": "./dist/index.mjs",
-  "types": "./out/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./out/index.d.ts",
-      "default": "./dist/index.mjs"
-    }
+    "./package.json": "./package.json"
   },
   "bin": {
     "eligian": "./bin/cli.js",
     "eligian-cli": "./bin/cli.js"
   },
   "scripts": {
-    "clean": "shx rm -fr *.tsbuildinfo out dist",
-    "build": "node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
+    "clean": "shx rm -fr *.tsbuildinfo out dist LICENSE *.tgz",
+    "build": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
+    "build:prod": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production",
+    "prepack": "pnpm run build:prod",
     "build:clean": "pnpm run clean && pnpm run build",
     "test": "vitest run",
     "test:coverage:ci": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@eligian/language": "workspace:*",
     "chalk": "6.0.1",
     "commander": "15.0.0",
     "effect": "4.0.5",
@@ -43,6 +59,7 @@
     "jsdom": "30.1.3"
   },
   "devDependencies": {
+    "@eligian/language": "workspace:*",
     "@types/jsdom": "30.0.0"
   }
 }
