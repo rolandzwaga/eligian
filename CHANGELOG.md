@@ -4,7 +4,7 @@ All notable changes to Eligian: the DSL, its compiler, the CLI and the VS Code e
 
 Eligian has not been released yet: every package is still at version `0.0.1` and there are no release tags. This changelog was put together from the git history (274 commits, 2025-10-14 to 2026-11-01). It is grouped by period, newest first. Numbers like (#38) are the pull requests merged into `main`, and the spec numbers refer to `specs/<NNN>-*/`.
 
-## Unreleased: branch `fix/audit-high-findings` (2026-10-22 to 2026-11-01)
+## Unreleased: branch `fix/audit-high-findings` (2026-10-22 to 2026-11-02)
 
 This work follows the codebase audit of 2026-10-22 (`docs/audit/2026-10-22-codebase-audit.md`): its findings and most of its feature ideas.
 
