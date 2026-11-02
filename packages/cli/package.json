@@ -1,7 +1,7 @@
 {
   "name": "eligian",
   "description": "Compiler and command line for Eligian, a concise DSL for Eligius presentations: check, compile, bundle, play and format .eligian files.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "license": "MIT",
   "author": "Roland Zwaga",
