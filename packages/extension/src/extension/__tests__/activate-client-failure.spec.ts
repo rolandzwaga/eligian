@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
   clientCtor: vi.fn(),
   onNotification: vi.fn(),
   watchers: [] as string[],
+  eligiusLint: vi.fn(),
 }));
 
 const disposable = () => ({ dispose: vi.fn() });
@@ -134,6 +135,12 @@ vi.mock('../decorations/block-label-decoration-provider.js', () => ({
     updateDecorations() {}
   },
 }));
+vi.mock('../eligius-lint-diagnostics.js', () => ({
+  registerEligiusLintDiagnostics: (client: unknown) => {
+    h.eligiusLint(client);
+    return disposable();
+  },
+}));
 vi.mock('../label-entry-creator.js', () => ({ createLabelEntry: vi.fn() }));
 vi.mock('../label-file-creator.js', () => ({ createLabelsFile: vi.fn() }));
 vi.mock('../locale-editor/LocaleEditorProvider.js', () => ({ LocaleEditorProvider: class {} }));
@@ -175,6 +182,7 @@ describe('activate', () => {
     h.clientStop.mockReset();
     h.clientStop.mockResolvedValue(undefined);
     h.onNotification.mockReset();
+    h.eligiusLint.mockReset();
   });
 
   it('registers every feature, including the client-dependent ones, when the client starts', async () => {
@@ -193,6 +201,8 @@ describe('activate', () => {
     expect(h.commandIds).toContain('eligian.findEligianReferences');
     expect(h.watchers.sort()).toEqual(['css', 'html', 'labels']);
     expect(h.onNotification).toHaveBeenCalledTimes(3);
+    // The language server's Eligius lint findings
+    expect(h.eligiusLint).toHaveBeenCalledTimes(1);
     expect(h.showErrorMessage).not.toHaveBeenCalled();
   });
 
@@ -223,6 +233,7 @@ describe('activate', () => {
 
     expect(h.watchers).toEqual([]);
     expect(h.onNotification).not.toHaveBeenCalled();
+    expect(h.eligiusLint).not.toHaveBeenCalled();
   });
 
   it('keeps eligian.generateJSDoc registered as a command that explains the failure', async () => {

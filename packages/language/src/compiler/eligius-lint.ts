@@ -1,9 +1,9 @@
 /**
  * Eligius' configuration lint (`eligius/lint`) over a compiled program, with
  * each finding located at its .eligian source through the Eligian map. Used
- * by `eligian check` and the VS Code preview. Imported as
+ * by `eligian check` and the language server. Imported as
  * `@eligian/language/eligius-lint` (a bundle of its own), not from the
- * package root: the language server would carry the resolver otherwise.
+ * package root: the extension host would carry the resolver otherwise.
  *
  * Eligian checks the program, Eligius the JSON, so a finding is either
  * something Eligian does not check (a literal outside an operation's allowed

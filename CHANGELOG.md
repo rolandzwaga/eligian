@@ -32,6 +32,7 @@ This work follows the codebase audit of 2026-10-22 (`docs/audit/2026-10-22-codeb
 - **Readable syntax errors** instead of Chevrotain's token lists. A keyword used as a name is explained.
 - **Timeline (Gantt) view**: the events of each timeline as bars in a panel, with the preview's playhead (#20).
 - ***Eligian: New Presentation…*** creates a project from a starter (blank, chapters, video, library).
+- **Eligius lint while you type**: 200 ms after an edit, every program without errors is checked by Eligius' configuration lint, with findings in the editor and in Problems, with or without the preview (setting `eligian.validation.eligiusLint`).
 
 ### Added: the preview
 
@@ -40,7 +41,6 @@ This work follows the codebase audit of 2026-10-22 (`docs/audit/2026-10-22-codeb
 - **Keeps its place**: the playhead stays where it was when the program is recompiled (#8).
 - **Runtime errors in the source**: an engine error becomes a diagnostic on the operation that failed, through the new Eligian map. When the operation's name and index match several places on the call chain, the others are listed as related information (spec 053).
 - **Running events marked**: the events playing at the current time are highlighted in the editor.
-- **Eligius lint findings in Problems** after each compile (setting `eligian.preview.eligiusLint`).
 
 ### Added: the CLI
 

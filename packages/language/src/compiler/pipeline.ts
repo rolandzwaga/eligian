@@ -276,6 +276,42 @@ export const compileWithMap = (
   });
 
 /**
+ * compileWithMap() for a program that is already parsed and linked, e.g. a
+ * document of the language server, which lints it with Eligius' lint: no
+ * parse and no workspace of its own. The libraries it imports must be in the
+ * program's workspace (the language server loads them). Assets are loaded
+ * from `sourcePath` (the file path of the program).
+ */
+export const compileProgramWithMap = (
+  program: Program,
+  sourcePath: string
+): Effect.Effect<
+  { config: IEngineConfiguration; map: EligianMap; host?: HostModule },
+  CompileError
+> =>
+  Effect.gen(function* () {
+    const loaded = yield* loadProgram(program, { sourceUri: sourcePath });
+    const ir = yield* optimize(
+      yield* typeCheck(yield* transformAST(loaded.program, loaded.assets))
+    );
+    const config = yield* emitJSON(ir);
+    return { config, map: buildEligianMap(ir), ...(ir.host ? { host: ir.host } : {}) };
+  });
+
+/**
+ * {@link compileProgramWithMap}, run synchronously (every compiler stage is
+ * synchronous), for callers outside Effect such as the language server:
+ * undefined when the program does not compile.
+ */
+export const tryCompileProgramWithMap = (
+  program: Program,
+  sourcePath: string
+): { config: IEngineConfiguration; map: EligianMap; host?: HostModule } | undefined => {
+  const exit = Effect.runSyncExit(compileProgramWithMap(program, sourcePath));
+  return exit._tag === 'Success' ? exit.value : undefined;
+};
+
+/**
  * T080: Compile from string
  *
  * Alias for compile() for API consistency.

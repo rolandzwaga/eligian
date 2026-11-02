@@ -18,6 +18,7 @@ import { registerPreviewAtCommand, registerPreviewCommand } from './commands/pre
 import { registerCssReferenceFeatures } from './css-references/css-reference-features.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
+import { registerEligiusLintDiagnostics } from './eligius-lint-diagnostics.js';
 import { HTMLWatcherManager } from './html-watcher.js';
 import { createLabelEntry } from './label-entry-creator.js';
 import { createLabelsFile } from './label-file-creator.js';
@@ -154,6 +155,9 @@ function registerClientIndependentFeatures(context: vscode.ExtensionContext): vo
 function registerClientFeatures(context: vscode.ExtensionContext, client: LanguageClient): void {
   // Idea #22: from CSS / HTML files to the .eligian strings that use their classes and ids
   context.subscriptions.push(...registerCssReferenceFeatures(client));
+
+  // Eligius' configuration lint of every program (run by the language server)
+  context.subscriptions.push(registerEligiusLintDiagnostics(client));
 
   // Idea #20: the "Eligian Timeline" view (a swimlane per timeline, a bar per event)
   const timelineView = new TimelineViewProvider(context.extensionUri, client);

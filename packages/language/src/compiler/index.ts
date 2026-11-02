@@ -92,6 +92,7 @@ export {
   type CompileError,
   checkFiles,
   compile,
+  compileProgramWithMap,
   compileString,
   compileToIR,
   compileToJSON,
@@ -104,6 +105,7 @@ export {
   optimize,
   parseSource,
   transformAST,
+  tryCompileProgramWithMap,
   typeCheck,
   validateAST,
 } from './pipeline.js';

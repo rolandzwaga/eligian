@@ -14,6 +14,7 @@ import {
   createEmptyCSSMetadata,
   cssReferenceLenses,
   cssReferences,
+  ELIGIUS_LINT_NOTIFICATION,
   extractBlockLabels,
   extractTranslationKeys,
   findActionBelow,
@@ -37,6 +38,7 @@ import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { URI } from 'vscode-uri';
 import { createAssetUpdateHandlers } from './asset-update-handlers.js';
+import { registerEligiusLint } from './eligius-lint.js';
 import { ImportParseCache } from './import-cache.js';
 import type { ImportProcessorConfig } from './import-processor.js';
 import { processImports } from './import-processor.js';
@@ -291,6 +293,11 @@ connection.onRequest(CSS_REFERENCES_REQUEST, (params: CssReferencesParams) =>
 connection.onRequest(CSS_REFERENCE_LENSES_REQUEST, (params: { uri: string }) =>
   cssReferenceLenses(Eligian, params.uri)
 );
+
+// Eligius' configuration lint of every program, a while after its validation
+registerEligiusLint(Eligian, params => {
+  connection.sendNotification(ELIGIUS_LINT_NOTIFICATION, params).catch(() => {});
+});
 
 // Start the language server with the shared services
 startLanguageServer(shared);

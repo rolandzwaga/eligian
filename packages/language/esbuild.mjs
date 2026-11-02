@@ -60,8 +60,9 @@ const ctxErrors = await esbuild.context({
 });
 
 // Eligius' configuration lint as a separate bundle: it brings the resolver of
-// eligius/lint (about 150 KB), which the language server must not carry. The
-// main bundle is CommonJS, so its consumers cannot tree-shake it.
+// eligius/lint (about 150 KB), which only `eligian check` and the language
+// server use. The main bundle is CommonJS, so its consumers (the extension host
+// among them) could not tree-shake it.
 const ctxLint = await esbuild.context({
   entryPoints: ['src/compiler/eligius-lint.ts'],
   outfile: 'dist/eligius-lint/index.cjs',

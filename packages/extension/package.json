@@ -62,15 +62,15 @@
           "default": "off",
           "description": "Warn about selectors that only match elements an operation creates at runtime: ids (and classes) that the CSS defines but the layout HTML does not contain."
         },
+        "eligian.validation.eligiusLint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check each program with Eligius' own lint (eligius/lint) a moment after you stop typing, and show its findings at their source line (source 'Eligius lint'), for example a value outside an operation's allowed values. Programs with errors are not checked."
+        },
         "eligian.preview.highlightActiveEvents": {
           "type": "boolean",
           "default": true,
           "description": "While the preview plays, mark the timeline events that are running in the .eligian editor."
-        },
-        "eligian.preview.eligiusLint": {
-          "type": "boolean",
-          "default": true,
-          "description": "After each preview compile, check the compiled configuration with Eligius' own lint (eligius/lint) and show its findings in Problems at their source line (source 'Eligius lint'), for example a value outside an operation's allowed values."
         },
         "eligian.codeLens.preview": {
           "type": "boolean",

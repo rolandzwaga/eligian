@@ -70,6 +70,8 @@ export {
 } from './lsp/css-navigation.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
+// Eligius' configuration lint in the editor (the lint itself: @eligian/language/eligius-lint)
+export * from './lsp/eligius-lint-notifications.js';
 // Idea #15: format .eligian text headlessly (`eligian fmt`)
 export {
   type FormatSourceOptions,
