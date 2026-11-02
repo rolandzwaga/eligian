@@ -103,6 +103,23 @@ describe('CSS Service', () => {
       expect(result).not.toContain('\\');
       expect(result).toContain('/');
     });
+
+    it("escapes backslashes and quotes of the webview URI inside url('...')", async () => {
+      const { rewriteUrls } = await import('../css-service.js');
+      const converter: WebviewUriConverter = {
+        convertToWebviewUri: fileUri => ({
+          scheme: 'vscode-webview',
+          path: fileUri.path,
+          toString: () => `vscode-webview://a\\b'c${fileUri.path}`,
+        }),
+      };
+      const result = rewriteUrls(".bg { background: url('./x.png'); }", '/w/s.css', converter);
+      // A backslash before the quote would otherwise end the string early
+      // (the path part is absolute: a drive letter on Windows)
+      expect(result).toMatch(
+        /^\.bg \{ background: url\('vscode-webview:\/\/a\\\\b\\'c.*\/w\/x\.png'\); \}$/
+      );
+    });
   });
 
   describe('generateCSSId()', () => {

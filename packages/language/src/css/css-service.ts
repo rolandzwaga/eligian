@@ -211,7 +211,8 @@ function toWebviewRef(
   };
   const webviewUri = converter.convertToWebviewUri(fileUri);
 
-  return `${webviewUri.toString().replace(/'/g, "\\'")}${suffix}`;
+  // The result goes inside url('...'): escape backslashes first, then quotes
+  return `${webviewUri.toString().replace(/\\/g, '\\\\').replace(/'/g, "\\'")}${suffix}`;
 }
 
 /**
