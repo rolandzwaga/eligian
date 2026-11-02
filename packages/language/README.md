@@ -166,7 +166,7 @@ npm run watch
 
 ## Related Packages
 
-- **@eligian/cli**: Command-line compiler
+- **eligian** (npm, `packages/cli`): Command-line compiler
 - **@eligian/vscode-extension**: VS Code extension
 
 ## License

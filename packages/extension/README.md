@@ -358,7 +358,7 @@ This runs the production build (minified, no source maps) and writes `eligian-<v
 ## Related Packages
 
 - **@eligian/language**: Core language and compiler
-- **@eligian/cli**: Command-line compiler
+- **eligian** (npm, `packages/cli`): Command-line compiler
 
 ## License
 

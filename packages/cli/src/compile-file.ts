@@ -229,7 +229,7 @@ function causeToError<E>(cause: Cause.Cause<E>): E {
  *
  * @example
  * ```typescript
- * import { compileFile } from '@eligian/cli';
+ * import { compileFile } from './compile-file.js';
  *
  * try {
  *   const result = await compileFile('my-timeline.eligian');

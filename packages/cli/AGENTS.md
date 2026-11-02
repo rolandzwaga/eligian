@@ -15,7 +15,9 @@ node packages/cli/bin/cli.js <file>.eligian -o out.json # explicit output (use "
 node packages/cli/bin/cli.js --help                    # full options
 ```
 
-Requires a prior build (`pnpm --filter @eligian/cli build`, or `pnpm build`) since `bin/cli.js` imports `dist/cli.mjs`.
+Requires a prior build (`pnpm --filter eligian build`, or `pnpm build`) since `bin/cli.js` imports `dist/cli.mjs`.
+
+npm package `eligian` (CLI only, no library API): `dist/cli.mjs` bundles the workspace packages (`@eligian/language`, `@eligian/shared-utils`) from their TypeScript sources (`esbuild.mjs`); only this package's `dependencies` stay external (some must be real files: esbuild's binary, and eligius / jquery, which `--bundle` resolves by walking up from the install). `prepack` = `build:prod` (minified, `keepNames`, no source maps); `files` = `bin/cli.js` + `dist/cli.mjs` (+ README, LICENSE copied in by the build). `package-bin.spec.ts` checks the bundle imports only built-ins and declared dependencies, and what `npm pack` would publish.
 
 **⚠️ Do NOT run `node packages/cli/dist/cli.mjs` directly.** `dist/cli.mjs` is the esbuild *bundle* of `src/main.ts`: it **defines and `export`s `main` as default but does not invoke it** (top-level await for the version read is fine; the run happens in `bin/cli.js`). Running the bundle directly is a **silent no-op — exit 0, no output, no file** — which looks exactly like "the CLI does nothing." It isn't broken; you're running the wrong file. (This trap cost a prior agent real time: they ran the bundle, saw silence, and wrongly concluded `main()` was never called. Don't repeat it — run `bin/cli.js`.)
 
