@@ -333,17 +333,16 @@ Future configuration possibilities:
 ### Building the Extension
 
 ```bash
-cd packages/extension
-npm run build
+pnpm build   # from the repository root
 ```
 
 ### Packaging
 
 ```bash
-vsce package
+pnpm -C packages/extension run package
 ```
 
-This creates a `.vsix` file you can install.
+This runs the production build (minified, no source maps) and writes `eligian-<version>.vsix`. Only the files the extension needs at runtime go in: `.vscodeignore` is an allow-list, and `build-output.spec.ts` checks it.
 
 ### Debugging
 

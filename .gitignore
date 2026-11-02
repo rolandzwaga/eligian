@@ -45,3 +45,7 @@ check-*.mjs
 
 # Eligian Tour — compiled Eligius config (build artifact)
 /examples/eligian-tour/tour.json
+
+# Copied into the extension by build:prepare (the Marketplace page shows them)
+packages/extension/LICENSE
+packages/extension/CHANGELOG.md

@@ -1,14 +1,20 @@
 //@ts-check
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
+
+// --production: the Marketplace build (vscode:prepublish): minified, no source
+// maps, names kept (readable error messages and stack traces), and out/ rebuilt
+// from scratch so nothing stale is packaged. --minify: minified only.
+const production = process.argv.includes('--production');
+if (production) rmSync('out', { recursive: true, force: true });
 
 // Idea #24: the WebAssembly esbuild the host-bundler worker loads at runtime
 mkdirSync('out', { recursive: true });
 copyFileSync(createRequire(import.meta.url).resolve('esbuild-wasm/esbuild.wasm'), 'out/esbuild.wasm');
 
 const watch = process.argv.includes('--watch');
-const minify = process.argv.includes('--minify');
+const minify = production || process.argv.includes('--minify');
 
 const success = watch ? 'Watch build succeeded' : 'Build succeeded';
 
@@ -57,6 +63,7 @@ const ctx = await esbuild.context({
   platform: 'node',
   sourcemap: !minify,
   minify,
+  keepNames: minify,
   plugins,
 });
 
@@ -70,6 +77,7 @@ const webviewCtx = await esbuild.context({
   platform: 'browser',
   sourcemap: !minify,
   minify,
+  keepNames: minify,
   // Provide empty stubs for Node.js modules (not used in browser context)
   alias: {
     'node:fs': './media/empty-stub.ts',
@@ -88,6 +96,7 @@ const localeEditorCtx = await esbuild.context({
   platform: 'browser',
   sourcemap: !minify,
   minify,
+  keepNames: minify,
   // Provide empty stubs for Node.js modules (not used in browser context)
   alias: {
     'node:fs': './media/empty-stub.ts',
@@ -106,6 +115,7 @@ const timelineViewCtx = await esbuild.context({
   platform: 'browser',
   sourcemap: !minify,
   minify,
+  keepNames: minify,
   plugins,
 });
 

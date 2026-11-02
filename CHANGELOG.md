@@ -4,10 +4,11 @@ All notable changes to Eligian: the DSL, its compiler, the CLI and the VS Code e
 
 Eligian has not been released yet: every package is still at version `0.0.1` and there are no release tags. This changelog was put together from the git history (274 commits, 2025-10-14 to 2026-11-01). It is grouped by period, newest first. Numbers like (#38) are the pull requests merged into `main`, and the spec numbers refer to `specs/<NNN>-*/`.
 
-## Unreleased: branch `feat/eligius-4.2-operation-path` (2026-11-02)
+## Unreleased (2026-11-02)
 
 ### Changed
 
+- **Marketplace packaging**: the extension is named `eligian` (the scoped name was refused by vsce) and has an icon, a license, a repository and keywords. `pnpm -C packages/extension run package` builds it minified, without source maps, and packs only the runtime files (21 files, 5 MB), with the LICENSE and this changelog copied in.
 - **Eligius 4.2.0**: engine errors carry the path of `startAction` / `endAction` calls to the failing operation (`operationPath`). The preview and `eligian smoke` follow it to the one operation that failed, where before an operation at the same index in the caller and in a called action could not be told apart ("or 1 other place"). Without a path the old search remains.
 
 ## 2026-10-22 to 2026-11-02: the audit follow-up (#183)
