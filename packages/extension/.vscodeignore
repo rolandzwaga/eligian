@@ -1,3 +1,27 @@
-.vscode/**
-.vscode-test/**
-out/tsc/**
+# An allow-list: everything is left out of the .vsix except what the extension
+# needs at runtime. Check with `pnpm exec vsce ls --no-dependencies`
+# (build-output.spec.ts checks it too).
+**
+
+# Manifest and Marketplace page
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+!resources/**
+
+# Language contributions
+!language-configuration.json
+!syntaxes/**
+!snippets/**
+
+# The bundles (`pnpm run build:prod`: minified, no source maps)
+!out/extension/main.cjs
+!out/extension/preview/host-bundler-worker.cjs
+!out/language/main.cjs
+!out/media/*.js
+!out/esbuild.wasm
+
+# Webview HTML, read from the extension folder at runtime
+!src/extension/preview/templates/*.html
+!src/extension/locale-editor/templates/*.html

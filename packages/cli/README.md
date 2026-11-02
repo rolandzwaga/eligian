@@ -357,7 +357,7 @@ npm test
 ## Related Packages
 
 - **@eligian/language**: Core language and compiler
-- **@eligian/vscode-extension**: VS Code extension for Eligian
+- **eligian** (`packages/extension`): VS Code extension for Eligian
 
 ## License
 

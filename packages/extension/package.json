@@ -1,10 +1,34 @@
 {
-  "name": "@eligian/vscode-extension",
-  "description": "The extension specific package",
-  "version": "0.0.1",
+  "name": "eligian",
+  "description": "Language support for Eligian, a concise DSL for Eligius presentations: highlighting, validation, completion, a live preview and compilation to Eligius JSON.",
+  "version": "1.0.0",
   "displayName": "Eligian",
   "type": "module",
   "publisher": "rolandzwaga",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#1e1b4b",
+    "theme": "dark"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rolandzwaga/eligian.git",
+    "directory": "packages/extension"
+  },
+  "homepage": "https://github.com/rolandzwaga/eligian/tree/main/packages/extension#readme",
+  "bugs": {
+    "url": "https://github.com/rolandzwaga/eligian/issues"
+  },
+  "keywords": [
+    "eligian",
+    "eligius",
+    "dsl",
+    "presentation",
+    "timeline",
+    "storytelling",
+    "animation"
+  ],
   "engines": {
     "vscode": "^1.140.0"
   },
@@ -250,16 +274,18 @@
   ],
   "main": "./out/extension/main.cjs",
   "scripts": {
-    "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
-    "vscode:prepublish": "pnpm run build",
-    "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json",
+    "clean": "shx rm -fr *.tsbuildinfo out syntaxes LICENSE CHANGELOG.md *.vsix",
+    "vscode:prepublish": "pnpm run build:prod",
+    "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json && shx cp -f ../../LICENSE ./LICENSE && shx cp -f ../../CHANGELOG.md ./CHANGELOG.md",
     "build": "pnpm run build:prepare && node esbuild.mjs",
     "build:clean": "pnpm run clean && pnpm run build",
     "watch": "pnpm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\"",
     "test": "vitest run",
     "test:coverage:ci": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "build:prod": "pnpm run build:prepare && node esbuild.mjs --production",
+    "package": "vsce package --no-dependencies"
   },
   "dependencies": {
     "@eligian/language": "workspace:*",
@@ -273,6 +299,7 @@
     "@types/jquery": "4.0.1",
     "@types/vscode": "1.140.0",
     "@vitest/ui": "5.0.5",
+    "@vscode/vsce": "4.1.0",
     "concurrently": "10.0.6",
     "esbuild-wasm": "0.28.2",
     "jsdom": "30.1.3"

@@ -1,9 +1,12 @@
 packages:
   - 'packages/*'
 
-# Allow esbuild's postinstall to run (pnpm 11 requires explicit opt-in)
+# Allow esbuild's postinstall to run (pnpm 11 requires explicit opt-in).
+# @vscode/vsce-sign (a dependency of @vscode/vsce) downloads a signing binary
+# that only `vsce sign` / `vsce verify-signature` use, not package / publish.
 allowBuilds:
   esbuild: true
+  '@vscode/vsce-sign': false
 
 # Workspace settings migrated from .npmrc — pnpm 11 reads these from
 # pnpm-workspace.yaml (camelCase), no longer from .npmrc.

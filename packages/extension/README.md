@@ -33,14 +33,18 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 
 ## Installation
 
-### From Marketplace (Coming Soon)
+### From the Marketplace
 
-Search for "Eligian" in the VS Code Extensions marketplace.
+Search for "Eligian" in the Extensions view, or run:
+
+```bash
+code --install-extension rolandzwaga.eligian
+```
 
 ### From VSIX
 
 ```bash
-code --install-extension eligian-0.0.1.vsix
+code --install-extension eligian-1.0.0.vsix
 ```
 
 ## Usage
@@ -172,7 +176,7 @@ Create `styles/main.css`:
 ```css
 #title {
   font-size: 48px;
-  color: #333;
+  color: dimgray;
 }
 
 .fade-in {
@@ -333,17 +337,16 @@ Future configuration possibilities:
 ### Building the Extension
 
 ```bash
-cd packages/extension
-npm run build
+pnpm build   # from the repository root
 ```
 
 ### Packaging
 
 ```bash
-vsce package
+pnpm -C packages/extension run package
 ```
 
-This creates a `.vsix` file you can install.
+This runs the production build (minified, no source maps) and writes `eligian-<version>.vsix`. Only the files the extension needs at runtime go in: `.vscodeignore` is an allow-list, and `build-output.spec.ts` checks it.
 
 ### Debugging
 
