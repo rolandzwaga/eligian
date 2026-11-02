@@ -13,7 +13,7 @@
  * of re-parsing the document itself.
  */
 
-import { AstUtils, CstUtils } from 'langium';
+import { AstUtils, type CstNode, GrammarUtils } from 'langium';
 import {
   type EndableActionDefinition,
   type InlineEndableAction,
@@ -102,33 +102,23 @@ function extractBracketPositions(node: EndableActionDefinition | InlineEndableAc
     return null;
   }
 
-  // Collect bracket leaf tokens in source order.
-  const allBrackets: { text: string; pos: BlockLabelPosition }[] = [];
+  // Only the node's OWN '[' / ']' keywords. Langium excludes CST subtrees that belong
+  // to child AST nodes, so brackets inside array literals / nested expressions in the
+  // operation lists are not returned.
+  const opens = GrammarUtils.findNodesForKeyword(cstNode, '[');
+  const closes = GrammarUtils.findNodesForKeyword(cstNode, ']');
+  const toPos = (n: CstNode): BlockLabelPosition => ({
+    line: n.range.start.line,
+    character: n.range.start.character,
+  });
 
-  for (const child of CstUtils.streamCst(cstNode)) {
-    // Only look at leaf nodes (skip composite nodes).
-    if ('content' in child && Array.isArray(child.content)) {
-      continue;
-    }
-
-    if (child.text === '[' || child.text === ']') {
-      allBrackets.push({
-        text: child.text,
-        pos: {
-          line: child.range.start.line,
-          character: child.range.start.character,
-        },
-      });
-    }
-  }
-
-  // Pattern: [ ... ] [ ... ] — expect exactly 4 brackets in order: [, ], [, ]
-  if (allBrackets.length >= 4) {
+  // Pattern: [ ... ] [ ... ] — expect exactly 2 own '[' and 2 own ']'
+  if (opens.length >= 2 && closes.length >= 2) {
     return {
-      start: allBrackets[0].pos, // First '['
-      startClose: allBrackets[1].pos, // First ']'
-      end: allBrackets[2].pos, // Second '['
-      endClose: allBrackets[3].pos, // Second ']'
+      start: toPos(opens[0]),
+      startClose: toPos(closes[0]),
+      end: toPos(opens[1]),
+      endClose: toPos(closes[1]),
     };
   }
 

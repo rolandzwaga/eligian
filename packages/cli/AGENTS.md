@@ -25,6 +25,7 @@ Requires a prior build (`pnpm --filter @eligian/cli build`, or `pnpm build`) sin
 - `bin/cli.js` — the executable launcher (imports `main` from `dist/cli.mjs` and calls it; see "Running the CLI" above). `main.ts` — CLI program definition (commander setup, `export default main`; does NOT self-invoke). `index.ts` — package exports. `compile-file.ts` — single-file compile orchestration.
 - `bundler/` — asset & output bundling:
   - `asset-collector.ts`, `css-processor.ts`, `html-generator.ts`, `runtime-bundler.ts`, `inline-overhead.ts`, `url-utils.ts`, `types.ts`, `index.ts`.
+  - `runtime-bundler.ts` generates the bundle entry: the operations, providers (position sources, container providers, playlists, incl. a timeline's own `positionSource` override) and controllers the config names, imported from `eligius/runtime` (not `eligius`: its fluent API and `EligiusResourceImporter` keep every operation alive) and registered with `createImporter`, plus the host module's exports. `__tests__/bundler/bundle-runs.spec.ts` plays a built bundle in jsdom.
 - `__tests__/` — `*.spec.ts` (`cli`, `cli-library`, `cli-library-errors`), `bundler/` tests, `__fixtures__/`.
 
 ## Gotchas

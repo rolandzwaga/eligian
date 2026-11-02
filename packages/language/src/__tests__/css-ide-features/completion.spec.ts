@@ -5,9 +5,8 @@
  * with proper structure (label, kind, sortText, detail).
  */
 
-import type { CompletionContext } from 'langium/lsp';
+import type { CompletionContext, CompletionValueItem } from 'langium/lsp';
 import { describe, expect, it } from 'vitest';
-import type { CompletionItem } from 'vscode-languageserver-protocol';
 import { CompletionItemKind } from 'vscode-languageserver-protocol';
 
 import { CSSCompletionProvider } from '../../css/css-completion.js';
@@ -39,8 +38,8 @@ describe('CSS Completion Provider', () => {
       const classes = new Set(['button', 'primary', 'active', 'hidden']);
       const context = createMockContext();
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       provider.provideCSSClassCompletions(context, classes, acceptor);
 
@@ -56,8 +55,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set(['button']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const context = createMockContext();
       provider.provideCSSClassCompletions(context, classes, acceptor);
@@ -76,8 +75,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set(['button', 'primary']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const context = createMockContext();
       provider.provideCSSClassCompletions(context, classes, acceptor);
@@ -94,8 +93,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set<string>();
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const context = createMockContext();
       provider.provideCSSClassCompletions(context, classes, acceptor);
@@ -107,8 +106,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set(['btn-primary', 'nav_item', 'is-active']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const context = createMockContext();
       provider.provideCSSClassCompletions(context, classes, acceptor);
@@ -127,8 +126,8 @@ describe('CSS Completion Provider', () => {
       const classes = new Set(['button', 'primary']);
       const ids = new Set<string>();
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"."';
       const context = createMockContext(text, 0, 2, 3);
@@ -145,8 +144,8 @@ describe('CSS Completion Provider', () => {
       const classes = new Set<string>();
       const ids = new Set(['header', 'footer', 'main']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"#"';
       const context = createMockContext(text, 0, 2, 3);
@@ -165,16 +164,16 @@ describe('CSS Completion Provider', () => {
       const classes = new Set(['button']);
       const ids = new Set(['header']);
 
-      const classItems: CompletionItem[] = [];
-      const classAcceptor = (_ctx: CompletionContext, item: CompletionItem) =>
+      const classItems: CompletionValueItem[] = [];
+      const classAcceptor = (_ctx: CompletionContext, item: CompletionValueItem) =>
         classItems.push(item);
 
       const classText = '"."';
       const classContext = createMockContext(classText, 0, 2, 3);
       provider.provideSelectorCompletions(classContext, classes, new Set(), 'class', classAcceptor);
 
-      const idItems: CompletionItem[] = [];
-      const idAcceptor = (_ctx: CompletionContext, item: CompletionItem) => idItems.push(item);
+      const idItems: CompletionValueItem[] = [];
+      const idAcceptor = (_ctx: CompletionContext, item: CompletionValueItem) => idItems.push(item);
 
       const idText = '"#"';
       const idContext = createMockContext(idText, 0, 2, 3);
@@ -192,8 +191,8 @@ describe('CSS Completion Provider', () => {
       const classes = new Set(['button']);
       const ids = new Set(['header']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"."';
       const context = createMockContext(text, 0, 2, 3);
@@ -209,8 +208,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set(['button']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"."';
       const context = createMockContext(text, 0, 2, 3);
@@ -223,8 +222,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const ids = new Set(['header']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"#"';
       const context = createMockContext(text, 0, 2, 3);
@@ -239,8 +238,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set(['button']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const context = createMockContext();
       provider.provideCSSClassCompletions(context, classes, acceptor);
@@ -252,8 +251,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const classes = new Set(['button']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"."';
       const context = createMockContext(text, 0, 2, 3);
@@ -266,8 +265,8 @@ describe('CSS Completion Provider', () => {
       const provider = new CSSCompletionProvider();
       const ids = new Set(['header']);
 
-      const items: CompletionItem[] = [];
-      const acceptor = (_ctx: CompletionContext, item: CompletionItem) => items.push(item);
+      const items: CompletionValueItem[] = [];
+      const acceptor = (_ctx: CompletionContext, item: CompletionValueItem) => items.push(item);
 
       const text = '"#"';
       const context = createMockContext(text, 0, 2, 3);

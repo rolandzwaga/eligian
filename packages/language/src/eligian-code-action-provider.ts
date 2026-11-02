@@ -17,10 +17,14 @@ import type {
 } from 'vscode-languageserver-protocol';
 import { CodeActionKind } from 'vscode-languageserver-protocol';
 import { CSSCodeActionProvider } from './css/css-code-actions.js';
+import { didYouMeanCodeActions } from './css/did-you-mean-fix.js';
 import type { EligianServices } from './eligian-module.js';
 import { MISSING_LABELS_FILE_CODE } from './eligian-validator.js';
 import type { Program } from './generated/ast.js';
 import { LanguageBlockCodeActionProvider } from './labels/language-block-code-actions.js';
+import { selectElementCodeActions } from './lsp/select-element-fix.js';
+import { navigateTargetCodeActions } from './lsp/timeline-symbols.js';
+import { createTimeRangeActions } from './timeline/time-range-actions.js';
 import type {
   CreateLabelEntryCommand,
   CreateLabelsFileCommand,
@@ -28,6 +32,10 @@ import type {
   MissingLabelsFileData,
 } from './types/code-actions.js';
 import { uriToFsPath } from './utils/path-utils.js';
+import {
+  INVALID_SET_DATA_TARGET_CODE,
+  type InvalidSetDataTargetData,
+} from './validators/operation-call/set-data-validator.js';
 /**
  * Eligian-specific code action provider
  *
@@ -81,6 +89,8 @@ export class EligianCodeActionProvider implements CodeActionProvider {
         readFile
       );
 
+      // Idea #18: 'Change to …' for unknown classes/ids with suggestions (first)
+      actions.push(...didYouMeanCodeActions(document, params.context.diagnostics));
       actions.push(...cssActions);
 
       // Get language block code actions
@@ -101,6 +111,18 @@ export class EligianCodeActionProvider implements CodeActionProvider {
       // Feature 041 - T022: Handle missing label entry diagnostics
       const labelEntryActions = this.createLabelEntryActions(params, documentUri);
       actions.push(...labelEntryActions);
+
+      // setData keys missing their '$' target prefix
+      actions.push(...this.createSetDataTargetActions(params, documentUri));
+
+      // Feature 048: `at a..b` → `at a for <length>`
+      actions.push(...createTimeRangeActions(document, params.range));
+
+      // Idea #16: unknown navigate target → 'Change to "<closest>"' / 'Create timeline'
+      actions.push(...navigateTargetCodeActions(document, params.context.diagnostics));
+
+      // Idea #17: 'Insert selectElement(…)' when nothing is selected yet
+      actions.push(...selectElementCodeActions(document, params.context.diagnostics));
 
       // Future: Add more code action providers here
       // - Refactoring actions (extract action, inline action, etc.)
@@ -125,6 +147,29 @@ export class EligianCodeActionProvider implements CodeActionProvider {
    * @param documentUri - URI of the Eligian document
    * @returns Array of CodeActions for missing labels files
    */
+  /**
+   * Quick fix for `setData({ "operationdata.x": ... })`: insert the missing '$'
+   * after the key's opening quote (keys containing a '.' are always quoted).
+   */
+  private createSetDataTargetActions(params: CodeActionParams, documentUri: string): CodeAction[] {
+    return params.context.diagnostics.flatMap(diagnostic => {
+      const data = diagnostic.data as InvalidSetDataTargetData | undefined;
+      if (data?.code !== INVALID_SET_DATA_TARGET_CODE || !data.fixedKey) return [];
+      const at = {
+        line: diagnostic.range.start.line,
+        character: diagnostic.range.start.character + 1,
+      };
+      const action: CodeAction = {
+        title: `Use '${data.fixedKey}'`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [diagnostic],
+        isPreferred: true,
+        edit: { changes: { [documentUri]: [{ range: { start: at, end: at }, newText: '$' }] } },
+      };
+      return [action];
+    });
+  }
+
   private createLabelsFileActions(params: CodeActionParams, documentUri: string): CodeAction[] {
     const actions: CodeAction[] = [];
 

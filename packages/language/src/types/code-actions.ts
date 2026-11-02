@@ -113,6 +113,8 @@ export enum LabelEntryErrorCode {
   InvalidJson = 'INVALID_JSON',
   /** Label ID already exists in the labels file */
   LabelExists = 'LABEL_EXISTS',
+  /** Label ID is not a safe key path (empty segment, `__proto__`, `constructor`, `prototype`) */
+  InvalidKey = 'INVALID_KEY',
 }
 
 /**

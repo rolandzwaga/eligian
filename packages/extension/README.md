@@ -9,8 +9,27 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 - **Validation**: Real-time error checking and semantic validation
 - **Compilation**: Compile `.eligian` files directly from VS Code
 - **Diagnostics**: View errors and warnings in the Problems panel
-- **Live Preview**: Interactive preview with Eligius engine integration
+- **Live Preview**: Interactive preview with Eligius engine integration, with a scrubber and time readout, a timeline picker and a language picker
+- **Selectors through actions**: string literals passed to an action parameter that ends up as a selector or class name are checked (and completed) like those passed to operations; selectors may use ids and classes of the imported CSS and of the layout HTML; *Change to '…'* quick fix for suggestions; optional warning for selector ids/classes that are in the CSS but not in the layout (setting `eligian.validation.selectorNotInLayout`: `off` / `ids` / `all`)
+- **Host modules**: `extensions "./host.ts" { operation trackEvent(eventName: string) … }` declares your own operations, controllers and functions; they are validated, completed and shown in signature help like Eligius' own. In a trusted workspace the preview bundles the module (esbuild, built in: no Node.js needed) and runs it, and saving it reloads the preview; in an untrusted workspace its operations do nothing
+- **CSS / HTML navigation**: Go to Definition (Ctrl+Click, F12) on a class or id in a selector or class-name string (`addClass("on")`, `selectElement(".card.on")`, an action argument, `target`, `with`, `on click`, the timeline container) opens its CSS rule and its elements in the layout HTML; *Eligian: Find Eligian References* (context menu in CSS and HTML files) lists the .eligian strings that use the class or id under the cursor; CSS rules show "N Eligian references" (setting `eligian.codeLens.cssReferences`)
+- **Insert selectElement**: when an operation needs a selected element and none is selected, a quick fix inserts `selectElement("…")` (or adds `target "…"` to an `at` event calling an action)
+- **Timeline names as symbols**: Go to Definition, Find References and Rename between a timeline and the `navigate "<name>"` targets that switch to it; timeline-name completion after `navigate`; *Change to "…"* / *Create timeline "…"* quick fixes for an unknown target
+- **New Presentation**: *Eligian: New Presentation…* (Command Palette) writes a starter project (blank, chapters, video or library) into a folder you pick and opens it with the preview; the same starters as `eligian init`
+- **Interactions**: `on <event> "<sel>" navigate | play | pause | toggle | stop | seek <time> | run <action>(…)` and `on key "ArrowRight" <verb>`, with DOM event and key completion (an unknown event is a warning with suggestions, an unknown key an error) and label support in `seek intro.end`
+- **Format Document**: whitespace-only formatting (indentation of multi-line `[ ]` / `{ }` blocks, `] [`, spacing around operators, keywords and commas, `5s`); comments are kept. The same rules as `eligian fmt`
+- **Runtime errors in the source**: an error the Eligius engine reports while the preview runs is shown on the failing operation (Problems view, source `eligius-runtime`) with a *Go to Source* notification, also inside called actions and imported libraries
+- **Outline, breadcrumbs and Go to Symbol** (Ctrl+Shift+O): each timeline lists its `on enter` / `on leave` blocks and events (`at 0s..6s`, `sequence 0s..46s ×6` with its items, `stagger 22s..23.9s ×3`) with their resolved times, labels, the first text they show and the calls they make; next to them the actions, event actions, constants and named imports
+- **Timeline view** (panel *Eligian* → *Timeline*, or *Eligian: Show Timeline View*): a swimlane per timeline of the active .eligian file, a bar per event (`at` events, sequence items, stagger items) at its resolved time, events that run at the same time below each other, and the preview's playhead. Click a bar to go to its source, double-click it to preview from its start
+- **Live playhead**: while the preview plays, the running events are marked in the editor (setting `eligian.preview.highlightActiveEvents`)
+- **Eligius lint**: a moment after you stop typing, every program without errors is also checked by Eligius' own configuration lint over its compiled JSON (compiled in memory, nothing is written). Findings show at the source line and in Problems (source 'Eligius lint'), for example `scrollToElement(200, "nowhere")` (not an allowed `block`), also in the library whose action they are in; the same check as `eligian check` (setting `eligian.validation.eligiusLint`)
+- **Preview from here**: `▶ Preview` / `▶ Preview from 22s` CodeLenses above timelines, timed events, sequence items and stagger blocks open the preview at that time and play (setting `eligian.codeLens.preview`)
 - **CSS Hot-Reload**: Import CSS files with instant hot-reload (no preview restart)
+- **Snippets**: `action`, `endable action`, `on event`, `timeline`, `chapter`, `languages` and `library` skeletons
+- **Signature help**: typing `(` or `,` in a call shows its parameters (types, optional ones, descriptions from the operation metadata or the action's JSDoc), including a controller's parameters in `addController`
+- **Parameter-name inlay hints**: `broadcastEvent(eventArgs: [...], eventName: "go")`; setting `eligian.inlayHints.parameterNames` = `literals` (default), `all` or `none`
+- **Time inlay hints**: absolute times the compiler computes, shown in place: `‹5s..15s›` after each sequence item, `‹22s..23.8s ×3›` after a stagger block, the resolved range of relative, computed or `for` ranges, and the inferred duration on a timeline header without `duration`. Times that depend on runtime values show no hint. Settings `eligian.inlayHints.sequenceTimes`, `staggerTimes`, `computedTimes` and `timelineDuration` (all on by default)
+- **Timeline event completion**: inside a timeline, `at … for … [ ]` (starting where the previous event ends), `sequence { }` and `stagger … with …`
 
 ## Installation
 
@@ -32,7 +51,7 @@ Simply open any `.eligian` file in VS Code. The extension activates automaticall
 
 - Syntax highlighting
 - Error detection
-- Autocompletion (basic keywords)
+- Autocompletion (operations, actions, CSS classes, events, timeline events) and snippets
 - Hover information
 
 ### Compiling

@@ -18,10 +18,10 @@ describe('Emitter', () => {
         containerSelector: 'body',
         language: 'en-US',
         layoutTemplate: 'default',
+        cssFiles: [],
         availableLanguages: [
           { id: 'aaaa-bbbb-cccc-dddd', languageCode: 'en-US', label: 'English' },
         ],
-        labels: [],
         initActions: [],
         actions: [],
         eventActions: [],
@@ -78,7 +78,8 @@ describe('Emitter', () => {
       const result = await Effect.runPromise(emitJSON(ir));
 
       expect(result).toHaveProperty('$schema');
-      expect(result.$schema).toBe(
+      // emitJSON adds $schema on top of IEngineConfiguration (not part of its declared return type)
+      expect((result as { $schema?: string }).$schema).toBe(
         'https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json'
       );
     });
@@ -136,7 +137,7 @@ describe('Emitter', () => {
 
       // T282: Metadata is stored in ir.metadata, not in the emitted config
       // IEngineConfiguration doesn't have a metadata field
-      expect(result.metadata).toBeUndefined();
+      expect((result as { metadata?: unknown }).metadata).toBeUndefined();
     });
 
     test('should emit action layers', async () => {
@@ -164,7 +165,7 @@ describe('Emitter', () => {
 
       expect(result.initActions).toHaveLength(1);
       expect(result.eventActions).toHaveLength(1);
-      expect(result.eventActions[0].eventName).toBe('click');
+      expect(result.eventActions![0].eventName).toBe('click');
     });
 
     test('should preserve UUIDs in output', async () => {

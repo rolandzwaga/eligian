@@ -1,5 +1,5 @@
 import { type AstNode, AstUtils, type Properties, type ValidationAcceptor } from 'langium';
-import { hasOperation, validateControlFlowPairing } from '../compiler/index.js';
+import { hasOperation } from '../compiler/index.js';
 import type {
   ActionDefinition,
   BreakStatement,
@@ -9,11 +9,13 @@ import type {
   OperationCall,
   OperationStatement,
   RegularActionDefinition,
+  SequenceBlock,
+  SequenceItem,
+  TimelineLifecycle,
 } from '../generated/ast.js';
-import { OperationDataTracker } from '../operation-data-tracker.js';
-import { formatValidationMessage } from '../utils/error-builder.js';
-import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
+import { reportControlFlowPairing } from './control-flow-pairing.js';
+import { RESERVED_KEYWORDS } from './validation-constants.js';
 
 /**
  * Validations for action definitions (control-flow pairing, erased properties,
@@ -29,7 +31,7 @@ export class ActionValidator extends BaseValidator {
     accept: ValidationAcceptor
   ): void {
     // T040: Check if action.name exists in operation registry
-    if (hasOperation(action.name)) {
+    if (hasOperation(action.name, action)) {
       // T041: Emit error with code and message
       // Feature 023 US5: Use consistent error code
       accept(
@@ -42,6 +44,41 @@ export class ActionValidator extends BaseValidator {
         }
       );
     }
+  }
+
+  /**
+   * Validate regular/endable action parameters (same rules as event actions):
+   * - Parameters must not use reserved keywords (`reserved_keyword_parameter`)
+   * - No duplicate parameter names (`duplicate_parameter`, on the later one)
+   *
+   * ParameterReference resolves by name, so a duplicate would silently shadow
+   * the other parameter and collapse both into one operationData key.
+   */
+  checkActionParameters(
+    action: RegularActionDefinition | EndableActionDefinition,
+    accept: ValidationAcceptor
+  ): void {
+    const parameters = action.parameters;
+    if (parameters.length === 0) {
+      return;
+    }
+
+    for (const param of parameters) {
+      if (RESERVED_KEYWORDS.has(param.name)) {
+        accept('error', `Parameter name '${param.name}' is a reserved keyword and cannot be used`, {
+          node: param,
+          property: 'name',
+          code: 'reserved_keyword_parameter',
+        });
+      }
+    }
+
+    this.reportDuplicatesByName(
+      parameters,
+      param => `Duplicate parameter name '${param.name}'`,
+      'duplicate_parameter',
+      accept
+    );
   }
 
   /**
@@ -60,61 +97,77 @@ export class ActionValidator extends BaseValidator {
     action: RegularActionDefinition | EndableActionDefinition,
     accept: ValidationAcceptor
   ): void {
-    // Track action names in current call chain to detect cycles
-    const callChain: string[] = [action.name];
-
-    // B24: actions whose entire call subtree has already been explored (and
-    // found cycle-free relative to the current root). Without this, an action
-    // reachable via N distinct paths is re-explored from scratch each time,
-    // giving O(M^N) worst-case blow-up. This is standard DFS coloring: `chain`
-    // is the recursion stack (gray) used to detect back-edges, `visited` is the
-    // finished set (black). A finished node cannot be part of an undiscovered
-    // cycle, so it is safe to prune.
-    const visited = new Set<string>();
-
-    // Helper: Recursively check for cycles starting from an action
-    const checkForCycles = (
-      currentAction: RegularActionDefinition | EndableActionDefinition,
-      chain: string[]
-    ): void => {
-      // Get all operation calls from the action body
-      const operationCalls = this.getAllOperationCalls(currentAction);
-
-      for (const opCall of operationCalls) {
-        // Check if this is a custom action call (not a built-in operation)
-        const actionRef = opCall.operationName.ref;
-        if (!actionRef) {
-          // Not resolved or is a built-in operation - skip
-          continue;
-        }
-
-        const calledActionName = opCall.operationName.$refText;
-
-        // Check if this action is already in our call chain (cycle detected!)
-        if (chain.includes(calledActionName)) {
-          // Found a cycle - report error
-          const cycleChain = [...chain, calledActionName].join(' → ');
-          accept(
-            'error',
-            `Recursive action call detected: '${calledActionName}' creates an infinite loop\n  Call chain: ${cycleChain}`,
-            {
-              node: opCall,
-              property: 'operationName',
-              code: 'recursive_action_call',
-            }
-          );
-        } else if (!visited.has(calledActionName)) {
-          // No cycle yet and not already fully explored - recurse deeper
-          checkForCycles(actionRef, [...chain, calledActionName]);
-        }
+    // Actions are tracked by AST node identity, never by name: a local action
+    // and a same-named (private) library action are different nodes, and an
+    // aliased import's call-site text differs from the definition name.
+    //
+    // Only cycles that close back to `action` itself are reported, and always
+    // on `action`'s own first-hop call. That call lives in the document being
+    // validated, so the diagnostic range is never computed from another file's
+    // CST. Every action on a cycle gets its own report when it is validated as
+    // the root; an action that merely calls into a cycle is not reported.
+    for (const firstHop of this.getAllOperationCalls(action)) {
+      const callee = firstHop.operationName.ref;
+      if (!callee) {
+        // Not resolved or is a built-in operation - skip
+        continue;
       }
 
-      // Done with this action's subtree - mark finished so other paths skip it.
-      visited.add(currentAction.name);
+      const path = this.findCallPath(callee, action);
+      if (!path) {
+        continue;
+      }
+
+      const cycleChain = [action, ...path].map(a => a.name).join(' → ');
+      accept(
+        'error',
+        `Recursive action call detected: '${firstHop.operationName.$refText}' creates an infinite loop\n  Call chain: ${cycleChain}`,
+        {
+          node: firstHop,
+          property: 'operationName',
+          code: 'recursive_action_call',
+        }
+      );
+    }
+  }
+
+  /**
+   * Helper: Find a call path from `from` to `target` in the action call graph.
+   *
+   * Depth-first reachability with an identity-keyed visited set (B24: each
+   * action is expanded at most once per search, so diamond-shaped graphs and
+   * cycles that do not include `target` cannot blow up or loop forever).
+   *
+   * @returns The actions along the path, starting with `from` and ending with
+   *   `target`, or `undefined` when `target` is unreachable.
+   */
+  private findCallPath(
+    from: ActionDefinition,
+    target: ActionDefinition
+  ): ActionDefinition[] | undefined {
+    const visited = new Set<ActionDefinition>();
+
+    const visit = (current: ActionDefinition): ActionDefinition[] | undefined => {
+      if (current === target) {
+        return [current];
+      }
+      if (visited.has(current)) {
+        return undefined;
+      }
+      visited.add(current);
+
+      for (const opCall of this.getAllOperationCalls(current)) {
+        const next = opCall.operationName.ref;
+        if (!next) continue;
+        const rest = visit(next);
+        if (rest) {
+          return [current, ...rest];
+        }
+      }
+      return undefined;
     };
 
-    // Start cycle detection from this action
-    checkForCycles(action, callChain);
+    return visit(from);
   }
 
   /**
@@ -182,22 +235,8 @@ export class ActionValidator extends BaseValidator {
     property: Properties<N>,
     accept: ValidationAcceptor
   ): void {
-    // Filter to only OperationCall (not IfStatement, ForStatement, VariableDeclaration)
-    const operationNames = operations
-      .filter(op => op.$type === 'OperationCall')
-      .map(op => getOperationCallName(op as OperationCall))
-      .filter((name): name is string => name !== undefined);
-    const errors = validateControlFlowPairing(operationNames);
-
-    for (const error of errors) {
-      const message = formatValidationMessage(error.message, error.hint);
-
-      accept('error', message, {
-        node,
-        property,
-        code: error.code.toLowerCase(),
-      });
-    }
+    // Pairs the top-level list and every nested if/else branch and for body
+    reportControlFlowPairing(operations as OperationStatement[], node, property, accept);
   }
 
   /**
@@ -258,126 +297,21 @@ export class ActionValidator extends BaseValidator {
     this.validateControlFlowPairingForOps(action.endOperations, action, 'endOperations', accept);
   }
 
-  /**
-   * Validate erased properties in regular action operations.
-   * Checks that operations don't access properties erased by previous operations.
-   */
-  checkErasedPropertiesInAction(action: RegularActionDefinition, accept: ValidationAcceptor): void {
-    this.validateOperationSequence(action.operations, accept, action);
+  /** Idea #11: control flow pairing in a sequence's `each [..]` / `then [..]` blocks. */
+  checkControlFlowPairingInSequence(block: SequenceBlock, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(block.prelude, block, 'prelude', accept);
+    this.validateControlFlowPairingForOps(block.postlude, block, 'postlude', accept);
   }
 
-  /**
-   * Validate erased properties in endable action start operations.
-   */
-  checkErasedPropertiesInStartOps(
-    action: EndableActionDefinition,
-    accept: ValidationAcceptor
-  ): void {
-    this.validateOperationSequence(action.startOperations, accept, action);
+  /** Idea #11: control flow pairing in an inline sequence item's blocks. */
+  checkControlFlowPairingInSequenceItem(item: SequenceItem, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(item.startOps, item, 'startOps', accept);
+    this.validateControlFlowPairingForOps(item.endOps, item, 'endOps', accept);
   }
 
-  /**
-   * Validate erased properties in endable action end operations.
-   */
-  checkErasedPropertiesInEndOps(action: EndableActionDefinition, accept: ValidationAcceptor): void {
-    this.validateOperationSequence(action.endOperations, accept, action);
-  }
-
-  /**
-   * Validate erased properties in inline endable action start operations.
-   */
-  checkErasedPropertiesInInlineStart(
-    action: InlineEndableAction,
-    accept: ValidationAcceptor
-  ): void {
-    this.validateOperationSequence(action.startOperations, accept, action);
-  }
-
-  /**
-   * Validate erased properties in inline endable action end operations.
-   */
-  checkErasedPropertiesInInlineEnd(action: InlineEndableAction, accept: ValidationAcceptor): void {
-    this.validateOperationSequence(action.endOperations, accept, action);
-  }
-
-  /**
-   * Helper: Validate a sequence of operation statements for erased property access.
-   *
-   * Walks through operation sequence and tracks operationData state using OperationDataTracker.
-   * Reports errors when operations have missing dependencies (properties that were erased
-   * or never created).
-   *
-   * @param operations - Sequence of operation statements to validate
-   * @param accept - Validation acceptor for reporting errors
-   * @param context - Parent action node for error reporting
-   * @param tracker - Optional tracker to continue from (for nested scopes)
-   */
-  private validateOperationSequence(
-    operations: Array<OperationStatement>,
-    accept: ValidationAcceptor,
-    context: RegularActionDefinition | EndableActionDefinition | InlineEndableAction,
-    tracker?: OperationDataTracker
-  ): void {
-    // Create new tracker if not provided (top-level call)
-    const currentTracker = tracker ?? new OperationDataTracker();
-
-    // Walk through operations and track operationData state
-    for (const statement of operations) {
-      if (statement.$type === 'OperationCall') {
-        const opName = getOperationCallName(statement);
-
-        // Only validate if operation exists (avoid duplicate errors)
-        if (!hasOperation(opName)) {
-          continue;
-        }
-
-        // Check if this operation has missing dependencies
-        const missingDependencies = currentTracker.processOperation(opName);
-
-        // Report errors for missing dependencies
-        for (const depName of missingDependencies) {
-          const erasurePoint = currentTracker.findErasurePoint(depName);
-
-          if (erasurePoint) {
-            // Property was erased by a previous operation
-            accept(
-              'error',
-              `Property '${depName}' is not available - it was erased by operation '${erasurePoint.operation}'`,
-              {
-                node: statement,
-                property: 'operationName',
-                code: 'erased-property-access',
-              }
-            );
-          } else {
-            // Property was never created (dependency not satisfied)
-            accept(
-              'error',
-              `Property '${depName}' is not available - ensure it is created by a previous operation`,
-              {
-                node: statement,
-                property: 'operationName',
-                code: 'missing-dependency',
-              }
-            );
-          }
-        }
-      } else if (statement.$type === 'IfStatement') {
-        // Handle if/else branches (T255: Control flow support)
-        // Validate both branches with current tracker state
-        // Note: For a complete implementation, we would need to merge both branch states
-        // and only keep properties available in BOTH branches
-        this.validateOperationSequence(statement.thenOps, accept, context, currentTracker.clone());
-        this.validateOperationSequence(statement.elseOps, accept, context, currentTracker.clone());
-      } else if (statement.$type === 'ForStatement') {
-        // Handle loop body (T255: Control flow support)
-        // Validate loop body with current tracker state
-        // Note: Full loop analysis would require fixed-point iteration
-        // to determine which properties are stable across all iterations
-        this.validateOperationSequence(statement.body, accept, context, currentTracker.clone());
-      } else if (statement.$type === 'VariableDeclaration') {
-      }
-    }
+  /** Validate control flow pairing in an `on enter` / `on leave` block (audit idea #6). */
+  checkControlFlowPairingInLifecycle(block: TimelineLifecycle, accept: ValidationAcceptor): void {
+    this.validateControlFlowPairingForOps(block.operations, block, 'operations', accept);
   }
 
   /**

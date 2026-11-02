@@ -81,7 +81,8 @@ export type CssImportError = FileImportErrorBase & {
  */
 export type CssParseError = {
   readonly _tag: 'CssParseError';
-  readonly filePath: string; // Absolute file path
+  readonly filePath: string; // Path as written in the import statement (matches the import node)
+  readonly absolutePath?: string; // Absolute path of the CSS file on disk
   readonly message: string;
   readonly line: number; // Line in CSS file where error occurred
   readonly column: number; // Column in CSS file where error occurred
@@ -209,6 +210,7 @@ export function createCssImportError(params: {
  */
 export function createCssParseError(params: {
   filePath: string;
+  absolutePath?: string;
   message: string;
   line: number;
   column: number;
@@ -218,6 +220,7 @@ export function createCssParseError(params: {
   return {
     _tag: 'CssParseError',
     filePath: params.filePath,
+    absolutePath: params.absolutePath,
     message: params.message,
     line: params.line,
     column: params.column,

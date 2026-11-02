@@ -8,7 +8,6 @@
  * and operation-sequence dependency validation.
  */
 import { Effect } from 'effect';
-import { getController, isController } from '../../completion/metadata/controllers.generated.js';
 import type { TransformError } from '../../errors/index.js';
 import type {
   ActionDefinition,
@@ -16,7 +15,7 @@ import type {
   ContinueStatement,
   ForStatement,
   IfStatement,
-  NavigateStatement,
+  InteractionStatement,
   OperationCall,
   OperationStatement,
   Program,
@@ -25,63 +24,29 @@ import type {
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { constantValueType, evaluateExpression } from '../expression-evaluator.js';
 import { findActionByName } from '../name-resolver.js';
+import { controllerMetadata, isKnownController } from '../operations/host-operations.js';
 import { getOperationSignature } from '../operations/index.js';
 import { mapParameters } from '../operations/mapper.js';
-import { trackOutputs, validateDependencies, validateOperation } from '../operations/validator.js';
+import { validateOperation } from '../operations/validator.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
 import { transformCondition } from './condition-transformer.js';
+import { preserveErasedParameters } from './erased-parameters.js';
 import { transformExpression } from './expression-transformer.js';
 import {
-  buildNavigateOperations,
-  resolveNavPosition,
-  syntheticNavActionName,
+  buildInteractionOperations,
+  type InteractionListener,
+  interactionActionName,
+  interactionListener,
+  resolveInteractionPosition,
 } from './navigate-operations.js';
+import {
+  createRuntimeConcatCollector,
+  lowerNodeOperations,
+  withRuntimeValueLowering,
+} from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getProgram, getSourceLocation } from './source-location.js';
-
-/**
- * Validate operation dependencies in a sequence (T173: Dependency Tracking)
- *
- * Checks that each operation's required dependencies are available from previous operations.
- * Tracks outputs as operations are processed to maintain dependency chain.
- */
-export const validateOperationSequence = (
-  operations: OperationConfigIR[],
-  contextName: string
-): Effect.Effect<void, TransformError> =>
-  Effect.gen(function* () {
-    const availableOutputs = new Set<string>();
-
-    for (const op of operations) {
-      const signature = getOperationSignature(op.systemName);
-      if (!signature) {
-        continue; // Already validated in transformOperationCall
-      }
-
-      // Validate dependencies
-      const depErrors = validateDependencies(signature, availableOutputs);
-      if (depErrors.length > 0) {
-        const firstError = depErrors[0];
-        return yield* Effect.fail({
-          _tag: 'TransformError' as const,
-          kind: 'ValidationError' as const,
-          message: `In ${contextName}: ${firstError.message}${firstError.hint ? `. ${firstError.hint}` : ''}`,
-          location: op.sourceLocation || {
-            file: undefined,
-            line: 1,
-            column: 1,
-            length: 0,
-          },
-        });
-      }
-
-      // Track outputs for next operation
-      trackOutputs(signature, availableOutputs);
-    }
-
-    return undefined;
-  });
 
 /**
  * Transform OperationCall → OperationConfigIR
@@ -89,7 +54,7 @@ export const validateOperationSequence = (
  * Handles function-style operation calls with positional parameters:
  *   selectElement("#title")
  *   animate({ opacity: 1 }, 500, "ease")
- *   setData({ "operationdata.name": $scope.currentItem })
+ *   setData({ "$operationdata.name": $scope.currentItem })
  *
  * Per DSL_DESIGN_DECISIONS.md Q3: Flattens wrapper objects automatically.
  * Constitution VII: Generates UUID for operation ID
@@ -116,7 +81,7 @@ export const transformOperationCall = (
     }
 
     // T218: Validate operation before transforming
-    const validationResult = validateOperation(operationName, args.length);
+    const validationResult = validateOperation(operationName, args.length, opCall);
     if (!validationResult.success) {
       // Collect all validation errors and fail with first error
       const firstError = validationResult.errors[0];
@@ -129,7 +94,7 @@ export const transformOperationCall = (
     }
 
     // T223: Use parameter mapper to transform arguments to operationData
-    const signature = getOperationSignature(operationName);
+    const signature = getOperationSignature(operationName, opCall);
     if (!signature) {
       // This should never happen after validation, but handle defensively
       return yield* Effect.fail({
@@ -208,6 +173,29 @@ export const transformOperationStatement = (
   isEndOperation: boolean = false,
   program?: Program,
   allActions?: ActionDefinition[]
+): Effect.Effect<OperationConfigIR[], TransformError> => {
+  // Operation calls, action calls and action-level consts may hold runtime
+  // concatenations and forwarded runtime values; see runtime-values.ts.
+  const operations =
+    stmt.$type === 'OperationCall' || stmt.$type === 'VariableDeclaration'
+      ? withRuntimeValueLowering(stmt, scope, statementScope =>
+          transformStatement(stmt, statementScope, isEndOperation, program, allActions)
+        )
+      : transformStatement(stmt, scope, isEndOperation, program, allActions);
+  // A parameter that these operations erase (`selectElement(selector)` removes
+  // `selector`) is kept when the block still uses it; see erased-parameters.ts.
+  // Blocks (if, for, with) do this for the statements inside them.
+  return stmt.$type === 'OperationCall' || stmt.$type === 'InteractionStatement'
+    ? Effect.map(operations, ops => preserveErasedParameters(stmt, ops, scope))
+    : operations;
+};
+
+const transformStatement = (
+  stmt: OperationStatement,
+  scope: ScopeContext,
+  isEndOperation: boolean,
+  program: Program | undefined,
+  allActions: ActionDefinition[] | undefined
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* () {
     switch (stmt.$type) {
@@ -234,7 +222,7 @@ export const transformOperationStatement = (
           const controllerName = args[0].value;
 
           // Validate controller exists
-          if (!isController(controllerName)) {
+          if (!isKnownController(controllerName, stmt)) {
             return yield* Effect.fail({
               _tag: 'TransformError' as const,
               kind: 'ValidationError' as const,
@@ -243,7 +231,7 @@ export const transformOperationStatement = (
             });
           }
 
-          const controller = getController(controllerName);
+          const controller = controllerMetadata(controllerName, stmt);
           if (!controller) {
             return yield* Effect.fail({
               _tag: 'TransformError' as const,
@@ -324,6 +312,14 @@ export const transformOperationStatement = (
             for (let i = 0; i < parameters.length; i++) {
               const paramName = parameters[i].name;
               const argValue = yield* transformExpression(stmt.args[i], scope);
+              // Inside an action body, an argument that forwards the caller's
+              // parameter of the same name is omitted: startAction merges the
+              // caller's operation data into the called action's, so it already
+              // has that value. (Passing the chain would overwrite it with the
+              // literal '$operationdata.<name>' string.)
+              if (scope.inActionBody && argValue === `$operationdata.${paramName}`) {
+                continue;
+              }
               actionOperationData[paramName] = argValue;
             }
           }
@@ -333,7 +329,8 @@ export const transformOperationStatement = (
           const actionOperation = isEndOperation && isEndableAction ? 'endAction' : 'startAction';
 
           return buildActionCallOperations(
-            operationName,
+            // Library helpers are emitted under library-qualified names
+            scope.actionSystemNames?.get(operationName) ?? operationName,
             actionOperationData,
             getSourceLocation(stmt),
             actionOperation
@@ -347,11 +344,11 @@ export const transformOperationStatement = (
 
       case 'IfStatement':
         // If/else → when/otherwise/endWhen sequence
-        return yield* transformIfStatement(stmt, scope, program, allActions);
+        return yield* transformIfStatement(stmt, scope, program, allActions, isEndOperation);
 
       case 'ForStatement':
         // For loop → forEach/endForEach sequence
-        return yield* transformForStatement(stmt, scope, program, allActions);
+        return yield* transformForStatement(stmt, scope, program, allActions, isEndOperation);
 
       case 'VariableDeclaration':
         // Action-scoped variable → setVariable operation
@@ -365,16 +362,52 @@ export const transformOperationStatement = (
         // continue → continueForEach operation
         return yield* transformContinueStatement(stmt, scope);
 
-      case 'NavigateStatement': {
-        // on click "#sel" navigate "Target" [at <time>] →
+      case 'WithStatement': {
+        // Idea #17: with <selector> { ops } → selectElement(<selector>) + ops.
+        // A runtime selector (`"#" + id`) is lowered like an operation argument.
+        const concats = createRuntimeConcatCollector();
+        const selector = yield* transformExpression(stmt.selector, {
+          ...scope,
+          runtimeConcats: concats,
+        });
+        const select = lowerNodeOperations(stmt, concats, [
+          {
+            id: crypto.randomUUID(),
+            systemName: 'selectElement',
+            operationData: { selector },
+            sourceLocation: getSourceLocation(stmt),
+          },
+        ]);
+        const body: OperationConfigIR[] = [];
+        for (const statement of stmt.body) {
+          body.push(
+            ...(yield* transformOperationStatement(
+              statement,
+              scope,
+              isEndOperation,
+              program,
+              allActions
+            ))
+          );
+        }
+        return [...preserveErasedParameters(stmt, select, scope), ...body];
+      }
+
+      case 'InteractionStatement': {
+        // on <event> "#sel" <verb> →
         //   selectElement + getControllerInstance + addControllerToElement.
         // The synthetic broadcast action it references is emitted centrally in
-        // transformAST (one per distinct target+position); its name is derived
-        // purely so both sites agree.
-        const navStmt = stmt as NavigateStatement;
-        const position = yield* resolveNavPosition(navStmt.position);
-        const actionName = syntheticNavActionName(navStmt.target, position);
-        return buildNavigateOperations(navStmt.selector, actionName, getSourceLocation(navStmt));
+        // transformAST (one per distinct verb, target and position); its name is
+        // derived purely so both sites agree. `run` names the called action.
+        const interaction = stmt as InteractionStatement;
+        const location = getSourceLocation(interaction);
+        const listener = yield* listenerOf(interaction, program);
+        if (interaction.verb === 'run') {
+          return yield* transformRunInteraction(interaction, listener, scope, program, allActions);
+        }
+        const position = yield* resolveInteractionPosition(interaction);
+        const actionName = interactionActionName(interaction.verb, interaction.target, position);
+        return buildInteractionOperations(listener, actionName, location);
       }
 
       default:
@@ -386,6 +419,74 @@ export const transformOperationStatement = (
         });
     }
   });
+
+/**
+ * `on <event> "#sel" run action(args)` (idea #19): the DOM listener starts the
+ * action itself, with the arguments (compile-time values, validated) as its
+ * `actionOperationData`.
+ */
+const transformRunInteraction = (
+  interaction: InteractionStatement,
+  listener: InteractionListener,
+  scope: ScopeContext,
+  program: Program | undefined,
+  allActions: ActionDefinition[] | undefined
+): Effect.Effect<OperationConfigIR[], TransformError> =>
+  Effect.gen(function* () {
+    const location = getSourceLocation(interaction);
+    const call = interaction.call;
+    const name = call ? getOperationCallName(call) : undefined;
+    const actionDef =
+      name === undefined
+        ? undefined
+        : allActions
+          ? findActionByName(name, allActions)
+          : findActionByName(name, program ?? (yield* getProgram(interaction)));
+    if (!call || name === undefined || !actionDef) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `'run' starts an action, and '${name ?? '?'}' is not one`,
+        location,
+      });
+    }
+    const parameters = actionDef.parameters || [];
+    if (call.args.length !== parameters.length) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `Action '${name}' expects ${parameters.length} argument(s) but got ${call.args.length}. Expected: ${parameters.map(p => p.name).join(', ')}`,
+        location: getSourceLocation(call),
+      });
+    }
+    const actionOperationData: Record<string, JsonValue> = {};
+    for (let i = 0; i < parameters.length; i++) {
+      actionOperationData[parameters[i].name] = yield* transformExpression(call.args[i], scope);
+    }
+    return buildInteractionOperations(
+      listener,
+      // Library helpers are emitted under library-qualified names
+      scope.actionSystemNames?.get(name) ?? name,
+      location,
+      actionOperationData
+    );
+  });
+
+/** The listener of an interaction; `on key` needs an element to attach to. */
+const listenerOf = (
+  interaction: InteractionStatement,
+  program: Program | undefined
+): Effect.Effect<InteractionListener, TransformError> => {
+  const listener = interactionListener(interaction, program);
+  return listener
+    ? Effect.succeed(listener)
+    : Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: `'on key' outside a timeline needs an element: on key "${interaction.keys}" in "<selector>" …`,
+        location: getSourceLocation(interaction),
+      });
+};
 
 /**
  * Transform IfStatement → when/otherwise/endWhen operations (T177)
@@ -406,12 +507,16 @@ export const transformOperationStatement = (
  *
  * The condition is serialized to the Eligius `when` expression string by
  * {@link transformCondition}. For if-without-else, otherwise() is omitted.
+ *
+ * `isEndOperation` is forwarded to both branches, so an endable action called
+ * inside an `if` in an end block is ended (endAction) rather than restarted.
  */
 export const transformIfStatement = (
   stmt: IfStatement,
   scope: ScopeContext = createEmptyScope(),
   program?: Program,
-  allActions?: ActionDefinition[]
+  allActions?: ActionDefinition[],
+  isEndOperation: boolean = false
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
@@ -436,7 +541,13 @@ export const transformIfStatement = (
       scopedConstants: new Map(scope.scopedConstants), // Clone the map
     };
     for (const thenOp of stmt.thenOps) {
-      const ops = yield* transformOperationStatement(thenOp, thenScope, false, program, allActions);
+      const ops = yield* transformOperationStatement(
+        thenOp,
+        thenScope,
+        isEndOperation,
+        program,
+        allActions
+      );
       operations.push(...ops);
     }
 
@@ -458,7 +569,7 @@ export const transformIfStatement = (
         const ops = yield* transformOperationStatement(
           elseOp,
           elseScope,
-          false,
+          isEndOperation,
           program,
           allActions
         );
@@ -491,12 +602,15 @@ export const transformIfStatement = (
  *   endForEach()
  *
  * The item variable name is passed to forEach so Eligius can set it in the operation data context.
+ *
+ * `isEndOperation` is forwarded to the loop body (see {@link transformIfStatement}).
  */
 export const transformForStatement = (
   stmt: ForStatement,
   scope: ScopeContext = createEmptyScope(),
   program?: Program,
-  allActions?: ActionDefinition[]
+  allActions?: ActionDefinition[],
+  isEndOperation: boolean = false
 ): Effect.Effect<OperationConfigIR[], TransformError> =>
   Effect.gen(function* () {
     const operations: OperationConfigIR[] = [];
@@ -526,7 +640,13 @@ export const transformForStatement = (
     };
 
     for (const bodyOp of stmt.body) {
-      const ops = yield* transformOperationStatement(bodyOp, loopScope, false, program, allActions);
+      const ops = yield* transformOperationStatement(
+        bodyOp,
+        loopScope,
+        isEndOperation,
+        program,
+        allActions
+      );
       operations.push(...ops);
     }
 
@@ -617,6 +737,7 @@ export const transformVariableDeclaration = (
         name: stmt.name,
         value: evalResult.value!,
         type: constantValueType(evalResult.value!),
+        declaration: stmt,
         sourceLocation: {
           line: stmt.$cstNode?.range.start.line ?? 0,
           column: stmt.$cstNode?.range.start.character ?? 0,

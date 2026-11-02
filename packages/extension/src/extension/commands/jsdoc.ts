@@ -49,9 +49,10 @@ export function registerGenerateJSDocCommand(client: LanguageClient): vscode.Dis
           const line = document.lineAt(position.line);
           const lineText = line.text;
 
-          // Find /** and */ positions
-          const jsdocStart = lineText.indexOf('/**');
-          const jsdocEnd = lineText.indexOf('*/');
+          // Find the /** at or before the cursor and the first */ that closes it
+          // (not one belonging to an earlier comment on the same line)
+          const jsdocStart = lineText.lastIndexOf('/**', position.character);
+          const jsdocEnd = jsdocStart === -1 ? -1 : lineText.indexOf('*/', jsdocStart + 3);
 
           if (jsdocStart !== -1 && jsdocEnd !== -1) {
             // Replace the content between /** and */
@@ -65,6 +66,61 @@ export function registerGenerateJSDocCommand(client: LanguageClient): vscode.Dis
       // Silently fail - no JSDoc generation available
     }
   });
+}
+
+/**
+ * Whether the text before a just-typed doc-comment opener leaves the cursor inside a
+ * string literal or a line comment.
+ */
+function isInsideStringOrLineComment(prefix: string): boolean {
+  let quote: string | null = null;
+  for (let i = 0; i < prefix.length; i++) {
+    const ch = prefix[i];
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '/' && prefix[i + 1] === '/') {
+      return true;
+    }
+  }
+  return quote !== null;
+}
+
+/**
+ * Decide whether typing the second asterisk should auto-insert the closing delimiter.
+ *
+ * Only a fresh, unterminated doc-comment opener qualifies: the line must end (at the
+ * cursor) with the opener, the opener must not sit in a string or after a line
+ * comment marker, and the comment must not already be closed (a closing delimiter on
+ * the rest of the line, or one in the rest of the document that comes before the
+ * next block-comment opener).
+ *
+ * @param lineText - Full text of the line containing the cursor
+ * @param character - Cursor column (just after the typed asterisk)
+ * @param restOfDocument - Document text after the cursor
+ */
+export function shouldAutoCloseJSDoc(
+  lineText: string,
+  character: number,
+  restOfDocument: string
+): boolean {
+  const before = lineText.slice(0, character);
+  if (!before.endsWith('/**')) return false;
+  if (isInsideStringOrLineComment(before.slice(0, -3))) return false;
+
+  // Already closed on this line (e.g. turning a one-line block comment into a doc comment)
+  if (lineText.slice(character).includes('*/')) return false;
+
+  // Already closed further down: a closer that precedes the next opener belongs to this comment
+  const close = restOfDocument.indexOf('*/');
+  if (close !== -1) {
+    const nextOpen = restOfDocument.indexOf('/*');
+    if (nextOpen === -1 || close < nextOpen) return false;
+  }
+
+  return true;
 }
 
 /**
@@ -95,17 +151,19 @@ export function registerJSDocAutoCompletion(): vscode.Disposable {
 
     // Check if user just typed the second *
     if (text === '*') {
-      const position = new vscode.Position(change.range.end.line, change.range.end.character + 1);
+      // The typed character sits at the start of the change range (the range may be a replaced selection)
+      const position = new vscode.Position(
+        change.range.start.line,
+        change.range.start.character + 1
+      );
 
       const document = event.document;
 
-      // Get text before cursor (including the just-typed *)
-      const textBeforeCursor = document.getText(
-        new vscode.Range(new vscode.Position(0, 0), position)
-      );
+      const lineText = document.lineAt(position.line).text;
+      const restOfDocument = document.getText().slice(document.offsetAt(position));
 
-      // Check if it ends with /**
-      if (textBeforeCursor.trimEnd().endsWith('/**')) {
+      // Only a fresh, unterminated /** opener gets a closing delimiter
+      if (shouldAutoCloseJSDoc(lineText, position.character, restOfDocument)) {
         // Insert the closing */ and position cursor
         await editor.edit(
           (editBuilder: vscode.TextEditorEdit) => {

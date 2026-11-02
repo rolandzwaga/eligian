@@ -25,6 +25,9 @@ function inferArgumentType(arg: any): string {
     case 'StringLiteral':
       return 'string';
     case 'NumberLiteral':
+    // Idea #10: `2s` is a number of seconds; outside a const it gets one
+    // placement error from the timeline validator, not a type error too
+    case 'TimeValue':
       return 'number';
     case 'BooleanLiteral':
       return 'boolean';
@@ -112,7 +115,12 @@ function isTypeSingleCompatible(argType: string, paramTypeStr: string): boolean 
       paramTypeStr.includes('selector') ||
       paramTypeStr.includes('htmlElementName') ||
       paramTypeStr.includes('actionName') ||
-      paramTypeStr.includes('eventName')
+      paramTypeStr.includes('eventName') ||
+      // Names and text Eligius takes as strings (customFunction("formatPrice"),
+      // getControllerInstance("…"), a topic, a URL, a label id, …)
+      /ParameterType:(systemName|controllerName|eventTopic|url|htmlContent|labelId|ImagePath|expression|languagecode|mathfunction)$/.test(
+        paramTypeStr
+      )
     );
   }
 

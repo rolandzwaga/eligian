@@ -6,18 +6,44 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import type { TimeExpression as AstTimeExpression } from '../../generated/ast.js';
+import type { TimeExpression as AstTimeExpression, LabeledEvent } from '../../generated/ast.js';
+import {
+  eventEdgeMessage,
+  isEventEdge,
+  laterEventMessage,
+  timeConstantValue,
+} from '../../utils/time-constants.js';
+import { convertTimeToSeconds } from '../../utils/time-units.js';
 import type { TimeExpression } from '../types/eligius-ir.js';
 import { getSourceLocation } from './source-location.js';
+
+/**
+ * Message for a property chain (`$scope.x`) used as a time. Shared by the
+ * compiler (below) and the IDE validator (validators/timeline-validator.ts) so
+ * both report the same wording.
+ */
+export function propertyChainTimeMessage(chain: { scope: string; properties: string[] }): string {
+  const name = `$${chain.scope}.${chain.properties.join('.')}`;
+  return `Property references are not supported in time expressions: ${name}. Use a literal time (e.g. 2s) or a constant expression.`;
+}
+
+/** Start and end (seconds) of the labeled events compiled so far (`at … as intro`, idea #10). */
+export type EventLabelTimes = ReadonlyMap<
+  LabeledEvent,
+  { readonly start: number; readonly end: number }
+>;
 
 /**
  * Transform TimeExpression → TimeExpression IR
  *
  * T189: Supports relative time expressions (+2s) by adding offset to previousEventEndTime
+ * Idea #10: `@beat` (a time constant) and `intro.end` (a labeled event before
+ * this one, from `labels`) become literals.
  */
 export const transformTimeExpression = (
   expr: AstTimeExpression,
-  previousEventEndTime: number = 0
+  previousEventEndTime: number = 0,
+  labels: EventLabelTimes = new Map()
 ): Effect.Effect<TimeExpression, TransformError> =>
   Effect.gen(function* () {
     switch (expr.$type) {
@@ -39,17 +65,54 @@ export const transformTimeExpression = (
         };
       }
       case 'PropertyChainReference': {
-        // Property reference in time expression
-        const scope = expr.scope;
-        const properties = expr.properties.join('.');
-        return {
-          kind: 'variable' as const,
-          name: `$${scope}.${properties}`,
-        };
+        // The grammar accepts a property chain as a time, but Eligius needs
+        // numeric start/end times at configuration time, so it cannot be
+        // compiled. Fail with a located TransformError here: the former
+        // `{ kind: 'variable' }` IR node made evaluateTimeExpression throw a raw
+        // Error, which escaped the Effect pipeline as a defect.
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: propertyChainTimeMessage(expr),
+          location: getSourceLocation(expr),
+        });
+      }
+      case 'VariableReference': {
+        const constant = timeConstantValue(expr);
+        if (constant.error !== undefined) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: constant.error,
+            location: getSourceLocation(expr),
+          });
+        }
+        return { kind: 'literal' as const, value: constant.seconds };
+      }
+      case 'EventTimeReference': {
+        if (!isEventEdge(expr.edge)) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: eventEdgeMessage(expr),
+            location: getSourceLocation(expr),
+          });
+        }
+        const event = expr.event?.ref;
+        const times = event ? labels.get(event) : undefined;
+        if (!times) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: laterEventMessage(expr.event?.$refText ?? '?'),
+            location: getSourceLocation(expr),
+          });
+        }
+        return { kind: 'literal' as const, value: times[expr.edge] };
       }
       case 'BinaryTimeExpression': {
-        const left = yield* transformTimeExpression(expr.left, previousEventEndTime);
-        const right = yield* transformTimeExpression(expr.right, previousEventEndTime);
+        const left = yield* transformTimeExpression(expr.left, previousEventEndTime, labels);
+        const right = yield* transformTimeExpression(expr.right, previousEventEndTime, labels);
         return {
           kind: 'binary' as const,
           op: expr.op as '+' | '-' | '*' | '/',
@@ -68,40 +131,23 @@ export const transformTimeExpression = (
   });
 
 /**
- * Helper: Convert time value to seconds based on unit
- *
- * Supports: ms (milliseconds), s (seconds), m (minutes), h (hours)
- * Default unit is seconds if not specified.
- */
-function convertTimeToSeconds(value: number, unit?: string): number {
-  if (!unit || unit === 's') {
-    return value;
-  }
-  switch (unit) {
-    case 'ms':
-      return value / 1000;
-    case 'm':
-      return value * 60;
-    case 'h':
-      return value * 3600;
-    default:
-      return value; // Default to seconds
-  }
-}
-
-/**
  * Helper: Evaluate TimeExpression to a numeric value
  *
  * Performs constant folding for binary expressions (e.g., 10 + 5 → 15).
- * Variables are not supported yet and will throw an error.
+ *
+ * `variable` nodes are never produced: {@link transformTimeExpression} rejects
+ * property chains with a TransformError before any evaluation happens. The
+ * guard below is an internal invariant (a compiler bug if reached), not a user
+ * error path.
  */
 export function evaluateTimeExpression(expr: TimeExpression): number {
   switch (expr.kind) {
     case 'literal':
       return expr.value;
     case 'variable':
-      // TODO: Variable support requires a symbol table/environment
-      throw new Error(`Variables not yet supported in time expressions: ${expr.name}`);
+      throw new Error(
+        `Internal compiler error: unresolved variable '${expr.name}' in a time expression (transformTimeExpression should have rejected it)`
+      );
     case 'binary': {
       const left = evaluateTimeExpression(expr.left);
       const right = evaluateTimeExpression(expr.right);

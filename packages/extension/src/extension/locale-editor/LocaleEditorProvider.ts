@@ -15,6 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ILocalesConfiguration } from 'eligius';
 import * as vscode from 'vscode';
+import { registerLocalePanel } from '../label-entry-creator.js';
 import { buildKeyTree, extractLocales } from './key-tree-builder.js';
 import { LocaleFileWatcher } from './LocaleFileWatcher.js';
 import { searchWorkspace } from './LocaleUsageTracker.js';
@@ -58,6 +59,11 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
 
   // Current configuration state per document (keyed by document URI)
   private documentConfigs = new Map<string, ILocalesConfiguration>();
+
+  // Last document text the webview is known to be in sync with (keyed by document URI).
+  // The file watcher fires for the editor's own saves as well; comparing against this
+  // lets it ignore events that carry no new content.
+  private syncedTexts = new Map<string, string>();
 
   // Cached raw HTML template (static file, read lazily on first webview open)
   private htmlTemplate?: string;
@@ -216,40 +222,48 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     });
 
     // T059: Set up file watcher for external changes
-    const fileWatcher = new LocaleFileWatcher(document.uri, async _fileUri => {
-      // Re-parse JSON and update webview with new format
-      const parseResult = parseLocalesConfiguration(document.getText());
-      if (parseResult.success && parseResult.config) {
-        const config = parseResult.config;
-        this.documentConfigs.set(document.uri.toString(), config);
-        const keyTree = buildKeyTree(config);
-        const reloadMessage: LocaleToWebviewMessage = {
-          type: 'reload',
-          locales: extractLocales(config),
-          keyTree: keyTreeToSerializable(keyTree),
-        };
-        webviewPanel.webview.postMessage(reloadMessage);
-      } else {
-        // Fallback to legacy format
-        const labels = parseLabels(document.getText());
-        const reloadMessage: ToWebviewMessage = {
-          type: 'reload',
-          labels,
-        };
-        webviewPanel.webview.postMessage(reloadMessage);
-      }
-
-      // Show info message
-      vscode.window.showInformationMessage('Label file was modified externally. Reloaded.');
+    const fileWatcher = new LocaleFileWatcher(document.uri, () => {
+      this.handleFileWatcherChange(document, webviewPanel);
     });
+
+    // The webview receives the initial state from the document as it is now
+    this.syncedTexts.set(document.uri.toString(), document.getText());
+
+    // Let quick fixes select keys in this live editor (re-opening it sends no 'ready')
+    const unregisterPanel = registerLocalePanel(document.uri.toString(), webviewPanel);
 
     // 5. Register disposables for cleanup
     webviewPanel.onDidDispose(() => {
+      unregisterPanel();
       changeDocumentSubscription.dispose();
       fileWatcher.dispose();
       // Clean up stored config
       this.documentConfigs.delete(document.uri.toString());
+      this.syncedTexts.delete(document.uri.toString());
     });
+  }
+
+  /**
+   * Handle a (debounced) file watcher event for the locale file.
+   *
+   * The watcher also fires for saves made by this editor (and for saves of edits
+   * already shown in the webview). Reloading then would rebuild the inputs, drop
+   * the user's focus and show a bogus "modified externally" toast, so events whose
+   * content the webview already reflects are ignored.
+   */
+  private handleFileWatcherChange(
+    document: vscode.TextDocument,
+    webviewPanel: vscode.WebviewPanel
+  ): void {
+    // Compare with line endings normalized: saveConfig records LF-only JSON, but VS Code
+    // converts inserted text to the document's EOL, so a CRLF file never matches verbatim.
+    const synced = this.syncedTexts.get(document.uri.toString());
+    if (synced !== undefined && normalizeEol(synced) === normalizeEol(document.getText())) {
+      return;
+    }
+
+    this.updateWebview(document, webviewPanel);
+    vscode.window.showInformationMessage('Label file was modified externally. Reloaded.');
   }
 
   /**
@@ -257,6 +271,9 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
    */
   private saveConfig(document: vscode.TextDocument, config: ILocalesConfiguration): void {
     const json = JSON.stringify(config, null, 2);
+    // The document will contain this text (with its own EOL); remember it so the file
+    // watcher can tell that the resulting disk write is our own.
+    this.syncedTexts.set(document.uri.toString(), json);
     const edit = new vscode.WorkspaceEdit();
     edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
     this.applyWebviewEdit(document, edit);
@@ -270,6 +287,7 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
    */
   private updateWebview(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): void {
     console.log('[LocaleEditorProvider] updateWebview called');
+    this.syncedTexts.set(document.uri.toString(), document.getText());
 
     // Try new ILocalesConfiguration format first
     const parseResult = parseLocalesConfiguration(document.getText());
@@ -286,15 +304,22 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
       console.log('[LocaleEditorProvider] Posting reload message to webview');
       webviewPanel.webview.postMessage(reloadMessage);
     } else {
-      // Fallback to legacy format
-      const labels = parseLabels(document.getText());
-      console.log('[LocaleEditorProvider] Parsed labels, count:', labels.length);
-      const reloadMessage: ToWebviewMessage = {
-        type: 'reload',
-        labels,
-      };
-      console.log('[LocaleEditorProvider] Posting reload message to webview');
-      webviewPanel.webview.postMessage(reloadMessage);
+      // The document no longer holds a valid locale configuration (typically a
+      // half-typed edit in a side-by-side text editor). Drop the cached config so a
+      // webview edit cannot serialize stale state over the user's text; the message
+      // handler refuses edits until the JSON parses again.
+      this.documentConfigs.delete(document.uri.toString());
+
+      // Only a genuine legacy array file gets a legacy reload; invalid JSON must not
+      // push a bogus empty label list into the webview.
+      if (isJsonArray(document.getText())) {
+        const labels = parseLabels(document.getText());
+        const reloadMessage: ToWebviewMessage = {
+          type: 'reload',
+          labels,
+        };
+        webviewPanel.webview.postMessage(reloadMessage);
+      }
     }
     console.log('[LocaleEditorProvider] reload message posted');
   }
@@ -346,4 +371,18 @@ export class LocaleEditorProvider implements vscode.CustomTextEditorProvider {
     // Convert URIs to file paths for display in webview
     return usageUris.map(uri => uri.fsPath);
   }
+}
+
+/** Whether the text is a JSON document whose top-level value is an array. */
+function isJsonArray(text: string): boolean {
+  try {
+    return Array.isArray(JSON.parse(text));
+  } catch {
+    return false;
+  }
+}
+
+/** Text with CRLF / CR line endings converted to LF. */
+function normalizeEol(text: string): string {
+  return text.replace(/\r\n?/g, '\n');
 }

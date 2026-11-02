@@ -10,11 +10,11 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { Effect } from 'effect';
-import { type LangiumDocument, URI } from 'langium';
+import { AstUtils, type LangiumDocument, URI } from 'langium';
+import { getCssImportPaths } from '../../css/css-import-paths.js';
 import { createEmptyCSSMetadata, parseCSS } from '../../css/css-parser.js';
 import type { ParseError, ValidationError } from '../../errors/index.js';
 import { isLibrary, type Program } from '../../generated/ast.js';
-import { isDefaultImport } from '../../utils/ast-helpers.js';
 import { resolveImportRelativePath } from '../../utils/path-utils.js';
 import { extractDocumentErrors } from './document-errors.js';
 import {
@@ -33,6 +33,23 @@ import { getOrCreateServices } from './services.js';
 let documentCounter = 0;
 
 /**
+ * Converts a document location to a Langium URI.
+ *
+ * Callers pass either a URI string (`file:///...`, `memory:...`) or a plain
+ * filesystem path: the CLI and the VS Code extension pass `fsPath`s such as
+ * `C:\proj\a.eligian`. `URI.parse` would read the drive letter `C` as the URI
+ * scheme and drop it from `fsPath`, so every relative import would then
+ * resolve against the process's current drive. Filesystem paths (Windows
+ * drive-letter paths, or anything without a `scheme:` prefix of 2+ chars) are
+ * therefore converted with `URI.file`.
+ */
+export function toDocumentUri(location: string): URI {
+  const isWindowsDrivePath = /^[a-zA-Z]:([\\/]|$)/.test(location);
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]+:/.test(location);
+  return isWindowsDrivePath || !hasScheme ? URI.file(location) : URI.parse(location);
+}
+
+/**
  * T076: Parse DSL source → Langium AST
  *
  * Uses Langium parser to convert source string to AST.
@@ -40,17 +57,111 @@ let documentCounter = 0;
  *
  * Note: Reuses a shared Langium service instance for better performance
  * and to prevent memory exhaustion during testing. Each parse gets a unique
- * URI to avoid document conflicts. Documents are removed from the workspace
- * after parsing to prevent memory leaks.
+ * URI to avoid document conflicts. The main document is removed from the shared
+ * workspace and index once parsing finishes, so a long-running host does not
+ * accumulate one document per call. Library documents stay loaded: the
+ * transformer reads them from the workspace. They are keyed by URI and replaced
+ * on every reload, so they are bounded by the number of distinct library files.
+ * The compile pipeline uses {@link parseSourceTracked} to release them too, once
+ * the compilation is done. The returned AST stays fully linked and usable.
  */
 export const parseSource = (
   source: string,
   uri?: string
 ): Effect.Effect<Program, ParseError | ValidationError> =>
+  parseSourceTracked(source, uri).pipe(
+    Effect.map(({ program, releaseMain }) => {
+      releaseMain();
+      return program;
+    })
+  );
+
+/**
+ * A parsed program together with the means to release the workspace documents
+ * that were loaded for it.
+ */
+export interface TrackedParse {
+  readonly program: Program;
+  /** Remove the main document from the workspace/index */
+  readonly releaseMain: () => void;
+  /** Remove the main document and every library document loaded for it */
+  readonly release: () => void;
+}
+
+/** Workspace documents loaded by one parse, split so they can be released separately. */
+interface TouchedDocuments {
+  readonly main: Map<string, URI>;
+  readonly libraries: Map<string, URI>;
+}
+
+/**
+ * Like {@link parseSource}, but keeps the main and library documents in the
+ * workspace until the caller invokes `release()` (the transformer needs the
+ * libraries). On a failed parse everything is released automatically.
+ */
+export const parseSourceTracked = (
+  source: string,
+  uri?: string
+): Effect.Effect<TrackedParse, ParseError | ValidationError> =>
+  Effect.suspend(() => {
+    const touched: TouchedDocuments = { main: new Map(), libraries: new Map() };
+    const release = () => {
+      releaseDocuments(touched.main);
+      releaseDocuments(touched.libraries);
+    };
+    return parseSourceInner(source, uri, touched).pipe(
+      Effect.onError(() => Effect.sync(release)),
+      Effect.map(program => ({
+        program,
+        releaseMain: () => releaseDocuments(touched.main),
+        release,
+      }))
+    );
+  });
+
+/**
+ * Resolve every cross-reference in the given documents. References link lazily
+ * (on first `.ref` access) through the shared index, so this must run before
+ * the documents are released: a reference first touched afterwards (by the
+ * transformer) would no longer find library actions and fail to resolve.
+ */
+function resolveAllReferences(documents: Iterable<LangiumDocument>): void {
+  for (const document of documents) {
+    for (const node of AstUtils.streamAst(document.parseResult.value)) {
+      for (const reference of AstUtils.streamReferences(node)) {
+        const resolved = reference.reference;
+        void ('items' in resolved ? resolved.items : resolved.ref);
+      }
+    }
+  }
+}
+
+/**
+ * Remove documents from the shared workspace: drops them from the index (so
+ * they stop being visible to scoping) and from the LangiumDocuments map.
+ */
+function releaseDocuments(documents: Map<string, URI>): void {
+  const services = getOrCreateServices();
+  const { IndexManager, LangiumDocuments } = services.shared.workspace;
+  for (const documentUri of documents.values()) {
+    IndexManager.remove(documentUri);
+    if (LangiumDocuments.hasDocument(documentUri)) {
+      LangiumDocuments.deleteDocument(documentUri);
+    }
+  }
+}
+
+const parseSourceInner = (
+  source: string,
+  uri: string | undefined,
+  touched: TouchedDocuments
+): Effect.Effect<Program, ParseError | ValidationError> =>
   Effect.gen(function* () {
     // Generate unique URI if not provided
-    const uriString = uri ?? `file:///memory/source-${documentCounter++}.eligian`;
-    const documentUri = URI.parse(uriString);
+    const documentUri = toDocumentUri(uri ?? `file:///memory/source-${documentCounter++}.eligian`);
+    // Registry key: must match the `document.uri.toString()` the validators use
+    const uriString = documentUri.toString();
+    touched.main.set(uriString, documentUri);
 
     // T017: Load library files BEFORE parsing/validation if URI is provided
     // This ensures libraries are in the workspace when scope provider runs
@@ -86,13 +197,26 @@ export const parseSource = (
 
       const importPaths = extractLibraryImports(tempProgram);
 
-      // Feature 032 US3: Load each library recursively (including nested dependencies)
+      // Feature 032 US3: Load each library recursively (including nested dependencies).
+      // Shared across imports so a library reached twice is loaded once.
+      const loadedLibraries = new Map<string, LangiumDocument[]>();
+      const trackLibraries = (docs: Iterable<LangiumDocument>) => {
+        for (const libDoc of docs) {
+          touched.libraries.set(libDoc.uri.toString(), libDoc.uri);
+        }
+      };
       for (const importPath of importPaths) {
         const libraryUri = resolveLibraryPath(documentUri, importPath);
 
         // Recursively load library and all its dependencies with cycle detection
-        const nestedLibraries = yield* loadLibraryRecursive(libraryUri, documentUri);
+        const nestedLibraries = yield* loadLibraryRecursive(
+          libraryUri,
+          documentUri,
+          new Map(),
+          loadedLibraries
+        );
 
+        trackLibraries(nestedLibraries);
         // Add all nested libraries to the collection (avoiding duplicates)
         for (const libDoc of nestedLibraries) {
           if (!libraryDocuments.some(doc => doc.uri.toString() === libDoc.uri.toString())) {
@@ -156,59 +280,7 @@ export const parseSource = (
         // No manual registration needed here.
 
         if (uri) {
-          const root = document.parseResult.value;
-
-          // Extract CSS imports from AST
-          const cssFiles: string[] = [];
-          for (const statement of root.statements) {
-            if (isDefaultImport(statement) && statement.type === 'styles') {
-              if (!statement.path) {
-                continue;
-              }
-              const cssPath = statement.path.replace(/^["']|["']$/g, '');
-              cssFiles.push(cssPath);
-            }
-          }
-
-          // Parse each CSS file and load into registry
-          const docPath = documentUri.fsPath;
-          const docDir = path.dirname(docPath);
-          const cssFileUris: string[] = [];
-          for (const cssRelativePath of cssFiles) {
-            // Convert relative path to absolute (D4: shared resolution,
-            // path.join handles ./, ., ../). Computed once for both branches.
-            const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
-            // Convert to absolute URI (must match validator format)
-            const cssFileUri = URI.file(cssFilePath).toString();
-            cssFileUris.push(cssFileUri);
-
-            try {
-              // Read and parse CSS file
-              const cssContent = readFileSync(cssFilePath, 'utf-8');
-              const parseResult = parseCSS(cssContent, cssFilePath);
-
-              // Update registry with parsed CSS
-              cssRegistry.updateCSSFile(cssFileUri, parseResult);
-            } catch (error) {
-              // Register error in registry
-              cssRegistry.updateCSSFile(
-                cssFileUri,
-                createEmptyCSSMetadata([
-                  {
-                    message: error instanceof Error ? error.message : 'Unknown error',
-                    filePath: cssFileUri,
-                    line: 0,
-                    column: 0,
-                  },
-                ])
-              );
-            }
-          }
-
-          // CRITICAL FIX: Register document→CSS mapping (enables validation!)
-          // Without this, cssRegistry.getClassesForDocument() returns empty set
-          cssRegistry.registerImports(uriString, cssFileUris);
-          // DEBUG: Check CSS registry state
+          loadCssImports(document, cssRegistry);
         }
 
         // Now run validation with CSS loaded
@@ -227,6 +299,9 @@ export const parseSource = (
 
     const document = result;
 
+    // Pin all references while the libraries are still in the shared index
+    resolveAllReferences([document, ...libraryDocuments]);
+
     // Check for lexer / parser / semantic-validation errors
     yield* extractDocumentErrors(document, {
       lexerMessagePrefix: 'Lexer error: ',
@@ -238,6 +313,59 @@ export const parseSource = (
     // Return parsed AST
     return document.parseResult.value;
   });
+
+/**
+ * Parse the CSS files a document imports (`styles` default imports and named
+ * CSS imports) into the CSS registry and register the document→CSS mapping.
+ * Must run before validation: the CSS class/selector validators read the
+ * registry, so the IDE and the compiler validate against the same classes.
+ */
+export function loadCssImports(
+  document: LangiumDocument,
+  cssRegistry: ReturnType<typeof getOrCreateServices>['Eligian']['css']['CSSRegistry']
+): void {
+  const root = document.parseResult.value as Program;
+  const cssFiles = getCssImportPaths(root).map(p => p.replace(/^["']|["']$/g, ''));
+
+  const docDir = path.dirname(document.uri.fsPath);
+  const cssFileUris: string[] = [];
+  for (const cssRelativePath of cssFiles) {
+    // D4: shared resolution (path.join handles ./, ., ../)
+    const cssFilePath = resolveImportRelativePath(cssRelativePath, docDir);
+    // Absolute URI: must match the validator's format
+    const cssFileUri = URI.file(cssFilePath).toString();
+    cssFileUris.push(cssFileUri);
+
+    try {
+      const cssContent = readFileSync(cssFilePath, 'utf-8');
+      cssRegistry.updateCSSFile(cssFileUri, parseCSS(cssContent, cssFilePath));
+    } catch (error) {
+      cssRegistry.updateCSSFile(
+        cssFileUri,
+        createEmptyCSSMetadata([
+          {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            filePath: cssFileUri,
+            line: 0,
+            column: 0,
+          },
+        ])
+      );
+    }
+  }
+
+  // Register document→CSS mapping (without it getClassesForDocument() is empty)
+  cssRegistry.registerImports(document.uri.toString(), cssFileUris);
+}
+
+/**
+ * Remove documents from the shared compiler workspace (index and document map).
+ */
+export function releaseWorkspaceDocuments(uris: Iterable<URI>): void {
+  const map = new Map<string, URI>();
+  for (const uri of uris) map.set(uri.toString(), uri);
+  releaseDocuments(map);
+}
 
 /**
  * T077: Validate AST semantics

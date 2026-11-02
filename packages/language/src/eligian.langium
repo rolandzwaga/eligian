@@ -27,9 +27,16 @@ grammar Eligian
  * - Library: Library files with 'library' keyword, containing only actions
  *
  * Disambiguation: Presence of 'library' keyword determines file type.
+ *
+ * Program: an optional languages block, then the program statements. The
+ * languages block (if present) MUST be the first declaration, enforced here by
+ * placing it before the statements (Feature 037). Program is written inline
+ * because it can match an empty file, which Langium only allows for the entry
+ * rule ("This parser rule potentially consumes no input").
  */
 entry EligianFile:
-    Program | Library;
+    Library |
+    {infer Program} languages=LanguagesBlock? (statements += ProgramStatement)*;
 
 /**
  * Library - Reusable action library file (Feature 023)
@@ -63,17 +70,7 @@ Library:
 // Program Structure
 // ============================================================================
 
-/**
- * Program - Main program structure with optional languages block
- *
- * The languages block (if present) MUST be the first declaration.
- * This is enforced at the grammar level by placing it before statements.
- *
- * Feature 037: Languages Declaration Syntax
- */
-Program:
-    languages=LanguagesBlock?
-    (statements += ProgramStatement)*;
+// Program itself is the second alternative of the EligianFile entry rule.
 
 ProgramStatement:
     ImportStatement | ProgramElement;
@@ -146,7 +143,43 @@ LanguageEntry:
  * - LibraryImport: import { action1, action2 } from './library.eligian' (Feature 023)
  */
 ImportStatement:
-    DefaultImport | NamedImport | LibraryImport;
+    DefaultImport | NamedImport | LibraryImport | ExtensionsImport;
+
+/**
+ * Extensions Import (audit idea #24) - app-specific JavaScript / TypeScript:
+ * custom operations, controllers and functions, declared here so the editor
+ * and the compiler know them, and bundled with the presentation.
+ *
+ *   extensions "./host.ts" {
+ *     operation trackEvent(eventName: string, data?: object)
+ *     controller Confetti(count: number)
+ *     function formatPrice
+ *   }
+ *
+ * The module exports `operations`, `controllers` and `functions` objects with
+ * those names (Eligius' resource registrations). A host operation is called
+ * like a built-in one (`trackEvent("intro")`), a controller with
+ * `addController("Confetti", 5)`, a function with `customFunction("formatPrice")`.
+ * One per program.
+ */
+ExtensionsImport:
+    'extensions' path=STRING '{' (declarations += HostDeclaration)* '}';
+
+HostDeclaration:
+    HostOperation | HostController | HostFunction;
+
+HostOperation:
+    'operation' name=ActionName '(' (parameters += HostParameter (',' parameters += HostParameter)*)? ')';
+
+HostController:
+    'controller' name=ActionName '(' (parameters += HostParameter (',' parameters += HostParameter)*)? ')';
+
+HostFunction:
+    'function' name=ActionName;
+
+/** A host operation or controller parameter: `name`, `name?` (optional), `name: string`. */
+HostParameter:
+    name=Identifier (optional?='?')? (':' type=TypeAnnotation)?;
 
 /**
  * Default Import - Auto-assignment to configuration properties
@@ -181,7 +214,7 @@ DefaultImport:
  * Path must be relative (validated in eligian-validator.ts).
  */
 NamedImport:
-    'import' name=ID 'from' path=STRING ('as' assetType=AssetType)?;
+    'import' name=Identifier 'from' path=STRING ('as' assetType=AssetType)?;
 
 /**
  * Asset Type - Supported asset types for explicit type override
@@ -228,7 +261,7 @@ LibraryImport:
  * - Type checking for imported action parameters
  */
 ActionImport:
-    action=[ActionDefinition:ID] ('as' alias=ID)?;
+    action=[ActionDefinition:ActionName] ('as' alias=ActionName)?;
 
 // ============================================================================
 // Action Definitions
@@ -255,7 +288,7 @@ ActionImport:
  *       addClass("active")
  *     ]
  *
- *   Zero parameters:
+ *   Zero parameters (the parentheses are optional, as for regular actions):
  *     on event "timeline-complete" action ShowCompletionMessage [
  *       selectElement("#completion-overlay")
  *       removeClass("hidden")
@@ -270,8 +303,8 @@ ActionImport:
 EventActionDefinition:
     'on' 'event' eventName=STRING?
     ('topic' eventTopic=STRING)?
-    'action' name=ID
-    '(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')'
+    'action' name=ActionName
+    ('(' (parameters+=Parameter (',' parameters+=Parameter)*)? ')')?
     '[' operations+=OperationStatement* ']';
 
 
@@ -313,11 +346,11 @@ ActionDefinition:
     EndableActionDefinition | RegularActionDefinition;
 
 RegularActionDefinition:
-    (visibility='private')? 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
+    (visibility='private')? 'action' name=ActionName ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (operations += OperationStatement)* ']';
 
 EndableActionDefinition:
-    (visibility='private')? 'endable' 'action' name=ID ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
+    (visibility='private')? 'endable' 'action' name=ActionName ('(' (parameters += Parameter (',' parameters += Parameter)*)? ')')?
     '[' (startOperations += OperationStatement)* ']'
     '[' (endOperations += OperationStatement)* ']';
 
@@ -334,7 +367,7 @@ EndableActionDefinition:
  * Type annotations are optional and used for compile-time type checking.
  */
 Parameter:
-    name=ID (':' type=TypeAnnotation)?;
+    name=Identifier (':' type=TypeAnnotation)?;
 
 /**
  * Type Annotation - Optional type hint for parameters
@@ -358,7 +391,18 @@ TypeAnnotation returns string:
  * - Variable declarations (const varName = value)
  */
 OperationStatement:
-    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | NavigateStatement | OperationCall;
+    IfStatement | ForStatement | VariableDeclaration | BreakStatement | ContinueStatement | InteractionStatement | WithStatement | OperationCall;
+
+/**
+ * With Statement (audit idea #17) - select an element, then run operations:
+ *
+ *   with ".callout" { removeClass("show") }
+ *
+ * Compiles to selectElement(<selector>) followed by the operations. The
+ * selection stays after the block (there is nothing to restore it to).
+ */
+WithStatement:
+    'with' selector=Expression '{' (body += OperationStatement)* '}';
 
 /**
  * If/Else Statement - Syntactic sugar for when/otherwise/endWhen
@@ -374,10 +418,22 @@ OperationStatement:
  *   } else {
  *     removeClass("active")
  *   }
+ *
+ *   if ($operationdata.mode == "a") {
+ *     addClass("mode-a")
+ *   } else if ($operationdata.mode == "b") {
+ *     addClass("mode-b")
+ *   } else {
+ *     addClass("mode-default")
+ *   }
+ *
+ * `else if (...) { ... }` is sugar for `else { if (...) { ... } }`: the nested
+ * IfStatement becomes the else branch's only statement, so it compiles to a
+ * when/otherwise/endWhen nested inside the outer otherwise.
  */
 IfStatement:
     'if' '(' condition=Expression ')' '{' (thenOps += OperationStatement)* '}'
-    ('else' '{' (elseOps += OperationStatement)* '}')?;
+    ('else' (elseOps += IfStatement | '{' (elseOps += OperationStatement)* '}'))?;
 
 /**
  * For Loop - Syntactic sugar for forEach/endForEach
@@ -393,7 +449,7 @@ IfStatement:
  *   }
  */
 ForStatement:
-    'for' '(' itemName=ID 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
+    'for' '(' itemName=Identifier 'in' collection=Expression ')' '{' (body += OperationStatement)* '}';
 
 /**
  * Break Statement - Exit current loop immediately
@@ -430,27 +486,55 @@ ContinueStatement:
     {infer ContinueStatement} 'continue';
 
 /**
- * Navigate Statement - Click-to-switch-timeline sugar (hub ↔ chapter nav)
- *
- * Wires a click handler on an element that switches the engine to another
- * timeline (by its name/uri). Designed for hub-and-chapter presentations.
- *
- * Example:
- *   on click "#card-ch1" navigate "Timeline & Time"
- *   on click "#resume" navigate "Timeline & Time" at 5s
- *
- * Compiles to:
- *   selectElement("#card-ch1")
- *   getControllerInstance("DOMEventListenerController")
- *   addControllerToElement({ eventName: "click", actions: ["<synthetic action>"] })
- * plus one synthetic action per distinct (target, position) that does:
- *   broadcastEvent("request-timeline-uri", ["<target>", <position>])
- *
- * Both selector and target must be string literals. The optional `at <time>`
- * sets the position to switch to (defaults to 0).
+ * Action Name - an action's name: an ID or one of the interaction verbs (idea
+ * #19), which are keywords only after `on <event> "<sel>"`, so an action can
+ * still be called `toggle` or `play`.
  */
-NavigateStatement:
-    'on' 'click' selector=STRING 'navigate' target=STRING ('at' position=TimeExpression)?;
+ActionName returns string:
+    ID | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key'
+    | 'extensions' | 'operation' | 'controller' | 'function';
+
+/**
+ * DOM Event Name - the event of `on <event> "<sel>" <verb>`: an ID, or one of
+ * the keywords that are also DOM events. Not `key`, which starts the key form.
+ */
+DomEventName returns string:
+    ID | 'play' | 'pause' | 'scroll';
+
+/**
+ * Interaction Statement (audit idea #19) - a DOM event on an element runs a verb
+ *
+ *   on click "#card-ch1" navigate "Timeline & Time"     switch timelines
+ *   on click "#resume" navigate "Timeline & Time" at 5s  … at a position
+ *   on click "#play" toggle                              play / pause / toggle / stop
+ *   on click "#skip" seek intro.end                      seek the current timeline
+ *   on mouseenter "#card" run highlight("#card", 2)       start an action
+ *   on key "ArrowRight" seek intro.end                   a key press (Eligius KeyboardController)
+ *   on key "Escape" in "#dialog" stop                     … only while focus is in #dialog
+ *
+ * The event is a DOM event name (click, dblclick, mouseenter, …), or `key` with
+ * keys in hotkeys-js syntax ("right", "shift+right, space", or KeyboardEvent.key
+ * names such as "ArrowRight"); a key listener uses a KeyboardController,
+ * attached to the `in` element (scope 'element') or to the timeline container
+ * (scope 'document': focus anywhere in the presentation, or nowhere). Compiles to:
+ *   selectElement("#sel")
+ *   getControllerInstance("DOMEventListenerController")
+ *   addControllerToElement({ eventName, actions: ["<action>"] (, actionOperationData) })
+ * where the action is a synthetic one broadcasting the engine request
+ * (request-timeline-uri, timeline-play-request, timeline-seek-request, …), one
+ * per distinct verb, or for `run` the called action with its arguments.
+ *
+ * The selector, the navigate target and `run` arguments are known at compile
+ * time; positions are constant times. A `seek` position may use the labels of
+ * the timeline it is in, a navigate position those of the target timeline.
+ */
+InteractionStatement:
+    'on' ('key' keys=STRING ('in' selector=STRING)? | event=DomEventName selector=STRING) (
+        verb='navigate' target=STRING ('at' position=TimeExpression)?
+      | verb=('play' | 'pause' | 'toggle' | 'stop')
+      | verb='seek' position=TimeExpression
+      | verb='run' call=OperationCall
+    );
 
 /**
  * Variable Declaration - Declare a constant variable
@@ -464,7 +548,7 @@ NavigateStatement:
  * Action-level: Sets scope variable (accessed via @varName)
  */
 VariableDeclaration:
-    'const' name=ID '=' value=Expression;
+    'const' name=Identifier '=' value=Expression;
 
 /**
  * Operation Call - Unified syntax for both built-in operations and custom actions
@@ -483,7 +567,7 @@ VariableDeclaration:
  *   animate({ opacity: 1 }, 500) // Built-in operation (ref undefined)
  */
 OperationCall:
-    operationName=[ActionDefinition:ID] '(' (args += Expression (',' args += Expression)*)? ')';
+    operationName=[ActionDefinition:ActionName] '(' (args += Expression (',' args += Expression)*)? ')';
 
 // ============================================================================
 // Timeline Definitions
@@ -493,17 +577,48 @@ OperationCall:
  * Timeline - Defines the time source and timeline events
  *
  * Syntax:
- *   timeline "main" using video from "video.mp4" {
+ *   timeline "main" in "#stage" using video from "video.mp4" {
  *     at 0s..5s { showThenHide() }
  *     at 2s..4s [ ... ] [ ... ]
  *   }
+ *
+ * Header options (Feature 049), in this order:
+ *   using scroll "#scroller"   scroll-driven timeline; the selector is the scrollable
+ *                              element (defaults to the container selector)
+ *   loop                       restart the timeline when it ends
+ *   duration 30s               explicit timeline duration (required for scroll)
+ *
+ *   timeline "Story" in "#stage" using scroll "#scroller" duration 120s { ... }
+ *   timeline "Ambient" in "#bg" using raf loop duration 30s { ... }
  */
 Timeline:
-    'timeline' name=STRING 'in' containerSelector=STRING 'using' provider=TimelineProvider ('from' source=STRING)?
-    '{' (events += TimelineEvent)* '}';
+    'timeline' name=STRING 'in' containerSelector=STRING 'using' provider=TimelineProvider
+    (scrollSelector=STRING)? ('from' source=STRING)? (loop?='loop')? ('duration' duration=TimeExpression)?
+    '{' (lifecycle += TimelineLifecycle | events += TimelineEvent)* '}';
+
+/**
+ * Timeline lifecycle block (audit idea #6): operations that run when the
+ * timeline becomes active (`on enter`) and when it is left (`on leave`: a
+ * navigate/switch to another timeline, stop, or the engine being destroyed;
+ * not when its content ends). At most one of each per timeline.
+ *
+ *   timeline "Logic" in "#stage" using raf {
+ *     on enter [ showView("#ch3") on click "#c3-to-hub" navigate "Hub" ]
+ *     on leave [ hideView("#ch3") ]
+ *     at 0s for 7s [ narrate("const names a value") ]
+ *   }
+ *
+ * Compiles to one open-ended timeline action ({ start: 0 }, no end) that is
+ * not counted in the timeline's duration or in relative times.
+ */
+TimelineLifecycle:
+    'on' kind=LifecycleKind '[' (operations += OperationStatement)* ']';
+
+LifecycleKind returns string:
+    'enter' | 'leave';
 
 TimelineProvider returns string:
-    'video' | 'audio' | 'raf' | 'custom';
+    'video' | 'audio' | 'raf' | 'scroll' | 'custom';
 
 /**
  * Timeline Event - Endable action triggered at specific time range OR sequence block OR stagger block
@@ -527,13 +642,19 @@ TimelineProvider returns string:
  *   }
  *
  * Stagger block (T192):
- *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
  */
 TimelineEvent:
     StaggerBlock | SequenceBlock | TimedEvent;
 
+/**
+ * `target "<sel>"` (audit idea #17) selects the element at the head of the
+ * event's start (and end) operations:
+ *
+ *   at 0s..5s target "#box" [ addClass("visible") ] [ removeClass("visible") ]
+ */
 TimedEvent:
-    'at' timeRange=TimeRange (action=TimelineAction);
+    'at' timeRange=TimeRange ('as' name=Identifier)? ('target' target=STRING)? (action=TimelineAction);
 
 TimelineAction:
     InlineEndableAction | OperationCall | ForStatement | IfStatement;
@@ -552,16 +673,33 @@ TimelineAction:
  *   at 5s..15s { main() }
  */
 SequenceBlock:
-    'sequence' '{' (items += SequenceItem)* '}';
+    'sequence'
+    ('each' '[' (prelude += OperationStatement)* ']' ('then' '[' (postlude += OperationStatement)* ']')?)?
+    '{' (items += SequenceItem)* '}';
 
+/**
+ * Sequence item (idea #11): an action call, or inline start (and end) blocks,
+ * for a duration; optionally labeled (`as intro`) for `intro.start` /
+ * `intro.end` in later times (idea #10).
+ *
+ *   sequence each [ clearSpots() ] then [ log("beat done") ] {
+ *     intro() for 5s
+ *     for 7s as explain [ narrate("…") revealBlock("#code") ] [ hideBlock("#code") ]
+ *   }
+ *
+ * `each [ .. ]` runs before every item's start operations, `then [ .. ]` after
+ * every item's end operations.
+ */
 SequenceItem:
-    actionCall=OperationCall 'for' duration=TimeExpression;
+    actionCall=OperationCall 'for' duration=TimeExpression ('as' name=Identifier)? |
+    'for' duration=TimeExpression ('as' name=Identifier)?
+    '[' (startOps += OperationStatement)* ']' ('[' (endOps += OperationStatement)* ']')?;
 
 /**
  * Stagger Block - Staggered events with incremental start times (T192)
  *
  * Example:
- *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
  *
  * Transforms to:
  *   at 0s..2s { fadeIn(".item-1") }        // starts at 0s
@@ -569,7 +707,7 @@ SequenceItem:
  *   at 0.4s..2.4s { fadeIn(".item-3") }    // starts at 0.4s (0 + 400ms)
  *
  * Supports both action calls and inline operation blocks:
- *   stagger 100ms items with fadeIn for 1s
+ *   stagger 100ms items with fadeIn() for 1s
  *   stagger 100ms items for 1s [
  *     addClass("active")
  *   ] [
@@ -577,23 +715,36 @@ SequenceItem:
  *   ]
  */
 StaggerBlock:
-    'stagger' delay=TimeExpression items=Expression 'with' actionCall=OperationCall 'for' duration=TimeExpression |
-    'stagger' delay=TimeExpression items=Expression 'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' '[' (endOps += OperationStatement)* ']';
+    'stagger' delay=TimeExpression items=Expression ('at' anchor=TimeExpression)?
+    (
+        'with' actionCall=OperationCall 'for' duration=TimeExpression |
+        'for' duration=TimeExpression '[' (startOps += OperationStatement)* ']' ('[' (endOps += OperationStatement)* ']')?
+    );
 
 
 /**
  * Inline endable action - anonymous endable action defined at use site
+ *
+ * The end block is optional: `at 0s..2s [ selectElement("#b") ]` has no end
+ * operations (Feature 048).
  */
 InlineEndableAction:
     '[' (startOperations += OperationStatement)* ']'
-    '[' (endOperations += OperationStatement)* ']';
+    ('[' (endOperations += OperationStatement)* ']')?;
 
 // ============================================================================
 // Time Expressions
 // ============================================================================
 
+/**
+ * TimeRange - when a timeline event is active
+ *
+ *   at 2s..5s     start and end
+ *   at 2s for 3s  start and duration (end = start + duration); also with
+ *                 relative starts: `at +0s for 3s` (Feature 048)
+ */
 TimeRange:
-    start=TimeExpression '..' end=TimeExpression;
+    start=TimeExpression ('..' end=TimeExpression | 'for' duration=TimeExpression);
 
 TimeExpression:
     AdditiveTime;
@@ -608,7 +759,25 @@ PrimaryTime infers TimeExpression:
     '(' TimeExpression ')' |
     RelativeTimeLiteral |
     TimeLiteral |
-    PropertyChainReference;
+    PropertyChainReference |
+    VariableReference |
+    EventTimeReference;
+
+/**
+ * The start or end of a labeled event of the same timeline (audit idea #10):
+ *
+ *   at 15s for 7s as editBeat [ ... ]
+ *   stagger 200ms ["#a", "#b"] at editBeat.end with reveal() for 1.5s
+ *
+ * Only events before the referencing one can be referred to (validated), so
+ * times never depend on each other in a cycle. A time constant (`const beat =
+ * 7s`) is referred to as `@beat` (VariableReference above).
+ */
+EventTimeReference:
+    event=[LabeledEvent:Identifier] '.' edge=ID;
+
+/** What an event time reference can name: a labeled `at` event or sequence item. */
+type LabeledEvent = TimedEvent | SequenceItem;
 
 /**
  * Relative Time Literal - Time offset from previous event (T189)
@@ -660,11 +829,24 @@ Additive infers Expression:
     Multiplicative ({infer BinaryExpression.left=current} op=('+' | '-') right=Multiplicative)*;
 
 Multiplicative infers Expression:
-    Unary ({infer BinaryExpression.left=current} op=('*' | '/' | '%' | '**') right=Unary)*;
+    Unary ({infer BinaryExpression.left=current} op=('*' | '/' | '%') right=Unary)*;
 
+/**
+ * Unary operators bind looser than `**`, so `-2 ** 2` is `-(2 ** 2)` = -4
+ * (the mathematical convention, as in Python).
+ */
 Unary infers Expression:
     {infer UnaryExpression} op=('!' | '-') operand=Unary |
-    Primary;
+    Exponent;
+
+/**
+ * Exponentiation binds tighter than `*`, `/`, `%` and is right-associative:
+ *   2 * 3 ** 2  = 2 * (3 ** 2) = 18
+ *   2 ** 3 ** 2 = 2 ** (3 ** 2) = 512
+ * The exponent may itself be negated: 2 ** -1 = 0.5
+ */
+Exponent infers Expression:
+    Primary ({infer BinaryExpression.left=current} op='**' right=Unary)?;
 
 Primary infers Expression:
     '(' Expression ')' |
@@ -690,7 +872,7 @@ Primary infers Expression:
  *   $globaldata.userSettings.theme
  */
 PropertyChainReference:
-    '$' scope=PropertyScope ('.' properties += ID)+;
+    '$' scope=PropertyScope ('.' properties += FeatureName)+;
 
 PropertyScope returns string:
     'scope' | 'operationdata' | 'globaldata';
@@ -708,7 +890,7 @@ PropertyScope returns string:
  * Compiles to $scope.propertyName(.subProperty)* string for Eligius runtime.
  */
 SystemPropertyReference:
-    '@@' name=ID ('.' properties+=ID)*;
+    '@@' name=FeatureName ('.' properties+=FeatureName)*;
 
 /**
  * Variable Reference - Access action-scoped variables with @ prefix
@@ -722,7 +904,7 @@ SystemPropertyReference:
  * Compiles to $scope.variables.varName string for Eligius runtime.
  */
 VariableReference:
-    '@' variable=[VariableDeclaration:ID];
+    '@' variable=[VariableDeclaration:Identifier];
 
 /**
  * Parameter Reference - Access action parameters with bare identifier
@@ -736,14 +918,22 @@ VariableReference:
  * Only valid inside action bodies. Compiles to $operationdata.paramName.
  */
 ParameterReference:
-    parameter=[Parameter:ID];
+    parameter=[Parameter:Identifier];
 
 // ============================================================================
 // Literals
 // ============================================================================
 
 Literal:
-    StringLiteral | NumberLiteral | BooleanLiteral | NullLiteral;
+    StringLiteral | TimeValue | NumberLiteral | BooleanLiteral | NullLiteral;
+
+/**
+ * A time with a unit as a constant's value (audit idea #10): `const beat = 7s`,
+ * used in times as `@beat` (`at 15s for @beat`). Only valid in a program-level
+ * const (validated); in time positions a time is a TimeLiteral.
+ */
+TimeValue:
+    value=NUMBER unit=TimeUnit;
 
 StringLiteral:
     value=STRING;
@@ -762,13 +952,13 @@ NullLiteral:
  *
  * Examples:
  *   { opacity: 1, color: "red" }
- *   { "operationdata.name": $scope.currentItem }
+ *   { "$operationdata.name": $scope.currentItem }
  */
 ObjectLiteral:
     '{' (properties += ObjectProperty (',' properties += ObjectProperty)*)? '}';
 
 ObjectProperty:
-    key=(ID | STRING) ':' value=Expression;
+    key=(FeatureName | STRING) ':' value=Expression;
 
 /**
  * Array Literal - List of expressions
@@ -780,6 +970,55 @@ ObjectProperty:
  */
 ArrayLiteral:
     '[' (elements += Expression (',' elements += Expression)*)? ']';
+
+// ============================================================================
+// Names (keyword-tolerant identifiers)
+// ============================================================================
+
+/**
+ * Identifier - A user-declared name: parameter, const, for-loop item and
+ * named-import names, and the references to them (`x`, `@x`, `@@x`).
+ *
+ * Besides plain IDs it accepts the grammar's *contextual* keywords, which only
+ * have meaning in one fixed position (`event`, `from`, `at`, `in`, `html`,
+ * `string`, the time units `s`/`m`/`h`/`ms`, ...), so `action f(event)`,
+ * `const s = 5` and `for (from in items)` parse.
+ *
+ * Reserved keywords (statement/declaration starters and literals) are NOT
+ * accepted here: action, break, const, continue, else, endable, false, for,
+ * if, import, null, on, sequence, stagger, timeline, true.
+ *
+ * The only place a contextual keyword can be read two ways is a unit name
+ * right after a stagger delay number (`stagger 200 s s ...`); the parser
+ * prefers the time-unit reading, which is what it did before.
+ *
+ * Keep the reserved list in sync with RESERVED_KEYWORDS in
+ * type-system-typir/types/typir-types.ts and validators/validation-constants.ts.
+ * eligian-completion-provider.ts (NAME_RULES) never offers the keywords listed
+ * in this rule or in FeatureName as keyword completions.
+ */
+Identifier returns string:
+    ID
+    | 'array' | 'as' | 'at' | 'audio' | 'boolean' | 'css' | 'custom'
+    | 'event' | 'from' | 'globaldata' | 'h' | 'html' | 'in' | 'languages'
+    | 'layout' | 'library' | 'locales' | 'm' | 'media' | 'ms' | 'navigate'
+    | 'number' | 'object' | 'operationdata' | 'private' | 'provider' | 'raf'
+    | 's' | 'scope' | 'scroll' | 'string' | 'styles' | 'topic' | 'using' | 'video' | 'with'
+    | 'duration' | 'loop' | 'enter' | 'leave' | 'each' | 'then' | 'target'
+    | 'play' | 'pause' | 'toggle' | 'stop' | 'seek' | 'run' | 'key'
+    | 'extensions' | 'operation' | 'controller' | 'function';
+
+/**
+ * FeatureName - A property name in a position where any word is unambiguous:
+ * object-literal keys (`{ from: 0, to: 1 }`) and property-chain segments
+ * (`$operationdata.html`, `$scope.currentItem.for`, `@@item.at`).
+ * Accepts every keyword, reserved ones included.
+ */
+FeatureName returns string:
+    Identifier
+    | 'action' | 'break' | 'const' | 'continue' | 'else' | 'endable' | 'false'
+    | 'for' | 'if' | 'import' | 'null' | 'on' | 'sequence' | 'stagger'
+    | 'timeline' | 'true';
 
 // ============================================================================
 // Terminals - Lexical tokens

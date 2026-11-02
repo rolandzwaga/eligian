@@ -10,11 +10,10 @@
 /**
  * Reserved keywords that cannot be used as import names
  *
- * Includes:
- * - Control flow keywords (if, else, for, break, continue)
- * - Declaration keywords (action, timeline, at)
- * - Import-specific keywords (layout, styles, provider, import, from, as)
- * - Boolean literals (true, false)
+ * These are the grammar's reserved keywords (statement/declaration starters and
+ * literals). Contextual keywords such as `at`, `from`, `as`, `layout` or
+ * `event` are valid names (the `Identifier` rule in eligian.langium) and are
+ * deliberately not listed.
  */
 export const RESERVED_KEYWORDS = new Set([
   'if',
@@ -22,17 +21,17 @@ export const RESERVED_KEYWORDS = new Set([
   'for',
   'break',
   'continue',
-  'at',
+  'const',
   'action',
+  'endable',
+  'on',
   'timeline',
-  'layout',
-  'styles',
-  'provider',
+  'sequence',
+  'stagger',
   'import',
-  'from',
-  'as',
   'true',
   'false',
+  'null',
 ]);
 
 /**

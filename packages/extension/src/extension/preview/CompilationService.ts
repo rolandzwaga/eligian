@@ -12,7 +12,12 @@
  * from the @eligian/language error formatting module.
  */
 
-import { compileString, type IEngineConfiguration } from '@eligian/language';
+import {
+  compileWithMap,
+  type EligianMap,
+  type HostModule,
+  type IEngineConfiguration,
+} from '@eligian/language';
 // Feature 018 (US1): Import error types from unified error system
 import { type AllErrors, formatError } from '@eligian/language/errors';
 import { Effect } from 'effect';
@@ -36,6 +41,10 @@ interface CompilationError {
 interface CompilationResult {
   success: boolean;
   config: IEngineConfiguration | null;
+  /** Idea #14: compiled JSON → source locations (runtime errors, live playhead) */
+  map?: EligianMap;
+  /** Idea #24: the extensions module (path as written) and its declared names */
+  host?: HostModule;
   errors: CompilationError[];
   timestamp: number;
 }
@@ -75,9 +84,9 @@ export class CompilationService {
 
       // Compile with timeout protection (pass URI for asset resolution)
       const compilationPromise = this.compileSource(fileContent, documentUri);
-      const timeoutPromise = this.createTimeout(timeout);
+      const timer = this.createTimeout(timeout);
 
-      const result = await Promise.race([compilationPromise, timeoutPromise]);
+      const result = await Promise.race([compilationPromise, timer.promise]).finally(timer.cancel);
 
       if ('timeout' in result) {
         return {
@@ -132,8 +141,8 @@ export class CompilationService {
   ): Promise<Omit<CompilationResult, 'timestamp'>> {
     try {
       // Use the Eligian compiler with sourceUri for asset resolution (Feature 010)
-      const config = await Effect.runPromise(
-        compileString(source, {
+      const { config, map, host } = await Effect.runPromise(
+        compileWithMap(source, {
           sourceUri: documentUri.fsPath,
         })
       );
@@ -141,6 +150,8 @@ export class CompilationService {
       return {
         success: true,
         config,
+        map,
+        ...(host ? { host } : {}),
         errors: [],
       };
     } catch (error) {
@@ -191,11 +202,14 @@ export class CompilationService {
   }
 
   /**
-   * Create a timeout promise.
+   * Create a cancellable timeout promise (cancel once the race settled, so a
+   * finished compile does not leave its timer pending).
    */
-  private createTimeout(ms: number): Promise<{ timeout: true }> {
-    return new Promise(resolve => {
-      setTimeout(() => resolve({ timeout: true }), ms);
+  private createTimeout(ms: number): { promise: Promise<{ timeout: true }>; cancel: () => void } {
+    let handle: ReturnType<typeof setTimeout> | undefined;
+    const promise = new Promise<{ timeout: true }>(resolve => {
+      handle = setTimeout(() => resolve({ timeout: true }), ms);
     });
+    return { promise, cancel: () => clearTimeout(handle) };
   }
 }

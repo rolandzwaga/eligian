@@ -28,8 +28,6 @@ describe('VSCodeWebviewUriConverter', () => {
     const fileUri: Uri = {
       scheme: 'file',
       path: '/workspace/styles/image.png',
-      fragment: '',
-      query: '',
     };
 
     const webviewUri = converter.convertToWebviewUri(fileUri);
@@ -45,8 +43,6 @@ describe('VSCodeWebviewUriConverter', () => {
     const fileUri: Uri = {
       scheme: 'file',
       path: '/workspace/styles/nested/deep/image.png',
-      fragment: '',
-      query: '',
     };
 
     const webviewUri = converter.convertToWebviewUri(fileUri);

@@ -1,239 +1,106 @@
 import { describe, expect, test } from 'vitest';
-import type { Program } from '../../generated/ast.js';
+import type { Program, ProgramStatement } from '../../generated/ast.js';
 import { FilePositionHelper } from '../../labels/file-position-helper.js';
 import type { InsertionPosition } from '../../labels/types.js';
+
+/** Build a minimal statement node that only carries a type and a CST range. */
+function statement(
+  $type: string,
+  startLine: number,
+  endLine: number,
+  endCharacter: number
+): ProgramStatement {
+  return {
+    $type,
+    $cstNode: {
+      range: {
+        start: { line: startLine, character: 0 },
+        end: { line: endLine, character: endCharacter },
+      },
+    },
+  } as unknown as ProgramStatement;
+}
+
+/** Build a Program mock from top-level statements (the AST has `languages` + `statements`). */
+function program(...statements: ProgramStatement[]): Program {
+  return {
+    $type: 'Program',
+    $cstNode: undefined,
+    languages: undefined,
+    statements,
+  };
+}
 
 describe('FilePositionHelper', () => {
   describe('findInsertionPosition', () => {
     test('should always return line 0 - language block is first in file', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [],
-        constants: [],
-        actions: [],
-        timelines: [],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position: InsertionPosition = helper.findInsertionPosition(mockProgram);
+      const position: InsertionPosition = helper.findInsertionPosition(program());
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);
     });
 
     test('should return line 0 even when imports exist', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [
-          {
-            $type: 'Import',
-            $cstNode: {
-              range: {
-                start: { line: 0, character: 0 },
-                end: { line: 0, character: 30 },
-              },
-            },
-          } as any,
-        ],
-        constants: [],
-        actions: [],
-        timelines: [],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position = helper.findInsertionPosition(mockProgram);
+      const position = helper.findInsertionPosition(program(statement('DefaultImport', 0, 0, 30)));
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);
     });
 
     test('should return line 0 even when constants exist', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [],
-        constants: [
-          {
-            $type: 'ConstantDeclaration',
-            $cstNode: {
-              range: {
-                start: { line: 3, character: 0 },
-                end: { line: 3, character: 25 },
-              },
-            },
-          } as any,
-        ],
-        actions: [],
-        timelines: [],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position = helper.findInsertionPosition(mockProgram);
+      const position = helper.findInsertionPosition(
+        program(statement('VariableDeclaration', 3, 3, 25))
+      );
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);
     });
 
     test('should return line 0 even when actions exist', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [],
-        constants: [],
-        actions: [
-          {
-            $type: 'ActionDefinition',
-            $cstNode: {
-              range: {
-                start: { line: 5, character: 0 },
-                end: { line: 8, character: 1 },
-              },
-            },
-          } as any,
-        ],
-        timelines: [],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position = helper.findInsertionPosition(mockProgram);
+      const position = helper.findInsertionPosition(
+        program(statement('RegularActionDefinition', 5, 8, 1))
+      );
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);
     });
 
     test('should return line 0 even when timelines exist', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [],
-        constants: [],
-        actions: [],
-        timelines: [
-          {
-            $type: 'Timeline',
-            $cstNode: {
-              range: {
-                start: { line: 0, character: 0 },
-                end: { line: 5, character: 1 },
-              },
-            },
-          } as any,
-        ],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position = helper.findInsertionPosition(mockProgram);
+      const position = helper.findInsertionPosition(program(statement('Timeline', 0, 5, 1)));
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);
     });
 
     test('should return line 0 with complex program structure', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [
-          {
-            $type: 'Import',
-            $cstNode: {
-              range: {
-                start: { line: 0, character: 0 },
-                end: { line: 0, character: 30 },
-              },
-            },
-          } as any,
-        ],
-        constants: [
-          {
-            $type: 'ConstantDeclaration',
-            $cstNode: {
-              range: {
-                start: { line: 2, character: 0 },
-                end: { line: 2, character: 25 },
-              },
-            },
-          } as any,
-        ],
-        actions: [
-          {
-            $type: 'ActionDefinition',
-            $cstNode: {
-              range: {
-                start: { line: 4, character: 0 },
-                end: { line: 7, character: 1 },
-              },
-            },
-          } as any,
-        ],
-        timelines: [
-          {
-            $type: 'Timeline',
-            $cstNode: {
-              range: {
-                start: { line: 9, character: 0 },
-                end: { line: 15, character: 1 },
-              },
-            },
-          } as any,
-        ],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position = helper.findInsertionPosition(mockProgram);
+      const position = helper.findInsertionPosition(
+        program(
+          statement('DefaultImport', 0, 0, 30),
+          statement('VariableDeclaration', 2, 2, 25),
+          statement('RegularActionDefinition', 4, 7, 1),
+          statement('Timeline', 9, 15, 1)
+        )
+      );
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);
     });
 
     test('should return line 0 with multiple imports', () => {
-      const mockProgram: Program = {
-        $type: 'Program',
-        $cstNode: undefined,
-        imports: [
-          {
-            $type: 'Import',
-            $cstNode: {
-              range: {
-                start: { line: 0, character: 0 },
-                end: { line: 0, character: 30 },
-              },
-            },
-          } as any,
-          {
-            $type: 'Import',
-            $cstNode: {
-              range: {
-                start: { line: 1, character: 0 },
-                end: { line: 1, character: 35 },
-              },
-            },
-          } as any,
-          {
-            $type: 'Import',
-            $cstNode: {
-              range: {
-                start: { line: 2, character: 0 },
-                end: { line: 2, character: 40 },
-              },
-            },
-          } as any,
-        ],
-        constants: [],
-        actions: [],
-        timelines: [],
-        languagesBlock: undefined,
-      };
-
       const helper = new FilePositionHelper();
-      const position = helper.findInsertionPosition(mockProgram);
+      const position = helper.findInsertionPosition(
+        program(
+          statement('DefaultImport', 0, 0, 30),
+          statement('DefaultImport', 1, 1, 35),
+          statement('DefaultImport', 2, 2, 40)
+        )
+      );
 
       expect(position.line).toBe(0);
       expect(position.character).toBe(0);

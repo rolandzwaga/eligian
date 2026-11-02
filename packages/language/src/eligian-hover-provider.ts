@@ -19,28 +19,51 @@ import { getOperationSignature } from './compiler/operations/index.js';
 import { buildCSSClassInfo, buildCSSIDInfo, CSSHoverProvider } from './css/css-hover.js';
 import type { CSSRegistryService } from './css/css-registry.js';
 import { detectHoverTarget } from './css/hover-detection.js';
+import { parameterRoles } from './css/parameter-roles.js';
 import type { EligianServices } from './eligian-module.js';
 import {
+  type ActionDefinition,
   isActionDefinition,
   isDefaultImport,
+  isEndableActionDefinition,
   isEventActionDefinition,
   isLanguagesBlock,
   isNamedImport,
   isOperationCall,
+  isTimeline,
+  type Timeline,
 } from './generated/ast.js';
 import {
   buildControllerHover,
   buildEventActionHoverMarkdown,
   buildImportHover,
-  buildLabelIDHover,
   buildLanguagesHover,
   buildOperationHoverMarkdown,
 } from './hover/hover-builders.js';
+import { buildTimelineHover } from './hover/timeline-hover.js';
 import { extractJSDoc } from './jsdoc/jsdoc-extractor.js';
 import { formatJSDocAsMarkdown } from './jsdoc/jsdoc-formatter.js';
 import type { LabelRegistryService } from './type-system-typir/utils/label-registry.js';
 import { createMarkdownHover } from './utils/hover-utils.js';
 import { getOperationCallName } from './utils/operation-call-utils.js';
+import { createDataflow } from './validators/dataflow-validator.js';
+
+/**
+ * Idea #18: the parameters that end up as a CSS selector or class name, which
+ * are checked (and completed) at call sites. Empty when there are none.
+ */
+function rolesMarkdown(action: ActionDefinition): string {
+  const roles = parameterRoles(action);
+  if (roles.size === 0) return '';
+  const lines = [...roles].map(([name, role]) => {
+    const what =
+      role === 'selector'
+        ? 'CSS selector (checked against the CSS and the layout)'
+        : 'CSS class name (checked against the CSS)';
+    return `- \`${name}\`: ${what}`;
+  });
+  return `\n\n**Parameters checked at call sites:**\n${lines.join('\n')}`;
+}
 
 export class EligianHoverProvider extends AstNodeHoverProvider {
   private cssHoverProvider = new CSSHoverProvider();
@@ -106,10 +129,15 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
       }
     }
 
-    // 2. Check if we're hovering over a label ID in an operation parameter
-    const labelHover = buildLabelIDHover(cstNode.astNode, document, this.labelRegistry);
-    if (labelHover) {
-      return labelHover;
+    // 2.4. Timeline header: provider, effective duration, loop (Feature 049)
+    const headerNode = cstNode.astNode;
+    if (
+      isTimeline(headerNode) ||
+      (isTimeline(headerNode.$container) && headerNode.$containerProperty === 'duration')
+    ) {
+      const timeline = isTimeline(headerNode) ? headerNode : (headerNode.$container as Timeline);
+      // Partial headers while typing (no name or provider yet) get no hover
+      if (timeline.name && timeline.provider) return buildTimelineHover(timeline);
     }
 
     // 2.5. Check if we're hovering over a languages block (Feature 037 US5)
@@ -151,7 +179,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
         }
 
         // First, check if this is a built-in operation
-        const signature = getOperationSignature(opName);
+        const signature = getOperationSignature(opName, operationCall);
         if (signature) {
           const markdown = buildOperationHoverMarkdown(signature);
           return createMarkdownHover(markdown);
@@ -169,7 +197,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
             if (jsdoc) {
               // Format JSDoc as markdown for hover display
               const markdown = formatJSDocAsMarkdown(jsdoc, actionDef.name);
-              return createMarkdownHover(markdown);
+              return createMarkdownHover(markdown + this.requirementsMarkdown(actionDef));
             }
           }
 
@@ -181,7 +209,7 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
             })
             .join(', ');
           const markdown = `### ${actionDef.name}\n\n\`${actionDef.name}(${params})\``;
-          return createMarkdownHover(markdown);
+          return createMarkdownHover(markdown + this.requirementsMarkdown(actionDef));
         }
       }
     }
@@ -206,9 +234,34 @@ export class EligianHoverProvider extends AstNodeHoverProvider {
    * hover content for other node types (e.g., action definitions,
    * variable declarations, etc.).
    */
-  protected override getAstNodeHoverContent(_node: AstNode): string | undefined {
-    // For now, delegate to the default behavior (multiline comments)
-    // Future: Add custom hover content for other node types here
+  protected override getAstNodeHoverContent(node: AstNode): string | undefined {
+    // Action definitions: the operationData their callers must provide (spec 047)
+    if (isActionDefinition(node)) {
+      const details = this.requirementsMarkdown(node) + rolesMarkdown(node);
+      return details ? `### ${node.name}${details}` : undefined;
+    }
     return undefined;
+  }
+
+  /**
+   * The inferred contract of an action (spec 047): properties it reads from
+   * operationData without creating them, which its callers must provide.
+   * Empty when there are none.
+   */
+  private requirementsMarkdown(action: ActionDefinition): string {
+    const dataflow = createDataflow(this.services);
+    const phases = isEndableActionDefinition(action)
+      ? (['start', 'end'] as const)
+      : (['start'] as const);
+    const lines = phases.flatMap(phase =>
+      dataflow.requirementsOf(action, phase).map(r => {
+        const where = r.action !== action.name ? ` in '${r.action}'` : '';
+        const block = phase === 'end' ? ', end block' : '';
+        return `- \`${r.property}\` (used by ${r.operation}${where}${block})`;
+      })
+    );
+    return lines.length > 0
+      ? `\n\n**Requires from the caller** (operationData):\n${lines.join('\n')}`
+      : '';
   }
 }

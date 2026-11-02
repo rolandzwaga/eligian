@@ -37,6 +37,7 @@ check-*.mjs
 *.log
 .DS_Store
 /packages/language/coverage
+/packages/shared-utils/coverage
 /TODO.txt
 /nul
 /examples/nul

@@ -65,42 +65,33 @@ describe('Argument Count Validation (US2)', () => {
     expect(countWarnings).toHaveLength(0);
   });
 
-  // T025: Event "before-request-video-url" (3 args) with 2 params produces warning
-  test('should warn when too few parameters (3 args, 2 params)', async () => {
+  // T025: Fewer parameters than the event supplies is benign - trailing args are never read
+  test('should not warn when fewer parameters than arguments (3 args, 2 params)', async () => {
     const code = eventActionProgram('before-request-video-url', 'HandleVideo', [
       { name: 'index' },
       { name: 'position' },
     ]);
 
     const { diagnostics } = await ctx.parseAndValidate(code);
-    const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
-
-    expect(warnings.length).toBeGreaterThan(0);
-    const countWarning = warnings.find(
-      w =>
-        w.message.includes('before-request-video-url') &&
-        w.message.includes('provides 3') &&
-        w.message.includes('declares 2')
+    const countWarnings = diagnostics.filter(
+      d =>
+        d.severity === DiagnosticSeverity.Warning &&
+        (d.code === 'event_argument_count_mismatch' || d.message.includes('provides'))
     );
-    expect(countWarning).toBeDefined();
-    expect(countWarning?.message).toMatch(/missing.*undefined/i);
+
+    expect(countWarnings).toHaveLength(0);
   });
 
-  // T026: Event "before-request-video-url" (3 args) with 1 param produces warning
-  test('should warn when too few parameters (3 args, 1 param)', async () => {
-    const code = eventActionProgram('before-request-video-url', 'HandleVideo', [{ name: 'index' }]);
+  // T026: A handler that ignores every argument is the common case
+  test('should not warn when handler declares no parameters (3 args, 0 params)', async () => {
+    const code = eventActionProgram('before-request-video-url', 'HandleVideo');
 
     const { diagnostics } = await ctx.parseAndValidate(code);
-    const warnings = diagnostics.filter(d => d.severity === DiagnosticSeverity.Warning);
-
-    expect(warnings.length).toBeGreaterThan(0);
-    const countWarning = warnings.find(
-      w =>
-        w.message.includes('before-request-video-url') &&
-        w.message.includes('provides 3') &&
-        w.message.includes('declares 1')
+    const countWarnings = diagnostics.filter(
+      d => d.severity === DiagnosticSeverity.Warning && d.message.includes('provides')
     );
-    expect(countWarning).toBeDefined();
+
+    expect(countWarnings).toHaveLength(0);
   });
 
   // T027: Event "timeline-complete" (0 args) with 1 param produces warning
@@ -121,7 +112,8 @@ describe('Argument Count Validation (US2)', () => {
         w.message.includes('extraParam')
     );
     expect(countWarning).toBeDefined();
-    expect(countWarning?.message).toMatch(/extra.*ignored/i);
+    expect(countWarning?.message).toMatch(/extraParam.*will be undefined at runtime/i);
+    expect(countWarning?.message).not.toMatch(/ignored/i);
   });
 
   // T028: Event "timeline-complete" (0 args) with 3 params produces warning
@@ -143,6 +135,24 @@ describe('Argument Count Validation (US2)', () => {
         w.message.includes('declares 3')
     );
     expect(countWarning).toBeDefined();
+    expect(countWarning?.message).toContain("Parameters 'a', 'b', 'c' will be undefined");
+  });
+
+  // Only the surplus parameters are named: 1 arg supplied, 3 declared -> the last two are undefined
+  test('should name only the surplus parameters (1 arg, 3 params)', async () => {
+    const code = eventActionProgram('dom-mutation', 'HandleMutation', [
+      { name: 'payload' },
+      { name: 'extraA' },
+      { name: 'extraB' },
+    ]);
+
+    const { diagnostics } = await ctx.parseAndValidate(code);
+    const countWarning = diagnostics.find(
+      d => d.severity === DiagnosticSeverity.Warning && d.message.includes('provides 1')
+    );
+    expect(countWarning).toBeDefined();
+    expect(countWarning?.message).toContain("Parameters 'extraA', 'extraB' will be undefined");
+    expect(countWarning?.message).not.toContain("'payload'");
   });
 
   // T029: Unknown event name skips argument count validation (handled by US1)

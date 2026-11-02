@@ -1,5 +1,5 @@
 // Test fixture: Invalid time range (T038)
-// Should trigger validation error: "Timeline event start time must be less than or equal to end time"
+// Should trigger validation error: "Timeline event end time (5s) must be greater than start time (10s)"
 
 timeline "test" in ".test-container" using raf {
   // Invalid: start > end

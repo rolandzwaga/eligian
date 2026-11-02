@@ -6,9 +6,9 @@
  */
 
 import { EmptyFileSystem } from 'langium';
-import type { CompletionList } from 'langium/lsp';
 import { expectCompletion } from 'langium/test';
 import { describe, expect, it } from 'vitest';
+import type { CompletionList } from 'vscode-languageserver-protocol';
 import { createEligianServices } from '../eligian-module.js';
 
 const services = createEligianServices(EmptyFileSystem).Eligian;

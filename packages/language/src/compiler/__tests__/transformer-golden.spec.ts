@@ -149,7 +149,7 @@ describe('AST Transformer — golden output (W2 decomposition guard)', () => {
 
       action compute() [
         selectElement("#x")
-        setData({ "operationdata.total": @base + 50 })
+        setData({ "$operationdata.total": @base + 50 })
       ]
 
       timeline "t" in "#root" using raf {
@@ -163,7 +163,7 @@ describe('AST Transformer — golden output (W2 decomposition guard)', () => {
     const code = `
       on event "click" action handleClick(target, value) [
         selectElement(target)
-        setData({ "operationdata.v": value })
+        setData({ "$operationdata.v": value })
       ]
 
       timeline "t" in "#root" using raf {

@@ -199,3 +199,7 @@ all use `request`; timeline control and custom events use `broadcast`.
    gives start-on-enter / end-on-leave — the engine hides the outgoing view for you.
    Don't make each timeline hide every other view (O(N)); self-manage (O(1)). Keep the
    range longer than the chapter content so `end` fires only on switch.
+   **Eligian now has this built in:** `on enter [ ... ]` / `on leave [ ... ]` compile to
+   one open-ended timeline action (`duration: { start: 0 }`, no end, which Eligius reads
+   as Infinity), so there is no range to pick and the timeline keeps its real duration.
+   The tour uses them.

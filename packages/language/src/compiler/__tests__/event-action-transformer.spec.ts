@@ -18,6 +18,7 @@ import { createTestContext, type TestContext } from '../../__tests__/test-helper
 import type { EventActionDefinition } from '../../generated/ast.js';
 import { createParameterContext, transformAST, transformEventAction } from '../ast-transformer.js';
 import type { IEngineConfiguration, IEventActionConfiguration } from '../operations/types.js';
+import { inputsOf, userOperations } from './operation-inputs.js';
 
 describe('Event Action Transformation (T009)', () => {
   let ctx: TestContext;
@@ -172,6 +173,7 @@ describe('Parameter Reference Resolution (T018)', () => {
       ]
 
       on event "update" action handleUpdate(className) [
+        selectElement("#app")
         addClass(className)
       ]
 
@@ -190,11 +192,14 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify the parameter reference is resolved to eventArgs[0]
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
-    expect(eventAction.startOperations).toHaveLength(1);
-    const operation = eventAction.startOperations[0];
+    const eventAction = config.eventActions![0];
+    expect(userOperations(eventAction.startOperations)).toHaveLength(2);
+    const operation = userOperations(eventAction.startOperations)[1];
     expect(operation.systemName).toBe('addClass');
-    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.0');
+    // addClass does not resolve chains: a preceding setOperationData resolves the event argument
+    expect(inputsOf(eventAction.startOperations, operation).className).toBe(
+      '$operationData.eventArgs.0'
+    );
   });
 
   test('should resolve second parameter reference to eventArgs[1]', async () => {
@@ -204,6 +209,7 @@ describe('Parameter Reference Resolution (T018)', () => {
       ]
 
       on event "update" action handleUpdate(first, second) [
+        selectElement("#app")
         addClass(second)
       ]
 
@@ -222,10 +228,13 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify the second parameter reference is resolved to eventArgs[1]
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
-    expect(eventAction.startOperations).toHaveLength(1);
-    const operation = eventAction.startOperations[0];
-    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.1');
+    const eventAction = config.eventActions![0];
+    expect(userOperations(eventAction.startOperations)).toHaveLength(2);
+    const operation = userOperations(eventAction.startOperations)[1];
+    // addClass does not resolve chains: a preceding setOperationData resolves the event argument
+    expect(inputsOf(eventAction.startOperations, operation).className).toBe(
+      '$operationData.eventArgs.1'
+    );
   });
 
   test('should resolve third parameter reference to eventArgs[2]', async () => {
@@ -235,6 +244,7 @@ describe('Parameter Reference Resolution (T018)', () => {
       ]
 
       on event "update" action handleUpdate(a, b, c) [
+        selectElement("#app")
         addClass(c)
       ]
 
@@ -253,10 +263,13 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify the third parameter reference is resolved to eventArgs[2]
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
-    expect(eventAction.startOperations).toHaveLength(1);
-    const operation = eventAction.startOperations[0];
-    expect(operation.operationData).toHaveProperty('className', '$operationData.eventArgs.2');
+    const eventAction = config.eventActions![0];
+    expect(userOperations(eventAction.startOperations)).toHaveLength(2);
+    const operation = userOperations(eventAction.startOperations)[1];
+    // addClass does not resolve chains: a preceding setOperationData resolves the event argument
+    expect(inputsOf(eventAction.startOperations, operation).className).toBe(
+      '$operationData.eventArgs.2'
+    );
   });
 
   test('should leave non-parameter references unchanged', async () => {
@@ -268,6 +281,7 @@ describe('Parameter Reference Resolution (T018)', () => {
       ]
 
       on event "update" action handleUpdate(param) [
+        selectElement("#app")
         addClass(@MY_CLASS)
       ]
 
@@ -285,9 +299,9 @@ describe('Parameter Reference Resolution (T018)', () => {
 
     // Verify constant reference is inlined (not treated as parameter)
     expect(config.eventActions).toHaveLength(1);
-    const eventAction = config.eventActions[0];
-    expect(eventAction.startOperations).toHaveLength(1);
-    const operation = eventAction.startOperations[0];
+    const eventAction = config.eventActions![0];
+    expect(userOperations(eventAction.startOperations)).toHaveLength(2);
+    const operation = userOperations(eventAction.startOperations)[1];
     expect(operation.operationData).toHaveProperty('className', 'active');
   });
 });

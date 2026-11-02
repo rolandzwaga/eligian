@@ -1,12 +1,64 @@
 import type { ValidationAcceptor } from 'langium';
 import { OPERATION_REGISTRY } from '../../compiler/index.js';
-import type { LibraryImport, Program } from '../../generated/ast.js';
+import type { ActionImport, LibraryImport, Program } from '../../generated/ast.js';
+import { isLibraryImport } from '../../generated/ast.js';
 import { isNamedImport } from '../../utils/ast-helpers.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getElements, getImports } from '../../utils/program-helpers.js';
 import { BaseValidator } from '../base-validator.js';
 import { validateImportName } from '../import-name-validator.js';
 import { RESERVED_KEYWORDS } from '../validation-constants.js';
+
+/**
+ * Report imported action names (alias applied) that are imported twice or that
+ * collide with an action defined in the importing document. Shared by Program
+ * and Library roots: a library that defines `fade` and also imports `fade`
+ * would otherwise silently resolve its own calls to one of the two.
+ */
+export function reportImportNameCollisions(
+  libraryImports: readonly LibraryImport[],
+  localActionNames: ReadonlySet<string>,
+  accept: ValidationAcceptor
+): void {
+  const finalNameOf = (actionImport: ActionImport) =>
+    // Use alias if provided, otherwise use original action name
+    actionImport.alias || actionImport.action.$refText || '';
+
+  // Check for duplicate imports
+  const importedNames = new Set<string>();
+  for (const stmt of libraryImports) {
+    for (const actionImport of stmt.actions) {
+      const finalName = finalNameOf(actionImport);
+      if (importedNames.has(finalName)) {
+        accept('error', `Duplicate import: action '${finalName}' is already imported`, {
+          node: actionImport,
+          property: actionImport.alias ? 'alias' : 'action',
+          code: 'import_name_collision',
+        });
+      } else {
+        importedNames.add(finalName);
+      }
+    }
+  }
+
+  // Check for conflicts with locally-defined actions
+  for (const stmt of libraryImports) {
+    for (const actionImport of stmt.actions) {
+      const finalName = finalNameOf(actionImport);
+      if (localActionNames.has(finalName)) {
+        accept(
+          'error',
+          `Import name collision: action '${finalName}' conflicts with locally-defined action`,
+          {
+            node: actionImport,
+            property: actionImport.alias ? 'alias' : 'action',
+            code: 'import_name_collision',
+          }
+        );
+      }
+    }
+  }
+}
 
 /**
  * Program-level import-name validations: named-import uniqueness/reserved-word
@@ -62,41 +114,19 @@ export class ProgramImportNameValidator extends BaseValidator {
    * - Locally-defined actions
    * - Other imported actions from the same or different libraries
    * - Built-in operations (handled by checkActionNameCollision)
+   *
+   * Library roots get the same check from ImportValidator.checkLibraryImportNameCollisions.
    */
   checkImportNameCollisions(program: Program, accept: ValidationAcceptor): void {
     // Anti-pattern fix: previously a `LibraryImport`-level check that re-scanned
     // every import statement on each invocation — O(N²) over N library imports
     // and emitting each duplicate-import diagnostic once per import. Running once
     // at the Program level scans all imports a single time.
-    const libraryImports = program.statements.filter(
-      (stmt): stmt is LibraryImport => stmt.$type === 'LibraryImport'
-    );
+    const libraryImports = program.statements.filter(isLibraryImport);
     if (libraryImports.length === 0) {
       return;
     }
 
-    // Collect all imported action names (with aliases applied), in one pass.
-    const importedNames = new Map<string, LibraryImport>();
-
-    for (const stmt of libraryImports) {
-      for (const actionImport of stmt.actions) {
-        // Use alias if provided, otherwise use original action name
-        const finalName = actionImport.alias || actionImport.action.$refText || '';
-
-        // Check for duplicate imports
-        if (importedNames.has(finalName)) {
-          accept('error', `Duplicate import: action '${finalName}' is already imported`, {
-            node: actionImport,
-            property: actionImport.alias ? 'alias' : 'action',
-            code: 'import_name_collision',
-          });
-        } else {
-          importedNames.set(finalName, stmt);
-        }
-      }
-    }
-
-    // Check for conflicts with locally-defined actions (computed once).
     const localActionNames = new Set(
       getElements(program)
         .filter(
@@ -104,23 +134,6 @@ export class ProgramImportNameValidator extends BaseValidator {
         )
         .map(action => action.name)
     );
-
-    for (const stmt of libraryImports) {
-      for (const actionImport of stmt.actions) {
-        const finalName = actionImport.alias || actionImport.action.$refText || '';
-
-        if (localActionNames.has(finalName)) {
-          accept(
-            'error',
-            `Import name collision: action '${finalName}' conflicts with locally-defined action`,
-            {
-              node: actionImport,
-              property: actionImport.alias ? 'alias' : 'action',
-              code: 'import_name_collision',
-            }
-          );
-        }
-      }
-    }
+    reportImportNameCollisions(libraryImports, localActionNames, accept);
   }
 }

@@ -7,10 +7,10 @@
  */
 
 import { EmptyFileSystem } from 'langium';
-import type { CompletionList } from 'langium/lsp';
 import { expectCompletion } from 'langium/test';
 import { describe, expect, it } from 'vitest';
 import { InsertTextFormat } from 'vscode-languageserver';
+import type { CompletionList } from 'vscode-languageserver-protocol';
 import { TIMELINE_EVENTS } from '../../completion/metadata/timeline-events.generated.js';
 import { createEligianServices } from '../../eligian-module.js';
 

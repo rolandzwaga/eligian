@@ -6,6 +6,7 @@
  * carries the per-compilation constant maps.
  */
 import type { ConstantMap } from '../types/constant-folding.js';
+import type { RuntimeConcatCollector } from './runtime-values.js';
 
 /**
  * Scope Context - Track transformation context for reference resolution
@@ -38,6 +39,20 @@ export interface ScopeContext {
   programConstants: ConstantMap;
   /** Event action parameter indices (Feature 028 - T019) */
   eventActionParameters?: Map<string, number>;
+  /**
+   * Called action name → the name that action is emitted under (the
+   * `requestAction` systemName). Set for library action bodies, whose helpers
+   * are emitted under library-qualified names; names absent from the map are
+   * requested by the name they are called by.
+   */
+  actionSystemNames?: ReadonlyMap<string, string>;
+  /**
+   * Collector for runtime string concatenations (`"#" + id`) of the statement
+   * being transformed. Set only where the statement transformer lowers them
+   * (operation and action call arguments, action-level consts); without it a
+   * runtime concatenation is a compile error. See runtime-values.ts.
+   */
+  runtimeConcats?: RuntimeConcatCollector;
 }
 
 /**

@@ -16,9 +16,9 @@ inside `#stage` with its own chrome (`.chrome` + `.progress-rail` + `.chapter-la
 elements are namespaced `#c3-…` and **must be registered in `tour.css`** (id-registration rule groups, since
 class styling alone doesn't satisfy CSS validation's id-exists check). `#narration` is the shared subtitle.
 
-**View management** = the self-managing endable setup action (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
-`timeline "Logic"`'s first event is `at 0s..3600s [ showView("#ch3") + showView("#narration") + wire
-#c3-to-hub ] [ hideView("#ch3") + hideView("#narration") ]`. Hub card `#card-ch3` `navigate`s to `"Logic"`.
+**View management** = the timeline's `on enter` / `on leave` blocks (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
+`timeline "Logic"`'s `on enter [ showView("#ch3") + showView("#narration") + wire
+#c3-to-hub ]` and `on leave [ hideView("#ch3") + hideView("#narration") ]`. Hub card `#card-ch3` `navigate`s to `"Logic"`.
 
 ### Shared presentation actions
 

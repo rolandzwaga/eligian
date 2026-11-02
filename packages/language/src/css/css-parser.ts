@@ -1,4 +1,7 @@
-import postcss, { type CssSyntaxError, type Root, type Rule } from 'postcss';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import postcss, { type AtRule, type CssSyntaxError, type Root, type Rule } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
 /**
@@ -38,6 +41,34 @@ export interface CSSParseResult {
   classRules: Map<string, string>;
   idRules: Map<string, string>;
   errors: CSSParseError[];
+  /**
+   * Classes / IDs that a rule makes scrollable: the subject (last compound) of a
+   * selector whose rule sets `overflow-y` (or `overflow`) to auto, scroll or
+   * overlay. Used to check scroll timeline containers (Feature 049).
+   */
+  scrollableClasses?: Set<string>;
+  scrollableIds?: Set<string>;
+  /**
+   * Absolute paths of the stylesheets pulled in through `@import` (transitively,
+   * excluding the file itself). Lets callers watch/re-validate on changes to them.
+   */
+  importedFiles?: string[];
+}
+
+/**
+ * Options for {@link parseCSS}.
+ */
+export interface ParseCSSOptions {
+  /**
+   * Follow `@import` rules and merge the classes/IDs of the imported stylesheets
+   * (default `true`). Imports are resolved relative to `filePath`.
+   */
+  followImports?: boolean;
+  /**
+   * File reader used to load imported stylesheets (default: `fs.readFileSync` as UTF-8).
+   * Should throw when the file cannot be read; unreadable imports are skipped.
+   */
+  readFile?: (absolutePath: string) => string;
 }
 
 /**
@@ -76,14 +107,119 @@ export function createEmptyCSSMetadata(errors: CSSParseError[] = []): CSSParseRe
  * // result.classes = Set { 'button' }
  * // result.classLocations.get('button') = { filePath: 'styles.css', startLine: 1, ... }
  */
-export function parseCSS(cssContent: string, filePath: string): CSSParseResult {
+export function parseCSS(
+  cssContent: string,
+  filePath: string,
+  options: ParseCSSOptions = {}
+): CSSParseResult {
+  const visited = new Set<string>();
+  const selfKey = normalizeKey(filePath);
+  if (selfKey) visited.add(selfKey);
+  return parseCSSInternal(cssContent, filePath, options, visited, new Set<string>());
+}
+
+function parseCSSInternal(
+  cssContent: string,
+  filePath: string,
+  options: ParseCSSOptions,
+  visited: Set<string>,
+  importedFiles: Set<string>
+): CSSParseResult {
   const classes = new Set<string>();
   const ids = new Set<string>();
   const classLocations = new Map<string, CSSSourceLocation>();
   const idLocations = new Map<string, CSSSourceLocation>();
   const classRules = new Map<string, string>();
   const idRules = new Map<string, string>();
+  const scrollableClasses = new Set<string>();
+  const scrollableIds = new Set<string>();
   const errors: CSSParseError[] = [];
+
+  // Record the classes/IDs of one rule selector (first occurrence wins for location/rule text)
+  const recordSelector = (selector: string, ruleLocation: CSSSourceLocation, ruleText: string) => {
+    if (declaresVerticalScroll(ruleText)) {
+      recordScrollableSubjects(selector, scrollableClasses, scrollableIds);
+    }
+    const processor = selectorParser(selectors => {
+      selectors.walkClasses(classNode => {
+        const className = classNode.value;
+        classes.add(className);
+        if (!classLocations.has(className)) classLocations.set(className, ruleLocation);
+        if (!classRules.has(className)) classRules.set(className, ruleText);
+      });
+
+      selectors.walkIds(idNode => {
+        const idName = idNode.value;
+        ids.add(idName);
+        if (!idLocations.has(idName)) idLocations.set(idName, ruleLocation);
+        if (!idRules.has(idName)) idRules.set(idName, ruleText);
+      });
+    });
+
+    processor.processSync(selector);
+  };
+
+  // Follow one @import rule: merge classes/IDs of the imported stylesheet (local rules win
+  // for locations/rule text; each file is parsed at most once, which also breaks cycles)
+  const followImport = (params: string) => {
+    const baseDir = path.dirname(toFsPath(filePath));
+    const readFile = options.readFile ?? ((p: string) => readFileSync(p, 'utf-8'));
+    const target = extractImportTarget(params);
+    if (!target) return;
+
+    const importedPath = path.resolve(baseDir, target);
+    const key = normalizeKey(importedPath);
+    if (!key || visited.has(key)) return;
+    visited.add(key);
+
+    let importedContent: string;
+    try {
+      importedContent = readFile(importedPath);
+    } catch {
+      // Unreadable import (missing file, ...): nothing to merge
+      return;
+    }
+
+    importedFiles.add(importedPath);
+    const imported = parseCSSInternal(
+      importedContent,
+      importedPath,
+      options,
+      visited,
+      importedFiles
+    );
+
+    for (const name of imported.classes) {
+      classes.add(name);
+      if (!classLocations.has(name)) {
+        const loc = imported.classLocations.get(name);
+        if (loc) classLocations.set(name, loc);
+      }
+      if (!classRules.has(name)) {
+        const rule = imported.classRules.get(name);
+        if (rule !== undefined) classRules.set(name, rule);
+      }
+    }
+    for (const name of imported.ids) {
+      ids.add(name);
+      if (!idLocations.has(name)) {
+        const loc = imported.idLocations.get(name);
+        if (loc) idLocations.set(name, loc);
+      }
+      if (!idRules.has(name)) {
+        const rule = imported.idRules.get(name);
+        if (rule !== undefined) idRules.set(name, rule);
+      }
+    }
+    for (const name of imported.scrollableClasses ?? []) scrollableClasses.add(name);
+    for (const name of imported.scrollableIds ?? []) scrollableIds.add(name);
+    for (const err of imported.errors) {
+      errors.push({
+        ...err,
+        message: `In imported stylesheet '${target}': ${err.message}`,
+      });
+    }
+  };
 
   try {
     // Parse CSS using PostCSS
@@ -100,48 +236,9 @@ export function parseCSS(cssContent: string, filePath: string): CSSParseResult {
         endColumn: rule.source?.end?.column ?? 0,
       };
 
-      // Get full rule text (selector + declarations)
-      const ruleText = rule.toString();
-
       // Parse selector to extract individual classes and IDs
       try {
-        const processor = selectorParser(selectors => {
-          selectors.walkClasses(classNode => {
-            const className = classNode.value;
-
-            // Add to classes set
-            classes.add(className);
-
-            // Store location of first occurrence only
-            if (!classLocations.has(className)) {
-              classLocations.set(className, ruleLocation);
-            }
-
-            // Store rule of first occurrence only
-            if (!classRules.has(className)) {
-              classRules.set(className, ruleText);
-            }
-          });
-
-          selectors.walkIds(idNode => {
-            const idName = idNode.value;
-
-            // Add to IDs set
-            ids.add(idName);
-
-            // Store location of first occurrence only
-            if (!idLocations.has(idName)) {
-              idLocations.set(idName, ruleLocation);
-            }
-
-            // Store rule of first occurrence only
-            if (!idRules.has(idName)) {
-              idRules.set(idName, ruleText);
-            }
-          });
-        });
-
-        processor.processSync(rule.selector);
+        recordSelector(rule.selector, ruleLocation, rule.toString());
       } catch (selectorError) {
         // Selector parsing error - log but continue with other rules
         // These errors are typically caused by invalid CSS selectors
@@ -157,6 +254,10 @@ export function parseCSS(cssContent: string, filePath: string): CSSParseResult {
         });
       }
     });
+
+    if (options.followImports !== false) {
+      root.walkAtRules('import', (atRule: AtRule) => followImport(atRule.params));
+    }
   } catch (error) {
     // CSS syntax error - capture details
     if (isCssSyntaxError(error)) {
@@ -167,6 +268,21 @@ export function parseCSS(cssContent: string, filePath: string): CSSParseResult {
         column: error.column ?? 0,
         source: error.showSourceCode ? error.showSourceCode() : undefined,
       });
+
+      // Keep the classes/IDs of every rule that is still readable (and follow the readable
+      // @imports), so one mid-edit syntax error does not flag every class use in the importing
+      // .eligian files as unknown. Local rules are recorded first so they win over imports.
+      const recovered = scanRulesLeniently(cssContent);
+      for (const rule of recovered.rules) {
+        try {
+          recordSelector(rule.selector, { filePath, ...rule.location }, rule.text);
+        } catch {
+          // Unparseable selector: skip it
+        }
+      }
+      if (options.followImports !== false) {
+        for (const params of recovered.imports) followImport(params);
+      }
     } else {
       // Unexpected error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -187,7 +303,183 @@ export function parseCSS(cssContent: string, filePath: string): CSSParseResult {
     classRules,
     idRules,
     errors,
+    scrollableClasses,
+    scrollableIds,
+    ...(importedFiles.size > 0 ? { importedFiles: [...importedFiles] } : {}),
   };
+}
+
+/**
+ * True when a rule's own declarations let its element scroll vertically:
+ * `overflow-y` is auto/scroll/overlay, or the `overflow` shorthand's vertical
+ * value (its second value, or its only value) is.
+ */
+export function declaresVerticalScroll(ruleText: string): boolean {
+  const body = ruleText.slice(ruleText.indexOf('{') + 1);
+  const scrolls = (value: string) => /^(auto|scroll|overlay)$/i.test(value.trim());
+  for (const match of body.matchAll(/(?:^|[;{\s])(overflow-y|overflow)\s*:\s*([^;}]*)/gi)) {
+    const values = match[2]
+      .replace(/!important/i, '')
+      .trim()
+      .split(/\s+/);
+    const vertical = match[1].toLowerCase() === 'overflow-y' ? values[0] : (values[1] ?? values[0]);
+    if (vertical && scrolls(vertical)) return true;
+  }
+  return false;
+}
+
+/** Classes / IDs of the subject (last compound) of each selector in `selectorList`. */
+function recordScrollableSubjects(
+  selectorList: string,
+  classes: Set<string>,
+  ids: Set<string>
+): void {
+  selectorParser(selectors => {
+    selectors.each(selector => {
+      let subjectClasses: string[] = [];
+      let subjectIds: string[] = [];
+      for (const node of selector.nodes) {
+        if (node.type === 'combinator') {
+          subjectClasses = [];
+          subjectIds = [];
+        } else if (node.type === 'class') {
+          subjectClasses.push(node.value);
+        } else if (node.type === 'id') {
+          subjectIds.push(node.value);
+        }
+      }
+      for (const name of subjectClasses) classes.add(name);
+      for (const name of subjectIds) ids.add(name);
+    });
+  }).processSync(selectorList);
+}
+
+interface LenientRule {
+  selector: string;
+  text: string;
+  location: Omit<CSSSourceLocation, 'filePath'>;
+}
+
+/**
+ * Tolerant fallback scanner used when PostCSS rejects a stylesheet.
+ *
+ * Walks the source (skipping comments, strings and escapes) and treats the text before each
+ * `{` as a rule prelude. At-rule preludes (`@media ...`) are skipped, but the scan continues
+ * inside their blocks so nested rules are still found. This recovers the selectors that
+ * precede and follow a syntax error.
+ */
+function scanRulesLeniently(css: string): { rules: LenientRule[]; imports: string[] } {
+  const rules: LenientRule[] = [];
+  const imports: string[] = [];
+  const lineStarts = [0];
+  for (let i = 0; i < css.length; i++) {
+    if (css[i] === '\n') lineStarts.push(i + 1);
+  }
+  const position = (offset: number) => {
+    let line = 0;
+    for (let lo = 0, hi = lineStarts.length - 1; lo <= hi; ) {
+      const mid = (lo + hi) >> 1;
+      if (lineStarts[mid] <= offset) {
+        line = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return { line: line + 1, column: offset - lineStarts[line] + 1 };
+  };
+
+  let segmentStart = 0;
+  let parenDepth = 0;
+  let i = 0;
+  while (i < css.length) {
+    const ch = css[i];
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      i = end === -1 ? css.length : end + 2;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      i++;
+      while (i < css.length && css[i] !== ch && css[i] !== '\n') {
+        i += css[i] === '\\' ? 2 : 1;
+      }
+      i++;
+      continue;
+    }
+    if (ch === '(') {
+      parenDepth++;
+    } else if (ch === ')') {
+      parenDepth = Math.max(0, parenDepth - 1);
+    } else if (parenDepth === 0 && (ch === ';' || ch === '}')) {
+      if (ch === ';') {
+        const statement = stripComments(css.slice(segmentStart, i)).trim();
+        if (/^@import\s/i.test(statement)) imports.push(statement.replace(/^@import\s+/i, ''));
+      }
+      segmentStart = i + 1;
+    } else if (parenDepth === 0 && ch === '{') {
+      const raw = css.slice(segmentStart, i);
+      const selector = raw.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, ' ').trim();
+      if (selector && !selector.startsWith('@')) {
+        const leading = raw.length - raw.trimStart().length;
+        const start = position(segmentStart + leading);
+        const close = css.indexOf('}', i);
+        const blockEnd = close === -1 ? css.length : close + 1;
+        const end = position(Math.max(blockEnd - 1, i));
+        rules.push({
+          selector,
+          text: css.slice(segmentStart + leading, blockEnd).trim(),
+          location: {
+            startLine: start.line,
+            startColumn: start.column,
+            endLine: end.line,
+            endColumn: end.column,
+          },
+        });
+      }
+      segmentStart = i + 1;
+    }
+    i++;
+  }
+
+  return { rules, imports };
+}
+
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, ' ');
+}
+
+/**
+ * Extract the stylesheet target from `@import` params.
+ *
+ * Handles `"x.css"`, `'x.css'`, `url(x.css)`, `url("x.css")` (optionally followed by
+ * layer()/supports()/media conditions). Remote (`http:`, `//`, `data:`) targets are
+ * ignored. Query strings and fragments are stripped.
+ */
+export function extractImportTarget(params: string): string | undefined {
+  const match = /^\s*(?:url\(\s*(['"]?)([^'")]*?)\1\s*\)|(['"])(.*?)\3)/i.exec(params);
+  const raw = (match?.[2] ?? match?.[4])?.trim();
+  if (!raw) return undefined;
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(raw)) return undefined;
+  const cleaned = raw.replace(/[?#].*$/, '');
+  return cleaned || undefined;
+}
+
+function toFsPath(filePath: string): string {
+  return filePath.startsWith('file:') ? fileURLToPath(filePath) : filePath;
+}
+
+function normalizeKey(filePath: string): string | undefined {
+  try {
+    const resolved = path.resolve(toFsPath(filePath));
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

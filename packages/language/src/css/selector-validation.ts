@@ -18,13 +18,16 @@ export function reportSelectorIssues(
   node: AstNode,
   availableClasses: Set<string>,
   availableIDs: Set<string>,
-  accept: ValidationAcceptor
+  accept: ValidationAcceptor,
+  /** The node property holding the selector, to highlight just it (idea #17) */
+  property?: string
 ): void {
   const { classes, ids, valid, error } = parseSelector(selectorString);
 
   if (!valid) {
     accept('error', `Invalid CSS selector syntax: ${error}`, {
       node,
+      ...(property ? { property } : {}),
       data: { code: 'invalid_css_selector' },
     });
     return;
@@ -39,6 +42,7 @@ export function reportSelectorIssues(
       }
       accept('error', message, {
         node,
+        ...(property ? { property } : {}),
         data: { code: 'unknown_css_class_in_selector' },
       });
     }
@@ -46,8 +50,12 @@ export function reportSelectorIssues(
 
   for (const idName of ids) {
     if (!availableIDs.has(idName)) {
-      accept('error', `Unknown CSS ID in selector: '${idName}'.`, {
+      // Idea #18: ids get suggestions too (from the CSS and the layout HTML)
+      const suggestions = findSimilarClasses(idName, availableIDs, 2, 3);
+      const hint = suggestions.length > 0 ? ` Did you mean: ${suggestions.join(', ')}?` : '';
+      accept('error', `Unknown CSS ID in selector: '${idName}'.${hint}`, {
         node,
+        ...(property ? { property } : {}),
         data: { code: 'unknown_css_id_in_selector' },
       });
     }

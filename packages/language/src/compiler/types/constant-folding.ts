@@ -9,6 +9,7 @@
  * Related: data-model.md in feature specification
  */
 
+import type { AstNode } from 'langium';
 import type { JsonValue } from './common.js';
 
 /**
@@ -46,6 +47,18 @@ export interface ConstantValue {
    * Ensures string "5" is not confused with number 5
    */
   type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'null';
+
+  /**
+   * The AST node that declared this constant (a VariableDeclaration, or a
+   * NamedImport for HTML imports).
+   *
+   * The map is keyed by name, but names can be shadowed (an action-local
+   * `const x` that cannot be folded shadows a global `const x` that can).
+   * A reference may only fold to this constant when it links to this exact
+   * declaration — see `resolveConstant`. Optional so hand-built maps (tests)
+   * keep matching by name alone.
+   */
+  declaration?: AstNode;
 
   /**
    * Source location (for error reporting)
@@ -135,6 +148,14 @@ export interface ExpressionEvaluationResult {
   error?: {
     /** Human-readable error message explaining why evaluation failed */
     reason: string;
+    /**
+     * True when the expression consists only of compile-time constants but is
+     * not a valid constant (division/modulo by zero, wrong operand type such as
+     * `"abc" - 1`, non-finite result). Callers must report this as an error
+     * instead of falling back to a runtime value. False when the expression is
+     * simply not constant (it references a runtime value).
+     */
+    invalid?: boolean;
     /** The expression that failed to evaluate (for debugging) */
     expression: string;
     /** Source location where the error occurred */

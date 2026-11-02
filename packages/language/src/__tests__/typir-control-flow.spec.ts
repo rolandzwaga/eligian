@@ -39,7 +39,7 @@ describe('US4: Control Flow Type Checking (Integration)', () => {
       const value = "string"
 
       action testAction() [
-        if (value) {
+        if (@value) {
           selectElement("#box")
         }
       ]
@@ -58,7 +58,7 @@ describe('US4: Control Flow Type Checking (Integration)', () => {
       const notArray = "string"
 
       action testAction() [
-        for (item in notArray) {
+        for (item in @notArray) {
           selectElement("#box")
         }
       ]

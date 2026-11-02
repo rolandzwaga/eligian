@@ -8,6 +8,7 @@
 
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import { hostOperations, hostSignature } from '../compiler/operations/host-operations.js';
 import { getAllOperations } from './registry.js';
 
 /**
@@ -19,32 +20,54 @@ import { getAllOperations } from './registry.js';
  * @param context - Langium completion context
  * @returns Array of completion items for operations
  */
-export function getOperationCompletions(_context: CompletionContext): CompletionItem[] {
+export function getOperationCompletions(context: CompletionContext): CompletionItem[] {
   // Load all operations from registry (already filtered and sorted)
   const operations = getAllOperations();
 
-  // Map each operation to a CompletionItem
-  return operations.map(operation => {
-    // Build documentation markdown with description, parameters, and outputs
-    const documentation = buildOperationDocumentation(
-      operation.description,
-      operation.parameters,
-      operation.outputs
-    );
+  // Idea #24: the host operations the program declares in its extensions import
+  const host: CompletionItem[] = hostOperations(context.document.parseResult.value).map(
+    declaration => {
+      const signature = hostSignature(declaration);
+      const parameters = signature.parameters
+        .map(p => (p.required ? p.name : `${p.name}?`))
+        .join(', ');
+      return {
+        label: `${declaration.name} (host operation)`,
+        insertText: declaration.name,
+        filterText: declaration.name,
+        kind: CompletionItemKind.Function,
+        sortText: declaration.name.toLowerCase(),
+        detail: `${declaration.name}(${parameters})`,
+        documentation: { kind: 'markdown' as const, value: signature.description },
+      };
+    }
+  );
 
-    return {
-      label: `${operation.name} (operation)`, // Suffix with "(operation)" for clarity
-      insertText: operation.name, // Insert only the name (without suffix)
-      filterText: operation.name, // Filter by name only (without suffix)
-      kind: CompletionItemKind.Function,
-      sortText: operation.name.toLowerCase(), // Sort alphabetically by name (case-insensitive)
-      detail: 'Eligius operation',
-      documentation: {
-        kind: 'markdown',
-        value: documentation,
-      },
-    };
-  });
+  // Map each operation to a CompletionItem
+  return [
+    ...host,
+    ...operations.map((operation): CompletionItem => {
+      // Build documentation markdown with description, parameters, and outputs
+      const documentation = buildOperationDocumentation(
+        operation.description,
+        operation.parameters,
+        operation.outputs
+      );
+
+      return {
+        label: `${operation.name} (operation)`, // Suffix with "(operation)" for clarity
+        insertText: operation.name, // Insert only the name (without suffix)
+        filterText: operation.name, // Filter by name only (without suffix)
+        kind: CompletionItemKind.Function,
+        sortText: operation.name.toLowerCase(), // Sort alphabetically by name (case-insensitive)
+        detail: 'Eligius operation',
+        documentation: {
+          kind: 'markdown',
+          value: documentation,
+        },
+      };
+    }),
+  ];
 }
 
 /**

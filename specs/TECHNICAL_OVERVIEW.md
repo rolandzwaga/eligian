@@ -186,8 +186,8 @@ All packages share a **single pnpm lockfile** at the root for consistent depende
 - `@eligian/language@workspace:*` - Core compiler and LSP
 - `@eligian/shared-utils@workspace:*` - Error types
 - `vscode-languageclient@9.0.1`, `vscode-languageserver@9.0.1` - LSP implementation
-- `eligius@2.2.0` - Webview timeline engine (inherited from root)
-- `jquery@3.7.1`, `video.js@8.23.4`, `lottie-web@^5.13.0` - Webview UI dependencies
+- `eligius@4.1.0` - Webview timeline engine (inherited from root; plays media with a native `<video>`, no player library). Bundles import from its `eligius/runtime` entry and register exactly the used operations, controllers and providers with `createImporter`
+- `jquery@4.0.0`, `lottie-web@5.13.0` - Webview UI dependencies
 
 **VS Code Integration**:
 - **Language ID**: `eligian`
@@ -793,7 +793,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMetadata> = {
 - `css-registry.ts` - Centralized registry service (10,500 bytes)
 - `levenshtein.ts` - Edit distance for suggestions (3,938 bytes)
 - `selector-parser.ts` - CSS selector parsing (2,535 bytes)
-- `css-service.ts` - Public API (exported as `@eligian/language/css-service`)
+- `css-service.ts` - Public API (re-exported from the `@eligian/language` root entry)
 
 **Features** (Feature 013):
 - CSS class name validation (`addClass("className")`)
@@ -1973,9 +1973,8 @@ yarn install  # Will cause dependency conflicts!
   "dependencies": {
     "vscode-languageclient": "9.0.1",  // LSP client
     "vscode-languageserver": "9.0.1",  // LSP server
-    "jquery": "3.7.1",                 // Webview UI
-    "video.js": "8.23.4",              // Video playback
-    "lottie-web": "^5.13.0"            // Animation playback
+    "jquery": "4.0.0",                 // Webview UI
+    "lottie-web": "5.13.0"             // Animation playback
   }
 }
 ```

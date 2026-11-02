@@ -9,7 +9,10 @@
     "^[a-z]{2,3}-[A-Z]{2,3}$": {
       "oneOf": [
         {
-          "$ref": "#/$defs/localeData"
+          "allOf": [
+            { "$ref": "#/$defs/localeData" },
+            { "not": { "type": "object", "required": ["$ref"] } }
+          ]
         },
         {
           "$ref": "#/$defs/localeReference"

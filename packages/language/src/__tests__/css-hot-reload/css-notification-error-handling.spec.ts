@@ -263,7 +263,7 @@ describe('CSS Hot-Reload - Notification Error Handling', () => {
     const cssFileUri = 'file:///non-error-throw.css';
 
     // Simulate catching a non-Error value (as the catch block does)
-    const thrownValue = 'Something went wrong'; // String, not Error
+    const thrownValue: unknown = 'Something went wrong'; // String, not Error
 
     // Register the error (simulating: error instanceof Error ? error.message : String(error))
     cssRegistry.updateCSSFile(cssFileUri, {

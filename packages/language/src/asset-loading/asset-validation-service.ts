@@ -176,7 +176,8 @@ export class AssetValidationService implements IAssetValidationService {
       // CSS syntax/validation failures carry line/column → CssParseError.
       validationError =>
         createCssParseError({
-          filePath: absolutePath,
+          filePath: relativePath,
+          absolutePath,
           message: `CSS validation error: ${validationError.message}`,
           hint: validationError.hint,
           line: validationError.line,

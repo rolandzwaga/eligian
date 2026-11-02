@@ -1,3 +1,4 @@
+import { URI } from 'langium';
 import type { CSSParseError, CSSParseResult, CSSSourceLocation } from './css-parser.js';
 
 /**
@@ -11,6 +12,15 @@ export interface CSSMetadata {
   classRules: Map<string, string>;
   idRules: Map<string, string>;
   errors: CSSParseError[];
+  /** Classes / IDs a rule makes vertically scrollable (see CSSParseResult). */
+  scrollableClasses?: Set<string>;
+  scrollableIds?: Set<string>;
+  /**
+   * File URIs of the stylesheets this file pulls in through `@import` (transitively).
+   * Their classes/IDs are merged into this file's metadata, so a change to one of
+   * them requires re-parsing this file (see {@link CSSRegistryService.getFilesImporting}).
+   */
+  importedFileUris?: string[];
 }
 
 /**
@@ -57,7 +67,30 @@ export class CSSRegistryService {
       classRules: metadata.classRules,
       idRules: metadata.idRules,
       errors: metadata.errors,
+      scrollableClasses: metadata.scrollableClasses,
+      scrollableIds: metadata.scrollableIds,
+      ...(metadata.importedFiles && metadata.importedFiles.length > 0
+        ? { importedFileUris: metadata.importedFiles.map(file => URI.file(file).toString()) }
+        : {}),
     });
+  }
+
+  /**
+   * Registered CSS files that `@import` the given file (directly or transitively).
+   *
+   * Their merged metadata is stale after the imported file changes; callers re-parse them.
+   *
+   * @param fileUri - Absolute file URI of the imported stylesheet
+   */
+  getFilesImporting(fileUri: string): string[] {
+    const target = normalizeFileUri(fileUri);
+    const importers: string[] = [];
+    for (const [uri, metadata] of this.metadataByFile) {
+      if (metadata.importedFileUris?.some(imported => normalizeFileUri(imported) === target)) {
+        importers.push(uri);
+      }
+    }
+    return importers;
   }
 
   /**
@@ -68,6 +101,20 @@ export class CSSRegistryService {
    */
   getMetadata(fileUri: string): CSSMetadata | undefined {
     return this.metadataByFile.get(fileUri);
+  }
+
+  /**
+   * Like {@link getMetadata}, but matching the file however its URI is written
+   * (VS Code encodes `f:` as `f%3A`, drive letters differ in case).
+   */
+  findMetadata(fileUri: string): CSSMetadata | undefined {
+    const exact = this.metadataByFile.get(fileUri);
+    if (exact) return exact;
+    const target = normalizeFileUri(fileUri);
+    for (const [uri, metadata] of this.metadataByFile) {
+      if (normalizeFileUri(uri) === target) return metadata;
+    }
+    return undefined;
   }
 
   /**
@@ -146,6 +193,17 @@ export class CSSRegistryService {
    */
   getIDsForDocument(documentUri: string): Set<string> {
     return this.collectFromImports(documentUri, metadata => metadata.ids);
+  }
+
+  /**
+   * Classes and IDs that an imported CSS rule makes vertically scrollable
+   * (`overflow-y: auto`, ...), for the scroll timeline container check.
+   */
+  getScrollableForDocument(documentUri: string): { classes: Set<string>; ids: Set<string> } {
+    return {
+      classes: this.collectFromImports(documentUri, metadata => metadata.scrollableClasses ?? []),
+      ids: this.collectFromImports(documentUri, metadata => metadata.scrollableIds ?? []),
+    };
   }
 
   /**
@@ -352,5 +410,14 @@ export class CSSRegistryService {
   clearAll(): void {
     this.importsByDocument.clear();
     this.metadataByFile.clear();
+  }
+}
+
+/** Compare file URIs regardless of drive-letter case / percent-encoding differences. */
+function normalizeFileUri(fileUri: string): string {
+  try {
+    return URI.parse(fileUri).fsPath.toLowerCase();
+  } catch {
+    return fileUri.toLowerCase();
   }
 }

@@ -30,20 +30,34 @@ import {
   loadProgramAssets,
 } from '../asset-loading/compiler-integration.js';
 import type {
+  AssetError,
   EmitError,
   ParseError,
   TransformError,
   TypeError,
   ValidationError,
 } from '../errors/index.js';
-import { isLibrary } from '../generated/ast.js';
+import { isLibrary, type Program } from '../generated/ast.js';
+import { getImports } from '../utils/program-helpers.js';
 import { transformAST } from './ast-transformer.js';
+import { buildEligianMap, type EligianMap } from './eligian-map.js';
 import { emitJSON } from './emitter.js';
+import type { HostModule } from './operations/host-operations.js';
 import { optimize } from './optimizer.js';
-import { parseSource, validateAST } from './pipeline/parser.js';
+import { type DocumentWarning, extractDocumentWarnings } from './pipeline/document-errors.js';
+import { parseSourceTracked, validateAST } from './pipeline/parser.js';
+import { getSourceLocation } from './transformers/source-location.js';
 import { typeCheck } from './type-checker.js';
+import type { SourceLocation } from './types/common.js';
 import type { EligiusIR } from './types/eligius-ir.js';
 
+export {
+  type CheckDiagnostic,
+  type CheckFileResult,
+  type CheckSeverity,
+  checkFiles,
+} from './pipeline/check.js';
+export type { DocumentWarning } from './pipeline/document-errors.js';
 export {
   extractLibraryImports,
   extractLibraryImportsFromLibrary,
@@ -90,24 +104,103 @@ interface CompileOptions {
 }
 
 /**
+ * Non-fatal diagnostics (warning / info / hint) of a program returned by
+ * {@link parseSource}. Only Error-severity diagnostics abort compilation; these
+ * are returned so callers (e.g. the CLI) can report them without failing.
+ */
+export const getProgramWarnings = (program: Program): ReadonlyArray<DocumentWarning> =>
+  extractDocumentWarnings(program.$document);
+
+/**
+ * Turn the asset-loading errors of a program into the (single) ValidationError
+ * compile() fails with: the first error's message, hint and import location,
+ * plus a count of any further asset errors.
+ *
+ * Every asset error is located at the import statement whose path it names (the
+ * asset validation service only fills in a placeholder 0:0 location, and a
+ * CssParseError's line/column are in the CSS file). The location carries no
+ * `file`: imports are always in the main program, and main-program locations
+ * carry no `file` (see getSourceLocation), so the error reporter renders the
+ * snippet against the main source.
+ */
+const assetErrorToValidationError = (
+  errors: ReadonlyArray<AssetError>,
+  program: Program
+): ValidationError => {
+  const [first] = errors;
+  const more = errors.length - 1;
+  const suffix = more > 0 ? ` (and ${more} more asset error${more === 1 ? '' : 's'})` : '';
+
+  const baseMessage =
+    first._tag === 'CssParseError'
+      ? `CSS file '${first.filePath}' has syntax errors (line ${first.line}, column ${first.column}): ${first.message}`
+      : first.message;
+
+  const importStmt = getImports(program).find(imp => imp.path === first.filePath);
+  let location: SourceLocation;
+  if (importStmt) {
+    const { line, column, length } = getSourceLocation(importStmt);
+    location = { line, column, length };
+  } else if (first._tag !== 'CssParseError' && first.location.line >= 1) {
+    location = {
+      line: first.location.line,
+      column: Math.max(1, first.location.column),
+      length: first.location.length ?? 0,
+    };
+  } else {
+    location = { line: 1, column: 1, length: 0 };
+  }
+
+  return {
+    _tag: 'ValidationError' as const,
+    kind: 'SemanticValidation' as const,
+    message: `${baseMessage}${suffix}`,
+    location,
+    ...(first.hint ? { hint: first.hint } : {}),
+  };
+};
+
+/**
  * Union of all possible compilation errors
  */
 export type CompileError = ParseError | ValidationError | TransformError | TypeError | EmitError;
 
 /**
- * T078: Main compilation pipeline
+ * Shared front end of compile() and compileToIR(): parse, reject library files,
+ * validate, load assets when a `sourceUri` is provided, and transform to IR.
+ * Keeping this in one place guarantees both entry points see identical programs
+ * and assets.
  *
- * Composes all stages into a complete DSL → JSON pipeline:
- * source → parse → validate → transform → typecheck → optimize → emit → JSON
+ * The workspace documents loaded for the program (main + libraries) are released
+ * as soon as the transform is done, on success and failure alike, so repeated
+ * compiles in one long-lived process do not accumulate documents in the shared
+ * Langium index.
  */
-export const compile = (
+const sourceToIR = (
   source: string,
-  options: CompileOptions = {}
-): Effect.Effect<IEngineConfiguration, CompileError> =>
-  Effect.gen(function* () {
-    // T076: Parse source to AST
-    const program = yield* parseSource(source, options.sourceUri);
+  options: CompileOptions
+): Effect.Effect<EligiusIR, ParseError | ValidationError | TransformError> =>
+  Effect.acquireUseRelease(
+    parseSourceTracked(source, options.sourceUri),
+    ({ program }) =>
+      Effect.gen(function* () {
+        const { program: validatedProgram, assets } = yield* loadProgram(program, options);
+        return yield* transformAST(validatedProgram, assets);
+      }),
+    ({ release }) => Effect.sync(release)
+  );
 
+/**
+ * Library-file rejection, validation and asset loading for an already parsed program.
+ */
+const loadProgram = (
+  program: Program,
+  options: CompileOptions
+): Effect.Effect<
+  { program: Program; assets: AssetLoadingResult | undefined },
+  ParseError | ValidationError
+> =>
+  Effect.gen(function* () {
     // Check if user tried to compile a library file directly
     if (isLibrary(program as any)) {
       return yield* Effect.fail({
@@ -125,10 +218,31 @@ export const compile = (
     let assets: AssetLoadingResult | undefined;
     if (options.sourceUri) {
       assets = loadProgramAssets(validatedProgram, options.sourceUri);
+      // Never compile with assets silently dropped (missing layout, invalid
+      // locales, broken HTML/CSS, ...). The IDE validator reports these too, but
+      // compile() must not depend on it having run or on it matching each error
+      // to an import node.
+      if (assets.errors.length > 0) {
+        return yield* Effect.fail(assetErrorToValidationError(assets.errors, validatedProgram));
+      }
     }
 
-    // T050-T059: Transform AST to IR
-    const ir = yield* transformAST(validatedProgram, assets);
+    return { program: validatedProgram, assets };
+  });
+
+/**
+ * T078: Main compilation pipeline
+ *
+ * Composes all stages into a complete DSL → JSON pipeline:
+ * source → parse → validate → transform → typecheck → optimize → emit → JSON
+ */
+export const compile = (
+  source: string,
+  options: CompileOptions = {}
+): Effect.Effect<IEngineConfiguration, CompileError> =>
+  Effect.gen(function* () {
+    // T076 + T050-T059: Parse, validate, load assets, transform AST to IR
+    const ir = yield* sourceToIR(source, options);
 
     // T060-T064: Type check IR
     const typedIR = yield* typeCheck(ir);
@@ -141,6 +255,61 @@ export const compile = (
 
     return config;
   });
+
+/**
+ * Idea #14: compile() plus the Eligian map (compiled JSON → .eligian source),
+ * for tools that report runtime errors or follow the playhead (the preview,
+ * `eligian --eligian-map`).
+ */
+export const compileWithMap = (
+  source: string,
+  options: CompileOptions = {}
+): Effect.Effect<
+  { config: IEngineConfiguration; map: EligianMap; host?: HostModule },
+  CompileError
+> =>
+  Effect.gen(function* () {
+    const ir = yield* compileToIR(source, options);
+    const config = yield* emitJSON(ir);
+    // Idea #24: the extensions module, for the preview and the bundler
+    return { config, map: buildEligianMap(ir), ...(ir.host ? { host: ir.host } : {}) };
+  });
+
+/**
+ * compileWithMap() for a program that is already parsed and linked, e.g. a
+ * document of the language server, which lints it with Eligius' lint: no
+ * parse and no workspace of its own. The libraries it imports must be in the
+ * program's workspace (the language server loads them). Assets are loaded
+ * from `sourcePath` (the file path of the program).
+ */
+export const compileProgramWithMap = (
+  program: Program,
+  sourcePath: string
+): Effect.Effect<
+  { config: IEngineConfiguration; map: EligianMap; host?: HostModule },
+  CompileError
+> =>
+  Effect.gen(function* () {
+    const loaded = yield* loadProgram(program, { sourceUri: sourcePath });
+    const ir = yield* optimize(
+      yield* typeCheck(yield* transformAST(loaded.program, loaded.assets))
+    );
+    const config = yield* emitJSON(ir);
+    return { config, map: buildEligianMap(ir), ...(ir.host ? { host: ir.host } : {}) };
+  });
+
+/**
+ * {@link compileProgramWithMap}, run synchronously (every compiler stage is
+ * synchronous), for callers outside Effect such as the language server:
+ * undefined when the program does not compile.
+ */
+export const tryCompileProgramWithMap = (
+  program: Program,
+  sourcePath: string
+): { config: IEngineConfiguration; map: EligianMap; host?: HostModule } | undefined => {
+  const exit = Effect.runSyncExit(compileProgramWithMap(program, sourcePath));
+  return exit._tag === 'Success' ? exit.value : undefined;
+};
 
 /**
  * T080: Compile from string
@@ -181,14 +350,9 @@ export const compileToIR = (
   options: CompileOptions = {}
 ): Effect.Effect<EligiusIR, ParseError | ValidationError | TransformError | TypeError> =>
   Effect.gen(function* () {
-    // Parse source to AST
-    const program = yield* parseSource(source);
-
-    // Validate AST
-    const validatedProgram = yield* validateAST(program);
-
-    // Transform AST to IR
-    const ir = yield* transformAST(validatedProgram);
+    // Same front end as compile(): sourceUri-aware parsing, library-file
+    // rejection, and asset loading
+    const ir = yield* sourceToIR(source, options);
 
     // Type check IR
     const typedIR = yield* typeCheck(ir);

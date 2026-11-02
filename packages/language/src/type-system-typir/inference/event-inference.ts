@@ -51,7 +51,10 @@ export function registerEventInference(
      * ```
      */
     TimedEvent: (node: TimedEvent) => {
-      const [startTime, endTime] = parseTimeRange(node.timeRange);
+      // Times that are not statically known (relative `+2s`, `$globaldata.x`) display as 0
+      const { start, end } = parseTimeRange(node.timeRange);
+      const startTime = start ?? 0;
+      const endTime = end ?? 0;
 
       // Create TimelineEventType using the factory and resolve it to a finished Type.
       // create() returns a configuration chain; the inference rule must return a resolved
@@ -90,7 +93,7 @@ export function registerEventInference(
     SequenceBlock: (node: SequenceBlock) => {
       // Get first item's duration as representative
       const firstItem = node.items[0];
-      const duration = firstItem ? extractTimeValue(firstItem.duration) : 0;
+      const duration = (firstItem ? extractTimeValue(firstItem.duration) : undefined) ?? 0;
 
       // Create TimelineEventType using the factory and resolve it to a finished Type.
       const type = eventFactory
@@ -121,8 +124,8 @@ export function registerEventInference(
      * ```
      */
     StaggerBlock: (node: StaggerBlock) => {
-      const delay = extractTimeValue(node.delay);
-      const duration = extractTimeValue(node.duration);
+      const delay = extractTimeValue(node.delay) ?? 0;
+      const duration = extractTimeValue(node.duration) ?? 0;
 
       // Create TimelineEventType using the factory and resolve it to a finished Type.
       const type = eventFactory

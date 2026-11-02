@@ -19,28 +19,22 @@ export type AssetType = 'html' | 'css' | 'media' | 'json';
 /**
  * Reserved keywords that cannot be used as constant names
  *
- * These keywords are part of Eligian DSL syntax and cannot be used
- * as identifiers for constants.
+ * These are the grammar's reserved keywords (statement/declaration starters).
+ * Contextual keywords such as `in`, `at`, `from`, `as`, `layout` or
+ * `using` are valid names (the `Identifier` rule in eligian.langium).
  */
 export const RESERVED_KEYWORDS = new Set([
   'if',
   'else',
   'for',
-  'in',
   'break',
   'continue',
   'const',
   'action',
   'endable',
+  'on',
   'timeline',
-  'at',
   'sequence',
   'stagger',
   'import',
-  'from',
-  'as',
-  'layout',
-  'styles',
-  'provider',
-  'using',
 ]);

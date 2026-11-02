@@ -5,9 +5,16 @@
  * These tests verify the grammar correctly parses library syntax without validation.
  */
 
+import type { AstNode } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
-import type { Library } from '../generated/ast.js';
+import { isLibrary, type Library } from '../generated/ast.js';
 import { createTestContext, type TestContext } from './test-helpers.js';
+
+/** The shared parse helper is typed for Program roots; library files parse to a Library root. */
+function asLibrary(root: AstNode): Library {
+  if (!isLibrary(root)) throw new Error(`expected a Library root, got ${root.$type}`);
+  return root;
+}
 
 describe('Library Parsing', () => {
   let ctx: TestContext;
@@ -30,7 +37,7 @@ describe('Library Parsing', () => {
     const document = await ctx.parse(code);
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
-    const library = document.parseResult.value as Library;
+    const library = asLibrary(document.parseResult.value);
     expect(library.$type).toBe('Library');
     expect(library.name).toBe('animations');
     expect(library.actions).toHaveLength(1);
@@ -66,7 +73,7 @@ describe('Library Parsing', () => {
     const document = await ctx.parse(code);
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
-    const library = document.parseResult.value as Library;
+    const library = asLibrary(document.parseResult.value);
     expect(library.$type).toBe('Library');
     expect(library.name).toBe('animations');
     expect(library.actions).toHaveLength(4);
@@ -95,7 +102,7 @@ describe('Library Parsing', () => {
       const document = await ctx.parse(code);
       expect(document.parseResult.parserErrors).toHaveLength(0);
 
-      const library = document.parseResult.value as Library;
+      const library = asLibrary(document.parseResult.value);
       expect(library.$type).toBe('Library');
       expect(library.name).toBe(expectedName);
     }
@@ -116,7 +123,7 @@ describe('Library Parsing', () => {
     const document = await ctx.parse(code);
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
-    const library = document.parseResult.value as Library;
+    const library = asLibrary(document.parseResult.value);
     expect(library.$type).toBe('Library');
     expect(library.actions).toHaveLength(1);
     expect(library.actions[0].name).toBe('showThenHide');
@@ -136,7 +143,7 @@ describe('Library Parsing', () => {
     const document = await ctx.parse(code);
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
-    const library = document.parseResult.value as Library;
+    const library = asLibrary(document.parseResult.value);
     expect(library.$type).toBe('Library');
     expect(library.actions).toHaveLength(1);
     expect(library.actions[0].name).toBe('internalToggle');
@@ -149,7 +156,7 @@ describe('Library Parsing', () => {
     const document = await ctx.parse(code);
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
-    const library = document.parseResult.value as Library;
+    const library = asLibrary(document.parseResult.value);
     expect(library.$type).toBe('Library');
     expect(library.name).toBe('emptyLib');
     expect(library.actions).toHaveLength(0);

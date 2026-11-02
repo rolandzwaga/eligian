@@ -21,7 +21,7 @@ import type {
   OperationConfigIR,
   TOperationData,
 } from '../types/eligius-ir.js';
-import { transformOperationStatement, validateOperationSequence } from './operation-transformer.js';
+import { transformOperationStatement } from './operation-transformer.js';
 import { createParameterContext, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
 
@@ -39,7 +39,8 @@ export const transformActionDefinition = (
   actionDef: EndableActionDefinition | RegularActionDefinition,
   program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  actionSystemNames?: ReadonlyMap<string, string>
 ): Effect.Effect<EndableActionIR, TransformError> =>
   Effect.gen(function* () {
     const startOperations: OperationConfigIR[] = [];
@@ -52,6 +53,7 @@ export const transformActionDefinition = (
       loopVariableName: undefined,
       scopedConstants: new Map(), // Start with empty map for action-scoped constants
       programConstants,
+      actionSystemNames,
     };
 
     if (actionDef.$type === 'EndableActionDefinition') {
@@ -67,10 +69,11 @@ export const transformActionDefinition = (
         startOperations.push(...ops);
       }
       for (const opStmt of actionDef.endOperations) {
+        // End block: a nested endable action call is ended (endAction), not restarted
         const ops = yield* transformOperationStatement(
           opStmt,
           actionScope,
-          false,
+          true,
           program,
           allActions
         );
@@ -88,15 +91,6 @@ export const transformActionDefinition = (
         );
         startOperations.push(...ops);
       }
-    }
-
-    // T173: Validate dependencies in operation sequences
-    yield* validateOperationSequence(
-      startOperations,
-      `action '${actionDef.name}' start operations`
-    );
-    if (endOperations.length > 0) {
-      yield* validateOperationSequence(endOperations, `action '${actionDef.name}' end operations`);
     }
 
     return {
@@ -127,11 +121,19 @@ export const transformActionDefinition = (
  * - NO endOperations (event actions don't have end operations)
  *
  * @param eventAction - EventActionDefinition AST node
+ * @param programConstants - Program-level constants to inline
+ * @param program - The program the event action belongs to
+ * @param allActions - The actions callable from the program (local AND imported,
+ *   under their import alias). Without it only the program's local actions are
+ *   found, so a call to an imported library action would be treated as an
+ *   unknown operation.
  * @returns IEventActionConfiguration JSON
  */
 export const transformEventAction = (
   eventAction: EventActionDefinition,
-  programConstants: ConstantMap = new Map()
+  programConstants: ConstantMap = new Map(),
+  program?: Program,
+  allActions?: ActionDefinition[]
 ): Effect.Effect<IEventActionConfiguration, TransformError> =>
   Effect.gen(function* () {
     // Guard: eventName is required for transformation (grammar allows optional for completion).
@@ -163,25 +165,24 @@ export const transformEventAction = (
     // Transform each operation using the full pipeline.
     // B2: composed with `yield*` so inner failures propagate as TransformError through
     // the Effect channel instead of escaping `Effect.runSync` as an unhandled fiber crash.
-    const startOperations: IOperationConfiguration<TOperationData>[] = [];
+    const operationIRs: OperationConfigIR[] = [];
     for (const opStmt of eventAction.operations) {
-      const operationIRs = yield* transformOperationStatement(
+      const ops = yield* transformOperationStatement(
         opStmt,
         eventActionScope,
         false,
-        undefined,
-        undefined
+        program,
+        allActions
       );
-
-      // Convert OperationConfigIR[] to IOperationConfiguration[]
-      for (const opIR of operationIRs) {
-        startOperations.push({
-          id: opIR.id,
-          systemName: opIR.systemName,
-          operationData: opIR.operationData,
-        });
-      }
+      operationIRs.push(...ops);
     }
+
+    // Convert OperationConfigIR[] to IOperationConfiguration[]
+    const startOperations: IOperationConfiguration<TOperationData>[] = operationIRs.map(opIR => ({
+      id: opIR.id,
+      systemName: opIR.systemName,
+      operationData: opIR.operationData,
+    }));
 
     // Build IEventActionConfiguration
     return {

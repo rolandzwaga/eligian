@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import { Effect } from 'effect';
 import * as esbuild from 'esbuild';
 import { type AssetManifest, CSSProcessError } from './types.js';
-import { isDataUri, isExternalUrl, resolveAssetPath } from './url-utils.js';
+import { isDataUri, isExternalUrl, isFragmentOnlyUrl, resolveCssUrlFile } from './url-utils.js';
 
 /**
  * Options for CSS processing
@@ -69,8 +69,13 @@ export function rewriteCSSUrls(
       return match;
     }
 
-    // Resolve the URL to an absolute path
-    const resolvedPath = resolveAssetPath(trimmedUrl, cssFilePath);
+    // Fragment-only references (e.g. SVG url(#grad)) are not files
+    if (isFragmentOnlyUrl(trimmedUrl)) {
+      return match;
+    }
+
+    // Resolve the URL to an absolute path (query/fragment stripped, percent-decoded)
+    const { absolutePath: resolvedPath, suffix } = resolveCssUrlFile(trimmedUrl, cssFilePath);
 
     // Look up in manifest
     const asset = manifest.assets.get(resolvedPath);
@@ -81,13 +86,17 @@ export function rewriteCSSUrls(
       return match;
     }
 
-    // If asset should be inlined and has data URI, use it
+    // If asset should be inlined and has data URI, use it. Keep a #fragment (SVG
+    // sprite / filter / mask references such as icons.svg#home depend on it); a
+    // ?query means nothing for a data URI, so it is dropped.
     if (asset.inline && asset.dataUri) {
-      return `url('${asset.dataUri}')`;
+      const hashIndex = suffix.indexOf('#');
+      const fragment = hashIndex >= 0 ? suffix.slice(hashIndex) : '';
+      return `url('${asset.dataUri}${fragment}')`;
     }
 
-    // Otherwise use the output path
-    return `url('${asset.outputPath}')`;
+    // Otherwise use the output path, preserving any ?query / #fragment
+    return `url('${asset.outputPath}${suffix}')`;
   });
 }
 

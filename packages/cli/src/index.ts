@@ -27,13 +27,14 @@ export type { BundleFile, BundleOptions, BundleResult, BundleStats } from './bun
 // Bundler API
 export {
   AssetNotFoundError,
+  BundleCompileError,
   BundleError,
   createBundle,
   OutputExistsError,
   RuntimeBundleError,
 } from './bundler/index.js';
 // Types
-export type { CompileOptions, CompileResult } from './compile-file.js';
+export type { CompileOptions, CompileResult, CompileWarning } from './compile-file.js';
 // Main compilation function
 // Error classes for catch blocks
 export {

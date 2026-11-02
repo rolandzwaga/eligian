@@ -153,7 +153,7 @@
 import type { LangiumDocument } from 'langium';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import type { Diagnostic } from 'vscode-languageserver-types';
+import type { Diagnostic, Hover, MarkupContent } from 'vscode-languageserver-types';
 import { createEligianServices } from '../eligian-module.js';
 import type { Program } from '../generated/ast.js';
 import { createMockFileSystem, type MockFileSystemProvider } from './mock-file-system.js';
@@ -1024,3 +1024,22 @@ timeline "test" in ".container" using raf {
  * Re-export MockAssetLoader for testing with mock file system
  */
 export { MockAssetLoader } from './mock-asset-loader.js';
+
+/**
+ * Flatten LSP hover contents (string | MarkedString | MarkedString[] | MarkupContent) to text.
+ */
+export function hoverContentsText(contents: Hover['contents']): string {
+  if (typeof contents === 'string') return contents;
+  if (Array.isArray(contents)) return contents.map(hoverContentsText).join('\n');
+  return contents.value;
+}
+
+/**
+ * Narrow hover contents to MarkupContent (what createMarkdownHover / the providers emit).
+ */
+export function markupContentOf(contents: Hover['contents']): MarkupContent {
+  if (typeof contents === 'string' || Array.isArray(contents) || !('kind' in contents)) {
+    throw new Error('expected hover contents to be MarkupContent');
+  }
+  return contents;
+}

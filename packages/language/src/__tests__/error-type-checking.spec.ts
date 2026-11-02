@@ -37,6 +37,7 @@ import {
   isFileNotFoundError,
   isHtmlImportError,
   isIOError,
+  isLocalesImportError,
   isMediaImportError,
   isOptimizationError,
   isParseError,
@@ -98,6 +99,10 @@ function handleCompilerError(error: unknown): string {
 
   if (isMediaImportError(error)) {
     return `Media import failed: ${error.filePath} - ${error.message}`;
+  }
+
+  if (isLocalesImportError(error)) {
+    return `Locales import failed: ${error.filePath} - ${error.message}`;
   }
 
   if (isFileNotFoundError(error)) {

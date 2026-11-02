@@ -37,15 +37,34 @@ export function disposeCompilerOutputChannel(): void {
 }
 
 /**
- * Recover the underlying error from an Effect failure Cause.
+ * Recover the typed compiler error from an Effect failure Cause.
  *
- * Prefers the typed failure (`Cause.findErrorOption`); for defects/interruptions
- * it falls back to `Cause.squash`, which surfaces the original thrown value.
- * This replaces the previous manual `toJSON()` -> `_id`/`_tag` unwrapping that
- * relied on FiberFailure's undocumented serialization (pairs with B7/B42).
+ * Returns the typed failure (`Cause.findErrorOption`) when it is a tagged
+ * CompilerError. Defects (a transformer throwing a TypeError) and interruptions
+ * have no tagged error, so they yield `undefined` and are reported as internal
+ * errors instead of being mangled into `Unknown Error: {}`.
  */
-function causeToError<E>(cause: Cause.Cause<E>): E {
-  return Option.getOrElse(Cause.findErrorOption(cause), () => Cause.squash(cause) as E);
+export function causeToCompilerError<E>(cause: Cause.Cause<E>): CompilerError | undefined {
+  const error = Cause.findErrorOption(cause);
+  if (Option.isSome(error)) {
+    const value = error.value as { _tag?: unknown } | null;
+    if (typeof value === 'object' && value !== null && typeof value._tag === 'string') {
+      return value as unknown as CompilerError;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Report a defect or interruption: the full rendered Cause (message + stack) goes
+ * to the shared output channel so the user can report or diagnose it.
+ */
+function reportInternalFailure(cause: Cause.Cause<unknown>): void {
+  const outputChannel = getCompilerOutputChannel();
+  outputChannel.clear();
+  outputChannel.appendLine('Internal compiler error:\n');
+  outputChannel.appendLine(Cause.pretty(cause));
+  outputChannel.show();
 }
 
 /**
@@ -76,6 +95,24 @@ function reportCompilationFailure(errors: CompilerError[], sourceCode: string): 
 }
 
 /**
+ * Compute the output path for a compiled source file: same directory, same base
+ * name, `.json` extension (whatever the case of the original extension).
+ *
+ * Returns `undefined` when the result would be the source file itself (e.g. a
+ * source named `x.json` that was switched to the Eligian language mode), so the
+ * caller can refuse instead of overwriting the user's source.
+ */
+export function resolveCompileOutputPath(inputPath: string): string | undefined {
+  const parsed = path.parse(inputPath);
+  const outputPath = path.join(parsed.dir, `${parsed.name}.json`);
+  const normalize = (p: string) => {
+    const resolved = path.resolve(p);
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+  };
+  return normalize(outputPath) === normalize(inputPath) ? undefined : outputPath;
+}
+
+/**
  * Register the compile command.
  *
  * @returns Disposable for the registered command
@@ -91,6 +128,20 @@ export function registerCompileCommand(): vscode.Disposable {
     const document = editor.document;
     if (document.languageId !== 'eligian') {
       vscode.window.showErrorMessage('Not an Eligian file');
+      return;
+    }
+
+    // The output is written next to the source, so the document must live on disk.
+    if (document.uri.scheme !== 'file') {
+      vscode.window.showErrorMessage('Save the file to disk before compiling it');
+      return;
+    }
+
+    const outputPath = resolveCompileOutputPath(document.uri.fsPath);
+    if (!outputPath) {
+      vscode.window.showErrorMessage(
+        'Cannot compile: the output file would overwrite the source file. Rename the source file.'
+      );
       return;
     }
 
@@ -116,8 +167,15 @@ export function registerCompileCommand(): vscode.Disposable {
         );
 
         if (Exit.isFailure(exit)) {
-          const actualError = causeToError(exit.cause) as CompilerError;
-          reportCompilationFailure([actualError], sourceCode);
+          const compilerError = causeToCompilerError(exit.cause);
+          if (compilerError) {
+            reportCompilationFailure([compilerError], sourceCode);
+          } else {
+            reportInternalFailure(exit.cause);
+            vscode.window.showErrorMessage(
+              'Compilation failed with an internal error. See the "Eligian Compiler" output.'
+            );
+          }
           return;
         }
 
@@ -125,10 +183,6 @@ export function registerCompileCommand(): vscode.Disposable {
 
         // Generate output JSON
         const outputJson = JSON.stringify(result, null, 2);
-
-        // Determine output file path
-        const inputPath = sourceUri.fsPath;
-        const outputPath = inputPath.replace(/\.eligian$/, '.json');
 
         // Write output file
         try {
@@ -141,13 +195,21 @@ export function registerCompileCommand(): vscode.Disposable {
 
         vscode.window.showInformationMessage(`✓ Compiled to ${path.basename(outputPath)}`);
 
-        // Open the output file
-        const outputUri = vscode.Uri.file(outputPath);
-        const outputDoc = await vscode.workspace.openTextDocument(outputUri);
-        await vscode.window.showTextDocument(outputDoc, {
-          preview: false,
-          viewColumn: vscode.ViewColumn.Beside,
-        });
+        // Open the output file. The compile already succeeded, so a failure here is
+        // only a warning, not a command failure.
+        try {
+          const outputUri = vscode.Uri.file(outputPath);
+          const outputDoc = await vscode.workspace.openTextDocument(outputUri);
+          await vscode.window.showTextDocument(outputDoc, {
+            preview: false,
+            viewColumn: vscode.ViewColumn.Beside,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          vscode.window.showWarningMessage(
+            `Compiled to ${path.basename(outputPath)}, but could not open it: ${message}`
+          );
+        }
       }
     );
   });

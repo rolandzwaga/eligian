@@ -1,0 +1,15 @@
+// Type-checks src, media AND tests. Never emits. Run via `pnpm typecheck:tests` from the repo root.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": "."
+  },
+  "references": [{ "path": "../language/tsconfig.src.json" }],
+  "include": ["src/**/*.ts", "media/**/*.ts"],
+  "exclude": ["**/lib/**/*", "**/out/**/*", "**/dist/**/*", "**/node_modules/**/*"]
+}

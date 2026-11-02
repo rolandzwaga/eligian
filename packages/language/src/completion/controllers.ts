@@ -12,6 +12,7 @@
 import type { CompletionContext } from 'langium/lsp';
 import type { CompletionItem } from 'vscode-languageserver';
 import { CompletionItemKind } from 'vscode-languageserver';
+import { controllerMetadata, hostControllers } from '../compiler/operations/host-operations.js';
 import { CONTROLLERS } from './metadata/controllers.generated.js';
 
 /**
@@ -24,12 +25,18 @@ import { CONTROLLERS } from './metadata/controllers.generated.js';
  * @returns Array of completion items for controller names
  */
 export function getControllerNameCompletions(
-  _context: CompletionContext,
+  context: CompletionContext,
   includeQuotes = false
 ): CompletionItem[] {
   const items: CompletionItem[] = [];
 
-  for (const controller of CONTROLLERS) {
+  // Idea #24: the host controllers the program declares, then the Eligius ones
+  const host = hostControllers(context.document.parseResult.value).flatMap(declaration => {
+    const metadata = controllerMetadata(declaration.name, declaration);
+    return metadata ? [metadata] : [];
+  });
+
+  for (const controller of [...host, ...CONTROLLERS]) {
     // Format parameters for detail text
     const paramSummary =
       controller.parameters.length > 0

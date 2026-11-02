@@ -91,20 +91,42 @@ export class HTMLRegistryService {
    * ```
    */
   registerImports(documentUri: string, htmlFileUri: string): void {
+    const previous = this.htmlFileByDocument.get(documentUri);
     this.htmlFileByDocument.set(documentUri, htmlFileUri);
+    // The document moved to another layout: drop the old one if nobody else uses it.
+    if (previous !== undefined && previous !== htmlFileUri) {
+      this.pruneIfUnreferenced(previous);
+    }
+  }
+
+  /** Remove the cached metadata of an HTML file that no document imports any more. */
+  private pruneIfUnreferenced(htmlFileUri: string): void {
+    for (const fileUri of this.htmlFileByDocument.values()) {
+      if (fileUri === htmlFileUri) {
+        return;
+      }
+    }
+    this.htmlByFile.delete(htmlFileUri);
   }
 
   /**
    * Check if a document has an HTML import registered
    *
    * Used for loop prevention - prevents sending duplicate notifications
-   * when re-validating documents.
+   * when re-validating documents. The key is the document only, so callers that
+   * need to detect a *changed* layout must compare {@link getHTMLFileURI} (or
+   * pass `htmlFileUri` here) instead of relying on the bare existence check.
    *
    * @param documentUri - Absolute URI of the Eligian document
+   * @param htmlFileUri - When given, only true if the document imports exactly this file
    * @returns true if document has HTML import registered
    */
-  hasImport(documentUri: string): boolean {
-    return this.htmlFileByDocument.has(documentUri);
+  hasImport(documentUri: string, htmlFileUri?: string): boolean {
+    const registered = this.htmlFileByDocument.get(documentUri);
+    if (registered === undefined) {
+      return false;
+    }
+    return htmlFileUri === undefined || registered === htmlFileUri;
   }
 
   /**
@@ -196,7 +218,11 @@ export class HTMLRegistryService {
    * @param documentUri - Absolute URI of the Eligian document
    */
   clearDocument(documentUri: string): void {
+    const previous = this.htmlFileByDocument.get(documentUri);
     this.htmlFileByDocument.delete(documentUri);
+    if (previous !== undefined) {
+      this.pruneIfUnreferenced(previous);
+    }
   }
 
   /**

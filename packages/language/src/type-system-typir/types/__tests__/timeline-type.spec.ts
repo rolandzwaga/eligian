@@ -42,26 +42,26 @@ describe('TimelineType Factory (Unit Tests)', () => {
     const props: TimelineType = {
       provider: 'raf',
       containerSelector: '#canvas',
-      source: undefined,
+      source: '',
       events: [],
     };
 
     expect(props.provider).toBe('raf');
     expect(props.containerSelector).toBe('#canvas');
-    expect(props.source).toBeUndefined();
+    expect(props.source).toBe('');
   });
 
   test('should create TimelineType properties with custom provider', () => {
     const props: TimelineType = {
       provider: 'custom',
       containerSelector: '.container',
-      source: undefined,
+      source: '',
       events: [],
     };
 
     expect(props.provider).toBe('custom');
     expect(props.containerSelector).toBe('.container');
-    expect(props.source).toBeUndefined();
+    expect(props.source).toBe('');
   });
 
   test('should handle timeline with events array', () => {
@@ -69,7 +69,7 @@ describe('TimelineType Factory (Unit Tests)', () => {
       provider: 'video',
       containerSelector: '#app',
       source: './video.mp4',
-      events: [{}, {}], // Mock event objects
+      events: ['event-1', 'event-2'], // Placeholder event names (events are string[])
     };
 
     expect(props.events.length).toBe(2);
@@ -97,14 +97,14 @@ describe('TimelineType Factory (Unit Tests)', () => {
     expect(props.source).toBe('./my-video.mp4');
   });
 
-  test('should handle undefined source property', () => {
+  test('should handle empty source property (raf/custom providers)', () => {
     const props: TimelineType = {
       provider: 'raf',
       containerSelector: '#app',
-      source: undefined,
+      source: '',
       events: [],
     };
 
-    expect(props.source).toBeUndefined();
+    expect(props.source).toBe('');
   });
 });

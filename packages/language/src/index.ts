@@ -22,6 +22,7 @@ export {
 export { hasImports, loadProgramAssets } from './asset-loading/compiler-integration.js';
 // Compiler exports (all compiler functionality is now part of language package)
 export * from './compiler/index.js';
+export { isCssImport } from './css/css-import-paths.js';
 export * from './css/css-parser.js';
 export * from './css/css-registry.js';
 // CSS service exports (Feature 017 - Phase 2)
@@ -49,19 +50,51 @@ export { generateJSDocContent } from './jsdoc/jsdoc-template-generator.js';
 // Labels exports (for label entry quick fix - Feature 041)
 export {
   generateLocaleEntry,
+  isSafeTranslationKey,
   mergeLocaleEntry,
+  mergeLocaleEntryWithSkipped,
 } from './labels/label-entry-generator.js';
 export { extractTranslationKeys } from './locales/translation-key-extractor.js';
 // Shared asset notification base types (D7)
 export * from './lsp/asset-notifications.js';
 // Block-label detection (parse-free core + LSP request contract)
 export * from './lsp/block-labels.js';
+// Idea #22: navigation between .eligian, CSS and the layout HTML
+export {
+  CSS_REFERENCE_LENSES_REQUEST,
+  CSS_REFERENCES_REQUEST,
+  type CssReferenceLens,
+  type CssReferencesParams,
+  cssReferenceLenses,
+  cssReferences,
+} from './lsp/css-navigation.js';
 // CSS validation exports
 export * from './lsp/css-notifications.js';
+// Eligius' configuration lint in the editor (the lint itself: @eligian/language/eligius-lint)
+export * from './lsp/eligius-lint-notifications.js';
+// Idea #15: format .eligian text headlessly (`eligian fmt`)
+export {
+  type FormatSourceOptions,
+  type FormatSourceResult,
+  formatSource,
+} from './lsp/format-source.js';
 // HTML validation exports
 export * from './lsp/html-notifications.js';
 // Locales validation exports (Feature 045: renamed from labels)
 export * from './lsp/labels-notifications.js';
+// Idea #20 phase 2: the timeline (Gantt) view
+export * from './lsp/timeline-gantt.js';
+// Idea #12: project starters for `eligian init` and 'Eligian: New Presentation…'
+export {
+  findStarter,
+  packageNameFor,
+  STARTER_ENTRY,
+  STARTERS,
+  type Starter,
+  type StarterName,
+  type StarterOptions,
+  starterFiles,
+} from './starters/starters.js';
 export { extractLocaleMetadata } from './type-system-typir/utils/locale-metadata-extractor.js';
 // AST helper exports (for language server)
 export { isDefaultImport } from './utils/ast-helpers.js';
@@ -74,6 +107,11 @@ export {
   stripImportQuotes,
 } from './utils/path-utils.js';
 export { validateLocalesJSON } from './validators/locale-import-validator.js';
+// Idea #18: `eligian.validation.selectorNotInLayout` / `eligian check --selector-not-in-layout`
+export {
+  parseSelectorNotInLayout,
+  type SelectorNotInLayout,
+} from './validators/validation-settings.js';
 
 // Re-export everything from AST except TimeExpression to avoid conflict
 // Export AstTimeExpression explicitly to avoid conflict with compiler's TimeExpression

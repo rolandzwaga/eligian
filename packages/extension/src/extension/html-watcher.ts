@@ -27,7 +27,7 @@ export class HTMLWatcherManager extends FileImportWatcherManager {
       {
         globPattern: '**/*.html',
         sendUpdateNotification: (c, htmlFileUri, documentUris) => {
-          c.sendNotification(HTML_UPDATED_NOTIFICATION, { htmlFileUri, documentUris });
+          return c.sendNotification(HTML_UPDATED_NOTIFICATION, { htmlFileUri, documentUris });
         },
       },
       onChange,

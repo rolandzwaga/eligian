@@ -1,10 +1,23 @@
 # Eligian Language Specification
 
-**Version**: 1.7.0
-**Last Updated**: 2026-10-17
+**Version**: 1.8.0
+**Last Updated**: 2026-10-31
 **Status**: Living Document - Updated with every language feature change
 
-**Recent Changes** (v1.7.0):
+**Recent Changes** (v1.8.0):
+- Timeline header options `using scroll "<selector>"`, `loop` and `duration <time>` (Feature 049, section 6.1)
+- `at <start> for <duration>` and optional end blocks for inline timeline and stagger blocks
+  (Feature 048, sections 6.2 and 6.3)
+- Operation-data dependencies use inferred action contracts (Feature 047, section 4.7): a called
+  action may rely on its caller's operation data; missing properties are reported where the
+  action is entered (timelines, event actions, controller action lists)
+- Runtime string concatenation (Feature 046, section 7.4): `"#" + slideId` in operation and action
+  call arguments and action-level consts compiles to Eligius's `concatenateStrings`
+- Runtime values (parameters, variables, system properties, property chains) passed to an
+  operation that does not resolve property chains itself are resolved before it runs; they used
+  to arrive as the literal chain text (e.g. `setElementContent(label)` showed `$operationdata.label`)
+
+**Previous Changes** (v1.7.0):
 - `labels` import replaced by `locales` import (Feature 045); the `labels` keyword no longer exists
 - Locales JSON uses the Eligius 2.2 nested format keyed by locale code; compiles to `config.locales`
 - Locales import requires a `languages` block
@@ -174,7 +187,7 @@ null
 
 ### 2.4 Keywords
 
-Reserved keywords that cannot be used as identifiers:
+Keywords of the language:
 
 ```
 action      at          timeline    for         if
@@ -185,10 +198,20 @@ endable     library     private     sequence    stagger
 in          using       with        const       null
 ```
 
+**Reserved keywords** cannot be used as names: `action`, `break`, `const`, `continue`, `else`,
+`endable`, `false`, `for`, `if`, `import`, `null`, `on`, `sequence`, `stagger`, `timeline`, `true`.
+
+All other keywords are **contextual**: they only have meaning in one fixed position, so they are
+valid parameter, `const`, `for`-item and named-import names (`action f(event)`, `const s = 5`,
+`for (from in items)`, `import video from './intro.mp4'`). This includes the type names
+(`string`, `number`, ...), asset types, timeline providers, scope names and the time units
+`ms`, `s`, `m`, `h`. Object-literal keys and property-chain segments accept **every** keyword
+(`{ from: 0, if: 1 }`, `$operationdata.html`, `@@currentItem.for`).
+
 **Note**: Keywords are organized by category:
 - **Action keywords**: `action`, `endable`, `private`
 - **Control flow**: `for`, `if`, `else`, `break`, `continue`, `in`
-- **Timeline keywords**: `timeline`, `at`, `sequence`, `stagger`, `using`, `with`
+- **Timeline keywords**: `timeline`, `at`, `sequence`, `stagger`, `using`, `with`, `enter`, `leave` (`on enter` / `on leave`)
 - **Import keywords**: `import`, `layout`, `styles`, `provider`, `locales`, `library`, `from`, `as`
 - **Event keywords**: `on`, `event`, `topic`
 - **Declaration keywords**: `const`
@@ -203,7 +226,8 @@ m           // Minutes
 h           // Hours
 ```
 
-**Default**: If no unit is specified, value is treated as milliseconds.
+**Default**: If no unit is specified, the value is in seconds (`42` = `42s`). This is also what
+makes `2s * 3` six seconds: a unitless number in time arithmetic is a plain factor.
 
 ---
 
@@ -507,6 +531,55 @@ locales "./missing.json"
 - Requires a `languages` block
 
 **Compilation**: The file content is assigned verbatim to `config.locales` in the compiled Eligius configuration.
+
+#### 3.2.5 Extensions Import: host operations, controllers and functions
+
+App-specific JavaScript or TypeScript (a tracking call, a formatter, a custom controller)
+comes from a host module that the presentation declares and that is bundled with it:
+
+```eligian
+extensions "./host.ts" {
+  operation trackEvent(eventName: string, data?: object)
+  controller Confetti(count: number)
+  function formatPrice
+}
+
+action intro() [
+  trackEvent("intro", { page: 1 })          // like an Eligius operation
+  selectElement("#stage")
+  addController("Confetti", 25)             // like an Eligius controller
+  customFunction("formatPrice")
+]
+```
+
+The module exports `operations`, `controllers` and `functions` objects with those names (Eligius'
+resource registrations):
+
+```ts
+export const operations = {
+  trackEvent(operationData: { eventName: string; data?: object }) {
+    analytics.send(operationData.eventName, operationData.data);
+    return operationData;
+  },
+};
+export const controllers = { Confetti };              // classes implementing IController
+export const functions = { formatPrice: (value: number) => value.toFixed(2) };
+```
+
+- **Declarations** give the editor and the compiler the signatures: validation (argument
+  count and types), completion and signature help work as for Eligius operations. A parameter
+  is `name`, `name?` (optional) or `name: string|number|boolean|object|array`; an untyped one
+  takes any value. The arguments become the operation data under the parameter names.
+- **Rules:** one extensions import per program; a relative path to a `.js`, `.mjs`, `.ts`,
+  `.mts`, `.jsx` or `.tsx` file; no name of an Eligius operation or controller (Eligius refuses
+  to register one), no duplicates. An action cannot have a host operation's name.
+  `customFunction("x")` warns when `x` is not a declared function.
+- **Bundling:** `--bundle`, `eligian dev` and `eligian smoke` bundle the module with esbuild
+  (TypeScript and npm imports included) and register the declared names with the engine.
+  `smoke` reports a declared name the module does not export.
+- **Preview:** in a trusted workspace the VS Code preview bundles and runs the module too; in an
+  untrusted one the host operations do nothing (the preview says so).
+- The declarations must match the module: Eligian does not read the module's code.
 
 ### 3.3 Library Import Statements (Feature 023)
 
@@ -1227,6 +1300,56 @@ timeline "demo" in "#app" using raf {
 }
 ```
 
+### 4.7 Operation Data and Action Contracts (Feature 047)
+
+Eligius passes one `operationData` object through an action's operations. Operations read
+properties from it (dependencies, e.g. `addClass` needs `selectedElement`) and add properties
+to it (outputs, e.g. `selectElement` adds `selectedElement`). Some operations erase properties
+after use.
+
+A called action starts with its caller's operation data, so it may rely on the caller:
+
+```eligian
+action highlight() [
+  addClass("on")            // needs selectedElement: required from the caller
+]
+
+action show() [
+  selectElement("#box")
+  highlight()               // ✅ show provides selectedElement
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..1s show()          // ✅
+  at 1s..2s highlight()     // ❌ Action 'highlight' requires 'selectedElement' ...
+}
+```
+
+- **Contracts are inferred.** Each action's contract is the set of properties it reads without
+  creating them. Contracts propagate through calls, and the editor shows them in the action's
+  hover ("Requires from the caller").
+- **Reported at entry points.** Errors appear where the starting data is known: timeline
+  events, `sequence`/`stagger` items and inline blocks (start empty), event actions (start
+  with only `eventArgs`), and `DOMEventListenerController` action lists (only `eventTarget`
+  and the controller's `actionOperationData`, plus what earlier listed actions return).
+- **Erasures are always errors**, wherever they occur: using a property that an earlier
+  operation erased on the same path.
+- **Parameters are not erased.** A parameter is a property of the action's operation data
+  under its own name, and some operations erase a property of that name (`selectElement`
+  removes `selector`). The compiler keeps such a parameter around the operation when the
+  block uses it again (later in the same start or end block, or in the next iteration of a
+  loop), so `action twice(selector) [ selectElement(selector) … selectElement(selector) … ]`
+  and forwarding `inner(selector)` after `selectElement(selector)` work.
+- **Outputs don't flow back.** A called action's outputs are not visible to its caller: after
+  the call, the caller continues with its own operation data.
+- **Branches and loops:** after `if/else`, only properties available in both branches remain.
+  A `for` body may run zero times, so it adds nothing afterwards.
+- **Dynamic outputs:** `setOperationData`, `setData` (`$operationdata.` targets),
+  `removePropertiesFromOperationData` and `clearOperationData` are modelled from literal
+  arguments. A non-literal argument stops further checking on that path.
+- **Libraries:** a library action is checked where a program calls it, never in the library
+  file on its own.
+
 ---
 
 ## 5. Event Actions
@@ -1237,7 +1360,7 @@ Event actions are special action definitions that execute in response to runtime
 
 **Syntax** (BNF notation):
 ```bnf
-on event <eventName> (topic <topicName>)? action <ActionName> ( <parameters>? ) [
+on event <eventName> (topic <topicName>)? action <ActionName> (( <parameters>? ))? [
   <operations>*
 ]
 ```
@@ -1246,7 +1369,7 @@ Where:
 - `<eventName>` is a string literal naming one of the 43 Eligius events (e.g., `"language-change"`, `"timeline-play"`); see section 5.10
 - `(topic <topicName>)?` is optional - use parentheses to indicate optionality in BNF
 - `<ActionName>` is an identifier starting with an uppercase letter
-- `<parameters>?` is an optional comma-separated parameter list
+- `<parameters>?` is an optional comma-separated parameter list; with no parameters the parentheses can be omitted (`action ShowCompletionMessage [ ... ]`), as for regular actions
 - `[` and `]` are **literal square brackets** in the Eligian syntax (not EBNF notation)
 
 **Components**:
@@ -1269,7 +1392,7 @@ on event "language-change" action HandleLanguageChange(languageCode: string) [
   selectElement("#language-display")
   setElementContent(languageCode)
   addClass("highlight")
-  log("Language changed to: " + languageCode)
+  log(languageCode)
 ]
 ```
 
@@ -1721,7 +1844,7 @@ timeline "demo" in "#app" using raf {
 ### 6.1 Timeline Declaration
 
 ```eligian
-timeline <name> in <containerSelector> using <provider> [from <source>] {
+timeline <name> in <containerSelector> using <provider> [<scrollSelector>] [from <source>] [loop] [duration <time>] {
   <events>*
 }
 ```
@@ -1731,11 +1854,19 @@ timeline <name> in <containerSelector> using <provider> [from <source>] {
 - `containerSelector`: String literal - CSS selector for container element
 - `provider`: Timeline provider type
 - `source`: (Optional) Source file for video/audio providers
+- `scrollSelector`: (Optional, `scroll` only) the scrollable element; defaults to `containerSelector`
+- `loop`: (Optional) restart the timeline when it ends (Feature 049)
+- `duration <time>`: (Optional) explicit timeline duration; without it, the end of the last event is used.
+  It must be positive and not relative. Events that end after it get a warning (Feature 049)
+
+The options come in the order shown.
 
 **Providers**:
 - `video` - Video element (requires `from` source)
 - `audio` - Audio element (requires `from` source)
 - `raf` - RequestAnimationFrame loop (no source)
+- `scroll` - Scroll-driven: the scroll progress of an element maps onto the timeline duration, which is required (Feature 049). Compiles to an animation timeline with its own `ScrollPositionSource`
+  The scroll element must exist in the layout HTML or the imported CSS (error), and some CSS rule or inline style should make it scroll vertically (`overflow-y: auto`; a warning). The preview also checks that it really scrolls: computed overflow and content taller than the element.
 - `custom` - Custom provider (no source)
 
 **Example**:
@@ -1749,18 +1880,152 @@ timeline "presentation" in ".slide-container" using video from "slides.mp4" {
 timeline "animation" in "#canvas" using raf {
   at 0s..2s fadeIn("#box")
 }
+
+timeline "Story" in "#stage" using scroll "#scroller" duration 120s {
+  at 0s for 10s [ selectElement("#intro") addClass("visible") ]
+}
+
+timeline "Ambient" in "#bg" using raf loop duration 30s {
+  at 0s..30s [ selectElement("#bg") addClass("glow") ]
+}
 ```
+
+`loop`, `duration` and `scroll` are contextual keywords: they remain usable as parameter and
+variable names. Hovering a timeline header shows its provider, effective duration and whether it
+loops.
+
+#### Lifecycle blocks: `on enter` / `on leave`
+
+Operations that run when the timeline becomes active, and when it is left:
+
+```eligian
+timeline "Logic" in "#stage" using raf {
+  on enter [ showView("#ch3") on click "#c3-to-hub" navigate "Hub" ]
+  on leave [ hideView("#ch3") ]
+  at 0s for 7s [ narrate("const names a value") ]
+}
+```
+
+- `on enter` runs when the timeline becomes active: the first timeline when the presentation
+  starts, any other one when it is navigated or switched to.
+- `on leave` runs when the timeline is left: a `navigate` / switch to another timeline, a stop,
+  or the engine being destroyed. It does **not** run when the timeline's content ends, so a view
+  shown in `on enter` stays up after the last event.
+- At most one of each per timeline, in any order and anywhere in the body. Both are operation
+  lists like an inline `at` block (operations and action calls; an endable action called in
+  `on leave` is ended).
+- They compile to one open-ended timeline action (`duration: { start: 0 }`, no end, which
+  Eligius treats as never ending on its own). It is not an event: it does not count towards the
+  timeline's inferred duration, and relative times (`+2s`) and staggers count from the events.
+  A timeline with only lifecycle blocks (a menu that waits for clicks) has duration 0.
+- `enter` and `leave` are contextual keywords (still valid parameter and variable names).
+
+#### Selecting the element: `target` and `with`
+
+Every start and end block starts with empty operation data, so operations that need
+`selectedElement` (addClass, setStyle, animate, …) need a `selectElement` first. Two shorthands:
+
+```eligian
+// target: selectElement("#box") at the head of the start block, and of the end block
+at 0s..5s target "#box" [ addClass("visible") ] [ removeClass("visible") ]
+at 5s..6s target "#box" highlight()         // also for action calls, if and for
+
+action clearSpots() [
+  with ".tok" { removeClass("spot") }       // selectElement(".tok"), then the block
+  with ".callout" { removeClass("show") }
+]
+```
+
+- `at <range> (as <label>)? target "<selector>" …`: the selector is a string; it is checked
+  against the imported CSS like every selector.
+- `with <selector> { <operations> }` is an operation statement (in any block). The selector is
+  any expression (`with "#" + id { … }`, `with sel { … }`); a string is checked against the CSS.
+  It compiles to `selectElement(<selector>)` followed by the operations, and the selection **stays**
+  after the block: there is no previous selection to restore.
+- When an operation needs `selectedElement` and nothing is selected, the editor offers *Insert
+  selectElement("…")* (with the selector of the sibling start/end block, an earlier
+  `selectElement` or a selector parameter), or *Add target "…"* for an action called directly as
+  an `at` event.
+- `target` is a contextual keyword (still a valid name).
+
+#### Interactions: `on <event> "<selector>" <verb>` and `on key "<keys>" <verb>`
+
+An operation statement that attaches a DOM event listener to an element, or a key listener. The
+verb runs each time the event fires or the key is pressed:
+
+```eligian
+on click "#card-ch1" navigate "Timeline & Time"     // switch timelines
+on click "#resume" navigate "Timeline & Time" at 5s  // … at a position
+on click "#play" toggle                              // play / pause / toggle / stop
+on click "#skip" seek intro.end                      // seek the current timeline
+on mouseenter "#card" run highlight("#card", 2)       // start an action
+on key "ArrowRight" seek intro.end                   // a key press
+on key "Escape" in "#dialog" stop                     // … only while the focus is in #dialog
+```
+
+| Verb | Does |
+|---|---|
+| `navigate "<timeline>" (at <time>)?` | switch to another timeline of the program (at a position, default 0) |
+| `play` / `pause` / `toggle` / `stop` | the playback of the current timeline |
+| `seek <time>` | seek the current timeline |
+| `run <action>(<args>)` | start an action, with the arguments |
+
+- **Event:** a DOM event name (`click`, `dblclick`, `mouseenter`, `keydown`, `input`, …);
+  completion offers them. An unknown name is a warning with *did you mean* (custom events exist).
+  `keydown` on an element only fires while it has focus and does not filter keys: use `on key`.
+- **Keys** (`on key "<keys>"`, Eligius KeyboardController): comma separated shortcuts in
+  hotkeys-js syntax, case insensitive: key names such as `right`, `space`, `enter`, `esc`,
+  `pageup`, `f1`, the `KeyboardEvent.key` names of the same keys (`ArrowRight`, `Escape`,
+  `PageDown`), a letter or digit, or punctuation (`,` `.` `/` `;` `'` `[` `]` `-` `=`), after
+  `+`-joined modifiers (`shift`, `alt`, `ctrl`, `meta`): `"shift+ArrowRight, space"`. An unknown
+  name is an error; completion offers common keys. Without `in`, the keys work while the focus is
+  anywhere in the presentation or nowhere; with `in "<selector>"`, only while the focus is inside
+  that element. Presses in input fields are ignored, a held key runs once, and a key the
+  presentation binds for playback (space, the arrow keys of a keyboard timeline) is taken over.
+  The listener is attached to the `in` element, else to the container of the timeline the
+  statement is in (in an action: of the first timeline).
+- **Positions** are constant times (`5s`, `@beat`, `1s + 500ms`). A `seek` may use the labels of the
+  timeline it is in, in any order (`seek intro.end`); a `navigate` position those of the target
+  timeline (`navigate "Chapter" at beat.start`).
+- **`run`** starts an action (not an operation: wrap it in an action). The listener stores the
+  arguments, so they must be known at compile time: literals and constants, not parameters,
+  loop items or property chains. The action starts with only `eventTarget` (the element the
+  event fired on, or the focused element), `eventKey` (the `KeyboardEvent.key` of a key event)
+  and its arguments, so it selects its own element: one that needs the selected
+  element of the surrounding block is an error.
+- **Compiles to** `selectElement` + `getControllerInstance("DOMEventListenerController")`
+  (`"KeyboardController"` for `on key`) + `addControllerToElement`, so the statement selects its
+  element like `selectElement` does. The
+  listener runs a synthetic action per verb that broadcasts the engine request
+  (`request-timeline-uri`, `timeline-play-request`, `timeline-pause-request`,
+  `timeline-play-toggle-request`, `timeline-stop-request`, `timeline-seek-request`), or the
+  `run` action.
+- The verbs and `key` are contextual keywords: an action can still be called `toggle`, `play`
+  or `key`.
+
+`navigate`: the target must be the name of a timeline in the program. In the editor a target is a symbol of that
+timeline: Go to Definition, Find References and Rename (renaming a timeline updates every
+`navigate` to it) work on both, completion after `navigate` offers the timeline names, and an
+unknown target offers *Change to "<closest name>"* and *Create timeline "<name>"*.
+
+This replaces the `at 0s..3600s [ setup ] [ teardown ]` trick, which gave every timeline a
+duration of an hour and pushed relative times after it an hour out.
 
 ### 6.2 Timeline Events
 
 #### Timed Events
 
 ```eligian
-at <start>..<end> <actionCall>
-at <start>..<end> <operationCall>
-at <start>..<end> <controlFlow>
-at <start>..<end> [ <start-ops>* ] [ <end-ops>* ]
+at <range> <actionCall>
+at <range> <operationCall>
+at <range> <controlFlow>
+at <range> [ <start-ops>* ] ([ <end-ops>* ])?
+
+<range> = <start>..<end> | <start> for <duration>
 ```
+
+The end block of an inline block is optional (Feature 048): `at 0s..2s [ selectElement("#b") ]`
+has no end operations.
 
 **Examples**:
 
@@ -1777,6 +2042,12 @@ at 5s..10s [
   addClass("visible")
 ] [
   removeClass("visible")
+]
+
+// Start and duration, no end block
+at 10s for 5s [
+  selectElement("#content")
+  addClass("highlight")
 ]
 
 // Control flow with mixed action/operation calls
@@ -1815,6 +2086,22 @@ sequence {
 // at 15s..18s outro()
 ```
 
+**Inline items, shared blocks and labels**: an item can also be inline operation blocks, like an
+`at` event without its range. `each [ .. ]` runs before every item's start operations and
+`then [ .. ]` after every item's end operations. An item can be labeled with `as <name>` for
+`<name>.start` / `<name>.end` in later times (see *Time Constants and Event Labels*):
+
+```eligian
+sequence each [ clearSpots() ] then [ log("beat done") ] {
+  for 7s as explain [ narrate("An action is a named list…") revealBlock("#code-def") ]
+  for 8s [ narrate("Calling your action…") ] [ hideBlock("#code-def") ]
+  intro() for 5s
+}
+```
+
+Inserting or resizing an item moves every later item; no range has to be renumbered. A later item
+of the same sequence may use an earlier item's label (`for explain.end - explain.start [ .. ]`).
+
 #### Stagger Blocks
 
 Staggered events with incremental start times:
@@ -1832,7 +2119,7 @@ stagger <delay> <items> for <duration> [
 **Example**:
 
 ```eligian
-stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
 
 // Compiles to:
 // at 0s..2s { fadeIn(".item-1") }
@@ -1840,12 +2127,20 @@ stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
 // at 0.4s..2.4s { fadeIn(".item-3") }
 ```
 
+The first item starts where the previous event ends. `at <time>` after the items anchors it
+explicitly instead, so moving the stagger in the timeline does not change its times:
+
+```eligian
+stagger 200ms ["#a", "#b"] at editBeat.end with reveal() for 1.5s   // first item at editBeat's end
+stagger 200ms ["#a", "#b"] at +2s with reveal() for 1.5s            // 2s after the previous event
+```
+
 ### 6.3 Time Expressions
 
 #### Time Literals
 
 ```eligian
-42          // 42 milliseconds (default unit)
+42          // 42 seconds (no unit = seconds)
 500ms       // 500 milliseconds
 2s          // 2 seconds
 1.5m        // 1.5 minutes
@@ -1875,7 +2170,49 @@ stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
 at 0s..5s        // From 0s to 5s
 at 1s..1s+2s     // From 1s to 3s (using arithmetic)
 at +0s..+2s      // Relative timing
+at 2s for 3s     // From 2s to 5s (start and duration, Feature 048)
+at +0s for 3s    // Starts where the previous event ends, lasts 3s
 ```
+
+- **Duration:** `for <duration>` takes any time expression in any unit (`at 500ms for 2s` ends
+  at 2.5s). It must be greater than 0 and cannot be relative (`for +2s` is an error).
+- **Converting:** the editor offers *Convert to '<start> for <length>'* on a `start..end` range
+  whose length is statically known.
+- **Inline stagger blocks** may also leave out their end block:
+  `stagger 200ms items for 1s [ addClass("in") ]`.
+- **Resolved times in the editor:** the VS Code extension shows the absolute times the compiler
+  computes as inlay hints: after each sequence item (`‹5s..15s›`), after a stagger block
+  (`‹22s..23.8s ×3›`), after relative, computed and `for` ranges, and the inferred duration on a
+  timeline header without `duration`. A time that depends on a runtime value (`$globaldata.end`),
+  and any relative time after it, has no hint.
+
+#### Time Constants and Event Labels
+
+A program-level `const` can hold a time, and an `at` event can be labeled with `as <name>`.
+Later times refer to them:
+
+```eligian
+const beat = 7s
+const outro = @beat * 2 + 500ms
+
+timeline "Tools" in "#stage" using raf duration closing.end + 1s {
+  at 15s for @beat as editBeat [ narrate("edit one, the rest follow") ]
+  stagger 200ms ["#card-1", "#card-2"] at editBeat.end with revealCard() for 1.5s
+  at editBeat.start + 3s for @outro as closing [ narrate("done") ]
+}
+```
+
+- **Time constants:** `const beat = 7s` (any unit; arithmetic on times, numbers and other time
+  constants is allowed). In a time it is written `@beat`, like every constant reference. A
+  number constant used in a time counts in seconds, like a unitless time literal. A time constant only exists
+  at compile time: it cannot be used in operation arguments, and a time like `7s` cannot appear
+  outside a program-level const.
+- **Event labels:** `at <range> as <name> [ ... ]` names a timed event. `<name>.start` and
+  `<name>.end` are its absolute times. A time can only refer to events **earlier** in the same
+  timeline (so times never depend on each other in a cycle); the timeline header's `duration` may
+  refer to any label. Labels are unique within a timeline.
+- The editor's inlay hints and `▶ Preview from …` CodeLenses resolve constants, labels and
+  anchors the same way the compiler does.
 
 ---
 
@@ -1948,6 +2285,94 @@ action checkAndActivate(count: number, enabled: boolean) [
   }
 ]
 ```
+
+#### Precedence (tightest first)
+
+| Operators | Associativity |
+|-----------|---------------|
+| `**` | right (`2 ** 3 ** 2` = `2 ** 9` = 512) |
+| unary `-`, `!` | prefix (`-2 ** 2` = `-(2 ** 2)` = -4) |
+| `*` `/` `%` | left (`2 * 3 ** 2` = 18) |
+| `+` `-` | left |
+| `<` `<=` `>` `>=` | left |
+| `==` `!=` | left |
+| `&&` | left |
+| `\|\|` | left |
+
+#### Compile-time evaluation
+
+Outside `if` conditions, operator expressions are evaluated at compile time and must consist of
+compile-time constants (literals and `const` values). There is no implicit type coercion:
+
+- Arithmetic (`-` `*` `/` `%` `**`) needs numbers; `+` adds numbers or concatenates when either
+  side is a string; `<` `<=` `>` `>=` compare two numbers or two strings.
+- Division or modulo by zero, a wrong operand type (`"abc" - 1`, `true + 1`) and a non-finite
+  result are compile errors.
+- An operator applied to a runtime value (parameter, variable, system property, property chain)
+  is a compile error. Comparisons, `&&`, `||` and `!` on runtime values are supported only inside
+  `if` conditions. Arithmetic on runtime values is not supported anywhere; use the `calc`
+  operation (its result is `$operationdata.calculationResult`). The exception is string
+  concatenation, below.
+
+#### Runtime string concatenation
+
+`+` concatenates runtime values when it is a string concatenation: one of its operands is
+statically a string. That is a string literal, a parameter annotated `: string`, a `const` with a
+string value, or another string concatenation.
+
+```eligian
+action showSlide(slideId, duration: number) [
+  selectElement("#" + slideId)                  // "#intro"
+  setElementContent("Slide " + slideId + "!")   // any operation, any parameter
+  setStyle({ width: duration + "px" })          // inside object and array arguments
+]
+
+action highlight(prefix: string, id) [
+  selectElement(prefix + id)                    // a ': string' parameter makes it a concatenation
+]
+```
+
+- **Allowed in**: operation arguments, action call arguments (in actions and timelines) and
+  action-level `const` declarations, at any depth of object and array literals.
+- **Not allowed in**: `if` conditions, `for` collections, time expressions and program-level
+  constants. These are compile errors with an editor diagnostic.
+- **Evaluation**: left to right, as in JavaScript. `a + b + "px"` with untyped `a` and `b` is an
+  addition followed by a concatenation, and the addition is a compile error. Write
+  `"" + a + b + "px"` or annotate a parameter to concatenate both.
+- **Operands**: constants are converted to strings at compile time (`"v" + 1.5` is `"v1.5"`). A
+  runtime `null` or `undefined` becomes an empty string. Objects and arrays are compile errors.
+- **Constant concatenations** (`"#" + "box"`, `"v" + @VERSION`) still fold at compile time.
+
+**Compilation**: each concatenation becomes a `setOperationData` that resolves the parts and a
+`concatenateStrings` that joins them into `$operationdata.result`:
+
+```json
+{ "systemName": "setOperationData", "operationData": { "properties": { "strings": ["#", "$operationdata.slideId"] } } },
+{ "systemName": "concatenateStrings", "operationData": {} },
+{ "systemName": "selectElement", "operationData": { "selector": "$operationdata.result" } }
+```
+
+With several concatenations in one operation, each result is copied to a private key
+(`__eligianConcat0`, ...) that is removed after the operation. When the surrounding action uses
+`$operationdata.result` itself, its value is saved and restored around the concatenations.
+
+#### Runtime values in operation arguments
+
+Eligius resolves property chains only inside the operations that resolve their own inputs:
+`selectElement` (selector), `setStyle`, `createElement`, `calc`, `math`, `forEach`
+(collection), `broadcastEvent` (eventArgs), `setData`, `setOperationData` and `when`. For every
+other operation, an argument that contains a runtime value is resolved by a `setOperationData`
+emitted just before it:
+
+```eligian
+action show(label) [
+  selectElement("#box")
+  setElementContent(label)   // → setOperationData({ properties: { template: "$operationdata.label" } })
+]                            //   setElementContent()
+```
+
+An argument that forwards a parameter of the same name needs nothing extra, because Eligius
+already passes action parameters as operation data.
 
 ### 7.5 Unary Expressions
 
@@ -2060,7 +2485,17 @@ if (<condition>) {
 } else {
   <operations>*
 }
+
+if (<condition>) {
+  <operations>*
+} else if (<condition>) {
+  <operations>*
+} else {
+  <operations>*
+}
 ```
+
+`else if` chains can be as long as needed, and the final `else` is optional.
 
 **Example**:
 
@@ -2075,6 +2510,33 @@ action toggle(enabled: boolean) [
 ```
 
 **Compilation**: Compiles to `when()` / `otherwise()` / `endWhen()` operations.
+
+**Else-if chains**: `else if (b) { ... }` is shorthand for `else { if (b) { ... } }`, so each
+`else if` compiles to a `when()` / `endWhen()` pair nested inside the preceding `otherwise()`:
+
+```eligian
+action showMode(mode: string) [
+  if (mode == "a") {
+    addClass("mode-a")
+  } else if (mode == "b") {
+    addClass("mode-b")
+  } else {
+    addClass("mode-default")
+  }
+]
+```
+
+```
+when      { expression: "$operationdata.mode == 'a'" }
+addClass  { className: "mode-a" }
+otherwise
+  when      { expression: "$operationdata.mode == 'b'" }
+  addClass  { className: "mode-b" }
+  otherwise
+  addClass  { className: "mode-default" }
+  endWhen
+endWhen
+```
 
 ### 8.4 For Loops
 
@@ -2463,6 +2925,33 @@ action setup() [
 ]
 ```
 
+### 12.3a Selectors and Class Names Through Action Parameters (idea #18)
+
+Most selectors are passed to actions, not to operations directly. A parameter has the role
+**selector** when its action passes it to a selector input (`selectElement(sel)`, `with sel { }`)
+or to a selector parameter of an action it calls, and **className** for
+className inputs (`addClass(name)`); roles follow nested calls into imported libraries. A
+parameter used for both, or only inside an expression (`"#" + id`), has no role.
+
+```eligian
+action spotlight(selector: string) [ selectElement(selector) addClass("spot") ]
+
+spotlight("#tok-timelin")
+//        ~~~~~~~~~~~~~~ Unknown CSS ID in selector: 'tok-timelin'. Did you mean: tok-timeline?
+```
+
+- A string literal passed for a role-tagged parameter is validated like one passed to the
+  operation, with completion and a *Change to '…'* quick fix for the suggestions.
+- **Selectors** (in operations, actions, `navigate`, `target`, `with` and the timeline container)
+  may use the classes and ids of the imported CSS **and of the layout HTML** (`layout "./x.html"`),
+  where most ids live. Class-name arguments still need a class in the CSS.
+- Ids in selectors get *did you mean* suggestions as well.
+- Hovering an action and its signature help show the parameters' roles.
+- Optional check `eligian.validation.selectorNotInLayout` (`eligian check --selector-not-in-layout`):
+  `off` (default), `ids` (warn when a selector's id is in the CSS but not in the layout HTML, so it
+  only matches an element an operation creates at runtime) or `all` (classes too; noisier, since
+  classes are often added at runtime). It needs a `layout` import; only string selectors are checked.
+
 ### 12.4 Hot-Reload Validation
 
 CSS validation automatically updates when CSS files change at runtime.
@@ -2527,7 +3016,24 @@ The preview opens in a side panel and displays the rendered Eligius timeline wit
 - HTML layout from `layout` import
 - CSS styles from `styles` imports
 - Timeline playback controls
+- A scrubber with a time readout, a timeline picker (one entry per `timeline`) and, for a
+  program with `languages`, a language picker that broadcasts Eligius' `language-change`.
+  The picked language is kept across recompiles
 - Real-time synchronization with source code
+
+**Preview from here**: the editor shows a `▶ Preview` CodeLens above each timeline and
+`▶ Preview from 22s` above each timed event, sequence item and stagger block whose start time is
+known statically. It opens the preview, switches to that timeline, seeks to that time and plays.
+The setting `eligian.codeLens.preview` turns the lenses off.
+
+**Runtime errors and the live playhead**: the preview compiles with an *Eligian map* (every
+compiled action and operation with its source location; `eligian --eligian-map` writes the same
+map next to the JSON). When the Eligius engine reports a failing timeline action, the preview finds
+the failing operation, also inside the actions it calls or in an imported library, and shows the
+error as a notification with *Go to Source* and as an Error in the Problems view (source
+`eligius-runtime`, cleared on the next compile). While it plays, the editor marks the events that
+run at the playhead (`▶ 0s..6s` at the end of their line; setting
+`eligian.preview.highlightActiveEvents`).
 
 ### 13.2 CSS Injection
 
@@ -2657,24 +3163,31 @@ Parameter       := ID (':' TypeAnnotation)?
 TypeAnnotation  := 'string' | 'number' | 'boolean' | 'object' | 'array'
 
 Timeline        := 'timeline' STRING 'in' STRING 'using' Provider ('from' STRING)?
-                   '{' TimelineEvent* '}'
+                   '{' (Lifecycle | TimelineEvent)* '}'
+Lifecycle       := 'on' ('enter' | 'leave') '[' OperationStatement* ']'
 Provider        := 'video' | 'audio' | 'raf' | 'custom'
 
 TimelineEvent   := TimedEvent | SequenceBlock | StaggerBlock
-TimedEvent      := 'at' TimeRange (NamedAction | InlineAction)
-SequenceBlock   := 'sequence' '{' SequenceItem* '}'
-StaggerBlock    := 'stagger' TimeExpr Expression 'with' ActionCall 'for' TimeExpr
-                 | 'stagger' TimeExpr Expression 'for' TimeExpr
+TimedEvent      := 'at' TimeRange ('as' Identifier)? ('target' STRING)? (NamedAction | InlineAction)
+SequenceBlock   := 'sequence' ('each' '[' Operations ']' ('then' '[' Operations ']')?)?
+                   '{' SequenceItem* '}'
+SequenceItem    := ActionCall 'for' TimeExpr ('as' Identifier)?
+                 | 'for' TimeExpr ('as' Identifier)? '[' Operations ']' ('[' Operations ']')?
+StaggerBlock    := 'stagger' TimeExpr Expression ('at' TimeExpr)? 'with' ActionCall 'for' TimeExpr
+                 | 'stagger' TimeExpr Expression ('at' TimeExpr)? 'for' TimeExpr
                    '[' Operations ']' '[' Operations ']'
 
 TimeRange       := TimeExpression '..' TimeExpression
 TimeExpression  := TimeLiteral | RelativeTimeLiteral | BinaryTimeExpr
+                 | '@' ConstName | EventLabel '.' ('start' | 'end')
 TimeLiteral     := NUMBER TimeUnit?
 RelativeTimeLiteral := '+' NUMBER TimeUnit?
 TimeUnit        := 'ms' | 's' | 'm' | 'h'
 
-Operations      := (OperationCall | IfStatement | ForStatement |
+Operations      := (OperationCall | IfStatement | ForStatement | WithStatement |
                    VariableDeclaration | BreakStatement | ContinueStatement)*
+
+WithStatement   := 'with' Expression '{' Operations '}'
 
 IfStatement     := 'if' '(' Expression ')' '{' Operations '}'
                    ('else' '{' Operations '}')?
@@ -2718,6 +3231,7 @@ Standard scope names (used with `$` prefix):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.8.0 | 2026-10-31 | **Feature 049 - Timeline header options** (section 6.1): `scroll` provider (ScrollPositionSource), `loop`, explicit `duration` with a warning for events past it, timeline hover. **Feature 048 - `for` durations and optional end blocks** (sections 6.2, 6.3): `at 2s for 3s`, relative starts with durations, inline timeline/stagger blocks without an end block, and a code action converting `a..b` to `a for <length>`. **Feature 047 - Operation-data contracts** (section 4.7): dependencies are checked by one dataflow analysis shared by the editor and the compiler; called actions inherit their caller's state through inferred contracts. **Feature 046 - Runtime string concatenation** (section 7.4): `+` with a string operand over runtime values compiles to `concatenateStrings` in operation/action call arguments and action-level consts. Runtime values passed to operations that do not resolve property chains themselves are resolved by a preceding `setOperationData` (previously they arrived as literal chain strings). |
 | 1.7.0 | 2026-10-17 | **Feature 045 - Locales Import**: `labels` import replaced by `locales` (section 3.2.4); nested JSON format keyed by locale code, compiles to `config.locales`, requires a `languages` block; translation keys referenced via `LabelController`. **Feature 029 corrections**: event names are restricted to the 43 Eligius events (sections 5.5, 5.10); the previous event list contained non-existent events. Duplicate event handlers documented as warnings; noted that the compiler fails on any diagnostic. Keyword list and grammar summary updated. |
 | 1.5.2 | 2025-11-17 | **Feature 033 - Labels Import**: Added labels import support for internationalization (section 3.2.4). Labels JSON files validated against JSON Schema with compile-time error reporting. Labels assigned to Eligius configuration's `labels` property. Added `labels` keyword to reserved keywords list. Updated grammar to include labels in DefaultImport. |
 | 1.5.1 | 2025-11-17 | **Feature 032 Improvements**: Added nested library dependency documentation (section 3.3.5), library cache invalidation documentation (section 3.3.6), parameter count validation for imported actions, library file compilation prevention. Updated CSS path resolution to clarify paths are relative to source file directory (section 12.1). Bug fixes: validator now checks imported action parameter counts, CSS paths resolve correctly for files in subdirectories, library compilation prevented with clear error message. |

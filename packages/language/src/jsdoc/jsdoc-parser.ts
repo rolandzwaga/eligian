@@ -31,6 +31,8 @@ interface JSDocParam {
   name: string;
   /** Parameter description (optional, text after name) */
   description?: string;
+  /** True when declared with the optional syntax `[name]` / `[name=default]` */
+  optional?: boolean;
 }
 
 /**
@@ -129,23 +131,58 @@ function parseParamTag(tag: JSDocTag): JSDocParam | null {
     return null;
   }
 
-  // Pattern: [{type}] name [description]
-  // Type is optional (in curly braces), name is required, description is optional
-  const match = contentText.match(/^(?:\{([^}]+)\}\s+)?(\w+)(?:\s+(.+))?/);
+  let rest = contentText;
+  let type: string | undefined;
 
-  if (!match) {
-    return null;
+  // Optional brace-balanced type, e.g. {string}, {{a: string}} or {Array<{x: number}>}
+  if (rest.startsWith('{')) {
+    const end = findClosingBrace(rest);
+    if (end === -1) {
+      return null; // Unterminated type
+    }
+    type = rest.slice(1, end).trim() || undefined;
+    rest = rest.slice(end + 1).trimStart();
   }
 
-  const [, type, name, description] = match;
-
-  if (!name) {
+  // Name: `name`, or `[name]` / `[name=default]` for optional parameters
+  const nameMatch = rest.match(/^(?:\[\s*(\w+)\s*(?:=[^\]]*)?\]|(\w+))/);
+  if (!nameMatch) {
     return null; // Name is required
   }
+  const optional = nameMatch[1] !== undefined;
+  const name = nameMatch[1] ?? nameMatch[2];
+  rest = rest.slice(nameMatch[0].length);
 
-  return {
-    type: type ? type.trim() : undefined,
-    name: name.trim(),
-    description: description ? description.trim() : undefined,
+  // Description: everything after the name (including continuation lines), with a leading
+  // '- ' separator stripped and whitespace/newlines collapsed to single spaces.
+  const description = rest
+    .replace(/^\s*-\s+/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const param: JSDocParam = {
+    type,
+    name,
+    description: description.length > 0 ? description : undefined,
   };
+  if (optional) {
+    param.optional = true;
+  }
+  return param;
+}
+
+/** Index of the '}' matching the '{' at index 0, or -1 if unbalanced. */
+function findClosingBrace(text: string): number {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '{') {
+      depth++;
+    } else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        return i;
+      }
+    }
+  }
+  return -1;
 }

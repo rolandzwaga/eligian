@@ -123,14 +123,16 @@ describe('LocaleUsageTracker (Feature 036, User Story 7)', () => {
       mockUri1 as vscode.Uri,
       mockUri2 as vscode.Uri,
     ]);
-    vi.mocked(vscode.workspace.openTextDocument).mockImplementation((uri: vscode.Uri) => {
+    // openTextDocument is overloaded (Uri | string | options); the tracker only uses the Uri overload.
+    const openTextDocument = ((uri: vscode.Uri) => {
       if (uri.path === '/unreadable.eligian') {
         return Promise.reject(new Error('Permission denied'));
       }
       return Promise.resolve({
         getText: () => 'content with @{my-label} reference',
       } as vscode.TextDocument);
-    });
+    }) as unknown as typeof vscode.workspace.openTextDocument;
+    vi.mocked(vscode.workspace.openTextDocument).mockImplementation(openTextDocument);
 
     // ACT - should not throw
     const result = await searchWorkspace('my-label');

@@ -20,15 +20,44 @@ import {
   type IEngineFactoryResult,
   type IEventbus,
   type IEventbusListener,
+  type TLanguageCode,
 } from 'eligius';
 import $ from 'jquery';
+import { createEngineLifecycleQueue } from './engine-lifecycle-queue.js';
+import { type HostPayload, hostRegistrations } from './host-registrations.js';
+import {
+  capturePlayhead,
+  jumpTo,
+  keepPositionEnabled,
+  type PlayheadJump,
+  restorePlayhead,
+  withKeepPosition,
+} from './playhead.js';
+import {
+  fillPicker,
+  initialLanguage,
+  languageOptions,
+  pickedLanguage,
+  showPlayhead,
+  timelineOptions,
+  timelinesOf,
+  timeReadout,
+  withPickedLanguage,
+} from './preview-controls.js';
+import {
+  applyCSSLoad,
+  applyCSSReload,
+  applyCSSRemove,
+  renderDebugEvents,
+  renderErrorList,
+} from './preview-dom.js';
+import { scrollContainerProblem, scrollSelectorOf } from './scroll-check.js';
 
 // Make jQuery available globally for Eligius operations
 (window as any).$ = $;
 (window as any).jQuery = $;
 
 import lottie from 'lottie-web';
-import 'video.js';
 
 // Make lottie available globally for Eligius operations
 (window as any).lottie = lottie;
@@ -55,14 +84,38 @@ const eventbus: IEventbus = new Eventbus();
 // listeners (which would multiply every state update / postMessage per re-init).
 let timelineListenerRemovers: Array<() => void> = [];
 
+// Scrubber, timeline and language pickers (audit idea #5)
+/** The configuration of the running engine */
+let currentConfig: IEngineConfiguration | null = null;
+/** Removers of the listeners on the current engine (time, duration, timeline changes) */
+let engineListenerRemovers: Array<() => void> = [];
+/** A jump requested while no engine was ready (e.g. "Preview from 22s" opening the preview) */
+let pendingJump: PlayheadJump | undefined;
+/** True while an engine is being (re)created: jumps wait for it */
+let initializing = false;
+/** True while the user drags the scrubber: time updates do not move it */
+let scrubbing = false;
+
 /**
  * Initialize the Eligius engine with the given configuration.
  *
  * Timeline container elements are automatically created by Eligius via the layoutTemplate.
  */
-async function initializeEngine(config: IEngineConfiguration): Promise<void> {
+/** What 'initialize' carries: the config, and (idea #24) the host module. */
+interface EngineInit {
+  readonly config: IEngineConfiguration;
+  readonly host?: HostPayload;
+}
+
+async function initializeEngine({ config, host }: EngineInit): Promise<void> {
+  initializing = true;
   try {
+    // Keep the playhead across recompiles (idea #8): read it before teardown
+    const snapshot = keepPositionEnabled(vscode.getState()) ? capturePlayhead(engine) : undefined;
+    setPlayheadStatus(undefined);
+
     // Clean up previous engine if exists (Eligius 2.0.0: use factoryResult.destroy())
+    removeEngineListeners();
     if (factoryResult) {
       await factoryResult.destroy();
       factoryResult = null;
@@ -73,7 +126,9 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     // (no need to manually create them here)
 
     // Create engine factory with shared eventbus
-    factory = new EngineFactory(new EligiusResourceImporter(), window, {
+    // Idea #24: the program's host operations, controllers and functions
+    const registrations = await hostRegistrations(host);
+    factory = new EngineFactory(new EligiusResourceImporter(registrations), window, {
       eventbus, // Pass our eventbus so we can control playback
     });
 
@@ -88,8 +143,31 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
     // Set up timeline event listeners for UI state updates
     setupTimelineEventListeners();
 
-    // Show playback controls
+    // Show playback controls, the scrubber and the pickers
     showControls();
+    currentConfig = config;
+    bindEngineListeners(engine);
+    fillPicker(
+      byId<HTMLSelectElement>('timeline-select'),
+      timelineOptions(config),
+      engine.currentTimelineUri
+    );
+
+    // A requested jump wins over keeping the old position; otherwise back to
+    // the same timeline and position, playing if it was
+    const timelines = timelinesOf(config);
+    const jump = pendingJump;
+    pendingJump = undefined;
+    if (jump) {
+      setPlayheadStatus(await jumpTo(engine, jump, timelines));
+    } else if (snapshot) {
+      setPlayheadStatus(await restorePlayhead(engine, snapshot, timelines));
+    }
+    applyLanguage(config);
+    refreshPlayhead();
+
+    // Scroll timelines: can the container actually scroll in the rendered layout?
+    reportScrollContainer(config);
 
     // Notify extension of successful initialization
     vscode.postMessage({
@@ -113,6 +191,122 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
       type: 'initialized',
       payload: { success: false },
     });
+  } finally {
+    initializing = false;
+  }
+}
+
+const byId = <T extends HTMLElement = HTMLElement>(id: string): T =>
+  document.getElementById(id) as T;
+
+/** Keep the scrubber, readout and timeline picker in step with the engine. */
+function bindEngineListeners(current: IEligiusEngine): void {
+  removeEngineListeners();
+  statusMessages.runtime = undefined;
+  renderStatus();
+  engineListenerRemovers = [
+    current.on('time', position => {
+      if (!scrubbing) refreshPlayhead(position);
+      reportPlayhead(current, position);
+    }),
+    current.on('duration', () => refreshPlayhead()),
+    current.on('seekComplete', position => {
+      refreshPlayhead(position);
+      reportPlayhead(current, position, true);
+    }),
+    current.on('timelineChange', uri => {
+      byId<HTMLSelectElement>('timeline-select').value = uri;
+      refreshPlayhead();
+      reportPlayhead(current, current.position, true);
+    }),
+    // Idea #14: a timeline action that failed while the engine ran it. The
+    // extension maps (action, phase, operation) back to the .eligian source.
+    current.on('error', error => {
+      statusMessages.runtime = `Runtime error: ${error.message}`;
+      renderStatus();
+      vscode.postMessage({
+        type: 'runtimeError',
+        payload: {
+          message: error.message,
+          actionId: error.actionId,
+          actionName: error.actionName,
+          phase: error.phase,
+          operationSystemName: error.operationSystemName,
+          operationIndex: error.operationIndex,
+          timelineUri: current.currentTimelineUri,
+          position: current.position,
+        },
+      });
+    }),
+  ];
+}
+
+/** Last time the playhead was posted to the extension (ms). */
+let lastPlayheadPost = 0;
+const PLAYHEAD_INTERVAL_MS = 250;
+
+/**
+ * Idea #14: tell the extension where the playhead is (about 4 times a second,
+ * and right away after a seek or a timeline switch) so the editor can mark the
+ * events that are running.
+ */
+function reportPlayhead(current: IEligiusEngine, position: number, now = false): void {
+  const time = Date.now();
+  if (!now && time - lastPlayheadPost < PLAYHEAD_INTERVAL_MS) return;
+  lastPlayheadPost = time;
+  vscode.postMessage({
+    type: 'playhead',
+    payload: { timelineUri: current.currentTimelineUri, position },
+  });
+}
+
+function removeEngineListeners(): void {
+  if (engineListenerRemovers.length > 0) {
+    // No engine runs any more: nothing is playing
+    vscode.postMessage({ type: 'playhead', payload: null });
+  }
+  for (const remove of engineListenerRemovers) {
+    remove();
+  }
+  engineListenerRemovers = [];
+}
+
+/** Show the engine's position (or `position`) on the scrubber and readout. */
+function refreshPlayhead(position = engine?.position ?? 0): void {
+  const scrubber = byId<HTMLInputElement>('scrubber');
+  const readout = byId('time-readout');
+  if (scrubber && readout) showPlayhead(scrubber, readout, position, engine?.duration);
+}
+
+/**
+ * Go to a timeline and position: now when an engine is ready, else as soon as
+ * the next one is (the preview may still be compiling).
+ */
+async function requestJump(jump: PlayheadJump): Promise<void> {
+  if (!engine || initializing || !currentConfig) {
+    pendingJump = jump;
+    return;
+  }
+  setPlayheadStatus(await jumpTo(engine, jump, timelinesOf(currentConfig)));
+  refreshPlayhead();
+}
+
+/** Fill the language picker and switch to the language picked before, if any. */
+function applyLanguage(config: IEngineConfiguration): void {
+  const language = initialLanguage(config, pickedLanguage(vscode.getState()));
+  fillPicker(byId<HTMLSelectElement>('language-select'), languageOptions(config), language);
+  if (language && language !== config.language) {
+    eventbus.broadcast('language-change', [language as TLanguageCode]);
+  }
+}
+
+/** Switch the preview to `language` and remember it across recompiles. */
+function pickLanguage(language: string): void {
+  vscode.setState(withPickedLanguage(vscode.getState(), language));
+  const select = byId<HTMLSelectElement>('language-select');
+  if (select) select.value = language;
+  if (engine && !initializing) {
+    eventbus.broadcast('language-change', [language as TLanguageCode]);
   }
 }
 
@@ -122,6 +316,8 @@ async function initializeEngine(config: IEngineConfiguration): Promise<void> {
  * Implementation is idempotent per FR-007 - safe to call multiple times.
  */
 async function destroyEngine(): Promise<void> {
+  removeEngineListeners();
+  currentConfig = null;
   if (factoryResult) {
     try {
       await factoryResult.destroy();
@@ -281,46 +477,22 @@ class EventbusDebugViewer implements IEventbusListener {
         )
       : this.events;
 
-    // Render events
-    container.innerHTML = filteredEvents
-      .map(event => {
-        const time = new Date(event.timestamp).toLocaleTimeString('en-US', {
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          fractionalSecondDigits: 3,
-        } as Intl.DateTimeFormatOptions);
-
-        const topicHtml = event.eventTopic
-          ? `<div class="debug-event-topic">Topic: ${event.eventTopic}</div>`
-          : '';
-
-        const argsJson = JSON.stringify(event.args, null, 2);
-
-        return `
-          <div class="debug-event">
-            <div class="debug-event-header">
-              <span class="debug-event-name">${event.eventName}</span>
-              <span class="debug-event-time">${time}</span>
-            </div>
-            ${topicHtml}
-            <div class="debug-event-args">${argsJson}</div>
-          </div>
-        `;
-      })
-      .join('');
-
-    // Show message if no events
-    if (filteredEvents.length === 0) {
-      container.innerHTML =
-        '<div style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground);">No events to display</div>';
-    }
+    // Built with textContent: event names, topics and args (operation data often
+    // holds HTML strings) must show as text, not render as live markup.
+    renderDebugEvents(container, filteredEvents);
   }
 }
 
 // Create debug viewer instance
 const debugViewer = new EventbusDebugViewer();
+
+// Serialize engine lifecycle work: the async message listener below is not
+// awaited between events, so overlapping 'initialize' messages would otherwise
+// destroy an engine that is still in `await engine.init()`.
+const engineQueue = createEngineLifecycleQueue<EngineInit>({
+  initialize: initializeEngine,
+  destroy: destroyEngine,
+});
 
 // Listen for messages from extension
 window.addEventListener('message', async event => {
@@ -349,25 +521,22 @@ window.addEventListener('message', async event => {
       document.getElementById('eligius-container')!.style.display = 'none';
       document.getElementById('error-container')!.style.display = 'block';
 
-      // Display errors with enhanced formatting
-      const errorList = document.getElementById('error-list')!;
-      errorList.innerHTML = message.payload.errors
-        .map(
-          (error: any) =>
-            `<div class="error-item ${error.severity || 'error'}">
-          <div class="error-severity">${error.severity === 'warning' ? '⚠️ Warning' : '❌ Error'}</div>
-          <div class="error-message">${error.message}</div>
-          ${error.line ? `<div class="error-location">Line ${error.line}${error.column ? `, Column ${error.column}` : ''}</div>` : ''}
-          ${error.code ? `<div class="error-code">[${error.code}]</div>` : ''}
-        </div>`
-        )
-        .join('');
+      // The playback controls belong to the previous (now stale) engine
+      hideControls();
+
+      // Compiler text is rendered with textContent: messages contain source text
+      // (paths, string literals, token text) that must not become markup.
+      renderErrorList(document.getElementById('error-list')!, message.payload.errors ?? []);
 
       // Show source file if provided
       if (message.payload.sourceFile) {
         const errorHeader = document.querySelector('#error-container h2')!;
         errorHeader.textContent = `Compilation Errors in ${message.payload.sourceFile}`;
       }
+
+      // Stop the previous timeline: its audio/video would otherwise keep playing
+      // behind the error view, driven by the still-visible controls.
+      await engineQueue.destroy();
       break;
     }
 
@@ -378,7 +547,7 @@ window.addEventListener('message', async event => {
 
     // Engine commands
     case 'initialize':
-      await initializeEngine(message.payload.config);
+      await engineQueue.initialize({ config: message.payload.config, host: message.payload.host });
       break;
 
     // Playback commands broadcast the corresponding timeline request on the
@@ -408,45 +577,61 @@ window.addEventListener('message', async event => {
       break;
 
     case 'destroy':
-      await destroyEngine();
+      await engineQueue.destroy();
+      break;
+
+    // Scrubbing, timelines and languages (audit idea #5)
+    case 'previewAt':
+      // "▶ Preview from 22s": go there and play
+      await requestJump({
+        timelineUri: message.payload.timelineUri,
+        position: message.payload.position,
+        play: true,
+      });
+      break;
+
+    case 'seek':
+      if (engine) {
+        await requestJump({
+          timelineUri: engine.currentTimelineUri,
+          position: message.payload.position,
+          play: false,
+        });
+      }
+      break;
+
+    case 'switchTimeline':
+      await requestJump({
+        timelineUri: message.payload.uri,
+        position: message.payload.position ?? 0,
+        play: engine?.playState === 'playing',
+      });
+      break;
+
+    case 'setLanguage':
+      pickLanguage(message.payload.language);
       break;
 
     // CSS injection and hot-reload (Feature 011)
     case 'css-load': {
       const { cssId, content, loadOrder } = message.payload;
-
-      let styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
-      if (!styleTag) {
-        styleTag = document.createElement('style');
-        styleTag.setAttribute('data-css-id', cssId);
-        styleTag.setAttribute('data-load-order', loadOrder.toString());
-        document.head.appendChild(styleTag);
-      }
-      // CRITICAL: Use textContent (NOT innerHTML) for security
-      styleTag.textContent = content;
+      // Creates or updates the stylesheet (textContent, never innerHTML) and
+      // keeps it in cascade order, so reordered `styles` imports reorder it.
+      applyCSSLoad(document, cssId, content, loadOrder);
       break;
     }
 
     case 'css-reload': {
       const { cssId, content } = message.payload;
-
-      const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`) as HTMLStyleElement;
-      if (styleTag) {
-        // Hot-reload: just update content (timeline continues)
-        styleTag.textContent = content;
-      }
+      // Hot-reload: update content (timeline continues). Creates the stylesheet
+      // when it is missing (e.g. its initial load failed and was then fixed).
+      applyCSSReload(document, cssId, content);
       break;
     }
 
-    case 'css-remove': {
-      const { cssId } = message.payload;
-
-      const styleTag = document.querySelector(`style[data-css-id="${cssId}"]`);
-      if (styleTag) {
-        styleTag.remove();
-      }
+    case 'css-remove':
+      applyCSSRemove(document, message.payload.cssId);
       break;
-    }
 
     case 'css-error': {
       // Keep previous CSS (if any) - no changes to DOM
@@ -477,6 +662,46 @@ function updateControlStates(isPlaying: boolean): void {
   }
 }
 
+/** Status messages next to the controls, by source; shown together. */
+const statusMessages: { playhead?: string; scroll?: string; runtime?: string } = {};
+
+function renderStatus(): void {
+  const status = document.getElementById('playhead-status');
+  if (status) {
+    status.textContent = [statusMessages.runtime, statusMessages.playhead, statusMessages.scroll]
+      .filter(Boolean)
+      .join(' · ');
+  }
+}
+
+/** Show (or clear, with undefined) the playhead status next to the controls. */
+function setPlayheadStatus(message: string | undefined): void {
+  statusMessages.playhead = message;
+  renderStatus();
+}
+
+/**
+ * Check the current timeline's scroll container (Feature 049) in the rendered
+ * layout, show the problem in the status line and report it to the extension,
+ * which shows it as a warning on the timeline in the Problems view.
+ */
+function reportScrollContainer(config: IEngineConfiguration): void {
+  if (!engine) return;
+  const uri = engine.currentTimelineUri;
+  const selector = scrollSelectorOf(config.timelines, uri);
+  const problem =
+    selector === undefined
+      ? undefined
+      : scrollContainerProblem(
+          document.querySelector(selector),
+          selector,
+          element => getComputedStyle(element).overflowY
+        );
+  statusMessages.scroll = problem;
+  renderStatus();
+  vscode.postMessage({ type: 'scrollContainer', payload: { timelineUri: uri, problem } });
+}
+
 /**
  * Show playback controls after engine initialization.
  */
@@ -487,10 +712,9 @@ function showControls(): void {
 }
 
 /**
- * Hide playback controls (reserved for future use).
+ * Hide playback controls (after a compile error: no usable engine is running).
  */
-// @ts-expect-error - Reserved for future use
-function _hideControls(): void {
+function hideControls(): void {
   const controls = document.getElementById('controls')!;
   controls.style.display = 'none';
 }
@@ -551,6 +775,15 @@ window.addEventListener('DOMContentLoaded', () => {
   const stopBtn = document.getElementById('stop-btn')!;
   const restartBtn = document.getElementById('restart-btn')!;
 
+  // "Keep position on reload" (idea #8), persisted in the webview state
+  const keepPosition = document.getElementById('keep-position') as HTMLInputElement | null;
+  if (keepPosition) {
+    keepPosition.checked = keepPositionEnabled(vscode.getState());
+    keepPosition.addEventListener('change', () => {
+      vscode.setState(withKeepPosition(vscode.getState(), keepPosition.checked));
+    });
+  }
+
   // Wire up button click handlers to broadcast timeline control events
   playBtn.addEventListener('click', () => {
     eventbus.broadcast('timeline-play-request', []);
@@ -581,6 +814,45 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('error-container')!.style.display = 'none';
     document.getElementById('loading')!.style.display = 'block';
   });
+});
+
+// Scrubber and pickers (audit idea #5), delegated so they work on whatever
+// elements the document holds
+document.addEventListener('input', event => {
+  const target = event.target as HTMLInputElement | null;
+  if (target?.id !== 'scrubber') return;
+  // Show the dragged position; time updates leave the scrubber alone meanwhile
+  scrubbing = true;
+  byId('time-readout').textContent = timeReadout(Number(target.value), engine?.duration);
+});
+
+document.addEventListener('change', event => {
+  const target = event.target as HTMLInputElement | HTMLSelectElement | null;
+  switch (target?.id) {
+    case 'scrubber':
+      // Seek on release
+      scrubbing = false;
+      if (engine) {
+        void requestJump({
+          timelineUri: engine.currentTimelineUri,
+          position: Number(target.value),
+          play: false,
+        });
+      }
+      break;
+    case 'timeline-select':
+      // Start of the picked timeline, playing if it was
+      void requestJump({
+        timelineUri: target.value,
+        position: 0,
+        play: engine?.playState === 'playing',
+      });
+      break;
+    case 'language-select':
+      // Like a language switch in the presentation: Eligius' 'language-change'
+      pickLanguage(target.value);
+      break;
+  }
 });
 
 // Send ready message to extension

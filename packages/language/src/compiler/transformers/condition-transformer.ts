@@ -77,6 +77,10 @@ const serializeCondition = (
       }
       return { kind: 'literal' as const, value };
     }
+    if (folded.error?.invalid) {
+      // All-constant but invalid (e.g. `10 % 0`, `"a" - 1`): report the real cause
+      return yield* failCondition(expr, folded.error.reason);
+    }
 
     switch (expr.$type) {
       case 'BinaryExpression': {

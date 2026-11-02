@@ -22,6 +22,19 @@ export {
   MainLayer,
   TestLayer,
 } from './effects/index.js';
+// Idea #14: compiled JSON → .eligian source (runtime errors, live playhead)
+export {
+  activeTimelineActions,
+  buildEligianMap,
+  type EligianMap,
+  type EligianMapAction,
+  type EligianMapOperation,
+  type EngineErrorCandidate,
+  type EngineErrorInfo,
+  type LocatedEngineError,
+  locateConfigPath,
+  locateEngineError,
+} from './eligian-map.js';
 // Error formatting exports
 export { formatErrors } from './error-reporter.js';
 // Operation registry exports
@@ -62,12 +75,10 @@ export {
   type ControlFlowError,
   type MissingDependencyError,
   type ParameterCountError,
-  trackOutputs,
   type UnknownOperationError,
   type ValidationError as OperationValidationErrorBase,
   type ValidationResult,
   validateControlFlowPairing,
-  validateDependencies,
   validateOperation,
   validateOperationExists,
   validateParameterCount,
@@ -75,17 +86,26 @@ export {
 } from './operations/validator.js';
 // Compilation pipeline exports
 export {
+  type CheckDiagnostic,
+  type CheckFileResult,
+  type CheckSeverity,
   type CompileError,
+  checkFiles,
   compile,
+  compileProgramWithMap,
   compileString,
   compileToIR,
   compileToJSON,
   compileWithDefaults,
+  compileWithMap,
+  type DocumentWarning,
   emitJSON,
   getCompilerVersion,
+  getProgramWarnings,
   optimize,
   parseSource,
   transformAST,
+  tryCompileProgramWithMap,
   typeCheck,
   validateAST,
 } from './pipeline.js';
@@ -129,3 +149,12 @@ export type {
  * Compiler version
  */
 export const VERSION = '0.0.1';
+
+// Idea #24: host operations, controllers and functions (extensions import)
+export {
+  controllerMetadata,
+  type HostModule,
+  hostModuleOf,
+  hostOperations,
+  isKnownController,
+} from './operations/host-operations.js';

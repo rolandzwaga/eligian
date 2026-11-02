@@ -26,9 +26,9 @@ elements are namespaced `#c6-…` and **must be registered in `tour.css`** (only
 like `revealBlock`/`demo` are not; the only hard requirements are `#c6-to-hub` and `#card-ch6`). `#narration`
 is the shared subtitle.
 
-**View management** = the self-managing endable setup action (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
-`timeline "Tooling Magic"`'s first event is `at 0s..3600s [ showView("#ch6") + showView("#narration")
-+ wire #c6-to-hub ] [ hideView("#ch6") + hideView("#narration") ]`. Hub card `#card-ch6` `navigate`s to
+**View management** = the timeline's `on enter` / `on leave` blocks (see `ELIGIUS_EXECUTION_MODEL.md` §7b):
+`timeline "Tooling Magic"`'s `on enter [ showView("#ch6") + showView("#narration")
++ wire #c6-to-hub ]` and `on leave [ hideView("#ch6") + hideView("#narration") ]`. Hub card `#card-ch6` `navigate`s to
 `"Tooling Magic"`.
 
 ### Effect-pane motif: a mock editor

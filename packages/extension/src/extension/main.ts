@@ -13,9 +13,12 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { disposeCompilerOutputChannel, registerCompileCommand } from './commands/compile.js';
 import { registerGenerateJSDocCommand, registerJSDocAutoCompletion } from './commands/jsdoc.js';
 import { registerOpenLocaleEditorCommand } from './commands/locale.js';
-import { registerPreviewCommand } from './commands/preview.js';
+import { registerNewPresentationCommand } from './commands/new-presentation.js';
+import { registerPreviewAtCommand, registerPreviewCommand } from './commands/preview.js';
+import { registerCssReferenceFeatures } from './css-references/css-reference-features.js';
 import { CSSWatcherManager } from './css-watcher.js';
 import { BlockLabelDecorationProvider } from './decorations/block-label-decoration-provider.js';
+import { registerEligiusLintDiagnostics } from './eligius-lint-diagnostics.js';
 import { HTMLWatcherManager } from './html-watcher.js';
 import { createLabelEntry } from './label-entry-creator.js';
 import { createLabelsFile } from './label-file-creator.js';
@@ -24,6 +27,7 @@ import { LocaleEditorProvider } from './locale-editor/LocaleEditorProvider.js';
 import { LocaleLinkProvider } from './locale-link-provider.js';
 import { PreviewManager } from './preview/PreviewManager.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
+import { TIMELINE_VIEW_ID, TimelineViewProvider } from './timeline-view/TimelineViewProvider.js';
 
 let client: LanguageClient;
 // T023: Shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
@@ -40,8 +44,131 @@ let blockLabelProvider: BlockLabelDecorationProvider | null = null;
 
 // This function is called when the extension is activated.
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  // Start language client first
-  client = await startLanguageClient(context);
+  // Everything that does not need the language server is registered first, so a failing
+  // server (missing bundle, crash on init, debug port conflict) cannot take compile, preview
+  // and the locale editor down with it.
+  registerClientIndependentFeatures(context);
+
+  try {
+    client = await startLanguageClient(context);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    vscode.window.showErrorMessage(
+      `Eligian: the language server failed to start (${message}). Language features such as validation, completion and hot-reload are unavailable; compile, preview and the locale editor still work.`
+    );
+    // Without a server the JSDoc command can only explain why it does nothing.
+    context.subscriptions.push(
+      vscode.commands.registerCommand('eligian.generateJSDoc', () => {
+        vscode.window.showErrorMessage(
+          'Eligian: JSDoc generation needs the language server, which failed to start.'
+        );
+      })
+    );
+    return;
+  }
+
+  registerClientFeatures(context, client);
+}
+
+/**
+ * Register everything that works without the language server: diagnostics collection, locale
+ * editor and link provider, compile / preview / locale / labels commands, JSDoc auto-completion
+ * and the disposers for the lazily created singletons.
+ */
+function registerClientIndependentFeatures(context: vscode.ExtensionContext): void {
+  // Initialize diagnostics collection for preview errors
+  const diagnostics = PreviewPanel.initializeDiagnostics();
+  context.subscriptions.push(diagnostics);
+
+  // T016: Register custom editor provider for locale JSON files (Feature 036 - User Story 1)
+  const localeEditorProvider = new LocaleEditorProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider('eligian.localeEditor', localeEditorProvider, {
+      webviewOptions: {
+        retainContextWhenHidden: true,
+      },
+    })
+  );
+
+  // T017: Register document link provider for locale imports (Feature 036 - User Story 1)
+  // Uses DocumentLinkProvider instead of DefinitionProvider to avoid opening on hover
+  const linkProvider = new LocaleLinkProvider();
+  context.subscriptions.push(
+    vscode.languages.registerDocumentLinkProvider({ language: 'eligian' }, linkProvider)
+  );
+
+  // Register command to open locale files in Locale Editor (used by DocumentLinkProvider)
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.openLocaleFile', (fileUriString: string) => {
+      const fileUri = vscode.Uri.parse(fileUriString);
+      vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
+    })
+  );
+
+  // Register compile command
+  context.subscriptions.push(registerCompileCommand());
+
+  // Register JSDoc auto-completion on /** typing
+  context.subscriptions.push(registerJSDocAutoCompletion());
+
+  // Register preview command
+  context.subscriptions.push(registerPreviewCommand(context));
+  context.subscriptions.push(registerPreviewAtCommand(context));
+
+  // B48: tear down the lazily-created PreviewManager singleton on deactivation
+  // (it owns all open preview panels and an active-editor listener).
+  context.subscriptions.push({ dispose: () => PreviewManager.disposeInstance() });
+
+  // B49: dispose the shared compiler output channel if it was ever created.
+  context.subscriptions.push({ dispose: () => disposeCompilerOutputChannel() });
+
+  // Idea #12: "Eligian: New Presentation…" (starters shared with `eligian init`)
+  context.subscriptions.push(registerNewPresentationCommand());
+
+  // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
+  context.subscriptions.push(registerOpenLocaleEditorCommand());
+
+  // Feature 039 - T011: Register "Create Labels File" command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.createLabelsFile', async args => {
+      const result = await createLabelsFile(args);
+      if (!result.success && result.error) {
+        vscode.window.showErrorMessage(result.error.message);
+      }
+    })
+  );
+
+  // Feature 041 - T023: Register "Create Label Entry" command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eligian.createLabelEntry', async args => {
+      await createLabelEntry(args);
+      // Note: createLabelEntry handles its own success/error messages
+    })
+  );
+}
+
+/**
+ * Register the features that need the language client: the three validation hot-reload
+ * watchers with their import-discovery handlers, the JSDoc generation command and the block
+ * label decorations.
+ */
+function registerClientFeatures(context: vscode.ExtensionContext, client: LanguageClient): void {
+  // Idea #22: from CSS / HTML files to the .eligian strings that use their classes and ids
+  context.subscriptions.push(...registerCssReferenceFeatures(client));
+
+  // Eligius' configuration lint of every program (run by the language server)
+  context.subscriptions.push(registerEligiusLintDiagnostics(client));
+
+  // Idea #20: the "Eligian Timeline" view (a swimlane per timeline, a bar per event)
+  const timelineView = new TimelineViewProvider(context.extensionUri, client);
+  context.subscriptions.push(
+    timelineView,
+    vscode.window.registerWebviewViewProvider(TIMELINE_VIEW_ID, timelineView),
+    // VS Code generates `<view id>.focus` for every view
+    vscode.commands.registerCommand('eligian.showTimelineView', () =>
+      vscode.commands.executeCommand(`${TIMELINE_VIEW_ID}.focus`)
+    )
+  );
 
   // T023: Initialize shared CSS watcher for validation hot-reload (Feature 013 - User Story 3)
   // This watcher sends LSP notifications when CSS files change, triggering re-validation
@@ -106,74 +233,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
-  // Initialize diagnostics collection for preview errors
-  const diagnostics = PreviewPanel.initializeDiagnostics();
-  context.subscriptions.push(diagnostics);
-
-  // T016: Register custom editor provider for locale JSON files (Feature 036 - User Story 1)
-  const localeEditorProvider = new LocaleEditorProvider(context.extensionUri);
-  context.subscriptions.push(
-    vscode.window.registerCustomEditorProvider('eligian.localeEditor', localeEditorProvider, {
-      webviewOptions: {
-        retainContextWhenHidden: true,
-      },
-    })
-  );
-
-  // T017: Register document link provider for locale imports (Feature 036 - User Story 1)
-  // Uses DocumentLinkProvider instead of DefinitionProvider to avoid opening on hover
-  const linkProvider = new LocaleLinkProvider();
-  context.subscriptions.push(
-    vscode.languages.registerDocumentLinkProvider({ language: 'eligian' }, linkProvider)
-  );
-
-  // Register command to open locale files in Locale Editor (used by DocumentLinkProvider)
-  context.subscriptions.push(
-    vscode.commands.registerCommand('eligian.openLocaleFile', (fileUriString: string) => {
-      const fileUri = vscode.Uri.parse(fileUriString);
-      vscode.commands.executeCommand('vscode.openWith', fileUri, 'eligian.localeEditor');
-    })
-  );
-
-  // Register compile command
-  context.subscriptions.push(registerCompileCommand());
-
   // Register JSDoc generation command
   context.subscriptions.push(registerGenerateJSDocCommand(client));
-
-  // Register JSDoc auto-completion on /** typing
-  context.subscriptions.push(registerJSDocAutoCompletion());
-
-  // Register preview command
-  context.subscriptions.push(registerPreviewCommand(context));
-
-  // B48: tear down the lazily-created PreviewManager singleton on deactivation
-  // (it owns all open preview panels and an active-editor listener).
-  context.subscriptions.push({ dispose: () => PreviewManager.disposeInstance() });
-
-  // B49: dispose the shared compiler output channel if it was ever created.
-  context.subscriptions.push({ dispose: () => disposeCompilerOutputChannel() });
-
-  // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
-  context.subscriptions.push(registerOpenLocaleEditorCommand());
-
-  // Feature 039 - T011: Register "Create Labels File" command
-  context.subscriptions.push(
-    vscode.commands.registerCommand('eligian.createLabelsFile', async args => {
-      const result = await createLabelsFile(args);
-      if (!result.success && result.error) {
-        vscode.window.showErrorMessage(result.error.message);
-      }
-    })
-  );
-
-  // Feature 041 - T023: Register "Create Label Entry" command
-  context.subscriptions.push(
-    vscode.commands.registerCommand('eligian.createLabelEntry', async args => {
-      await createLabelEntry(args);
-      // Note: createLabelEntry handles its own success/error messages
-    })
-  );
 
   // Initialize block label decoration provider (B47: requests bracket
   // positions from the language server instead of re-parsing in the host)
@@ -238,13 +299,21 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: '*', language: 'eligian' }],
+    // Forward `eligian.*` setting changes (e.g. eligian.inlayHints.parameterNames) to the server
+    synchronize: { configurationSection: 'eligian' },
   };
 
   // Create the language client and start the client.
   const client = new LanguageClient('eligian', 'Eligian', serverOptions, clientOptions);
 
-  // Start the client. This will also launch the server
-  await client.start();
+  // Start the client. This will also launch the server. A failed start leaves a half-started
+  // client behind, so stop it before reporting the failure.
+  try {
+    await client.start();
+  } catch (error) {
+    await client.stop().catch(() => {});
+    throw error;
+  }
 
   return client;
 }

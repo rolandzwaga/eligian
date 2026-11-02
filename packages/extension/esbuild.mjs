@@ -1,5 +1,11 @@
 //@ts-check
+import { copyFileSync, mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
+
+// Idea #24: the WebAssembly esbuild the host-bundler worker loads at runtime
+mkdirSync('out', { recursive: true });
+copyFileSync(createRequire(import.meta.url).resolve('esbuild-wasm/esbuild.wasm'), 'out/esbuild.wasm');
 
 const watch = process.argv.includes('--watch');
 const minify = process.argv.includes('--minify');
@@ -31,7 +37,12 @@ const plugins = [
 // Build extension and language server (Node.js)
 const ctx = await esbuild.context({
   // Entry points for the vscode extension and the language server
-  entryPoints: ['src/extension/main.ts', 'src/language/main.ts'],
+  // Idea #24: the worker that bundles host modules for the preview (esbuild-wasm)
+  entryPoints: [
+    'src/extension/main.ts',
+    'src/language/main.ts',
+    'src/extension/preview/host-bundler-worker.ts',
+  ],
   outdir: 'out',
   bundle: true,
   target: 'ES2017',
@@ -85,15 +96,31 @@ const localeEditorCtx = await esbuild.context({
   plugins,
 });
 
+// Build the timeline view webview script (Browser, idea #20)
+const timelineViewCtx = await esbuild.context({
+  entryPoints: ['media/timeline-view.ts'],
+  outdir: 'out/media',
+  bundle: true,
+  target: 'es2020',
+  format: 'iife',
+  platform: 'browser',
+  sourcemap: !minify,
+  minify,
+  plugins,
+});
+
 if (watch) {
   await ctx.watch();
   await webviewCtx.watch();
   await localeEditorCtx.watch();
+  await timelineViewCtx.watch();
 } else {
   await ctx.rebuild();
   await webviewCtx.rebuild();
   await localeEditorCtx.rebuild();
+  await timelineViewCtx.rebuild();
   ctx.dispose();
   webviewCtx.dispose();
   localeEditorCtx.dispose();
+  timelineViewCtx.dispose();
 }

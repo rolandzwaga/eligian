@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 // jsdom: importing the `eligius` runtime (for its `when` operation) requires a window/document.
 import { Effect } from 'effect';
-import { type IOperationScope, setGlobalData, when } from 'eligius';
+import {
+  type IOperationConfiguration,
+  type IOperationScope,
+  setGlobalData,
+  type TOperationData,
+  when,
+} from 'eligius';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -9,7 +15,6 @@ import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
 import { compile } from '../pipeline.js';
-import type { OperationConfigIR } from '../types/eligius-ir.js';
 
 /**
  * `if` conditions compile to the Eligius 3 `when` operation, which takes
@@ -24,7 +29,10 @@ describe('if → when condition expression (Eligius 3)', () => {
     parse = parseHelper<Program>(createEligianServices(EmptyFileSystem).Eligian);
   });
 
-  async function whenOps(actionBody: string, params = ''): Promise<OperationConfigIR[]> {
+  async function whenOps(
+    actionBody: string,
+    params = ''
+  ): Promise<IOperationConfiguration<TOperationData>[]> {
     const document = await parse(`
       action test(${params}) [
         ${actionBody}
@@ -39,7 +47,12 @@ describe('if → when condition expression (Eligius 3)', () => {
   async function whenExpression(condition: string, params = '', setup = ''): Promise<unknown> {
     const ops = await whenOps(`${setup}\nif (${condition}) { log() }`, params);
     expect(ops).toHaveLength(1);
-    return ops[0].operationData.expression;
+    return ops[0].operationData?.expression;
+  }
+
+  /** A minimal operation scope; the `when`/`setGlobalData` operations only read `variables`. */
+  function makeScope(variables: Record<string, unknown> = {}): IOperationScope {
+    return { variables, operations: [], currentIndex: 0 } as unknown as IOperationScope;
   }
 
   /** Runs the expression through Eligius's own `when` operation and returns the evaluation. */
@@ -48,7 +61,7 @@ describe('if → when condition expression (Eligius 3)', () => {
     operationData: Record<string, unknown> = {},
     variables: Record<string, unknown> = {}
   ): boolean | undefined {
-    const scope = { variables, operations: [], currentIndex: 0 } as unknown as IOperationScope;
+    const scope = makeScope(variables);
     when.call(scope, { ...operationData, expression } as any);
     return scope.whenEvaluation;
   }
@@ -100,7 +113,7 @@ describe('if → when condition expression (Eligius 3)', () => {
     const result = await Effect.runPromise(transformAST(document.parseResult.value));
     const op = result.config.actions[0].startOperations.find(o => o.systemName === 'when');
 
-    expect(op?.operationData.expression).toBe(
+    expect(op?.operationData?.expression).toBe(
       "$operationdata.count > 5 && 'demo' == $globaldata.mode && $globaldata.items"
     );
   });
@@ -144,7 +157,7 @@ describe('if → when condition expression (Eligius 3)', () => {
     const result = await Effect.runPromise(transformAST(document.parseResult.value));
     const ops = result.config.actions[0].startOperations;
 
-    expect(ops.map(op => op.operationData.value)).toEqual([false, true]);
+    expect(ops.map(op => op.operationData?.value)).toEqual([false, true]);
   });
 
   describe('end-to-end compile, evaluated by Eligius', () => {
@@ -164,7 +177,7 @@ describe('if → when condition expression (Eligius 3)', () => {
       const config = await Effect.runPromise(compile(source));
       const ops = config.actions[0].startOperations;
       const whenOp = ops.find(op => op.systemName === 'when');
-      const expression = whenOp?.operationData.expression;
+      const expression = whenOp?.operationData?.expression;
 
       expect(whenOp?.operationData).toEqual({ expression });
       expect(expression).toBe(
@@ -174,7 +187,7 @@ describe('if → when condition expression (Eligius 3)', () => {
       expect(evaluateWithEligius(expression, { done: false }, { count: 6 })).toBe(true);
       // Falls through to $globaldata.mode, which is not 'demo' yet
       expect(evaluateWithEligius(expression, { done: true }, { count: 6 })).toBe(false);
-      setGlobalData({ mode: 'demo', propertyNames: ['mode'] } as any);
+      setGlobalData.call(makeScope(), { mode: 'demo', propertyNames: ['mode'] } as any);
       expect(evaluateWithEligius(expression, { done: true }, { count: 1 })).toBe(true);
     });
   });

@@ -13,6 +13,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
+import { inputsOf } from './operation-inputs.js';
 
 describe('Action-Scoped Constant Folding', () => {
   let services: ReturnType<typeof createEligianServices>;
@@ -109,7 +110,7 @@ describe('Action-Scoped Constant Folding', () => {
   test('should preserve setVariable for non-evaluable expressions', async () => {
     const code = `
       action test(duration) [
-        const ADJUSTED = duration + 100
+        const ADJUSTED = duration
         wait(@ADJUSTED)
       ]
 
@@ -120,16 +121,18 @@ describe('Action-Scoped Constant Folding', () => {
     const result = await Effect.runPromise(transformAST(program));
 
     const action = result.config.actions[0];
-    const setVarOp = action.startOperations.find(op => op.systemName === 'setVariable');
-    const waitOp = action.startOperations.find(op => op.systemName === 'wait');
+    const ops = action.startOperations;
+    const setVarOp = ops.find(op => op.systemName === 'setVariable');
+    const waitOp = ops.find(op => op.systemName === 'wait');
 
     // Cannot evaluate because 'duration' is a parameter (runtime value)
     // So setVariable should still exist
     expect(setVarOp).toBeDefined();
     expect(setVarOp?.operationData?.name).toBe('ADJUSTED');
 
-    // Reference should still use $scope.variables
-    expect(waitOp?.operationData?.milliseconds).toContain('$scope.variables.ADJUSTED');
+    // Reference should still use $scope.variables (resolved by a preceding setOperationData,
+    // since wait does not resolve property chains itself)
+    expect(inputsOf(ops, waitOp).milliseconds).toBe('$scope.variables.ADJUSTED');
   });
 
   test('should handle block-scoped constants in if statement', async () => {
@@ -246,5 +249,75 @@ describe('Action-Scoped Constant Folding', () => {
     const result = await Effect.runPromise(transformAST(await parseDSL(code)));
     const ops = result.config.actions[0].startOperations;
     expect(ops.filter(op => op.systemName === 'setVariable')).toHaveLength(0);
+  });
+
+  // Audit 2026-10-22 (high): constants were looked up by name only, so a
+  // non-foldable action-local const that shadows a global const of the same
+  // name was replaced by the GLOBAL's value. A reference must fold only against
+  // the declaration it actually links to.
+  describe('local const shadowing a global const', () => {
+    const shadowingCode = `
+      const x = 1
+
+      action a() [
+        const x = $operationdata.foo
+        selectElement("#a")
+        setElementContent(@x)
+        const y = [@x, 10]
+        setElementContent(@y)
+      ]
+
+      timeline "t" in "#root" using raf {}
+    `;
+
+    test('plain reference resolves to the local runtime variable, not the global value', async () => {
+      const result = await Effect.runPromise(transformAST(await parseDSL(shadowingCode)));
+      const ops = result.config.actions[0].startOperations;
+
+      const setVarX = ops.find(
+        op => op.systemName === 'setVariable' && op.operationData?.name === 'x'
+      );
+      expect(inputsOf(ops, setVarX).value).toBe('$operationdata.foo');
+
+      const contentOps = ops.filter(op => op.systemName === 'setElementContent');
+      expect(contentOps).toHaveLength(2);
+      expect(inputsOf(ops, contentOps[0]).template).toBe('$scope.variables.x');
+    });
+
+    test('derived const is not folded against the shadowed global', async () => {
+      const result = await Effect.runPromise(transformAST(await parseDSL(shadowingCode)));
+      const ops = result.config.actions[0].startOperations;
+
+      // y depends on the runtime local x, so it must stay a runtime variable
+      const setVarY = ops.find(
+        op => op.systemName === 'setVariable' && op.operationData?.name === 'y'
+      );
+      expect(setVarY).toBeDefined();
+      expect(inputsOf(ops, setVarY).value).toEqual(['$scope.variables.x', 10]);
+
+      const contentOps = ops.filter(op => op.systemName === 'setElementContent');
+      expect(inputsOf(ops, contentOps[1]).template).toBe('$scope.variables.y');
+    });
+
+    test('a global const is still inlined in an action that does not shadow it', async () => {
+      const program = await parseDSL(`
+        const x = 1
+
+        action a() [
+          selectElement("#a")
+          setElementContent(@x)
+          const y = @x + 10
+          setElementContent(@y)
+        ]
+
+        timeline "t" in "#root" using raf {}
+      `);
+      const result = await Effect.runPromise(transformAST(program));
+      const ops = result.config.actions[0].startOperations;
+      expect(ops.filter(op => op.systemName === 'setVariable')).toHaveLength(0);
+      const contentOps = ops.filter(op => op.systemName === 'setElementContent');
+      expect(contentOps[0].operationData?.template).toBe(1);
+      expect(contentOps[1].operationData?.template).toBe(11);
+    });
   });
 });

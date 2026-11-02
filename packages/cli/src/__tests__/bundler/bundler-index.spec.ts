@@ -11,7 +11,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { Effect } from 'effect';
+import { Cause, Effect, Exit } from 'effect';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createBundle, OutputExistsError } from '../../bundler/index.js';
 import type { BundleOptions } from '../../bundler/types.js';
@@ -68,41 +68,6 @@ endable action showSlide [
 
 timeline "Presentation with Styles" in "#container" using raf {
   at 0s..5s showSlide()
-}
-`;
-  const filePath = path.join(dir, 'presentation.eligian');
-  await fs.writeFile(filePath, content);
-  return filePath;
-}
-
-/**
- * Creates an .eligian file with images (for asset testing)
- */
-async function _createEligianWithAssets(dir: string): Promise<string> {
-  // Create a minimal PNG (1x1 red pixel)
-  const minimalPng = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
-    'base64'
-  );
-  const imagesDir = path.join(dir, 'images');
-  await fs.mkdir(imagesDir, { recursive: true });
-  await fs.writeFile(path.join(imagesDir, 'bg.png'), minimalPng);
-
-  // Create CSS with image reference
-  const cssContent = `
-.slide {
-  background-image: url('./images/bg.png');
-  background-size: cover;
-}
-`;
-  await fs.writeFile(path.join(dir, 'styles.css'), cssContent);
-
-  // Create Eligian file
-  const content = `
-styles "./styles.css"
-
-timeline "Presentation with Assets" in "#app" using raf {
-  at 0s..5s selectElement(".slide")
 }
 `;
   const filePath = path.join(dir, 'presentation.eligian');

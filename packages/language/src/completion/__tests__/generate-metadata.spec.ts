@@ -18,12 +18,13 @@ describe('Controller Metadata Generation', () => {
     expect(typeof ctrlmetadata).toBe('object');
   });
 
-  test('All 8 controllers generated', () => {
-    expect(CONTROLLERS).toHaveLength(8);
+  test('All 9 controllers generated', () => {
+    expect(CONTROLLERS).toHaveLength(9);
 
     // Verify all expected controllers are present
     const expectedControllers = [
       'DOMEventListenerController',
+      'KeyboardController',
       'LabelController',
       'LottieController',
       'MutationObserverController',

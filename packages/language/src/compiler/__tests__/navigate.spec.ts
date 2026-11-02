@@ -24,6 +24,7 @@ import {
 import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
+import { syntheticNavActionName } from '../transformers/navigate-operations.js';
 
 const HUB_AND_CHAPTER = `languages { * "en-US" "English" }
 timeline "Hub" in "#stage" using raf {
@@ -75,7 +76,7 @@ describe('navigate sugar — transform shape', () => {
     expect(getInst.operationData).toMatchObject({ systemName: 'DOMEventListenerController' });
     expect(addCtrl.operationData).toMatchObject({
       eventName: 'click',
-      actions: ['__nav__chapter_one'],
+      actions: [syntheticNavActionName('Chapter One', 0)],
     });
   });
 
@@ -86,20 +87,20 @@ describe('navigate sugar — transform shape', () => {
 
     // "Chapter One"@0 (from Hub card), "Chapter One"@5 (resume), "Hub"@0 (back)
     expect(navActions.map(a => a.name).sort()).toEqual([
-      '__nav__chapter_one',
-      '__nav__chapter_one__5',
-      '__nav__hub',
+      syntheticNavActionName('Chapter One', 0),
+      syntheticNavActionName('Chapter One', 5),
+      syntheticNavActionName('Hub', 0),
     ]);
 
     const byName = (n: string) => navActions.find(a => a.name === n);
-    expect(byName('__nav__chapter_one')?.startOperations[0]).toMatchObject({
+    expect(byName(syntheticNavActionName('Chapter One', 0))?.startOperations[0]).toMatchObject({
       systemName: 'broadcastEvent',
       operationData: { eventName: 'request-timeline-uri', eventArgs: ['Chapter One', 0] },
     });
-    expect(byName('__nav__chapter_one__5')?.startOperations[0]).toMatchObject({
+    expect(byName(syntheticNavActionName('Chapter One', 5))?.startOperations[0]).toMatchObject({
       operationData: { eventArgs: ['Chapter One', 5] },
     });
-    expect(byName('__nav__hub')?.startOperations[0]).toMatchObject({
+    expect(byName(syntheticNavActionName('Hub', 0))?.startOperations[0]).toMatchObject({
       operationData: { eventArgs: ['Hub', 0] },
     });
   });
@@ -119,7 +120,7 @@ timeline "Chapter One" in "#stage" using raf {
     const ir = await Effect.runPromise(transformAST(program));
     const navActions = ir.config.actions.filter(a => a.name?.startsWith('__nav__'));
     expect(navActions).toHaveLength(1);
-    expect(navActions[0].name).toBe('__nav__chapter_one');
+    expect(navActions[0].name).toBe(syntheticNavActionName('Chapter One', 0));
   });
 });
 

@@ -27,26 +27,32 @@
 import * as path from 'node:path';
 
 /**
- * Checks if a path is a Windows absolute path (with drive letter).
- * Examples: 'C:/path', 'F:/path', 'C:\\path'
+ * Checks if a path is a Windows absolute path with a drive letter.
+ * Examples: 'C:/path', 'F:/path', 'C:\\path', and bare drive roots ('C:/', 'C:\\').
  */
 function isWindowsAbsolutePath(filePath: string): boolean {
   return /^[a-zA-Z]:[\\/]/.test(filePath);
 }
 
 /**
- * Resolves a relative path against a base directory, handling both
- * Unix absolute paths and Windows absolute paths (with drive letters).
+ * Matches the `//server/share` prefix of a UNC path (either slash style). A leading
+ * `///` is NOT a UNC path (it is a rooted POSIX path with redundant slashes).
+ */
+const UNC_PREFIX = /^[\\/]{2}(?![\\/])([^\\/]+)[\\/]+([^\\/]+)/;
+
+function isUncPath(filePath: string): boolean {
+  return UNC_PREFIX.test(filePath);
+}
+
+/**
+ * Resolves a relative path against a base directory, handling Unix absolute paths,
+ * Windows drive-letter paths and UNC paths.
  *
- * This is needed because path.posix.resolve() doesn't recognize Windows
- * drive letters as absolute paths.
+ * posix.resolve() recognizes neither drive letters nor UNC roots, so those bases are
+ * resolved with path.win32.resolve (which is pure string logic and host independent).
  */
 function resolvePaths(baseDir: string, relativePath: string): string {
-  // If baseDir is a Windows absolute path, use path.win32.resolve so that
-  // parent navigation ('../') and '.' segments are resolved here rather than
-  // relying on a downstream normalizePath() call. posix.resolve doesn't
-  // recognize drive letters as absolute, hence the dedicated branch.
-  if (isWindowsAbsolutePath(baseDir)) {
+  if (isWindowsAbsolutePath(baseDir) || isUncPath(baseDir)) {
     // win32.resolve falls back to process.cwd() for an empty segment, so map
     // ''/'.' to baseDir explicitly to preserve the prior behavior.
     const resolved = path.win32.resolve(baseDir, relativePath === '' ? '.' : relativePath);
@@ -61,8 +67,9 @@ function resolvePaths(baseDir: string, relativePath: string): string {
 /**
  * Normalizes a file path to use forward slashes and resolve . and .. segments.
  *
- * This ensures cross-platform consistency by converting Windows-style paths
- * to Unix-style paths that work on all platforms.
+ * This is host-OS independent: backslashes are converted first and the result is
+ * normalized with path.posix, so `C:\\a\\..\\b` normalizes identically on Windows and POSIX.
+ * Drive roots (`C:/`) and UNC prefixes (`//server/share`) are preserved.
  *
  * @param filePath - Path to normalize (can be relative or absolute, Windows or Unix format)
  * @returns Normalized path with forward slashes
@@ -74,21 +81,37 @@ function resolvePaths(baseDir: string, relativePath: string): string {
  *
  * normalizePath('/project/src/../dist/file.css')
  * // => '/project/dist/file.css'
+ *
+ * normalizePath('\\\\server\\share\\a\\..\\b')
+ * // => '//server/share/b'
  * ```
  */
 export function normalizePath(filePath: string): string {
-  // Use path.normalize() to resolve . and .. segments
-  let normalized = path.normalize(filePath);
+  const slashed = filePath.replace(/\\/g, '/');
 
-  // Convert backslashes to forward slashes for cross-platform consistency
-  normalized = normalized.replace(/\\/g, '/');
+  // Split off a root prefix that posix.normalize would mangle (UNC) or not treat as a root (drive).
+  let prefix = '';
+  let rest = slashed;
+  const unc = UNC_PREFIX.exec(slashed);
+  if (unc) {
+    prefix = `//${unc[1]}/${unc[2]}`;
+    rest = slashed.slice(unc[0].length);
+    if (rest === '') rest = '/';
+  } else if (/^[a-zA-Z]:\//.test(slashed)) {
+    prefix = slashed.slice(0, 2);
+    rest = slashed.slice(2);
+  }
 
-  // Remove trailing slashes (except for root /)
+  // A rooted remainder can never escape its root ('/..' => '/'), which is the right
+  // behavior for drive and UNC roots as well.
+  let normalized = path.posix.normalize(rest);
+
+  // Remove trailing slashes (except for a root: '/', 'C:/', '//server/share/')
   if (normalized.length > 1 && normalized.endsWith('/')) {
     normalized = normalized.slice(0, -1);
   }
 
-  return normalized;
+  return prefix + normalized;
 }
 
 /**

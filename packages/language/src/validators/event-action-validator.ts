@@ -15,19 +15,15 @@ export class EventActionValidator extends BaseValidator {
    * T031: Validate event action definition
    *
    * Validates:
-   * - Event name must be a string literal (not a variable reference)
-   * - Event name must not exceed 100 characters
+   * - Event name must not exceed 100 characters (a missing or empty name is
+   *   reported once, by `checkEventNameExists`)
    * - Action body must contain at least one operation
    */
   checkEventActionDefinition(eventAction: EventActionDefinition, accept: ValidationAcceptor): void {
-    // T026: Event name must be string literal and ≤100 chars
-    if (!eventAction.eventName) {
-      accept('error', 'Event name must be a string literal (not a variable reference)', {
-        node: eventAction,
-        property: 'eventName',
-        code: 'event_name_must_be_literal',
-      });
-    } else if (eventAction.eventName.length > 100) {
+    // T026: Event name must be ≤100 chars. The grammar makes the name optional and
+    // it is always a string literal, so a missing or empty name is not a "variable
+    // reference" - checkEventNameExists reports it (a single diagnostic).
+    if (eventAction.eventName && eventAction.eventName.length > 100) {
       accept(
         'error',
         `Event name exceeds 100 character limit (current: ${eventAction.eventName.length} characters)`,
@@ -110,13 +106,26 @@ export class EventActionValidator extends BaseValidator {
    *
    * Error codes:
    * - unknown_event_name: Event name not found in TIMELINE_EVENTS
+   * - event_name_must_be_literal: Event name is missing (not a string literal)
    * - empty_event_name: Event name is empty string
    */
   checkEventNameExists(eventAction: EventActionDefinition, accept: ValidationAcceptor): void {
     const eventName = eventAction.eventName;
 
+    // Missing event name (the grammar makes it optional): the only diagnostic for
+    // this case. Covers `on event action foo()` and a non-literal such as
+    // `on event myVar action foo()`, where the parser recovers with no name.
+    if (eventName === undefined) {
+      accept('error', 'Event name must be a string literal, e.g. on event "timeline-complete"', {
+        node: eventAction,
+        property: 'eventName',
+        code: 'event_name_must_be_literal',
+      });
+      return;
+    }
+
     // Check for empty event name
-    if (!eventName || eventName.trim() === '') {
+    if (eventName.trim() === '') {
       accept('error', 'Event name cannot be empty', {
         node: eventAction,
         property: 'eventName',
@@ -194,8 +203,10 @@ export class EventActionValidator extends BaseValidator {
    *
    * Checks that the number of parameters declared in an event action
    * matches the number of arguments provided by the Eligius event.
-   * Warnings (not errors) are issued for mismatches since runtime may
-   * still function (extra params ignored, missing args become undefined).
+   * Handlers read their parameters by index from the event's arguments, so
+   * declaring FEWER parameters than the event supplies is benign (trailing
+   * arguments are never read) and is not reported, while declaring MORE leaves
+   * the extra parameters `undefined` at runtime and produces a warning.
    */
   checkEventArgumentCount(eventAction: EventActionDefinition, accept: ValidationAcceptor): void {
     const eventName = eventAction.eventName;
@@ -211,25 +222,16 @@ export class EventActionValidator extends BaseValidator {
     const expectedArgCount = eventMetadata.args?.length ?? 0;
     const actualParamCount = eventAction.parameters.length;
 
-    // Counts match - no warning needed
-    if (expectedArgCount === actualParamCount) {
+    // Same count, or fewer parameters than arguments: nothing to warn about
+    // (the trailing arguments are simply never read).
+    if (actualParamCount <= expectedArgCount) {
       return;
     }
 
-    // Build warning message
-    let message: string;
-    if (actualParamCount < expectedArgCount) {
-      // Too few parameters
-      message = `Event '${eventName}' provides ${expectedArgCount} arguments, but action declares ${actualParamCount} parameters. Missing arguments may be undefined at runtime.`;
-    } else {
-      // Too many parameters - include parameter name(s) for single extra param
-      if (actualParamCount === 1 && expectedArgCount === 0) {
-        const paramName = eventAction.parameters[0].name;
-        message = `Event '${eventName}' provides ${expectedArgCount} arguments, but action declares ${actualParamCount} parameter '${paramName}'. Extra parameters will be ignored at runtime.`;
-      } else {
-        message = `Event '${eventName}' provides ${expectedArgCount} arguments, but action declares ${actualParamCount} parameters. Extra parameters will be ignored at runtime.`;
-      }
-    }
+    // More parameters than the event supplies: the extra ones are undefined.
+    const extraNames = eventAction.parameters.slice(expectedArgCount).map(p => `'${p.name}'`);
+    const plural = extraNames.length === 1 ? '' : 's';
+    const message = `Event '${eventName}' provides ${expectedArgCount} arguments, but action declares ${actualParamCount} parameter${actualParamCount === 1 ? '' : 's'}. Parameter${plural} ${extraNames.join(', ')} will be undefined at runtime (event supplies only ${expectedArgCount} argument${expectedArgCount === 1 ? '' : 's'}).`;
 
     accept('warning', message, {
       node: eventAction,

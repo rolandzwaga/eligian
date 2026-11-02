@@ -10,17 +10,23 @@
  */
 
 import type { IEngineConfiguration } from 'eligius';
+import type { HostPayload } from '../../../media/host-registrations.js';
 
 /**
  * Commands that can be sent to the webview to control the Eligius engine.
  */
 type EngineCommand =
-  | { type: 'initialize'; payload: { config: IEngineConfiguration } }
+  | { type: 'initialize'; payload: { config: IEngineConfiguration; host?: HostPayload } }
   | { type: 'play' }
   | { type: 'pause' }
   | { type: 'stop' }
   | { type: 'restart' }
-  | { type: 'destroy' };
+  | { type: 'destroy' }
+  // Audit idea #5: scrubber, timeline picker, language picker, "Preview from here"
+  | { type: 'seek'; payload: { position: number } }
+  | { type: 'switchTimeline'; payload: { uri: string; position?: number } }
+  | { type: 'setLanguage'; payload: { language: string } }
+  | { type: 'previewAt'; payload: { timelineUri: string; position: number } };
 
 /**
  * Events that the webview sends back to the extension about engine state.
@@ -106,12 +112,12 @@ export class EligiusEngineService {
    * @param config - Eligius engine configuration (compiled from .eligian source)
    * @returns Promise that resolves when initialization command is sent
    */
-  public async initialize(config: IEngineConfiguration): Promise<void> {
+  public async initialize(config: IEngineConfiguration, host?: HostPayload): Promise<void> {
     console.log('[EligiusEngineService] Initializing engine with config:', config.id);
 
     const command: EngineCommand = {
       type: 'initialize',
-      payload: { config },
+      payload: { config, ...(host ? { host } : {}) },
     };
 
     await this.webview.postMessage(command);
@@ -170,6 +176,34 @@ export class EligiusEngineService {
 
     console.log('[EligiusEngineService] Sending restart command');
     const command: EngineCommand = { type: 'restart' };
+    await this.webview.postMessage(command);
+  }
+
+  /**
+   * Go to `position` (seconds) on the timeline with uri `timelineUri` (as in
+   * the config the webview runs) and play. Sent before the engine exists, the
+   * webview applies it as soon as the engine is initialized.
+   */
+  public async previewAt(timelineUri: string, position: number): Promise<void> {
+    const command: EngineCommand = { type: 'previewAt', payload: { timelineUri, position } };
+    await this.webview.postMessage(command);
+  }
+
+  /** Seek the current timeline to `position` (seconds). */
+  public async seek(position: number): Promise<void> {
+    const command: EngineCommand = { type: 'seek', payload: { position } };
+    await this.webview.postMessage(command);
+  }
+
+  /** Switch to the timeline with uri `uri`, at `position` (default 0s). */
+  public async switchTimeline(uri: string, position?: number): Promise<void> {
+    const command: EngineCommand = { type: 'switchTimeline', payload: { uri, position } };
+    await this.webview.postMessage(command);
+  }
+
+  /** Switch the presentation language (broadcasts Eligius' 'language-change'). */
+  public async setLanguage(language: string): Promise<void> {
+    const command: EngineCommand = { type: 'setLanguage', payload: { language } };
     await this.webview.postMessage(command);
   }
 

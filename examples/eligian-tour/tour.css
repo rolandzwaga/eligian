@@ -781,9 +781,10 @@
 }
 
 /* ---- Chapter progress bar (under the narration) ----------------------- */
-/* The engine's ProgressbarController can't be used: each chapter timeline runs
-   for 3600s (its setup event keeps the view up until you leave), so position /
-   duration would barely move. Instead the fill animates over the chapter's
+/* Written when each chapter timeline ran for 3600s (a setup event kept the view
+   up until you leave), so the engine's ProgressbarController would barely move.
+   With `on enter` / `on leave` the duration is the chapter's real length, so the
+   controller could take this over. For now the fill animates over the chapter's
    real length while that chapter is active; re-entering a chapter restarts it,
    just like its timeline. The lengths mirror each chapter's last beat end in
    tour.eligian, so update them together. */

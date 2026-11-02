@@ -16,6 +16,8 @@ import { parseLabels, validateLabels, validateLocaleConfig } from './locale-conf
 import {
   addKeyToConfig,
   deleteKeyFromConfig,
+  findKeyConflict,
+  findUnsafeKeySegment,
   keyTreeToSerializable,
   parseLocalesConfiguration,
   renameKeyInConfig,
@@ -27,6 +29,43 @@ import type {
   ToExtensionMessage,
   ToWebviewMessage,
 } from './types.js';
+
+/**
+ * Warn the user (and report true) when `key` cannot be created because an existing
+ * translation sits on its path. The edit is then skipped so nothing is lost.
+ */
+function warnOnKeyConflict(config: ILocalesConfiguration, key: string, locale?: string): boolean {
+  const unsafe = findUnsafeKeySegment(key);
+  if (unsafe !== undefined) {
+    vscode.window.showWarningMessage(`Cannot use key '${key}': '${unsafe}' is a reserved name.`);
+    return true;
+  }
+  const blocker = findKeyConflict(config, key, locale);
+  if (blocker === undefined) return false;
+  vscode.window.showWarningMessage(
+    `Cannot use key '${key}': '${blocker}' is already a translation, not a group.`
+  );
+  return true;
+}
+
+/**
+ * Get the cached configuration for a document, or warn that edits are refused.
+ * The cache is dropped whenever the document stops parsing as a locale
+ * configuration, so a missing entry means the JSON is currently invalid; editing
+ * then would overwrite the user's text with stale state.
+ */
+function requireConfig(
+  document: vscode.TextDocument,
+  deps: LocaleMessageDeps
+): ILocalesConfiguration | undefined {
+  const config = deps.documentConfigs.get(document.uri.toString());
+  if (!config) {
+    vscode.window.showWarningMessage(
+      'The locale file currently contains invalid JSON. Fix it in the text editor before editing here.'
+    );
+  }
+  return config;
+}
 
 /**
  * Instance-coupled operations the message handler needs from the provider.
@@ -82,6 +121,8 @@ export async function handleWebviewMessage(
           };
           webviewPanel.webview.postMessage(initMessage);
         } else {
+          // Never keep a config from an earlier, valid state of the document
+          deps.documentConfigs.delete(document.uri.toString());
           // Fallback to legacy format
           const labels = parseLabels(document.getText());
           const selectedLabelId = consumePendingSelection(document.uri.toString());
@@ -100,8 +141,9 @@ export async function handleWebviewMessage(
     case 'update-translation':
       // Update a single translation value
       {
-        const config = deps.documentConfigs.get(document.uri.toString());
+        const config = requireConfig(document, deps);
         if (config) {
+          if (warnOnKeyConflict(config, message.key, message.locale)) break;
           const updated = updateTranslationInConfig(
             config,
             message.key,
@@ -117,11 +159,12 @@ export async function handleWebviewMessage(
     case 'add-key':
       // Add a new translation key
       {
-        const config = deps.documentConfigs.get(document.uri.toString());
+        const config = requireConfig(document, deps);
         if (config) {
           const fullKey = message.parentKey
             ? `${message.parentKey}.${message.newSegment}`
             : message.newSegment;
+          if (warnOnKeyConflict(config, fullKey)) break;
           const updated = addKeyToConfig(config, fullKey);
           deps.documentConfigs.set(document.uri.toString(), updated);
           deps.saveConfig(document, updated);
@@ -132,7 +175,7 @@ export async function handleWebviewMessage(
     case 'delete-key':
       // Delete a translation key
       {
-        const config = deps.documentConfigs.get(document.uri.toString());
+        const config = requireConfig(document, deps);
         if (config) {
           const updated = deleteKeyFromConfig(config, message.key);
           deps.documentConfigs.set(document.uri.toString(), updated);
@@ -144,8 +187,9 @@ export async function handleWebviewMessage(
     case 'rename-key':
       // Rename a translation key
       {
-        const config = deps.documentConfigs.get(document.uri.toString());
+        const config = requireConfig(document, deps);
         if (config) {
+          if (warnOnKeyConflict(config, message.newKey)) break;
           const updated = renameKeyInConfig(config, message.oldKey, message.newKey);
           deps.documentConfigs.set(document.uri.toString(), updated);
           deps.saveConfig(document, updated);
@@ -156,7 +200,7 @@ export async function handleWebviewMessage(
     case 'add-locale':
       // Add a new locale to the configuration
       {
-        const config = deps.documentConfigs.get(document.uri.toString());
+        const config = requireConfig(document, deps);
         if (config) {
           // Add empty locale entry
           const updated: ILocalesConfiguration = {

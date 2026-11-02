@@ -19,9 +19,9 @@ export class LanguagesValidator extends BaseValidator {
   checkDefaultMarker(block: LanguagesBlock, accept: ValidationAcceptor): void {
     const entryCount = block.entries.length;
 
-    if (entryCount === 1) {
-      // Single language - * marker is optional (implicit default)
-      // No validation needed
+    if (entryCount <= 1) {
+      // Single language - * marker is optional (implicit default).
+      // Empty block - reported by checkNonEmptyLanguagesBlock only.
       return;
     }
 

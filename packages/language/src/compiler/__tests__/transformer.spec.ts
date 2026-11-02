@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { Effect } from 'effect';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
@@ -7,6 +5,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createEligianServices } from '../../eligian-module.js';
 import type { Program } from '../../generated/ast.js';
 import { transformAST } from '../ast-transformer.js';
+import { inputsOf } from './operation-inputs.js';
 
 describe('AST Transformer', () => {
   let services: ReturnType<typeof createEligianServices>;
@@ -28,14 +27,6 @@ describe('AST Transformer', () => {
       );
     }
     return document.parseResult.value;
-  }
-
-  /**
-   * Helper: Load fixture file
-   */
-  function _loadFixture(filename: string): string {
-    const path = join(__dirname, '__fixtures__', filename);
-    return readFileSync(path, 'utf-8');
   }
 
   describe('Timeline transformation (T050)', () => {
@@ -245,7 +236,7 @@ describe('AST Transformer', () => {
     test('should transform property chain references', async () => {
       const code = `
                 action test [
-                    setData({ "operationdata.name": $scope.currentItem })
+                    setData({ "$operationdata.name": $scope.currentItem })
                 ]
                 timeline "test" in ".test-container" using raf {}
             `;
@@ -257,7 +248,7 @@ describe('AST Transformer', () => {
       // T223: setData takes 'properties' parameter which contains the object
       expect(operation.operationData?.properties).toBeDefined();
       // Eligius only resolves chains that keep their '$' prefix
-      expect((operation.operationData?.properties as any)?.['operationdata.name']).toBe(
+      expect((operation.operationData?.properties as any)?.['$operationdata.name']).toBe(
         '$scope.currentItem'
       );
     });
@@ -274,9 +265,13 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      const [select, setVar] = result.config.actions[0].startOperations;
-      expect(select.operationData?.selector).toBe('$globaldata.selector');
-      expect(setVar.operationData?.value).toBe('$scope.variables.mode');
+      const ops = result.config.actions[0].startOperations;
+      const select = ops.find(op => op.systemName === 'selectElement');
+      const setVar = ops.find(op => op.systemName === 'setVariable');
+      // selectElement resolves its selector itself; setVariable receives the
+      // value through a preceding setOperationData that resolves it
+      expect(select?.operationData?.selector).toBe('$globaldata.selector');
+      expect(inputsOf(ops, setVar).value).toBe('$scope.variables.mode');
     });
 
     test('should keep action parameters passed under a different operation parameter name', async () => {
@@ -313,10 +308,10 @@ describe('AST Transformer', () => {
 
       const result = await Effect.runPromise(transformAST(program));
 
-      // Program-level variables are stored via setData as 'globaldata.items'
+      // Program-level variables are stored via setData as '$globaldata.items'
       const init = result.config.initActions[0].startOperations[0];
       expect(init.operationData?.properties).toEqual({
-        'globaldata.items': ['$globaldata.first', 'b'],
+        '$globaldata.items': ['$globaldata.first', 'b'],
       });
 
       const ops = result.config.actions[0].startOperations;
@@ -324,9 +319,9 @@ describe('AST Transformer', () => {
         '$globaldata.items'
       );
       // Action-level variables stay scope variables
-      expect(ops.filter(op => op.systemName === 'setVariable').at(-1)?.operationData?.value).toBe(
-        '$scope.variables.local'
-      );
+      expect(
+        inputsOf(ops, ops.filter(op => op.systemName === 'setVariable').slice(-1)[0]).value
+      ).toBe('$scope.variables.local');
     });
 
     test('should compile @@currentItem.prop to a $scope property chain', async () => {
@@ -347,7 +342,7 @@ describe('AST Transformer', () => {
       // @@<name>.<prop> compiles to $scope.<name>.<prop> (property access on
       // system scope properties — incl. object loop items).
       expect((select?.operationData as any)?.selector).toBe('$scope.currentItem.sel');
-      expect((add?.operationData as any)?.className).toBe('$scope.currentItem.cls');
+      expect(inputsOf(ops, add).className).toBe('$scope.currentItem.cls');
     });
 
     // C5 regression: a direct property-chain reference used as a `for` collection
@@ -878,7 +873,7 @@ describe('AST Transformer', () => {
 
       try {
         await Effect.runPromise(transformAST(program));
-        fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (error: any) {
         // Effect 4 rejects with the typed error itself
         expect(error._tag).toBe('TransformError');
@@ -975,7 +970,7 @@ describe('AST Transformer', () => {
 
       try {
         await Effect.runPromise(transformAST(program));
-        fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (error: any) {
         // Should include suggestion for typo
         expect(error.message).toContain('addClas');
@@ -1133,8 +1128,9 @@ describe('AST Transformer', () => {
       // Eligius provides action parameters via startAction's actionOperationData.
       expect(selectOp?.operationData).toBeUndefined(); // selector → selector
 
-      // animate reads 'animationDuration', not 'duration', so the reference is kept
-      expect(animateOp?.operationData).toEqual({
+      // animate reads 'animationDuration', not 'duration', so the reference is kept.
+      // animate does not resolve property chains, so a preceding setOperationData does.
+      expect(inputsOf(action.startOperations, animateOp)).toEqual({
         animationProperties: { opacity: 1 },
         animationDuration: '$operationdata.duration',
       });
@@ -1166,8 +1162,11 @@ describe('AST Transformer', () => {
         className: 'my-class',
       });
 
-      // wait reads 'milliseconds', so the 'duration' reference is kept
-      expect(waitOp?.operationData).toEqual({ milliseconds: '$operationdata.duration' });
+      // wait reads 'milliseconds', so the 'duration' reference is kept (and resolved by a
+      // preceding setOperationData, since wait does not resolve property chains)
+      expect(inputsOf(action.startOperations, waitOp)).toEqual({
+        milliseconds: '$operationdata.duration',
+      });
     });
   });
 

@@ -13,11 +13,16 @@ import {
   type EndableActionDefinition,
   isBreakStatement,
   isContinueStatement,
+  isOperationCall,
+  isTimedEvent,
   type NamedImport,
+  type OperationCall,
+  type OperationStatement,
   type Program,
   type RegularActionDefinition,
   type TimedEvent,
   type Timeline,
+  type TimelineEvent,
 } from '../generated/ast.js';
 import { getElements, getImports } from '../utils/program-helpers.js';
 import { createTestContext, type TestContext } from './test-helpers.js';
@@ -28,6 +33,18 @@ let ctx: TestContext;
 beforeAll(() => {
   ctx = createTestContext();
 });
+
+/** Narrow an operation statement to a plain operation call (fails the test otherwise). */
+function opCall(statement: OperationStatement | undefined): OperationCall {
+  if (!isOperationCall(statement)) throw new Error('expected an OperationCall statement');
+  return statement;
+}
+
+/** Narrow a timeline event to a timed event (fails the test otherwise). */
+function timedEvent(event: TimelineEvent | undefined): TimedEvent {
+  if (!isTimedEvent(event)) throw new Error('expected a TimedEvent');
+  return event;
+}
 
 function loadFixture(filename: string): string {
   const path = join(__dirname, '__fixtures__', filename);
@@ -107,8 +124,8 @@ describe('Eligian Grammar - Parsing', () => {
       expect(getElements(program)).toHaveLength(1);
       const timeline = getElements(program)[0] as Timeline;
       expect(timeline.events).toHaveLength(1);
-      expect(timeline.events[0].timeRange).toBeDefined();
-      expect(timeline.events[0].action.$type).toBe('InlineEndableAction');
+      expect(timedEvent(timeline.events[0]).timeRange).toBeDefined();
+      expect(timedEvent(timeline.events[0]).action.$type).toBe('InlineEndableAction');
     });
 
     test('should parse timeline event with action call', async () => {
@@ -128,7 +145,7 @@ describe('Eligian Grammar - Parsing', () => {
       expect(getElements(program)).toHaveLength(2);
       const timeline = getElements(program)[1] as Timeline;
       expect(timeline.events).toHaveLength(1);
-      expect(timeline.events[0].action.$type).toBe('OperationCall');
+      expect(timedEvent(timeline.events[0]).action.$type).toBe('OperationCall');
     });
 
     test('should parse timeline event with time expressions', async () => {
@@ -143,7 +160,7 @@ describe('Eligian Grammar - Parsing', () => {
 
       const timeline = getElements(program)[0] as Timeline;
       expect(timeline.events).toHaveLength(1);
-      expect(timeline.events[0].timeRange).toBeDefined();
+      expect(timedEvent(timeline.events[0]).timeRange).toBeDefined();
     });
 
     test('should parse multiple timeline events', async () => {
@@ -219,8 +236,8 @@ describe('Eligian Grammar - Parsing', () => {
 
       const action = getElements(program)[0] as RegularActionDefinition;
       expect(action.operations).toHaveLength(1);
-      expect(action.operations[0].operationName.$refText).toBe('wait');
-      expect(action.operations[0].args).toHaveLength(0);
+      expect(opCall(action.operations[0]).operationName.$refText).toBe('wait');
+      expect(opCall(action.operations[0]).args).toHaveLength(0);
     });
 
     test('should parse operation call with single argument', async () => {
@@ -231,8 +248,8 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName.$refText).toBe('selectElement');
-      expect(action.operations[0].args).toHaveLength(1);
+      expect(opCall(action.operations[0]).operationName.$refText).toBe('selectElement');
+      expect(opCall(action.operations[0]).args).toHaveLength(1);
     });
 
     test('should parse operation call with multiple arguments', async () => {
@@ -243,8 +260,8 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName.$refText).toBe('animate');
-      expect(action.operations[0].args).toHaveLength(3);
+      expect(opCall(action.operations[0]).operationName.$refText).toBe('animate');
+      expect(opCall(action.operations[0]).args).toHaveLength(3);
     });
 
     test('should parse operation call with object literal', async () => {
@@ -255,21 +272,21 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName.$refText).toBe('setStyle');
-      expect(action.operations[0].args).toHaveLength(1);
-      expect(action.operations[0].args[0].$type).toBe('ObjectLiteral');
+      expect(opCall(action.operations[0]).operationName.$refText).toBe('setStyle');
+      expect(opCall(action.operations[0]).args).toHaveLength(1);
+      expect(opCall(action.operations[0]).args[0].$type).toBe('ObjectLiteral');
     });
 
     test('should parse operation call with property chain reference', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.name": $scope.currentItem })
+          setData({ "$operationdata.name": $scope.currentItem })
         ]
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].operationName.$refText).toBe('setData');
-      const objLiteral = action.operations[0].args[0] as any;
+      expect(opCall(action.operations[0]).operationName.$refText).toBe('setData');
+      const objLiteral = opCall(action.operations[0]).args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('PropertyChainReference');
     });
   });
@@ -303,7 +320,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse action with boolean type annotation', async () => {
       const program = await parseEligian(`
         action toggle(enabled: boolean) [
-          setData({"operationdata.flag": enabled})
+          setData({"$operationdata.flag": enabled})
         ]
       `);
 
@@ -315,7 +332,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse action with object type annotation', async () => {
       const program = await parseEligian(`
         action setConfig(config: object) [
-          setData({"operationdata.config": config})
+          setData({"$operationdata.config": config})
         ]
       `);
 
@@ -327,7 +344,7 @@ describe('Eligian Grammar - Parsing', () => {
     test('should parse action with array type annotation', async () => {
       const program = await parseEligian(`
         action process(items: array) [
-          setData({"operationdata.items": items})
+          setData({"$operationdata.items": items})
         ]
       `);
 
@@ -461,7 +478,7 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].args[0].$type).toBe('StringLiteral');
+      expect(opCall(action.operations[0]).args[0].$type).toBe('StringLiteral');
     });
 
     test('should parse number literals', async () => {
@@ -472,30 +489,30 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].args[0].$type).toBe('NumberLiteral');
+      expect(opCall(action.operations[0]).args[0].$type).toBe('NumberLiteral');
     });
 
     test('should parse boolean literals', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.flag": true })
+          setData({ "$operationdata.flag": true })
         ]
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      const objLiteral = action.operations[0].args[0] as any;
+      const objLiteral = opCall(action.operations[0]).args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('BooleanLiteral');
     });
 
     test('should parse array literals', async () => {
       const program = await parseEligian(`
         action test [
-          setData({ "operationdata.items": [1, 2, 3] })
+          setData({ "$operationdata.items": [1, 2, 3] })
         ]
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      const objLiteral = action.operations[0].args[0] as any;
+      const objLiteral = opCall(action.operations[0]).args[0] as any;
       expect(objLiteral.properties[0].value.$type).toBe('ArrayLiteral');
     });
 
@@ -507,7 +524,7 @@ describe('Eligian Grammar - Parsing', () => {
       `);
 
       const action = getElements(program)[0] as RegularActionDefinition;
-      expect(action.operations[0].args).toHaveLength(3);
+      expect(opCall(action.operations[0]).args).toHaveLength(3);
     });
   });
 

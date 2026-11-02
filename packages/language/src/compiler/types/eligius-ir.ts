@@ -25,6 +25,7 @@ import type {
   TOperationData,
   TTimelineProviderSettings,
 } from 'eligius';
+import type { HostModule } from '../operations/host-operations.js';
 import type { JsonValue, SourceLocation } from './common.js';
 
 // Re-export for external use
@@ -61,6 +62,8 @@ export type EligiusIR = {
   readonly config: IEngineConfiguration;
   readonly sourceMap: SourceMap;
   readonly metadata?: MetadataIR;
+  /** Idea #24: the extensions module (path as written) and its declared names */
+  readonly host?: HostModule;
 };
 
 /**
@@ -100,6 +103,12 @@ export type TimelineConfigIR = {
   readonly duration: number;
   readonly loop: boolean;
   readonly selector: string;
+  /**
+   * Per-timeline position source settings. Media timelines carry their own
+   * `VideoPositionSource` `selector` and `sources` here (merged over
+   * `timelineProviderSettings.mediaplayer.positionSource` by the engine).
+   */
+  readonly positionSource?: ITimelineConfiguration['positionSource'];
   readonly timelineActions: ReadonlyArray<TimelineActionIR>;
   readonly sourceLocation: SourceLocation;
 };
@@ -158,6 +167,12 @@ export type TimelineActionIR = {
   readonly endOperations: ReadonlyArray<OperationConfigIR>;
   readonly duration: DurationIR;
   readonly sourceLocation: SourceLocation;
+  /**
+   * The timeline's `on enter` / `on leave` action (audit idea #6): open-ended
+   * (duration.end is -1, emitted without an end), kept by the optimizer and not
+   * part of the timeline's duration.
+   */
+  readonly lifecycle?: true;
 };
 
 /**

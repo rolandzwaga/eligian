@@ -12,7 +12,13 @@
  * decomposition).
  */
 
-import type { LangiumDocument, MaybePromise } from 'langium';
+import {
+  AstUtils,
+  GrammarAST,
+  type LangiumDocument,
+  type MaybePromise,
+  WorkspaceCache,
+} from 'langium';
 import type { CompletionContext } from 'langium/lsp';
 import { type CompletionAcceptor, DefaultCompletionProvider, type NextFeature } from 'langium/lsp';
 import {
@@ -22,17 +28,39 @@ import {
   type CompletionList,
   type CompletionParams,
 } from 'vscode-languageserver';
-import { getActionCompletions } from './completion/actions.js';
+import { type CallableActionSource, getActionCompletions } from './completion/actions.js';
 import { detectContext } from './completion/context.js';
 import { resolveStringLiteralCompletion } from './completion/controller-completion-handler.js';
 import { handleCssCompletion } from './completion/css-completion-handler.js';
 import { handleEventCompletion } from './completion/event-completion-handler.js';
 import { handleHtmlCompletion } from './completion/html-completion-handler.js';
 import { HTMLElementCompletionProvider } from './completion/html-elements.js';
+import { keyNameCompletions } from './completion/key-completions.js';
 import { getOperationCompletions } from './completion/operations.js';
+import { getTimelineEventCompletions } from './completion/timeline-events.js';
 import { getVariableCompletions } from './completion/variables.js';
 import { CSSCompletionProvider } from './css/css-completion.js';
 import type { EligianServices } from './eligian-module.js';
+import { navigateTargetCompletions } from './lsp/timeline-symbols.js';
+import { DOM_EVENTS } from './utils/dom-events.js';
+
+/**
+ * Keyword-tolerant name rules in eligian.langium. The keywords they list are
+ * accepted as names (`action f(event)`, `{ from: 0 }`), not syntax, so they are
+ * never offered as keyword completions.
+ */
+const NAME_RULES: ReadonlySet<string> = new Set([
+  'Identifier',
+  'FeatureName',
+  'ActionName',
+  'DomEventName',
+]);
+
+/** Cached custom-action completion items and the names they are offered under. */
+interface ActionCompletionData {
+  readonly items: readonly CompletionItem[];
+  readonly names: ReadonlySet<string>;
+}
 
 /**
  * Eligian-specific completion provider
@@ -45,11 +73,31 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
   private readonly htmlCompletionProvider: HTMLElementCompletionProvider;
   private readonly services: EligianServices;
 
+  /**
+   * Custom-action completion items per document URI.
+   *
+   * Building them walks the whole AST and resolves imported libraries, and the
+   * result depends on other documents (the imports), so a `WorkspaceCache` is
+   * used: it is evicted whenever any document in the workspace changes. Same
+   * strategy as the scope provider's callable-action cache.
+   */
+  private readonly actionCompletionCache: WorkspaceCache<string, ActionCompletionData>;
+
   constructor(services: EligianServices) {
     super(services);
     this.services = services;
+    this.actionCompletionCache = new WorkspaceCache(services.shared);
     this.cssCompletionProvider = new CSSCompletionProvider();
     this.htmlCompletionProvider = new HTMLElementCompletionProvider();
+  }
+
+  /** Skip keywords that only appear inside the keyword-tolerant name rules. */
+  protected override filterKeyword(
+    context: CompletionContext,
+    keyword: GrammarAST.Keyword
+  ): boolean {
+    const rule = AstUtils.getContainerOfType(keyword, GrammarAST.isParserRule);
+    return (!rule || !NAME_RULES.has(rule.name)) && super.filterKeyword(context, keyword);
   }
 
   /**
@@ -66,6 +114,21 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
     params: CompletionParams,
     cancelToken?: CancellationToken
   ): Promise<CompletionList | undefined> {
+    // Idea #16: timeline names after `navigate`
+    const timelineNames = navigateTargetCompletions(
+      document,
+      document.textDocument.offsetAt(params.position)
+    );
+    if (timelineNames) {
+      return { items: timelineNames, isIncomplete: false };
+    }
+
+    // Key names after `on key` (KeyboardController)
+    const keyNames = keyNameCompletions(document, document.textDocument.offsetAt(params.position));
+    if (keyNames) {
+      return { items: keyNames, isIncomplete: false };
+    }
+
     // Controller name / label ID string-literal completions (Feature 035 US3)
     const stringLiteralCompletion = resolveStringLiteralCompletion(document, params, this.services);
     if (stringLiteralCompletion !== null) {
@@ -97,6 +160,35 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Get document and position from context
       const document = context.document;
 
+      // Idea #19: DOM event names after `on` in an operation list. The event is
+      // an Identifier, whose alternatives (ID and the contextual keywords) all
+      // come here with property 'event': the events are added once, for ID,
+      // and the keywords are not offered.
+      if (next.property === 'event' && next.type !== 'EventTimeReference') {
+        if (GrammarAST.isRuleCall(next.feature)) {
+          for (const [name, description] of DOM_EVENTS) {
+            acceptor(context, {
+              label: name,
+              kind: CompletionItemKind.Event,
+              detail: description,
+              sortText: `0_${name}`,
+            });
+          }
+        }
+        return;
+      }
+      // … and `key` (on key "ArrowRight"), the only keyword that follows `on`
+      // in an operation list: only the keyword, not the statement completions
+      if (GrammarAST.isKeyword(next.feature) && next.feature.value === 'key') {
+        acceptor(context, {
+          label: 'key',
+          kind: CompletionItemKind.Keyword,
+          detail: 'on key "<keys>" <verb>: a key press (KeyboardController)',
+          sortText: '1_key',
+        });
+        return;
+      }
+
       // NOTE: JSDoc completion is now handled in getCompletion() above
 
       // Use tokenOffset to detect context, as this points to the start of the token being completed
@@ -124,11 +216,9 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       const isCompletingOperationName = next.property === 'operationName';
       const isInsideArguments = cursorContext.insideOperationCall && !isCompletingOperationName;
 
-      // Get custom action completions once to reuse for both adding and filtering
-      const actionCompletions = getActionCompletions(document);
-      const actionNames = new Set(
-        actionCompletions.map(a => a.insertText || a.label.replace('action: ', ''))
-      );
+      // Custom action completions are only needed by the branches below the CSS / HTML /
+      // event early returns, so they are resolved lazily (and cached per workspace state).
+      const getActionData = (): ActionCompletionData => this.getActionCompletionData(document);
 
       // Create a filtering acceptor FIRST, before we add any completions
       // This will wrap ALL completion additions (both ours and default provider's)
@@ -142,7 +232,7 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
 
         // Filter out action names from default completions
         // (We already added them with "action:" prefix above)
-        if (item.label && actionNames.has(item.label)) {
+        if (item.label && getActionData().names.has(item.label)) {
           return; // Skip - we've already added this action with proper prefix
         }
 
@@ -217,15 +307,21 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         return super.completionFor(context, next, noOpAcceptor);
       }
 
-      if (cursorContext.isInsideAction && !isInsideArguments) {
-        // Add operation completions
-        const operationCompletions = getOperationCompletions(context);
-        for (const item of operationCompletions) {
-          filteringAcceptor(context, item);
+      // Operation/action positions: inside action bodies (incl. inline endable blocks) both
+      // operations and actions; at the operation-name slot of a timeline event outside any
+      // action body (`at 0s..2s <cursor>`, timeline for/if bodies) actions only, because
+      // OperationExistenceValidator.checkTimelineOperationCall rejects built-in operations there.
+      const isTimelineOperationSlot = cursorContext.isInsideEvent && isCompletingOperationName;
+      if ((cursorContext.isInsideAction || isTimelineOperationSlot) && !isInsideArguments) {
+        if (cursorContext.isInsideAction) {
+          const operationCompletions = getOperationCompletions(context);
+          for (const item of operationCompletions) {
+            filteringAcceptor(context, item);
+          }
         }
 
         // Add custom action completions
-        for (const item of actionCompletions) {
+        for (const item of getActionData().items) {
           filteringAcceptor(context, item);
         }
       }
@@ -265,10 +361,19 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
         }
       }
 
-      // If inside timeline, provide timeline-specific completions
-      if (cursorContext.isInsideTimeline && !cursorContext.isInsideEvent) {
-        // TODO: Call timeline events completion module
-        // completeTimelineEvents(context, acceptor, cursorContext);
+      // Timeline body: event snippets (idea #13). completionFor runs once per
+      // expected token, so they are added only for the `at` keyword, which every
+      // event position expects; the plain keywords stay as they are.
+      if (
+        cursorContext.isInsideTimeline &&
+        !cursorContext.isInsideEvent &&
+        cursorContext.timeline &&
+        GrammarAST.isKeyword(next.feature) &&
+        next.feature.value === 'at'
+      ) {
+        for (const item of getTimelineEventCompletions(cursorContext.timeline, context.offset)) {
+          acceptor(context, item);
+        }
       }
 
       // IMPORTANT: Don't call super if this is an OperationCall operationName completion
@@ -286,6 +391,31 @@ export class EligianCompletionProvider extends DefaultCompletionProvider {
       // Graceful error handling - fallback to default completion
       return super.completionFor(context, next, acceptor);
     }
+  }
+
+  /**
+   * The custom-action completion items for a document, cached until the workspace changes.
+   *
+   * Items are shared between requests; callers must not mutate them (the filtering
+   * acceptor only rewrites `sortText` of operation/value items, never action items,
+   * because action items are removed in expression positions).
+   */
+  private getActionCompletionData(document: LangiumDocument): ActionCompletionData {
+    return this.actionCompletionCache.get(document.uri.toString(), () => {
+      const items = getActionCompletions(document, this.getCallableActionSource());
+      const names = new Set(items.map(a => a.insertText || a.label.replace('action: ', '')));
+      return { items, names };
+    });
+  }
+
+  /**
+   * The scope provider as a source of callable (own and imported) actions, if it is one.
+   */
+  private getCallableActionSource(): CallableActionSource | undefined {
+    const scopeProvider = this.services.references.ScopeProvider as Partial<CallableActionSource>;
+    return typeof scopeProvider.getCallableActions === 'function'
+      ? (scopeProvider as CallableActionSource)
+      : undefined;
   }
 
   /**

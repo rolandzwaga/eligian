@@ -22,16 +22,19 @@
  */
 
 import { Effect } from 'effect';
+import { AstUtils } from 'langium';
+import { OperationDataflow } from '../dataflow/operation-dataflow.js';
 import type { TransformError } from '../errors/index.js';
 import type { Program } from '../generated/ast.js';
 import {
-  getActions,
   getEventActions,
-  getNavigateStatements,
+  getInteractionStatements,
   getTimelines,
   getVariables,
 } from '../utils/program-helpers.js';
-import { buildConstantMap } from './constant-folder.js';
+import { isTimeConstant } from '../utils/time-constants.js';
+import { buildConstantMapWithFailures } from './constant-folder.js';
+import { hostModuleOf } from './operations/host-operations.js';
 import {
   transformActionDefinition,
   transformEventAction,
@@ -46,11 +49,13 @@ import {
   transformLanguagesBlock,
 } from './transformers/config-builder.js';
 import { transformExpression } from './transformers/expression-transformer.js';
-import { resolveImports } from './transformers/library-imports.js';
+import { resolveActionScopes, resolveCompilerAction } from './transformers/library-imports.js';
 import {
   buildNavTargetAction,
-  resolveNavPosition,
-  syntheticNavActionName,
+  buildPlaybackAction,
+  interactionActionName,
+  resolveInteractionPosition,
+  timelineUri,
 } from './transformers/navigate-operations.js';
 import { createEmptyScope, createParameterContext } from './transformers/scope.js';
 import { getSourceLocation } from './transformers/source-location.js';
@@ -91,7 +96,20 @@ export const transformAST = (
     // This map will be used throughout transformation to inline constant values.
     // B3: kept local and threaded through scopes (no module-level state) so
     // concurrent compilations cannot clobber each other.
-    const constantMap = buildConstantMap(program);
+    const { constants: constantMap, failures: htmlImportFailures } =
+      buildConstantMapWithFailures(program);
+
+    // An HTML import that cannot be loaded must fail the compile: otherwise
+    // `@name` falls through to a `$globaldata.name` that nothing ever sets.
+    const failedImport = htmlImportFailures[0];
+    if (failedImport) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidImport' as const,
+        message: `Cannot load HTML import '${failedImport.name}' (${failedImport.node.path}): ${failedImport.message}`,
+        location: getSourceLocation(failedImport.node),
+      });
+    }
 
     // Find all timelines (validation ensures at least one exists)
     const timelineNodes = getTimelines(program);
@@ -107,7 +125,10 @@ export const transformAST = (
     // Extract program-level variable declarations (T182: Global variables)
     // CONSTANT FOLDING (T008): Filter out constants - they will be inlined, not stored in globalData
     // FEATURE 015: HTML imports are treated as constants (loaded in buildConstantMap, inlined during transformation)
-    const variableDeclarations = getVariables(program).filter(el => !constantMap.has(el.name));
+    // Idea #10: time constants (`const beat = 7s`) only exist at compile time, in times
+    const variableDeclarations = getVariables(program).filter(
+      el => !constantMap.has(el.name) && !isTimeConstant(el)
+    );
 
     // Transform program-level variables to initActions
     // T274: initActions must be IEndableActionConfiguration[], not IOperationConfiguration[]
@@ -118,7 +139,9 @@ export const transformAST = (
       // Add regular variable declarations (non-constants)
       for (const varDecl of variableDeclarations) {
         const value = yield* transformExpression(varDecl.value, createEmptyScope(constantMap));
-        properties[`globaldata.${varDecl.name}`] = value;
+        // Eligius setData targets need the dollar prefix ($globaldata.x): it
+        // reads the target as the first key segment minus its first character
+        properties[`$globaldata.${varDecl.name}`] = value;
       }
 
       // Create single setData operation wrapped in an IEndableActionConfiguration
@@ -147,51 +170,73 @@ export const transformAST = (
       });
     }
 
-    // T046: Extract local action definitions (both regular and endable)
-    const localActions = getActions(program);
-
-    // T044/T045: Resolve library imports and collect imported actions (with aliases applied)
-    const importedActions = yield* resolveImports(program);
-
-    // Merge imported and local actions - imported actions come first, then local actions
-    // This ensures local actions can override imported ones if there are name conflicts
-    // (though validation should prevent this)
-    const actionDefinitions = [...importedActions, ...localActions];
+    // T044-T046 (Feature 023 FR-010, Feature 032 US3): resolve the local and
+    // imported actions the program can call, plus every library action they
+    // reach. Each action body is compiled against the scope of the document
+    // that defines it, so library actions can call their own (private)
+    // helpers and the actions their library imports.
+    const { programScope, actionsToEmit } = yield* resolveActionScopes(program);
 
     // Transform action definitions to Eligius EndableActionIR format
     const actions: EndableActionIR[] = [];
-    for (const actionDef of actionDefinitions) {
+    for (const { definition, scope, systemNames } of actionsToEmit) {
       const action = yield* transformActionDefinition(
-        actionDef,
+        definition,
         program,
-        actionDefinitions,
-        constantMap
+        scope,
+        constantMap,
+        systemNames
       );
       actions.push(action);
     }
 
-    // navigate sugar: emit one synthetic broadcast action per DISTINCT
-    // (target, position). Each `on click … navigate …` call site expands to a
-    // DOMEventListenerController whose `actions` reference these by name (the
-    // name is derived purely from target+position so both sites agree). The
-    // engine resolves them via request-action at runtime.
-    const navStatements = getNavigateStatements(program);
-    const seenNavActions = new Set<string>();
-    for (const navStmt of navStatements) {
-      const position = yield* resolveNavPosition(navStmt.position);
-      const navActionName = syntheticNavActionName(navStmt.target, position);
-      if (seenNavActions.has(navActionName)) {
+    // Interaction sugar (navigate, idea #19): emit one synthetic broadcast
+    // action per DISTINCT verb (+ target, position). Each `on <event> … <verb>`
+    // call site expands to a DOMEventListenerController whose `actions`
+    // reference these by name (derived purely from verb, target and position so
+    // both sites agree). The engine resolves them via request-action at runtime.
+    // A navigate broadcast carries the target timeline's uri: the engine
+    // switches timelines by uri, which for a video/audio timeline is its media
+    // source, not its name. `run` needs none: it names the called action.
+    // Library actions the program reaches can hold interactions too.
+    const programDocument = AstUtils.getDocument(program);
+    const interactions = new Set(getInteractionStatements(program));
+    for (const { definition } of actionsToEmit) {
+      if (AstUtils.getDocument(definition) === programDocument) continue;
+      for (const statement of getInteractionStatements(definition)) interactions.add(statement);
+    }
+    const seenInteractionActions = new Set<string>();
+    for (const interaction of interactions) {
+      if (interaction.verb === 'run') continue;
+      const position = yield* resolveInteractionPosition(interaction);
+      const name = interactionActionName(interaction.verb, interaction.target, position);
+      if (seenInteractionActions.has(name)) {
         continue;
       }
-      seenNavActions.add(navActionName);
-      actions.push(buildNavTargetAction(navStmt.target, position, getSourceLocation(navStmt)));
+      seenInteractionActions.add(name);
+      const location = getSourceLocation(interaction);
+      if (interaction.verb !== 'navigate') {
+        actions.push(buildPlaybackAction(interaction.verb, position, location));
+        continue;
+      }
+      // An unknown target is reported by the navigate validator
+      const target = interaction.target ?? '';
+      const targetTimeline = timelineNodes.find(timeline => timeline.name === target);
+      const uri = targetTimeline ? timelineUri(targetTimeline) : target;
+      actions.push(buildNavTargetAction(target, position, location, uri));
     }
 
     // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
+    // Event actions call actions from the program's scope (local + imported).
     const eventActionNodes = getEventActions(program);
     const eventActions: IEventActionConfiguration[] = [];
     for (const eventActionDef of eventActionNodes) {
-      const eventAction = yield* transformEventAction(eventActionDef, constantMap);
+      const eventAction = yield* transformEventAction(
+        eventActionDef,
+        constantMap,
+        program,
+        programScope
+      );
       eventActions.push(eventAction);
     }
 
@@ -201,7 +246,7 @@ export const transformAST = (
       const timelineConfig = yield* buildTimelineConfig(
         timelineNode,
         program,
-        actionDefinitions,
+        programScope,
         constantMap
       );
       timelines.push(timelineConfig);
@@ -237,6 +282,20 @@ export const transformAST = (
     // T012: Transform languages block (Feature 037)
     const languagesConfig = transformLanguagesBlock(program.languages);
 
+    // Operation-data dependencies (spec 047): the same analysis the IDE runs,
+    // after transformation so transform errors are reported first
+    const [dependencyProblem] = new OperationDataflow({
+      resolveAction: resolveCompilerAction,
+    }).analyzeDocument(program);
+    if (dependencyProblem) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'ValidationError' as const,
+        message: dependencyProblem.message,
+        location: getSourceLocation(dependencyProblem.node),
+      });
+    }
+
     // Build complete IEngineConfiguration (T281)
     const config: IEngineConfiguration = {
       id: defaults.id,
@@ -256,9 +315,11 @@ export const transformAST = (
     };
 
     // Return new EligiusIR wrapper (T279)
+    const host = hostModuleOf(program);
     const result = {
       config,
       sourceMap,
+      ...(host ? { host } : {}),
       metadata: {
         dslVersion: '1.0.0',
         compilerVersion: '0.0.1',

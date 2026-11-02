@@ -9,7 +9,7 @@ describe('JSDoc Template Generator', () => {
         $type: 'RegularActionDefinition',
         name: 'test',
         parameters: [],
-      } as ActionDefinition;
+      } as unknown as ActionDefinition;
 
       const template = generateJSDocTemplate(mockAction);
 

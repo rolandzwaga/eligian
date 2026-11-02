@@ -59,7 +59,7 @@ export function registerTimelineInference(typeSystem: EligianTypeSystem): void {
       const type = timelineFactory
         .create({
           properties: {
-            provider: node.provider as 'video' | 'audio' | 'raf' | 'custom',
+            provider: node.provider as 'video' | 'audio' | 'raf' | 'scroll' | 'custom',
             containerSelector: node.containerSelector,
             source: node.source ?? '', // Empty string if no source
             events: [], // Will be resolved by Typir after finish()

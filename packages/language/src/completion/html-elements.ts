@@ -12,6 +12,12 @@ import {
   HTML_ELEMENT_NAMES,
 } from './html-elements.generated.js';
 
+/** Prefix of custom data attributes; their names are open-ended, so only the prefix is offered. */
+const DATA_ATTRIBUTE_PREFIX = 'data-';
+
+/** An object key that lexes as an ID (the grammar's ID terminal) needs no quotes. */
+const IDENTIFIER_KEY = /^[_a-zA-Z][\w_]*$/;
+
 /**
  * Provider for HTML element completions in createElement calls
  */
@@ -51,15 +57,29 @@ export class HTMLElementCompletionProvider {
     const attributes = getElementAttributes(elementName);
     const filter = partialText.toLowerCase();
 
-    return attributes
+    const items: CompletionItem[] = attributes
       .filter(attr => attr.name.toLowerCase().includes(filter))
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(attr => ({
         label: attr.name,
         kind: CompletionItemKind.Property,
         detail: attr.description ?? `${elementName} attribute`,
-        insertText: attr.name,
+        filterText: attr.name,
+        // Object keys must be identifiers or strings: quote `http-equiv`, `accept-charset`, ...
+        insertText: IDENTIFIER_KEY.test(attr.name) ? attr.name : JSON.stringify(attr.name),
       }));
+
+    // Custom data attributes (`data-*`) are valid on every element but cannot be enumerated.
+    if (DATA_ATTRIBUTE_PREFIX.includes(filter)) {
+      items.push({
+        label: DATA_ATTRIBUTE_PREFIX,
+        kind: CompletionItemKind.Property,
+        detail: 'Custom data attribute (data-*)',
+        filterText: DATA_ATTRIBUTE_PREFIX,
+        insertText: JSON.stringify(DATA_ATTRIBUTE_PREFIX),
+      });
+    }
+    return items.sort((a, b) => a.label.localeCompare(b.label));
   }
 
   /**

@@ -14,7 +14,12 @@
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import type { LabelGroupMetadata } from '../type-system-typir/utils/label-registry.js';
 import type { TestContext } from './test-helpers.js';
-import { createTestContext, minimalProgram, setupCSSRegistry } from './test-helpers.js';
+import {
+  createTestContext,
+  hoverContentsText,
+  minimalProgram,
+  setupCSSRegistry,
+} from './test-helpers.js';
 
 describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
   let ctx: TestContext;
@@ -59,8 +64,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
       expect(hover?.contents).toBeDefined();
 
       // Should show controller description
-      const hoverText =
-        typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value;
+      const hoverText = hoverContentsText(hover!.contents);
       expect(hoverText).toContain('Navigation');
       expect(hoverText).toContain('Controller');
     });
@@ -98,8 +102,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
 
       expect(hover).toBeDefined();
 
-      const hoverText =
-        typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value;
+      const hoverText = hoverContentsText(hover!.contents);
 
       // Should show parameters: translationKey, property (optional)
       expect(hoverText).toContain('translationKey');
@@ -131,8 +134,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
 
       expect(hover).toBeDefined();
 
-      const hoverText =
-        typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value;
+      const hoverText = hoverContentsText(hover!.contents);
 
       // Should show parameter type (object for NavigationController)
       expect(hoverText).toContain('object');
@@ -175,8 +177,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
 
       expect(hover).toBeDefined();
 
-      const hoverText =
-        typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value;
+      const hoverText = hoverContentsText(hover!.contents);
 
       // Should show translation count and language codes
       expect(hoverText).toContain('Translations:** 2');
@@ -214,8 +215,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
 
       expect(hover).toBeDefined();
 
-      const hoverText =
-        typeof hover!.contents === 'string' ? hover!.contents : hover!.contents.value;
+      const hoverText = hoverContentsText(hover!.contents);
 
       // Should show the label ID
       expect(hoverText).toContain('button.submit');
@@ -251,8 +251,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
 
       // Should return undefined or no label-specific hover (label doesn't exist)
       if (hover) {
-        const hoverText =
-          typeof hover.contents === 'string' ? hover.contents : hover.contents.value;
+        const hoverText = hoverContentsText(hover.contents);
 
         // Should NOT show translation metadata
         expect(hoverText).not.toContain('translations');
@@ -285,8 +284,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
 
       // Should return undefined or no label-specific hover
       if (hover) {
-        const hoverText =
-          typeof hover.contents === 'string' ? hover.contents : hover.contents.value;
+        const hoverText = hoverContentsText(hover.contents);
 
         // Should NOT show translation metadata
         expect(hoverText).not.toContain('translations');
@@ -321,8 +319,7 @@ describe('Controller Hover Documentation (Feature 035, User Story 3)', () => {
       // May or may not have hover (depends on implementation)
       // If hover exists, should show parameter description
       if (hover) {
-        const hoverText =
-          typeof hover.contents === 'string' ? hover.contents : hover.contents.value;
+        const hoverText = hoverContentsText(hover.contents);
 
         // Should show something about pages parameter
         expect(hoverText.length).toBeGreaterThan(0);

@@ -9,12 +9,28 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as url from 'node:url';
+import { parseSelectorNotInLayout, STARTERS } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
-import { BundleError, createBundle } from './bundler/index.js';
+import { BundleCompileError, BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
-import { AssetError, CompilationError, compileFile, IOError, ParseError } from './compile-file.js';
+import { parseCheckFormat, parseMaxWarnings, runCheck } from './check/check-command.js';
+import { CHECK_FORMATS } from './check/reporters.js';
+import { eligianMapPath, parseInlineThreshold, validateOptionCombination } from './cli-options.js';
+import {
+  AssetError,
+  CompilationError,
+  type CompileWarning,
+  compileFile,
+  IOError,
+  ParseError,
+} from './compile-file.js';
+import { startDevServer } from './dev/dev-server.js';
+import { FMT_FORMATS, runFmt } from './fmt.js';
+import { runInit } from './init.js';
+import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
+import { parseSmokeFormat, runSmoke, SMOKE_FORMATS } from './smoke/smoke-command.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const packagePath = path.resolve(__dirname, '..', 'package.json');
@@ -54,6 +70,8 @@ interface CLIOptions {
   inlineThreshold: number;
   sourcemap: boolean;
   force: boolean;
+  /** Idea #14: also write `<out>.eligian-map.json` */
+  eligianMap: boolean;
 }
 
 /**
@@ -78,6 +96,18 @@ function printFormattedErrors(
     }
 
     console.error(); // blank line
+  }
+}
+
+/**
+ * Print non-fatal diagnostics (warnings / info / hints) to stderr. They never
+ * change the exit code; stderr keeps `-o -` JSON output on stdout clean.
+ */
+function printWarnings(warnings: ReadonlyArray<CompileWarning>): void {
+  for (const w of warnings) {
+    const label = w.severity === 'warning' ? 'Warning' : w.severity === 'info' ? 'Info' : 'Hint';
+    console.error(chalk.yellow(`${label}: ${w.message}`));
+    console.error(chalk.gray(`  at ${w.file}:${w.line}:${w.column}`));
   }
 }
 
@@ -110,11 +140,43 @@ function printAssetErrors(error: AssetError): void {
 }
 
 /**
+ * Print a compile-step error with its full details (line, snippet, hint) and
+ * exit with the matching code. Shared by the compile and bundle commands so
+ * bundle mode does not flatten errors to a single message line.
+ */
+function reportCompileError(error: unknown): never {
+  if (error instanceof ParseError) {
+    printFormattedErrors('Parse failed:', error.formatted);
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  if (error instanceof AssetError) {
+    printAssetErrors(error);
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  if (error instanceof CompilationError) {
+    printFormattedErrors('Compilation failed:', error.formatted);
+    process.exit(EXIT_COMPILE_ERROR);
+  }
+
+  if (error instanceof IOError) {
+    console.error(chalk.red(`I/O Error: ${error.message}`));
+    process.exit(EXIT_IO_ERROR);
+  }
+
+  // Unknown error
+  console.error(chalk.red('Unexpected error:'), error);
+  process.exit(EXIT_IO_ERROR);
+}
+
+/**
  * CLI wrapper for compileFile - handles console output and process.exit()
  */
 async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<void> {
   if (options.verbose) {
-    console.log(chalk.blue(`Compiling ${inputPath}...`));
+    // Progress goes to stderr: stdout carries the JSON payload when output is '-'
+    console.error(chalk.blue(`Compiling ${inputPath}...`));
   }
 
   try {
@@ -123,9 +185,13 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
       optimize: options.optimize,
     });
 
+    if (!options.quiet) {
+      printWarnings(result.warnings);
+    }
+
     if (options.verbose) {
       if (result.assetCount > 0) {
-        console.log(chalk.green(`✓ Validated ${result.assetCount} asset(s)`));
+        console.error(chalk.green(`✓ Validated ${result.assetCount} asset(s)`));
       }
     }
 
@@ -138,7 +204,17 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
     }
 
     // Determine output path
-    const outputPath = options.output || inputPath.replace(/\.eligian$/, '.json');
+    const outputPath = options.output || deriveDefaultOutputPath(inputPath, '.json');
+
+    // Never overwrite the source file
+    if (isSamePath(inputPath, outputPath)) {
+      console.error(
+        chalk.red(
+          `Output path '${outputPath}' is the same as the input file; refusing to overwrite.`
+        )
+      );
+      process.exit(EXIT_IO_ERROR);
+    }
 
     // Write output file (or stdout if output is -)
     if (outputPath === '-') {
@@ -149,31 +225,17 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
       if (!options.quiet) {
         console.log(chalk.green(`✓ Compiled ${inputPath} → ${outputPath}`));
       }
+
+      if (options.eligianMap) {
+        const mapPath = eligianMapPath(outputPath);
+        await fs.writeFile(mapPath, JSON.stringify(result.map, null, 2), 'utf-8');
+        if (!options.quiet) {
+          console.log(chalk.green(`✓ Eligian map → ${mapPath}`));
+        }
+      }
     }
   } catch (error) {
-    if (error instanceof ParseError) {
-      printFormattedErrors('Parse failed:', error.formatted);
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    if (error instanceof AssetError) {
-      printAssetErrors(error);
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    if (error instanceof CompilationError) {
-      printFormattedErrors('Compilation failed:', error.formatted);
-      process.exit(EXIT_COMPILE_ERROR);
-    }
-
-    if (error instanceof IOError) {
-      console.error(chalk.red(`I/O Error: ${error.message}`));
-      process.exit(EXIT_IO_ERROR);
-    }
-
-    // Unknown error
-    console.error(chalk.red('Unexpected error:'), error);
-    process.exit(EXIT_IO_ERROR);
+    reportCompileError(error);
   }
 }
 
@@ -182,7 +244,7 @@ async function compileFileCLI(inputPath: string, options: CLIOptions): Promise<v
  */
 async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> {
   if (options.verbose) {
-    console.log(chalk.gray(`Bundling ${inputPath}...`));
+    console.error(chalk.gray(`Bundling ${inputPath}...`));
   }
 
   // Use runPromiseExit so we can inspect the Cause directly and distinguish a
@@ -195,6 +257,7 @@ async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> 
       inlineThreshold: options.inlineThreshold,
       sourcemap: options.sourcemap,
       force: options.force,
+      optimize: options.optimize,
     })
   );
 
@@ -210,6 +273,10 @@ async function bundleCLI(inputPath: string, options: CLIOptions): Promise<void> 
   }
 
   const failure = Cause.findErrorOption(exit.cause);
+  if (Option.isSome(failure) && failure.value instanceof BundleCompileError) {
+    reportCompileError(failure.value.compileError);
+  }
+
   if (Option.isSome(failure) && failure.value instanceof BundleError) {
     console.error(chalk.red(`\nBundle failed: ${failure.value.message}`));
     process.exit(EXIT_COMPILE_ERROR);
@@ -229,14 +296,192 @@ export default function main(): void {
   program
     .name('eligian')
     .description('Eligian DSL compiler - compile .eligian files to Eligius JSON')
-    .version(packageVersion);
+    .version(packageVersion)
+    .addHelpText(
+      'after',
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init) for its options."
+    );
 
-  // Compile command (default)
+  // Check command: every diagnostic of every matched file
   program
+    .command('check')
+    .description('report all errors and warnings in .eligian files (no output is written)')
+    .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
+    .option('--format <format>', `output format: ${CHECK_FORMATS.join(', ')}`, 'pretty')
+    .option('--max-warnings <n>', 'fail when there are more than <n> warnings')
+    .option('--warnings-as-errors', 'fail on any warning (same as --max-warnings 0)', false)
+    .option('--no-lint', "skip Eligius' configuration lint of the compiled programs (eligius/lint)")
+    .option(
+      '--selector-not-in-layout <mode>',
+      'warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
+      'off'
+    )
+    .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
+      const format = parseCheckFormat(String(cmdOptions.format));
+      if (!format) {
+        console.error(
+          `Error: --format must be one of ${CHECK_FORMATS.join(', ')} (got "${cmdOptions.format}")`
+        );
+        process.exit(2);
+      }
+      let maxWarnings: number | undefined;
+      if (cmdOptions.maxWarnings !== undefined) {
+        maxWarnings = parseMaxWarnings(String(cmdOptions.maxWarnings));
+        if (maxWarnings === undefined) {
+          console.error(
+            `Error: --max-warnings must be a non-negative whole number (got "${cmdOptions.maxWarnings}")`
+          );
+          process.exit(2);
+        }
+      }
+
+      const selectorNotInLayout = parseSelectorNotInLayout(cmdOptions.selectorNotInLayout);
+      if (!selectorNotInLayout) {
+        console.error(
+          `Error: --selector-not-in-layout must be one of off, ids, all (got "${cmdOptions.selectorNotInLayout}")`
+        );
+        process.exit(2);
+      }
+      const outcome = await runCheck(patterns, {
+        selectorNotInLayout,
+        format,
+        maxWarnings,
+        warningsAsErrors: cmdOptions.warningsAsErrors === true,
+        lint: cmdOptions.lint !== false,
+        cwd: process.cwd(),
+        version: packageVersion,
+      });
+      if (outcome.output) console.log(outcome.output);
+      if (outcome.error) console.error(chalk.red(outcome.error));
+      process.exit(outcome.exitCode);
+    });
+
+  // Dev command (idea #23): the presentation in the browser, rebuilt on change
+  program
+    .command('dev')
+    .description(
+      'serve a presentation in the browser and rebuild it when its files change (keeps the playhead)'
+    )
+    .argument('<input>', 'input .eligian file')
+    .option('-p, --port <port>', 'port (the next free one is used when it is taken)', '5180')
+    .option('--open', 'open it in the default browser', false)
+    .action(async (input: string, cmdOptions: Record<string, unknown>) => {
+      const port = Number(cmdOptions.port);
+      if (!Number.isInteger(port) || port < 0 || port > 65535) {
+        console.error(`Error: --port must be a port number (got "${cmdOptions.port}")`);
+        process.exit(2);
+      }
+      const time = () => new Date().toTimeString().slice(0, 8);
+      const server = await startDevServer(input, {
+        port,
+        open: cmdOptions.open === true,
+        log: line => console.log(chalk.gray(`[${time()}] `) + line),
+      });
+      console.log(
+        `${chalk.green('eligian dev')} ${input} → ${chalk.cyan(server.url)} (Ctrl+C to stop)`
+      );
+      const stop = () => void server.close().then(() => process.exit(0));
+      process.on('SIGINT', stop);
+      process.on('SIGTERM', stop);
+    });
+
+  // Smoke command (idea #21): play every timeline headlessly
+  program
+    .command('smoke')
+    .description(
+      'play every timeline of .eligian programs headlessly (jsdom) and report runtime failures'
+    )
+    .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
+    .option('--format <format>', `output format: ${SMOKE_FORMATS.join(', ')}`, 'pretty')
+    .option('--strict', 'also fail on selectElement selectors that match no element', false)
+    .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
+      const format = parseSmokeFormat(String(cmdOptions.format));
+      if (!format) {
+        console.error(
+          `Error: --format must be one of ${SMOKE_FORMATS.join(', ')} (got "${cmdOptions.format}")`
+        );
+        process.exit(2);
+      }
+      const outcome = await runSmoke(patterns, {
+        format,
+        strict: cmdOptions.strict === true,
+        cwd: process.cwd(),
+      });
+      if (outcome.exitCode === 2) console.error(chalk.red(outcome.output));
+      else console.log(outcome.output);
+      process.exit(outcome.exitCode);
+    });
+
+  // Init command (idea #12): write a starter project
+  program
+    .command('init')
+    .description('create a starter presentation project')
+    .argument('[dir]', 'directory to create it in (created if missing)', '.')
+    .option(
+      '-t, --template <name>',
+      `starter: ${STARTERS.map(s => `${s.name} (${s.description})`).join('; ')}`,
+      'blank'
+    )
+    .option('--title <title>', 'presentation title (default: from the directory name)')
+    .option('--force', 'overwrite existing files', false)
+    .action(async (dir: string, cmdOptions: Record<string, unknown>) => {
+      const outcome = await runInit(dir, {
+        template: String(cmdOptions.template),
+        title: cmdOptions.title as string | undefined,
+        force: cmdOptions.force === true,
+        cwd: process.cwd(),
+      });
+      if (outcome.exitCode === 0) console.log(outcome.output);
+      else console.error(chalk.red(outcome.output));
+      process.exit(outcome.exitCode);
+    });
+
+  // Format command (idea #15): the editor's Format Document rules
+  program
+    .command('fmt')
+    .description(
+      'format .eligian files (whitespace only); --check lists unformatted files with a diff'
+    )
+    .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
+    .option(
+      '--check',
+      'report files that are not formatted (the default); exit code 1 if any',
+      false
+    )
+    .option('--write', 'rewrite the files that are not formatted', false)
+    .option('--format <format>', `output format: ${FMT_FORMATS.join(', ')}`, 'text')
+    .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
+      if (cmdOptions.check === true && cmdOptions.write === true) {
+        console.error('Error: --check and --write cannot be combined');
+        process.exit(2);
+      }
+      if (!(FMT_FORMATS as readonly string[]).includes(String(cmdOptions.format))) {
+        console.error(
+          `Error: --format must be one of ${FMT_FORMATS.join(', ')} (got "${cmdOptions.format}")`
+        );
+        process.exit(2);
+      }
+      const outcome = await runFmt(patterns, {
+        write: cmdOptions.write === true,
+        cwd: process.cwd(),
+        github: cmdOptions.format === 'github',
+      });
+      if (outcome.output) console.log(outcome.output);
+      process.exit(outcome.exitCode);
+    });
+
+  // Compile command (the default: `eligian <input>` is `eligian compile <input>`)
+  program
+    .command('compile', { isDefault: true })
+    .description('compile an .eligian file to Eligius JSON, or bundle it with --bundle')
     .argument('<input>', 'input .eligian file')
     .option('-o, --output <file>', 'output file (default: <input>.json, use "-" for stdout)')
     .option('--check', 'syntax check only (do not generate output)', false)
-    .option('--minify', 'minify JSON output (no whitespace)', false)
+    .option(
+      '--minify',
+      'minify JSON output (no whitespace); with --bundle, minify the bundle JS and CSS',
+      false
+    )
     .option('--no-optimize', 'disable optimization passes')
     .option('-v, --verbose', 'verbose logging', false)
     .option('-q, --quiet', 'suppress success messages', false)
@@ -247,12 +492,17 @@ export default function main(): void {
       String(DEFAULT_INLINE_THRESHOLD)
     )
     .option('--sourcemap', 'generate source maps in bundle', false)
+    .option(
+      '--eligian-map',
+      'also write <output>.eligian-map.json: compiled actions and operations → .eligian source locations',
+      false
+    )
     .option('--force', 'overwrite existing output directory', false)
     .action(async (input: string, cmdOptions: Record<string, unknown>) => {
-      const inlineThreshold = parseInt(cmdOptions.inlineThreshold as string, 10);
-      if (Number.isNaN(inlineThreshold)) {
+      const inlineThreshold = parseInlineThreshold(String(cmdOptions.inlineThreshold));
+      if (inlineThreshold === undefined) {
         console.error(
-          `Error: --inline-threshold must be a number (got "${cmdOptions.inlineThreshold}")`
+          `Error: --inline-threshold must be a non-negative whole number of bytes (got "${cmdOptions.inlineThreshold}")`
         );
         process.exit(1);
       }
@@ -268,7 +518,14 @@ export default function main(): void {
         inlineThreshold,
         sourcemap: cmdOptions.sourcemap as boolean,
         force: cmdOptions.force as boolean,
+        eligianMap: cmdOptions.eligianMap === true,
       };
+
+      const combinationError = validateOptionCombination(options);
+      if (combinationError) {
+        console.error(`Error: ${combinationError}`);
+        process.exit(1);
+      }
 
       if (options.bundle) {
         await bundleCLI(input, options);

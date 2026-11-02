@@ -33,8 +33,7 @@
  * - URI normalization (converts to string key)
  */
 
-import type { URI } from 'langium';
-import type { FileSystemNode, FileSystemProvider } from 'langium/lsp';
+import type { FileSystemNode, FileSystemProvider, URI } from 'langium';
 
 /**
  * In-memory file system for testing

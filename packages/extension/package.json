@@ -6,11 +6,17 @@
   "type": "module",
   "publisher": "rolandzwaga",
   "engines": {
-    "vscode": "^1.107.0"
+    "vscode": "^1.140.0"
   },
   "categories": [
     "Programming Languages"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In an untrusted workspace the preview does not run host modules (extensions imports): their operations do nothing."
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -32,10 +38,96 @@
         "path": "syntaxes/eligian.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "eligian",
+        "path": "./snippets/eligian.json"
+      }
+    ],
+    "configuration": {
+      "title": "Eligian",
+      "properties": {
+        "eligian.validation.selectorNotInLayout": {
+          "type": "string",
+          "enum": [
+            "off",
+            "ids",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Selectors may use any id or class of the imported CSS or the layout HTML",
+            "Warn when a selector's id is defined in the CSS but is not in the imported layout HTML",
+            "Also warn about classes (noisier: classes are often added at runtime)"
+          ],
+          "default": "off",
+          "description": "Warn about selectors that only match elements an operation creates at runtime: ids (and classes) that the CSS defines but the layout HTML does not contain."
+        },
+        "eligian.validation.eligiusLint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check each program with Eligius' own lint (eligius/lint) a moment after you stop typing, and show its findings at their source line (source 'Eligius lint'), for example a value outside an operation's allowed values. Programs with errors are not checked."
+        },
+        "eligian.preview.highlightActiveEvents": {
+          "type": "boolean",
+          "default": true,
+          "description": "While the preview plays, mark the timeline events that are running in the .eligian editor."
+        },
+        "eligian.codeLens.preview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show '▶ Preview' and '▶ Preview from 22s' above timelines, timed events, sequence items and stagger blocks: opens the preview there and plays."
+        },
+        "eligian.codeLens.cssReferences": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show 'N Eligian references' above CSS rules whose classes or ids .eligian files use (in selectors and class names)."
+        },
+        "eligian.inlayHints.parameterNames": {
+          "type": "string",
+          "enum": [
+            "none",
+            "literals",
+            "all"
+          ],
+          "default": "literals",
+          "enumDescriptions": [
+            "No parameter-name hints",
+            "Hints before literal arguments (strings, numbers, booleans, null, arrays, objects)",
+            "Hints before every argument, except a parameter passed under its own name"
+          ],
+          "description": "Show parameter names as inlay hints in operation and action calls, e.g. broadcastEvent(eventArgs: [...], eventName: \"go\")."
+        },
+        "eligian.inlayHints.sequenceTimes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the absolute time range after each sequence item, e.g. ‹5s..15s›."
+        },
+        "eligian.inlayHints.staggerTimes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the time range and item count after a stagger block, e.g. ‹22s..23.9s ×3›."
+        },
+        "eligian.inlayHints.computedTimes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the absolute time range after `at` ranges that are relative (+2s), computed (1s+2s) or use `for`."
+        },
+        "eligian.inlayHints.timelineDuration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the inferred duration on a timeline header that has no explicit `duration`."
+        }
+      }
+    },
     "commands": [
       {
         "command": "eligian.compile",
         "title": "Eligian: Compile Current File",
+        "category": "Eligian"
+      },
+      {
+        "command": "eligian.newPresentation",
+        "title": "Eligian: New Presentation…",
         "category": "Eligian"
       },
       {
@@ -45,10 +137,25 @@
         "icon": "$(preview)"
       },
       {
+        "command": "eligian.previewAt",
+        "title": "Eligian: Preview From Time",
+        "category": "Eligian"
+      },
+      {
         "command": "eligian.openLabelEditor",
         "title": "Eligian: Edit Locales",
         "category": "Eligian",
         "icon": "$(edit)"
+      },
+      {
+        "command": "eligian.showTimelineView",
+        "title": "Eligian: Show Timeline View",
+        "category": "Eligian"
+      },
+      {
+        "command": "eligian.findEligianReferences",
+        "title": "Eligian: Find Eligian References",
+        "category": "Eligian"
       }
     ],
     "menus": {
@@ -67,9 +174,18 @@
           "when": "resourceLangId == eligian",
           "command": "eligian.openLabelEditor",
           "group": "eligian"
+        },
+        {
+          "when": "resourceLangId == css || resourceLangId == html",
+          "command": "eligian.findEligianReferences",
+          "group": "navigation"
         }
       ],
       "commandPalette": [
+        {
+          "command": "eligian.previewAt",
+          "when": "false"
+        },
         {
           "command": "eligian.compile",
           "when": "editorLangId == eligian"
@@ -81,6 +197,10 @@
         {
           "command": "eligian.openLabelEditor",
           "when": "editorLangId == eligian"
+        },
+        {
+          "command": "eligian.findEligianReferences",
+          "when": "editorLangId == css || editorLangId == html"
         }
       ]
     },
@@ -103,7 +223,27 @@
         ],
         "priority": "option"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "eligian",
+          "title": "Eligian",
+          "icon": "resources/timeline.svg"
+        }
+      ]
+    },
+    "views": {
+      "eligian": [
+        {
+          "type": "webview",
+          "id": "eligian.timelineView",
+          "name": "Timeline",
+          "icon": "resources/timeline.svg",
+          "contextualTitle": "Eligian Timeline"
+        }
+      ]
+    }
   },
   "activationEvents": [
     "onLanguage:eligian"
@@ -117,6 +257,7 @@
     "build:clean": "pnpm run clean && pnpm run build",
     "watch": "pnpm run build:prepare && concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node esbuild.mjs --watch\"",
     "test": "vitest run",
+    "test:coverage:ci": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
   },
@@ -125,7 +266,6 @@
     "@eligian/shared-utils": "workspace:*",
     "jquery": "4.0.0",
     "lottie-web": "5.13.0",
-    "video.js": "10.2.0",
     "vscode-languageclient": "9.0.1",
     "vscode-languageserver": "9.0.1"
   },
@@ -134,6 +274,7 @@
     "@types/vscode": "1.140.0",
     "@vitest/ui": "5.0.5",
     "concurrently": "10.0.6",
+    "esbuild-wasm": "0.28.2",
     "jsdom": "30.1.3"
   },
   "vsce": {

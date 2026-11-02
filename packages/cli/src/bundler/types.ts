@@ -1,3 +1,4 @@
+import type { HostModule } from '@eligian/language';
 /**
  * Standalone Bundle Compilation Types
  *
@@ -37,10 +38,18 @@ export interface BundleOptions {
   sourcemap?: boolean;
 
   /**
-   * Force overwrite existing output directory
+   * Force overwrite existing output directory. The files the bundler owns
+   * (index.html, bundle.js, bundle.js.map, assets/) are removed first so stale
+   * files from an earlier bundle do not linger; other content is left alone.
    * @default false
    */
   force?: boolean;
+
+  /**
+   * Run the compiler optimization passes
+   * @default true
+   */
+  optimize?: boolean;
 }
 
 /**
@@ -54,6 +63,7 @@ export const defaultBundleOptions: Required<BundleOptions> = {
   inlineThreshold: DEFAULT_INLINE_THRESHOLD, // 50KB
   sourcemap: false,
   force: false,
+  optimize: true,
 };
 
 /**
@@ -502,15 +512,6 @@ export interface HTMLGeneratorConfig {
 }
 
 /**
- * Timeline provider types that may require additional bundling
- */
-export type TimelineProviderType =
-  | 'video' // Requires video.js
-  | 'animationFrame' // Built-in
-  | 'audio' // Built-in
-  | 'lottie'; // Requires lottie-web
-
-/**
  * Configuration for runtime bundler
  */
 export interface RuntimeBundleConfig {
@@ -525,9 +526,10 @@ export interface RuntimeBundleConfig {
   usedOperations: string[];
 
   /**
-   * Timeline provider types used
+   * Idea #24: the program's extensions module (absolute path) and the names it
+   * declares; imported into the bundle and registered with the engine
    */
-  usedProviders: TimelineProviderType[];
+  host?: HostModule;
 
   /**
    * Whether to minify output

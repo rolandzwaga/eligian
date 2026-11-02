@@ -5,7 +5,10 @@
  * and parameter type information.
  */
 
-import type { ActionDefinition, Parameter } from '../generated/ast.js';
+import type { ActionDefinition, EventActionDefinition, Parameter } from '../generated/ast.js';
+
+/** Anything a JSDoc template can be generated for (regular, endable and event actions). */
+export type DocumentableAction = ActionDefinition | EventActionDefinition;
 
 /**
  * Generate a JSDoc template for an action definition
@@ -22,7 +25,7 @@ import type { ActionDefinition, Parameter } from '../generated/ast.js';
  *  *&#47;
  * ```
  */
-export function generateJSDocTemplate(action: ActionDefinition): string {
+export function generateJSDocTemplate(action: DocumentableAction): string {
   const lines: string[] = [];
 
   // Opening
@@ -54,7 +57,7 @@ export function generateJSDocTemplate(action: ActionDefinition): string {
  * Used when the delimiters are already present and we just need to
  * fill in the content between them.
  */
-export function generateJSDocContent(action: ActionDefinition): string {
+export function generateJSDocContent(action: DocumentableAction): string {
   const lines: string[] = [];
 
   // Blank description line with placeholder (FR-011)

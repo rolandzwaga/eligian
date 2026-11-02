@@ -6,8 +6,25 @@
  */
 import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
-import { type Expression, isProgram } from '../../generated/ast.js';
+import { type Expression, isProgram, isVariableDeclaration } from '../../generated/ast.js';
+import {
+  isTimeConstant,
+  TIME_VALUE_PLACEMENT_MESSAGE,
+  timeConstantMisuseMessage,
+} from '../../utils/time-constants.js';
+import {
+  evaluateExpression,
+  resolveConstant,
+  runtimeOperatorMessage,
+} from '../expression-evaluator.js';
+import {
+  getConcatOperands,
+  RUNTIME_CONCAT_CONTEXT_MESSAGE,
+  RUNTIME_CONCAT_OPERAND_MESSAGE,
+} from '../runtime-concat.js';
+import type { ConstantMap } from '../types/constant-folding.js';
 import type { JsonValue } from '../types/eligius-ir.js';
+import { registerRuntimeConcat } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
 
@@ -84,16 +101,24 @@ export const transformExpression = (
 
         const varName = expr.variable.ref.name;
 
-        // Check action-scoped constants first (more specific scope)
-        if (scope.scopedConstants.has(varName)) {
-          const constant = scope.scopedConstants.get(varName)!;
-          return constant.value; // Inline action-scoped constant
+        // Inline a constant only if it is the declaration this reference links
+        // to: action-scoped constants first (more specific scope), then global
+        // ones. A non-foldable local that shadows a global const of the same
+        // name is not in either map under its own declaration, so it falls
+        // through to a runtime variable instead of inlining the global's value.
+        const constant = resolveConstant(expr, scope.scopedConstants, scope.programConstants);
+        if (constant) {
+          return constant.value;
         }
 
-        // Check global constants
-        if (scope.programConstants.has(varName)) {
-          const constant = scope.programConstants.get(varName)!;
-          return constant.value; // Inline global constant
+        // Idea #10: a time constant has no runtime value
+        if (isVariableDeclaration(expr.variable.ref) && isTimeConstant(expr.variable.ref)) {
+          return yield* Effect.fail({
+            _tag: 'TransformError' as const,
+            kind: 'InvalidExpression' as const,
+            message: timeConstantMisuseMessage(varName),
+            location: getSourceLocation(expr),
+          });
         }
 
         // Program-level variables are stored in global data (see the setData
@@ -165,57 +190,51 @@ export const transformExpression = (
       }
 
       case 'BinaryExpression': {
-        // Binary expression: 10 + 5
-        // Evaluate at compile time if both sides are literals
-        const left = yield* transformExpression(expr.left, scope);
-        const right = yield* transformExpression(expr.right, scope);
-
-        // If both are numbers, evaluate
-        if (typeof left === 'number' && typeof right === 'number') {
-          switch (expr.op) {
-            case '+':
-              return left + right;
-            case '-':
-              return left - right;
-            case '*':
-              return left * right;
-            case '/':
-              return left / right;
-            case '%':
-              return left % right;
-            case '**':
-              return left ** right;
-            case '>':
-              return left > right;
-            case '<':
-              return left < right;
-            case '>=':
-              return left >= right;
-            case '<=':
-              return left <= right;
-            case '==':
-              return left === right;
-            case '!=':
-              return left !== right;
-          }
+        // Runtime string concatenation: "#" + slideId (runtime-concat.ts).
+        // Constant concatenations ("a" + "b", "v" + @VERSION) still fold below.
+        const concatOperands = getConcatOperands(expr);
+        if (concatOperands && !evaluateExpression(expr, constantsInScope(scope)).canEvaluate) {
+          return yield* transformRuntimeConcat(expr, concatOperands, scope);
         }
-
-        // Otherwise, serialize as expression string
-        return `(${JSON.stringify(left)} ${expr.op} ${JSON.stringify(right)})`;
+        // Binary expression: 10 + 5
+        // Transform the operands first so their own errors (unresolved
+        // references, runtime negation, ...) surface at the innermost node.
+        yield* transformExpression(expr.left, scope);
+        yield* transformExpression(expr.right, scope);
+        // Only compile-time constants can be emitted: Eligius resolves a
+        // property chain only as a whole string, so an expression over a
+        // runtime value has no JSON form (if conditions are serialized by
+        // condition-transformer.ts instead).
+        return yield* foldConstantOperation(expr, expr.op, false, scope);
       }
 
       case 'UnaryExpression': {
         // Unary expression: !flag, -value
-        const operand = yield* transformExpression(expr.operand, scope);
+        yield* transformExpression(expr.operand, scope);
 
         switch (expr.op) {
-          case '!':
-            return !operand;
-          case '-':
-            if (typeof operand === 'number') {
-              return -operand;
+          case '!': {
+            // Fold only compile-time constants. The transformed operand cannot
+            // tell us that: a runtime reference becomes a non-empty
+            // property-chain string ('$operationdata.flag'), and JS `!` on it is
+            // always `false`. Ask the constant evaluator instead, which resolves
+            // literals and constant references by their actual declaration.
+            const folded = evaluateExpression(expr.operand, constantsInScope(scope));
+            if (folded.canEvaluate) {
+              return !folded.value;
             }
-            return `(-${JSON.stringify(operand)})`;
+            // Eligius has no runtime negation outside conditions, so emitting
+            // anything here would be silently wrong.
+            return yield* Effect.fail({
+              _tag: 'TransformError' as const,
+              kind: 'InvalidExpression' as const,
+              message:
+                'Negation of runtime values (parameters, variables, system properties) is only supported inside if/when conditions',
+              location: getSourceLocation(expr),
+            });
+          }
+          case '-':
+            return yield* foldConstantOperation(expr, expr.op, true, scope);
           default:
             return yield* Effect.fail({
               _tag: 'TransformError' as const,
@@ -226,6 +245,15 @@ export const transformExpression = (
         }
       }
 
+      case 'TimeValue':
+        // Idea #10: `7s` only means something as a time constant's value
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: TIME_VALUE_PLACEMENT_MESSAGE,
+          location: getSourceLocation(expr),
+        });
+
       default:
         return yield* Effect.fail({
           _tag: 'TransformError' as const,
@@ -235,3 +263,91 @@ export const transformExpression = (
         });
     }
   });
+
+/**
+ * Transform a runtime string concatenation into a placeholder for its result.
+ *
+ * Each operand is transformed on its own, so a non-string operation inside the
+ * chain (`"a" + (x * 2)`) reports its own error. Constant operands become
+ * strings at compile time with JavaScript's `+` semantics; runtime operands stay
+ * property chains for `concatenateStrings` to join (a runtime null/undefined
+ * becomes an empty string there, as in Array.join).
+ */
+const transformRuntimeConcat = (
+  expr: Expression,
+  operands: readonly Expression[],
+  scope: ScopeContext
+): Effect.Effect<JsonValue, TransformError> =>
+  Effect.gen(function* () {
+    const parts: JsonValue[] = [];
+    let previousIsConstant = false;
+    for (const operand of operands) {
+      const value = yield* transformExpression(operand, scope);
+      if (value !== null && typeof value === 'object') {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidExpression' as const,
+          message: RUNTIME_CONCAT_OPERAND_MESSAGE,
+          location: getSourceLocation(operand),
+        });
+      }
+      const constant = evaluateExpression(operand, constantsInScope(scope));
+      const part = constant.canEvaluate ? String(value) : value;
+      // Merge adjacent constant parts: ["#", "item-"] → ["#item-"]
+      if (constant.canEvaluate && previousIsConstant) {
+        parts[parts.length - 1] = `${parts[parts.length - 1]}${part}`;
+      } else {
+        parts.push(part);
+      }
+      previousIsConstant = constant.canEvaluate;
+    }
+
+    if (!scope.runtimeConcats) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidExpression' as const,
+        message: RUNTIME_CONCAT_CONTEXT_MESSAGE,
+        location: getSourceLocation(expr),
+      });
+    }
+    return registerRuntimeConcat(scope.runtimeConcats, parts);
+  });
+
+/** Program and action-scoped constants visible to an expression (scoped ones win). */
+const constantsInScope = (scope: ScopeContext): ConstantMap =>
+  new Map([...scope.programConstants.entries(), ...scope.scopedConstants.entries()]);
+
+/**
+ * Fold an operator expression whose operands have already been transformed.
+ *
+ * The transformed operands cannot be used for this: a runtime reference
+ * becomes a property-chain string ('$operationdata.x'), indistinguishable from
+ * a string literal. The constant evaluator resolves literals and constant
+ * references by their declaration, so it tells constants and runtime values
+ * apart:
+ * - constant: emit the folded value
+ * - invalid constant (division/modulo by zero, wrong operand type, non-finite
+ *   result): compile error, there is no value to emit
+ * - runtime operand: compile error. Eligius resolves property chains only as
+ *   whole strings, so `x + 10` cannot be emitted (it used to become the inert
+ *   string '("$operationdata.x" + 10)').
+ */
+const foldConstantOperation = (
+  expr: Expression,
+  op: string,
+  unary: boolean,
+  scope: ScopeContext
+): Effect.Effect<JsonValue, TransformError> => {
+  const folded = evaluateExpression(expr, constantsInScope(scope));
+  if (folded.canEvaluate) {
+    return Effect.succeed(folded.value ?? null);
+  }
+  return Effect.fail({
+    _tag: 'TransformError' as const,
+    kind: 'InvalidExpression' as const,
+    message: folded.error?.invalid
+      ? (folded.error.reason ?? 'Invalid constant expression')
+      : runtimeOperatorMessage(op, unary),
+    location: getSourceLocation(expr),
+  });
+};

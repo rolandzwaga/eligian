@@ -1,15 +1,20 @@
-import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
   BLOCK_LABELS_REQUEST,
   type BlockLabelsParams,
   CSS_ERROR_NOTIFICATION,
   CSS_IMPORTS_DISCOVERED_NOTIFICATION,
+  CSS_REFERENCE_LENSES_REQUEST,
+  CSS_REFERENCES_REQUEST,
   CSS_UPDATED_NOTIFICATION,
   type CSSErrorParams,
   type CSSUpdatedParams,
+  type CssReferencesParams,
   createEligianServices,
   createEmptyCSSMetadata,
+  cssReferenceLenses,
+  cssReferences,
+  ELIGIUS_LINT_NOTIFICATION,
   extractBlockLabels,
   extractTranslationKeys,
   findActionBelow,
@@ -22,6 +27,9 @@ import {
   type LabelsUpdatedParams,
   type Program,
   parseCSS,
+  TIMELINE_GANTT_REQUEST,
+  type TimelineGanttParams,
+  timelineGantt,
   validateLocalesJSON,
 } from '@eligian/language';
 import { DocumentState } from 'langium';
@@ -29,6 +37,9 @@ import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { URI } from 'vscode-uri';
+import { createAssetUpdateHandlers } from './asset-update-handlers.js';
+import { registerEligiusLint } from './eligius-lint.js';
+import { ImportParseCache } from './import-cache.js';
 import type { ImportProcessorConfig } from './import-processor.js';
 import { processImports } from './import-processor.js';
 
@@ -56,124 +67,51 @@ function triggerRevalidation(documentUris: string[]): void {
   }
 }
 
-// Register CSS notification handlers
-connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) => {
-  const { cssFileUri, documentUris } = params;
-
-  try {
-    // Read CSS file content from file system
-    const cssFilePath = URI.parse(cssFileUri).fsPath;
-    const cssContent = readFileSync(cssFilePath, 'utf-8');
-
-    // Parse CSS to extract classes, IDs, and metadata
-    const parseResult = parseCSS(cssContent, cssFilePath);
-
-    // Update the CSS registry with parsed metadata
-    const cssRegistry = Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile(cssFileUri, parseResult);
-
-    // Trigger re-validation of importing documents
-    triggerRevalidation(documentUris);
-  } catch (error) {
-    // File might be deleted or have errors - clear CSS and trigger re-validation
-    const cssRegistry = Eligian.css.CSSRegistry;
-    cssRegistry.updateCSSFile(
-      cssFileUri,
-      createEmptyCSSMetadata([
-        {
-          message: error instanceof Error ? error.message : String(error),
-          filePath: cssFileUri,
-          line: 0,
-          column: 0,
-        },
-      ])
-    );
-
-    // Trigger re-validation to show "file not found" or CSS errors
-    triggerRevalidation(documentUris);
-  }
-});
-
-connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) => {
-  const { cssFileUri, errors } = params;
-
-  // Store error metadata in CSS registry with empty classes/IDs
+/**
+ * The CSS files to watch for a document: its imported files plus every stylesheet they
+ * `@import` (from the registry), so an edit to an imported sheet re-validates the document.
+ */
+function withImportedStylesheets(cssFileUris: string[]): string[] {
   const cssRegistry = Eligian.css.CSSRegistry;
-  cssRegistry.updateCSSFile(cssFileUri, createEmptyCSSMetadata(errors));
-});
-
-// Register labels notification handlers
-connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedParams) => {
-  const { labelsFileUri, documentUris } = params;
-
-  try {
-    // Read labels file content from file system
-    const labelsFilePath = URI.parse(labelsFileUri).fsPath;
-    const labelsContent = readFileSync(labelsFilePath, 'utf-8');
-
-    // Validate labels JSON schema
-    const validationError = validateLocalesJSON(labelsContent, labelsFilePath);
-
-    if (!validationError) {
-      // Parse labels JSON to extract label metadata
-      const labels = JSON.parse(labelsContent);
-      const metadata = extractTranslationKeys(labels);
-
-      // Update the labels registry with parsed metadata
-      const labelRegistry = Eligian.labels.LabelRegistry;
-      labelRegistry.updateLabelsFile(labelsFileUri, metadata);
-
-      // Trigger re-validation of importing documents
-      triggerRevalidation(documentUris);
+  const all = new Set(cssFileUris);
+  for (const uri of cssFileUris) {
+    for (const imported of cssRegistry.getMetadata(uri)?.importedFileUris ?? []) {
+      all.add(imported);
     }
-    // If validation error, we don't update the registry
-    // The validator will handle showing the error to the user
-  } catch (_error) {
-    // File might be deleted - clear labels and trigger re-validation
-    const labelRegistry = Eligian.labels.LabelRegistry;
-    labelRegistry.updateLabelsFile(labelsFileUri, []); // Clear labels
-
-    // Trigger re-validation to show "file not found" errors
-    triggerRevalidation(documentUris);
   }
+  return [...all];
+}
+
+// Parsed-phase parse caches: the imports of a document are re-read on every rebuild, so
+// unchanged files (same mtime and size) reuse their parsed metadata. The hot-reload handlers
+// below invalidate the entries they refresh.
+const cssParseCache = new ImportParseCache<ReturnType<typeof parseCSS>>();
+const labelsParseCache = new ImportParseCache<ReturnType<typeof extractTranslationKeys>>();
+const htmlParseCache = new ImportParseCache<{
+  content: string;
+  errors?: Array<{ message: string; line?: number; column?: number }>;
+}>();
+
+const assetHandlers = createAssetUpdateHandlers({
+  cssRegistry: Eligian.css.CSSRegistry,
+  labelRegistry: Eligian.labels.LabelRegistry,
+  htmlRegistry: Eligian.html.HTMLRegistry,
+  triggerRevalidation,
+  caches: { css: cssParseCache, labels: labelsParseCache, html: htmlParseCache },
 });
 
-// Register HTML notification handlers
-connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams) => {
-  const { htmlFileUri, documentUris } = params;
-
-  try {
-    // Read HTML file content from file system
-    const htmlFilePath = URI.parse(htmlFileUri).fsPath;
-    const htmlContent = readFileSync(htmlFilePath, 'utf-8');
-
-    // Update the HTML registry with content (no parsing needed for HTML)
-    const htmlRegistry = Eligian.html.HTMLRegistry;
-    htmlRegistry.updateHTMLFile(htmlFileUri, {
-      content: htmlContent,
-      errors: [],
-    });
-
-    // Trigger re-validation of importing documents
-    triggerRevalidation(documentUris);
-  } catch (error) {
-    // File might be deleted - clear HTML and trigger re-validation
-    const htmlRegistry = Eligian.html.HTMLRegistry;
-    htmlRegistry.updateHTMLFile(htmlFileUri, {
-      content: '',
-      errors: [
-        {
-          message: error instanceof Error ? error.message : String(error),
-          line: 0,
-          column: 0,
-        },
-      ],
-    });
-
-    // Trigger re-validation to show "file not found" errors
-    triggerRevalidation(documentUris);
-  }
-});
+connection.onNotification(CSS_UPDATED_NOTIFICATION, (params: CSSUpdatedParams) =>
+  assetHandlers.onCssUpdated(params)
+);
+connection.onNotification(CSS_ERROR_NOTIFICATION, (params: CSSErrorParams) =>
+  assetHandlers.onCssError(params)
+);
+connection.onNotification(LABELS_UPDATED_NOTIFICATION, (params: LabelsUpdatedParams) =>
+  assetHandlers.onLabelsUpdated(params)
+);
+connection.onNotification(HTML_UPDATED_NOTIFICATION, (params: HTMLUpdatedParams) =>
+  assetHandlers.onHtmlUpdated(params)
+);
 
 // CRITICAL: Import files MUST be loaded BEFORE validation phase
 // This handler runs during DocumentState.Parsed phase (after parsing, BEFORE validation)
@@ -196,28 +134,31 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
       // Process CSS imports (one-to-many: document can import multiple CSS files)
       const cssConfig: ImportProcessorConfig<ReturnType<typeof parseCSS>> = {
         importType: 'styles',
+        includeNamedCssImports: true,
         parseFile: (content, filePath) => parseCSS(content, filePath),
         createEmptyMetadata: () => createEmptyCSSMetadata(),
         registry: {
           updateFile: (uri, metadata) => cssRegistry.updateCSSFile(uri, metadata),
           registerImports: (docUri, fileUris) =>
             cssRegistry.registerImports(docUri, fileUris as string[]),
+          getImports: docUri => Array.from(cssRegistry.getDocumentImports(docUri)),
         },
         notification: {
           type: CSS_IMPORTS_DISCOVERED_NOTIFICATION,
           createParams: (docUri, fileUris) => ({
             documentUri: docUri,
-            cssFileUris: fileUris as string[],
+            cssFileUris: withImportedStylesheets(fileUris as string[]),
           }),
         },
         cardinality: 'many',
+        cache: cssParseCache,
       };
 
       processImports(documentUri, root, docDir, connection, cssConfig);
 
       // Process labels imports (one-to-one: document imports single labels file)
       const labelsConfig: ImportProcessorConfig<ReturnType<typeof extractTranslationKeys>> = {
-        importType: 'labels',
+        importType: 'locales',
         parseFile: (content, filePath) => {
           const validationError = validateLocalesJSON(content, filePath);
           if (validationError) {
@@ -232,6 +173,11 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           registerImports: (docUri, fileUri) =>
             labelRegistry.registerImports(docUri, fileUri as string),
           hasImport: docUri => labelRegistry.hasImport(docUri),
+          getImports: docUri => {
+            const file = labelRegistry.getLabelsFileUri(docUri);
+            return file ? [file] : [];
+          },
+          clearImports: docUri => labelRegistry.clearDocument(docUri),
         },
         notification: {
           type: LABELS_IMPORTS_DISCOVERED_NOTIFICATION,
@@ -241,6 +187,7 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           }),
         },
         cardinality: 'one',
+        cache: labelsParseCache,
       };
 
       processImports(documentUri, root, docDir, connection, labelsConfig);
@@ -264,6 +211,11 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           registerImports: (docUri, fileUri) =>
             htmlRegistry.registerImports(docUri, fileUri as string),
           hasImport: docUri => htmlRegistry.hasImport(docUri),
+          getImports: docUri => {
+            const file = htmlRegistry.getHTMLFileURI(docUri);
+            return file ? [file] : [];
+          },
+          clearImports: docUri => htmlRegistry.clearDocument(docUri),
         },
         notification: {
           type: HTML_IMPORTS_DISCOVERED_NOTIFICATION,
@@ -273,10 +225,18 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Parsed, async docume
           }),
         },
         cardinality: 'one',
+        cache: htmlParseCache,
       };
 
       processImports(documentUri, root, docDir, connection, htmlConfig);
     }
+  }
+});
+
+// Drop the HTML registry state of documents that were deleted from the workspace
+shared.workspace.DocumentBuilder.onUpdate((_changed, deleted) => {
+  for (const uri of deleted) {
+    Eligian.html.HTMLRegistry.clearDocument(uri.toString());
   }
 });
 
@@ -315,6 +275,28 @@ connection.onRequest(BLOCK_LABELS_REQUEST, (params: BlockLabelsParams) => {
     return [];
   }
   return extractBlockLabels(document.parseResult.value as Program);
+});
+
+// Timeline view (idea #20 phase 2): the timelines and their bars, from the built AST
+connection.onRequest(TIMELINE_GANTT_REQUEST, (params: TimelineGanttParams) => {
+  const document = shared.workspace.LangiumDocuments.getDocument(
+    URI.parse(params.textDocument.uri)
+  );
+  const root = document?.parseResult.value;
+  return root && root.$type === 'Program' ? timelineGantt(root as Program) : [];
+});
+
+// Idea #22: from a CSS / HTML file to the .eligian strings that use its classes and ids
+connection.onRequest(CSS_REFERENCES_REQUEST, (params: CssReferencesParams) =>
+  cssReferences(Eligian, params)
+);
+connection.onRequest(CSS_REFERENCE_LENSES_REQUEST, (params: { uri: string }) =>
+  cssReferenceLenses(Eligian, params.uri)
+);
+
+// Eligius' configuration lint of every program, a while after its validation
+registerEligiusLint(Eligian, params => {
+  connection.sendNotification(ELIGIUS_LINT_NOTIFICATION, params).catch(() => {});
 });
 
 // Start the language server with the shared services

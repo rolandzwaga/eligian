@@ -12,7 +12,9 @@ import {
   detectCompletionContext as detectCSSCompletionContext,
 } from '../css/context-detection.js';
 import type { CSSCompletionProvider } from '../css/css-completion.js';
+import { selectorNames } from '../css/selector-sources.js';
 import type { EligianServices } from '../eligian-module.js';
+import { isProgram } from '../generated/ast.js';
 import { isOffsetInStringLiteral } from '../utils/string-utils.js';
 import type { CompletionBranchResult } from './handler-result.js';
 
@@ -39,7 +41,12 @@ export function handleCssCompletion(
   const documentUri = context.document.uri.toString();
 
   const classes = cssRegistry.getClassesForDocument(documentUri);
-  const ids = cssRegistry.getIDsForDocument(documentUri);
+  // Idea #18: selectors also complete the classes and ids of the layout HTML
+  const root = context.document.parseResult.value;
+  const selector = isProgram(root)
+    ? selectorNames(services, root, documentUri)
+    : { classes, ids: cssRegistry.getIDsForDocument(documentUri) };
+  const ids = selector.ids;
 
   if (cssContext === CompletionContextType.ClassName) {
     // Check if cursor is inside quotes or between parens
@@ -55,11 +62,23 @@ export function handleCssCompletion(
     // Calling super seems to clear/filter our completions
     return { status: 'done' };
   } else if (cssContext === CompletionContextType.SelectorClass) {
-    cssCompletionProvider.provideSelectorCompletions(context, classes, ids, 'class', acceptor);
+    cssCompletionProvider.provideSelectorCompletions(
+      context,
+      selector.classes,
+      ids,
+      'class',
+      acceptor
+    );
     // Caller finalizes via super.completionFor with a no-op acceptor.
     return { status: 'finalize-noop' };
   } else if (cssContext === CompletionContextType.SelectorID) {
-    cssCompletionProvider.provideSelectorCompletions(context, classes, ids, 'id', acceptor);
+    cssCompletionProvider.provideSelectorCompletions(
+      context,
+      selector.classes,
+      ids,
+      'id',
+      acceptor
+    );
     // Caller finalizes via super.completionFor with a no-op acceptor.
     return { status: 'finalize-noop' };
   }

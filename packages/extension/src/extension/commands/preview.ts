@@ -44,3 +44,28 @@ export function registerPreviewCommand(context: vscode.ExtensionContext): vscode
     manager.showPreview(editor.document.uri);
   });
 }
+
+/**
+ * Register `eligian.previewAt(documentUri, timelineUri, seconds)`, run by the
+ * "▶ Preview from 22s" CodeLenses of the language server (audit idea #5):
+ * opens or reveals the document's preview and plays the timeline from there.
+ */
+export function registerPreviewAtCommand(context: vscode.ExtensionContext): vscode.Disposable {
+  return vscode.commands.registerCommand(
+    'eligian.previewAt',
+    (documentUri: unknown, timelineUri: unknown, seconds: unknown) => {
+      if (typeof documentUri !== 'string' || typeof timelineUri !== 'string') {
+        vscode.window.showErrorMessage(
+          'Eligian: Preview From Time needs a document and a timeline.'
+        );
+        return;
+      }
+      const position = typeof seconds === 'number' && Number.isFinite(seconds) ? seconds : 0;
+      PreviewManager.getInstance(context).previewAt(
+        vscode.Uri.parse(documentUri),
+        timelineUri,
+        position
+      );
+    }
+  );
+}

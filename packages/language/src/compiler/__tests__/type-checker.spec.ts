@@ -1,5 +1,9 @@
 import { Effect } from 'effect';
-import type { IOperationConfiguration, ITimelineActionConfiguration } from 'eligius';
+import type {
+  IOperationConfiguration,
+  ITimelineActionConfiguration,
+  TOperationData,
+} from 'eligius';
 import { describe, expect, test } from 'vitest';
 import { typeCheck } from '../type-checker.js';
 import type { EligiusIR } from '../types/eligius-ir.js';
@@ -18,8 +22,8 @@ describe('Type Checker', () => {
         containerSelector: 'body',
         language: 'en-US',
         layoutTemplate: 'default',
+        cssFiles: [],
         availableLanguages: [{ id: crypto.randomUUID(), languageCode: 'en-US', label: 'English' }],
-        labels: [],
         initActions: [],
         actions: [],
         eventActions: [],
@@ -73,7 +77,10 @@ describe('Type Checker', () => {
   /**
    * Helper: Create operation
    */
-  function createOperation(systemName: string, operationData: any = {}): IOperationConfiguration {
+  function createOperation(
+    systemName: string,
+    operationData: any = {}
+  ): IOperationConfiguration<TOperationData> {
     return {
       id: crypto.randomUUID(),
       systemName,

@@ -8,10 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { OPERATION_REGISTRY } from '../index.js';
 import {
   type ParameterCountError,
-  trackOutputs,
   type UnknownOperationError,
   validateControlFlowPairing,
-  validateDependencies,
   validateOperation,
   validateOperationExists,
   validateParameterCount,
@@ -238,117 +236,6 @@ describe('Operation Validator', () => {
         // Should still work without argumentCount parameter
         const result = validateOperation('addClass');
         expect(result.success).toBe(true);
-      });
-    });
-  });
-
-  // ============================================================================
-  // T216: Dependency Validation Tests
-  // ============================================================================
-
-  describe('T216: Dependency Validation', () => {
-    describe('validateDependencies', () => {
-      it('should return no errors when all dependencies are available', () => {
-        const signature = OPERATION_REGISTRY.addClass;
-        const available = new Set(['selectedElement']);
-
-        const errors = validateDependencies(signature, available);
-        expect(errors).toHaveLength(0);
-      });
-
-      it('should return error when dependency is missing', () => {
-        const signature = OPERATION_REGISTRY.addClass;
-        const available = new Set<string>(); // Empty - no outputs yet
-
-        const errors = validateDependencies(signature, available);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].code).toBe('MISSING_DEPENDENCY');
-        expect(errors[0].dependencyName).toBe('selectedElement');
-        expect(errors[0].message).toContain('addClass');
-        expect(errors[0].message).toContain('selectedElement');
-      });
-
-      it('should provide helpful hint about which operations provide the dependency', () => {
-        const signature = OPERATION_REGISTRY.addClass;
-        const available = new Set<string>();
-
-        const errors = validateDependencies(signature, available);
-        expect(errors[0].hint).toBeDefined();
-        expect(errors[0].hint).toContain('selectElement');
-      });
-
-      it('should handle operations with no dependencies', () => {
-        const signature = OPERATION_REGISTRY.selectElement;
-        const available = new Set<string>();
-
-        const errors = validateDependencies(signature, available);
-        expect(errors).toHaveLength(0);
-      });
-
-      it('should handle operations with multiple dependencies', () => {
-        const signature = OPERATION_REGISTRY.animate;
-        const available = new Set<string>(); // No dependencies available
-
-        const errors = validateDependencies(signature, available);
-        // animate requires selectedElement
-        expect(errors.length).toBeGreaterThan(0);
-        expect(errors[0].dependencyName).toBe('selectedElement');
-      });
-    });
-
-    describe('trackOutputs', () => {
-      it('should add outputs to available set', () => {
-        const signature = OPERATION_REGISTRY.selectElement;
-        const available = new Set<string>();
-
-        trackOutputs(signature, available);
-
-        expect(available.has('selectedElement')).toBe(true);
-      });
-
-      it('should handle operations with no outputs', () => {
-        const signature = OPERATION_REGISTRY.addClass;
-        const available = new Set<string>();
-
-        trackOutputs(signature, available);
-
-        // addClass has no outputs
-        expect(available.size).toBe(0);
-      });
-
-      it('should accumulate outputs from multiple operations', () => {
-        const available = new Set<string>();
-
-        // selectElement provides selectedElement
-        const sig1 = OPERATION_REGISTRY.selectElement;
-        trackOutputs(sig1, available);
-        expect(available.has('selectedElement')).toBe(true);
-
-        // Check accumulation works
-        expect(available.size).toBeGreaterThan(0);
-      });
-    });
-
-    describe('dependency validation workflow', () => {
-      it('should validate a sequence of operations correctly', () => {
-        const available = new Set<string>();
-
-        // Step 1: Call addClass without selectElement - should fail
-        const addClassSig = OPERATION_REGISTRY.addClass;
-        const errors1 = validateDependencies(addClassSig, available);
-        expect(errors1.length).toBeGreaterThan(0);
-
-        // Step 2: Call selectElement - should succeed (no dependencies)
-        const selectSig = OPERATION_REGISTRY.selectElement;
-        const errors2 = validateDependencies(selectSig, available);
-        expect(errors2).toHaveLength(0);
-
-        // Step 3: Track outputs from selectElement
-        trackOutputs(selectSig, available);
-
-        // Step 4: Now addClass should succeed
-        const errors3 = validateDependencies(addClassSig, available);
-        expect(errors3).toHaveLength(0);
       });
     });
   });

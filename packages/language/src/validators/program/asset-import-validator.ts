@@ -33,6 +33,26 @@ async function fileExistsAsync(absolutePath: string): Promise<boolean> {
 }
 
 /**
+ * URIs of synthetic documents that have no file on disk, so their relative asset
+ * imports cannot be resolved:
+ * - `file:///<n>.eligian` — Langium's `parseHelper` default document URI
+ * - `file:///memory/<name>.eligian` — the in-memory namespace: `parseSource`'s
+ *   default (`file:///memory/source-<n>.eligian`) and the test parity helpers
+ *
+ * The whole URI must match: a root-level numeric name, or a file directly inside
+ * the root-level `/memory` directory. Previously any path containing `/memory/`
+ * (e.g. `/home/u/memory/talk/main.eligian`) or any file named `<digits>.eligian`
+ * (e.g. a real `chapters/01.eligian`) skipped asset validation, silently
+ * dropping its assets.
+ */
+const SYNTHETIC_DOCUMENT_URI = /^file:\/\/\/(?:\d+|memory\/[^/]+)\.eligian$/;
+
+/** True for the generated URI of a synthetic, in-memory document (see above). */
+export function isSyntheticDocumentUri(uri: string): boolean {
+  return SYNTHETIC_DOCUMENT_URI.test(uri);
+}
+
+/**
  * Program-level asset-import validations: file existence + HTML/CSS syntax,
  * CSS import registration, and locales import loading/validation.
  */
@@ -67,13 +87,9 @@ export class ProgramAssetImportValidator extends BaseValidator {
       return;
     }
 
-    // Skip asset validation for test documents
-    // 1. parseHelper documents: /1.eligian, /2.eligian (simple numeric names)
-    // 2. compiler test documents: /memory/source-1.eligian, /memory/source-2.eligian
-    const fileName = filePath.split(/[/\\]/).pop() ?? '';
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    if (/^\d+\.eligian$/.test(fileName) || normalizedPath.includes('/memory/')) {
-      // Test document - skip asset validation
+    // Skip asset validation only for synthetic (never-on-disk) documents, matched
+    // by their exact generated URI, never by a file-name or directory heuristic.
+    if (isSyntheticDocumentUri(program.$document?.uri?.toString() ?? '')) {
       return;
     }
 
@@ -91,11 +107,28 @@ export class ProgramAssetImportValidator extends BaseValidator {
             (isNamedImport(imp) && imp.path === error.filePath)
         );
 
+        // A CSS syntax error of a `styles` import that is in the CSS registry is
+        // reported by validateCSSFileErrors (checkCSSImports) at the same node;
+        // report it here only when the registry does not have it, so it appears once.
+        if (
+          error._tag === 'CssParseError' &&
+          importStmt &&
+          isDefaultImport(importStmt) &&
+          importStmt.type === 'styles' &&
+          this.cssRegistryHasErrors(program, importStmt.path)
+        ) {
+          continue;
+        }
+
+        // Never swallow an asset error: if it cannot be tied to an import node,
+        // report it on the program itself.
         if (importStmt) {
           accept('error', formatValidationMessage(error.message, error.hint), {
             node: importStmt,
             property: 'path',
           });
+        } else {
+          accept('error', formatValidationMessage(error.message, error.hint), { node: program });
         }
       }
     } catch (_err) {
@@ -103,6 +136,13 @@ export class ProgramAssetImportValidator extends BaseValidator {
       // Errors during asset loading should not crash the LSP
       // console.error('[Asset Validator] Error loading assets:', _err);
     }
+  }
+
+  /** True when the CSS registry holds parse errors for the CSS file a `styles` import names. */
+  private cssRegistryHasErrors(program: Program, importPath: string): boolean {
+    const documentUri = program.$document?.uri?.toString();
+    if (!this.services || !documentUri) return false;
+    return this.services.css.CSSRegistry.hasErrors(resolveImportPathToUri(documentUri, importPath));
   }
 
   /**

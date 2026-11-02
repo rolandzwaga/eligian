@@ -6,9 +6,12 @@
  */
 
 // Import from language package (Feature 017)
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import {
   generateCSSId as generateCSSIdInternal,
   loadCSS as loadCSSInternal,
+  parseCSS,
   rewriteUrls as rewriteUrlsInternal,
 } from '@eligian/language';
 import type { IEngineConfiguration } from 'eligius';
@@ -88,4 +91,39 @@ export async function loadCSSFile(filePath: string): Promise<string> {
  */
 export function extractCSSFiles(config: IEngineConfiguration): string[] {
   return config.cssFiles || [];
+}
+
+/**
+ * Map every stylesheet pulled in through `@import` (transitively) by one of `cssFiles` to
+ * the files of `cssFiles` that import it. The preview watches the imported sheets too and,
+ * when one changes, reloads its importers (the webview loads the import through them).
+ *
+ * Keys are absolute paths as `path.resolve` gives them; unreadable files are skipped.
+ *
+ * @param cssFiles - Absolute paths of the CSS files injected into the preview
+ * @param readFile - File reader (defaults to UTF-8 `readFileSync`)
+ */
+export function collectCSSImporters(
+  cssFiles: readonly string[],
+  readFile: (absolutePath: string) => string = file => readFileSync(file, 'utf-8')
+): Map<string, Set<string>> {
+  const importers = new Map<string, Set<string>>();
+  for (const cssFile of cssFiles) {
+    let content: string;
+    try {
+      content = readFile(cssFile);
+    } catch {
+      continue;
+    }
+    for (const imported of parseCSS(content, cssFile, { readFile }).importedFiles ?? []) {
+      const key = path.resolve(imported);
+      let set = importers.get(key);
+      if (!set) {
+        set = new Set();
+        importers.set(key, set);
+      }
+      set.add(cssFile);
+    }
+  }
+  return importers;
 }

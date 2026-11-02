@@ -198,9 +198,16 @@ export function loadProgramAssets(
       if (errors.length === 0) {
         // B37: provider imports only need the relative path; reading the
         // (potentially large, binary) media file into memory as a UTF-8 string
-        // is wasteful and the content is immediately discarded.
+        // is wasteful and the content is immediately discarded. The same applies
+        // to named media imports (video/audio/image): only the path is recorded.
         if (importInfo.type === 'provider') {
           result.importMap.provider = importInfo.path;
+        } else if (
+          importInfo.type === 'named' &&
+          importInfo.name &&
+          importInfo.assetType === 'media'
+        ) {
+          result.importMap[importInfo.name] = importInfo.path;
         } else {
           const content = loader.loadFile(absolutePath);
 

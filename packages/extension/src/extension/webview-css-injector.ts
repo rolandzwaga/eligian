@@ -5,8 +5,11 @@
  */
 
 import * as path from 'node:path';
+import { loadCSS } from '@eligian/language';
 import * as vscode from 'vscode';
-import { generateCSSId, loadCSSFile, rewriteCSSUrls } from './css-loader.js';
+import { generateCSSId } from './css-loader.js';
+import { createRecordingWebview } from './preview/resource-roots.js';
+import { VSCodeWebviewUriConverter } from './webview-uri-converter.js';
 
 /**
  * Error tracking for rate-limiting notifications
@@ -15,6 +18,44 @@ interface ErrorInfo {
   filePath: string;
   lastNotification: number;
   count: number;
+}
+
+/**
+ * Read a CSS file and rewrite its url() references to webview URIs.
+ *
+ * Rewrites in a single pass with the webview converter. (`loadCSSFile` from
+ * css-loader already rewrites with a pass-through converter, turning every
+ * url() into a `file://` URL that a second `rewriteCSSUrls` pass then skips
+ * because it has a scheme, so url() assets never got webview URIs.)
+ *
+ * @throws Error if the file cannot be read
+ */
+async function loadRewrittenCSS(absolutePath: string, webview: vscode.Webview): Promise<string> {
+  const loaded = await loadCSS(absolutePath, new VSCodeWebviewUriConverter(webview));
+  return loaded.content;
+}
+
+/**
+ * One CSS file loaded and rewritten by {@link WebviewCSSInjector.prepareCSS}.
+ */
+export interface PreparedCSSFile {
+  readonly cssId: string;
+  /** Path as given by the caller (used for display) */
+  readonly cssFile: string;
+  readonly absolutePath: string;
+  readonly loadOrder: number;
+  /** Rewritten CSS; undefined when loading failed */
+  readonly content?: string;
+  readonly error?: unknown;
+}
+
+/**
+ * A CSS set ready to be posted to the webview.
+ */
+export interface PreparedCSS {
+  readonly files: readonly PreparedCSSFile[];
+  /** CSS files plus every local file their url() references resolve to */
+  readonly referencedLocalPaths: readonly string[];
 }
 
 /**
@@ -46,43 +87,102 @@ export class WebviewCSSInjector {
    * T010: Initial CSS load when preview opens
    *
    * Loads all CSS files, rewrites URLs, and sends messages to webview in order.
+   * Additive: CSS injected earlier and absent from `cssFiles` stays injected.
+   * Use {@link prepareCSS} + {@link applyCSS} to replace the whole set.
    *
    * @param cssFiles - Array of CSS file paths (relative to workspace or absolute)
    */
   async injectCSS(cssFiles: string[]): Promise<void> {
+    await this.postPrepared(await this.prepareCSS(cssFiles));
+  }
+
+  /**
+   * Load and rewrite CSS files without posting anything to the webview.
+   *
+   * Lets the caller inspect {@link PreparedCSS.referencedLocalPaths} (the CSS
+   * files and their `url()` assets), for example to extend the webview's
+   * `localResourceRoots`, before calling {@link applyCSS}.
+   *
+   * @param cssFiles - CSS file paths (relative to workspace or absolute)
+   */
+  async prepareCSS(cssFiles: readonly string[]): Promise<PreparedCSS> {
+    const referenced = new Set<string>();
+    const recordingWebview = createRecordingWebview(this.webview, fsPath => referenced.add(fsPath));
+    const files: PreparedCSSFile[] = [];
+
     for (let i = 0; i < cssFiles.length; i++) {
       const cssFile = cssFiles[i];
       const absolutePath = path.isAbsolute(cssFile)
         ? cssFile
         : path.resolve(this.workspaceRoot, cssFile);
-
       const cssId = generateCSSId(absolutePath);
+      referenced.add(absolutePath);
 
       try {
-        // Load CSS file content
-        const cssContent = await loadCSSFile(absolutePath);
+        // Load CSS file content and rewrite url() paths to webview URIs
+        const content = await loadRewrittenCSS(absolutePath, recordingWebview);
+        files.push({ cssId, cssFile, absolutePath, loadOrder: i, content });
+      } catch (error) {
+        files.push({ cssId, cssFile, absolutePath, loadOrder: i, error });
+      }
+    }
 
-        // Rewrite url() paths to webview URIs
-        const rewrittenCSS = rewriteCSSUrls(cssContent, absolutePath, this.webview);
+    return { files, referencedLocalPaths: [...referenced] };
+  }
 
-        // Send css-load message to webview
-        const message = {
+  /**
+   * Make the webview's injected CSS exactly the prepared set.
+   *
+   * Removes every previously injected stylesheet that is not part of
+   * `prepared` (e.g. a `styles` import deleted from the .eligian source), then
+   * loads the prepared files in order. A prepared file that failed to load keeps
+   * its previous stylesheet (if any) and reports the error.
+   *
+   * @param prepared - Result of {@link prepareCSS}
+   */
+  async applyCSS(prepared: PreparedCSS): Promise<void> {
+    const keep = new Set(prepared.files.map(file => file.cssId));
+    for (const [cssId, filePath] of [...this.loadedCSS]) {
+      if (!keep.has(cssId)) {
+        await this.removeCSS(filePath);
+      }
+    }
+    await this.postPrepared(prepared);
+  }
+
+  /**
+   * Absolute paths of the CSS files currently injected into the webview.
+   */
+  getLoadedFiles(): string[] {
+    return [...this.loadedCSS.values()];
+  }
+
+  /**
+   * Post css-load (or css-error) messages for prepared files, in order.
+   */
+  private async postPrepared(prepared: PreparedCSS): Promise<void> {
+    for (const file of prepared.files) {
+      if (file.content === undefined) {
+        // Handle CSS loading error - continue with other files
+        await this.handleCSSError(file.cssId, file.cssFile, file.absolutePath, file.error);
+        continue;
+      }
+
+      try {
+        await this.webview.postMessage({
           type: 'css-load',
           payload: {
-            cssId,
-            content: rewrittenCSS,
-            sourceFile: cssFile,
-            loadOrder: i,
+            cssId: file.cssId,
+            content: file.content,
+            sourceFile: file.cssFile,
+            loadOrder: file.loadOrder,
           },
-        };
-
-        await this.webview.postMessage(message);
+        });
 
         // Track loaded CSS
-        this.loadedCSS.set(cssId, absolutePath);
+        this.loadedCSS.set(file.cssId, file.absolutePath);
       } catch (error) {
-        // Handle CSS loading error - continue with other files
-        await this.handleCSSError(cssId, cssFile, absolutePath, error);
+        await this.handleCSSError(file.cssId, file.cssFile, file.absolutePath, error);
       }
     }
   }
@@ -96,11 +196,8 @@ export class WebviewCSSInjector {
     const cssId = generateCSSId(cssFile);
 
     try {
-      // Load updated CSS content
-      const cssContent = await loadCSSFile(cssFile);
-
-      // Rewrite url() paths
-      const rewrittenCSS = rewriteCSSUrls(cssContent, cssFile, this.webview);
+      // Load updated CSS content with url() paths rewritten to webview URIs
+      const rewrittenCSS = await loadRewrittenCSS(cssFile, this.webview);
 
       // Send css-reload message to webview
       const message = {
@@ -130,8 +227,10 @@ export class WebviewCSSInjector {
    *
    * @param cssFile - Absolute path to removed CSS file
    */
-  removeCSS(cssFile: string): void {
+  async removeCSS(cssFile: string): Promise<void> {
     const cssId = generateCSSId(cssFile);
+    this.loadedCSS.delete(cssId);
+    this.errorTracking.delete(cssId);
 
     const message = {
       type: 'css-remove',
@@ -140,9 +239,7 @@ export class WebviewCSSInjector {
       },
     };
 
-    this.webview.postMessage(message);
-    this.loadedCSS.delete(cssId);
-    this.errorTracking.delete(cssId);
+    await this.webview.postMessage(message);
   }
 
   /**

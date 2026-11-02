@@ -9,13 +9,23 @@ import { Effect } from 'effect';
 import type { TransformError } from '../../errors/index.js';
 import type {
   ActionDefinition,
+  LabeledEvent,
+  OperationCall,
+  OperationStatement,
   Program,
   SequenceBlock,
+  SequenceItem,
   StaggerBlock,
   TimedEvent,
   Timeline,
 } from '../../generated/ast.js';
+import { containsRelativeTime } from '../../type-system-typir/utils/time-expression.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
+import {
+  RELATIVE_DURATION_MESSAGE,
+  SCROLL_DURATION_REQUIRED_MESSAGE,
+} from '../../utils/time-units.js';
+import { duplicateLifecycleMessage, lifecycleBlocks } from '../../utils/timeline-lifecycle.js';
 import { findActionByName } from '../name-resolver.js';
 import type { ConstantMap } from '../types/constant-folding.js';
 import type {
@@ -25,17 +35,34 @@ import type {
   TimelineConfigIR,
 } from '../types/eligius-ir.js';
 import { buildActionCallOperations } from './action-call-operations.js';
-import { mapProviderToTimelineType } from './config-builder.js';
+import { mapProviderToTimelineType, mediaPositionSource } from './config-builder.js';
 import { transformExpression } from './expression-transformer.js';
+import { timelineUri } from './navigate-operations.js';
 import {
   transformForStatement,
   transformIfStatement,
   transformOperationStatement,
-  validateOperationSequence,
 } from './operation-transformer.js';
+import { createRuntimeConcatCollector, lowerNodeOperations } from './runtime-values.js';
 import { createEmptyScope, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
-import { evaluateTimeExpression, transformTimeExpression } from './time-transformer.js';
+import {
+  inferredDuration,
+  roundTime,
+  sequenceSpans,
+  staggerSpans,
+  type TimeSpan,
+  timedEventSpan,
+  timedEventSpanFor,
+} from './time-schedule.js';
+import {
+  type EventLabelTimes,
+  evaluateTimeExpression,
+  transformTimeExpression,
+} from './time-transformer.js';
+
+// Start/end arithmetic (rounding, sequences, staggers) lives in time-schedule.ts,
+// shared with the IDE's time resolver so editor hints match the compiled times.
 
 /**
  * Build TimelineConfigIR from timeline node
@@ -56,6 +83,8 @@ export const buildTimelineConfig = (
     // Track previous event end time for relative time expressions and sequence blocks
     const timelineActions: TimelineActionIR[] = [];
     let previousEventEndTime = 0;
+    // Idea #10: times of labeled events (`at … as intro`), for `intro.start` / `intro.end`
+    const labels = new Map<LabeledEvent, { start: number; end: number }>();
 
     for (const event of timeline.events) {
       // T190/T192: Check event type (sequence, stagger, or timed)
@@ -66,7 +95,8 @@ export const buildTimelineConfig = (
           previousEventEndTime,
           program,
           allActions,
-          programConstants
+          programConstants,
+          labels
         );
         timelineActions.push(...sequenceActions);
 
@@ -85,7 +115,8 @@ export const buildTimelineConfig = (
           previousEventEndTime,
           program,
           allActions,
-          programConstants
+          programConstants,
+          labels
         );
         timelineActions.push(...staggerActions);
 
@@ -104,9 +135,16 @@ export const buildTimelineConfig = (
           previousEventEndTime,
           program,
           allActions,
-          programConstants
+          programConstants,
+          labels
         );
         timelineActions.push(timelineAction);
+        if (event.name) {
+          labels.set(event, {
+            start: timelineAction.duration.start as number,
+            end: timelineAction.duration.end as number,
+          });
+        }
 
         // Update previous event end time for next event
         previousEventEndTime =
@@ -117,29 +155,128 @@ export const buildTimelineConfig = (
     }
 
     // T188: Calculate total duration from events (duration inference)
-    let maxDuration = 0;
-    for (const action of timelineActions) {
-      const endTime = typeof action.duration.end === 'number' ? action.duration.end : 0;
-      if (endTime > maxDuration) {
-        maxDuration = endTime;
+    const maxDuration = inferredDuration(
+      timelineActions.map(action => ({
+        start: typeof action.duration.start === 'number' ? action.duration.start : 0,
+        end: typeof action.duration.end === 'number' ? action.duration.end : 0,
+      }))
+    );
+
+    // Audit idea #6: `on enter` / `on leave`, after the inference above (not counted)
+    const lifecycleAction = yield* transformLifecycle(
+      timeline,
+      program,
+      allActions,
+      programConstants
+    );
+
+    // Feature 049: an explicit `duration` header option overrides the inferred one
+    let duration = maxDuration;
+    if (timeline.duration) {
+      if (containsRelativeTime(timeline.duration)) {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidTimeline' as const,
+          message: RELATIVE_DURATION_MESSAGE,
+          location: getSourceLocation(timeline.duration),
+        });
       }
+      duration = roundTime(
+        evaluateTimeExpression(yield* transformTimeExpression(timeline.duration, 0, labels))
+      );
     }
 
     // T271: Map provider to Eligius timeline type
     // T272: Generate uri (timeline name for animation, source path for mediaplayer)
     const timelineType = mapProviderToTimelineType(timeline.provider);
-    const uri = timeline.provider === 'raf' ? timeline.name : timeline.source || timeline.name;
+    const uri = timelineUri(timeline);
+
+    // Feature 049: scroll timelines drive an animation timeline from the scroll
+    // position of an element, through a per-timeline ScrollPositionSource
+    if (timeline.provider === 'scroll' && !timeline.duration) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidTimeline' as const,
+        message: SCROLL_DURATION_REQUIRED_MESSAGE,
+        location: getSourceLocation(timeline),
+      });
+    }
+    const positionSource =
+      timeline.provider === 'scroll'
+        ? {
+            systemName: 'ScrollPositionSource',
+            selector: timeline.scrollSelector ?? timeline.containerSelector,
+            duration,
+          }
+        : mediaPositionSource(timeline.provider, timeline.source, timeline.containerSelector);
 
     return {
       // Constitution VII: UUID v4 for globally unique timeline ID
       id: crypto.randomUUID(),
       uri,
       type: timelineType,
-      duration: maxDuration,
-      loop: false, // TODO: Could add DSL support for loop
+      duration,
+      loop: timeline.loop,
       selector: timeline.containerSelector,
-      timelineActions,
+      ...(positionSource ? { positionSource } : {}),
+      timelineActions: lifecycleAction ? [lifecycleAction, ...timelineActions] : timelineActions,
       sourceLocation: getSourceLocation(timeline),
+    };
+  });
+
+/**
+ * Timeline lifecycle blocks (audit idea #6):
+ *
+ *   on enter [ showView("#ch3") ]
+ *   on leave [ hideView("#ch3") ]
+ *
+ * become one open-ended timeline action ({ start: 0 }, no end): Eligius starts
+ * it whenever the timeline becomes active (it covers every position) and ends
+ * it when the timeline is left (switch, stop, destroy), not when the content
+ * ends. Undefined when the timeline has neither block.
+ */
+const transformLifecycle = (
+  timeline: Timeline,
+  program: Program,
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
+): Effect.Effect<TimelineActionIR | undefined, TransformError> =>
+  Effect.gen(function* () {
+    const { enter, leave, duplicates } = lifecycleBlocks(timeline);
+    if (duplicates.length > 0) {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidTimeline' as const,
+        message: duplicateLifecycleMessage(duplicates[0].kind),
+        location: getSourceLocation(duplicates[0]),
+      });
+    }
+    const first = enter ?? leave;
+    if (!first) return undefined;
+
+    // One scope for both blocks, like inline endable actions
+    const scope = createEmptyScope(programConstants);
+    const startOperations: OperationConfigIR[] = [];
+    for (const statement of enter?.operations ?? []) {
+      startOperations.push(
+        ...(yield* transformOperationStatement(statement, scope, false, program, allActions))
+      );
+    }
+    const endOperations: OperationConfigIR[] = [];
+    for (const statement of leave?.operations ?? []) {
+      endOperations.push(
+        ...(yield* transformOperationStatement(statement, scope, true, program, allActions))
+      );
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      name: 'timeline-lifecycle',
+      duration: { start: 0, end: -1 },
+      lifecycle: true as const,
+      startOperations,
+      endOperations,
+      sourceLocation: getSourceLocation(first),
     };
   });
 
@@ -158,14 +295,20 @@ export const buildTimelineConfig = (
  *   at 5s..15s { main() }
  *   at 15s..18s { outro() }
  *
+ * Idea #11: items may be inline blocks (`for 7s [ start ] [ end ]`), the block
+ * may have an `each [ prelude ]` (before every item's start operations) and a
+ * `then [ postlude ]` (after every item's end operations), and items may be
+ * labeled (`as intro`) for `intro.start` / `intro.end` in later times.
+ *
  * previousEventEndTime is the starting point for the first sequence item.
  */
 const transformSequenceBlock = (
   sequence: SequenceBlock,
   previousEventEndTime: number,
-  _program: Program,
+  program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  labels: Map<LabeledEvent, { start: number; end: number }>
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
@@ -173,67 +316,48 @@ const transformSequenceBlock = (
 
     for (const item of sequence.items) {
       // Transform duration expression to number
-      const durationExpr = yield* transformTimeExpression(item.duration, currentTime);
+      const durationExpr = yield* transformTimeExpression(item.duration, currentTime, labels);
       const duration = evaluateTimeExpression(durationExpr);
 
       // Calculate time range: start at currentTime, end at currentTime + duration
-      const start = currentTime;
-      const end = currentTime + duration;
+      const [{ start, end }] = sequenceSpans(currentTime, [duration]);
 
-      // Get action name and arguments
-      const actionCall = item.actionCall;
-      const actionName = getOperationCallName(actionCall);
-      const actionRef = findActionByName(actionName, allActions);
+      // One scope per item for its prelude, blocks and postlude (consts declared
+      // in the prelude are visible in the item), like an inline endable action
+      const scope = createEmptyScope(programConstants);
+      const operations = (statements: readonly OperationStatement[], isEnd: boolean) =>
+        Effect.gen(function* () {
+          const result: OperationConfigIR[] = [];
+          for (const statement of statements) {
+            result.push(
+              ...(yield* transformOperationStatement(statement, scope, isEnd, program, allActions))
+            );
+          }
+          return result;
+        });
 
-      // Check if this is an endable action or regular action
-      const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
-
-      // Transform action arguments to actionOperationData
-      let actionOperationData: Record<string, JsonValue> | undefined;
-      if (actionCall?.args && actionCall.args.length > 0 && actionRef) {
-        const parameters = actionRef.parameters || [];
-        const args = actionCall.args;
-
-        if (args.length !== parameters.length) {
-          return yield* Effect.fail({
-            _tag: 'TransformError' as const,
-            kind: 'ValidationError' as const,
-            message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
-            location: getSourceLocation(item),
-          });
-        }
-
-        actionOperationData = {};
-        for (let i = 0; i < parameters.length; i++) {
-          const paramName = parameters[i].name;
-          const argValue = yield* transformExpression(args[i], createEmptyScope(programConstants));
-          actionOperationData[paramName] = argValue;
-        }
+      const prelude = yield* operations(sequence.prelude, false);
+      let body: { start: OperationConfigIR[]; end: OperationConfigIR[]; name: string };
+      if (item.actionCall) {
+        body = yield* sequenceCallOperations(item, item.actionCall, allActions, programConstants);
+      } else {
+        body = {
+          start: yield* operations(item.startOps, false),
+          end: yield* operations(item.endOps, true),
+          name: 'item',
+        };
       }
+      const postlude = yield* operations(sequence.postlude, true);
 
-      // Build start and end operations for this sequence item
-      const itemLocation = getSourceLocation(item);
-      const startOperations: OperationConfigIR[] = buildActionCallOperations(
-        actionName,
-        actionOperationData,
-        itemLocation,
-        'startAction'
-      );
-
-      // End operations: Only generate for endable actions
-      const endOperations: OperationConfigIR[] = isEndableAction
-        ? buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
-        : [];
-
-      // Create timeline action for this sequence item
       actions.push({
         id: crypto.randomUUID(),
-        name: `sequence-${actionName}-${start}-${end}`,
+        name: `sequence-${body.name}-${start}-${end}`,
         duration: { start, end },
-        startOperations,
-        endOperations,
+        startOperations: [...prelude, ...body.start],
+        endOperations: [...body.end, ...postlude],
         sourceLocation: getSourceLocation(item),
       });
+      if (item.name) labels.set(item, { start, end });
 
       // Update currentTime for next item
       currentTime = end;
@@ -243,10 +367,74 @@ const transformSequenceBlock = (
   });
 
 /**
+ * The operations of an `action() for 5s` sequence item: requestAction +
+ * startAction, and requestAction + endAction for an endable action.
+ */
+const sequenceCallOperations = (
+  item: SequenceItem,
+  actionCall: OperationCall,
+  allActions: ActionDefinition[],
+  programConstants: ConstantMap
+): Effect.Effect<
+  { start: OperationConfigIR[]; end: OperationConfigIR[]; name: string },
+  TransformError
+> =>
+  Effect.gen(function* () {
+    const actionName = getOperationCallName(actionCall);
+    const actionRef = findActionByName(actionName, allActions);
+
+    // Check if this is an endable action or regular action
+    const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
+
+    // Transform action arguments to actionOperationData
+    const concats = createRuntimeConcatCollector();
+    const argScope = { ...createEmptyScope(programConstants), runtimeConcats: concats };
+    let actionOperationData: Record<string, JsonValue> | undefined;
+    if (actionCall.args && actionCall.args.length > 0 && actionRef) {
+      const parameters = actionRef.parameters || [];
+      const args = actionCall.args;
+
+      if (args.length !== parameters.length) {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'ValidationError' as const,
+          message: `Action '${actionName}' expects ${parameters.length} arguments but got ${args.length}`,
+          location: getSourceLocation(item),
+        });
+      }
+
+      actionOperationData = {};
+      for (let i = 0; i < parameters.length; i++) {
+        const paramName = parameters[i].name;
+        const argValue = yield* transformExpression(args[i], argScope);
+        actionOperationData[paramName] = argValue;
+      }
+    }
+
+    const itemLocation = getSourceLocation(item);
+    return {
+      start: lowerNodeOperations(
+        actionCall,
+        concats,
+        buildActionCallOperations(actionName, actionOperationData, itemLocation, 'startAction')
+      ),
+      // End operations: only for endable actions
+      end: isEndableAction
+        ? lowerNodeOperations(
+            actionCall,
+            concats,
+            buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
+          )
+        : [],
+      name: actionName,
+    };
+  });
+
+/**
  * Transform StaggerBlock → TimelineActionIR[] (T192)
  *
  * Transforms:
- *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn for 2s
+ *   stagger 200ms [".item-1", ".item-2", ".item-3"] with fadeIn() for 2s
  *
  * Into timeline actions with staggered start times:
  *   at 0s..2s { fadeIn(".item-1") }        // starts at 0s
@@ -260,17 +448,31 @@ const transformStaggerBlock = (
   previousEventEndTime: number,
   program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  labels: EventLabelTimes
 ): Effect.Effect<TimelineActionIR[], TransformError> =>
   Effect.gen(function* () {
     const actions: TimelineActionIR[] = [];
 
+    // Idea #10: `stagger … at <time>` anchors the first item explicitly
+    // (relative times count from the previous event, as everywhere); without
+    // it the first item starts where the previous event ends
+    const base = stagger.anchor
+      ? evaluateTimeExpression(
+          yield* transformTimeExpression(stagger.anchor, previousEventEndTime, labels)
+        )
+      : previousEventEndTime;
+
     // Transform delay expression to milliseconds
-    const delayExpr = yield* transformTimeExpression(stagger.delay, previousEventEndTime);
+    const delayExpr = yield* transformTimeExpression(stagger.delay, previousEventEndTime, labels);
     const delay = evaluateTimeExpression(delayExpr);
 
     // Transform duration expression to milliseconds
-    const durationExpr = yield* transformTimeExpression(stagger.duration, previousEventEndTime);
+    const durationExpr = yield* transformTimeExpression(
+      stagger.duration,
+      previousEventEndTime,
+      labels
+    );
     const duration = evaluateTimeExpression(durationExpr);
 
     // Transform items array
@@ -302,12 +504,13 @@ const transformStaggerBlock = (
       const isEndableAction = actionRef?.$type === 'EndableActionDefinition';
 
       // Generate one timeline action per item
+      const spans = staggerSpans(base, delay, duration, itemsValue.length);
       for (let i = 0; i < itemsValue.length; i++) {
         const item = itemsValue[i];
-        const startTime = previousEventEndTime + i * delay;
-        const endTime = startTime + duration;
+        const { start: startTime, end: endTime } = spans[i];
 
         // Build actionOperationData with the item as first argument
+        const concats = createRuntimeConcatCollector();
         let actionOperationData: Record<string, JsonValue> | undefined;
         if (actionRef) {
           const parameters = actionRef.parameters || [];
@@ -322,10 +525,10 @@ const transformStaggerBlock = (
             const args = actionCall.args || [];
             for (let j = 0; j < args.length && j + 1 < parameters.length; j++) {
               const paramName = parameters[j + 1].name;
-              const argValue = yield* transformExpression(
-                args[j],
-                createEmptyScope(programConstants)
-              );
+              const argValue = yield* transformExpression(args[j], {
+                ...createEmptyScope(programConstants),
+                runtimeConcats: concats,
+              });
               actionOperationData[paramName] = argValue;
             }
           }
@@ -333,16 +536,24 @@ const transformStaggerBlock = (
 
         // Build start and end operations
         const staggerLocation = getSourceLocation(stagger);
-        const startOperations: OperationConfigIR[] = buildActionCallOperations(
-          actionName,
-          actionOperationData,
-          staggerLocation,
-          'startAction'
+        const startOperations: OperationConfigIR[] = lowerNodeOperations(
+          actionCall,
+          concats,
+          buildActionCallOperations(actionName, actionOperationData, staggerLocation, 'startAction')
         );
 
         // End operations: Only generate for endable actions
         const endOperations: OperationConfigIR[] = isEndableAction
-          ? buildActionCallOperations(actionName, actionOperationData, staggerLocation, 'endAction')
+          ? lowerNodeOperations(
+              actionCall,
+              concats,
+              buildActionCallOperations(
+                actionName,
+                actionOperationData,
+                staggerLocation,
+                'endAction'
+              )
+            )
           : [];
 
         actions.push({
@@ -357,9 +568,9 @@ const transformStaggerBlock = (
     } else {
       // Form 2: stagger delay items for duration [ startOps ] [ endOps ]
       // Generate one timeline action per item with inline operations
+      const spans = staggerSpans(base, delay, duration, itemsValue.length);
       for (let i = 0; i < itemsValue.length; i++) {
-        const startTime = previousEventEndTime + i * delay;
-        const endTime = startTime + duration;
+        const { start: startTime, end: endTime } = spans[i];
 
         // Transform inline operations with stagger scope
         // Inside stagger blocks, @item resolves to @@currentItem
@@ -519,7 +730,8 @@ const transformTimedEvent = (
   previousEventEndTime: number,
   program: Program,
   allActions: ActionDefinition[],
-  programConstants: ConstantMap
+  programConstants: ConstantMap,
+  labels: EventLabelTimes
 ): Effect.Effect<TimelineActionIR, TransformError> =>
   Effect.gen(function* () {
     const timeRange = event.timeRange;
@@ -534,10 +746,33 @@ const transformTimedEvent = (
 
     // Transform start and end times to numbers
     // T189: Pass previousEventEndTime for relative time resolution
-    const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime);
-    const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime);
-    const start = evaluateTimeExpression(startExpr);
-    const end = evaluateTimeExpression(endExpr);
+    const startExpr = yield* transformTimeExpression(timeRange.start, previousEventEndTime, labels);
+    const startTime = evaluateTimeExpression(startExpr);
+    let span: TimeSpan;
+    if (timeRange.duration) {
+      // `at <start> for <duration>` (Feature 048): end = start + duration
+      if (containsRelativeTime(timeRange.duration)) {
+        return yield* Effect.fail({
+          _tag: 'TransformError' as const,
+          kind: 'InvalidEvent' as const,
+          message: RELATIVE_DURATION_MESSAGE,
+          location: getSourceLocation(timeRange.duration),
+        });
+      }
+      const durationExpr = yield* transformTimeExpression(timeRange.duration, 0, labels);
+      span = timedEventSpanFor(startTime, evaluateTimeExpression(durationExpr));
+    } else if (timeRange.end) {
+      const endExpr = yield* transformTimeExpression(timeRange.end, previousEventEndTime, labels);
+      span = timedEventSpan(startTime, evaluateTimeExpression(endExpr));
+    } else {
+      return yield* Effect.fail({
+        _tag: 'TransformError' as const,
+        kind: 'InvalidEvent' as const,
+        message: 'Timeline event time range has no end or duration',
+        location: getSourceLocation(timeRange),
+      });
+    }
+    const { start, end } = span;
 
     // Transform the action (either named invocation or inline)
     const action = event.action;
@@ -546,10 +781,13 @@ const transformTimedEvent = (
 
     if (action.$type === 'InlineEndableAction') {
       // Inline endable action: [ ... ] [ ... ]
+      // One scope for both blocks, like named endable actions: foldable consts
+      // declared earlier (in the start block too, for the end block) are inlined.
+      const inlineScope = createEmptyScope(programConstants);
       for (const opStmt of action.startOperations) {
         const ops = yield* transformOperationStatement(
           opStmt,
-          createEmptyScope(programConstants),
+          inlineScope,
           false,
           program,
           allActions
@@ -559,7 +797,7 @@ const transformTimedEvent = (
       for (const opStmt of action.endOperations) {
         const ops = yield* transformOperationStatement(
           opStmt,
-          createEmptyScope(programConstants),
+          inlineScope,
           true,
           program,
           allActions
@@ -589,6 +827,7 @@ const transformTimedEvent = (
       const isEndableAction = actionDef.$type === 'EndableActionDefinition';
 
       // Transform arguments to actionOperationData
+      const concats = createRuntimeConcatCollector();
       let actionOperationData: Record<string, JsonValue> | undefined;
       if (action.args && action.args.length > 0) {
         const parameters = actionDef.parameters || [];
@@ -605,10 +844,10 @@ const transformTimedEvent = (
         actionOperationData = {};
         for (let i = 0; i < parameters.length; i++) {
           const paramName = parameters[i].name;
-          const argValue = yield* transformExpression(
-            action.args[i],
-            createEmptyScope(programConstants)
-          );
+          const argValue = yield* transformExpression(action.args[i], {
+            ...createEmptyScope(programConstants),
+            runtimeConcats: concats,
+          });
           actionOperationData[paramName] = argValue;
         }
       }
@@ -617,13 +856,21 @@ const transformTimedEvent = (
       // endable actions)
       const actionLocation = getSourceLocation(action);
       startOperations.push(
-        ...buildActionCallOperations(callName, actionOperationData, actionLocation, 'startAction')
+        ...lowerNodeOperations(
+          action,
+          concats,
+          buildActionCallOperations(callName, actionOperationData, actionLocation, 'startAction')
+        )
       );
 
       // End operations: Only for endable actions
       if (isEndableAction) {
         endOperations.push(
-          ...buildActionCallOperations(callName, actionOperationData, actionLocation, 'endAction')
+          ...lowerNodeOperations(
+            action,
+            concats,
+            buildActionCallOperations(callName, actionOperationData, actionLocation, 'endAction')
+          )
         );
       }
     } else if (action.$type === 'ForStatement') {
@@ -648,16 +895,17 @@ const transformTimedEvent = (
       startOperations.push(...ifOps);
     }
 
-    // T173: Validate dependencies in timeline event operations
-    yield* validateOperationSequence(
-      startOperations,
-      `timeline event at ${start}s..${end}s start operations`
-    );
-    if (endOperations.length > 0) {
-      yield* validateOperationSequence(
-        endOperations,
-        `timeline event at ${start}s..${end}s end operations`
-      );
+    // Idea #17: `target "<sel>"` selects the element at the head of the start
+    // operations, and of the end operations when there are any
+    if (event.target !== undefined) {
+      const select = (): OperationConfigIR => ({
+        id: crypto.randomUUID(),
+        systemName: 'selectElement',
+        operationData: { selector: event.target! },
+        sourceLocation: getSourceLocation(event),
+      });
+      startOperations.unshift(select());
+      if (endOperations.length > 0) endOperations.unshift(select());
     }
 
     return {

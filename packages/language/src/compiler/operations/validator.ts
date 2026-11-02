@@ -16,13 +16,13 @@
  * `compiler/index.ts` barrel) are unchanged (W3 decomposition).
  */
 
-import { OPERATION_REGISTRY, type OperationSignature } from './index.js';
+import type { AstNode } from 'langium';
+import { getOperationSignature, type OperationSignature } from './index.js';
 import type { OperationValidationError } from './validation/errors.js';
 import { validateOperationExists } from './validation/existence.js';
 import { validateParameterCount } from './validation/parameter-count.js';
 
 export { validateControlFlowPairing } from './validation/control-flow.js';
-export { trackOutputs, validateDependencies } from './validation/dependencies.js';
 // Re-export the decomposed validation stages and error types.
 export type {
   ControlFlowError,
@@ -63,18 +63,22 @@ export type ValidationResult =
  *   console.error(result.errors);
  * }
  */
-export function validateOperation(operationName: string, argumentCount?: number): ValidationResult {
+export function validateOperation(
+  operationName: string,
+  argumentCount?: number,
+  context?: AstNode
+): ValidationResult {
   const errors: OperationValidationError[] = [];
 
   // T213: Check operation exists
-  const existenceError = validateOperationExists(operationName);
+  const existenceError = validateOperationExists(operationName, context);
   if (existenceError) {
     errors.push(existenceError);
     return { success: false, errors };
   }
 
   // Operation exists - get signature
-  const signature = OPERATION_REGISTRY[operationName];
+  const signature = getOperationSignature(operationName, context)!;
 
   // T214: Check parameter count (if provided)
   if (argumentCount !== undefined) {

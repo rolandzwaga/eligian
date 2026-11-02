@@ -20,34 +20,46 @@ import {
   WorkspaceCache,
 } from 'langium';
 import { resolveLibraryPath } from './compiler/pipeline.js';
+import { labelTimeline } from './compiler/transformers/navigate-operations.js';
 import type { EligianServices } from './eligian-module.js';
 import {
   type ActionDefinition,
   isActionDefinition,
   isActionImport,
   isEventActionDefinition,
+  isEventTimeReference,
+  isInteractionStatement,
   isLibrary,
   isLibraryImport,
   isNamedImport,
   isOperationCall,
   isParameterReference,
   isProgram,
+  isTimeline,
   isVariableDeclaration,
   isVariableReference,
   type NamedImport,
   type VariableDeclaration,
 } from './generated/ast.js';
-import { getElements } from './utils/program-helpers.js';
+import {
+  type CallableAction,
+  findCallableAction,
+  getActionScopeRoot,
+  getCallableActions,
+  type LibraryResolver,
+} from './utils/action-scope.js';
+import { isHtmlImport } from './utils/program-helpers.js';
+import { labeledEvents } from './utils/time-constants.js';
 
 export class EligianScopeProvider extends DefaultScopeProvider {
   private eligianServices: EligianServices;
 
   /**
-   * Memoizes {@link getImportedActions} per document URI.
+   * Memoizes {@link getCallableActions} per document URI.
    *
-   * `getImportedActions` was previously recomputed up to 3× per `OperationCall`
-   * during validation (plus once per scope resolution), each time re-resolving
-   * and re-walking every transitively imported library AST.
+   * The callable set was previously recomputed for every `OperationCall`
+   * during scoping and validation, each time re-resolving the imported
+   * libraries.
    *
    * A `WorkspaceCache` is the correct invalidation strategy here: the result
    * depends on *other* documents (the imported libraries), so it must be evicted
@@ -57,12 +69,12 @@ export class EligianScopeProvider extends DefaultScopeProvider {
    * keyed on the importing document would miss changes to the libraries it
    * imports.
    */
-  private readonly importedActionsCache: WorkspaceCache<string, ActionDefinition[]>;
+  private readonly callableActionsCache: WorkspaceCache<string, readonly CallableAction[]>;
 
   constructor(services: EligianServices) {
     super(services);
     this.eligianServices = services;
-    this.importedActionsCache = new WorkspaceCache(services.shared);
+    this.callableActionsCache = new WorkspaceCache(services.shared);
   }
 
   override getScope(context: ReferenceInfo): Scope {
@@ -81,6 +93,11 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       return this.getScopeForActionReference(context);
     }
 
+    // Idea #10: `intro.end` names a labeled event (`at … as intro`) of the same timeline
+    if (isEventTimeReference(context.container) && context.property === 'event') {
+      return this.getScopeForEventLabel(context);
+    }
+
     // Feature 023: Handle action imports (filter private actions from library exports)
     if (isActionImport(context.container) && context.property === 'action') {
       return this.getScopeForActionImport(context);
@@ -91,165 +108,70 @@ export class EligianScopeProvider extends DefaultScopeProvider {
   }
 
   /**
-   * Get scope for action references in OperationCall nodes (Feature 007 + Feature 023).
+   * Get scope for action references in OperationCall nodes (Feature 007, 023, 032).
    *
-   * Returns all ActionDefinition nodes from the document. The reference will:
-   * - Resolve to an ActionDefinition if an action with that name exists
+   * Returns the actions callable from the document the call is in (see
+   * {@link getCallableActions}). The reference will:
+   * - Resolve to an ActionDefinition if an action with that name is in scope
    * - Remain unresolved (ref = undefined) if it's a built-in operation
    *
-   * This enables "Go to Definition" for custom action calls while allowing
-   * built-in operation calls to work normally.
-   *
-   * Feature 023: Now handles both Program and Library files, plus imported actions (User Story 4).
+   * This enables "Go to Definition" and hover for custom action calls while
+   * allowing built-in operation calls to work normally.
    */
   private getScopeForActionReference(context: ReferenceInfo): Scope {
-    // Get the document containing this OperationCall
-    const document = AstUtils.getDocument(context.container);
-    const model = document.parseResult.value;
-
-    // Get all ActionDefinition nodes - works for both Program and Library
-    let actionDefinitions: ActionDefinition[] = [];
-
-    if (isProgram(model)) {
-      // Program: get actions from program elements
-      actionDefinitions = getElements(model).filter(isActionDefinition);
-
-      // Feature 023 US4: Also include imported actions from library files
-      const importedActions = this.getImportedActions(model);
-      actionDefinitions.push(...importedActions);
-    } else if (isLibrary(model)) {
-      // Library: get actions directly from library.actions array
-      actionDefinitions = model.actions || [];
-    }
-
-    if (actionDefinitions.length === 0) {
-      // No actions defined in document
+    const callables = this.getCallableActions(context.container);
+    if (callables.length === 0) {
       return EMPTY_SCOPE;
     }
 
-    // Create AstNodeDescription for each action
-    // For imported actions, use the alias name if provided, otherwise use original name
-    const actionDescriptions = actionDefinitions.map(action => {
-      const name = this.getActionNameForScope(action, model);
-      // Get the document where the action is defined (might be a library file)
-      const actionDoc = AstUtils.getDocument(action);
-      return this.descriptions.createDescription(action, name, actionDoc);
-    });
-
-    // Return scope with all available actions
+    // Imported actions are described under the name they are called by (their
+    // alias, when aliased) and point at the document that defines them.
+    const actionDescriptions = callables.map(({ name, action }) =>
+      this.descriptions.createDescription(action, name, AstUtils.getDocument(action))
+    );
     return this.createScope(actionDescriptions);
   }
 
   /**
-   * Get all actions imported from library files (Feature 024, Feature 032 US3).
-   * Used for validation and code completion.
+   * The actions callable by name from the Program or Library containing
+   * `node`: its own actions (for a library, private ones included) plus the
+   * actions it imports directly, under their alias when aliased. Imports are
+   * not re-exported, so a program never sees a library's private helpers or
+   * the actions that library imports.
    *
-   * Collects actions from all LibraryImport statements in the program or library,
-   * resolving the library file and retrieving the action definitions.
+   * Shared with the operation-call validators so resolution, validation and
+   * the compiler (`resolveActionScopes`) agree.
    */
-  public getImportedActions(
-    programOrLibrary: any,
-    visited: Set<string> = new Set()
-  ): ActionDefinition[] {
-    // Only the top-level invocation is memoized. Recursive calls carry a
-    // non-empty `visited` set, and their result depends on that cycle-cutoff
-    // state, so caching them by URI alone would be unsound. External callers
-    // always start with an empty set, so `visited.size === 0` reliably
-    // identifies the cacheable top-level call.
-    if (visited.size === 0) {
-      const cacheKey = AstUtils.getDocument(programOrLibrary).uri?.toString();
-      if (cacheKey) {
-        return this.importedActionsCache.get(cacheKey, () =>
-          this.computeImportedActions(programOrLibrary, visited)
-        );
-      }
+  public getCallableActions(node: AstNode): readonly CallableAction[] {
+    const root = getActionScopeRoot(node);
+    if (!root) {
+      return [];
     }
-    return this.computeImportedActions(programOrLibrary, visited);
+    const cacheKey = AstUtils.getDocument(root).uri?.toString();
+    if (!cacheKey) {
+      return getCallableActions(root, this.resolveLibrary);
+    }
+    return this.callableActionsCache.get(cacheKey, () =>
+      getCallableActions(root, this.resolveLibrary)
+    );
   }
 
   /**
-   * Recursively collects all transitively imported library actions.
-   * See {@link getImportedActions} (the memoizing entry point) for caching.
+   * Find the action called `name` from inside the Program or Library containing
+   * `node` (local, library-internal or imported, alias-aware).
    */
-  private computeImportedActions(programOrLibrary: any, visited: Set<string>): ActionDefinition[] {
-    const importedActions: ActionDefinition[] = [];
-
-    // Get current document URI for cycle detection
-    const currentUri = AstUtils.getDocument(programOrLibrary).uri;
-    if (!currentUri) return importedActions;
-
-    const currentPath = currentUri.fsPath;
-
-    // Prevent infinite recursion from circular imports
-    if (visited.has(currentPath)) {
-      return importedActions;
-    }
-    visited.add(currentPath);
-
-    // Get all LibraryImport statements (from Program.statements or Library.imports)
-    const statements = programOrLibrary.statements || programOrLibrary.imports || [];
-    const libraryImports = statements.filter(isLibraryImport);
-
-    for (const libraryImport of libraryImports) {
-      const importPath = libraryImport.path;
-      const resolvedUri = resolveLibraryPath(currentUri, importPath);
-
-      // Load library document
-      const documents = this.eligianServices.shared.workspace.LangiumDocuments;
-      const libraryDoc = documents.getDocument(resolvedUri);
-
-      if (!libraryDoc?.parseResult.value) continue;
-
-      const library = libraryDoc.parseResult.value;
-      if (!isLibrary(library)) continue;
-
-      // Feature 032 US3: Recursively collect actions from nested library imports
-      // Libraries can now import other libraries, so we need to gather all transitively imported actions
-      const nestedActions = this.getImportedActions(library, visited);
-      importedActions.push(...nestedActions);
-
-      // Add each imported action from THIS library to the list
-      for (const actionImport of libraryImport.actions) {
-        const actionName = actionImport.action.$refText || '';
-        const action = library.actions?.find(a => a.name === actionName);
-
-        if (action) {
-          importedActions.push(action);
-        }
-      }
-    }
-
-    return importedActions;
+  public findCallableAction(name: string, node: AstNode): ActionDefinition | undefined {
+    return findCallableAction(name, this.getCallableActions(node))?.action;
   }
 
-  /**
-   * Get the name to use for an action in the scope (Feature 023 - User Story 4).
-   *
-   * For imported actions with aliases, use the alias name.
-   * Otherwise, use the original action name.
-   */
-  private getActionNameForScope(action: ActionDefinition, model: any): string {
-    // If model is not a Program, just use the action name
-    if (!isProgram(model)) {
-      return action.name;
-    }
-
-    // Check if this action is imported with an alias
-    const statements = model.statements || [];
-    const libraryImports = statements.filter(isLibraryImport);
-
-    for (const libraryImport of libraryImports) {
-      for (const actionImport of libraryImport.actions) {
-        // Check if this actionImport references the same action
-        if (actionImport.action.ref === action && actionImport.alias) {
-          return actionImport.alias;
-        }
-      }
-    }
-
-    // No alias found, use original name
-    return action.name;
-  }
+  /** Resolve a library import path against this workspace's documents. */
+  private readonly resolveLibrary: LibraryResolver = (fromUri, importPath) => {
+    const libraryUri = resolveLibraryPath(fromUri, importPath);
+    const value =
+      this.eligianServices.shared.workspace.LangiumDocuments.getDocument(libraryUri)?.parseResult
+        .value;
+    return value && isLibrary(value) ? value : undefined;
+  };
 
   /**
    * Get scope for parameter references (bare identifiers in action bodies).
@@ -297,15 +219,39 @@ export class EligianScopeProvider extends DefaultScopeProvider {
 
     // Create descriptions for all nodes
     // HTML imports are treated as VariableDeclarations for scoping purposes
+    // A declaration whose name did not parse (`const = 5`) is left out: a scope
+    // entry without a name makes the linker throw
     const descriptions = [
-      ...htmlImports.map(imp => this.descriptions.createDescription(imp, imp.name, document)),
-      ...visibleVariables.map(varDecl =>
-        this.descriptions.createDescription(varDecl, varDecl.name, document)
-      ),
+      ...htmlImports
+        .filter(imp => imp.name)
+        .map(imp => this.descriptions.createDescription(imp, imp.name, document)),
+      ...visibleVariables
+        .filter(varDecl => varDecl.name)
+        .map(varDecl => this.descriptions.createDescription(varDecl, varDecl.name, document)),
     ];
 
     // Create scope from descriptions
     return this.createScope(descriptions);
+  }
+
+  /**
+   * The labeled events of the timeline containing the reference. Labels of
+   * later events are in scope too, so a forward reference resolves and the
+   * validator can say why it is not allowed (rather than 'unknown name').
+   */
+  private getScopeForEventLabel(context: ReferenceInfo): Scope {
+    // Idea #19: in a navigate position the labels of the target timeline
+    const interaction = AstUtils.getContainerOfType(context.container, isInteractionStatement);
+    const timeline = interaction
+      ? labelTimeline(interaction)
+      : AstUtils.getContainerOfType(context.container, isTimeline);
+    if (!timeline) return EMPTY_SCOPE;
+    const document = AstUtils.getDocument(context.container);
+    // `at … as x` events and (idea #11) labeled sequence items
+    const labeled = labeledEvents(timeline);
+    return this.createScope(
+      labeled.map(event => this.descriptions.createDescription(event, event.name!, document))
+    );
   }
 
   /**
@@ -336,96 +282,62 @@ export class EligianScopeProvider extends DefaultScopeProvider {
       // TypeScript doesn't understand that isNamedImport narrows the type, so we use type assertion
       const imports = allStatements.filter(isNamedImport) as unknown as NamedImport[];
 
-      // Filter to only HTML imports (explicit type or .html extension)
-      return imports.filter(imp => {
-        const explicitType = imp.assetType === 'html';
-        const htmlExtension = imp.path.endsWith('.html');
-        return explicitType || htmlExtension;
-      });
+      // Filter to only HTML imports (effective asset type, same rule as the constant folder)
+      return imports.filter(isHtmlImport);
     }
 
     return [];
   }
 
   /**
-   * Collect all variable declarations visible from the given node.
+   * Collect the variable declarations visible from the given node, nearest
+   * first.
    *
-   * Walks up the AST tree collecting:
-   * 1. Local variables (declared in action body)
-   * 2. Global variables (declared at program level)
+   * Local consts are lexically scoped: walking up from the reference, each
+   * enclosing statement list (action / event action body, endable start and
+   * end blocks, inline endable and stagger blocks, then / else branches, for
+   * bodies) contributes the consts declared BEFORE the statement that contains
+   * the reference, the closest declaration first. So a const is not visible
+   * before its declaration, after the block it is declared in, in a sibling
+   * branch, or in its own initializer. The end block of an endable action
+   * (named or inline) or of an inline stagger block also sees every const of
+   * its start block, which runs first: the compiler transforms both blocks with
+   * one scope and inlines foldable consts. A non-foldable start-block const is a
+   * runtime variable that Eligius does not carry over to the end operations, so
+   * the validator reports such references
+   * (ExpressionValidator.checkEndBlockConstReference).
    *
-   * Local variables shadow globals with the same name.
+   * Program-level consts come last (they are globals, visible everywhere), so
+   * a local shadows a global of the same name.
    */
   private getVisibleVariables(node: AstNode): VariableDeclaration[] {
     const variables: VariableDeclaration[] = [];
     const seenNames = new Set<string>();
-
-    // Walk up the AST from the reference node
-    let current: AstNode | undefined = node;
-
-    while (current) {
-      // If we're inside an action, collect local variables
-      if (isActionDefinition(current)) {
-        const localVars = this.getLocalVariables(current);
-        for (const varDecl of localVars) {
-          if (!seenNames.has(varDecl.name)) {
-            variables.push(varDecl);
-            seenNames.add(varDecl.name);
-          }
-        }
-      }
-
-      // Move up to parent
-      current = current.$container;
-    }
-
-    // Get global variables from program root. Only top-level statements count
-    // as globals — descending into the whole AST (streamAst) would leak other
-    // actions' local variable declarations into this scope.
-    const program = AstUtils.getDocument(node).parseResult.value;
-    const globalVars = isProgram(program) ? program.statements.filter(isVariableDeclaration) : [];
-
-    for (const varDecl of globalVars) {
+    const add = (varDecl: VariableDeclaration): void => {
       if (!seenNames.has(varDecl.name)) {
         variables.push(varDecl);
         seenNames.add(varDecl.name);
       }
-    }
-
-    return variables;
-  }
-
-  /**
-   * Get all local variable declarations within an action.
-   *
-   * Recursively walks through the action's operations to find all const declarations.
-   */
-  private getLocalVariables(actionDef: AstNode): VariableDeclaration[] {
-    const variables: VariableDeclaration[] = [];
-
-    // Get all operation statements from the action
-    const operations = isActionDefinition(actionDef)
-      ? 'startOperations' in actionDef
-        ? actionDef.startOperations
-        : actionDef.operations
-      : [];
-
-    // Recursively collect all variable declarations from operations
-    const collectVars = (nodes: AstNode[]): void => {
-      for (const node of nodes) {
-        if (isVariableDeclaration(node)) {
-          variables.push(node);
-        }
-        // Recursively check children (for if statements, for loops, etc.)
-        // Use streamContents to get only children (not the node itself)
-        const children = AstUtils.streamContents(node).toArray();
-        if (children.length > 0) {
-          collectVars(children);
-        }
-      }
     };
 
-    collectVars(operations as AstNode[]);
+    let child: AstNode = node;
+    let parent = node.$container;
+    while (parent && !isProgram(parent) && !isLibrary(parent)) {
+      for (const varDecl of getPrecedingDeclarations(child, parent)) {
+        add(varDecl);
+      }
+      child = parent;
+      parent = parent.$container;
+    }
+
+    // Global variables: only top-level statements count as globals. Descending
+    // into the whole AST (streamAst) would leak actions' local declarations.
+    const program = AstUtils.getDocument(node).parseResult.value;
+    if (isProgram(program)) {
+      for (const varDecl of program.statements.filter(isVariableDeclaration)) {
+        add(varDecl);
+      }
+    }
 
     return variables;
   }
@@ -456,7 +368,8 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     // Get current document URI
     const currentDocument = AstUtils.getDocument(context.container);
     const currentUri = currentDocument.uri;
-    if (!currentUri) {
+    // No path yet in a partial AST (`import { a } from` while typing)
+    if (!currentUri || !libraryImport.path) {
       return EMPTY_SCOPE;
     }
 
@@ -482,7 +395,10 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     }
 
     // Filter actions to only include public ones (exclude private actions)
-    const publicActions = (library.actions || []).filter(action => action.visibility !== 'private');
+    // Nameless actions (a name that did not parse) cannot be imported
+    const publicActions = (library.actions || []).filter(
+      action => action.visibility !== 'private' && action.name
+    );
 
     if (publicActions.length === 0) {
       // No public actions available in library
@@ -498,3 +414,53 @@ export class EligianScopeProvider extends DefaultScopeProvider {
     return this.createScope(actionDescriptions);
   }
 }
+
+/**
+ * The const declarations that precede `child` in the statement list of
+ * `parent` holding it, nearest first. Empty when `child` is not held in a
+ * list (e.g. an if condition). Only statement lists can hold
+ * VariableDeclarations, so any other list (call arguments, object literal
+ * properties) contributes nothing.
+ */
+function getPrecedingDeclarations(child: AstNode, parent: AstNode): VariableDeclaration[] {
+  const index = child.$containerIndex;
+  const property = child.$containerProperty;
+  if (index === undefined || property === undefined) {
+    return [];
+  }
+  const siblings = (parent as unknown as Record<string, unknown>)[property];
+  if (!Array.isArray(siblings)) {
+    return [];
+  }
+  const declarations: VariableDeclaration[] = [];
+  for (let i = index - 1; i >= 0; i--) {
+    const sibling: unknown = siblings[i];
+    if (isVariableDeclaration(sibling)) {
+      declarations.push(sibling);
+    }
+  }
+  // An end block also sees the consts of its start block, last first.
+  const startProperty = START_LIST_OF_END_LIST[property];
+  const startList = startProperty
+    ? (parent as unknown as Record<string, unknown>)[startProperty]
+    : undefined;
+  if (Array.isArray(startList)) {
+    for (let i = startList.length - 1; i >= 0; i--) {
+      const statement: unknown = startList[i];
+      if (isVariableDeclaration(statement)) {
+        declarations.push(statement);
+      }
+    }
+  }
+  return declarations;
+}
+
+/**
+ * End-block property → start-block property of the same node: endable action
+ * definitions and inline endable actions (`endOperations`), inline stagger
+ * blocks (`endOps`).
+ */
+const START_LIST_OF_END_LIST: Readonly<Record<string, string>> = {
+  endOperations: 'startOperations',
+  endOps: 'startOps',
+};
