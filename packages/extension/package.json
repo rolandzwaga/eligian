@@ -1,7 +1,7 @@
 {
   "name": "eligian",
   "description": "Language support for Eligian, a concise DSL for Eligius presentations: highlighting, validation, completion, a live preview and compilation to Eligius JSON.",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "displayName": "Eligian",
   "type": "module",
   "publisher": "rolandzwaga",

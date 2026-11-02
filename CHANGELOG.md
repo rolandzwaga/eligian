@@ -9,6 +9,7 @@ Eligian has not been released yet: every package is still at version `0.0.1` and
 ### Changed
 
 - **Marketplace packaging**: the extension is named `eligian` (the scoped name was refused by vsce) and has an icon, a license, a repository and keywords. `pnpm -C packages/extension run package` builds it minified, without source maps, and packs only the runtime files (21 files, 5 MB), with the LICENSE and this changelog copied in.
+- **Publishing**: the `Publish extension` workflow (`.github/workflows/publish.yml`, run by hand on `main`) builds, tests and publishes the extension to the Visual Studio Marketplace with Trusted Publishing (OIDC, no stored token), optionally as a pre-release. The extension is at version 1.0.0.
 - **Eligius 4.2.0**: engine errors carry the path of `startAction` / `endAction` calls to the failing operation (`operationPath`). The preview and `eligian smoke` follow it to the one operation that failed, where before an operation at the same index in the caller and in a called action could not be told apart ("or 1 other place"). Without a path the old search remains.
 
 ## 2026-10-22 to 2026-11-02: the audit follow-up (#183)

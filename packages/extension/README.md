@@ -33,14 +33,18 @@ VS Code extension for the Eligian DSL - providing language support for `.eligian
 
 ## Installation
 
-### From Marketplace (Coming Soon)
+### From the Marketplace
 
-Search for "Eligian" in the VS Code Extensions marketplace.
+Search for "Eligian" in the Extensions view, or run:
+
+```bash
+code --install-extension rolandzwaga.eligian
+```
 
 ### From VSIX
 
 ```bash
-code --install-extension eligian-0.0.1.vsix
+code --install-extension eligian-1.0.0.vsix
 ```
 
 ## Usage
