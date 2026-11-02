@@ -44,6 +44,7 @@ interface RuntimeErrorPayload {
   readonly phase?: 'start' | 'end';
   readonly operationSystemName?: string;
   readonly operationIndex?: number;
+  readonly operationPath?: readonly { readonly systemName: string; readonly index: number }[];
   readonly timelineUri?: string;
   readonly position?: number;
 }
@@ -757,6 +758,7 @@ export class PreviewPanel {
             phase: payload.phase ?? 'start',
             operationSystemName: payload.operationSystemName,
             operationIndex: payload.operationIndex,
+            operationPath: payload.operationPath,
           })
         : undefined;
     const location = located?.location;

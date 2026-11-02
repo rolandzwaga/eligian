@@ -334,5 +334,29 @@ describe('preview.ts runtime errors and the playhead (audit idea #14)', () => {
     expect(byId('playhead-status').textContent).toContain(
       "Runtime error: Error in action start 'beat': boom"
     );
+
+    // Eligius 4.2+: the operation path, as plain entries
+    h.posted.length = 0;
+    h.engineListeners.get('error')?.({
+      message: 'nested',
+      actionId: 'a1',
+      phase: 'start',
+      operationSystemName: 'addClass',
+      operationIndex: 0,
+      operationPath: Object.freeze([
+        Object.freeze({ systemName: 'startAction', index: 3 }),
+        Object.freeze({ systemName: 'addClass', index: 0 }),
+      ]),
+    });
+    expect(h.posted).toContainEqual({
+      type: 'runtimeError',
+      payload: expect.objectContaining({
+        operationPath: [
+          { systemName: 'startAction', index: 3 },
+          { systemName: 'addClass', index: 0 },
+        ],
+      }),
+    });
+    expect(byId('playhead-status').textContent).toContain('Runtime error: nested');
   });
 });

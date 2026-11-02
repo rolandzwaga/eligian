@@ -38,9 +38,16 @@ interface EligianMap {
 Eligius 3 emits `EngineActionError { actionId, actionName, phase, operationSystemName,
 operationIndex }` for a timeline action the engine started or ended. The operation is the
 **innermost** failing one: when it failed inside an action the timeline action called, the
-index is that action's. `locateEngineError(map, error)`:
+index is that action's. Since Eligius 4.2 the error also carries `operationPath`: every
+`startAction` / `endAction` on the way and finally the failing operation, outermost first, each
+index in the list of the action the previous entry started. `locateEngineError(map, error)`:
 
-1. every operation at the index whose system name matches: in the action's phase, then, for each
+0. with an `operationPath`: follows it (the action a `startAction` / `endAction` starts is the one
+   the nearest `requestAction` before it requested; its start operations for `startAction`, its end
+   operations for `endAction`) to the one operation: `exact: true`, `via` the actions followed, no
+   `alternatives`. A path that does not fit the map (a missing operation, another name) falls back
+   to the search;
+1. without one (Eligius before 4.2), every operation at the index whose system name matches: in the action's phase, then, for each
    `requestAction` in that phase, in the requested action's operations (start operations when
    followed by `startAction`, end operations for `endAction`), recursively (8 levels); `via`
    lists the actions followed;

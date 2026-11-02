@@ -97,16 +97,16 @@ timeline "Shared" in "#stage" using raf {
     ]);
   });
 
-  it('names the other place when a called action shares the operation and index', async () => {
+  it('a called action that shares the operation and index: the one that failed', async () => {
     // Eligius reports selectElement at index 0: boom's (which failed) and the
-    // timeline action's own both match
+    // timeline action's own both match; its operation path (4.2) names boom's
     const outcome = await smoke(['shared.eligian'], 'json');
     const [result] = JSON.parse(outcome.output);
     expect(result.problems).toEqual([
       expect.objectContaining({
         message:
-          'start operation selectElement: selectElement: selector is either empty or not defined. [or at shared.eligian:3:17 (in boom)]',
-        location: expect.objectContaining({ line: 5 }),
+          'start operation selectElement (in boom): selectElement: selector is either empty or not defined.',
+        location: expect.objectContaining({ line: 3, column: 17 }),
       }),
     ]);
   });

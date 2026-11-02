@@ -233,6 +233,11 @@ function bindEngineListeners(current: IEligiusEngine): void {
           phase: error.phase,
           operationSystemName: error.operationSystemName,
           operationIndex: error.operationIndex,
+          // Eligius 4.2+: the startAction / endAction calls on the way, outermost first
+          operationPath: error.operationPath?.map(({ systemName, index }) => ({
+            systemName,
+            index,
+          })),
           timelineUri: current.currentTimelineUri,
           position: current.position,
         },

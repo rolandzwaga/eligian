@@ -11,7 +11,10 @@
  * Eligius reports a failing timeline action as (actionId, phase, operation
  * system name, operation index), where the operation is the innermost one:
  * when it failed inside an action the timeline action called, the index is
- * that action's. {@link locateEngineError} follows those calls.
+ * that action's. Since Eligius 4.2 it also reports the operation path (every
+ * startAction / endAction on the way, outermost first), which
+ * {@link locateEngineError} follows to the one operation; without a path it
+ * searches the called actions for the name and index.
  */
 import type { IEngineConfiguration, IOperationConfiguration, TOperationData } from 'eligius';
 import type { SourceLocation } from './types/common.js';
@@ -113,6 +116,11 @@ export interface EngineErrorInfo {
   readonly phase: 'start' | 'end';
   readonly operationSystemName?: string;
   readonly operationIndex?: number;
+  /**
+   * Eligius 4.2+: the operations from the action to the failing one, outermost
+   * first (each index is in the list of the action the previous entry started)
+   */
+  readonly operationPath?: readonly { readonly systemName: string; readonly index: number }[];
 }
 
 /** An operation an engine error can come from, with the actions called on the way. */
@@ -129,13 +137,16 @@ export interface LocatedEngineError {
   readonly operation?: EligianMapOperation;
   /** Names of the actions the timeline action called on the way to the operation */
   readonly via: readonly string[];
+  /** Whether the operation was found through the error's operation path (exact) */
+  readonly exact: boolean;
   /** Where to report: the operation, else the action */
   readonly location?: SourceLocation;
   /**
    * Other operations that match the report as well. Eligius names only the
    * innermost operation (system name and index in its own list), so when the
    * timeline action and an action it calls both have that operation at that
-   * index, the error can come from either.
+   * index, the error can come from either. Empty when the operation path
+   * identified it.
    */
   readonly alternatives: readonly EngineErrorCandidate[];
 }
@@ -143,12 +154,14 @@ export interface LocatedEngineError {
 const MAX_CALL_DEPTH = 8;
 
 /**
- * Find the source of an engine error: the operations with the reported system
- * name at the reported index, in the action's phase and in the actions it
- * calls (through requestAction + startAction / endAction, recursively). The
- * action's own operation comes first, then the called actions' in call order;
- * the first is reported, the others are `alternatives`. Falls back to the
- * action itself.
+ * Find the source of an engine error. With an operation path (Eligius 4.2+)
+ * it is followed through the called actions to the one failing operation.
+ * Without one (or when it does not fit the map), the operations with the
+ * reported system name at the reported index are searched, in the action's
+ * phase and in the actions it calls (through requestAction + startAction /
+ * endAction, recursively): the action's own operation first, then the called
+ * actions' in call order; the first is reported, the others are
+ * `alternatives`. Falls back to the action itself.
  */
 export function locateEngineError(
   map: EligianMap,
@@ -161,6 +174,19 @@ export function locateEngineError(
     if (candidate.kind === 'action' && !byName.has(candidate.name)) {
       byName.set(candidate.name, candidate);
     }
+  }
+
+  const phaseOps = error.phase === 'end' ? action.end : action.start;
+  const exact = followOperationPath(phaseOps, error.operationPath, byName);
+  if (exact) {
+    return {
+      action,
+      operation: exact.operation,
+      via: exact.via,
+      exact: true,
+      location: exact.operation.location ?? action.location,
+      alternatives: [],
+    };
   }
 
   const { operationIndex: index, operationSystemName: systemName } = error;
@@ -187,15 +213,47 @@ export function locateEngineError(
     }
   };
 
-  search(error.phase === 'end' ? action.end : action.start, [], 0);
+  search(phaseOps, [], 0);
   const [found, ...alternatives] = candidates;
   return {
     action,
     operation: found?.operation,
     via: found?.via ?? [],
+    exact: false,
     location: found?.operation.location ?? action.location,
     alternatives,
   };
+}
+
+/**
+ * The operation an operation path leads to, or undefined when the path does
+ * not fit the map (a missing or renamed operation, a call that cannot be
+ * followed). Each entry but the last is a startAction / endAction: the action
+ * it starts is the one the nearest requestAction before it requested, and the
+ * next entry is in that action's start (startAction) or end (endAction) list.
+ */
+function followOperationPath(
+  phaseOps: readonly EligianMapOperation[],
+  path: EngineErrorInfo['operationPath'],
+  byName: ReadonlyMap<string, EligianMapAction>
+): EngineErrorCandidate | undefined {
+  if (!Array.isArray(path) || path.length === 0) return undefined;
+  let ops = phaseOps;
+  const via: string[] = [];
+  for (const [step, entry] of path.entries()) {
+    const operation = Number.isInteger(entry?.index) ? ops[entry.index] : undefined;
+    if (!operation || operation.systemName !== entry.systemName) return undefined;
+    if (step === path.length - 1) return { operation, via };
+    let requested: string | undefined;
+    for (let i = entry.index - 1; i >= 0 && requested === undefined; i--) {
+      requested = ops[i]?.calls;
+    }
+    const called = requested === undefined ? undefined : byName.get(requested);
+    if (!called) return undefined;
+    ops = entry.systemName === 'endAction' ? called.end : called.start;
+    via.push(called.name);
+  }
+  return undefined;
 }
 
 /**
