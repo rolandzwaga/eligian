@@ -4,7 +4,13 @@ All notable changes to Eligian: the DSL, its compiler, the CLI and the VS Code e
 
 Eligian has not been released yet: every package is still at version `0.0.1` and there are no release tags. This changelog was put together from the git history (274 commits, 2025-10-14 to 2026-11-01). It is grouped by period, newest first. Numbers like (#38) are the pull requests merged into `main`, and the spec numbers refer to `specs/<NNN>-*/`.
 
-## Unreleased: branch `fix/audit-high-findings` (2026-10-22 to 2026-11-02)
+## Unreleased: branch `feat/eligius-4.2-operation-path` (2026-11-02)
+
+### Changed
+
+- **Eligius 4.2.0**: engine errors carry the path of `startAction` / `endAction` calls to the failing operation (`operationPath`). The preview and `eligian smoke` follow it to the one operation that failed, where before an operation at the same index in the caller and in a called action could not be told apart ("or 1 other place"). Without a path the old search remains.
+
+## 2026-10-22 to 2026-11-02: the audit follow-up (#183)
 
 This work follows the codebase audit of 2026-10-22 (`docs/audit/2026-10-22-codebase-audit.md`): its findings and most of its feature ideas.
 
@@ -154,3 +160,4 @@ This work follows the codebase audit of 2026-10-22 (`docs/audit/2026-10-22-codeb
 | 2026-09 | 2.3.2 |
 | 2026-10-22 | 3.0.1 (#175) |
 | 2026-11-01 | 4.0.0, 4.1.0 |
+| 2026-11-02 | 4.2.0 (`operationPath` on engine errors) |

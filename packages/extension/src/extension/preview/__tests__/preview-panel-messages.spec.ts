@@ -137,6 +137,10 @@ vi.mock('vscode', async () => {
         public endLine: number,
         public endCharacter: number
       ) {}
+      // The runtime diagnostics compare a new failure's start with the reported ones
+      get start() {
+        return { line: this.startLine, character: this.startCharacter };
+      }
     },
     Diagnostic: class {
       code?: string;
@@ -543,5 +547,25 @@ describe('PreviewPanel runtime errors (audit idea #14)', () => {
       diagnostic.relatedInformation?.map(r => [r.location.uri.fsPath, r.location.range.startLine])
     ).toEqual([[documentPath, 1]]);
     expect(diagnostic.relatedInformation?.[0].message).toMatch(/^Or here \(in 'inner'\): /);
+
+    // With the operation path (Eligius 4.2+): the one that failed, nothing else
+    h.errorMessages.length = 0;
+    h.receive?.({
+      type: 'runtimeError',
+      payload: {
+        message: 'no controller',
+        actionId: 'a1',
+        phase: 'start',
+        operationSystemName: 'getControllerInstance',
+        operationIndex: 0,
+        operationPath: [
+          { systemName: 'startAction', index: 2 },
+          { systemName: 'getControllerInstance', index: 0 },
+        ],
+      },
+    });
+    expect(h.errorMessages).toEqual([
+      'Eligian Preview Runtime Error: no controller (story.eligian:2:5)',
+    ]);
   });
 });

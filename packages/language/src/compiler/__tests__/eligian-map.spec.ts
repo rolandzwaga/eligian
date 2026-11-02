@@ -172,7 +172,82 @@ timeline "t" in "#stage" using raf { at 0s..1s [ selectElement("#a") ] }`;
     }
   });
 
-  test('an error in a called action at an index the caller shares: both places', async () => {
+  test('follows the operation path (Eligius 4.2) to the one failing operation', () => {
+    const op = (systemName: string, line: number, calls?: string) => ({
+      systemName,
+      location: { line, column: 1 },
+      ...(calls ? { calls } : {}),
+    });
+    const map: EligianMap = {
+      version: 1,
+      actions: {
+        t: {
+          name: 't',
+          kind: 'timeline',
+          location: { line: 10, column: 1 },
+          start: [op('requestAction', 10, 'mid'), op('startAction', 10)],
+          end: [op('requestAction', 11, 'mid'), op('endAction', 11)],
+        },
+        m: {
+          name: 'mid',
+          kind: 'action',
+          start: [op('selectElement', 2), op('requestAction', 3, 'deep'), op('startAction', 3)],
+          end: [op('setElementContent', 4)],
+        },
+        d: { name: 'deep', kind: 'action', start: [op('selectElement', 7)], end: [] },
+      },
+    };
+    const error = { actionId: 't', operationSystemName: 'selectElement', operationIndex: 0 };
+
+    // Without a path: mid's selectElement and deep's both match name and index
+    const searched = locateEngineError(map, { ...error, phase: 'start' });
+    expect(searched).toMatchObject({ exact: false, location: { line: 2 }, via: ['mid'] });
+    expect(searched?.alternatives.map(a => a.via)).toEqual([['mid', 'deep']]);
+
+    // The path goes through mid into deep: only deep's
+    const operationPath = [
+      { systemName: 'startAction', index: 1 },
+      { systemName: 'startAction', index: 2 },
+      { systemName: 'selectElement', index: 0 },
+    ];
+    expect(locateEngineError(map, { ...error, phase: 'start', operationPath })).toMatchObject({
+      exact: true,
+      location: { line: 7 },
+      via: ['mid', 'deep'],
+      alternatives: [],
+    });
+
+    // endAction: into the called action's end operations
+    expect(
+      locateEngineError(map, {
+        actionId: 't',
+        phase: 'end',
+        operationPath: [
+          { systemName: 'endAction', index: 1 },
+          { systemName: 'setElementContent', index: 0 },
+        ],
+      })
+    ).toMatchObject({ exact: true, location: { line: 4 }, via: ['mid'] });
+
+    // A path that does not fit the map (another program's, a wrong name): the search
+    for (const wrong of [
+      [
+        { systemName: 'startAction', index: 1 },
+        { systemName: 'log', index: 0 },
+      ],
+      [{ systemName: 'startAction', index: 5 }],
+      [
+        { systemName: 'requestAction', index: 0 },
+        { systemName: 'selectElement', index: 0 },
+      ],
+    ]) {
+      expect(
+        locateEngineError(map, { ...error, phase: 'start', operationPath: wrong })
+      ).toMatchObject({ exact: false, location: { line: 2 } });
+    }
+  });
+
+  test('an error in a called action at an index the caller shares: the one that failed', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const { config, map } = await compiled(`action inner() [
   getControllerInstance("NoSuchController")
@@ -199,15 +274,26 @@ timeline "t" in "#stage" using raf {
     await engine.destroy();
 
     // The engine reports getControllerInstance at index 0: the timeline
-    // action's own (line 6) matches as well as inner's (line 2), which failed
+    // action's own (line 6) matches as well as inner's (line 2), which failed.
+    // The operation path (startAction, then getControllerInstance) settles it.
     const [error] = errors;
     expect([error.operationSystemName, error.operationIndex]).toEqual(['getControllerInstance', 0]);
-    const located = locateEngineError(map as EligianMap, error);
-    const places = [located, ...(located?.alternatives ?? [])].map(
-      c => c?.operation?.location?.line
-    );
-    expect(places).toEqual([6, 2]);
-    expect(located?.alternatives[0].via).toEqual(['inner']);
+    expect(error.operationPath?.map(e => e.systemName)).toEqual([
+      'startAction',
+      'getControllerInstance',
+    ]);
+    expect(locateEngineError(map as EligianMap, error)).toMatchObject({
+      exact: true,
+      operation: { location: { line: 2 } },
+      via: ['inner'],
+      alternatives: [],
+    });
+    // Without the path (Eligius before 4.2): both places
+    const { operationPath: _, ...withoutPath } = error;
+    const searched = locateEngineError(map as EligianMap, { ...withoutPath, phase: error.phase });
+    expect(
+      [searched, ...(searched?.alternatives ?? [])].map(c => c?.operation?.location?.line)
+    ).toEqual([6, 2]);
   });
 
   test("an error the real engine reports maps to the failing operation's source line", async () => {
