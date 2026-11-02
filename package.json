@@ -30,7 +30,7 @@
     "effect:patch": "effect-tsgo patch --typescript"
   },
   "dependencies": {
-    "effect": "4.0.5",
+    "effect": "4.0.7",
     "eligius": "4.2.0"
   },
   "devDependencies": {
