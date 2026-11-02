@@ -31,21 +31,21 @@ This work follows the codebase audit of 2026-10-22 (`docs/audit/2026-10-22-codeb
 
 ### Added: the editor
 
-- **Signature help and inlay hints**: parameter names (audit idea #7) and the resolved times of timeline events (#4).
-- **Snippets**: timeline events and other common constructs (#13).
-- **Navigation**: timeline names as symbols for `navigate` targets (#16); a timeline-aware Outline, breadcrumbs and Go to Symbol (#20); Go to Definition and Find References between `.eligian`, CSS and layout HTML, plus a CodeLens with reference counts on CSS rules (#22).
+- **Signature help and inlay hints**: parameter names (audit idea 7) and the resolved times of timeline events (audit idea 4).
+- **Snippets**: timeline events and other common constructs (audit idea 13).
+- **Navigation**: timeline names as symbols for `navigate` targets (audit idea 16); a timeline-aware Outline, breadcrumbs and Go to Symbol (audit idea 20); Go to Definition and Find References between `.eligian`, CSS and layout HTML, plus a CodeLens with reference counts on CSS rules (audit idea 22).
 - **Selectors through action parameters**: class names and selectors passed to an action's parameters are checked against the CSS and the layout and completed there (spec 056). An optional warning flags selectors that are in the CSS but not in the layout (`eligian.validation.selectorNotInLayout`).
 - **Formatter**: whitespace-only Format Document (spec 054).
 - **Readable syntax errors** instead of Chevrotain's token lists. A keyword used as a name is explained.
-- **Timeline (Gantt) view**: the events of each timeline as bars in a panel, with the preview's playhead (#20).
+- **Timeline (Gantt) view**: the events of each timeline as bars in a panel, with the preview's playhead (audit idea 20).
 - ***Eligian: New Presentation…*** creates a project from a starter (blank, chapters, video, library).
 - **Eligius lint while you type**: 200 ms after an edit, every program without errors is checked by Eligius' configuration lint, with findings in the editor and in Problems, with or without the preview (setting `eligian.validation.eligiusLint`).
 
 ### Added: the preview
 
-- **Scrubber and time readout**, plus pickers for the timeline and the language (#5).
+- **Scrubber and time readout**, plus pickers for the timeline and the language (audit idea 5).
 - **Preview from here**: `▶ Preview from 22s` CodeLenses above timelines and events.
-- **Keeps its place**: the playhead stays where it was when the program is recompiled (#8).
+- **Keeps its place**: the playhead stays where it was when the program is recompiled (audit idea 8).
 - **Runtime errors in the source**: an engine error becomes a diagnostic on the operation that failed, through the new Eligian map. When the operation's name and index match several places on the call chain, the others are listed as related information (spec 053).
 - **Running events marked**: the events playing at the current time are highlighted in the editor.
 

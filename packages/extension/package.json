@@ -285,7 +285,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "build:prod": "pnpm run build:prepare && node esbuild.mjs --production",
-    "package": "vsce package --no-dependencies --no-gitHubIssueLinking"
+    "package": "vsce package --no-dependencies"
   },
   "dependencies": {
     "@eligian/language": "workspace:*",

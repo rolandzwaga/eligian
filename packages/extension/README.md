@@ -172,7 +172,7 @@ Create `styles/main.css`:
 ```css
 #title {
   font-size: 48px;
-  color: #333;
+  color: dimgray;
 }
 
 .fade-in {
