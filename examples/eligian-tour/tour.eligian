@@ -133,6 +133,7 @@ action hubUnwire() [
     removeControllerFromElement("KeyboardController")
     removeControllerFromElement("KeyboardController")
     removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
   }
   with "#card-ch1" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch2" { removeControllerFromElement("DOMEventListenerController") }
@@ -141,6 +142,7 @@ action hubUnwire() [
   with "#card-chf" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch5" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch6" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-chc" { removeControllerFromElement("DOMEventListenerController") }
 ]
 
 // ===========================================================================
@@ -161,6 +163,7 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-chf" navigate "Files & Imports"
     on click "#card-ch5" navigate "Engine Reach"
     on click "#card-ch6" navigate "The Editor"
+    on click "#card-chc" navigate "The Command Line"
     on key "1" navigate "Timeline & Time"
     on key "2" navigate "Actions"
     on key "3" navigate "Logic"
@@ -168,6 +171,7 @@ timeline "Hub" in "#stage" using raf {
     on key "5" navigate "Files & Imports"
     on key "6" navigate "Engine Reach"
     on key "7" navigate "The Editor"
+    on key "8" navigate "The Command Line"
   ]
   on leave [
     hideView("#hub")
@@ -1004,4 +1008,363 @@ timeline "The Editor" in "#stage" using raf {
   at e14.start + 2s for 5s [ revealCard("#c6-pop-locale-table") ]
   at e14.start + 4s for 3s [ revealCard("#c6-pop-starters") ]
   at e14.start + 5.5s for 1.5s [ revealCard("#c6-pop-langblock") ]
+}
+
+// ===========================================================================
+// Chapter 08 — The Command Line (#chc). The eligian CLI, one beat per command:
+// install, init, compile, bundle, the eligian map, check, check formats and
+// Eligius lint, smoke, dev, fmt, exit codes. The effect pane is a
+// REENACTMENT: a CSS-built mock terminal whose every line is real output of
+// node packages/cli/bin/cli.js (sources per beat in
+// storyboards/chapter-08-the-command-line.md). REAL: each beat's output lines
+// and later commands appear through a stagger after the sequence (Chapter 04's
+// tool at work in the CLI chapter); the end blocks are left out, resetChapter
+// clears .in on leave and replay.
+// ===========================================================================
+timeline "The Command Line" in "#stage" using raf {
+
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
+  on enter [
+    enterChapter("#chc")
+    on click "#cc-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#chc")
+  ]
+  on leave [
+    leaveChapter("#chc", "#cc-to-hub")
+  ]
+
+  sequence each [ clearSpots() ] {
+    // Beat 1 — install: npm, the two bins, version and help (0–7 s)
+    for 7s as t1 [
+      narrate("The compiler is also a command: eligian on npm, Node 22.12 or later. Install it, or run it once with npx.")
+      revealBlock("#cc-code-install")
+      spotlight("#cc-tok-install")
+      callout("#cc-cl-t1", "two bins: eligian and eligian-cli · -V / --version · -h / --help · help [command]")
+      demo("#cc-fx-install")
+    ]
+
+    // Beat 2 — init: a starter project, and the refusal to overwrite one (7–15 s)
+    for 8s as t2 [
+      narrate("eligian init writes a starter that already checks clean: blank, chapters, video or library, with layout, styles, locales, a package.json and a README.")
+      revealBlock("#cc-code-init")
+      spotlight("#cc-tok-init")
+      callout("#cc-cl-t2", "-t / --template · --title (default: from the directory name) · --force overwrites")
+      demo("#cc-fx-init")
+    ]
+
+    // Beat 3 — compile: the default command, --check, and a parse error (15–23 s)
+    for 8s as t3 [
+      narrate("eligian file.eligian compiles to Eligius JSON next to the file. Dash o picks the output, dash for stdout; --check only validates; --minify, --no-optimize, -q and -v adjust the rest.")
+      revealBlock("#cc-code-compile")
+      spotlight("#cc-tok-compile")
+      callout("#cc-cl-t3", "-o - writes the JSON to stdout · eligian file is short for eligian compile file")
+      demo("#cc-fx-compile")
+    ]
+
+    // Beat 4 — bundle: a standalone presentation directory (23–31 s)
+    for 8s as t4 [
+      narrate("--bundle writes a standalone presentation: index.html, bundle.js, your assets, small images inlined, only the Eligius pieces you use. --force overwrites, --sourcemap and --inline-threshold tune it.")
+      revealBlock("#cc-code-bundle")
+      spotlight("#cc-tok-bundle")
+      callout("#cc-cl-t4", "next to the input as tour.bundle/, or -o a directory · --inline-threshold in bytes (51200 by default)")
+      demo("#cc-fx-bundle")
+    ]
+
+    // Beat 5 — the eligian map: compiled ids back to source lines (31–38 s)
+    for 7s as t5 [
+      narrate("--eligian-map also writes the map from every compiled action and operation back to its source line — the same map the preview and smoke build in memory to point at the failing operation, written to a file for your own tools.")
+      revealBlock("#cc-code-map")
+      spotlight("#cc-tok-map")
+      callout("#cc-cl-t5", "compiled actions and operations → .eligian source locations")
+      demo("#cc-fx-map")
+    ]
+
+    // Beat 6 — check: every error and warning of many files (38–47 s)
+    for 9s as t6 [
+      narrate("eligian check reports every error and warning of many files — globs, directories, exclusions — and fails on warnings when you tell it to.")
+      revealBlock("#cc-code-check")
+      spotlight("#cc-tok-check")
+      callout("#cc-cl-t6", "patterns: files, directories, globs, !excludes; node_modules skipped")
+      demo("#cc-fx-check")
+    ]
+
+    // Beat 7 — check formats and Eligius lint (47–55 s)
+    for 8s as t7 [
+      narrate("Four output formats: pretty, json, sarif for code scanning, github for pull-request annotations. Eligius' own configuration lint runs too unless --no-lint; --selector-not-in-layout adds the layout check.")
+      revealBlock("#cc-code-formats")
+      spotlight("#cc-tok-formats")
+      callout("#cc-cl-t7", "sarif 2.1.0 · github workflow commands")
+      demo("#cc-fx-formats")
+    ]
+
+    // Beat 8 — smoke: every timeline played headlessly on the real engine (55–64 s)
+    for 9s as t8 [
+      narrate("eligian smoke plays every timeline headlessly on the real engine: enter, every start and end, leave — and reports what fails at its source line. --strict also flags selectors that match nothing.")
+      revealBlock("#cc-code-smoke")
+      spotlight("#cc-tok-smoke")
+      callout("#cc-cl-t8", "--strict: selectElement selectors that match no element · --format pretty, github or json")
+      demo("#cc-fx-smoke")
+    ]
+
+    // Beat 9 — dev: the bundle in the browser, rebuilt on change (64–72 s)
+    for 8s as t9 [
+      narrate("eligian dev serves the bundle and rebuilds on every change: a CSS edit swaps styles in place, anything else reloads and resumes at the same position. Build errors show as an overlay.")
+      revealBlock("#cc-code-dev")
+      spotlight("#cc-tok-dev")
+      callout("#cc-cl-t9", "only files under the entry's directory are watched · a taken --port moves to the next free one")
+      demo("#cc-fx-dev")
+    ]
+
+    // Beat 10 — fmt: whitespace only, --check by default (72–80 s)
+    for 8s as t10 [
+      narrate("eligian fmt checks formatting — whitespace only, the editor's Format Document rules — and --write applies it. CI runs it on every example.")
+      revealBlock("#cc-code-fmt")
+      spotlight("#cc-tok-fmt")
+      callout("#cc-cl-t10", "--format text or github · a file with syntax errors is left alone (exit 2)")
+      demo("#cc-fx-fmt")
+    ]
+
+    // Beat 11 — exit codes (80–87 s)
+    for 7s as t11 [
+      narrate("Exit codes you can script on: 0 clean, 1 findings or a failed compile, 2 usage errors of check, smoke, fmt, dev and init, 3 I/O. The repo's CI checks, plays and format-checks every example this way. Hub.")
+      revealBlock("#cc-code-exit")
+      spotlight("#cc-tok-exit")
+      callout("#cc-cl-t11", "commander's own usage errors (a missing argument, an unknown option) exit 1")
+      demo("#cc-fx-exit")
+    ]
+  }
+
+  // The terminal output: one REAL stagger per beat over its output lines and
+  // later commands, in display order (a second command types after the first
+  // one's output). Each event ends by its beat's end.
+  // beat 1 (install): 12 lines from t1.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-install-1",
+    "#cc-out-install-2",
+    "#cc-out-install-3",
+    "#cc-out-install-4",
+    "#cc-cmd-install-2",
+    "#cc-out-install-5",
+    "#cc-cmd-install-3",
+    "#cc-out-install-6",
+    "#cc-out-install-7",
+    "#cc-out-install-8",
+    "#cc-out-install-9",
+    "#cc-cmd-install-4"
+  ] at t1.start + 1.5s for 2.5s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 2 (init): 10 lines from t2.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-init-1",
+    "#cc-out-init-2",
+    "#cc-out-init-3",
+    "#cc-out-init-4",
+    "#cc-out-init-5",
+    "#cc-out-init-6",
+    "#cc-cmd-init-2",
+    "#cc-out-init-7",
+    "#cc-out-init-8",
+    "#cc-cmd-init-3"
+  ] at t2.start + 1.5s for 4s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 3 (compile): 20 lines from t3.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-compile-1",
+    "#cc-cmd-compile-2",
+    "#cc-out-compile-2",
+    "#cc-cmd-compile-3",
+    "#cc-out-compile-3",
+    "#cc-out-compile-4",
+    "#cc-out-compile-5",
+    "#cc-out-compile-6",
+    "#cc-out-compile-7",
+    "#cc-out-compile-8",
+    "#cc-out-compile-9",
+    "#cc-out-compile-10",
+    "#cc-out-compile-11",
+    "#cc-out-compile-12",
+    "#cc-out-compile-13",
+    "#cc-out-compile-14",
+    "#cc-out-compile-15",
+    "#cc-out-compile-16",
+    "#cc-out-compile-17",
+    "#cc-cmd-compile-4"
+  ] at t3.start + 1.5s for 1.5s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 4 (bundle): 10 lines from t4.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-bundle-1",
+    "#cc-out-bundle-2",
+    "#cc-out-bundle-3",
+    "#cc-out-bundle-4",
+    "#cc-cmd-bundle-2",
+    "#cc-out-bundle-5",
+    "#cc-out-bundle-6",
+    "#cc-cmd-bundle-3",
+    "#cc-out-bundle-7",
+    "#cc-cmd-bundle-4"
+  ] at t4.start + 1.5s for 4s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 5 (map): 7 lines from t5.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-map-1",
+    "#cc-out-map-2",
+    "#cc-cmd-map-2",
+    "#cc-out-map-3",
+    "#cc-cmd-map-3",
+    "#cc-out-map-4",
+    "#cc-cmd-map-4"
+  ] at t5.start + 1.5s for 4s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 6 (check): 8 lines from t6.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-check-1",
+    "#cc-out-check-2",
+    "#cc-out-check-3",
+    "#cc-out-check-4",
+    "#cc-out-check-5",
+    "#cc-cmd-check-2",
+    "#cc-out-check-6",
+    "#cc-cmd-check-3"
+  ] at t6.start + 1.5s for 5.5s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 7 (formats): 20 lines from t7.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-formats-1",
+    "#cc-out-formats-2",
+    "#cc-cmd-formats-2",
+    "#cc-out-formats-3",
+    "#cc-out-formats-4",
+    "#cc-out-formats-5",
+    "#cc-out-formats-6",
+    "#cc-out-formats-7",
+    "#cc-out-formats-8",
+    "#cc-out-formats-9",
+    "#cc-out-formats-10",
+    "#cc-out-formats-11",
+    "#cc-out-formats-12",
+    "#cc-out-formats-13",
+    "#cc-cmd-formats-3",
+    "#cc-out-formats-14",
+    "#cc-out-formats-15",
+    "#cc-out-formats-16",
+    "#cc-out-formats-17",
+    "#cc-cmd-formats-4"
+  ] at t7.start + 1.5s for 1.5s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 8 (smoke): 19 lines from t8.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-smoke-1",
+    "#cc-out-smoke-2",
+    "#cc-out-smoke-3",
+    "#cc-out-smoke-4",
+    "#cc-out-smoke-5",
+    "#cc-out-smoke-6",
+    "#cc-out-smoke-7",
+    "#cc-out-smoke-8",
+    "#cc-out-smoke-9",
+    "#cc-out-smoke-10",
+    "#cc-out-smoke-11",
+    "#cc-out-smoke-12",
+    "#cc-cmd-smoke-2",
+    "#cc-out-smoke-13",
+    "#cc-out-smoke-14",
+    "#cc-out-smoke-15",
+    "#cc-out-smoke-16",
+    "#cc-out-smoke-17",
+    "#cc-cmd-smoke-3"
+  ] at t8.start + 1.5s for 3s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 9 (dev): 11 lines from t9.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-dev-1",
+    "#cc-out-dev-2",
+    "#cc-out-dev-3",
+    "#cc-out-dev-4",
+    "#cc-out-dev-5",
+    "#cc-out-dev-6",
+    "#cc-out-dev-7",
+    "#cc-out-dev-8",
+    "#cc-out-dev-9",
+    "#cc-out-dev-10",
+    "#cc-cmd-dev-2"
+  ] at t9.start + 1.5s for 4s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 10 (fmt): 19 lines from t10.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-fmt-1",
+    "#cc-out-fmt-2",
+    "#cc-out-fmt-3",
+    "#cc-out-fmt-4",
+    "#cc-out-fmt-5",
+    "#cc-out-fmt-6",
+    "#cc-out-fmt-7",
+    "#cc-out-fmt-8",
+    "#cc-out-fmt-9",
+    "#cc-out-fmt-10",
+    "#cc-out-fmt-11",
+    "#cc-out-fmt-12",
+    "#cc-out-fmt-13",
+    "#cc-cmd-fmt-2",
+    "#cc-out-fmt-14",
+    "#cc-out-fmt-15",
+    "#cc-cmd-fmt-3",
+    "#cc-out-fmt-16",
+    "#cc-cmd-fmt-4"
+  ] at t10.start + 1.5s for 2s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // beat 11 (exit): 12 lines from t11.start + 1.5s, 250ms apart
+  stagger 250ms [
+    "#cc-out-exit-1",
+    "#cc-cmd-exit-2",
+    "#cc-out-exit-2",
+    "#cc-cmd-exit-3",
+    "#cc-out-exit-3",
+    "#cc-cmd-exit-4",
+    "#cc-out-exit-4",
+    "#cc-cmd-exit-5",
+    "#cc-out-exit-5",
+    "#cc-cmd-exit-6",
+    "#cc-out-exit-6",
+    "#cc-cmd-exit-7"
+  ] at t11.start + 1.5s for 2.5s [
+    selectElement(@@item)
+    addClass("in")
+  ]
+
+  // the end card, after the exit codes
+  at t11.start + 5s for 2s [ demo("#cc-fx-done") ]
 }

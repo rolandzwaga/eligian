@@ -240,7 +240,8 @@
 #card-ch4,
 #card-chf,
 #card-ch5,
-#card-ch6 {
+#card-ch6,
+#card-chc {
   border-color: rgba(88, 166, 255, 0.5);
 }
 
@@ -404,6 +405,17 @@
 #c6-tok-gantt { anchor-name: --c6-cl-e13; }
 #c6-tok-locales { anchor-name: --c6-cl-e14; }
 #c6-tok-recap { anchor-name: --c6-cl-e15; }
+#cc-tok-install { anchor-name: --cc-cl-t1; }
+#cc-tok-init { anchor-name: --cc-cl-t2; }
+#cc-tok-compile { anchor-name: --cc-cl-t3; }
+#cc-tok-bundle { anchor-name: --cc-cl-t4; }
+#cc-tok-map { anchor-name: --cc-cl-t5; }
+#cc-tok-check { anchor-name: --cc-cl-t6; }
+#cc-tok-formats { anchor-name: --cc-cl-t7; }
+#cc-tok-smoke { anchor-name: --cc-cl-t8; }
+#cc-tok-dev { anchor-name: --cc-cl-t9; }
+#cc-tok-fmt { anchor-name: --cc-cl-t10; }
+#cc-tok-exit { anchor-name: --cc-cl-t11; }
 
 #cl-name { position-anchor: --cl-name; }
 #cl-provider { position-anchor: --cl-provider; }
@@ -464,6 +476,17 @@
 #c6-cl-e13 { position-anchor: --c6-cl-e13; }
 #c6-cl-e14 { position-anchor: --c6-cl-e14; }
 #c6-cl-e15 { position-anchor: --c6-cl-e15; }
+#cc-cl-t1 { position-anchor: --cc-cl-t1; }
+#cc-cl-t2 { position-anchor: --cc-cl-t2; }
+#cc-cl-t3 { position-anchor: --cc-cl-t3; }
+#cc-cl-t4 { position-anchor: --cc-cl-t4; }
+#cc-cl-t5 { position-anchor: --cc-cl-t5; }
+#cc-cl-t6 { position-anchor: --cc-cl-t6; }
+#cc-cl-t7 { position-anchor: --cc-cl-t7; }
+#cc-cl-t8 { position-anchor: --cc-cl-t8; }
+#cc-cl-t9 { position-anchor: --cc-cl-t9; }
+#cc-cl-t10 { position-anchor: --cc-cl-t10; }
+#cc-cl-t11 { position-anchor: --cc-cl-t11; }
 
 @supports (anchor-name: --a) {
   /* Token chips sit just below their token, with an arrow pointing up at it;
@@ -519,7 +542,8 @@
   #c4-cl-manual,
   #cf-cl-files,
   #c5-cl-over,
-  #c6-cl-e1 {
+  #c6-cl-e1,
+  #cc-cl-t1 {
     top: 3rem;
   }
   #cl-provider,
@@ -528,7 +552,8 @@
   #c4-cl-seq,
   #cf-cl-languages,
   #c5-cl-bus,
-  #c6-cl-e2 {
+  #c6-cl-e2,
+  #cc-cl-t2 {
     top: 6rem;
   }
   #cl-range,
@@ -537,7 +562,8 @@
   #c4-cl-edit,
   #cf-cl-defaults,
   #c5-cl-on,
-  #c6-cl-e3 {
+  #c6-cl-e3,
+  #cc-cl-t3 {
     top: 9rem;
   }
   #cl-units,
@@ -546,7 +572,8 @@
   #c4-cl-stagger,
   #cf-cl-named,
   #c5-cl-interact,
-  #c6-cl-e4 {
+  #c6-cl-e4,
+  #cc-cl-t4 {
     top: 12rem;
   }
   #cl-relative,
@@ -555,7 +582,8 @@
   #c4-cl-items,
   #cf-cl-lib,
   #c5-cl-keys,
-  #c6-cl-e5 {
+  #c6-cl-e5,
+  #cc-cl-t5 {
     top: 15rem;
   }
   #c1-cl-label,
@@ -564,7 +592,8 @@
   #c4-cl-inline,
   #cf-cl-ext,
   #c5-cl-ctrl,
-  #c6-cl-e6 {
+  #c6-cl-e6,
+  #cc-cl-t6 {
     top: 18rem;
   }
   #c1-cl-target,
@@ -572,22 +601,27 @@
   #c3-cl-with,
   #cf-cl-doc,
   #c5-cl-loc,
-  #c6-cl-e7 {
+  #c6-cl-e7,
+  #cc-cl-t7 {
     top: 21rem;
   }
   #c1-cl-lifecycle,
   #cf-cl-keywords,
   #c5-cl-host,
-  #c6-cl-e8 {
+  #c6-cl-e8,
+  #cc-cl-t8 {
     top: 24rem;
   }
-  #c6-cl-e9 {
+  #c6-cl-e9,
+  #cc-cl-t9 {
     top: 27rem;
   }
-  #c6-cl-e10 {
+  #c6-cl-e10,
+  #cc-cl-t10 {
     top: 30rem;
   }
-  #c6-cl-e11 {
+  #c6-cl-e11,
+  #cc-cl-t11 {
     top: 33rem;
   }
   #c6-cl-e12 {
@@ -860,7 +894,8 @@
 /* One frame per beat (.fx.ide), a CSS-built VS Code. Popups (.ide-pop) are
    hidden until a sub-step adds .in; the two-class reveal rule is declared here
    (see the state-class section). No live LSP: every string is real tool output. */
-.fx.ide {
+.fx.ide,
+.fx.term {
   place-items: stretch;
   align-content: start;
   gap: 0;
@@ -1251,6 +1286,95 @@
   }
   .ide-playhead {
     transition: none;
+  }
+}
+
+/* ---- Mock terminal (Chapter 8 · The Command Line) --------------------- */
+/* One frame per beat (.fx.term; the .fx.ide rule above resets .fx's centring).
+   The beat's first command carries a static .typing: it types as the frame
+   appears. Output lines (.term-line.out) and later commands
+   (.term-line.cmd.later) are hidden until the beat's stagger adds .in; both
+   hidden states are two-class rules, so their reveal rules are declared here
+   (see the state-class section). Every line is real CLI output. */
+.term {
+  overflow: hidden;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #0b0f14;
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: left;
+}
+.term-titlebar {
+  padding: 0.2rem 0.8rem;
+  border-bottom: 1px solid #30363d;
+  background: #161b22;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+.term-body {
+  padding: 0.5rem 0.8rem;
+  min-width: 0;
+}
+/* one line of the session; an empty output line keeps its height */
+.term-line {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.term-prompt {
+  color: var(--accent);
+}
+.term-line.cmd.typing {
+  animation: clip-sweep 0.9s var(--ease) both;
+}
+.term-line.out,
+.term-line.cmd.later {
+  opacity: 0;
+}
+.term-line.out.in {
+  opacity: 1;
+  transition: opacity 0.15s var(--ease);
+}
+.term-line.cmd.later.in {
+  opacity: 1;
+  animation: clip-sweep 0.9s var(--ease) both;
+}
+/* the colours the CLI prints (chalk) */
+.term .ok {
+  color: #3fb950;
+}
+.term .err {
+  color: #f85149;
+}
+.term .warn {
+  color: #d29922;
+}
+.term .dim {
+  color: var(--muted);
+}
+.term .cyan {
+  color: #39c5cf;
+}
+.term u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* the block cursor on the beat's last prompt */
+.term-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--ink);
+  animation: caret-blink 1s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .term-caret {
+    animation: none;
   }
 }
 

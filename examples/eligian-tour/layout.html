@@ -37,6 +37,7 @@
         <li id="card-chf" class="card"><span class="card-num">05</span><span class="card-name">Files &amp; Imports</span></li>
         <li id="card-ch5" class="card"><span class="card-num">06</span><span class="card-name">Engine Reach</span></li>
         <li id="card-ch6" class="card"><span class="card-num">07</span><span class="card-name">The Editor</span></li>
+        <li id="card-chc" class="card"><span class="card-num">08</span><span class="card-name">The Command Line</span></li>
       </ul>
       <p id="hub-hint">Click a card or press 1–8 · Esc returns here · space pauses · r replays</p>
     </div>
@@ -816,6 +817,7 @@
               <div class="ide-complete-item">Files &amp; Imports</div>
               <div class="ide-complete-item">Engine Reach</div>
               <div class="ide-complete-item">The Editor</div>
+              <div class="ide-complete-item">The Command Line</div>
             </div>
           </div>
           <div id="c6-pop-complete-more" class="ide-pop ide-columns">
@@ -896,13 +898,13 @@
           <div class="ide-line is-current"><span class="tok fn">#tok-timeline</span> { <span class="tok kw">anchor-name</span>: --cl-name; }<span class="ide-caret"></span></div>
           <div id="c6-pop-nav-peek" class="ide-pop ide-palette">
             <div class="ide-palette-item">Eligian: Find Eligian References</div>
-            <div class="ide-palette-item is-sel">tour.eligian <span class="ide-dim">206</span>   <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-timeline"</span>)</div>
+            <div class="ide-palette-item is-sel">tour.eligian <span class="ide-dim">210</span>   <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-timeline"</span>)</div>
           </div>
         </div>
         <div class="ide-titlebar"><span class="ide-tab is-active">tour.eligian</span></div>
         <div class="ide-editor">
           <div class="ide-line">    <span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch3"</span> <span class="tok kw">navigate</span> <span class="tok str">"<span class="squiggle">Logik</span>"</span></div>
-          <div class="ide-hover">Unknown navigate target: 'Logik'. No timeline with this name exists. Available timelines: 'Hub', 'Timeline &amp; Time', 'Actions', 'Logic', 'Timeline Power Tools', 'Files &amp; Imports', 'Engine Reach', 'The Editor'. <span class="ide-dim">eligian</span></div>
+          <div class="ide-hover">Unknown navigate target: 'Logik'. No timeline with this name exists. Available timelines: 'Hub', 'Timeline &amp; Time', 'Actions', 'Logic', 'Timeline Power Tools', 'Files &amp; Imports', 'Engine Reach', 'The Editor', 'The Command Line'. <span class="ide-dim">eligian</span></div>
           <div id="c6-pop-nav-fix" class="ide-pop ide-lightbulb"><span class="ide-bulb">💡</span> Change to "Logic"<br>Create timeline "Logik"</div>
         </div>
         <div class="ide-status"><span>⊗ 1 ⚠ 0</span><span>Eligian</span></div>
@@ -1081,6 +1083,332 @@
       <div id="c6-cl-e13" class="callout"></div>
       <div id="c6-cl-e14" class="callout"></div>
       <div id="c6-cl-e15" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- ====================== CHAPTER 8 · The Command Line ============= -->
+  <!-- NOTE: the effect pane REENACTS a terminal: one mock frame per beat
+       (.fx.term), built from the classes of tour.css' "Mock terminal"
+       section. Every output line is real output of node packages/cli/bin/cli.js
+       (eligian 1.0.1), captured on the tour and on scratch files; sources per
+       beat: the storyboard (chapter-08-the-command-line.md). The beat's first
+       command types as the frame appears; its output lines (.term-line.out) and
+       later commands (.term-line.cmd.later) appear with .in, added by the beat's
+       stagger in the timeline. -->
+  <section id="chc" class="view chapter">
+
+    <header class="chrome">
+      <button id="cc-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot is-current"></span>
+      </nav>
+      <span class="chapter-label">08 · The Command Line</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="cc-code-install" class="code"><code><span class="tok fn">npm</span> install <span class="tok op">-g</span> <span class="tok str" id="cc-tok-install">eligian</span>
+<span class="tok fn">npx</span> eligian init my-talk
+<span class="tok fn">eligian</span> <span class="tok op">--version</span>
+<span class="tok com"># also installed as eligian-cli</span></code></pre>
+
+      <pre id="cc-code-init" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">init</span> my-talk <span class="tok op" id="cc-tok-init">--template</span> chapters
+<span class="tok fn">eligian</span> <span class="tok kw">init</span> . <span class="tok op">--template</span> library <span class="tok op">--title</span> <span class="tok str">"Product Tour"</span>
+<span class="tok com"># blank · chapters · video · library</span></code></pre>
+
+      <pre id="cc-code-compile" class="code"><code><span class="tok fn">eligian</span> tour.eligian                    <span class="tok com"># → tour.json</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op" id="cc-tok-compile">-o -</span>               <span class="tok com"># JSON to stdout</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--check</span>            <span class="tok com"># validate only</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--minify</span> <span class="tok op">--no-optimize</span> <span class="tok op">-q</span>
+<span class="tok fn">eligian</span> <span class="tok kw">compile</span> tour.eligian <span class="tok op">-v</span>         <span class="tok com"># the explicit form; -v adds progress lines</span></code></pre>
+
+      <pre id="cc-code-bundle" class="code"><code><span class="tok fn">eligian</span> tour.eligian <span class="tok op" id="cc-tok-bundle">--bundle</span>                  <span class="tok com"># → tour.bundle/</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--bundle</span> <span class="tok op">-o</span> site <span class="tok op">--force</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--bundle</span> <span class="tok op">--sourcemap</span> <span class="tok op">--inline-threshold</span> <span class="tok num">8192</span></code></pre>
+
+      <pre id="cc-code-map" class="code"><code><span class="tok fn">eligian</span> tour.eligian <span class="tok op" id="cc-tok-map">--eligian-map</span>    <span class="tok com"># + tour.eligian-map.json</span>
+<span class="tok com"># not with --bundle, not with -o -</span></code></pre>
+
+      <pre id="cc-code-check" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">check</span> <span class="tok str">"examples/**/*.eligian"</span> <span class="tok op">--max-warnings</span> <span class="tok num">0</span>
+<span class="tok fn">eligian</span> <span class="tok kw">check</span> src <span class="tok str" id="cc-tok-check">"!src/drafts/**"</span> <span class="tok op">--warnings-as-errors</span></code></pre>
+
+      <pre id="cc-code-formats" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">check</span> <span class="tok str">"**/*.eligian"</span> <span class="tok op" id="cc-tok-formats">--format</span> github
+<span class="tok fn">eligian</span> <span class="tok kw">check</span> src <span class="tok op">--format</span> sarif <span class="tok op">&gt;</span> eligian.sarif
+<span class="tok fn">eligian</span> <span class="tok kw">check</span> src <span class="tok op">--no-lint</span> <span class="tok op">--selector-not-in-layout</span> ids</code></pre>
+
+      <pre id="cc-code-smoke" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">smoke</span> examples/eligian-tour
+<span class="tok fn">eligian</span> <span class="tok kw">smoke</span> <span class="tok str">"examples/**/*.eligian"</span> <span class="tok op" id="cc-tok-smoke">--strict</span> <span class="tok op">--format</span> github</code></pre>
+
+      <pre id="cc-code-dev" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw" id="cc-tok-dev">dev</span> tour.eligian <span class="tok op">--open</span>
+<span class="tok fn">eligian</span> <span class="tok kw">dev</span> tour.eligian <span class="tok op">--port</span> <span class="tok num">4000</span></code></pre>
+
+      <pre id="cc-code-fmt" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">fmt</span> <span class="tok str">"examples/**/*.eligian"</span>        <span class="tok com"># --check is the default</span>
+<span class="tok fn">eligian</span> <span class="tok kw">fmt</span> <span class="tok op" id="cc-tok-fmt">--write</span> src
+<span class="tok fn">eligian</span> <span class="tok kw">fmt</span> <span class="tok op">--format</span> github <span class="tok str">"**/*.eligian"</span></code></pre>
+
+      <pre id="cc-code-exit" class="code"><code><span class="tok num">0</span>  success, clean
+<span class="tok num">1</span>  errors · too many warnings · smoke failures · unformatted files ·
+   init conflicts · a failed compile · compile option errors
+   (--bundle --check, --eligian-map -o -, --inline-threshold)
+<span class="tok num" id="cc-tok-exit">2</span>  no files matched · invalid --format, --max-warnings, --port,
+   --template or --selector-not-in-layout · fmt syntax errors
+<span class="tok num">3</span>  I/O error · refusing to overwrite the source
+
+<span class="tok fn">pnpm</span> run check:examples <span class="tok op">&amp;&amp;</span> <span class="tok fn">pnpm</span> run smoke:examples <span class="tok op">&amp;&amp;</span> <span class="tok fn">pnpm</span> run fmt:examples</code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <!-- Beat 1: install: npm, the two bins, version and help -->
+      <div id="cc-fx-install" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> npm install -g eligian</div>
+          <div id="cc-out-install-1" class="term-line out">added 53 packages in 19s</div>
+          <div id="cc-out-install-2" class="term-line out"></div>
+          <div id="cc-out-install-3" class="term-line out">13 packages are looking for funding</div>
+          <div id="cc-out-install-4" class="term-line out">  run `npm fund` for details</div>
+          <div id="cc-cmd-install-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian --version</div>
+          <div id="cc-out-install-5" class="term-line out">1.0.1</div>
+          <div id="cc-cmd-install-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian --help</div>
+          <div id="cc-out-install-6" class="term-line out">Usage: eligian [options] [command]</div>
+          <div id="cc-out-install-7" class="term-line out"><span class="dim">…</span></div>
+          <div id="cc-out-install-8" class="term-line out">`eligian &lt;input&gt;` is short for `eligian compile &lt;input&gt;`.</div>
+          <div id="cc-out-install-9" class="term-line out">Run 'eligian &lt;command&gt; --help' (compile, check, fmt, smoke, dev, init) for its options.</div>
+          <div id="cc-cmd-install-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 2: init: a starter project, and the refusal to overwrite one -->
+      <div id="cc-fx-init" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian init my-talk --template chapters</div>
+          <div id="cc-out-init-1" class="term-line out">Created my-talk/ (Chapters starter): package.json, README.md, main.eligian, layout.html, styles.css, locales.json</div>
+          <div id="cc-out-init-2" class="term-line out"></div>
+          <div id="cc-out-init-3" class="term-line out">Next:</div>
+          <div id="cc-out-init-4" class="term-line out">  cd my-talk</div>
+          <div id="cc-out-init-5" class="term-line out">  eligian check main.eligian</div>
+          <div id="cc-out-init-6" class="term-line out">  open the folder in VS Code and run "Eligian: Preview Timeline" (Ctrl+K V)</div>
+          <div id="cc-cmd-init-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian init my-talk</div>
+          <div id="cc-out-init-7" class="term-line out"><span class="err">Not overwriting existing files in my-talk/: package.json, README.md, main.eligian, layout.html, styles.css, locales.json</span></div>
+          <div id="cc-out-init-8" class="term-line out"><span class="err">Use --force to overwrite them.</span></div>
+          <div id="cc-cmd-init-3" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 3: compile: the default command, --check, and a parse error -->
+      <div id="cc-fx-compile" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian</div>
+          <div id="cc-out-compile-1" class="term-line out"><span class="ok">✓ Compiled examples/eligian-tour/tour.eligian → examples/eligian-tour/tour.json</span></div>
+          <div id="cc-cmd-compile-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --check</div>
+          <div id="cc-out-compile-2" class="term-line out"><span class="ok">✓ examples/eligian-tour/tour.eligian is valid</span></div>
+          <div id="cc-cmd-compile-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian brace.eligian</div>
+          <div id="cc-out-compile-3" class="term-line out"></div>
+          <div id="cc-out-compile-4" class="term-line out"><span class="err">Parse failed:</span></div>
+          <div id="cc-out-compile-5" class="term-line out"></div>
+          <div id="cc-out-compile-6" class="term-line out">Parse Error: Expected an action or operation call, or a [ … ] block here, but found '{'.</div>
+          <div id="cc-out-compile-7" class="term-line out">  at 5:13</div>
+          <div id="cc-out-compile-8" class="term-line out"></div>
+          <div id="cc-out-compile-9" class="term-line out">  3 | action intro() [ selectElement("#hub") addClass("in") ]</div>
+          <div id="cc-out-compile-10" class="term-line out">  4 | timeline "T" in "#stage" using raf {</div>
+          <div id="cc-out-compile-11" class="term-line out">&gt; 5 |   at 0s..5s { intro() }</div>
+          <div id="cc-out-compile-12" class="term-line out">                  ^</div>
+          <div id="cc-out-compile-13" class="term-line out">  6 | }</div>
+          <div id="cc-out-compile-14" class="term-line out">  7 |</div>
+          <div id="cc-out-compile-15" class="term-line out"></div>
+          <div id="cc-out-compile-16" class="term-line out"><span class="warn">💡 Actions are defined inside square brackets: [ operation1() operation2() ]</span></div>
+          <div id="cc-out-compile-17" class="term-line out"></div>
+          <div id="cc-cmd-compile-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 4: bundle: a standalone presentation directory -->
+      <div id="cc-fx-bundle" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle</div>
+          <div id="cc-out-bundle-1" class="term-line out"><span class="ok">✓ Bundle created: examples/eligian-tour/tour.bundle</span></div>
+          <div id="cc-out-bundle-2" class="term-line out"><span class="dim">  Files: 2</span></div>
+          <div id="cc-out-bundle-3" class="term-line out"><span class="dim">  Size: 1205.2 KB</span></div>
+          <div id="cc-out-bundle-4" class="term-line out"><span class="dim">  Time: 1189ms</span></div>
+          <div id="cc-cmd-bundle-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle</div>
+          <div id="cc-out-bundle-5" class="term-line out"></div>
+          <div id="cc-out-bundle-6" class="term-line out"><span class="err">Bundle failed: Output directory already exists: examples/eligian-tour/tour.bundle. Use --force to overwrite.</span></div>
+          <div id="cc-cmd-bundle-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle --check</div>
+          <div id="cc-out-bundle-7" class="term-line out">Error: --bundle and --check cannot be combined: --check validates only and writes no output, but --bundle always writes a bundle directory</div>
+          <div id="cc-cmd-bundle-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 5: the eligian map: compiled ids back to source lines -->
+      <div id="cc-fx-map" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --eligian-map</div>
+          <div id="cc-out-map-1" class="term-line out"><span class="ok">✓ Compiled examples/eligian-tour/tour.eligian → examples/eligian-tour/tour.json</span></div>
+          <div id="cc-out-map-2" class="term-line out"><span class="ok">✓ Eligian map → examples/eligian-tour/tour.eligian-map.json</span></div>
+          <div id="cc-cmd-map-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --eligian-map -o -</div>
+          <div id="cc-out-map-3" class="term-line out">Error: --eligian-map needs an output file (it is written next to it), not '-o -'</div>
+          <div id="cc-cmd-map-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle --eligian-map</div>
+          <div id="cc-out-map-4" class="term-line out">Error: --eligian-map applies to JSON output, not to --bundle</div>
+          <div id="cc-cmd-map-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 6: check: every error and warning of many files -->
+      <div id="cc-fx-check" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian check demo.eligian --max-warnings 0</div>
+          <div id="cc-out-check-1" class="term-line out"><u>demo.eligian</u></div>
+          <div id="cc-out-check-2" class="term-line out">  <span class="dim">4:17</span>  <span class="warn">warning</span>  'clik' is not a known DOM event. Did you mean: 'click'?<span class="dim">  unknown_dom_event</span></div>
+          <div id="cc-out-check-3" class="term-line out"></div>
+          <div id="cc-out-check-4" class="term-line out"><span class="warn">1 file, 0 errors, 1 warning</span></div>
+          <div id="cc-out-check-5" class="term-line out"><span class="err">Too many warnings: 1 (maximum 0)</span></div>
+          <div id="cc-cmd-check-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian check examples/eligian-tour --max-warnings 0</div>
+          <div id="cc-out-check-6" class="term-line out"><span class="ok">2 files, 0 errors, 0 warnings</span></div>
+          <div id="cc-cmd-check-3" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 7: check formats and Eligius lint -->
+      <div id="cc-fx-formats" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian check contract.eligian --format github</div>
+          <div id="cc-out-formats-1" class="term-line out">::error file=contract.eligian,line=5,col=13,endLine=5,endColumn=22,title=missing-action-dependency::Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement)</div>
+          <div id="cc-out-formats-2" class="term-line out">1 file, 1 error, 0 warnings</div>
+          <div id="cc-cmd-formats-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian check contract.eligian --format json</div>
+          <div id="cc-out-formats-3" class="term-line out">{</div>
+          <div id="cc-out-formats-4" class="term-line out">  "files": [</div>
+          <div id="cc-out-formats-5" class="term-line out"><span class="dim">…</span></div>
+          <div id="cc-out-formats-6" class="term-line out">  "summary": {</div>
+          <div id="cc-out-formats-7" class="term-line out">    "files": 1,</div>
+          <div id="cc-out-formats-8" class="term-line out">    "errors": 1,</div>
+          <div id="cc-out-formats-9" class="term-line out">    "warnings": 0,</div>
+          <div id="cc-out-formats-10" class="term-line out">    "infos": 0,</div>
+          <div id="cc-out-formats-11" class="term-line out">    "hints": 0</div>
+          <div id="cc-out-formats-12" class="term-line out">  }</div>
+          <div id="cc-out-formats-13" class="term-line out">}</div>
+          <div id="cc-cmd-formats-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian check jump.eligian</div>
+          <div id="cc-out-formats-14" class="term-line out"><u>jump.eligian</u></div>
+          <div id="cc-out-formats-15" class="term-line out">  <span class="dim">3:39</span>  <span class="err">error</span>    scrollToElement: 'block' must be one of 'start', 'center', 'end', 'nearest', got 'nowhere'. (Eligius lint at actions[0].startOperations[1].operationData.block)<span class="dim">  eligius-E120</span></div>
+          <div id="cc-out-formats-16" class="term-line out"></div>
+          <div id="cc-out-formats-17" class="term-line out"><span class="err">1 file, 1 error, 0 warnings</span></div>
+          <div id="cc-cmd-formats-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 8: smoke: every timeline played headlessly on the real engine -->
+      <div id="cc-fx-smoke" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian smoke examples/eligian-tour</div>
+          <div id="cc-out-smoke-1" class="term-line out">examples/eligian-tour/presentation.eligian (library: nothing to play)</div>
+          <div id="cc-out-smoke-2" class="term-line out">examples/eligian-tour/tour.eligian</div>
+          <div id="cc-out-smoke-3" class="term-line out">  timeline 'Hub': 1 position ok</div>
+          <div id="cc-out-smoke-4" class="term-line out">  timeline 'Timeline &amp; Time': 9 positions ok</div>
+          <div id="cc-out-smoke-5" class="term-line out">  timeline 'Actions': 9 positions ok</div>
+          <div id="cc-out-smoke-6" class="term-line out">  timeline 'Logic': 13 positions ok</div>
+          <div id="cc-out-smoke-7" class="term-line out">  timeline 'Timeline Power Tools': 19 positions ok</div>
+          <div id="cc-out-smoke-8" class="term-line out">  timeline 'Files &amp; Imports': 9 positions ok</div>
+          <div id="cc-out-smoke-9" class="term-line out">  timeline 'Engine Reach': 10 positions ok</div>
+          <div id="cc-out-smoke-10" class="term-line out">  timeline 'The Editor': 45 positions ok</div>
+          <div id="cc-out-smoke-11" class="term-line out">  timeline 'The Command Line': 254 positions ok</div>
+          <div id="cc-out-smoke-12" class="term-line out">2 files, 9 timelines played, 0 errors, 0 warnings</div>
+          <div id="cc-cmd-smoke-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian smoke boom.eligian</div>
+          <div id="cc-out-smoke-13" class="term-line out">boom.eligian</div>
+          <div id="cc-out-smoke-14" class="term-line out">  timeline 'Logic': 3 positions FAIL (1)</div>
+          <div id="cc-out-smoke-15" class="term-line out">  error  start operation selectElement (in boom): selectElement: selector is either empty or not defined.</div>
+          <div id="cc-out-smoke-16" class="term-line out">         boom.eligian:3:17 — 'Logic' at 9s</div>
+          <div id="cc-out-smoke-17" class="term-line out">1 file, 1 timeline played, 1 error, 0 warnings</div>
+          <div id="cc-cmd-smoke-3" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 9: dev: the bundle in the browser, rebuilt on change -->
+      <div id="cc-fx-dev" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian dev examples/eligian-tour/tour.eligian</div>
+          <div id="cc-out-dev-1" class="term-line out"><span class="dim">[13:44:38] </span>built in 1185ms</div>
+          <div id="cc-out-dev-2" class="term-line out"><span class="ok">eligian dev</span> examples/eligian-tour/tour.eligian → <span class="cyan">http://localhost:5180/</span> (Ctrl+C to stop)</div>
+          <div id="cc-out-dev-3" class="term-line out"><span class="dim">[13:44:41] </span>tour.css changed → rebuilt in 861ms, styles swapped</div>
+          <div id="cc-out-dev-4" class="term-line out"><span class="dim">[13:44:44] </span>presentation.eligian changed → rebuilt in 865ms, reloading 1 page</div>
+          <div id="cc-out-dev-5" class="term-line out"><span class="dim">[13:44:47] </span>tour.eligian changed → build failed (361ms):</div>
+          <div id="cc-out-dev-6" class="term-line out">  Parse Error: Expected an action or operation call, or a [ … ] block here, but found '{'.</div>
+          <div id="cc-out-dev-7" class="term-line out">    at 207:27</div>
+          <div id="cc-out-dev-8" class="term-line out"><span class="dim">…</span></div>
+          <div id="cc-out-dev-9" class="term-line out">  Hint: Actions are defined inside square brackets: [ operation1() operation2() ]</div>
+          <div id="cc-out-dev-10" class="term-line out"><span class="dim">[13:44:52] </span>tour.eligian changed → rebuilt in 897ms, reloading 1 page</div>
+          <div id="cc-cmd-dev-2" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 10: fmt: whitespace only, --check by default -->
+      <div id="cc-fx-fmt" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian fmt u.eligian</div>
+          <div id="cc-out-fmt-1" class="term-line out">u.eligian</div>
+          <div id="cc-out-fmt-2" class="term-line out">@@ line 2</div>
+          <div id="cc-out-fmt-3" class="term-line out">  styles "./s.css"</div>
+          <div id="cc-out-fmt-4" class="term-line out">- action f( selector:string )[</div>
+          <div id="cc-out-fmt-5" class="term-line out">- selectElement(selector)</div>
+          <div id="cc-out-fmt-6" class="term-line out">-   addClass( "on" )</div>
+          <div id="cc-out-fmt-7" class="term-line out">+ </div>
+          <div id="cc-out-fmt-8" class="term-line out">+ action f(selector: string) [</div>
+          <div id="cc-out-fmt-9" class="term-line out">+   selectElement(selector)</div>
+          <div id="cc-out-fmt-10" class="term-line out">+   addClass("on")</div>
+          <div id="cc-out-fmt-11" class="term-line out">  ]</div>
+          <div id="cc-out-fmt-12" class="term-line out"></div>
+          <div id="cc-out-fmt-13" class="term-line out">1 file would be reformatted (run 'eligian fmt --write')</div>
+          <div id="cc-cmd-fmt-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian fmt --write u.eligian</div>
+          <div id="cc-out-fmt-14" class="term-line out">Formatted u.eligian</div>
+          <div id="cc-out-fmt-15" class="term-line out">1 file formatted</div>
+          <div id="cc-cmd-fmt-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian fmt examples/eligian-tour</div>
+          <div id="cc-out-fmt-16" class="term-line out">All 2 files formatted</div>
+          <div id="cc-cmd-fmt-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 11: exit codes -->
+      <div id="cc-fx-exit" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian check "nothing/**"</div>
+          <div id="cc-out-exit-1" class="term-line out"><span class="err">No files matched: nothing/**</span></div>
+          <div id="cc-cmd-exit-2" class="term-line cmd later"><span class="term-prompt">$</span> echo $?</div>
+          <div id="cc-out-exit-2" class="term-line out">2</div>
+          <div id="cc-cmd-exit-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian init x --template bogus</div>
+          <div id="cc-out-exit-3" class="term-line out"><span class="err">Unknown template 'bogus'. Use one of: blank, chapters, video, library</span></div>
+          <div id="cc-cmd-exit-4" class="term-line cmd later"><span class="term-prompt">$</span> echo $?</div>
+          <div id="cc-out-exit-4" class="term-line out">2</div>
+          <div id="cc-cmd-exit-5" class="term-line cmd later"><span class="term-prompt">$</span> eligian jump.eligian -o jump.eligian</div>
+          <div id="cc-out-exit-5" class="term-line out"><span class="err">Output path 'jump.eligian' is the same as the input file; refusing to overwrite.</span></div>
+          <div id="cc-cmd-exit-6" class="term-line cmd later"><span class="term-prompt">$</span> echo $?</div>
+          <div id="cc-out-exit-6" class="term-line out">3</div>
+          <div id="cc-cmd-exit-7" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <div id="cc-fx-done" class="fx"><span class="fx-done">Chapter 8 ✓ — the whole toolchain</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="cc-cl-t1" class="callout"></div>
+      <div id="cc-cl-t2" class="callout"></div>
+      <div id="cc-cl-t3" class="callout"></div>
+      <div id="cc-cl-t4" class="callout"></div>
+      <div id="cc-cl-t5" class="callout"></div>
+      <div id="cc-cl-t6" class="callout"></div>
+      <div id="cc-cl-t7" class="callout"></div>
+      <div id="cc-cl-t8" class="callout"></div>
+      <div id="cc-cl-t9" class="callout"></div>
+      <div id="cc-cl-t10" class="callout"></div>
+      <div id="cc-cl-t11" class="callout"></div>
     </div>
   </section>
 

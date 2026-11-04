@@ -222,8 +222,8 @@ source alone (`eligian`).
 - **Frame** `#c6-fx-complete`: after `ani` `animate (operation)` (detail `Eligius operation`), `animateWithClass
   (operation)`; after `rev` `revealBlock (action)` (detail `(selector) - imported action`), `revealCard (action)`;
   +2 s after `on key "8" navigate "` the program's timelines `Hub` (detail `timeline (raf)`), `Timeline & Time`,
-  `Actions`, `Logic`, `Timeline Power Tools`, `Files & Imports`, `Engine Reach`, `The Editor`; +4 s after `on key "`
-  `ArrowRight` (detail `Right arrow`), `ArrowLeft`, `ArrowUp`, `ArrowDown`, `space`, `Enter`, `Escape`, and after
+  `Actions`, `Logic`, `Timeline Power Tools`, `Files & Imports`, `Engine Reach`, `The Editor`, `The Command Line`;
+  +4 s after `on key "` `ArrowRight` (detail `Right arrow`), `ArrowLeft`, `ArrowUp`, `ArrowDown`, `space`, `Enter`, `Escape`, and after
   `addController("` the nine controllers, `DOMEventListenerController` (detail `Controller:
   DOMEventListenerController(eventName, actions?, actionOperationData?)`) … `SubtitlesController`.
 - **F22:** `fadeIn` is not an operation; items filter on the bare name (`completion/operations.ts:60`,
@@ -295,9 +295,10 @@ source alone (`eligian`).
   HTML files".
 - **Frame** `#c6-fx-nav`: tab `tour.css` with the rule `#tok-timeline { anchor-name: --cl-name; }`; +2 s its CodeLens
   `1 Eligian reference`; +4 s the context-menu entry `Eligian: Find Eligian References` and the reference
-  `tour.eligian 206 spotlight("#tok-timeline")`; below, tab `tour.eligian` with `navigate "Logik"` squiggled and the
+  `tour.eligian 210 spotlight("#tok-timeline")`; below, tab `tour.eligian` with `navigate "Logik"` squiggled and the
   diagnostic `Unknown navigate target: 'Logik'. No timeline with this name exists. Available timelines: 'Hub',
-  'Timeline & Time', 'Actions', 'Logic', 'Timeline Power Tools', 'Files & Imports', 'Engine Reach', 'The Editor'.`
+  'Timeline & Time', 'Actions', 'Logic', 'Timeline Power Tools', 'Files & Imports', 'Engine Reach', 'The Editor',
+  'The Command Line'.`
   `eligian` (code `unknown_navigate_target` in the data); +5.5 s the fixes `Change to "Logic"` / `Create timeline
   "Logik"`.
 - **Source:** `lsp/eligian-timeline-providers.ts`, `lsp/css-navigation.ts` (`cssReferenceLenses`),
