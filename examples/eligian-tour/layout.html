@@ -147,27 +147,36 @@
   <span class="tok fn">animate</span>({ opacity<span class="tok op">:</span> <span class="tok num">1</span> }, <span class="tok">duration</span>)
 ]</code></pre>
 
-      <pre id="c2-code-call" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn" id="c2-tok-call">fadeIn</span>(<span class="tok str">"#hero"</span>, <span class="tok num">400</span>)   <span class="tok com">// your action</span>
-<span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>)         <span class="tok com">// built-in op</span></code></pre>
+      <pre id="c2-code-call" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn" id="c2-tok-call">fadeIn</span>(<span class="tok str">"#hero"</span>, <span class="tok num">400</span>)                 <span class="tok com">// your action</span>
+<span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok kw">target</span> <span class="tok str">"#hero"</span> [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]   <span class="tok com">// built-in op, in a block</span></code></pre>
 
-      <pre id="c2-code-byname" class="code"><code><span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok" id="c2-tok-template">template</span>) [
-  <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>)
-  <span class="tok fn">setElementContent</span>(<span class="tok">template</span>)
-]</code></pre>
+      <pre id="c2-code-byname" class="code"><code><span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok" id="c2-tok-template">template</span>) [ <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>) <span class="tok fn">setElementContent</span>(<span class="tok">template</span>) ]   <span class="tok com">// same name: forwarded</span>
+<span class="tok kw">action</span> <span class="tok fn">say</span>(<span class="tok">text</span>) [ <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>) <span class="tok fn">setElementContent</span>(<span class="tok">text</span>) ]               <span class="tok com">// bridged by setOperationData</span></code></pre>
 
       <pre id="c2-code-endable" class="code"><code><span class="tok kw" id="c2-tok-endable">endable</span> <span class="tok kw">action</span> <span class="tok fn">highlight</span>(<span class="tok">selector</span>) [
   <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
   <span class="tok fn">addClass</span>(<span class="tok str">"spot"</span>)
 ] [
-  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// re-select: nothing carries over</span>
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// re-select: start and end are separate runs</span>
   <span class="tok fn">removeClass</span>(<span class="tok str">"spot"</span>)
 ]</code></pre>
+
+      <pre id="c2-code-contract" class="code"><code><span class="tok kw">action</span> <span class="tok fn">highlight</span>() [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]   <span class="tok com">// needs selectedElement</span>
+<span class="tok kw">at</span> <span class="tok num">1s</span>..<span class="tok num">2s</span> <span class="tok fn squiggle" id="c2-tok-contract">highlight</span>()                   <span class="tok com">// ✗ requires 'selectedElement'</span>
+<span class="tok kw">at</span> <span class="tok num">1s</span>..<span class="tok num">2s</span> <span class="tok kw">target</span> <span class="tok str">"#box"</span> <span class="tok fn">highlight</span>()     <span class="tok com">// ✓</span></code></pre>
+
+      <pre id="c2-code-erased" class="code"><code><span class="tok kw">action</span> <span class="tok fn">twice</span>(<span class="tok">selector</span>) [
+  <span class="tok fn" id="c2-tok-erased">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// erases 'selector'…</span>
+  <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>)
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// …but the parameter was kept</span>
+]
+<span class="tok fn">twice</span>(<span class="tok str">"#hero"</span>)              <span class="tok com">// checked as a selector at the call: CSS ∪ layout</span></code></pre>
 
       <pre id="c2-code-lib" class="code"><code><span class="tok kw">library</span> <span class="tok fn">presentation</span>
 <span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span>) [ … ]       <span class="tok com">// public</span>
 <span class="tok kw">private</span> <span class="tok kw">action</span> <span class="tok fn">_helper</span>() [ … ]      <span class="tok com">// library-only</span>
 
-<span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span></code></pre>
+<span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> <span class="tok kw">as</span> <span class="tok fn">say</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span></code></pre>
     </section>
 
     <section class="effect-pane">
@@ -179,9 +188,17 @@
         <span class="fx-chip">requestAction</span><span class="fx-chip">startAction</span>
       </div>
       <div id="c2-fx-slot" class="fx">
-        <span class="fx-chip">template →</span><span class="fx-frame">setElementContent</span>
+        <span class="fx-chip">template → setElementContent</span>
+        <span class="fx-chip">text → setOperationData → template</span>
       </div>
       <div id="c2-fx-toggle" class="fx"><span class="fx-hero-box">.spot</span></div>
+      <!-- Beat 6: the diagnostic `eligian check` reports for the snippet (verbatim) -->
+      <div id="c2-fx-contract" class="fx">
+        <div class="diagnostic">Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement)</div>
+      </div>
+      <div id="c2-fx-erased" class="fx">
+        <span class="fx-chip">selector →</span><span class="fx-chip">selectElement →</span><span class="fx-chip">(saved) →</span><span class="fx-chip">selector</span>
+      </div>
       <div id="c2-fx-lib" class="fx"><span class="fx-done">Chapter 2 ✓</span></div>
     </section>
 
@@ -191,6 +208,8 @@
       <div id="c2-cl-call" class="callout"></div>
       <div id="c2-cl-name" class="callout"></div>
       <div id="c2-cl-endable" class="callout"></div>
+      <div id="c2-cl-contract" class="callout"></div>
+      <div id="c2-cl-erased" class="callout"></div>
     </div>
   </section>
 

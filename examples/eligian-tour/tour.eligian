@@ -249,8 +249,10 @@ timeline "Timeline & Time" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 2 — Actions & Composition. Built entirely from the presentation
-// library it describes; the reveal puts that library's own source on screen.
+// Chapter 2 — Actions & Composition. Eight beats, built entirely from the
+// presentation library it describes: defining and calling actions, how
+// parameters reach operations, endable actions, the dataflow contract the
+// compiler infers, erased-parameter save / restore, and libraries.
 // ===========================================================================
 timeline "Actions" in "#stage" using raf {
 
@@ -268,8 +270,8 @@ timeline "Actions" in "#stage" using raf {
   ]
 
   sequence each [ clearSpots() ] {
-    // Beat 1 — an action is a named list of operations
-    for 7s [
+    // Beat 1 — an action is a named list of operations (0–7 s)
+    for 7s as b1 [
       narrate("An action is a named list of operations. Define once, call anywhere.")
       revealBlock("#c2-code-def")
       spotlight("#c2-tok-action")
@@ -277,45 +279,63 @@ timeline "Actions" in "#stage" using raf {
       demo("#c2-fx-chain")
     ]
 
-    // Beat 2 — parameters and optional types
-    for 7s [
-      narrate("Actions take parameters. Annotate types when you want the compiler's help.")
+    // Beat 2 — parameters and optional types (7–14 s)
+    for 7s as b2 [
+      narrate("Actions take parameters. Annotate types when you want the compiler's help — or leave the type off.")
       revealBlock("#c2-code-params")
       spotlight("#c2-tok-param")
-      callout("#c2-cl-param", "optional type — string · number · boolean · object · array")
+      callout("#c2-cl-param", "optional type — string · number · boolean · object · array; no annotation = unchecked")
       demo("#c2-fx-fade")
     ]
 
-    // Beat 3 — unified call syntax
-    for 8s [
-      narrate("Calling your action looks exactly like calling a built-in operation.")
+    // Beat 3 — unified call syntax; a bare operation is not a timeline event (14–22 s)
+    for 8s as b3 [
+      narrate("Inside a block, calling your action looks exactly like calling a built-in operation.")
       revealBlock("#c2-code-call")
       spotlight("#c2-tok-call")
-      callout("#c2-cl-call", "one syntax; resolved action-first, then built-in op")
+      callout("#c2-cl-call", "one syntax: action first, then built-in op; a bare operation is not a timeline event")
       demo("#c2-fx-call")
     ]
 
-    // Beat 4 — params feed operations by name
-    for 8s [
-      narrate("A parameter that feeds a built-in op must be named after that op's input.")
+    // Beat 4 — parameters reach operations by name, or through setOperationData (22–30 s)
+    for 8s as b4 [
+      narrate("Parameters flow into operations by name — and when the names differ, the compiler bridges them.")
       revealBlock("#c2-code-byname")
       spotlight("#c2-tok-template")
-      callout("#c2-cl-name", "selectElement→selector · addClass→className · setElementContent→template")
+      callout("#c2-cl-name", "same name → passed straight through · other name → a setOperationData before the operation")
       demo("#c2-fx-slot")
     ]
 
-    // Beat 5 — endable actions: start and end are independent
-    for 8s [
+    // Beat 5 — endable actions: start and end are independent (30–38 s)
+    for 8s as b5 [
       narrate("An endable action has two blocks: set up, then tear down — independently.")
       revealBlock("#c2-code-endable")
       spotlight("#c2-tok-endable")
-      callout("#c2-cl-endable", "start & end run fresh; re-select in each — only the DOM persists")
+      callout("#c2-cl-endable", "start & end run separately — re-select in each, or use target")
       demo("#c2-fx-toggle")
     ]
 
-    // Beat 6 — libraries & composition, then the reveal
-    for 8s [
-      narrate("Group actions into a library, import what you need. Click ← Hub for more.")
+    // Beat 6 — dataflow contracts: what a block carries (38–46 s)
+    for 8s as b6 [
+      narrate("The compiler knows what each block carries. Call an action that needs a selected element where there is none, and it tells you.")
+      revealBlock("#c2-code-contract")
+      spotlight("#c2-tok-contract")
+      callout("#c2-cl-contract", "an inferred contract — the hover says Requires from the caller")
+      demo("#c2-fx-contract")
+    ]
+
+    // Beat 7 — erased parameters are saved and restored (46–54 s)
+    for 8s as b7 [
+      narrate("selectElement consumes its selector. Your parameter survives anyway: the compiler saves and restores it.")
+      revealBlock("#c2-code-erased")
+      spotlight("#c2-tok-erased")
+      callout("#c2-cl-erased", "saved as __eligian_param_selector around the operation; found by eligian smoke · a parameter that reaches a selector is checked at every call (spec 056)")
+      demo("#c2-fx-erased")
+    ]
+
+    // Beat 8 — libraries, imports and aliases (54–62 s)
+    for 8s as b8 [
+      narrate("Group actions into a library and import what you need — renamed if you like. Chapter 05 goes deeper. Hub.")
       revealBlock("#c2-code-lib")
       demo("#c2-fx-lib")
     ]

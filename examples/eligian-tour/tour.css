@@ -357,6 +357,8 @@
 #c2-tok-call { anchor-name: --c2-cl-call; }
 #c2-tok-template { anchor-name: --c2-cl-name; }
 #c2-tok-endable { anchor-name: --c2-cl-endable; }
+#c2-tok-contract { anchor-name: --c2-cl-contract; }
+#c2-tok-erased { anchor-name: --c2-cl-erased; }
 #c3-tok-const { anchor-name: --c3-cl-const; }
 #c3-tok-expr { anchor-name: --c3-cl-expr; }
 #c3-tok-if { anchor-name: --c3-cl-if; }
@@ -391,6 +393,8 @@
 #c2-cl-call { position-anchor: --c2-cl-call; }
 #c2-cl-name { position-anchor: --c2-cl-name; }
 #c2-cl-endable { position-anchor: --c2-cl-endable; }
+#c2-cl-contract { position-anchor: --c2-cl-contract; }
+#c2-cl-erased { position-anchor: --c2-cl-erased; }
 #c3-cl-const { position-anchor: --c3-cl-const; }
 #c3-cl-expr { position-anchor: --c3-cl-expr; }
 #c3-cl-if { position-anchor: --c3-cl-if; }
@@ -504,10 +508,12 @@
   #c6-cl-jsdoc {
     top: 15rem;
   }
-  #c1-cl-label {
+  #c1-cl-label,
+  #c2-cl-contract {
     top: 18rem;
   }
-  #c1-cl-target {
+  #c1-cl-target,
+  #c2-cl-erased {
     top: 21rem;
   }
   #c1-cl-lifecycle {
@@ -589,6 +595,37 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* ---- Mock UI (shared): diagnostics, squiggles, hover cards ----------- */
+/* Editor-style pieces used by more than one chapter (Chapter 2's contract
+   diagnostic, the editor chapter's mock frames). Strings shown in them are
+   verbatim tool output. */
+/* red wavy underline on a typo'd or failing token */
+.squiggle {
+  text-decoration: underline wavy #f85149;
+  text-underline-offset: 3px;
+}
+/* a diagnostic message, as the Problems panel / `eligian check` prints it */
+.diagnostic {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--ink);
+  font-size: 0.76rem;
+}
+/* a JSDoc hover card */
+.hover-card {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #0b0f14;
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  text-align: left;
 }
 
 /* Chapter 1 — the box its `target` beat lights (start block) and unlights (end
@@ -698,20 +735,6 @@
   color: var(--accent);
   margin: 0 0.5rem;
 }
-/* red wavy underline on a typo'd token */
-.squiggle {
-  text-decoration: underline wavy #f85149;
-  text-underline-offset: 3px;
-}
-/* a diagnostic / hover tooltip */
-.diagnostic {
-  margin-top: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  border-left: 3px solid #f85149;
-  background: rgba(248, 81, 73, 0.1);
-  color: var(--ink);
-  font-size: 0.76rem;
-}
 .lightbulb {
   margin-top: 0.4rem;
   color: var(--accent);
@@ -737,18 +760,6 @@
 }
 .complete-detail {
   color: var(--muted);
-}
-/* a JSDoc hover card */
-.hover-card {
-  width: 100%;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  background: #0b0f14;
-  color: var(--ink);
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  text-align: left;
 }
 
 /* ---- Shared narration subtitle (toggled per chapter) ----------------- */
