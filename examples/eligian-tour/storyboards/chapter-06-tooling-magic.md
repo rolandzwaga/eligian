@@ -100,7 +100,7 @@ A beat = (narration swap) + (code reveal / spotlight) + (callout) + (effect tick
 
 ### Beat 4 — "Autocomplete everywhere" (24s–32s)
 
-- **Narration:** "Type and the editor knows what fits: operations with their parameters, the eight
+- **Narration:** "Type and the editor knows what fits: operations with their parameters, the nine
   controllers, label IDs, CSS classes from your stylesheet, even HTML elements and an `on event` skeleton."
 - **Code** (`#c6-code-complete`): a half-typed call —
   ```eligian

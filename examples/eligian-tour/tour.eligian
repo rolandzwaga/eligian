@@ -83,18 +83,12 @@ action cfPlaceHint() [
   setElementContent(@hint)
 ]
 
-// Chapter-5 helpers — a REAL eventbus round-trip the chapter wires live. Clicking
-// the button runs ch5BroadcastPing (attached via a DOMEventListenerController),
-// which broadcasts "tour-ping"; the `on event` handler below catches it and reveals
-// the panel. This dogfoods three engine-reach features at once: controllers, the
-// eventbus, and event-driven actions — the same path the `navigate` sugar uses.
-action ch5WireButton() [
-  selectElement("#c5-fx-ping")
-  // addController(name, ...controllerParams) — positional after the name. For
-  // DOMEventListenerController: eventName, then the actions to run on the event.
-  addController("DOMEventListenerController", "click", ["ch5BroadcastPing"])
-]
-
+// Engine Reach helpers — a REAL eventbus round-trip, wired live by the chapter's
+// on enter (`on click "#c5-fx-ping" run ch5BroadcastPing()`): the click runs
+// ch5BroadcastPing, which broadcasts "tour-ping"; the `on event` handler below
+// catches it and reveals the panel. Interactions, the eventbus and event-driven
+// actions at once, plus a host operation (stampTime, host.js) and the live
+// language switch the LabelController follows.
 action ch5BroadcastPing() [
   // broadcastEvent's params are (eventArgs, eventName) in that order — the array
   // first. eventArgs[0] ("#c5-fx-panel") becomes the handler's `target` parameter.
@@ -106,6 +100,22 @@ action ch5BroadcastPing() [
 on event "tour-ping" action ch5OnPing(target) [
   selectElement(target)
   addClass("in")
+]
+
+// A host operation (declared in the extensions block, exported by host.js),
+// called like a built-in: writes the current time into the chip.
+action ch5Stamp() [
+  stampTime("#c5-fx-clock")
+]
+
+// The language buttons: the engine listens for language-change and sets the
+// locale; every LabelController re-renders.
+action ch5Dutch() [
+  broadcastEvent(["nl-NL"], "language-change")
+]
+
+action ch5English() [
+  broadcastEvent(["en-US"], "language-change")
 ]
 
 // Hub unwiring — the engine never detaches controllers on a timeline switch, so
@@ -677,76 +687,119 @@ timeline "Files & Imports" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 5 — Engine Reach. Reaching past the timeline clock into the engine's
-// runtime services: the eventbus (broadcastEvent), event-driven `on event`
-// actions, and controllers. Beat 3+4 wire a REAL eventbus round-trip — clicking
-// the button reveals the panel through controller → broadcast → on event. Beat 5
-// (i18n / LabelController) is illustrative (no locale assets authored for the tour).
+// Chapter 06 — Engine Reach (#ch5). Reaching past the timeline clock into the
+// engine's runtime: the eventbus (broadcastEvent), event-driven `on event`
+// actions, interactions and `on key`, controllers (nine of them), locales with
+// a LabelController, and a host operation. REAL: the ping button (wired in
+// on enter with `run`, beat 3), the chapter's own interactions and keys (beats
+// 4–5), the greeting label and its two language buttons (beat 7) and the clock
+// host.js stamps (beat 8). Everything on enter attaches, on leave removes —
+// and switches the language back to en-US, which would persist otherwise.
 // ===========================================================================
 timeline "Engine Reach" in "#stage" using raf {
 
   // setup: show this chapter + narration + progress on enter; wire back, Esc,
-  // space and r. On leave: hide, reset the view, unwire.
+  // space and r, the ping button, the two language buttons and the greeting's
+  // LabelController. On leave: back to en-US, unwire the chapter's own
+  // controllers, then hide, reset the view and unwire the skeleton.
   on enter [
     enterChapter("#ch5")
     on click "#c5-to-hub" navigate "Hub"
     on key "Escape" navigate "Hub"
     on key "space" toggle
     on key "r" run replayChapter("#ch5")
+    on click "#c5-fx-ping" run ch5BroadcastPing() // the live button, wired once per visit
+    on click "#c5-fx-lang-nl" run ch5Dutch() // live language switch
+    on click "#c5-fx-lang-en" run ch5English()
+    selectElement("#c5-fx-label-text") // the span, not the panel: LabelController replaces its element's content
+    addController("LabelController", "tour.greeting") // real locales
   ]
   on leave [
+    broadcastEvent(["en-US"], "language-change") // the language persists across timelines: back to the default
+    with "#c5-fx-ping" { removeControllerFromElement("DOMEventListenerController") }
+    with "#c5-fx-lang-nl" { removeControllerFromElement("DOMEventListenerController") }
+    with "#c5-fx-lang-en" { removeControllerFromElement("DOMEventListenerController") }
+    with "#c5-fx-label-text" { removeControllerFromElement("LabelController") }
     leaveChapter("#ch5", "#c5-to-hub")
   ]
 
   sequence each [ clearSpots() ] {
-    // Beat 1 — beyond the clock
-    for 7s [
-      narrate("Everything so far fired on the timeline clock. But a presentation also has to react — that's engine reach.")
+    // Beat 1 — five doors past the clock (0–7 s)
+    for 7s as b1 [
+      narrate("Everything so far fired on the clock. A presentation also reacts — to clicks, keys, events, and to your own code. That's engine reach.")
       revealBlock("#c5-code-overview")
-      callout("#c5-cl-over", "three doors past the clock: the eventbus, on event, controllers")
+      callout("#c5-cl-over", "five doors past the clock")
       demo("#c5-fx-doors")
     ]
 
-    // Beat 2 — the eventbus: broadcast vs request
-    for 8s [
-      narrate("broadcastEvent puts a message on the engine's bus. Broadcast reaches every listener; request asks for the one that answers.")
+    // Beat 2 — the eventbus: one bus, many listeners (7–15 s)
+    for 8s as b2 [
+      narrate("broadcastEvent puts a message on the engine's bus. Whoever listens for that name reacts: your on event handlers, controllers — and the engine itself.")
       revealBlock("#c5-code-eventbus")
       spotlight("#c5-tok-bcast")
-      callout("#c5-cl-bus", "request-timeline-uri is the request the navigate sugar emits")
+      callout("#c5-cl-bus", "one bus, many listeners; request-timeline-uri is a broadcast the engine answers by switching")
       demo("#c5-fx-bus")
     ]
 
-    // Beat 3 ⭐ — on event (real round-trip, half 1: the handler that answers)
-    for 9s [
-      narrate("An on event action runs when its event fires, not at a time. Click the button — it broadcasts, and this handler answers.")
+    // Beat 3 ⭐ — on event: REAL, the button is live since on enter (15–24 s)
+    for 9s as b3 [
+      narrate("An on event action runs when its event fires, not at a time. Click the button: it broadcasts tour-ping, and this handler reveals the panel.")
       revealBlock("#c5-code-onevent")
       spotlight("#c5-tok-onevent")
-      callout("#c5-cl-on", "params map to the event's args by position: target is eventArgs[0]")
+      callout("#c5-cl-on", 'params map to eventArgs by position · topic "x" namespaces · parentheses optional with no params')
       demo("#c5-fx-bus")
     ]
 
-    // Beat 4 — controllers (real round-trip, half 2: wires the live button)
-    for 8s [
-      narrate("A controller attaches lasting behaviour to an element. The button's click is wired by a DOMEventListenerController — one of eight.")
+    // Beat 4 — interactions: this chapter's own on enter (24–32 s)
+    for 8s as b4 [
+      // &lt; &gt;: narrate writes HTML, so a literal <event> would be a tag
+      narrate("on &lt;event&gt; on an element runs a verb: navigate, play, pause, toggle, stop, seek, or run an action. The hub cards and this button are written that way.")
+      revealBlock("#c5-code-interact")
+      spotlight("#c5-tok-run")
+      callout("#c5-cl-interact", "any DOM event name; run arguments must be compile-time values; the action starts with eventTarget, eventKey and its arguments — nothing from the surrounding block")
+      demo("#c5-fx-interact")
+    ]
+
+    // Beat 5 — keys: this chapter's own on key lines (32–40 s)
+    for 8s as b5 [
+      narrate("on key binds keyboard shortcuts — Escape takes you to the hub, space pauses, r replays, in every chapter.")
+      revealBlock("#c5-code-keys")
+      spotlight("#c5-tok-key")
+      callout("#c5-cl-keys", "a KeyboardController; unknown names are errors; input fields are ignored")
+      demo("#c5-fx-keys")
+    ]
+
+    // Beat 6 — controllers: what both forms desugar to (40–48 s)
+    for 8s as b6 [
+      narrate("Under both forms sits a controller: lasting behaviour attached to a selected element. This is what on click desugars to — one of nine.")
       revealBlock("#c5-code-controller")
       spotlight("#c5-tok-ctrl")
-      callout("#c5-cl-ctrl", "selectElement + addController; this is what navigate desugars to")
-      demo("#c5-fx-bus")
-      ch5WireButton()
+      callout("#c5-cl-ctrl", "DOMEventListener · Keyboard · Label · Lottie · MutationObserver · Navigation · Progressbar · Routing · Subtitles")
+      demo("#c5-fx-ctrl")
     ]
 
-    // Beat 5 — i18n / locales (illustrative: no locale assets authored for the tour)
-    for 8s [
-      narrate("Locales make text translatable. A LabelController binds a translation key to an element and re-renders on language-change.")
+    // Beat 7 ⭐ — locales: REAL, the LabelController on enter attached (48–57 s)
+    for 9s as b7 [
+      narrate("locales make text translatable: a LabelController renders a key in the active language. This label — and the hub title — are real ones: click nl-NL and it switches.")
       revealBlock("#c5-code-label")
       spotlight("#c5-tok-loc")
-      callout("#c5-cl-loc", "translationKey resolved via the rosetta locale system")
+      callout("#c5-cl-loc", "completion and did-you-mean on the key; Chapter 07 has the editor")
       demo("#c5-fx-label")
     ]
 
-    // Beat 6 — the chrome was the lesson: recap + the reveal
-    for 8s [
-      narrate("Eventbus, on event, controllers, locales — the navigation and narration you've used were built from exactly these. Click ← Hub for more.")
+    // Beat 8 — host code: REAL, ch5Stamp calls host.js (57–65 s)
+    for 8s as b8 [
+      narrate("Your own JavaScript reaches in too: a host operation is called like a built-in. This clock was stamped by host.js just now.")
+      revealBlock("#c5-code-host")
+      spotlight("#c5-tok-host")
+      callout("#c5-cl-host", "bundled by --bundle, dev, smoke and the preview (trusted workspaces)")
+      ch5Stamp()
+      demo("#c5-fx-host")
+    ]
+
+    // Beat 9 — recap: the hub was built from these (65–73 s)
+    for 8s as b9 [
+      narrate("Eventbus, on event, interactions, controllers, locales, host code — the hub, its title and every click you made were built from these. Hub.")
       revealBlock("#c5-code-recap")
       spotlight("#c5-tok-recap")
       demo("#c5-fx-done")
@@ -808,7 +861,7 @@ timeline "Tooling Magic" in "#stage" using raf {
 
     // Beat 4 — autocomplete everywhere
     for 8s [
-      narrate("Type and the editor knows what fits: operations with their parameters, the eight controllers, label IDs, CSS classes, even an on event skeleton.")
+      narrate("Type and the editor knows what fits: operations with their parameters, the nine controllers, label IDs, CSS classes, even an on event skeleton.")
       revealBlock("#c6-code-complete")
       spotlight("#c6-tok-complete")
       callout("#c6-cl-complete", "operations show their signature and docs; controllers list their params")

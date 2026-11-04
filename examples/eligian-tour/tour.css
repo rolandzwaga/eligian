@@ -384,8 +384,11 @@
 #c5-code-overview { anchor-name: --c5-cl-over; }
 #c5-tok-bcast { anchor-name: --c5-cl-bus; }
 #c5-tok-onevent { anchor-name: --c5-cl-on; }
+#c5-tok-run { anchor-name: --c5-cl-interact; }
+#c5-tok-key { anchor-name: --c5-cl-keys; }
 #c5-tok-ctrl { anchor-name: --c5-cl-ctrl; }
 #c5-tok-loc { anchor-name: --c5-cl-loc; }
+#c5-tok-host { anchor-name: --c5-cl-host; }
 #c6-code-why { anchor-name: --c6-cl-why; }
 #c6-tok-preview { anchor-name: --c6-cl-preview; }
 #c6-tok-css { anchor-name: --c6-cl-css; }
@@ -431,8 +434,11 @@
 #c5-cl-over { position-anchor: --c5-cl-over; }
 #c5-cl-bus { position-anchor: --c5-cl-bus; }
 #c5-cl-on { position-anchor: --c5-cl-on; }
+#c5-cl-interact { position-anchor: --c5-cl-interact; }
+#c5-cl-keys { position-anchor: --c5-cl-keys; }
 #c5-cl-ctrl { position-anchor: --c5-cl-ctrl; }
 #c5-cl-loc { position-anchor: --c5-cl-loc; }
+#c5-cl-host { position-anchor: --c5-cl-host; }
 #c6-cl-why { position-anchor: --c6-cl-why; }
 #c6-cl-preview { position-anchor: --c6-cl-preview; }
 #c6-cl-css { position-anchor: --c6-cl-css; }
@@ -521,7 +527,7 @@
   #c3-cl-if,
   #c4-cl-stagger,
   #cf-cl-named,
-  #c5-cl-ctrl,
+  #c5-cl-interact,
   #c6-cl-complete {
     top: 12rem;
   }
@@ -530,7 +536,7 @@
   #c3-cl-for,
   #c4-cl-items,
   #cf-cl-lib,
-  #c5-cl-loc,
+  #c5-cl-keys,
   #c6-cl-jsdoc {
     top: 15rem;
   }
@@ -538,17 +544,20 @@
   #c2-cl-contract,
   #c3-cl-loopctl,
   #c4-cl-inline,
-  #cf-cl-ext {
+  #cf-cl-ext,
+  #c5-cl-ctrl {
     top: 18rem;
   }
   #c1-cl-target,
   #c2-cl-erased,
   #c3-cl-with,
-  #cf-cl-doc {
+  #cf-cl-doc,
+  #c5-cl-loc {
     top: 21rem;
   }
   #c1-cl-lifecycle,
-  #cf-cl-keywords {
+  #cf-cl-keywords,
+  #c5-cl-host {
     top: 24rem;
   }
 }
@@ -740,8 +749,9 @@
   text-align: center;
 }
 
-/* Chapter 5 — live eventbus round-trip: a real button (DOMEventListenerController
-   target) whose click broadcasts an event that reveals the panel. */
+/* Chapter 6 — live eventbus round-trip: a real button (wired in on enter with
+   on click … run) whose click broadcasts an event that reveals the panel; the
+   language buttons of beat 7 share the style. */
 .ping-btn {
   appearance: none;
   border: 1px solid var(--accent);
@@ -776,6 +786,32 @@
 }
 #c5-fx-panel {
   min-width: 0;
+}
+/* Chapter 6 — the keys the chapter binds with on key, as key caps */
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  margin: 0.2rem;
+  padding: 0 0.6rem;
+  border: 1px solid #30363d;
+  border-bottom-width: 3px;
+  border-radius: 8px;
+  background: #21262d;
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+/* Chapter 6 — the LabelController's span on its own row, the two language
+   buttons (its siblings: the controller replaces the span's content) below it */
+#c5-fx-label {
+  grid-template-columns: repeat(2, auto);
+}
+#c5-fx-label-text {
+  grid-column: 1 / -1;
+  font-size: 1.1rem;
+  color: var(--ink);
 }
 
 /* Chapter 6 — mock-editor reenactments (no live LSP; strings are real). ---- */
