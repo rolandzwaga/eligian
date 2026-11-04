@@ -58,33 +58,56 @@
   <span class="tok com">… events …</span>
 }</code></pre>
 
-      <pre id="code-at" class="code"><code><span class="tok kw" id="tok-at">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">revealHero</span>()</code></pre>
+      <pre id="c1-code-providers" class="code"><code><span class="tok kw">timeline</span> <span class="tok str">"Clip"</span> <span class="tok kw">in</span> <span class="tok str">"#player"</span> <span class="tok kw">using</span> <span class="tok kw">video</span> <span class="tok kw">from</span> <span class="tok str">"./clip.mp4"</span> { … }
+<span class="tok kw">timeline</span> <span class="tok str">"Story"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">scroll</span> <span class="tok str">"#scroller"</span> <span class="tok kw">duration</span> <span class="tok num">120s</span> { … }
+<span class="tok kw">timeline</span> <span class="tok str">"Ambient"</span> <span class="tok kw">in</span> <span class="tok str">"#bg"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> <span class="tok kw">loop</span> <span class="tok kw">duration</span> <span class="tok num">30s</span> { … }
+<span class="tok kw">timeline</span> <span class="tok str">"Remote"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">custom</span> { … }   <span class="tok com">// your own position source</span>
+<span class="tok com">// scroll: the container must be in the layout or the CSS, and scroll</span></code></pre>
+
+      <pre id="code-at" class="code"><code><span class="tok kw" id="tok-at">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>    <span class="tok fn">revealHero</span>()   <span class="tok com">// start .. end</span>
+<span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok kw">for</span> <span class="tok num">3s</span> <span class="tok fn">revealHero</span>()   <span class="tok com">// start for duration</span></code></pre>
 
       <pre id="code-units" class="code"><code><span class="tok num">42</span>      <span class="tok com">// 42 s (no unit = seconds)</span>
 <span class="tok num">500ms</span>
 <span class="tok num">2s</span>
 <span class="tok num">1.5m</span>
-<span class="tok num">0.5h</span></code></pre>
+<span class="tok num">0.5h</span>
+<span class="tok num">2s</span> <span class="tok op">*</span> <span class="tok num">3</span>  <span class="tok com">// 6s</span></code></pre>
 
-      <pre id="code-arith" class="code"><code><span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok op" id="tok-plus">+</span> <span class="tok num">2s</span> .. <span class="tok num">10s</span>
-<span class="tok kw">at</span> <span class="tok op">+</span><span class="tok num">0s</span>..<span class="tok op">+</span><span class="tok num">3s</span>  <span class="tok fn">doThing</span>()</code></pre>
+      <pre id="code-arith" class="code"><code><span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok op">+</span> <span class="tok num">2s</span> .. <span class="tok num">10s</span>  <span class="tok fn">doThing</span>()
+<span class="tok kw">at</span> <span class="tok num">10s</span> <span class="tok op">/</span> <span class="tok num">2</span> <span class="tok kw">for</span> <span class="tok num">1s</span>  <span class="tok fn">doThing</span>()
+<span class="tok kw">at</span> <span class="tok op" id="tok-plus">+</span><span class="tok num">0s</span>..<span class="tok op">+</span><span class="tok num">3s</span>        <span class="tok fn">doThing</span>()   <span class="tok com">// relative to the previous event's end</span></code></pre>
 
-      <pre id="code-full" class="code"><code><span class="tok kw">timeline</span> <span class="tok str">"Tour"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
-  <span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">6s</span>  <span class="tok fn">revealBlock</span>(<span class="tok str">"#code-ch1"</span>)
-  <span class="tok kw">at</span> <span class="tok num">6s</span>..<span class="tok num">12s</span> <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-raf"</span>)
-  <span class="tok kw">at</span> <span class="tok num">12s</span>..<span class="tok num">20s</span> <span class="tok fn">revealBlock</span>(<span class="tok str">"#code-at"</span>)
-  <span class="tok com">… and so on …</span>
+      <pre id="c1-code-labels" class="code"><code><span class="tok kw">const</span> <span class="tok">beat</span> <span class="tok op">=</span> <span class="tok num">6s</span>
+<span class="tok kw">at</span> <span class="tok num">0s</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok" id="c1-tok-label"><span class="tok kw">as</span> open</span> [ … ]
+<span class="tok kw">at</span> <span class="tok">open.end</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok kw">as</span> <span class="tok">providers</span> [ … ]
+<span class="tok kw">at</span> <span class="tok">providers.end</span> <span class="tok op">+</span> <span class="tok num">1s</span>..<span class="tok">providers.end</span> <span class="tok op">+</span> <span class="tok num">3s</span> [ … ]</code></pre>
+
+      <pre id="c1-code-target" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok kw" id="c1-tok-target">target</span> <span class="tok str">"#box"</span> [ <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>) ] [ <span class="tok fn">removeClass</span>(<span class="tok str">"lit"</span>) ]
+<span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok kw">for</span> <span class="tok num">2s</span> [ <span class="tok fn">selectElement</span>(<span class="tok str">"#box"</span>) <span class="tok fn">addClass</span>(<span class="tok str">"spot"</span>) ]   <span class="tok com">// no end block</span></code></pre>
+
+      <pre id="code-full" class="code"><code><span class="tok kw">const</span> <span class="tok">beat</span> <span class="tok op">=</span> <span class="tok num">6s</span>
+<span class="tok kw">timeline</span> <span class="tok str">"Timeline &amp; Time"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
+  <span class="tok kw" id="c1-tok-enter">on enter</span> [ <span class="tok fn">enterChapter</span>(<span class="tok str">"#ch1"</span>) … <span class="tok kw">on key</span> <span class="tok str">"r"</span> <span class="tok kw">run</span> <span class="tok fn">replayChapter</span>(<span class="tok str">"#ch1"</span>) ]
+  <span class="tok kw">on leave</span> [ <span class="tok fn">leaveChapter</span>(<span class="tok str">"#ch1"</span>, <span class="tok str">"#c1-to-hub"</span>) ]   <span class="tok com">// on navigate or stop, not when the content ends</span>
+  <span class="tok kw">at</span> <span class="tok num">0s</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok kw">as</span> <span class="tok">open</span> [ … ]
+  <span class="tok kw">at</span> <span class="tok">open.end</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok kw">as</span> <span class="tok">providers</span> [ … ]
 }</code></pre>
     </section>
 
     <section class="effect-pane">
       <div id="fx-stage" class="fx"><span class="fx-frame">#stage</span></div>
       <div id="fx-providers" class="fx">
-        <span class="fx-chip">raf</span><span class="fx-chip">video</span><span class="fx-chip">audio</span><span class="fx-chip">custom</span>
+        <span class="fx-chip">raf</span><span class="fx-chip">video</span><span class="fx-chip">audio</span><span class="fx-chip">scroll</span><span class="fx-chip">custom</span>
       </div>
       <div id="fx-hero" class="fx"><span class="fx-hero-box">hero</span></div>
       <div id="fx-ruler" class="fx"><span class="fx-tick">ms</span><span class="fx-tick">s</span><span class="fx-tick">m</span><span class="fx-tick">h</span></div>
       <div id="fx-chain" class="fx"><span class="fx-bar"></span><span class="fx-bar fx-bar--rel"></span></div>
+      <div id="c1-fx-labels" class="fx">
+        <span class="fx-chip">open</span><span class="fx-bar"></span>
+        <span class="fx-chip">providers</span><span class="fx-bar fx-bar--rel"></span>
+      </div>
+      <div id="c1-fx-target" class="fx"><span id="c1-target-box" class="fx-hero-box">box</span></div>
       <div id="fx-endcard" class="fx"><span class="fx-done">Chapter 1 ✓</span></div>
     </section>
 
@@ -94,6 +117,9 @@
       <div id="cl-range" class="callout"></div>
       <div id="cl-units" class="callout"></div>
       <div id="cl-relative" class="callout"></div>
+      <div id="c1-cl-label" class="callout"></div>
+      <div id="c1-cl-target" class="callout"></div>
+      <div id="c1-cl-lifecycle" class="callout"></div>
     </div>
   </section>
 

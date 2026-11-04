@@ -141,9 +141,14 @@ timeline "Hub" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 1 — Timeline & Time. Six click-paced beats; itself a `timeline` full
-// of `at` events teaching exactly what it shows.
+// Chapter 1 — Timeline & Time. Eight beats on the raf clock, written with the
+// forms it teaches: a program-level time constant (@beat, @long), a chain of
+// labelled `at` events (open.end, providers.end, …), a relative start (+0s),
+// and one `target` beat with an end block.
 // ===========================================================================
+const beat = 6s // Chapter 1's basic beat (a time constant)
+const long = @beat + 2s // 8s
+
 timeline "Timeline & Time" in "#stage" using raf {
 
   // setup: show this chapter + narration + progress on enter; wire back, Esc,
@@ -159,58 +164,86 @@ timeline "Timeline & Time" in "#stage" using raf {
     leaveChapter("#ch1", "#c1-to-hub")
   ]
 
-  // Beat 1 — open on the canvas
-  at 0s..6s [
+  // Beat 1 — open on the canvas (0–6 s)
+  at 0s for @beat as open [
     narrate("An Eligian presentation is one or more timelines. Here's the one you're watching.")
     revealBlock("#code-ch1")
     spotlight("#tok-timeline")
-    callout("#cl-name", "its name — also the uri the hub uses to jump here")
+    callout("#cl-name", "its name — also what navigate and the engine's uri use")
     demo("#fx-stage")
   ]
 
-  // Beat 2 — pick a driver (provider)
-  at 6s..12s [
+  // Beat 2 — pick a driver (provider) and the header options (6–12 s)
+  at open.end for @beat as providers [
     clearSpots()
-    narrate("What advances the timeline? Its provider.")
+    narrate("What advances the timeline? Its provider — and the header can loop it or fix its duration.")
+    revealBlock("#c1-code-providers")
     spotlight("#tok-raf")
-    callout("#cl-provider", "raf = animation clock; video / audio / custom also available")
+    callout("#cl-provider", "raf = animation clock · video / audio drive from media · scroll = the scroll position · custom")
     demo("#fx-providers")
   ]
 
-  // Beat 3 — make something happen at a time
-  at 12s..20s [
+  // Beat 3 — make something happen over a range (12–20 s)
+  at providers.end for @long as ranges [
     clearSpots()
-    narrate("Inside a timeline, 'at' schedules work over a time range.")
+    narrate("Inside a timeline, at schedules work over a time range: start to end, or start for a duration.")
     revealBlock("#code-at")
     spotlight("#tok-at")
-    callout("#cl-range", "a time range: start .. end")
+    callout("#cl-range", "a time range: start .. end — or start for duration")
     demo("#fx-hero")
   ]
 
-  // Beat 4 — time speaks four units
-  at 20s..27s [
+  // Beat 4 — time speaks four units (20–27 s)
+  at ranges.end for 7s as units [
     clearSpots()
-    narrate("Times take units. No unit means seconds.")
+    narrate("Times take units. No unit means seconds — and in arithmetic a bare number is a factor.")
     revealBlock("#code-units")
     callout("#cl-units", "42 = 42s · 500ms · 2s · 1.5m · 0.5h")
     demo("#fx-ruler")
   ]
 
-  // Beat 5 — arithmetic and relative time
-  at 27s..35s [
+  // Beat 5 — arithmetic and relative time (27–35 s)
+  at units.end for @long as arith [
     clearSpots()
-    narrate("Ranges can compute — and chain off the previous event.")
+    narrate("Ranges can compute — and chain off the previous event with a +.")
     revealBlock("#code-arith")
     spotlight("#tok-plus")
     callout("#cl-relative", "relative time — anchored to the previous event's end")
     demo("#fx-chain")
   ]
 
-  // Beat 6 — recap + the reveal, then back to the hub
-  at 35s..42s [
+  // Beat 6 — time constants and labels (35–43 s): this event starts relative
+  // to beat 5's end, and every other beat is timed off @beat / @long and labels
+  at +0s for @long as constants [
     clearSpots()
-    narrate("That whole sequence? One timeline. Click ← Hub to explore more.")
+    narrate("Name a time once with const, label an event with as, and later times refer to them. This chapter is timed exactly that way.")
+    revealBlock("#c1-code-labels")
+    spotlight("#c1-tok-label")
+    callout("#c1-cl-label", "@beat is a compile-time constant · open.end refers to an earlier event of this timeline")
+    demo("#c1-fx-labels")
+  ]
+
+  // Beat 7 — target (43–50 s): REAL — the box lights at the start, and the end
+  // block (also headed by the target's selectElement) unlights it
+  at constants.end for 7s as targets target "#c1-target-box" [
+    addClass("lit")
+    clearSpots()
+    narrate("target selects an element for a block's start and its end — and an inline end block is optional.")
+    revealBlock("#c1-code-target")
+    spotlight("#c1-tok-target")
+    callout("#c1-cl-target", "selectElement at the head of both blocks; nothing carries from start to end")
+    demo("#c1-fx-target")
+  ] [
+    removeClass("lit")
+  ]
+
+  // Beat 8 — recap: this timeline's own header and lifecycle blocks (50–58 s)
+  at targets.end for @long as recap [
+    clearSpots()
+    narrate("That whole chapter? One timeline: on enter shows it, on leave cleans up, neither counts toward its 58 seconds, and its beats are timed with a constant and labels. Hub, space pauses, r replays.")
     revealBlock("#code-full")
+    spotlight("#c1-tok-enter")
+    callout("#c1-cl-lifecycle", "one open-ended action { start: 0 }, not counted in the duration · on leave runs on navigate / stop, not when the content ends")
     demo("#fx-endcard")
   ]
 }

@@ -349,6 +349,9 @@
 #tok-at { anchor-name: --cl-range; }
 #code-units { anchor-name: --cl-units; }
 #tok-plus { anchor-name: --cl-relative; }
+#c1-tok-label { anchor-name: --c1-cl-label; }
+#c1-tok-target { anchor-name: --c1-cl-target; }
+#c1-tok-enter { anchor-name: --c1-cl-lifecycle; }
 #c2-tok-action { anchor-name: --c2-cl-action; }
 #c2-tok-param { anchor-name: --c2-cl-param; }
 #c2-tok-call { anchor-name: --c2-cl-call; }
@@ -380,6 +383,9 @@
 #cl-range { position-anchor: --cl-range; }
 #cl-units { position-anchor: --cl-units; }
 #cl-relative { position-anchor: --cl-relative; }
+#c1-cl-label { position-anchor: --c1-cl-label; }
+#c1-cl-target { position-anchor: --c1-cl-target; }
+#c1-cl-lifecycle { position-anchor: --c1-cl-lifecycle; }
 #c2-cl-action { position-anchor: --c2-cl-action; }
 #c2-cl-param { position-anchor: --c2-cl-param; }
 #c2-cl-call { position-anchor: --c2-cl-call; }
@@ -498,6 +504,15 @@
   #c6-cl-jsdoc {
     top: 15rem;
   }
+  #c1-cl-label {
+    top: 18rem;
+  }
+  #c1-cl-target {
+    top: 21rem;
+  }
+  #c1-cl-lifecycle {
+    top: 24rem;
+  }
 }
 
 /* ---- Effect-pane panels + illustrative chrome ------------------------ */
@@ -574,6 +589,18 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* Chapter 1 — the box its `target` beat lights (start block) and unlights (end
+   block). Dim until then: the id rule beats the one-class .lit, so the lit
+   state is declared here (see the state-class section). */
+#c1-target-box {
+  opacity: 0.35;
+  transition: opacity 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+#c1-target-box.lit {
+  opacity: 1;
+  box-shadow: 0 0 0 3px var(--ink), 0 0 18px var(--accent);
 }
 
 /* Chapter 3 — bullet list revealed one item at a time by a real `for` loop */
