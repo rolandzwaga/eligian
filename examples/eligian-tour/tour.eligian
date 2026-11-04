@@ -453,9 +453,12 @@ timeline "Logic" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 4 — Timeline Power Tools. `sequence` (auto consecutive timing) and
-// `stagger` (one delayed event per item). Beat 4's card row is revealed by a
-// REAL `stagger` block — the construct it teaches drives what you see.
+// Chapter 4 — Timeline Power Tools. Seven beats: timing by hand, `sequence`,
+// editing one duration, `stagger`, sequence items (inline blocks, labels,
+// each / then), the inline stagger anchored with `at`, and a recap. The chapter
+// is written with what it teaches: its beats are one sequence whose then flips
+// #c4-pulse at every beat boundary, and two REAL staggers after it reveal the
+// card row (beat 4) and light the wave chips (beat 6).
 // ===========================================================================
 timeline "Timeline Power Tools" in "#stage" using raf {
 
@@ -472,17 +475,20 @@ timeline "Timeline Power Tools" in "#stage" using raf {
     leaveChapter("#ch4", "#c4-to-hub")
   ]
 
-  sequence each [ clearSpots() ] {
-    // Beat 1 — timing by hand is brittle
-    for 7s [
+  // each runs before every item's start operations; then after every item's
+  // end operations, in the same instant as the next item's each, so a lit /
+  // unlit pair would cancel out: then toggles the chrome dot instead.
+  sequence each [ clearSpots() ] then [ with "#c4-pulse" { toggleClass("lit") } ] {
+    // Beat 1 — timing by hand is brittle (0–7 s)
+    for 7s as b1 [
       narrate("Scheduling a chain of events by hand means recomputing every time you tweak one.")
       revealBlock("#c4-code-manual")
       callout("#c4-cl-manual", "change one length and every later time is re-done by hand")
       demo("#c4-fx-ruler")
     ]
 
-    // Beat 2 — sequence: auto consecutive timing
-    for 8s [
+    // Beat 2 — sequence: auto consecutive timing (7–15 s)
+    for 8s as b2 [
       narrate("'sequence' lays events back-to-back automatically — each runs 'for' a duration.")
       revealBlock("#c4-code-sequence")
       spotlight("#c4-tok-seq")
@@ -490,44 +496,66 @@ timeline "Timeline Power Tools" in "#stage" using raf {
       demo("#c4-fx-seq")
     ]
 
-    // Beat 3 — edit one, the rest follow (labeled: the stagger after this
-    // sequence starts at its end)
+    // Beat 3 — edit one, the rest follow (15–22 s); labelled: the first
+    // stagger after this sequence starts at its end
     for 7s as editBeat [
       narrate("Because starts are computed, changing one duration shifts everything after it.")
       callout("#c4-cl-edit", "shorten 'main' and 'outro' slides left — no re-numbering")
       demo("#c4-fx-seq")
     ]
 
-    // Beat 4 ⭐ — stagger; the card row itself is revealed by the REAL stagger below
-    for 9s [
+    // Beat 4 ⭐ — stagger; the card row is revealed by REAL stagger 1 below (22–31 s)
+    for 9s as b4 [
       narrate("'stagger' fans one effect across a collection — each item starts a little after the last.")
       revealBlock("#c4-code-stagger")
       spotlight("#c4-tok-stagger")
-      callout("#c4-cl-stagger", "200ms delay between starts · the item feeds the action's first arg")
+      callout("#c4-cl-stagger", "200ms between starts · the item is the action's first argument · at editBeat.end anchors the first item")
       demo("#c4-fx-row")
     ]
 
-    // Beat 5 — delay vs duration + the inline form
-    for 8s [
-      narrate("delay is the gap between starts; duration is how long each lasts — they overlap on purpose.")
+    // Beat 5 — sequence items: inline blocks, labels, each / then; REAL: this
+    // sequence's own each and then (31–40 s)
+    for 9s as b5 [
+      narrate("A sequence item can be an inline block, labelled with as; each runs before every item, then after it. each clears the spotlights; then flips this dot at the end of every beat.")
+      revealBlock("#c4-code-items")
+      spotlight("#c4-tok-each")
+      callout("#c4-cl-items", "each → before every item's start ops · then → after every item's end ops, in the same instant as the next each · editBeat.end usable later")
+      demo("#c4-fx-items")
+    ]
+
+    // Beat 6 ⭐ — the inline stagger, anchored on this beat; the wave chips are
+    // lit by REAL stagger 2 below (40–49 s)
+    for 9s as waveBeat [
+      narrate("The inline stagger form has its own start and end blocks, and at anchors the first item on a time instead of the previous event. Watch the wave.")
       revealBlock("#c4-code-inline")
-      callout("#c4-cl-inline", "inline start/end op blocks instead of 'with <action>'")
+      spotlight("#c4-tok-anchor")
+      callout("#c4-cl-inline", "every block starts empty: selectElement(@@item) first · at +2s would count from the previous event")
       demo("#c4-fx-cascade")
     ]
 
-    // Beat 6 — which tool? recap + the reveal
-    for 8s [
-      narrate("'sequence' for distinct back-to-back steps; 'stagger' for one effect across many items.")
+    // Beat 7 — which tool? recap + the end card (49–57 s)
+    for 8s as b7 [
+      narrate("sequence for distinct back-to-back steps; stagger for one effect across many items. Hub.")
       revealBlock("#c4-code-recap")
       spotlight("#c4-tok-recap")
       demo("#c4-fx-done")
     ]
   }
 
-  // Beat 4 ⭐ — a REAL stagger reveals the card row (fires at 22s, with the beat).
-  // Anchored at Beat 3's end ('at editBeat.end' = 22s), so it can sit after the
-  // sequence; cards reveal 22s..23.9s.
+  // REAL stagger 1 (beat 4): the cards reveal from editBeat.end = 22 s, 200ms
+  // apart (22 s, 22.2 s, 22.4 s), 1.5 s each
   stagger 200ms ["#c4-card-1", "#c4-card-2", "#c4-card-3"] at editBeat.end with revealCard() for 1.5s
+
+  // REAL stagger 2 (beat 6): the inline form with an end block, anchored on the
+  // beat; every block starts empty, so each selects its item first. The chips
+  // light at 41 s, 41.15 s, 41.3 s and go out 2 s later.
+  stagger 150ms ["#c4-wave-1", "#c4-wave-2", "#c4-wave-3"] at waveBeat.start + 1s for 2s [
+    selectElement(@@item)
+    addClass("lit")
+  ] [
+    selectElement(@@item)
+    removeClass("lit")
+  ]
 }
 
 // ===========================================================================

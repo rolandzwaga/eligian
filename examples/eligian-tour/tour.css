@@ -370,7 +370,8 @@
 #c4-tok-seq { anchor-name: --c4-cl-seq; }
 #c4-code-sequence { anchor-name: --c4-cl-edit; }
 #c4-tok-stagger { anchor-name: --c4-cl-stagger; }
-#c4-code-inline { anchor-name: --c4-cl-inline; }
+#c4-tok-each { anchor-name: --c4-cl-items; }
+#c4-tok-anchor { anchor-name: --c4-cl-inline; }
 #c5-code-overview { anchor-name: --c5-cl-over; }
 #c5-tok-bcast { anchor-name: --c5-cl-bus; }
 #c5-tok-onevent { anchor-name: --c5-cl-on; }
@@ -408,6 +409,7 @@
 #c4-cl-seq { position-anchor: --c4-cl-seq; }
 #c4-cl-edit { position-anchor: --c4-cl-edit; }
 #c4-cl-stagger { position-anchor: --c4-cl-stagger; }
+#c4-cl-items { position-anchor: --c4-cl-items; }
 #c4-cl-inline { position-anchor: --c4-cl-inline; }
 #c5-cl-over { position-anchor: --c5-cl-over; }
 #c5-cl-bus { position-anchor: --c5-cl-bus; }
@@ -451,7 +453,6 @@
   #cl-units,
   #c4-cl-manual,
   #c4-cl-edit,
-  #c4-cl-inline,
   #c5-cl-over,
   #c6-cl-why {
     top: calc(anchor(top) - 0.9rem);
@@ -462,7 +463,6 @@
   #cl-units::before,
   #c4-cl-manual::before,
   #c4-cl-edit::before,
-  #c4-cl-inline::before,
   #c5-cl-over::before,
   #c6-cl-why::before {
     content: none;
@@ -507,14 +507,15 @@
   #cl-relative,
   #c2-cl-endable,
   #c3-cl-for,
-  #c4-cl-inline,
+  #c4-cl-items,
   #c5-cl-loc,
   #c6-cl-jsdoc {
     top: 15rem;
   }
   #c1-cl-label,
   #c2-cl-contract,
-  #c3-cl-loopctl {
+  #c3-cl-loopctl,
+  #c4-cl-inline {
     top: 18rem;
   }
   #c1-cl-target,
@@ -679,6 +680,29 @@
 #c3-badge.muted {
   opacity: 0.2;
   filter: grayscale(1);
+}
+/* Chapter 4 — the each / then panel mirrors #c4-pulse (the chrome dot the
+   sequence's then toggles at every beat boundary): lit whenever it is. */
+#c4-fx-items .pulse-dot {
+  display: inline-block;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+#ch4:has(#c4-pulse.lit) #c4-fx-items .pulse-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.35);
+}
+/* Chapter 4 — the wave chips a real inline stagger lights 150ms apart and
+   unlights 2 s later. Dim at rest; the two-class rule beats the one-class .lit,
+   so the lit state is declared here (see the state-class section). */
+#c4-fx-cascade .fx-chip {
+  opacity: 0.45;
+  transition: opacity 0.2s var(--ease), background 0.2s var(--ease), color 0.2s var(--ease);
+}
+#c4-fx-cascade .fx-chip.lit {
+  opacity: 1;
+  background: var(--accent);
+  color: #0b1320;
 }
 
 /* Chapter 5 — live eventbus round-trip: a real button (DOMEventListenerController

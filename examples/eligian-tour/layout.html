@@ -318,10 +318,13 @@
     </div>
   </section>
 
+  <!-- =================== CHAPTER 4 · Timeline Power Tools ============ -->
   <section id="ch4" class="view chapter">
 
     <header class="chrome">
       <button id="c4-to-hub" class="to-hub">&larr; Hub</button>
+      <!-- the sequence's then [ … ] flips this dot at the end of every beat -->
+      <span id="c4-pulse" class="pulse-dot" title="then: flips at every beat boundary"></span>
       <nav class="progress-rail" aria-label="chapters">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot is-current"></span>
         <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
@@ -330,9 +333,9 @@
     </header>
 
     <section class="code-pane">
-      <pre id="c4-code-manual" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>   { <span class="tok fn">intro</span>() }
-<span class="tok kw">at</span> <span class="tok num">5s</span>..<span class="tok num">15s</span>  { <span class="tok fn">main</span>() }     <span class="tok com">// 5 + 10, by hand</span>
-<span class="tok kw">at</span> <span class="tok num">15s</span>..<span class="tok num">18s</span> { <span class="tok fn">outro</span>() }    <span class="tok com">// …and 15 + 3</span></code></pre>
+      <pre id="c4-code-manual" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>   <span class="tok fn">intro</span>()
+<span class="tok kw">at</span> <span class="tok num">5s</span>..<span class="tok num">15s</span>  <span class="tok fn">main</span>()     <span class="tok com">// 5 + 10, by hand</span>
+<span class="tok kw">at</span> <span class="tok num">15s</span>..<span class="tok num">18s</span> <span class="tok fn">outro</span>()    <span class="tok com">// …and 15 + 3</span></code></pre>
 
       <pre id="c4-code-sequence" class="code"><code><span class="tok kw" id="c4-tok-seq">sequence</span> {
   <span class="tok fn">intro</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>
@@ -340,16 +343,24 @@
   <span class="tok fn">outro</span>() <span class="tok kw">for</span> <span class="tok num">3s</span>
 }</code></pre>
 
-      <pre id="c4-code-stagger" class="code"><code><span class="tok kw" id="c4-tok-stagger">stagger</span> <span class="tok num">200ms</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>] <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span></code></pre>
+      <pre id="c4-code-stagger" class="code"><code><span class="tok kw" id="c4-tok-stagger">stagger</span> <span class="tok num">200ms</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>] <span class="tok kw">at</span> <span class="tok">editBeat.end</span> <span class="tok kw">with</span> <span class="tok fn">revealCard</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span></code></pre>
 
-      <pre id="c4-code-inline" class="code"><code><span class="tok kw">stagger</span> <span class="tok num">100ms</span> <span class="tok">items</span> <span class="tok kw">for</span> <span class="tok num">1s</span> [
-  <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+      <pre id="c4-code-items" class="code"><code><span class="tok kw">sequence</span> <span class="tok kw" id="c4-tok-each">each</span> [ <span class="tok fn">clearSpots</span>() ] <span class="tok kw">then</span> [ <span class="tok kw">with</span> <span class="tok str">"#c4-pulse"</span> { <span class="tok fn">toggleClass</span>(<span class="tok str">"lit"</span>) } ] {
+  <span class="tok kw">for</span> <span class="tok num">7s</span> <span class="tok kw">as</span> <span class="tok">editBeat</span> [ <span class="tok fn">narrate</span>(<span class="tok str">"…"</span>) <span class="tok fn">revealBlock</span>(<span class="tok str">"#c4-code-sequence"</span>) ]   <span class="tok com">// inline, labelled</span>
+  <span class="tok fn">revealCard</span>(<span class="tok str">"#c4-card-1"</span>) <span class="tok kw">for</span> <span class="tok num">2s</span>
+}</code></pre>
+
+      <pre id="c4-code-inline" class="code"><code><span class="tok kw">stagger</span> <span class="tok num">150ms</span> [<span class="tok str">"#c4-wave-1"</span>, <span class="tok str">"#c4-wave-2"</span>, <span class="tok str">"#c4-wave-3"</span>] <span class="tok kw" id="c4-tok-anchor">at</span> <span class="tok">waveBeat.start</span> <span class="tok op">+</span> <span class="tok num">1s</span> <span class="tok kw">for</span> <span class="tok num">2s</span> [
+  <span class="tok fn">selectElement</span>(<span class="tok">@@item</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>)
 ] [
-  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>)
+  <span class="tok fn">selectElement</span>(<span class="tok">@@item</span>)
+  <span class="tok fn">removeClass</span>(<span class="tok str">"lit"</span>)
 ]</code></pre>
 
-      <pre id="c4-code-recap" class="code"><code><span class="tok kw" id="c4-tok-recap">sequence</span> { <span class="tok fn">a</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>  <span class="tok fn">b</span>() <span class="tok kw">for</span> <span class="tok num">10s</span> }   <span class="tok com">// distinct steps, in order</span>
-<span class="tok kw">stagger</span> <span class="tok num">200ms</span> <span class="tok">items</span> <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span>  <span class="tok com">// one effect, many items</span></code></pre>
+      <pre id="c4-code-recap" class="code"><code><span class="tok kw">const</span> <span class="tok">cards</span> <span class="tok op">=</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>]             <span class="tok com">// program level, before the timeline</span>
+<span class="tok kw" id="c4-tok-recap">sequence</span> { <span class="tok fn">a</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>  <span class="tok fn">b</span>() <span class="tok kw">for</span> <span class="tok num">10s</span> }         <span class="tok com">// distinct steps, in order</span>
+<span class="tok kw">stagger</span> <span class="tok num">200ms</span> <span class="tok">@cards</span> <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span>  <span class="tok com">// one effect, many items</span></code></pre>
     </section>
 
     <section class="effect-pane">
@@ -359,6 +370,7 @@
       <div id="c4-fx-seq" class="fx">
         <span class="fx-chip">0–5</span><span class="fx-chip">5–15</span><span class="fx-chip">15–18</span>
       </div>
+      <!-- Beat 4: a real stagger reveals the cards 200ms apart, from editBeat.end (22 s) -->
       <div id="c4-fx-row" class="fx">
         <ul class="bullet-list">
           <li id="c4-card-1" class="bullet">card one</li>
@@ -366,8 +378,13 @@
           <li id="c4-card-3" class="bullet">card three</li>
         </ul>
       </div>
+      <!-- Beat 5: the chapter's own each / then; the dot mirrors #c4-pulse in the chrome -->
+      <div id="c4-fx-items" class="fx">
+        <span class="fx-chip">each</span><span class="fx-chip">item</span><span class="fx-chip">then <span class="pulse-dot"></span></span>
+      </div>
+      <!-- Beat 6: a real inline stagger lights the chips 150ms apart from 41 s, 2 s each -->
       <div id="c4-fx-cascade" class="fx">
-        <span class="fx-chip">delay 100ms</span><span class="fx-chip">duration 1s</span>
+        <span id="c4-wave-1" class="fx-chip">wave 1 · 41s</span><span id="c4-wave-2" class="fx-chip">wave 2 · 41.15s</span><span id="c4-wave-3" class="fx-chip">wave 3 · 41.3s</span>
       </div>
       <div id="c4-fx-done" class="fx"><span class="fx-done">Chapter 4 ✓</span></div>
     </section>
@@ -377,6 +394,7 @@
       <div id="c4-cl-seq" class="callout"></div>
       <div id="c4-cl-edit" class="callout"></div>
       <div id="c4-cl-stagger" class="callout"></div>
+      <div id="c4-cl-items" class="callout"></div>
       <div id="c4-cl-inline" class="callout"></div>
     </div>
   </section>
