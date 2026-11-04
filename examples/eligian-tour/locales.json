@@ -1,0 +1,20 @@
+{
+  "en-US": {
+    "hub": {
+      "title": "The Eligian Tour",
+      "tagline": "A presentation that teaches the language it is written in."
+    },
+    "tour": {
+      "greeting": "Hello from a LabelController"
+    }
+  },
+  "nl-NL": {
+    "hub": {
+      "title": "De Eligian-rondleiding",
+      "tagline": "Een presentatie die de taal uitlegt waarin ze is geschreven."
+    },
+    "tour": {
+      "greeting": "Hallo van een LabelController"
+    }
+  }
+}

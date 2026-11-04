@@ -2,13 +2,20 @@
   Eligian Tour — stage layout (hub + chapters in one config).
 
   Rendered into the engine container (#eligius-container) as the layoutTemplate.
-  Structure:
+  Structure (views in hub order; the section ids keep their history, the display
+  numbers follow the hub):
     #stage
-      #hub        (.view)            landing menu of chapter cards
-      #ch1        (.view .chapter)   Chapter 1 walkthrough
-      #ch2        (.view .chapter)   Chapter 2 walkthrough
+      #hub        (.view)            landing menu: eight chapter cards
+      #ch1        (.view .chapter)   01 · Timeline & Time
+      #ch2        (.view .chapter)   02 · Actions & Composition
+      #ch3        (.view .chapter)   03 · Logic & Data
+      #ch4        (.view .chapter)   04 · Timeline Power Tools
+      #chf        (.view .chapter)   05 · Files & Imports
+      #ch5        (.view .chapter)   06 · Engine Reach
+      #ch6        (.view .chapter)   07 · The Editor (mock VS Code)
+      #chc        (.view .chapter)   08 · The Command Line (mock terminal)
       #narration                     SHARED subtitle bar (toggled per chapter)
-      #progress                      SHARED chapter progress bar (CSS-driven)
+      #progress                      SHARED chapter progress bar (ProgressbarController)
 
   Each chapter is a self-contained view with its own chrome / .code-pane /
   .effect-pane / .callout-layer. Structural panes are CLASSES shared across
@@ -16,24 +23,33 @@
   Switching timelines toggles which view is .is-active (showView / hideView).
   Code is PRE-TOKENIZED here (spans with .tok + an id per highlightable token);
   the library only toggles classes / sets text at runtime — no runtime tokenizer.
-  Every id/class selected or class toggled by the .eligian must be defined in
-  tour.css (CSS validation, B2).
+  Ids come from this file, classes from tour.css; the compiler validates both,
+  also when they reach an operation through an action parameter (spec 056).
+  Chapters 07 and 08 reenact the editor and the terminal: their frames are
+  CSS-built mock UI (tour.css "Mock IDE" / "Mock terminal"), every string in them
+  copied from the real tools.
 -->
 <div id="stage">
 
   <!-- ============================ HUB VIEW ============================ -->
   <section id="hub" class="view">
     <div id="hub-inner">
-      <h1 id="hub-title">The Eligian Tour</h1>
-      <p id="hub-tagline">A presentation that teaches the language it is written in.</p>
+      <!-- data-fallback: the title and tagline are filled by LabelControllers
+           (hub.title / hub.tagline in locales.json; en-US: "The Eligian Tour",
+           "A presentation that teaches the language it is written in.") -->
+      <h1 id="hub-title"></h1>
+      <p id="hub-tagline"></p>
       <ul id="hub-cards">
         <li id="card-ch1" class="card"><span class="card-num">01</span><span class="card-name">Timeline &amp; Time</span></li>
         <li id="card-ch2" class="card"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
         <li id="card-ch3" class="card"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
         <li id="card-ch4" class="card"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
-        <li id="card-ch5" class="card"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
-        <li id="card-ch6" class="card"><span class="card-num">06</span><span class="card-name">Tooling Magic</span></li>
+        <li id="card-chf" class="card"><span class="card-num">05</span><span class="card-name">Files &amp; Imports</span></li>
+        <li id="card-ch5" class="card"><span class="card-num">06</span><span class="card-name">Engine Reach</span></li>
+        <li id="card-ch6" class="card"><span class="card-num">07</span><span class="card-name">The Editor</span></li>
+        <li id="card-chc" class="card"><span class="card-num">08</span><span class="card-name">The Command Line</span></li>
       </ul>
+      <p id="hub-hint">Click a card or press 1–8 · Esc returns here · space pauses · r replays</p>
     </div>
   </section>
 
@@ -43,9 +59,8 @@
     <header class="chrome">
       <button id="c1-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot is-current"></span>
-        <span class="dot"></span><span class="dot"></span>
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">01 · Timeline &amp; Time</span>
     </header>
@@ -55,33 +70,56 @@
   <span class="tok com">… events …</span>
 }</code></pre>
 
-      <pre id="code-at" class="code"><code><span class="tok kw" id="tok-at">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">revealHero</span>()</code></pre>
+      <pre id="c1-code-providers" class="code"><code><span class="tok kw">timeline</span> <span class="tok str">"Clip"</span> <span class="tok kw">in</span> <span class="tok str">"#player"</span> <span class="tok kw">using</span> <span class="tok kw">video</span> <span class="tok kw">from</span> <span class="tok str">"./clip.mp4"</span> { … }
+<span class="tok kw">timeline</span> <span class="tok str">"Story"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">scroll</span> <span class="tok str">"#scroller"</span> <span class="tok kw">duration</span> <span class="tok num">120s</span> { … }
+<span class="tok kw">timeline</span> <span class="tok str">"Ambient"</span> <span class="tok kw">in</span> <span class="tok str">"#bg"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> <span class="tok kw">loop</span> <span class="tok kw">duration</span> <span class="tok num">30s</span> { … }
+<span class="tok kw">timeline</span> <span class="tok str">"Remote"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">custom</span> { … }   <span class="tok com">// your own position source</span>
+<span class="tok com">// scroll: the container must be in the layout or the CSS, and scroll</span></code></pre>
+
+      <pre id="code-at" class="code"><code><span class="tok kw" id="tok-at">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>    <span class="tok fn">revealHero</span>()   <span class="tok com">// start .. end</span>
+<span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok kw">for</span> <span class="tok num">3s</span> <span class="tok fn">revealHero</span>()   <span class="tok com">// start for duration</span></code></pre>
 
       <pre id="code-units" class="code"><code><span class="tok num">42</span>      <span class="tok com">// 42 s (no unit = seconds)</span>
 <span class="tok num">500ms</span>
 <span class="tok num">2s</span>
 <span class="tok num">1.5m</span>
-<span class="tok num">0.5h</span></code></pre>
+<span class="tok num">0.5h</span>
+<span class="tok num">2s</span> <span class="tok op">*</span> <span class="tok num">3</span>  <span class="tok com">// 6s</span></code></pre>
 
-      <pre id="code-arith" class="code"><code><span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok op" id="tok-plus">+</span> <span class="tok num">2s</span> .. <span class="tok num">10s</span>
-<span class="tok kw">at</span> <span class="tok op">+</span><span class="tok num">0s</span>..<span class="tok op">+</span><span class="tok num">3s</span>  <span class="tok fn">doThing</span>()</code></pre>
+      <pre id="code-arith" class="code"><code><span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok op">+</span> <span class="tok num">2s</span> .. <span class="tok num">10s</span>  <span class="tok fn">doThing</span>()
+<span class="tok kw">at</span> <span class="tok num">10s</span> <span class="tok op">/</span> <span class="tok num">2</span> <span class="tok kw">for</span> <span class="tok num">1s</span>  <span class="tok fn">doThing</span>()
+<span class="tok kw">at</span> <span class="tok op" id="tok-plus">+</span><span class="tok num">0s</span>..<span class="tok op">+</span><span class="tok num">3s</span>        <span class="tok fn">doThing</span>()   <span class="tok com">// relative to the previous event's end</span></code></pre>
 
-      <pre id="code-full" class="code"><code><span class="tok kw">timeline</span> <span class="tok str">"Tour"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
-  <span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">6s</span>  <span class="tok fn">revealBlock</span>(<span class="tok str">"#code-ch1"</span>)
-  <span class="tok kw">at</span> <span class="tok num">6s</span>..<span class="tok num">12s</span> <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-raf"</span>)
-  <span class="tok kw">at</span> <span class="tok num">12s</span>..<span class="tok num">20s</span> <span class="tok fn">revealBlock</span>(<span class="tok str">"#code-at"</span>)
-  <span class="tok com">… and so on …</span>
+      <pre id="c1-code-labels" class="code"><code><span class="tok kw">const</span> <span class="tok">beat</span> <span class="tok op">=</span> <span class="tok num">6s</span>
+<span class="tok kw">at</span> <span class="tok num">0s</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok" id="c1-tok-label"><span class="tok kw">as</span> open</span> [ … ]
+<span class="tok kw">at</span> <span class="tok">open.end</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok kw">as</span> <span class="tok">providers</span> [ … ]
+<span class="tok kw">at</span> <span class="tok">providers.end</span> <span class="tok op">+</span> <span class="tok num">1s</span>..<span class="tok">providers.end</span> <span class="tok op">+</span> <span class="tok num">3s</span> [ … ]</code></pre>
+
+      <pre id="c1-code-target" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok kw" id="c1-tok-target">target</span> <span class="tok str">"#box"</span> [ <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>) ] [ <span class="tok fn">removeClass</span>(<span class="tok str">"lit"</span>) ]
+<span class="tok kw">at</span> <span class="tok num">5s</span> <span class="tok kw">for</span> <span class="tok num">2s</span> [ <span class="tok fn">selectElement</span>(<span class="tok str">"#box"</span>) <span class="tok fn">addClass</span>(<span class="tok str">"spot"</span>) ]   <span class="tok com">// no end block</span></code></pre>
+
+      <pre id="code-full" class="code"><code><span class="tok kw">const</span> <span class="tok">beat</span> <span class="tok op">=</span> <span class="tok num">6s</span>
+<span class="tok kw">timeline</span> <span class="tok str">"Timeline &amp; Time"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
+  <span class="tok kw" id="c1-tok-enter">on enter</span> [ <span class="tok fn">enterChapter</span>(<span class="tok str">"#ch1"</span>) … <span class="tok kw">on key</span> <span class="tok str">"r"</span> <span class="tok kw">run</span> <span class="tok fn">replayChapter</span>(<span class="tok str">"#ch1"</span>) ]
+  <span class="tok kw">on leave</span> [ <span class="tok fn">leaveChapter</span>(<span class="tok str">"#ch1"</span>, <span class="tok str">"#c1-to-hub"</span>) ]   <span class="tok com">// on navigate or stop, not when the content ends</span>
+  <span class="tok kw">at</span> <span class="tok num">0s</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok kw">as</span> <span class="tok">open</span> [ … ]
+  <span class="tok kw">at</span> <span class="tok">open.end</span> <span class="tok kw">for</span> <span class="tok">@beat</span> <span class="tok kw">as</span> <span class="tok">providers</span> [ … ]
 }</code></pre>
     </section>
 
     <section class="effect-pane">
       <div id="fx-stage" class="fx"><span class="fx-frame">#stage</span></div>
       <div id="fx-providers" class="fx">
-        <span class="fx-chip">raf</span><span class="fx-chip">video</span><span class="fx-chip">audio</span><span class="fx-chip">custom</span>
+        <span class="fx-chip">raf</span><span class="fx-chip">video</span><span class="fx-chip">audio</span><span class="fx-chip">scroll</span><span class="fx-chip">custom</span>
       </div>
       <div id="fx-hero" class="fx"><span class="fx-hero-box">hero</span></div>
       <div id="fx-ruler" class="fx"><span class="fx-tick">ms</span><span class="fx-tick">s</span><span class="fx-tick">m</span><span class="fx-tick">h</span></div>
       <div id="fx-chain" class="fx"><span class="fx-bar"></span><span class="fx-bar fx-bar--rel"></span></div>
+      <div id="c1-fx-labels" class="fx">
+        <span class="fx-chip">open</span><span class="fx-bar"></span>
+        <span class="fx-chip">providers</span><span class="fx-bar fx-bar--rel"></span>
+      </div>
+      <div id="c1-fx-target" class="fx"><span id="c1-target-box" class="fx-hero-box">box</span></div>
       <div id="fx-endcard" class="fx"><span class="fx-done">Chapter 1 ✓</span></div>
     </section>
 
@@ -91,6 +129,9 @@
       <div id="cl-range" class="callout"></div>
       <div id="cl-units" class="callout"></div>
       <div id="cl-relative" class="callout"></div>
+      <div id="c1-cl-label" class="callout"></div>
+      <div id="c1-cl-target" class="callout"></div>
+      <div id="c1-cl-lifecycle" class="callout"></div>
     </div>
   </section>
 
@@ -100,8 +141,7 @@
     <header class="chrome">
       <button id="c2-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span>
-        <span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot is-current"></span><span class="dot"></span><span class="dot"></span>
         <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">02 · Actions &amp; Composition</span>
@@ -119,27 +159,36 @@
   <span class="tok fn">animate</span>({ opacity<span class="tok op">:</span> <span class="tok num">1</span> }, <span class="tok">duration</span>)
 ]</code></pre>
 
-      <pre id="c2-code-call" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn" id="c2-tok-call">fadeIn</span>(<span class="tok str">"#hero"</span>, <span class="tok num">400</span>)   <span class="tok com">// your action</span>
-<span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>)         <span class="tok com">// built-in op</span></code></pre>
+      <pre id="c2-code-call" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn" id="c2-tok-call">fadeIn</span>(<span class="tok str">"#hero"</span>, <span class="tok num">400</span>)                 <span class="tok com">// your action</span>
+<span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok kw">target</span> <span class="tok str">"#hero"</span> [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]   <span class="tok com">// built-in op, in a block</span></code></pre>
 
-      <pre id="c2-code-byname" class="code"><code><span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok" id="c2-tok-template">template</span>) [
-  <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>)
-  <span class="tok fn">setElementContent</span>(<span class="tok">template</span>)
-]</code></pre>
+      <pre id="c2-code-byname" class="code"><code><span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok" id="c2-tok-template">template</span>) [ <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>) <span class="tok fn">setElementContent</span>(<span class="tok">template</span>) ]   <span class="tok com">// same name: forwarded</span>
+<span class="tok kw">action</span> <span class="tok fn">say</span>(<span class="tok">text</span>) [ <span class="tok fn">selectElement</span>(<span class="tok str">"#narration"</span>) <span class="tok fn">setElementContent</span>(<span class="tok">text</span>) ]               <span class="tok com">// bridged by setOperationData</span></code></pre>
 
       <pre id="c2-code-endable" class="code"><code><span class="tok kw" id="c2-tok-endable">endable</span> <span class="tok kw">action</span> <span class="tok fn">highlight</span>(<span class="tok">selector</span>) [
   <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
   <span class="tok fn">addClass</span>(<span class="tok str">"spot"</span>)
 ] [
-  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// re-select: nothing carries over</span>
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// re-select: start and end are separate runs</span>
   <span class="tok fn">removeClass</span>(<span class="tok str">"spot"</span>)
 ]</code></pre>
+
+      <pre id="c2-code-contract" class="code"><code><span class="tok kw">action</span> <span class="tok fn">highlight</span>() [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]   <span class="tok com">// needs selectedElement</span>
+<span class="tok kw">at</span> <span class="tok num">1s</span>..<span class="tok num">2s</span> <span class="tok fn squiggle" id="c2-tok-contract">highlight</span>()                   <span class="tok com">// ✗ requires 'selectedElement'</span>
+<span class="tok kw">at</span> <span class="tok num">1s</span>..<span class="tok num">2s</span> <span class="tok kw">target</span> <span class="tok str">"#box"</span> <span class="tok fn">highlight</span>()     <span class="tok com">// ✓</span></code></pre>
+
+      <pre id="c2-code-erased" class="code"><code><span class="tok kw">action</span> <span class="tok fn">twice</span>(<span class="tok">selector</span>) [
+  <span class="tok fn" id="c2-tok-erased">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// erases 'selector'…</span>
+  <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>)
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)   <span class="tok com">// …but the parameter was kept</span>
+]
+<span class="tok fn">twice</span>(<span class="tok str">"#hero"</span>)              <span class="tok com">// checked as a selector at the call: CSS ∪ layout</span></code></pre>
 
       <pre id="c2-code-lib" class="code"><code><span class="tok kw">library</span> <span class="tok fn">presentation</span>
 <span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span>) [ … ]       <span class="tok com">// public</span>
 <span class="tok kw">private</span> <span class="tok kw">action</span> <span class="tok fn">_helper</span>() [ … ]      <span class="tok com">// library-only</span>
 
-<span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span></code></pre>
+<span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> <span class="tok kw">as</span> <span class="tok fn">say</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span></code></pre>
     </section>
 
     <section class="effect-pane">
@@ -151,9 +200,17 @@
         <span class="fx-chip">requestAction</span><span class="fx-chip">startAction</span>
       </div>
       <div id="c2-fx-slot" class="fx">
-        <span class="fx-chip">template →</span><span class="fx-frame">setElementContent</span>
+        <span class="fx-chip">template → setElementContent</span>
+        <span class="fx-chip">text → setOperationData → template</span>
       </div>
       <div id="c2-fx-toggle" class="fx"><span class="fx-hero-box">.spot</span></div>
+      <!-- Beat 6: the diagnostic `eligian check` reports for the snippet (verbatim) -->
+      <div id="c2-fx-contract" class="fx">
+        <div class="diagnostic">Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement)</div>
+      </div>
+      <div id="c2-fx-erased" class="fx">
+        <span class="fx-chip">selector →</span><span class="fx-chip">selectElement →</span><span class="fx-chip">(saved) →</span><span class="fx-chip">selector</span>
+      </div>
       <div id="c2-fx-lib" class="fx"><span class="fx-done">Chapter 2 ✓</span></div>
     </section>
 
@@ -163,6 +220,8 @@
       <div id="c2-cl-call" class="callout"></div>
       <div id="c2-cl-name" class="callout"></div>
       <div id="c2-cl-endable" class="callout"></div>
+      <div id="c2-cl-contract" class="callout"></div>
+      <div id="c2-cl-erased" class="callout"></div>
     </div>
   </section>
 
@@ -172,54 +231,76 @@
     <header class="chrome">
       <button id="c3-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot is-current"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">03 · Logic &amp; Data</span>
     </header>
 
     <section class="code-pane">
-      <pre id="c3-code-const" class="code"><code><span class="tok kw" id="c3-tok-const">const</span> <span class="tok">theme</span> <span class="tok op">=</span> <span class="tok str">"dark"</span>      <span class="tok com">// → $globaldata.theme</span>
-
-<span class="tok kw">action</span> <span class="tok fn">greet</span>(<span class="tok">name</span>) [
-  <span class="tok kw">const</span> <span class="tok">greeting</span> <span class="tok op">=</span> <span class="tok str">"hi"</span>    <span class="tok com">// → @greeting</span>
-  <span class="tok fn">setElementContent</span>(<span class="tok">greeting</span>)
+      <pre id="c3-code-const" class="code"><code><span class="tok kw" id="c3-tok-const">const</span> <span class="tok">theme</span> <span class="tok op">=</span> <span class="tok str">"dark"</span>            <span class="tok com">// inlined: @theme → "dark"</span>
+<span class="tok kw">const</span> <span class="tok">beat</span> <span class="tok op">=</span> <span class="tok num">7s</span>                 <span class="tok com">// a time constant (program level only)</span>
+<span class="tok kw">action</span> <span class="tok fn">greet</span>(<span class="tok">label</span>) [
+  <span class="tok kw">const</span> <span class="tok">greeting</span> <span class="tok op">=</span> <span class="tok str">"hi"</span>         <span class="tok com">// inlined too</span>
+  <span class="tok kw">const</span> <span class="tok">copy</span> <span class="tok op">=</span> <span class="tok">label</span>            <span class="tok com">// runtime → setVariable; read as $scope.variables.copy</span>
+  <span class="tok fn">selectElement</span>(<span class="tok str">"#greeting"</span>)
+  <span class="tok fn">setElementContent</span>(<span class="tok">@greeting</span>)
 ]</code></pre>
 
-      <pre id="c3-code-expr" class="code"><code><span class="tok">$operationdata.count</span> <span class="tok op">+</span> <span class="tok num">1</span>
-<span class="tok">$operationdata.count</span> <span class="tok op" id="c3-tok-expr">&gt;=</span> <span class="tok num">3</span> <span class="tok op">&amp;&amp;</span> <span class="tok">@enabled</span>
-<span class="tok op">!</span><span class="tok">$globaldata.muted</span></code></pre>
+      <pre id="c3-code-literals" class="code"><code><span class="tok str">"text"</span>  <span class="tok str">'text'</span>  <span class="tok num">42</span>  <span class="tok num">3.14</span>  <span class="tok kw">true</span>  <span class="tok kw">false</span>  <span class="tok kw">null</span>
+<span class="tok" id="c3-tok-literal">{ opacity<span class="tok op">:</span> <span class="tok num">1</span>, from<span class="tok op">:</span> <span class="tok num">0</span> }</span>        <span class="tok com">// keys may be any word, even keywords</span>
+[<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>]</code></pre>
 
-      <pre id="c3-code-if" class="code"><code><span class="tok kw" id="c3-tok-if">if</span> (<span class="tok">count</span> <span class="tok op">&gt;</span> <span class="tok num">0</span>) {
-  <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+      <pre id="c3-code-expr" class="code"><code><span class="tok kw">const</span> <span class="tok">total</span> <span class="tok op">=</span> <span class="tok num">2</span> <span class="tok op" id="c3-tok-expr">**</span> <span class="tok num">3</span> <span class="tok op">*</span> <span class="tok num">2</span> <span class="tok op">+</span> <span class="tok num">1</span>       <span class="tok com">// 17, folded; ** binds tightest</span>
+<span class="tok kw">if</span> (<span class="tok">count</span> <span class="tok op">&gt;=</span> <span class="tok num">3</span> <span class="tok op">&amp;&amp;</span> <span class="tok">enabled</span>) { … }  <span class="tok com">// comparisons &amp; logic on runtime values: in if</span>
+<span class="tok fn">selectElement</span>(<span class="tok str">"#"</span> <span class="tok op">+</span> <span class="tok">slideId</span>)      <span class="tok com">// runtime string concatenation</span>
+<span class="tok fn">calc</span>(<span class="tok">count</span>, <span class="tok num">1</span>, <span class="tok str">"+"</span>)                <span class="tok com">// runtime arithmetic is an operation</span></code></pre>
+
+      <pre id="c3-code-if" class="code"><code><span class="tok fn">selectElement</span>(<span class="tok str">"#c3-badge"</span>)
+<span class="tok kw">if</span> (<span class="tok">count</span> <span class="tok op">&gt;</span> <span class="tok num">0</span>) {
+  <span class="tok fn">removeClass</span>(<span class="tok str">"muted"</span>) <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+} <span class="tok kw" id="c3-tok-if">else if</span> (<span class="tok">count</span> <span class="tok op">==</span> <span class="tok num">0</span>) {
+  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>) <span class="tok fn">addClass</span>(<span class="tok str">"muted"</span>)
 } <span class="tok kw">else</span> {
-  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>)
+  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>) <span class="tok fn">removeClass</span>(<span class="tok str">"muted"</span>)
 }</code></pre>
 
-      <pre id="c3-code-for" class="code"><code><span class="tok fn">setVariable</span>(<span class="tok str">"points"</span>, [<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>])
-<span class="tok kw" id="c3-tok-for">for</span> (<span class="tok">p</span> <span class="tok kw">in</span> <span class="tok">$scope</span>.variables.points) {
-  <span class="tok fn">selectElement</span>(<span class="tok">@@currentItem</span>)
+      <pre id="c3-code-for" class="code"><code><span class="tok kw">const</span> <span class="tok">points</span> <span class="tok op">=</span> [<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>]
+<span class="tok kw" id="c3-tok-for">for</span> (<span class="tok">p</span> <span class="tok kw">in</span> <span class="tok">@points</span>) {        <span class="tok com">// forEach / endForEach</span>
+  <span class="tok fn">selectElement</span>(<span class="tok">@@p</span>)        <span class="tok com">// the item; @@loopIndex, @@loopLength too</span>
   <span class="tok fn">addClass</span>(<span class="tok str">"in"</span>)
 }</code></pre>
 
-      <pre id="c3-code-loopctl" class="code"><code><span class="tok kw">for</span> (<span class="tok">n</span> <span class="tok kw">in</span> <span class="tok">@numbers</span>) {
-  <span class="tok kw">if</span> (<span class="tok">@@currentItem</span> <span class="tok op">==</span> <span class="tok num">0</span>) { <span class="tok kw">continue</span> }
-  <span class="tok kw">if</span> (<span class="tok">@@currentItem</span> <span class="tok op">&gt;</span> <span class="tok num">9</span>) { <span class="tok kw" id="c3-tok-break">break</span> }
+      <pre id="c3-code-loopctl" class="code"><code><span class="tok kw">const</span> <span class="tok">numbers</span> <span class="tok op">=</span> [<span class="tok num">0</span>, <span class="tok num">3</span>, <span class="tok num">7</span>, <span class="tok num">12</span>]
+<span class="tok kw">for</span> (<span class="tok">n</span> <span class="tok kw">in</span> <span class="tok">@numbers</span>) {
+  <span class="tok kw">if</span> (<span class="tok">@@n</span> <span class="tok op">==</span> <span class="tok num">0</span>) { <span class="tok kw">continue</span> }                   <span class="tok com">// continueForEach</span>
+  <span class="tok kw">if</span> (<span class="tok">@@n</span> <span class="tok op">&gt;</span> <span class="tok num">9</span>) { <span class="tok kw" id="c3-tok-break">break</span> }                       <span class="tok com">// breakForEach</span>
+  <span class="tok kw">with</span> <span class="tok str">"#c3-n-"</span> <span class="tok op">+</span> <span class="tok">@@n</span> { <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>) }      <span class="tok com">// runtime concat: "#c3-n-3", "#c3-n-7"</span>
 }</code></pre>
+
+      <pre id="c3-code-with" class="code"><code><span class="tok kw" id="c3-tok-with">with</span> <span class="tok str">".tok"</span> { <span class="tok fn">removeClass</span>(<span class="tok str">"spot"</span>) }      <span class="tok com">// selectElement(".tok"), then the block</span>
+<span class="tok kw">with</span> <span class="tok str">"#"</span> <span class="tok op">+</span> <span class="tok">id</span> { <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>) }        <span class="tok com">// any expression; the selection stays</span></code></pre>
 
       <pre id="c3-code-sigils" class="code"><code><span class="tok" id="c3-tok-sigil">$operationdata</span>.x   <span class="tok com">// this block's data</span>
 <span class="tok">$globaldata</span>.x      <span class="tok com">// program-wide</span>
-<span class="tok">$scope</span>.x           <span class="tok com">// loop / branch scope</span></code></pre>
+<span class="tok">$scope</span>.x           <span class="tok com">// loop / branch scope</span>
+<span class="tok">selector</span>           <span class="tok com">// a parameter → $operationdata.selector</span>
+<span class="tok">@beat</span>              <span class="tok com">// a const</span>
+<span class="tok">@@p</span>  <span class="tok">@@loopIndex</span>   <span class="tok com">// loop scope → $scope.…</span></code></pre>
     </section>
 
     <section class="effect-pane">
       <div id="c3-fx-scopes" class="fx">
-        <span class="fx-chip">$globaldata</span><span class="fx-chip">$scope.variables</span>
+        <span class="fx-chip">"dark" (inlined)</span><span class="fx-chip">$scope.variables.copy</span>
+      </div>
+      <div id="c3-fx-literals" class="fx">
+        <span class="fx-chip">string</span><span class="fx-chip">number</span><span class="fx-chip">boolean</span>
+        <span class="fx-chip">null</span><span class="fx-chip">object</span><span class="fx-chip">array</span>
       </div>
       <div id="c3-fx-eval" class="fx">
-        <span class="fx-chip">2 + 1 → 3</span><span class="fx-chip">3 &gt;= 3 → true</span>
+        <span class="fx-chip">2 ** 3 * 2 + 1 → 17</span><span class="fx-chip">"#" + "hero" → "#hero"</span>
       </div>
+      <!-- Beat 4: a real if / else if / else sets the badge: active → muted → plain -->
       <div id="c3-fx-if" class="fx"><span id="c3-badge" class="fx-hero-box">badge</span></div>
       <div id="c3-fx-list" class="fx">
         <ul class="bullet-list">
@@ -228,37 +309,45 @@
           <li id="c3-b3" class="bullet">break / continue steer it</li>
         </ul>
       </div>
+      <!-- Beat 6: a real for loop lights 3 and 7 (.lit); continue skips 0, break stops at 12 -->
       <div id="c3-fx-loopctl" class="fx">
-        <span class="fx-chip">0</span><span class="fx-chip">3</span><span class="fx-chip">7</span><span class="fx-chip">12</span>
+        <span id="c3-n-0" class="fx-chip">0</span><span id="c3-n-3" class="fx-chip">3</span><span id="c3-n-7" class="fx-chip">7</span><span id="c3-n-12" class="fx-chip">12</span>
+      </div>
+      <div id="c3-fx-with" class="fx">
+        <span class="fx-chip">selectElement(".tok") →</span><span class="fx-chip">removeClass("spot")</span>
       </div>
       <div id="c3-fx-sigils" class="fx"><span class="fx-done">Chapter 3 ✓</span></div>
     </section>
 
     <div class="callout-layer">
       <div id="c3-cl-const" class="callout"></div>
+      <div id="c3-cl-literal" class="callout"></div>
       <div id="c3-cl-expr" class="callout"></div>
       <div id="c3-cl-if" class="callout"></div>
       <div id="c3-cl-for" class="callout"></div>
       <div id="c3-cl-loopctl" class="callout"></div>
+      <div id="c3-cl-with" class="callout"></div>
     </div>
   </section>
 
+  <!-- =================== CHAPTER 4 · Timeline Power Tools ============ -->
   <section id="ch4" class="view chapter">
 
     <header class="chrome">
       <button id="c4-to-hub" class="to-hub">&larr; Hub</button>
+      <!-- the sequence's then [ … ] flips this dot at the end of every beat -->
+      <span id="c4-pulse" class="pulse-dot" title="then: flips at every beat boundary"></span>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
-        <span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">04 · Timeline Power Tools</span>
     </header>
 
     <section class="code-pane">
-      <pre id="c4-code-manual" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>   { <span class="tok fn">intro</span>() }
-<span class="tok kw">at</span> <span class="tok num">5s</span>..<span class="tok num">15s</span>  { <span class="tok fn">main</span>() }     <span class="tok com">// 5 + 10, by hand</span>
-<span class="tok kw">at</span> <span class="tok num">15s</span>..<span class="tok num">18s</span> { <span class="tok fn">outro</span>() }    <span class="tok com">// …and 15 + 3</span></code></pre>
+      <pre id="c4-code-manual" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span>   <span class="tok fn">intro</span>()
+<span class="tok kw">at</span> <span class="tok num">5s</span>..<span class="tok num">15s</span>  <span class="tok fn">main</span>()     <span class="tok com">// 5 + 10, by hand</span>
+<span class="tok kw">at</span> <span class="tok num">15s</span>..<span class="tok num">18s</span> <span class="tok fn">outro</span>()    <span class="tok com">// …and 15 + 3</span></code></pre>
 
       <pre id="c4-code-sequence" class="code"><code><span class="tok kw" id="c4-tok-seq">sequence</span> {
   <span class="tok fn">intro</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>
@@ -266,16 +355,24 @@
   <span class="tok fn">outro</span>() <span class="tok kw">for</span> <span class="tok num">3s</span>
 }</code></pre>
 
-      <pre id="c4-code-stagger" class="code"><code><span class="tok kw" id="c4-tok-stagger">stagger</span> <span class="tok num">200ms</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>] <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span></code></pre>
+      <pre id="c4-code-stagger" class="code"><code><span class="tok kw" id="c4-tok-stagger">stagger</span> <span class="tok num">200ms</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>] <span class="tok kw">at</span> <span class="tok">editBeat.end</span> <span class="tok kw">with</span> <span class="tok fn">revealCard</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span></code></pre>
 
-      <pre id="c4-code-inline" class="code"><code><span class="tok kw">stagger</span> <span class="tok num">100ms</span> <span class="tok">items</span> <span class="tok kw">for</span> <span class="tok num">1s</span> [
-  <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+      <pre id="c4-code-items" class="code"><code><span class="tok kw">sequence</span> <span class="tok kw" id="c4-tok-each">each</span> [ <span class="tok fn">clearSpots</span>() ] <span class="tok kw">then</span> [ <span class="tok kw">with</span> <span class="tok str">"#c4-pulse"</span> { <span class="tok fn">toggleClass</span>(<span class="tok str">"lit"</span>) } ] {
+  <span class="tok kw">for</span> <span class="tok num">7s</span> <span class="tok kw">as</span> <span class="tok">editBeat</span> [ <span class="tok fn">narrate</span>(<span class="tok str">"…"</span>) <span class="tok fn">revealBlock</span>(<span class="tok str">"#c4-code-sequence"</span>) ]   <span class="tok com">// inline, labelled</span>
+  <span class="tok fn">revealCard</span>(<span class="tok str">"#c4-card-1"</span>) <span class="tok kw">for</span> <span class="tok num">2s</span>
+}</code></pre>
+
+      <pre id="c4-code-inline" class="code"><code><span class="tok kw">stagger</span> <span class="tok num">150ms</span> [<span class="tok str">"#c4-wave-1"</span>, <span class="tok str">"#c4-wave-2"</span>, <span class="tok str">"#c4-wave-3"</span>] <span class="tok kw" id="c4-tok-anchor">at</span> <span class="tok">waveBeat.start</span> <span class="tok op">+</span> <span class="tok num">1s</span> <span class="tok kw">for</span> <span class="tok num">2s</span> [
+  <span class="tok fn">selectElement</span>(<span class="tok">@@item</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>)
 ] [
-  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>)
+  <span class="tok fn">selectElement</span>(<span class="tok">@@item</span>)
+  <span class="tok fn">removeClass</span>(<span class="tok str">"lit"</span>)
 ]</code></pre>
 
-      <pre id="c4-code-recap" class="code"><code><span class="tok kw" id="c4-tok-recap">sequence</span> { <span class="tok fn">a</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>  <span class="tok fn">b</span>() <span class="tok kw">for</span> <span class="tok num">10s</span> }   <span class="tok com">// distinct steps, in order</span>
-<span class="tok kw">stagger</span> <span class="tok num">200ms</span> <span class="tok">items</span> <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span>  <span class="tok com">// one effect, many items</span></code></pre>
+      <pre id="c4-code-recap" class="code"><code><span class="tok kw">const</span> <span class="tok">cards</span> <span class="tok op">=</span> [<span class="tok str">"#a"</span>, <span class="tok str">"#b"</span>, <span class="tok str">"#c"</span>]             <span class="tok com">// program level, before the timeline</span>
+<span class="tok kw" id="c4-tok-recap">sequence</span> { <span class="tok fn">a</span>() <span class="tok kw">for</span> <span class="tok num">5s</span>  <span class="tok fn">b</span>() <span class="tok kw">for</span> <span class="tok num">10s</span> }         <span class="tok com">// distinct steps, in order</span>
+<span class="tok kw">stagger</span> <span class="tok num">200ms</span> <span class="tok">@cards</span> <span class="tok kw">with</span> <span class="tok fn">fadeIn</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span>  <span class="tok com">// one effect, many items</span></code></pre>
     </section>
 
     <section class="effect-pane">
@@ -285,6 +382,7 @@
       <div id="c4-fx-seq" class="fx">
         <span class="fx-chip">0–5</span><span class="fx-chip">5–15</span><span class="fx-chip">15–18</span>
       </div>
+      <!-- Beat 4: a real stagger reveals the cards 200ms apart, from editBeat.end (22 s) -->
       <div id="c4-fx-row" class="fx">
         <ul class="bullet-list">
           <li id="c4-card-1" class="bullet">card one</li>
@@ -292,8 +390,13 @@
           <li id="c4-card-3" class="bullet">card three</li>
         </ul>
       </div>
+      <!-- Beat 5: the chapter's own each / then; the dot mirrors #c4-pulse in the chrome -->
+      <div id="c4-fx-items" class="fx">
+        <span class="fx-chip">each</span><span class="fx-chip">item</span><span class="fx-chip">then <span class="pulse-dot"></span></span>
+      </div>
+      <!-- Beat 6: a real inline stagger lights the chips 150ms apart from 41 s, 2 s each -->
       <div id="c4-fx-cascade" class="fx">
-        <span class="fx-chip">delay 100ms</span><span class="fx-chip">duration 1s</span>
+        <span id="c4-wave-1" class="fx-chip">wave 1 · 41s</span><span id="c4-wave-2" class="fx-chip">wave 2 · 41.15s</span><span id="c4-wave-3" class="fx-chip">wave 3 · 41.3s</span>
       </div>
       <div id="c4-fx-done" class="fx"><span class="fx-done">Chapter 4 ✓</span></div>
     </section>
@@ -303,165 +406,1027 @@
       <div id="c4-cl-seq" class="callout"></div>
       <div id="c4-cl-edit" class="callout"></div>
       <div id="c4-cl-stagger" class="callout"></div>
+      <div id="c4-cl-items" class="callout"></div>
       <div id="c4-cl-inline" class="callout"></div>
     </div>
   </section>
 
-  <!-- ====================== CHAPTER 5 · Engine Reach ================= -->
+  <!-- ====================== CHAPTER 5 · Files & Imports ============== -->
+  <section id="chf" class="view chapter">
+
+    <header class="chrome">
+      <button id="cf-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </nav>
+      <span class="chapter-label">05 · Files &amp; Imports</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="cf-code-files" class="code"><code><span class="tok com">// tour.eligian — a program</span>
+<span class="tok kw">languages</span> { <span class="tok op">*</span> <span class="tok str">"en-US"</span> <span class="tok str">"English"</span> }
+<span class="tok kw">layout</span> <span class="tok str">"./layout.html"</span>
+<span class="tok kw">timeline</span> <span class="tok str">"Hub"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> { … }
+
+<span class="tok com">// presentation.eligian — a library</span>
+<span class="tok kw" id="cf-tok-library">library</span> <span class="tok fn">presentation</span>
+<span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok">template</span><span class="tok op">:</span> <span class="tok kw">string</span>) [ … ]</code></pre>
+
+      <pre id="cf-code-languages" class="code"><code><span class="tok kw">languages</span> {
+  <span class="tok op" id="cf-tok-star">*</span> <span class="tok str">"en-US"</span> <span class="tok str">"English"</span>
+    <span class="tok str">"nl-NL"</span> <span class="tok str">"Nederlands"</span>
+}</code></pre>
+
+      <pre id="cf-code-defaults" class="code"><code><span class="tok kw">layout</span> <span class="tok str">"./layout.html"</span>     <span class="tok com">// → layoutTemplate</span>
+<span class="tok kw" id="cf-tok-styles">styles</span> <span class="tok str">"./tour.css"</span>        <span class="tok com">// → cssFiles; classes and selectors are checked against it</span>
+<span class="tok kw">provider</span> <span class="tok str">"./clip.mp4"</span>      <span class="tok com">// → checked to exist; a video / audio timeline still names its media with from</span>
+<span class="tok kw">locales</span> <span class="tok str">"./locales.json"</span>   <span class="tok com">// → config.locales (needs a languages block)</span></code></pre>
+
+      <pre id="cf-code-named" class="code"><code><span class="tok kw" id="cf-tok-import">import</span> <span class="tok">hint</span> <span class="tok kw">from</span> <span class="tok str">"./hint.html"</span>          <span class="tok com">// type from the extension</span>
+<span class="tok kw">import</span> <span class="tok">theme</span> <span class="tok kw">from</span> <span class="tok str">"./x.txt"</span> <span class="tok kw">as</span> <span class="tok kw">css</span>      <span class="tok com">// or forced with as html | css | media</span>
+
+<span class="tok fn">selectElement</span>(<span class="tok str">"#cf-fx-hint"</span>)
+<span class="tok fn">setElementContent</span>(<span class="tok">@hint</span>)</code></pre>
+
+      <pre id="cf-code-lib" class="code"><code><span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> <span class="tok kw">as</span> <span class="tok fn">say</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span>
+
+<span class="tok kw">library</span> <span class="tok fn">presentation</span>
+<span class="tok kw" id="cf-tok-private">private</span> <span class="tok kw">action</span> <span class="tok fn">setClass</span>(<span class="tok">selector</span>, <span class="tok">className</span>, <span class="tok">visible</span>) [ … ]   <span class="tok com">// callable here only</span>
+<span class="tok kw">private</span> <span class="tok kw">endable</span> <span class="tok kw">action</span> <span class="tok fn">spotOn</span>(<span class="tok">selector</span>) [ … ] [ … ]   <span class="tok com">// endable too</span>
+<span class="tok kw">action</span> <span class="tok fn">reveal</span>(<span class="tok">selector</span>) [ <span class="tok fn">setClass</span>(<span class="tok">selector</span>, <span class="tok str">"in"</span>, <span class="tok kw">true</span>) ]</code></pre>
+
+      <pre id="cf-code-ext" class="code"><code><span class="tok kw" id="cf-tok-ext">extensions</span> <span class="tok str">"./host.js"</span> {
+  <span class="tok kw">operation</span> <span class="tok fn">stampTime</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>)   <span class="tok com">// called like a built-in</span>
+  <span class="tok kw">controller</span> <span class="tok fn">Confetti</span>(<span class="tok">count</span><span class="tok op">:</span> <span class="tok kw">number</span>)      <span class="tok com">// addController("Confetti", 25) (display only)</span>
+  <span class="tok kw">function</span> <span class="tok fn">shout</span>                          <span class="tok com">// customFunction("shout")</span>
+}</code></pre>
+
+      <pre id="cf-code-doc" class="code"><code><span class="tok com">// a line comment</span>
+<span class="tok com">/* a block comment */</span>
+<span class="tok com" id="cf-tok-jsdoc">/**
+ * Swap the narration line.
+ * @param {string} template Subtitle text for this beat
+ */</span>
+<span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok">template</span><span class="tok op">:</span> <span class="tok kw">string</span>) [ … ]</code></pre>
+
+      <pre id="cf-code-keywords" class="code"><code><span class="tok kw">action</span> <span class="tok fn">f</span>(<span class="tok">event</span>, <span class="tok">duration</span>) [ … ]   <span class="tok com">// contextual keywords are fine as names</span>
+<span class="tok kw">const</span> <span class="tok">s</span> <span class="tok op">=</span> <span class="tok num">5</span>                        <span class="tok com">// even a time unit</span>
+<span class="tok kw">action</span> <span class="tok fn">toggle</span>() [ … ]              <span class="tok com">// verbs too</span>
+<span class="tok kw">const</span> <span class="tok kw squiggle" id="cf-tok-reserved">for</span> <span class="tok op">=</span> <span class="tok num">1</span>                      <span class="tok com">// ✗ 'for' is a keyword, so it cannot be used as a name here. Choose another name.</span></code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <div id="cf-fx-files" class="fx">
+        <span class="fx-frame">tour.eligian · program</span>
+        <span class="fx-chip">import { … } from</span>
+        <span class="fx-frame">presentation.eligian · library</span>
+      </div>
+      <div id="cf-fx-languages" class="fx">
+        <span class="fx-chip">en-US ★</span><span class="fx-chip">nl-NL</span>
+      </div>
+      <div id="cf-fx-defaults" class="fx">
+        <span class="fx-chip">layout</span><span class="fx-chip">styles</span><span class="fx-chip">provider</span><span class="fx-chip">locales</span>
+      </div>
+      <!-- Beat 4: empty until cfPlaceHint() writes hint.html (the named import @hint) into it -->
+      <div id="cf-fx-hint" class="fx"></div>
+      <div id="cf-fx-lib" class="fx">
+        <span class="fx-chip">public</span><span class="fx-chip">private</span>
+      </div>
+      <div id="cf-fx-ext" class="fx">
+        <span class="fx-frame">host.js: export const operations = { stampTime }</span>
+      </div>
+      <!-- Beat 7: the hover a call to narrate shows (the markdown, verbatim from the hover provider) -->
+      <div id="cf-fx-doc" class="fx">
+        <div class="hover-card">### narrate<br/><br/>Swap the narration line.<br/><br/>**Parameters:**<br/>- `template` (`string`) - Subtitle text for this beat</div>
+      </div>
+      <div id="cf-fx-done" class="fx"><span class="fx-done">Chapter 5 ✓</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="cf-cl-files" class="callout"></div>
+      <div id="cf-cl-languages" class="callout"></div>
+      <div id="cf-cl-defaults" class="callout"></div>
+      <div id="cf-cl-named" class="callout"></div>
+      <div id="cf-cl-lib" class="callout"></div>
+      <div id="cf-cl-ext" class="callout"></div>
+      <div id="cf-cl-doc" class="callout"></div>
+      <div id="cf-cl-keywords" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- ====================== CHAPTER 6 · Engine Reach ================= -->
   <section id="ch5" class="view chapter">
 
     <header class="chrome">
       <button id="c5-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
-        <span class="dot"></span>
+        <span class="dot"></span><span class="dot is-current"></span><span class="dot"></span><span class="dot"></span>
       </nav>
-      <span class="chapter-label">05 · Engine Reach</span>
+      <span class="chapter-label">06 · Engine Reach</span>
     </header>
 
     <section class="code-pane">
-      <pre id="c5-code-overview" class="code"><code><span class="tok fn">broadcastEvent</span>([args], <span class="tok str">"name"</span>)            <span class="tok com">// 1. the eventbus</span>
-<span class="tok kw">on</span> <span class="tok kw">event</span> <span class="tok str">"name"</span> <span class="tok kw">action</span> <span class="tok fn">H</span>(<span class="tok">p</span>) [ … ]    <span class="tok com">// 2. react to it</span>
-<span class="tok fn">addController</span>(<span class="tok str">"…Controller"</span>, …)        <span class="tok com">// 3. attach behaviour</span></code></pre>
+      <pre id="c5-code-overview" class="code"><code><span class="tok fn">broadcastEvent</span>([<span class="tok">args</span>], <span class="tok str">"name"</span>)            <span class="tok com">// 1. the eventbus</span>
+<span class="tok kw">on</span> <span class="tok kw">event</span> <span class="tok str">"name"</span> <span class="tok kw">action</span> <span class="tok fn">H</span>(<span class="tok">p</span>) [ … ]         <span class="tok com">// 2. react to it</span>
+<span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#btn"</span> <span class="tok kw">run</span> <span class="tok fn">ping</span>()                <span class="tok com">// 3. interactions</span>
+<span class="tok fn">addController</span>(<span class="tok str">"…Controller"</span>, …)           <span class="tok com">// 4. attach behaviour</span>
+<span class="tok kw">extensions</span> <span class="tok str">"./host.js"</span> { <span class="tok kw">operation</span> … }    <span class="tok com">// 5. your own JavaScript</span></code></pre>
 
-      <pre id="c5-code-eventbus" class="code"><code><span class="tok fn" id="c5-tok-bcast">broadcastEvent</span>([<span class="tok str">"#c5-fx-panel"</span>], <span class="tok str">"tour-ping"</span>)        <span class="tok com">// broadcast: all listeners</span>
-<span class="tok fn">broadcastEvent</span>([<span class="tok str">"Hub"</span>, <span class="tok num">0</span>], <span class="tok str">"request-timeline-uri"</span>)  <span class="tok com">// request: engine answers</span></code></pre>
+      <pre id="c5-code-eventbus" class="code"><code><span class="tok fn" id="c5-tok-bcast">broadcastEvent</span>([<span class="tok str">"#c5-fx-panel"</span>], <span class="tok str">"tour-ping"</span>)          <span class="tok com">// eventArgs first, then the name</span>
+<span class="tok fn">broadcastEvent</span>([<span class="tok str">"Hub"</span>, <span class="tok num">0</span>], <span class="tok str">"request-timeline-uri"</span>)     <span class="tok com">// the engine listens: switches to "Hub"</span></code></pre>
 
-      <pre id="c5-code-onevent" class="code"><code><span class="tok kw" id="c5-tok-onevent">on</span> <span class="tok kw">event</span> <span class="tok str">"tour-ping"</span> <span class="tok kw">action</span> <span class="tok fn">onTourPing</span>(<span class="tok">target</span>) [
+      <pre id="c5-code-onevent" class="code"><code><span class="tok kw" id="c5-tok-onevent">on</span> <span class="tok kw">event</span> <span class="tok str">"tour-ping"</span> <span class="tok kw">action</span> <span class="tok fn">ch5OnPing</span>(<span class="tok">target</span>) [
   <span class="tok fn">selectElement</span>(<span class="tok">target</span>)        <span class="tok com">// target ← eventArgs[0]</span>
   <span class="tok fn">addClass</span>(<span class="tok str">"in"</span>)
-]</code></pre>
+]
+
+<span class="tok kw">on</span> <span class="tok kw">event</span> <span class="tok str">"tour-ping"</span> <span class="tok kw">topic</span> <span class="tok str">"demo"</span> <span class="tok kw">action</span> <span class="tok fn">ch5OnDemo</span>(<span class="tok">target</span>) [ … ]   <span class="tok com">// topic namespaces the event</span></code></pre>
+
+      <pre id="c5-code-interact" class="code"><code><span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch1"</span> <span class="tok kw">navigate</span> <span class="tok str">"Timeline &amp; Time"</span>      <span class="tok com">// switch timelines</span>
+<span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch3"</span> <span class="tok kw">navigate</span> <span class="tok str">"Logic"</span> <span class="tok kw">at</span> <span class="tok">b4</span>.<span class="tok">start</span>    <span class="tok com">// a position: the target's labels</span>
+<span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#c5-fx-ping"</span> <span class="tok kw" id="c5-tok-run">run</span> <span class="tok fn">ch5BroadcastPing</span>()        <span class="tok com">// start an action</span>
+<span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#play"</span> <span class="tok kw">toggle</span>                              <span class="tok com">// play · pause · toggle · stop</span>
+<span class="tok kw">on</span> <span class="tok kw">dblclick</span> <span class="tok str">"#stage"</span> <span class="tok kw">seek</span> <span class="tok">intro</span>.<span class="tok">end</span>                  <span class="tok com">// labels of this timeline</span></code></pre>
+
+      <pre id="c5-code-keys" class="code"><code><span class="tok kw">on</span> <span class="tok kw" id="c5-tok-key">key</span> <span class="tok str">"Escape"</span> <span class="tok kw">navigate</span> <span class="tok str">"Hub"</span>
+<span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"space"</span> <span class="tok kw">toggle</span>
+<span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"r"</span> <span class="tok kw">run</span> <span class="tok fn">replayChapter</span>(<span class="tok str">"#ch5"</span>)                 <span class="tok com">// reset, then seek 0s</span>
+<span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"shift+right, pagedown"</span> <span class="tok kw">seek</span> <span class="tok">intro</span>.<span class="tok">end</span>        <span class="tok com">// hotkeys syntax</span>
+<span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"Escape"</span> <span class="tok kw">in</span> <span class="tok str">"#dialog"</span> <span class="tok kw">stop</span>                    <span class="tok com">// only while focus is inside #dialog</span></code></pre>
 
       <pre id="c5-code-controller" class="code"><code><span class="tok fn">selectElement</span>(<span class="tok str">"#c5-fx-ping"</span>)
-<span class="tok fn" id="c5-tok-ctrl">addController</span>(<span class="tok str">"DOMEventListenerController"</span>,
-  <span class="tok str">"click"</span>, [<span class="tok str">"broadcastPing"</span>])   <span class="tok com">// event, then actions to run</span></code></pre>
+<span class="tok fn" id="c5-tok-ctrl">addController</span>(<span class="tok str">"DOMEventListenerController"</span>, <span class="tok str">"click"</span>, [<span class="tok str">"ch5BroadcastPing"</span>])   <span class="tok com">// positional: event, then actions</span>
+<span class="tok com">// on leave:</span>
+<span class="tok fn">removeControllerFromElement</span>(<span class="tok str">"DOMEventListenerController"</span>)</code></pre>
 
-      <pre id="c5-code-label" class="code"><code><span class="tok kw" id="c5-tok-loc">locales</span> <span class="tok str">"./locales/en.json"</span>
+      <pre id="c5-code-label" class="code"><code><span class="tok kw" id="c5-tok-loc">locales</span> <span class="tok str">"./locales.json"</span>                            <span class="tok com">// every language, keyed by code</span>
 
-<span class="tok fn">selectElement</span>(<span class="tok str">"#c5-fx-label"</span>)
-<span class="tok fn">addController</span>(<span class="tok str">"LabelController"</span>, <span class="tok str">"tour.greeting"</span>)</code></pre>
+<span class="tok fn">selectElement</span>(<span class="tok str">"#c5-fx-label-text"</span>)
+<span class="tok fn">addController</span>(<span class="tok str">"LabelController"</span>, <span class="tok str">"tour.greeting"</span>)   <span class="tok com">// the key is validated against the file</span>
+<span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#c5-fx-lang-nl"</span> <span class="tok kw">run</span> <span class="tok fn">ch5Dutch</span>()            <span class="tok com">// broadcastEvent(["nl-NL"], "language-change")</span></code></pre>
 
-      <pre id="c5-code-recap" class="code"><code><span class="tok fn" id="c5-tok-recap">broadcastEvent</span>([<span class="tok str">"Hub"</span>,<span class="tok num">0</span>], <span class="tok str">"request-timeline-uri"</span>)  <span class="tok com">// ← every card you clicked</span>
-<span class="tok fn">addController</span>(<span class="tok str">"DOMEventListenerController"</span>, …)   <span class="tok com">// ← what navigate desugars to</span>
-<span class="tok fn">addController</span>(<span class="tok str">"LabelController"</span>, …)             <span class="tok com">// ← the localized narration</span></code></pre>
+      <pre id="c5-code-host" class="code"><code><span class="tok kw">extensions</span> <span class="tok str">"./host.js"</span> { <span class="tok kw">operation</span> <span class="tok fn" id="c5-tok-host">stampTime</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>) }
+
+<span class="tok kw">action</span> <span class="tok fn">ch5Stamp</span>() [ <span class="tok fn">stampTime</span>(<span class="tok str">"#c5-fx-clock"</span>) ]</code></pre>
+
+      <pre id="c5-code-recap" class="code"><code><span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch1"</span> <span class="tok kw" id="c5-tok-recap">navigate</span> <span class="tok str">"Timeline &amp; Time"</span>   <span class="tok com">// ← every card you clicked</span>
+<span class="tok fn">addController</span>(<span class="tok str">"LabelController"</span>, <span class="tok str">"hub.title"</span>)     <span class="tok com">// ← the hub title you read</span>
+<span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"Escape"</span> <span class="tok kw">navigate</span> <span class="tok str">"Hub"</span>                    <span class="tok com">// ← the way back</span></code></pre>
     </section>
 
     <section class="effect-pane">
       <div id="c5-fx-doors" class="fx">
-        <span class="fx-chip">eventbus</span><span class="fx-chip">on event</span><span class="fx-chip">controllers</span>
+        <span class="fx-chip">eventbus</span><span class="fx-chip">on event</span><span class="fx-chip">interactions</span><span class="fx-chip">controllers</span><span class="fx-chip">host code</span>
       </div>
+      <!-- Beats 2–3: the ping button is live from on enter (on click "#c5-fx-ping" run ch5BroadcastPing()) -->
       <div id="c5-fx-bus" class="fx">
         <button id="c5-fx-ping" class="ping-btn">broadcast "tour-ping"</button>
         <div id="c5-fx-panel" class="reveal-panel">handler answered — panel revealed</div>
       </div>
-      <div id="c5-fx-label" class="fx">
-        <span class="fx-chip">en → Hello</span><span class="fx-chip">nl → Hallo</span>
+      <div id="c5-fx-interact" class="fx">
+        <span class="fx-chip">click → navigate</span><span class="fx-chip">click → run</span>
       </div>
-      <div id="c5-fx-done" class="fx"><span class="fx-done">Chapter 5 ✓</span></div>
+      <div id="c5-fx-keys" class="fx">
+        <span class="keycap">Esc</span><span class="keycap">␣</span><span class="keycap">r</span>
+      </div>
+      <div id="c5-fx-ctrl" class="fx">
+        <span class="fx-chip">DOMEventListener</span><span class="fx-chip">Keyboard</span><span class="fx-chip">Label</span>
+        <span class="fx-chip">Lottie</span><span class="fx-chip">MutationObserver</span><span class="fx-chip">Navigation</span>
+        <span class="fx-chip">Progressbar</span><span class="fx-chip">Routing</span><span class="fx-chip">Subtitles</span>
+      </div>
+      <!-- Beat 7: the span is filled by a LabelController (data-fallback:
+           tour.greeting in locales.json; en-US "Hello from a LabelController",
+           nl-NL "Hallo van een LabelController"). The buttons are its siblings,
+           because the controller replaces its element's content. -->
+      <div id="c5-fx-label" class="fx">
+        <span id="c5-fx-label-text"></span>
+        <button id="c5-fx-lang-en" class="ping-btn">en-US</button>
+        <button id="c5-fx-lang-nl" class="ping-btn">nl-NL</button>
+      </div>
+      <!-- Beat 8: ch5Stamp() calls the host operation stampTime (host.js) -->
+      <div id="c5-fx-host" class="fx">
+        <span id="c5-fx-clock" class="fx-chip">--:--:--</span>
+      </div>
+      <div id="c5-fx-done" class="fx"><span class="fx-done">Chapter 6 ✓</span></div>
     </section>
 
     <div class="callout-layer">
       <div id="c5-cl-over" class="callout"></div>
       <div id="c5-cl-bus" class="callout"></div>
       <div id="c5-cl-on" class="callout"></div>
+      <div id="c5-cl-interact" class="callout"></div>
+      <div id="c5-cl-keys" class="callout"></div>
       <div id="c5-cl-ctrl" class="callout"></div>
       <div id="c5-cl-loc" class="callout"></div>
+      <div id="c5-cl-host" class="callout"></div>
     </div>
   </section>
 
-  <!-- ====================== CHAPTER 6 · Tooling Magic ================ -->
-  <!-- NOTE: the effect pane REENACTS dev-time editor tooling (mock VS Code).
-       Diagnostic / completion / hover text is copied verbatim from the real
-       providers — there is no live LSP at runtime. See the storyboard §3. -->
+  <!-- ====================== CHAPTER 7 · The Editor =================== -->
+  <!-- NOTE: the effect pane REENACTS the VS Code extension: one mock IDE frame
+       per beat (.fx.ide), built from the classes of tour.css' "Mock IDE"
+       section. Every diagnostic, completion, hover, quick fix and view text is
+       copied from the real providers or captured with eligian check; there is
+       no language server at runtime. Sources per beat: the storyboard
+       (chapter-07-the-editor.md). Popups (.ide-pop) appear with .in, added by
+       the timeline's sub-step events. -->
   <section id="ch6" class="view chapter">
 
     <header class="chrome">
       <button id="c6-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot is-current"></span><span class="dot"></span>
       </nav>
-      <span class="chapter-label">06 · Tooling Magic</span>
+      <span class="chapter-label">07 · The Editor</span>
     </header>
 
     <section class="code-pane">
-      <pre id="c6-code-why" class="code"><code><span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok fn">fadeIn</span>(<span class="tok str">"#box"</span>)   <span class="tok com">// concise .eligian</span>
-<span class="tok com">↓ compiles to</span>
-{ <span class="tok str">"duration"</span>: { <span class="tok str">"start"</span>: <span class="tok num">0</span>, <span class="tok str">"end"</span>: <span class="tok num">5</span> },
-  <span class="tok str">"operations"</span>: [ <span class="tok com">…verbose JSON…</span> ] }</code></pre>
+      <pre id="c6-code-why" class="code"><code><span class="tok fn">code</span> --install-extension <span class="tok str" id="c6-tok-why">rolandzwaga.eligian</span>
+<span class="tok com">// Marketplace: eligian · publisher rolandzwaga · activates on .eligian files</span></code></pre>
 
-      <pre id="c6-code-preview" class="code"><code><span class="tok com">&gt;</span> <span class="tok fn" id="c6-tok-preview">Eligian: Preview Timeline</span>      <span class="tok com">(eligian.preview)</span>
-<span class="tok com">&gt;</span> <span class="tok fn">Eligian: Compile Current File</span>  <span class="tok com">(eligian.compile)</span></code></pre>
+      <pre id="c6-code-syntax" class="code"><code><span class="tok kw">action</span> <span class="tok fn">loop</span>() [ <span class="tok fn">selectElement</span>(<span class="tok str">"#hub"</span>) ]
+<span class="tok kw">action</span> <span class="tok fn">store</span>() [ <span class="tok fn">setData</span>({ <span class="tok str">"operationdata.k"</span>: <span class="tok num">1</span> }) ]
+<span class="tok kw">timeline</span> <span class="tok str">"T"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
+  <span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="tok op" id="c6-tok-syntax">{</span> <span class="tok fn">intro</span>() }
+}</code></pre>
 
-      <pre id="c6-code-css" class="code"><code><span class="tok kw" id="c6-tok-css">styles</span> <span class="tok str">"./tour.css"</span>
-<span class="tok com">…</span>
-<span class="tok fn">addClass</span>(<span class="tok str">"buton"</span>)        <span class="tok com">// typo → checked vs the CSS</span></code></pre>
+      <pre id="c6-code-css" class="code"><code><span class="tok kw">styles</span> <span class="tok str">"./tour.css"</span>
+<span class="tok kw">action</span> <span class="tok fn">mark</span>() [
+  <span class="tok fn">selectElement</span>(<span class="tok str">"#hub"</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str" id="c6-tok-css">"activ"</span>)              <span class="tok com">// class: must be in the CSS</span>
+  <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-timelin"</span>)      <span class="tok com">// selector through a parameter: CSS ∪ layout</span>
+]</code></pre>
 
-      <pre id="c6-code-complete" class="code"><code><span class="tok fn" id="c6-tok-complete">addController</span>(<span class="tok str">"…"</span>)   <span class="tok com">// ← DOMEventListenerController, LabelController…</span>
-<span class="tok fn">fad</span><span class="tok com">…</span>                <span class="tok com">// ← fadeIn, addClass… (+ signatures)</span></code></pre>
+      <pre id="c6-code-dataflow" class="code"><code><span class="tok kw">action</span> <span class="tok fn">highlight</span>(<span class="tok">selector</span>) [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]
+<span class="tok kw">at</span> <span class="tok num">1s</span>..<span class="tok num">2s</span> <span class="tok fn" id="c6-tok-dataflow">highlight</span>(<span class="tok str">"#box"</span>)
+<span class="tok kw">at</span> <span class="tok num">3s</span>..<span class="tok num">4s</span> [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ] [ <span class="tok fn">selectElement</span>(<span class="tok str">"#box"</span>) <span class="tok fn">removeClass</span>(<span class="tok str">"on"</span>) ]</code></pre>
 
-      <pre id="c6-code-jsdoc" class="code"><code><span class="tok com" id="c6-tok-jsdoc">/**
- * @param {string} selector
- */</span>
-<span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span>: <span class="tok kw">string</span>) [ … ]
+      <pre id="c6-code-complete" class="code"><code><span class="tok fn" id="c6-tok-complete">ani</span>▎                        <span class="tok com">// operations</span>
+<span class="tok fn">rev</span>▎                        <span class="tok com">// your actions, imported ones too</span>
+<span class="tok kw">navigate</span> <span class="tok str">"▎</span>                 <span class="tok com">// the program's timelines</span>
+<span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"▎</span>                   <span class="tok com">// key names</span>
+<span class="tok fn">addController</span>(<span class="tok str">"▎</span>            <span class="tok com">// the nine controllers</span></code></pre>
 
-<span class="tok fn">revealBlock</span>()        <span class="tok com">// ← expects 1 argument but got 0</span></code></pre>
+      <pre id="c6-code-hints" class="code"><code><span class="tok fn" id="c6-tok-hints">broadcastEvent</span>([<span class="tok str">"#c5-fx-panel"</span>], <span class="tok str">"tour-ping"</span>)
+<span class="tok kw">for</span> <span class="tok num">7s</span> <span class="tok kw">as</span> <span class="tok">editBeat</span> [ … ]
+<span class="tok kw">stagger</span> <span class="tok num">200ms</span> […] <span class="tok kw">at</span> <span class="tok">editBeat</span>.<span class="tok">end</span> <span class="tok kw">with</span> <span class="tok fn">revealCard</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span>
+<span class="tok kw">timeline</span> <span class="tok str">"Logic"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {</code></pre>
 
-      <pre id="c6-code-recap" class="code"><code><span class="tok fn" id="c6-tok-recap">compile + preview</span> · <span class="tok fn">validate</span> (CSS + semantics) · <span class="tok fn">autocomplete + hover</span>
-<span class="tok fn">CSS hot-reload</span> · <span class="tok fn">Eligian: Edit Locales</span></code></pre>
+      <pre id="c6-code-jsdoc" class="code"><code><span class="tok com" id="c6-tok-jsdoc">/**</span>
+<span class="tok com"> * Reveal a code block …</span>
+<span class="tok com"> * @param {string} selector CSS selector for the code block</span>
+<span class="tok com"> */</span>
+<span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>) [ … ]
+
+<span class="tok fn">revealBlock</span>()</code></pre>
+
+      <pre id="c6-code-nav" class="code"><code><span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch3"</span> <span class="tok kw" id="c6-tok-nav">navigate</span> <span class="tok str">"Logic"</span>      <span class="tok com">// F12 → timeline "Logic"</span>
+<span class="tok fn">spotlight</span>(<span class="tok str">"#tok-timeline"</span>)                 <span class="tok com">// F12 → tour.css · layout.html</span>
+<span class="tok kw">timeline</span> <span class="tok str">"Logic"</span> …                         <span class="tok com">// F2 renames every navigate</span>
+<span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch3"</span> <span class="tok kw">navigate</span> <span class="tok str">"Logik"</span>      <span class="tok com">// ✗ → Change to "Logic" · Create timeline "Logik"</span></code></pre>
+
+      <pre id="c6-code-outline" class="code"><code><span class="tok kw" id="c6-tok-outline">timeline</span> <span class="tok str">"Logic"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {
+  <span class="tok kw">on</span> <span class="tok kw">enter</span> [ … ]
+  <span class="tok kw">sequence</span> <span class="tok kw">each</span> [ … ] { <span class="tok kw">for</span> <span class="tok num">8s</span> <span class="tok kw">as</span> <span class="tok">b1</span> [ … ] … }</code></pre>
+
+      <pre id="c6-code-format" class="code"><code><span class="tok kw">action</span> <span class="tok fn">f</span>( <span class="tok">selector</span><span class="tok op">:</span><span class="tok kw">string</span> )[
+<span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
+  <span class="tok fn">addClass</span>( <span class="tok str">"on"</span> )
+]
+<span class="tok com" id="c6-tok-format">// Shift+Alt+F →</span>
+<span class="tok kw">action</span> <span class="tok fn">f</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>) [
+  <span class="tok fn">selectElement</span>(<span class="tok">selector</span>)
+  <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>)
+]</code></pre>
+
+      <pre id="c6-code-preview" class="code"><code><span class="tok com">&gt;</span> <span class="tok fn" id="c6-tok-preview">Eligian: Preview Timeline</span>        <span class="tok com">(Ctrl+K V)</span>
+<span class="tok com">▶ Preview from 24s</span>
+<span class="tok kw">for</span> <span class="tok num">9s</span> <span class="tok kw">as</span> <span class="tok">b4</span> [ … ]                   <span class="tok com">▶ 24s..33s</span></code></pre>
+
+      <pre id="c6-code-runtime" class="code"><code><span class="tok kw">action</span> <span class="tok fn">boom</span>() [ <span class="tok fn" id="c6-tok-runtime">selectElement</span>(<span class="tok">$globaldata</span>.<span class="tok">nowhere</span>) <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]
+<span class="tok kw">action</span> <span class="tok fn">jump</span>() [ <span class="tok fn">selectElement</span>(<span class="tok str">"#box"</span>) <span class="tok fn">scrollToElement</span>(<span class="tok str">"smooth"</span>, <span class="tok str">"nowhere"</span>) ]</code></pre>
+
+      <pre id="c6-code-gantt" class="code"><code><span class="tok com">&gt;</span> <span class="tok fn" id="c6-tok-gantt">Eligian: Show Timeline View</span>
+<span class="tok kw">sequence</span> <span class="tok kw">each</span> [ … ] { <span class="tok kw">for</span> <span class="tok num">7s</span> <span class="tok kw">as</span> <span class="tok">b1</span> [ … ]  <span class="tok kw">for</span> <span class="tok num">8s</span> <span class="tok kw">as</span> <span class="tok">b2</span> [ … ] … }
+<span class="tok kw">stagger</span> <span class="tok num">200ms</span> […] <span class="tok kw">at</span> <span class="tok">editBeat</span>.<span class="tok">end</span> <span class="tok kw">with</span> <span class="tok fn">revealCard</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span></code></pre>
+
+      <pre id="c6-code-locales" class="code"><code><span class="tok kw" id="c6-tok-locales">locales</span> <span class="tok str">"./locales.json"</span>      <span class="tok com">// Ctrl+Click opens the Locale Editor</span>
+<span class="tok com">&gt;</span> <span class="tok fn">Eligian: Edit Locales</span>
+<span class="tok com">&gt;</span> <span class="tok fn">Eligian: New Presentation…</span>   <span class="tok com">blank · chapters · video · library</span>
+<span class="tok com">&gt;</span> <span class="tok fn">Eligian: Compile Current File</span> <span class="tok com">→ tour.json</span></code></pre>
+
+      <pre id="c6-code-recap" class="code"><code><span class="tok fn" id="c6-tok-recap">eligian.validation.selectorNotInLayout</span>   <span class="tok str">off · ids · all</span>
+<span class="tok fn">eligian.validation.eligiusLint</span>           <span class="tok kw">true</span>
+<span class="tok fn">eligian.preview.highlightActiveEvents</span>    <span class="tok kw">true</span>
+<span class="tok fn">eligian.codeLens.preview · cssReferences</span> <span class="tok kw">true</span>
+<span class="tok fn">eligian.inlayHints.parameterNames</span>        <span class="tok str">none · literals · all</span>
+<span class="tok fn">eligian.inlayHints.sequenceTimes · staggerTimes · computedTimes · timelineDuration</span></code></pre>
     </section>
 
     <section class="effect-pane">
-      <!-- Beat 1: a mock editor frame -->
-      <div id="c6-fx-editor" class="fx">
-        <div class="mock-editor">
-          <div class="mock-tab">tour.eligian</div>
-          <div class="mock-body"><span class="tok kw">timeline</span> <span class="tok str">"Tour"</span> … { <span class="tok com">…</span> }</div>
-          <div class="mock-statusbar">Eligian · 0 problems</div>
+      <!-- Beat 1: the editor with the tour's own header (tour.eligian lines 25–31) -->
+      <div id="c6-fx-editor" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">tour.eligian</span><span class="ide-tab">presentation.eligian</span><span class="ide-tab">tour.css</span></div>
+        <div class="ide-editor">
+          <div class="ide-line"><span class="ide-gutter">25</span><span class="tok kw">languages</span> {</div>
+          <div class="ide-line"><span class="ide-gutter">26</span>  * <span class="tok str">"en-US"</span> <span class="tok str">"English"</span></div>
+          <div class="ide-line"><span class="ide-gutter">27</span>    <span class="tok str">"nl-NL"</span> <span class="tok str">"Nederlands"</span></div>
+          <div class="ide-line"><span class="ide-gutter">28</span>}</div>
+          <div class="ide-line"><span class="ide-gutter">29</span></div>
+          <div class="ide-line"><span class="ide-gutter">30</span><span class="tok kw">layout</span> <span class="tok str">"./layout.html"</span></div>
+          <div class="ide-line is-current"><span class="ide-gutter">31</span><span class="tok kw">styles</span> <span class="tok str">"./tour.css"</span><span class="ide-caret"></span></div>
+        </div>
+        <div class="ide-status"><span>⊗ 0 ⚠ 0</span><span>Ln 31, Col 20</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 2: syntax and semantic errors in Problems (the real eligian check output for this file) -->
+      <div id="c6-fx-problems" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">demo.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line"><span class="ide-gutter">4</span><span class="tok kw">action</span> <span class="squiggle">loop</span>() [ <span class="tok fn">selectElement</span>(<span class="tok str">"#hub"</span>) ]</div>
+          <div class="ide-line"><span class="ide-gutter">5</span><span class="tok kw">action</span> <span class="tok fn">store</span>() [ <span class="tok fn">setData</span>({ <span class="squiggle tok str">"operationdata.k"</span>: <span class="tok num">1</span> }) ]</div>
+          <div class="ide-line"><span class="ide-gutter">6</span><span class="tok kw">timeline</span> <span class="tok str">"T"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {</div>
+          <div class="ide-line"><span class="ide-gutter">7</span>  <span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">5s</span> <span class="squiggle">{</span> <span class="tok fn">intro</span>() }</div>
+          <div class="ide-line"><span class="ide-gutter">8</span><span class="squiggle">}</span></div>
+        </div>
+        <div id="c6-pop-problems" class="ide-pop ide-panel ide-problems">
+          <div class="ide-panel-title">PROBLEMS <span class="ide-count">4</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> 'loop' is a keyword, so it cannot be used as a name here. Choose another name. <span class="ide-dim">eligian [Ln 4, Col 8]</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> setData target 'operationdata.k' needs a '$' prefix: '$operationdata.k'. Eligius rejects 'operationdata.k' at runtime <span class="ide-dim">eligian [Ln 5, Col 28]</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Expected an action or operation call, or a [ … ] block here, but found '{'. <span class="ide-dim">eligian [Ln 7, Col 13]</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Unexpected '}': expected the end of the file (or a timeline, action, constant or import). <span class="ide-dim">eligian [Ln 8, Col 1]</span></div>
+        </div>
+        <div class="ide-status"><span>⊗ 4 ⚠ 0</span><span>Ln 7, Col 13</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 3: a class typo and a selector typo through an action parameter -->
+      <div id="c6-fx-css" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">demo.eligian</span><span class="ide-tab">tour.css</span></div>
+        <div class="ide-editor">
+          <div class="ide-line"><span class="ide-gutter">4</span><span class="tok kw">action</span> <span class="tok fn">mark</span>() [</div>
+          <div class="ide-line"><span class="ide-gutter">5</span>  <span class="tok fn">selectElement</span>(<span class="tok str">"#hub"</span>)</div>
+          <div class="ide-line is-current"><span class="ide-gutter">6</span>  <span class="tok fn">addClass</span>(<span class="tok str">"<span class="squiggle">activ</span>"</span>)<span class="ide-caret"></span></div>
+          <div id="c6-pop-css-diag" class="ide-pop ide-hover">Unknown CSS class: 'activ'. Did you mean: active? <span class="ide-dim">eligian</span></div>
+          <div id="c6-pop-css-fix" class="ide-pop ide-lightbulb"><span class="ide-bulb">💡</span> Change to 'active'<br>Create '.activ' in tour.css</div>
+          <div class="ide-line"><span class="ide-gutter">7</span>  <span class="tok fn">spotlight</span>(<span class="tok str">"<span class="squiggle">#tok-timelin</span>"</span>)</div>
+          <div class="ide-line"><span class="ide-gutter">8</span>]</div>
+        </div>
+        <div class="ide-panel ide-problems">
+          <div class="ide-panel-title">PROBLEMS <span class="ide-count">2</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Unknown CSS class: 'activ'. Did you mean: active? <span class="ide-dim">eligian [Ln 6, Col 12]</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Unknown CSS ID in selector: 'tok-timelin'. Did you mean: tok-timeline? <span class="ide-dim">eligian [Ln 7, Col 13]</span></div>
+        </div>
+        <div class="ide-status"><span>⊗ 2 ⚠ 0</span><span>Ln 6, Col 12</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 4: dataflow errors, the call's hover and the two selectElement fixes -->
+      <div id="c6-fx-dataflow" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">demo.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line"><span class="ide-gutter">3</span><span class="tok kw">action</span> <span class="tok fn">highlight</span>(<span class="tok">selector</span>) [ <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]</div>
+          <div class="ide-line"><span class="ide-gutter">4</span><span class="tok kw">timeline</span> <span class="tok str">"T"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {</div>
+          <div class="ide-line is-current"><span class="ide-gutter">5</span>  <span class="tok kw">at</span> <span class="tok num">1s</span>..<span class="tok num">2s</span> <span class="squiggle tok fn">highlight</span>(<span class="tok str">"#box"</span>)<span class="ide-caret"></span></div>
+          <div id="c6-pop-df-hover" class="ide-pop ide-hover">Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement) <span class="ide-dim">eligian(missing-action-dependency)</span><hr><b>highlight</b><br><code>highlight(selector)</code><br><b>Requires from the caller</b> (operationData):<br>• <code>selectedElement</code> (used by addClass)</div>
+          <div id="c6-pop-df-fix" class="ide-pop ide-lightbulb"><span class="ide-bulb">💡</span> Add target "#box" <span class="ide-dim">(Ln 5)</span><br>Insert selectElement("#box") <span class="ide-dim">(Ln 6)</span></div>
+          <div class="ide-line"><span class="ide-gutter">6</span>  <span class="tok kw">at</span> <span class="tok num">3s</span>..<span class="tok num">4s</span> [ <span class="squiggle tok fn">addClass</span>(<span class="tok str">"on"</span>) ] [ <span class="tok fn">selectElement</span>(<span class="tok str">"#box"</span>) <span class="tok fn">removeClass</span>(<span class="tok str">"on"</span>) ]</div>
+          <div class="ide-line"><span class="ide-gutter">7</span>}</div>
+        </div>
+        <div class="ide-panel ide-problems">
+          <div class="ide-panel-title">PROBLEMS <span class="ide-count">2</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement) <span class="ide-dim">eligian(missing-action-dependency) [Ln 5, Col 13]</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement) <span class="ide-dim">eligian(missing-dependency) [Ln 6, Col 15]</span></div>
+        </div>
+        <div class="ide-status"><span>⊗ 2 ⚠ 0</span><span>Ln 5, Col 13</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 5: completion lists, as the provider returns them at each place in the tour -->
+      <div id="c6-fx-complete" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">tour.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line is-current">  <span class="tok fn">ani</span><span class="ide-caret"></span></div>
+          <div class="ide-complete">
+            <div class="ide-complete-item is-sel">animate (operation) <span class="ide-complete-detail">Eligius operation</span></div>
+            <div class="ide-complete-item">animateWithClass (operation)</div>
+          </div>
+          <div class="ide-line">  <span class="tok fn">rev</span><span class="ide-caret"></span></div>
+          <div class="ide-complete">
+            <div class="ide-complete-item is-sel">revealBlock (action) <span class="ide-complete-detail">(selector) - imported action</span></div>
+            <div class="ide-complete-item">revealCard (action)</div>
+          </div>
+          <div id="c6-pop-complete-nav" class="ide-pop">
+            <div class="ide-line">    <span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"8"</span> <span class="tok kw">navigate</span> <span class="tok str">"</span><span class="ide-caret"></span><span class="tok str">"</span></div>
+            <div class="ide-complete">
+              <div class="ide-complete-item is-sel">Hub <span class="ide-complete-detail">timeline (raf)</span></div>
+              <div class="ide-complete-item">Timeline &amp; Time</div>
+              <div class="ide-complete-item">Actions</div>
+              <div class="ide-complete-item">Logic</div>
+              <div class="ide-complete-item">Timeline Power Tools</div>
+              <div class="ide-complete-item">Files &amp; Imports</div>
+              <div class="ide-complete-item">Engine Reach</div>
+              <div class="ide-complete-item">The Editor</div>
+              <div class="ide-complete-item">The Command Line</div>
+            </div>
+          </div>
+          <div id="c6-pop-complete-more" class="ide-pop ide-columns">
+            <div>
+              <div class="ide-line">    <span class="tok kw">on</span> <span class="tok kw">key</span> <span class="tok str">"</span><span class="ide-caret"></span><span class="tok str">"</span></div>
+              <div class="ide-complete">
+                <div class="ide-complete-item is-sel">ArrowRight <span class="ide-complete-detail">Right arrow</span></div>
+                <div class="ide-complete-item">ArrowLeft</div>
+                <div class="ide-complete-item">ArrowUp</div>
+                <div class="ide-complete-item">ArrowDown</div>
+                <div class="ide-complete-item">space</div>
+                <div class="ide-complete-item">Enter</div>
+                <div class="ide-complete-item">Escape</div>
+              </div>
+            </div>
+            <div>
+              <div class="ide-line">  <span class="tok fn">addController</span>(<span class="tok str">"</span><span class="ide-caret"></span><span class="tok str">"</span>)</div>
+              <div class="ide-complete">
+                <div class="ide-complete-item is-sel">DOMEventListenerController <span class="ide-complete-detail">Controller: DOMEventListenerController(eventName, actions?, actionOperationData?)</span></div>
+                <div class="ide-complete-item">KeyboardController</div>
+                <div class="ide-complete-item">LabelController</div>
+                <div class="ide-complete-item">LottieController</div>
+                <div class="ide-complete-item">MutationObserverController</div>
+                <div class="ide-complete-item">NavigationController</div>
+                <div class="ide-complete-item">ProgressbarController</div>
+                <div class="ide-complete-item">RoutingController</div>
+                <div class="ide-complete-item">SubtitlesController</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ide-status"><span>⊗ 0 ⚠ 0</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 6: signature help and inlay hints (the tour's own lines) -->
+      <div id="c6-fx-hints" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">tour.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line is-current">  <span class="tok fn">broadcastEvent</span>(<span class="ide-inlay ide-pop">eventArgs:</span>[<span class="tok str">"#c5-fx-panel"</span>], <span class="ide-inlay ide-pop">eventName:</span><span class="tok str">"tour-ping"</span><span class="ide-caret"></span>)</div>
+          <div id="c6-pop-sig" class="ide-pop ide-signature"><code>broadcastEvent(eventArgs: array, <b>eventName: eventName</b>, eventTopic?: string)</code><hr>This operation broadcasts the given event through the eventbus, along with the event arguments and optional event topic.</div>
+          <div class="ide-line">    <span class="tok kw">for</span> <span class="tok num">7s</span> <span class="ide-inlay ide-pop">‹15s..22s›</span> <span class="tok kw">as</span> <span class="tok">editBeat</span> [ … ]</div>
+          <div class="ide-line">  <span class="tok kw">stagger</span> <span class="tok num">200ms</span> […] <span class="tok kw">at</span> <span class="tok">editBeat</span>.<span class="tok">end</span> <span class="tok kw">with</span> <span class="tok fn">revealCard</span>() <span class="tok kw">for</span> <span class="tok num">1.5s</span> <span class="ide-inlay ide-pop">‹22s..23.9s ×3›</span></div>
+          <div class="ide-line"><span class="tok kw">timeline</span> <span class="tok str">"Logic"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> <span class="ide-inlay ide-pop">‹64s›</span>{</div>
+        </div>
+        <div class="ide-status"><span>⊗ 0 ⚠ 0</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 7: the three hovers and the /** template -->
+      <div id="c6-fx-hover" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">tour.eligian</span><span class="ide-tab">presentation.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line is-current">  <span class="squiggle tok fn">revealBlock</span>()<span class="ide-caret"></span></div>
+          <div class="ide-hover">Action 'revealBlock' expects 1 argument(s) but got 0. Expected: selector <span class="ide-dim">eligian(invalid_parameter_count)</span><hr><b>revealBlock</b><br>Reveal a code block: fade it in, run the CSS clip-sweep "typing" effect, and scroll the code pane so the new block is in view.<br><b>Parameters:</b><br>• <code>selector</code> (<code>string</code>) - CSS selector for the code block</div>
+          <div id="c6-pop-hover-def" class="ide-pop">
+            <div class="ide-line"><span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>) [ <span class="ide-dim">presentation.eligian</span></div>
+            <div class="ide-hover"><b>revealBlock</b><br><b>Parameters checked at call sites:</b><br>• <code>selector</code>: CSS selector (checked against the CSS and the layout)</div>
+          </div>
+          <div id="c6-pop-hover-tl" class="ide-pop">
+            <div class="ide-line"><span class="tok kw">timeline</span> <span class="tok str">"Logic"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> {</div>
+            <div class="ide-hover"><b>Timeline "Logic"</b><br>• <b>Provider:</b> raf<br>• <b>Container:</b> <code>#stage</code><br>• <b>Duration:</b> computed from the events when compiling<br>• <b>Loops:</b> no</div>
+          </div>
+          <div id="c6-pop-jsdoc" class="ide-pop">
+            <div class="ide-line"><span class="tok com">/**</span></div>
+            <div class="ide-line"><span class="tok com"> * <span class="ide-selection">Description</span></span></div>
+            <div class="ide-line"><span class="tok com"> * @param {string} selector</span></div>
+            <div class="ide-line"><span class="tok com"> */</span></div>
+            <div class="ide-line"><span class="tok kw">action</span> <span class="tok fn">revealBlock</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>) [</div>
+          </div>
+        </div>
+        <div class="ide-status"><span>⊗ 1 ⚠ 0</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 8: CSS CodeLens + references, and the navigate-target fix -->
+      <div id="c6-fx-nav" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab">tour.eligian</span><span class="ide-tab is-active">tour.css</span></div>
+        <div class="ide-editor">
+          <div id="c6-pop-nav-lens" class="ide-pop ide-lens">1 Eligian reference</div>
+          <div class="ide-line is-current"><span class="tok fn">#tok-timeline</span> { <span class="tok kw">anchor-name</span>: --cl-name; }<span class="ide-caret"></span></div>
+          <div id="c6-pop-nav-peek" class="ide-pop ide-palette">
+            <div class="ide-palette-item">Eligian: Find Eligian References</div>
+            <div class="ide-palette-item is-sel">tour.eligian <span class="ide-dim">210</span>   <span class="tok fn">spotlight</span>(<span class="tok str">"#tok-timeline"</span>)</div>
+          </div>
+        </div>
+        <div class="ide-titlebar"><span class="ide-tab is-active">tour.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line">    <span class="tok kw">on</span> <span class="tok kw">click</span> <span class="tok str">"#card-ch3"</span> <span class="tok kw">navigate</span> <span class="tok str">"<span class="squiggle">Logik</span>"</span></div>
+          <div class="ide-hover">Unknown navigate target: 'Logik'. No timeline with this name exists. Available timelines: 'Hub', 'Timeline &amp; Time', 'Actions', 'Logic', 'Timeline Power Tools', 'Files &amp; Imports', 'Engine Reach', 'The Editor', 'The Command Line'. <span class="ide-dim">eligian</span></div>
+          <div id="c6-pop-nav-fix" class="ide-pop ide-lightbulb"><span class="ide-bulb">💡</span> Change to "Logic"<br>Create timeline "Logik"</div>
+        </div>
+        <div class="ide-status"><span>⊗ 1 ⚠ 0</span><span>Eligian</span></div>
+      </div>
+
+      <!-- Beat 9: the Outline of the Logic timeline (the document symbol provider's names and details) -->
+      <div id="c6-fx-outline" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">OUTLINE</span></div>
+        <div class="ide-outline">
+          <div class="ide-outline-item" data-depth="0">▾ ⧉ timeline "Logic" <span class="ide-dim">raf · 0s..64s</span></div>
+          <div class="ide-outline-item" data-depth="1">⚡ on enter <span class="ide-dim">enterChapter, navigate, toggle, …</span></div>
+          <div class="ide-outline-item" data-depth="1">⚡ on leave <span class="ide-dim">leaveChapter</span></div>
+          <div class="ide-outline-item" data-depth="1">▾ ⚡ sequence 0s..64s ×8</div>
+          <div class="ide-outline-item ide-pop" data-depth="2">⚡ 0s..8s as b1 <span class="ide-dim">"const names a value. Known at compile t…" · narrate, revealBlock, spotlight, …</span></div>
+          <div class="ide-outline-item ide-pop" data-depth="2">⚡ 8s..15s as b2 <span class="ide-dim">"Values are literals: strings in either…" · narrate, revealBlock, spotlight, …</span></div>
+          <div class="ide-outline-item ide-pop" data-depth="2">⚡ 15s..24s as b3 <span class="ide-dim">"Operators fold at compile time. On runt…" · narrate, revealBlock, spotlight, …</span></div>
+          <div class="ide-outline-item ide-pop" data-depth="2">⚡ 24s..33s as b4 <span class="ide-dim">"if / else if / else runs operations con…" · narrate, revealBlock, spotlight, …</span></div>
+          <div class="ide-outline-item ide-pop" data-depth="2">⚡ …</div>
+          <div class="ide-outline-item ide-pop" data-depth="1">⚡ at 28s..29s <span class="ide-dim">ch3Badge</span></div>
+          <div class="ide-outline-item ide-pop" data-depth="1">⚡ at 30s..31s <span class="ide-dim">ch3Badge</span></div>
         </div>
       </div>
-      <!-- Beat 2: source ↔ live preview thumbnail -->
-      <div id="c6-fx-preview" class="fx">
-        <span class="fx-chip">tour.eligian</span><span class="mock-arrow">▶</span><span class="fx-frame">live preview</span>
+
+      <!-- Beat 10: snippets, block-label decorations and the range refactor -->
+      <div id="c6-fx-format" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">demo.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line">chap<span class="ide-caret"></span></div>
+          <div id="c6-pop-snippets" class="ide-pop ide-complete">
+            <div class="ide-complete-item">action</div>
+            <div class="ide-complete-item">endable action</div>
+            <div class="ide-complete-item">on event</div>
+            <div class="ide-complete-item">timeline</div>
+            <div class="ide-complete-item is-sel">chapter <span class="ide-complete-detail">Chapter timeline</span></div>
+            <div class="ide-complete-item">languages</div>
+            <div class="ide-complete-item">library</div>
+          </div>
+          <div class="ide-line is-current">  <span class="tok kw">at</span> <span class="tok num">0s</span>..<span class="tok num">4s</span> <span class="ide-blocklabel ide-pop">ˢᵉᵗᵘᵖ</span>[ <span class="tok fn">showView</span>(<span class="tok str">"#hub"</span>) ] <span class="ide-blocklabel ide-pop">ᵗᵉᵃʳᵈᵒʷⁿ</span>[ <span class="tok fn">hideView</span>(<span class="tok str">"#hub"</span>) ]</div>
+          <div id="c6-pop-refactor" class="ide-pop ide-lightbulb"><span class="ide-bulb">💡</span> Convert to '0s for 4s'</div>
+        </div>
+        <div class="ide-status"><span>⊗ 0 ⚠ 0</span><span>Eligian</span></div>
       </div>
-      <!-- Beat 3: a real diagnostic + quick-fix (strings verbatim from the validator) -->
-      <div id="c6-fx-squiggle" class="fx">
-        <div class="mock-editor">
-          <div class="mock-body"><span class="tok fn">addClass</span>(<span class="tok str">"<span class="squiggle">buton</span>"</span>)</div>
-          <div class="diagnostic">CSS class 'buton' is not defined in any imported CSS files. Did you mean: button?</div>
-          <div class="lightbulb">💡 Create '.buton' in tour.css · Open CSS file</div>
+
+      <!-- Beat 11: the preview webview (controls and selects of preview.html), the
+           Preview-from CodeLens, the playhead highlight and the EventBus Debug Viewer -->
+      <div id="c6-fx-preview" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab">tour.eligian</span><span class="ide-tab is-active">Eligian Preview</span></div>
+        <div class="ide-preview">
+          <div class="ide-preview-controls"><span class="ide-button">Play</span><span class="ide-button">Pause</span><span class="ide-button">Stop</span><span class="ide-button">Restart</span><span class="ide-button">Debug Events</span><span>☑ Keep position on reload</span></div>
+          <div class="ide-preview-controls"><span class="ide-select">Logic ▾</span><span class="ide-scrubber"><span class="ide-scrubber-knob"></span></span><span>24.0s</span><span class="ide-select">en-US ▾</span></div>
+          <div class="ide-preview-stage">03 · Logic &amp; Data</div>
+          <div id="c6-pop-debug" class="ide-pop ide-debug">
+            <div class="ide-panel-title">EventBus Debug Viewer <span class="ide-button">Clear</span></div>
+            <div class="ide-filter">Filter by name or topic...</div>
+            <div class="ide-debug-event"><b>timeline-seek-request</b> <span class="ide-dim">12:04:31.250</span><br>[
+  0
+]</div>
+          </div>
+        </div>
+        <div class="ide-editor">
+          <div id="c6-pop-lens" class="ide-pop ide-lens">▶ Preview from 24s</div>
+          <div id="c6-pop-playhead" class="ide-pop ide-line is-current">    <span class="tok kw">for</span> <span class="tok num">9s</span> <span class="tok kw">as</span> <span class="tok">b4</span> [ <span class="ide-dim">▶ 24s..33s</span></div>
         </div>
       </div>
-      <!-- Beat 4: a completion popup -->
-      <div id="c6-fx-complete" class="fx">
-        <div class="complete-popup">
-          <div class="complete-item is-sel">fadeIn <span class="complete-detail">(operation)</span></div>
-          <div class="complete-item">addClass <span class="complete-detail">(operation)</span></div>
-          <div class="complete-item">addController <span class="complete-detail">(operation)</span></div>
+
+      <!-- Beat 12: a runtime error in the preview, its toast, and an Eligius lint error -->
+      <div id="c6-fx-runtime" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">demo.eligian</span></div>
+        <div class="ide-editor">
+          <div class="ide-line"><span class="ide-gutter">3</span><span class="tok kw">action</span> <span class="tok fn">boom</span>() [ <span class="squiggle tok fn">selectElement</span>(<span class="tok">$globaldata</span>.<span class="tok">nowhere</span>) <span class="tok fn">addClass</span>(<span class="tok str">"on"</span>) ]</div>
+          <div class="ide-hover">Runtime error at 9s of 'Logic' (in 'boom'): selectElement: selector is either empty or not defined. <span class="ide-dim">eligius-runtime(runtime_error)</span></div>
+          <div class="ide-line"><span class="ide-gutter">4</span><span class="tok kw">action</span> <span class="tok fn">jump</span>() [ <span class="tok fn">selectElement</span>(<span class="tok str">"#box"</span>) <span class="tok fn">scrollToElement</span>(<span class="tok str">"smooth"</span>, <span class="squiggle tok str">"nowhere"</span>) ]</div>
+        </div>
+        <div id="c6-pop-toast" class="ide-pop ide-toast"><span class="ide-x">⊗</span> Eligian Preview Runtime Error: selectElement: selector is either empty or not defined. (demo.eligian:3:17) <span class="ide-button">Go to Source</span></div>
+        <div id="c6-pop-lint" class="ide-pop ide-panel ide-problems">
+          <div class="ide-panel-title">PROBLEMS <span class="ide-count">2</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> Runtime error at 9s of 'Logic' (in 'boom'): selectElement: selector is either empty or not defined. <span class="ide-dim">eligius-runtime(runtime_error) [Ln 3, Col 17]</span></div>
+          <div class="ide-problem"><span class="ide-x">⊗</span> scrollToElement: 'block' must be one of 'start', 'center', 'end', 'nearest', got 'nowhere'. (at actions[1].startOperations[1].operationData.block in the compiled JSON) <span class="ide-dim">Eligius lint(E120) [Ln 4, Col 39]</span></div>
+        </div>
+        <!-- a compile error in the preview (the beat 2 brace line in its own file):
+             CompilationService sends formatError() of the ParseError -->
+        <div id="c6-pop-compile" class="ide-pop ide-preview-errors">
+          <div class="ide-panel-title">Compilation Errors</div>
+          <div class="ide-x">❌ Error</div>
+          <div>5:13<br>Expected an action or operation call, or a [ … ] block here, but found '{'.<br>Hint: Check syntax against Eligian grammar</div>
+          <div class="ide-dim">Line 5, Column 13</div>
+          <div class="ide-dim">[ParseError]</div>
+          <span class="ide-button">Retry Compilation</span>
         </div>
       </div>
-      <!-- Beat 5: a JSDoc hover card + arg-count squiggle -->
-      <div id="c6-fx-hover" class="fx">
-        <div class="hover-card"><strong>revealBlock(selector: string)</strong><br/><span class="tok com">@param selector — CSS selector for the code block</span></div>
-        <div class="diagnostic">Action 'revealBlock' expects 1 argument(s) but got 0.</div>
+
+      <!-- Beat 13: the Timeline view (Gantt) of "Timeline Power Tools", as the
+           view renders the provider's bars: lanes of 22px, left/width in % of 57s -->
+      <div id="c6-fx-gantt" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">ELIGIAN › TIMELINE</span></div>
+        <div class="ide-gantt">
+          <div class="ide-dim">tour.eligian</div>
+          <div><span class="tok kw">timeline "Timeline Power Tools"</span> <span class="ide-dim">raf · 0s..57s · on enter · on leave</span></div>
+          <div class="ide-gantt-track">
+          <div class="ide-gantt-axis"><span style="left: 0%">0s</span><span style="left: 17.54%">10s</span><span style="left: 35.09%">20s</span><span style="left: 52.63%">30s</span><span style="left: 70.18%">40s</span><span style="left: 87.72%">50s</span></div>
+          <div class="ide-lane">
+            <span class="ide-bar sequence" style="left: 0%; width: 12.28%">b1</span>
+            <span class="ide-bar sequence" style="left: 12.28%; width: 14.04%">b2</span>
+            <span class="ide-bar sequence" style="left: 26.32%; width: 12.28%">editBeat</span>
+            <span class="ide-bar sequence" style="left: 38.6%; width: 15.79%">b4</span>
+            <span class="ide-bar sequence" style="left: 54.39%; width: 15.79%">b5</span>
+            <span class="ide-bar sequence" style="left: 70.18%; width: 15.79%">waveBeat</span>
+            <span class="ide-bar sequence" style="left: 85.96%; width: 14.04%">b7</span>
+          </div>
+          <div class="ide-lane">
+            <span class="ide-bar stagger" style="left: 38.6%; width: 2.63%">stagger 1/3 "#c4-card-1"</span>
+            <span class="ide-bar stagger" style="left: 71.93%; width: 3.51%">stagger 1/3 "#c4-wave-1"</span>
+          </div>
+          <div class="ide-lane">
+            <span class="ide-bar stagger" style="left: 38.95%; width: 2.63%">stagger 2/3 "#c4-card-2"</span>
+            <span class="ide-bar stagger" style="left: 72.19%; width: 3.51%">stagger 2/3 "#c4-wave-2"</span>
+          </div>
+          <div class="ide-lane">
+            <span class="ide-bar stagger" style="left: 39.3%; width: 2.63%">stagger 3/3 "#c4-card-3"</span>
+            <span class="ide-bar stagger" style="left: 72.46%; width: 3.51%">stagger 3/3 "#c4-wave-3"</span>
+          </div>
+          <span id="c6-gantt-playhead" class="ide-playhead" title="Preview at 24s"></span>
+          </div>
+        </div>
       </div>
-      <div id="c6-fx-done" class="fx"><span class="fx-done">Tour ✓ — the whole language</span></div>
+
+      <!-- Beat 14: the Locale Editor on locales.json, New Presentation's quick
+           pick, and the language-block fix on a file without a languages block -->
+      <div id="c6-fx-locale" class="fx ide">
+        <div class="ide-titlebar"><span class="ide-tab is-active">locales.json · Locale Editor</span></div>
+        <div class="ide-locale">
+          <div class="ide-locale-tree">
+            <div>▼ locale keys</div>
+            <div data-depth="1">▼ hub</div>
+            <div data-depth="2" class="is-sel">📝 title</div>
+            <div data-depth="2">📝 tagline</div>
+            <div data-depth="1">▼ tour</div>
+            <div data-depth="2">📝 greeting</div>
+          </div>
+          <table id="c6-pop-locale-table" class="ide-pop ide-locale-table">
+            <tr><th>Key</th><th>en-US</th><th>nl-NL</th></tr>
+            <tr><td>hub.title</td><td>The Eligian Tour</td><td>De Eligian-rondleiding</td></tr>
+          </table>
+        </div>
+        <div id="c6-pop-starters" class="ide-pop ide-palette">
+          <div class="ide-panel-title">Eligian: New Presentation</div>
+          <div class="ide-filter">Choose a starter</div>
+          <div class="ide-palette-item is-sel">Blank <span class="ide-dim">One timeline with a title, a few timed events and play / pause buttons</span></div>
+          <div class="ide-palette-item">Chapters <span class="ide-dim">A hub that links to two chapters: on enter / on leave, navigate, key presses and labels</span></div>
+          <div class="ide-palette-item">Video <span class="ide-dim">A timeline driven by a video, with captions and play / pause buttons</span></div>
+          <div class="ide-palette-item">Library <span class="ide-dim">A presentation whose reusable actions live in a library file</span></div>
+        </div>
+        <div id="c6-pop-langblock" class="ide-pop ide-editor">
+          <div class="ide-line"><span class="ide-gutter">3</span><span class="squiggle tok kw">locales</span> <span class="tok str">"./locales.json"</span></div>
+          <div class="ide-hover">Locales import requires a languages block to declare available languages. <span class="ide-dim">eligian</span></div>
+          <div class="ide-lightbulb"><span class="ide-bulb">💡</span> Generate language block (2 languages)</div>
+        </div>
+      </div>
+
+      <div id="c6-fx-done" class="fx"><span class="fx-done">Chapter 7 ✓</span></div>
     </section>
 
     <div class="callout-layer">
-      <div id="c6-cl-why" class="callout"></div>
-      <div id="c6-cl-preview" class="callout"></div>
-      <div id="c6-cl-css" class="callout"></div>
-      <div id="c6-cl-complete" class="callout"></div>
-      <div id="c6-cl-jsdoc" class="callout"></div>
+      <div id="c6-cl-e1" class="callout"></div>
+      <div id="c6-cl-e2" class="callout"></div>
+      <div id="c6-cl-e3" class="callout"></div>
+      <div id="c6-cl-e4" class="callout"></div>
+      <div id="c6-cl-e5" class="callout"></div>
+      <div id="c6-cl-e6" class="callout"></div>
+      <div id="c6-cl-e7" class="callout"></div>
+      <div id="c6-cl-e8" class="callout"></div>
+      <div id="c6-cl-e9" class="callout"></div>
+      <div id="c6-cl-e10" class="callout"></div>
+      <div id="c6-cl-e11" class="callout"></div>
+      <div id="c6-cl-e12" class="callout"></div>
+      <div id="c6-cl-e13" class="callout"></div>
+      <div id="c6-cl-e14" class="callout"></div>
+      <div id="c6-cl-e15" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- ====================== CHAPTER 8 · The Command Line ============= -->
+  <!-- NOTE: the effect pane REENACTS a terminal: one mock frame per beat
+       (.fx.term), built from the classes of tour.css' "Mock terminal"
+       section. Every output line is real output of node packages/cli/bin/cli.js
+       (eligian 1.0.1), captured on the tour and on scratch files; sources per
+       beat: the storyboard (chapter-08-the-command-line.md). The beat's first
+       command types as the frame appears; its output lines (.term-line.out) and
+       later commands (.term-line.cmd.later) appear with .in, added by the beat's
+       stagger in the timeline. -->
+  <section id="chc" class="view chapter">
+
+    <header class="chrome">
+      <button id="cc-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot is-current"></span>
+      </nav>
+      <span class="chapter-label">08 · The Command Line</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="cc-code-install" class="code"><code><span class="tok fn">npm</span> install <span class="tok op">-g</span> <span class="tok str" id="cc-tok-install">eligian</span>
+<span class="tok fn">npx</span> eligian init my-talk
+<span class="tok fn">eligian</span> <span class="tok op">--version</span>
+<span class="tok com"># also installed as eligian-cli</span></code></pre>
+
+      <pre id="cc-code-init" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">init</span> my-talk <span class="tok op" id="cc-tok-init">--template</span> chapters
+<span class="tok fn">eligian</span> <span class="tok kw">init</span> . <span class="tok op">--template</span> library <span class="tok op">--title</span> <span class="tok str">"Product Tour"</span>
+<span class="tok com"># blank · chapters · video · library</span></code></pre>
+
+      <pre id="cc-code-compile" class="code"><code><span class="tok fn">eligian</span> tour.eligian                    <span class="tok com"># → tour.json</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op" id="cc-tok-compile">-o -</span>               <span class="tok com"># JSON to stdout</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--check</span>            <span class="tok com"># validate only</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--minify</span> <span class="tok op">--no-optimize</span> <span class="tok op">-q</span>
+<span class="tok fn">eligian</span> <span class="tok kw">compile</span> tour.eligian <span class="tok op">-v</span>         <span class="tok com"># the explicit form; -v adds progress lines</span></code></pre>
+
+      <pre id="cc-code-bundle" class="code"><code><span class="tok fn">eligian</span> tour.eligian <span class="tok op" id="cc-tok-bundle">--bundle</span>                  <span class="tok com"># → tour.bundle/</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--bundle</span> <span class="tok op">-o</span> site <span class="tok op">--force</span>
+<span class="tok fn">eligian</span> tour.eligian <span class="tok op">--bundle</span> <span class="tok op">--sourcemap</span> <span class="tok op">--inline-threshold</span> <span class="tok num">8192</span></code></pre>
+
+      <pre id="cc-code-map" class="code"><code><span class="tok fn">eligian</span> tour.eligian <span class="tok op" id="cc-tok-map">--eligian-map</span>    <span class="tok com"># + tour.eligian-map.json</span>
+<span class="tok com"># not with --bundle, not with -o -</span></code></pre>
+
+      <pre id="cc-code-check" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">check</span> <span class="tok str">"examples/**/*.eligian"</span> <span class="tok op">--max-warnings</span> <span class="tok num">0</span>
+<span class="tok fn">eligian</span> <span class="tok kw">check</span> src <span class="tok str" id="cc-tok-check">"!src/drafts/**"</span> <span class="tok op">--warnings-as-errors</span></code></pre>
+
+      <pre id="cc-code-formats" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">check</span> <span class="tok str">"**/*.eligian"</span> <span class="tok op" id="cc-tok-formats">--format</span> github
+<span class="tok fn">eligian</span> <span class="tok kw">check</span> src <span class="tok op">--format</span> sarif <span class="tok op">&gt;</span> eligian.sarif
+<span class="tok fn">eligian</span> <span class="tok kw">check</span> src <span class="tok op">--no-lint</span> <span class="tok op">--selector-not-in-layout</span> ids</code></pre>
+
+      <pre id="cc-code-smoke" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">smoke</span> examples/eligian-tour
+<span class="tok fn">eligian</span> <span class="tok kw">smoke</span> <span class="tok str">"examples/**/*.eligian"</span> <span class="tok op" id="cc-tok-smoke">--strict</span> <span class="tok op">--format</span> github</code></pre>
+
+      <pre id="cc-code-dev" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw" id="cc-tok-dev">dev</span> tour.eligian <span class="tok op">--open</span>
+<span class="tok fn">eligian</span> <span class="tok kw">dev</span> tour.eligian <span class="tok op">--port</span> <span class="tok num">4000</span></code></pre>
+
+      <pre id="cc-code-fmt" class="code"><code><span class="tok fn">eligian</span> <span class="tok kw">fmt</span> <span class="tok str">"examples/**/*.eligian"</span>        <span class="tok com"># --check is the default</span>
+<span class="tok fn">eligian</span> <span class="tok kw">fmt</span> <span class="tok op" id="cc-tok-fmt">--write</span> src
+<span class="tok fn">eligian</span> <span class="tok kw">fmt</span> <span class="tok op">--format</span> github <span class="tok str">"**/*.eligian"</span></code></pre>
+
+      <pre id="cc-code-exit" class="code"><code><span class="tok num">0</span>  success, clean
+<span class="tok num">1</span>  errors · too many warnings · smoke failures · unformatted files ·
+   init conflicts · a failed compile · compile option errors
+   (--bundle --check, --eligian-map -o -, --inline-threshold)
+<span class="tok num" id="cc-tok-exit">2</span>  no files matched · invalid --format, --max-warnings, --port,
+   --template or --selector-not-in-layout · fmt syntax errors
+<span class="tok num">3</span>  I/O error · refusing to overwrite the source
+
+<span class="tok fn">pnpm</span> run check:examples <span class="tok op">&amp;&amp;</span> <span class="tok fn">pnpm</span> run smoke:examples <span class="tok op">&amp;&amp;</span> <span class="tok fn">pnpm</span> run fmt:examples</code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <!-- Beat 1: install: npm, the two bins, version and help -->
+      <div id="cc-fx-install" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> npm install -g eligian</div>
+          <div id="cc-out-install-1" class="term-line out">added 53 packages in 19s</div>
+          <div id="cc-out-install-2" class="term-line out"></div>
+          <div id="cc-out-install-3" class="term-line out">13 packages are looking for funding</div>
+          <div id="cc-out-install-4" class="term-line out">  run `npm fund` for details</div>
+          <div id="cc-cmd-install-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian --version</div>
+          <div id="cc-out-install-5" class="term-line out">1.0.1</div>
+          <div id="cc-cmd-install-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian --help</div>
+          <div id="cc-out-install-6" class="term-line out">Usage: eligian [options] [command]</div>
+          <div id="cc-out-install-7" class="term-line out"><span class="dim">…</span></div>
+          <div id="cc-out-install-8" class="term-line out">`eligian &lt;input&gt;` is short for `eligian compile &lt;input&gt;`.</div>
+          <div id="cc-out-install-9" class="term-line out">Run 'eligian &lt;command&gt; --help' (compile, check, fmt, smoke, dev, init) for its options.</div>
+          <div id="cc-cmd-install-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 2: init: a starter project, and the refusal to overwrite one -->
+      <div id="cc-fx-init" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian init my-talk --template chapters</div>
+          <div id="cc-out-init-1" class="term-line out">Created my-talk/ (Chapters starter): package.json, README.md, main.eligian, layout.html, styles.css, locales.json</div>
+          <div id="cc-out-init-2" class="term-line out"></div>
+          <div id="cc-out-init-3" class="term-line out">Next:</div>
+          <div id="cc-out-init-4" class="term-line out">  cd my-talk</div>
+          <div id="cc-out-init-5" class="term-line out">  eligian check main.eligian</div>
+          <div id="cc-out-init-6" class="term-line out">  open the folder in VS Code and run "Eligian: Preview Timeline" (Ctrl+K V)</div>
+          <div id="cc-cmd-init-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian init my-talk</div>
+          <div id="cc-out-init-7" class="term-line out"><span class="err">Not overwriting existing files in my-talk/: package.json, README.md, main.eligian, layout.html, styles.css, locales.json</span></div>
+          <div id="cc-out-init-8" class="term-line out"><span class="err">Use --force to overwrite them.</span></div>
+          <div id="cc-cmd-init-3" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 3: compile: the default command, --check, and a parse error -->
+      <div id="cc-fx-compile" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian</div>
+          <div id="cc-out-compile-1" class="term-line out"><span class="ok">✓ Compiled examples/eligian-tour/tour.eligian → examples/eligian-tour/tour.json</span></div>
+          <div id="cc-cmd-compile-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --check</div>
+          <div id="cc-out-compile-2" class="term-line out"><span class="ok">✓ examples/eligian-tour/tour.eligian is valid</span></div>
+          <div id="cc-cmd-compile-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian brace.eligian</div>
+          <div id="cc-out-compile-3" class="term-line out"></div>
+          <div id="cc-out-compile-4" class="term-line out"><span class="err">Parse failed:</span></div>
+          <div id="cc-out-compile-5" class="term-line out"></div>
+          <div id="cc-out-compile-6" class="term-line out">Parse Error: Expected an action or operation call, or a [ … ] block here, but found '{'.</div>
+          <div id="cc-out-compile-7" class="term-line out">  at 5:13</div>
+          <div id="cc-out-compile-8" class="term-line out"></div>
+          <div id="cc-out-compile-9" class="term-line out">  3 | action intro() [ selectElement("#hub") addClass("in") ]</div>
+          <div id="cc-out-compile-10" class="term-line out">  4 | timeline "T" in "#stage" using raf {</div>
+          <div id="cc-out-compile-11" class="term-line out">&gt; 5 |   at 0s..5s { intro() }</div>
+          <div id="cc-out-compile-12" class="term-line out">                  ^</div>
+          <div id="cc-out-compile-13" class="term-line out">  6 | }</div>
+          <div id="cc-out-compile-14" class="term-line out">  7 |</div>
+          <div id="cc-out-compile-15" class="term-line out"></div>
+          <div id="cc-out-compile-16" class="term-line out"><span class="warn">💡 Actions are defined inside square brackets: [ operation1() operation2() ]</span></div>
+          <div id="cc-out-compile-17" class="term-line out"></div>
+          <div id="cc-cmd-compile-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 4: bundle: a standalone presentation directory -->
+      <div id="cc-fx-bundle" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle</div>
+          <div id="cc-out-bundle-1" class="term-line out"><span class="ok">✓ Bundle created: examples/eligian-tour/tour.bundle</span></div>
+          <div id="cc-out-bundle-2" class="term-line out"><span class="dim">  Files: 2</span></div>
+          <div id="cc-out-bundle-3" class="term-line out"><span class="dim">  Size: 1205.8 KB</span></div>
+          <div id="cc-out-bundle-4" class="term-line out"><span class="dim">  Time: 1927ms</span></div>
+          <div id="cc-cmd-bundle-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle</div>
+          <div id="cc-out-bundle-5" class="term-line out"></div>
+          <div id="cc-out-bundle-6" class="term-line out"><span class="err">Bundle failed: Output directory already exists: examples/eligian-tour/tour.bundle. Use --force to overwrite.</span></div>
+          <div id="cc-cmd-bundle-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle --check</div>
+          <div id="cc-out-bundle-7" class="term-line out">Error: --bundle and --check cannot be combined: --check validates only and writes no output, but --bundle always writes a bundle directory</div>
+          <div id="cc-cmd-bundle-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 5: the eligian map: compiled ids back to source lines -->
+      <div id="cc-fx-map" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --eligian-map</div>
+          <div id="cc-out-map-1" class="term-line out"><span class="ok">✓ Compiled examples/eligian-tour/tour.eligian → examples/eligian-tour/tour.json</span></div>
+          <div id="cc-out-map-2" class="term-line out"><span class="ok">✓ Eligian map → examples/eligian-tour/tour.eligian-map.json</span></div>
+          <div id="cc-cmd-map-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --eligian-map -o -</div>
+          <div id="cc-out-map-3" class="term-line out">Error: --eligian-map needs an output file (it is written next to it), not '-o -'</div>
+          <div id="cc-cmd-map-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian examples/eligian-tour/tour.eligian --bundle --eligian-map</div>
+          <div id="cc-out-map-4" class="term-line out">Error: --eligian-map applies to JSON output, not to --bundle</div>
+          <div id="cc-cmd-map-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 6: check: every error and warning of many files -->
+      <div id="cc-fx-check" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian check demo.eligian --max-warnings 0</div>
+          <div id="cc-out-check-1" class="term-line out"><u>demo.eligian</u></div>
+          <div id="cc-out-check-2" class="term-line out">  <span class="dim">4:17</span>  <span class="warn">warning</span>  'clik' is not a known DOM event. Did you mean: 'click'?<span class="dim">  unknown_dom_event</span></div>
+          <div id="cc-out-check-3" class="term-line out"></div>
+          <div id="cc-out-check-4" class="term-line out"><span class="warn">1 file, 0 errors, 1 warning</span></div>
+          <div id="cc-out-check-5" class="term-line out"><span class="err">Too many warnings: 1 (maximum 0)</span></div>
+          <div id="cc-cmd-check-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian check examples/eligian-tour --max-warnings 0</div>
+          <div id="cc-out-check-6" class="term-line out"><span class="ok">2 files, 0 errors, 0 warnings</span></div>
+          <div id="cc-cmd-check-3" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 7: check formats and Eligius lint -->
+      <div id="cc-fx-formats" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian check contract.eligian --format github</div>
+          <div id="cc-out-formats-1" class="term-line out">::error file=contract.eligian,line=5,col=13,endLine=5,endColumn=22,title=missing-action-dependency::Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement)</div>
+          <div id="cc-out-formats-2" class="term-line out">1 file, 1 error, 0 warnings</div>
+          <div id="cc-cmd-formats-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian check contract.eligian --format json</div>
+          <div id="cc-out-formats-3" class="term-line out">{</div>
+          <div id="cc-out-formats-4" class="term-line out">  "files": [</div>
+          <div id="cc-out-formats-5" class="term-line out"><span class="dim">…</span></div>
+          <div id="cc-out-formats-6" class="term-line out">  "summary": {</div>
+          <div id="cc-out-formats-7" class="term-line out">    "files": 1,</div>
+          <div id="cc-out-formats-8" class="term-line out">    "errors": 1,</div>
+          <div id="cc-out-formats-9" class="term-line out">    "warnings": 0,</div>
+          <div id="cc-out-formats-10" class="term-line out">    "infos": 0,</div>
+          <div id="cc-out-formats-11" class="term-line out">    "hints": 0</div>
+          <div id="cc-out-formats-12" class="term-line out">  }</div>
+          <div id="cc-out-formats-13" class="term-line out">}</div>
+          <div id="cc-cmd-formats-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian check jump.eligian</div>
+          <div id="cc-out-formats-14" class="term-line out"><u>jump.eligian</u></div>
+          <div id="cc-out-formats-15" class="term-line out">  <span class="dim">3:39</span>  <span class="err">error</span>    scrollToElement: 'block' must be one of 'start', 'center', 'end', 'nearest', got 'nowhere'. (Eligius lint at actions[0].startOperations[1].operationData.block)<span class="dim">  eligius-E120</span></div>
+          <div id="cc-out-formats-16" class="term-line out"></div>
+          <div id="cc-out-formats-17" class="term-line out"><span class="err">1 file, 1 error, 0 warnings</span></div>
+          <div id="cc-cmd-formats-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 8: smoke: every timeline played headlessly on the real engine -->
+      <div id="cc-fx-smoke" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian smoke examples/eligian-tour</div>
+          <div id="cc-out-smoke-1" class="term-line out">examples/eligian-tour/presentation.eligian (library: nothing to play)</div>
+          <div id="cc-out-smoke-2" class="term-line out">examples/eligian-tour/tour.eligian</div>
+          <div id="cc-out-smoke-3" class="term-line out">  timeline 'Hub': 1 position ok</div>
+          <div id="cc-out-smoke-4" class="term-line out">  timeline 'Timeline &amp; Time': 9 positions ok</div>
+          <div id="cc-out-smoke-5" class="term-line out">  timeline 'Actions': 9 positions ok</div>
+          <div id="cc-out-smoke-6" class="term-line out">  timeline 'Logic': 13 positions ok</div>
+          <div id="cc-out-smoke-7" class="term-line out">  timeline 'Timeline Power Tools': 19 positions ok</div>
+          <div id="cc-out-smoke-8" class="term-line out">  timeline 'Files &amp; Imports': 9 positions ok</div>
+          <div id="cc-out-smoke-9" class="term-line out">  timeline 'Engine Reach': 10 positions ok</div>
+          <div id="cc-out-smoke-10" class="term-line out">  timeline 'The Editor': 45 positions ok</div>
+          <div id="cc-out-smoke-11" class="term-line out">  timeline 'The Command Line': 254 positions ok</div>
+          <div id="cc-out-smoke-12" class="term-line out">2 files, 9 timelines played, 0 errors, 0 warnings</div>
+          <div id="cc-cmd-smoke-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian smoke boom.eligian</div>
+          <div id="cc-out-smoke-13" class="term-line out">boom.eligian</div>
+          <div id="cc-out-smoke-14" class="term-line out">  timeline 'Logic': 3 positions FAIL (1)</div>
+          <div id="cc-out-smoke-15" class="term-line out">  error  start operation selectElement (in boom): selectElement: selector is either empty or not defined.</div>
+          <div id="cc-out-smoke-16" class="term-line out">         boom.eligian:3:17 — 'Logic' at 9s</div>
+          <div id="cc-out-smoke-17" class="term-line out">1 file, 1 timeline played, 1 error, 0 warnings</div>
+          <div id="cc-cmd-smoke-3" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 9: dev: the bundle in the browser, rebuilt on change -->
+      <div id="cc-fx-dev" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian dev examples/eligian-tour/tour.eligian</div>
+          <div id="cc-out-dev-1" class="term-line out"><span class="dim">[13:44:38] </span>built in 1185ms</div>
+          <div id="cc-out-dev-2" class="term-line out"><span class="ok">eligian dev</span> examples/eligian-tour/tour.eligian → <span class="cyan">http://localhost:5180/</span> (Ctrl+C to stop)</div>
+          <div id="cc-out-dev-3" class="term-line out"><span class="dim">[13:44:41] </span>tour.css changed → rebuilt in 861ms, styles swapped</div>
+          <div id="cc-out-dev-4" class="term-line out"><span class="dim">[13:44:44] </span>presentation.eligian changed → rebuilt in 865ms, reloading 1 page</div>
+          <div id="cc-out-dev-5" class="term-line out"><span class="dim">[13:44:47] </span>tour.eligian changed → build failed (361ms):</div>
+          <div id="cc-out-dev-6" class="term-line out">  Parse Error: Expected an action or operation call, or a [ … ] block here, but found '{'.</div>
+          <div id="cc-out-dev-7" class="term-line out">    at 207:27</div>
+          <div id="cc-out-dev-8" class="term-line out"><span class="dim">…</span></div>
+          <div id="cc-out-dev-9" class="term-line out">  Hint: Actions are defined inside square brackets: [ operation1() operation2() ]</div>
+          <div id="cc-out-dev-10" class="term-line out"><span class="dim">[13:44:52] </span>tour.eligian changed → rebuilt in 897ms, reloading 1 page</div>
+          <div id="cc-cmd-dev-2" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 10: fmt: whitespace only, --check by default -->
+      <div id="cc-fx-fmt" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian fmt u.eligian</div>
+          <div id="cc-out-fmt-1" class="term-line out">u.eligian</div>
+          <div id="cc-out-fmt-2" class="term-line out">@@ line 2</div>
+          <div id="cc-out-fmt-3" class="term-line out">  styles "./s.css"</div>
+          <div id="cc-out-fmt-4" class="term-line out">- action f( selector:string )[</div>
+          <div id="cc-out-fmt-5" class="term-line out">- selectElement(selector)</div>
+          <div id="cc-out-fmt-6" class="term-line out">-   addClass( "on" )</div>
+          <div id="cc-out-fmt-7" class="term-line out">+ </div>
+          <div id="cc-out-fmt-8" class="term-line out">+ action f(selector: string) [</div>
+          <div id="cc-out-fmt-9" class="term-line out">+   selectElement(selector)</div>
+          <div id="cc-out-fmt-10" class="term-line out">+   addClass("on")</div>
+          <div id="cc-out-fmt-11" class="term-line out">  ]</div>
+          <div id="cc-out-fmt-12" class="term-line out"></div>
+          <div id="cc-out-fmt-13" class="term-line out">1 file would be reformatted (run 'eligian fmt --write')</div>
+          <div id="cc-cmd-fmt-2" class="term-line cmd later"><span class="term-prompt">$</span> eligian fmt --write u.eligian</div>
+          <div id="cc-out-fmt-14" class="term-line out">Formatted u.eligian</div>
+          <div id="cc-out-fmt-15" class="term-line out">1 file formatted</div>
+          <div id="cc-cmd-fmt-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian fmt examples/eligian-tour</div>
+          <div id="cc-out-fmt-16" class="term-line out">All 2 files formatted</div>
+          <div id="cc-cmd-fmt-4" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <!-- Beat 11: exit codes -->
+      <div id="cc-fx-exit" class="fx term">
+        <div class="term-titlebar">eligian — bash</div>
+        <div class="term-body">
+          <div class="term-line cmd typing"><span class="term-prompt">$</span> eligian check "nothing/**"</div>
+          <div id="cc-out-exit-1" class="term-line out"><span class="err">No files matched: nothing/**</span></div>
+          <div id="cc-cmd-exit-2" class="term-line cmd later"><span class="term-prompt">$</span> echo $?</div>
+          <div id="cc-out-exit-2" class="term-line out">2</div>
+          <div id="cc-cmd-exit-3" class="term-line cmd later"><span class="term-prompt">$</span> eligian init x --template bogus</div>
+          <div id="cc-out-exit-3" class="term-line out"><span class="err">Unknown template 'bogus'. Use one of: blank, chapters, video, library</span></div>
+          <div id="cc-cmd-exit-4" class="term-line cmd later"><span class="term-prompt">$</span> echo $?</div>
+          <div id="cc-out-exit-4" class="term-line out">2</div>
+          <div id="cc-cmd-exit-5" class="term-line cmd later"><span class="term-prompt">$</span> eligian jump.eligian -o jump.eligian</div>
+          <div id="cc-out-exit-5" class="term-line out"><span class="err">Output path 'jump.eligian' is the same as the input file; refusing to overwrite.</span></div>
+          <div id="cc-cmd-exit-6" class="term-line cmd later"><span class="term-prompt">$</span> echo $?</div>
+          <div id="cc-out-exit-6" class="term-line out">3</div>
+          <div id="cc-cmd-exit-7" class="term-line cmd later"><span class="term-prompt">$</span> <span class="term-caret"></span></div>
+        </div>
+      </div>
+
+      <div id="cc-fx-done" class="fx"><span class="fx-done">Chapter 8 ✓ — the whole toolchain</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="cc-cl-t1" class="callout"></div>
+      <div id="cc-cl-t2" class="callout"></div>
+      <div id="cc-cl-t3" class="callout"></div>
+      <div id="cc-cl-t4" class="callout"></div>
+      <div id="cc-cl-t5" class="callout"></div>
+      <div id="cc-cl-t6" class="callout"></div>
+      <div id="cc-cl-t7" class="callout"></div>
+      <div id="cc-cl-t8" class="callout"></div>
+      <div id="cc-cl-t9" class="callout"></div>
+      <div id="cc-cl-t10" class="callout"></div>
+      <div id="cc-cl-t11" class="callout"></div>
     </div>
   </section>
 
   <!-- Shared narration subtitle (text set at runtime; toggled per chapter) -->
   <footer id="narration"></footer>
 
-  <!-- Chapter progress, under the narration (pure CSS, see tour.css) -->
+  <!-- Chapter progress, under the narration (filled by the ProgressbarController
+       enterChapter attaches; a click on the bar seeks) -->
   <div id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
 
 </div>

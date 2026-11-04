@@ -4,7 +4,11 @@ All notable changes to Eligian: the DSL, its compiler, the CLI and the VS Code e
 
 Eligian has not been released yet: every package is still at version `0.0.1` and there are no release tags. This changelog was put together from the git history (274 commits, 2025-10-14 to 2026-11-01). It is grouped by period, newest first. Numbers like (#38) are the pull requests merged into `main`, and the spec numbers refer to `specs/<NNN>-*/`.
 
-## Unreleased (2026-11-02)
+## Unreleased (2026-11-04)
+
+### Added
+
+- **The tour: eight chapters** (`examples/eligian-tour/`). Two new chapters, *Files & Imports* (program vs library, the `languages` block, default, named, library and `extensions` imports, comments and JSDoc, keywords) and *The Command Line* (a mock terminal with the real output of every `eligian` command), and *Tooling Magic* rewritten as *The Editor* (a mock VS Code, one beat per extension feature). The six existing chapters were corrected against the grammar and the engine and now also teach time constants and labels, `target` / `with`, sequence items with `each` / `then`, the anchored inline stagger, dataflow contracts, erased parameters, `else if`, loop control, interactions and `on key`, nine controllers, a real LabelController with a live language switch, and a host module (`host.js`). Every chapter can be left and re-entered cleanly (`on leave` resets and unwires it), paused with `space` and replayed with `r`; the hub opens a chapter with `1`–`8`; the progress bar is the engine's ProgressbarController. A test checks that every controller a lifecycle block attaches is removed again (`tour-controllers.spec.ts`). The storyboards and `ELIGIUS_EXECUTION_MODEL.md` (verified against eligius 4.2.0) were rewritten to match.
 
 ### Changed
 

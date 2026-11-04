@@ -249,6 +249,13 @@ operations (eligius `src/operation/start-action.ts`, `end-action.ts`).
 
 ## ✅ C1 — NOT A BUG (by design): action params feed operations BY NAME
 
+> **Superseded by spec 046** (runtime string concatenation and runtime value
+> forwarding). A parameter no longer has to be named after the operation input it
+> feeds: when the names differ, the compiler emits a `setOperationData` before the
+> operation (`narrate(text)` → `setOperationData({ properties: { template:
+> "$operationdata.text" } })` + `setElementContent()`). See `LANGUAGE_SPEC.md` 7.4,
+> "Runtime values in operation arguments". The entry below is kept as history.
+
 **Retracted (2026-06-18) — I wrongly flagged this as a bug.** It's the intended
 parameter-passing contract.
 
@@ -271,10 +278,43 @@ literal string. Only operations that explicitly call `resolveExternalPropertyCha
 
 So `narrate(text)` failing and `narrate(template)` working is correct behaviour,
 not a defect. **Convention: name action parameters after the operation property
-they feed.** (Documented in `examples/eligian-tour/presentation.eligian` and
-`ELIGIUS_EXECUTION_MODEL.md`.)
+they feed.** (No longer true: see the note above and `LANGUAGE_SPEC.md` 7.4
+"Runtime values in operation arguments".)
 
 **Possible future ergonomics (enhancement, not a bug):** the validator *could*
 warn when an action forwards a parameter to an operation whose required input
 property won't be satisfied — turning today's silent no-op into a compile-time
 hint. Optional.
+
+---
+
+## 🟠 V2 — OPEN — `addController` with an object argument miscompiles silently
+
+Found 2026-11-04 by the tour audit (the tour's own docs used this form; the
+Engine Reach storyboard, `examples/eligian-tour/storyboards/chapter-06-engine-reach.md`,
+records it).
+
+`addController` takes positional parameters (`LANGUAGE_SPEC.md` "Controllers"):
+`addController("DOMEventListenerController", "click", ["ping"])`,
+`addController("LabelController", "hub.title")`. Passing the controller's inputs
+as one object literal instead passes `check` with 0 errors / 0 warnings and
+compiles to the object nested under the first positional property name:
+
+```eligian
+addController("DOMEventListenerController", { eventName: "click", actions: ["ping"] })
+```
+```json
+{ "systemName": "addControllerToElement",
+  "operationData": { "eventName": { "eventName": "click", "actions": ["ping"] } } }
+```
+
+At runtime the controller gets `eventName = { … }` and no `actions`: nothing
+happens, and neither `check` (lint included) nor `smoke` reports it.
+
+**Fix to make:** a validator (or the typir type of the controller's metadata
+parameters) that rejects an object literal where a controller's positional
+parameter expects a string / array, with a message pointing at the positional form;
+`eligian smoke` could additionally flag an `addControllerToElement` whose required
+controller inputs are missing. Reproduce with the snippet above in a scratch
+program (`layout` with `#stage` and `#btn`) and `node packages/cli/bin/cli.js
+<file> -o out.json`.

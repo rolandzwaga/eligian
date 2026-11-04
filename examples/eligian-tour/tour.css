@@ -1,13 +1,15 @@
 /* Eligian Tour — theme + walkthrough animations.
  *
- * Every selector/class referenced from the .eligian files must be defined here:
- * the compiler validates selectors/classes against imported CSS (see B2 in
- * packages/cli/KNOWN_ISSUES.md). Dark, editor-grade, one accent, restrained motion.
+ * Ids come from layout.html, classes from this file: the compiler validates
+ * every selector and class name the .eligian files use against both, also when
+ * they reach an operation through an action parameter (spec 056). So a class the
+ * library toggles must be defined here; an id needs no rule of its own.
+ * Dark, editor-grade, one accent, restrained motion.
  *
- * Structure: #stage holds stacked ".view"s (hub + per-chapter). Structural panes
- * are classes (.chrome/.code-pane/.effect-pane/.callout-layer) shared by every
- * chapter; only leaf elements the .eligian selects keep ids. "Id-registration"
- * blocks exist solely so each DSL-selected id is declared for CSS validation.
+ * Structure: #stage holds stacked ".view"s (the hub + eight chapters). Structural
+ * panes are classes (.chrome/.code-pane/.effect-pane/.callout-layer) shared by
+ * every chapter; only leaf elements the .eligian selects keep ids. Chapters 07
+ * and 08 are mock UI: the "Mock IDE" and "Mock terminal" sections below.
  */
 
 :root {
@@ -85,6 +87,18 @@
   background: var(--accent);
   transform: scale(1.25);
 }
+/* a status dot in a chapter's chrome; .lit switches it on */
+.pulse-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #30363d;
+  transition: background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.pulse-dot.lit {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.35);
+}
 .chapter-label {
   color: var(--muted);
   font-size: 0.85rem;
@@ -101,19 +115,11 @@
   font-size: 0.85rem;
   cursor: pointer;
   transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+  flex: 0 0 auto;
 }
 .to-hub:hover {
   border-color: var(--accent);
   color: var(--ink);
-}
-/* id-registration: navigate selectors */
-#c1-to-hub,
-#c2-to-hub,
-#c3-to-hub,
-#c4-to-hub,
-#c5-to-hub,
-#c6-to-hub {
-  flex: 0 0 auto;
 }
 
 .code-pane {
@@ -175,12 +181,17 @@
   color: var(--muted);
   font-size: 1.05rem;
 }
+#hub-hint {
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 #hub-cards {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr); /* two rows */
   gap: 1rem;
 }
 .card {
@@ -208,21 +219,15 @@
   font-size: 1.05rem;
   font-weight: 600;
 }
-.card.is-soon {
-  cursor: default;
-  opacity: 0.45;
-}
-.card.is-soon:hover {
-  border-color: #30363d;
-  transform: none;
-}
 /* live chapters (navigate targets exist) */
 #card-ch1,
 #card-ch2,
 #card-ch3,
 #card-ch4,
+#card-chf,
 #card-ch5,
-#card-ch6 {
+#card-ch6,
+#card-chc {
   border-color: rgba(88, 166, 255, 0.5);
 }
 
@@ -241,26 +246,6 @@
 .code code {
   font-family: inherit;
   white-space: pre;
-}
-/* id-registration: revealBlock targets */
-#code-ch1,
-#code-at,
-#code-units,
-#code-arith,
-#code-full,
-#c2-code-def,
-#c2-code-params,
-#c2-code-call,
-#c2-code-byname,
-#c2-code-endable,
-#c2-code-lib,
-#c5-code-overview,
-#c5-code-eventbus,
-#c5-code-onevent,
-#c5-code-controller,
-#c5-code-label,
-#c5-code-recap {
-  min-width: 0;
 }
 
 /* ---- Tokens ----------------------------------------------------------- */
@@ -287,18 +272,6 @@
 .tok.com {
   color: var(--muted);
   font-style: italic;
-}
-/* id-registration: spotlight targets */
-#tok-timeline,
-#tok-raf,
-#tok-at,
-#tok-plus,
-#c2-tok-action,
-#c2-tok-param,
-#c2-tok-call,
-#c2-tok-template,
-#c2-tok-endable {
-  font-weight: 600;
 }
 
 /* ---- Callout chips ---------------------------------------------------- */
@@ -332,62 +305,142 @@
 #tok-at { anchor-name: --cl-range; }
 #code-units { anchor-name: --cl-units; }
 #tok-plus { anchor-name: --cl-relative; }
+#c1-tok-label { anchor-name: --c1-cl-label; }
+#c1-tok-target { anchor-name: --c1-cl-target; }
+#c1-tok-enter { anchor-name: --c1-cl-lifecycle; }
 #c2-tok-action { anchor-name: --c2-cl-action; }
 #c2-tok-param { anchor-name: --c2-cl-param; }
 #c2-tok-call { anchor-name: --c2-cl-call; }
 #c2-tok-template { anchor-name: --c2-cl-name; }
 #c2-tok-endable { anchor-name: --c2-cl-endable; }
+#c2-tok-contract { anchor-name: --c2-cl-contract; }
+#c2-tok-erased { anchor-name: --c2-cl-erased; }
 #c3-tok-const { anchor-name: --c3-cl-const; }
+#c3-tok-literal { anchor-name: --c3-cl-literal; }
 #c3-tok-expr { anchor-name: --c3-cl-expr; }
 #c3-tok-if { anchor-name: --c3-cl-if; }
 #c3-tok-for { anchor-name: --c3-cl-for; }
 #c3-tok-break { anchor-name: --c3-cl-loopctl; }
+#c3-tok-with { anchor-name: --c3-cl-with; }
 #c4-code-manual { anchor-name: --c4-cl-manual; }
 #c4-tok-seq { anchor-name: --c4-cl-seq; }
 #c4-code-sequence { anchor-name: --c4-cl-edit; }
 #c4-tok-stagger { anchor-name: --c4-cl-stagger; }
-#c4-code-inline { anchor-name: --c4-cl-inline; }
+#c4-tok-each { anchor-name: --c4-cl-items; }
+#c4-tok-anchor { anchor-name: --c4-cl-inline; }
+#cf-tok-library { anchor-name: --cf-cl-files; }
+#cf-tok-star { anchor-name: --cf-cl-languages; }
+#cf-tok-styles { anchor-name: --cf-cl-defaults; }
+#cf-tok-import { anchor-name: --cf-cl-named; }
+#cf-tok-private { anchor-name: --cf-cl-lib; }
+#cf-tok-ext { anchor-name: --cf-cl-ext; }
+#cf-tok-jsdoc { anchor-name: --cf-cl-doc; }
+#cf-tok-reserved { anchor-name: --cf-cl-keywords; }
 #c5-code-overview { anchor-name: --c5-cl-over; }
 #c5-tok-bcast { anchor-name: --c5-cl-bus; }
 #c5-tok-onevent { anchor-name: --c5-cl-on; }
+#c5-tok-run { anchor-name: --c5-cl-interact; }
+#c5-tok-key { anchor-name: --c5-cl-keys; }
 #c5-tok-ctrl { anchor-name: --c5-cl-ctrl; }
 #c5-tok-loc { anchor-name: --c5-cl-loc; }
-#c6-code-why { anchor-name: --c6-cl-why; }
-#c6-tok-preview { anchor-name: --c6-cl-preview; }
-#c6-tok-css { anchor-name: --c6-cl-css; }
-#c6-tok-complete { anchor-name: --c6-cl-complete; }
-#c6-tok-jsdoc { anchor-name: --c6-cl-jsdoc; }
+#c5-tok-host { anchor-name: --c5-cl-host; }
+#c6-tok-why { anchor-name: --c6-cl-e1; }
+#c6-tok-syntax { anchor-name: --c6-cl-e2; }
+#c6-tok-css { anchor-name: --c6-cl-e3; }
+#c6-tok-dataflow { anchor-name: --c6-cl-e4; }
+#c6-tok-complete { anchor-name: --c6-cl-e5; }
+#c6-tok-hints { anchor-name: --c6-cl-e6; }
+#c6-tok-jsdoc { anchor-name: --c6-cl-e7; }
+#c6-tok-nav { anchor-name: --c6-cl-e8; }
+#c6-tok-outline { anchor-name: --c6-cl-e9; }
+#c6-tok-format { anchor-name: --c6-cl-e10; }
+#c6-tok-preview { anchor-name: --c6-cl-e11; }
+#c6-tok-runtime { anchor-name: --c6-cl-e12; }
+#c6-tok-gantt { anchor-name: --c6-cl-e13; }
+#c6-tok-locales { anchor-name: --c6-cl-e14; }
+#c6-tok-recap { anchor-name: --c6-cl-e15; }
+#cc-tok-install { anchor-name: --cc-cl-t1; }
+#cc-tok-init { anchor-name: --cc-cl-t2; }
+#cc-tok-compile { anchor-name: --cc-cl-t3; }
+#cc-tok-bundle { anchor-name: --cc-cl-t4; }
+#cc-tok-map { anchor-name: --cc-cl-t5; }
+#cc-tok-check { anchor-name: --cc-cl-t6; }
+#cc-tok-formats { anchor-name: --cc-cl-t7; }
+#cc-tok-smoke { anchor-name: --cc-cl-t8; }
+#cc-tok-dev { anchor-name: --cc-cl-t9; }
+#cc-tok-fmt { anchor-name: --cc-cl-t10; }
+#cc-tok-exit { anchor-name: --cc-cl-t11; }
 
 #cl-name { position-anchor: --cl-name; }
 #cl-provider { position-anchor: --cl-provider; }
 #cl-range { position-anchor: --cl-range; }
 #cl-units { position-anchor: --cl-units; }
 #cl-relative { position-anchor: --cl-relative; }
+#c1-cl-label { position-anchor: --c1-cl-label; }
+#c1-cl-target { position-anchor: --c1-cl-target; }
+#c1-cl-lifecycle { position-anchor: --c1-cl-lifecycle; }
 #c2-cl-action { position-anchor: --c2-cl-action; }
 #c2-cl-param { position-anchor: --c2-cl-param; }
 #c2-cl-call { position-anchor: --c2-cl-call; }
 #c2-cl-name { position-anchor: --c2-cl-name; }
 #c2-cl-endable { position-anchor: --c2-cl-endable; }
+#c2-cl-contract { position-anchor: --c2-cl-contract; }
+#c2-cl-erased { position-anchor: --c2-cl-erased; }
 #c3-cl-const { position-anchor: --c3-cl-const; }
+#c3-cl-literal { position-anchor: --c3-cl-literal; }
 #c3-cl-expr { position-anchor: --c3-cl-expr; }
 #c3-cl-if { position-anchor: --c3-cl-if; }
 #c3-cl-for { position-anchor: --c3-cl-for; }
 #c3-cl-loopctl { position-anchor: --c3-cl-loopctl; }
+#c3-cl-with { position-anchor: --c3-cl-with; }
 #c4-cl-manual { position-anchor: --c4-cl-manual; }
 #c4-cl-seq { position-anchor: --c4-cl-seq; }
 #c4-cl-edit { position-anchor: --c4-cl-edit; }
 #c4-cl-stagger { position-anchor: --c4-cl-stagger; }
+#c4-cl-items { position-anchor: --c4-cl-items; }
 #c4-cl-inline { position-anchor: --c4-cl-inline; }
+#cf-cl-files { position-anchor: --cf-cl-files; }
+#cf-cl-languages { position-anchor: --cf-cl-languages; }
+#cf-cl-defaults { position-anchor: --cf-cl-defaults; }
+#cf-cl-named { position-anchor: --cf-cl-named; }
+#cf-cl-lib { position-anchor: --cf-cl-lib; }
+#cf-cl-ext { position-anchor: --cf-cl-ext; }
+#cf-cl-doc { position-anchor: --cf-cl-doc; }
+#cf-cl-keywords { position-anchor: --cf-cl-keywords; }
 #c5-cl-over { position-anchor: --c5-cl-over; }
 #c5-cl-bus { position-anchor: --c5-cl-bus; }
 #c5-cl-on { position-anchor: --c5-cl-on; }
+#c5-cl-interact { position-anchor: --c5-cl-interact; }
+#c5-cl-keys { position-anchor: --c5-cl-keys; }
 #c5-cl-ctrl { position-anchor: --c5-cl-ctrl; }
 #c5-cl-loc { position-anchor: --c5-cl-loc; }
-#c6-cl-why { position-anchor: --c6-cl-why; }
-#c6-cl-preview { position-anchor: --c6-cl-preview; }
-#c6-cl-css { position-anchor: --c6-cl-css; }
-#c6-cl-complete { position-anchor: --c6-cl-complete; }
-#c6-cl-jsdoc { position-anchor: --c6-cl-jsdoc; }
+#c5-cl-host { position-anchor: --c5-cl-host; }
+#c6-cl-e1 { position-anchor: --c6-cl-e1; }
+#c6-cl-e2 { position-anchor: --c6-cl-e2; }
+#c6-cl-e3 { position-anchor: --c6-cl-e3; }
+#c6-cl-e4 { position-anchor: --c6-cl-e4; }
+#c6-cl-e5 { position-anchor: --c6-cl-e5; }
+#c6-cl-e6 { position-anchor: --c6-cl-e6; }
+#c6-cl-e7 { position-anchor: --c6-cl-e7; }
+#c6-cl-e8 { position-anchor: --c6-cl-e8; }
+#c6-cl-e9 { position-anchor: --c6-cl-e9; }
+#c6-cl-e10 { position-anchor: --c6-cl-e10; }
+#c6-cl-e11 { position-anchor: --c6-cl-e11; }
+#c6-cl-e12 { position-anchor: --c6-cl-e12; }
+#c6-cl-e13 { position-anchor: --c6-cl-e13; }
+#c6-cl-e14 { position-anchor: --c6-cl-e14; }
+#c6-cl-e15 { position-anchor: --c6-cl-e15; }
+#cc-cl-t1 { position-anchor: --cc-cl-t1; }
+#cc-cl-t2 { position-anchor: --cc-cl-t2; }
+#cc-cl-t3 { position-anchor: --cc-cl-t3; }
+#cc-cl-t4 { position-anchor: --cc-cl-t4; }
+#cc-cl-t5 { position-anchor: --cc-cl-t5; }
+#cc-cl-t6 { position-anchor: --cc-cl-t6; }
+#cc-cl-t7 { position-anchor: --cc-cl-t7; }
+#cc-cl-t8 { position-anchor: --cc-cl-t8; }
+#cc-cl-t9 { position-anchor: --cc-cl-t9; }
+#cc-cl-t10 { position-anchor: --cc-cl-t10; }
+#cc-cl-t11 { position-anchor: --cc-cl-t11; }
 
 @supports (anchor-name: --a) {
   /* Token chips sit just below their token, with an arrow pointing up at it;
@@ -420,9 +473,7 @@
   #cl-units,
   #c4-cl-manual,
   #c4-cl-edit,
-  #c4-cl-inline,
-  #c5-cl-over,
-  #c6-cl-why {
+  #c5-cl-over {
     top: calc(anchor(top) - 0.9rem);
     left: auto;
     right: calc(anchor(right) + 1rem);
@@ -431,9 +482,7 @@
   #cl-units::before,
   #c4-cl-manual::before,
   #c4-cl-edit::before,
-  #c4-cl-inline::before,
-  #c5-cl-over::before,
-  #c6-cl-why::before {
+  #c5-cl-over::before {
     content: none;
   }
 }
@@ -445,41 +494,101 @@
   #c2-cl-action,
   #c3-cl-const,
   #c4-cl-manual,
+  #cf-cl-files,
   #c5-cl-over,
-  #c6-cl-why {
+  #c6-cl-e1,
+  #cc-cl-t1 {
     top: 3rem;
   }
   #cl-provider,
   #c2-cl-param,
-  #c3-cl-expr,
+  #c3-cl-literal,
   #c4-cl-seq,
+  #cf-cl-languages,
   #c5-cl-bus,
-  #c6-cl-preview {
+  #c6-cl-e2,
+  #cc-cl-t2 {
     top: 6rem;
   }
   #cl-range,
   #c2-cl-call,
-  #c3-cl-if,
+  #c3-cl-expr,
   #c4-cl-edit,
+  #cf-cl-defaults,
   #c5-cl-on,
-  #c6-cl-css {
+  #c6-cl-e3,
+  #cc-cl-t3 {
     top: 9rem;
   }
   #cl-units,
   #c2-cl-name,
-  #c3-cl-for,
+  #c3-cl-if,
   #c4-cl-stagger,
-  #c5-cl-ctrl,
-  #c6-cl-complete {
+  #cf-cl-named,
+  #c5-cl-interact,
+  #c6-cl-e4,
+  #cc-cl-t4 {
     top: 12rem;
   }
   #cl-relative,
   #c2-cl-endable,
+  #c3-cl-for,
+  #c4-cl-items,
+  #cf-cl-lib,
+  #c5-cl-keys,
+  #c6-cl-e5,
+  #cc-cl-t5 {
+    top: 15rem;
+  }
+  #c1-cl-label,
+  #c2-cl-contract,
   #c3-cl-loopctl,
   #c4-cl-inline,
+  #cf-cl-ext,
+  #c5-cl-ctrl,
+  #c6-cl-e6,
+  #cc-cl-t6 {
+    top: 18rem;
+  }
+  #c1-cl-target,
+  #c2-cl-erased,
+  #c3-cl-with,
+  #cf-cl-doc,
   #c5-cl-loc,
-  #c6-cl-jsdoc {
-    top: 15rem;
+  #c6-cl-e7,
+  #cc-cl-t7 {
+    top: 21rem;
+  }
+  #c1-cl-lifecycle,
+  #cf-cl-keywords,
+  #c5-cl-host,
+  #c6-cl-e8,
+  #cc-cl-t8 {
+    top: 24rem;
+  }
+  #c6-cl-e9,
+  #cc-cl-t9 {
+    top: 27rem;
+  }
+  #c6-cl-e10,
+  #cc-cl-t10 {
+    top: 30rem;
+  }
+  #c6-cl-e11,
+  #cc-cl-t11 {
+    top: 33rem;
+  }
+  #c6-cl-e12 {
+    top: 36rem;
+  }
+  #c6-cl-e13 {
+    top: 39rem;
+  }
+  #c6-cl-e14 {
+    top: 42rem;
+  }
+  #c6-cl-e15 {
+    top: 45rem;
   }
 }
 
@@ -494,21 +603,6 @@
   gap: 0.5rem;
   opacity: 0;
   transition: opacity 0.3s var(--ease);
-}
-/* id-registration: demo targets */
-#fx-stage,
-#fx-providers,
-#fx-hero,
-#fx-ruler,
-#fx-chain,
-#fx-endcard,
-#c2-fx-chain,
-#c2-fx-fade,
-#c2-fx-call,
-#c2-fx-slot,
-#c2-fx-toggle,
-#c2-fx-lib {
-  min-width: 0;
 }
 .fx-frame {
   display: inline-grid;
@@ -559,6 +653,49 @@
   color: var(--accent);
 }
 
+/* ---- Mock UI (shared): diagnostics, squiggles, hover cards ----------- */
+/* Editor-style pieces used by more than one chapter (Chapter 2's contract
+   diagnostic, the editor chapter's mock frames). Strings shown in them are
+   verbatim tool output. */
+/* red wavy underline on a typo'd or failing token */
+.squiggle {
+  text-decoration: underline wavy #f85149;
+  text-underline-offset: 3px;
+}
+/* a diagnostic message, as the Problems panel / `eligian check` prints it */
+.diagnostic {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--ink);
+  font-size: 0.76rem;
+}
+/* a JSDoc hover card */
+.hover-card {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #0b0f14;
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+/* Chapter 1 — the box its `target` beat lights (start block) and unlights (end
+   block). Dim until then: the id rule beats the one-class .lit, so the lit
+   state is declared here (see the state-class section). */
+#c1-target-box {
+  opacity: 0.35;
+  transition: opacity 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+#c1-target-box.lit {
+  opacity: 1;
+  box-shadow: 0 0 0 3px var(--ink), 0 0 18px var(--accent);
+}
+
 /* Chapter 3 — bullet list revealed one item at a time by a real `for` loop */
 .bullet-list {
   list-style: none;
@@ -579,14 +716,57 @@
   transform: translateY(8px);
   transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
 }
-/* Chapter 3 — badge toggled by a real if/else (selectElement target) */
+/* Chapter 3 — the badge a real if / else if / else sets: active (full) → muted
+   (dimmer, grey) → plain. The id rule beats the one-class .active and .muted,
+   so both states are declared here (see the state-class section). */
 #c3-badge {
   opacity: 0.35;
-  transition: opacity 0.22s var(--ease);
+  transition: opacity 0.22s var(--ease), filter 0.22s var(--ease);
+}
+#c3-badge.active {
+  opacity: 1;
+}
+#c3-badge.muted {
+  opacity: 0.2;
+  filter: grayscale(1);
+}
+/* Chapter 4 — the each / then panel mirrors #c4-pulse (the chrome dot the
+   sequence's then toggles at every beat boundary): lit whenever it is. */
+#c4-fx-items .pulse-dot {
+  display: inline-block;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+#ch4:has(#c4-pulse.lit) #c4-fx-items .pulse-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.35);
+}
+/* Chapter 4 — the wave chips a real inline stagger lights 150ms apart and
+   unlights 2 s later. Dim at rest; the two-class rule beats the one-class .lit,
+   so the lit state is declared here (see the state-class section). */
+#c4-fx-cascade .fx-chip {
+  opacity: 0.45;
+  transition: opacity 0.2s var(--ease), background 0.2s var(--ease), color 0.2s var(--ease);
+}
+#c4-fx-cascade .fx-chip.lit {
+  opacity: 1;
+  background: var(--accent);
+  color: #0b1320;
+}
+/* Chapter 5 — the paragraph hint.html holds; cfPlaceHint writes it into
+   #cf-fx-hint (setElementContent(@hint)) when beat 4 starts. */
+.hint {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
 }
 
-/* Chapter 5 — live eventbus round-trip: a real button (DOMEventListenerController
-   target) whose click broadcasts an event that reveals the panel. */
+/* Chapter 6 — live eventbus round-trip: a real button (wired in on enter with
+   on click … run) whose click broadcasts an event that reveals the panel; the
+   language buttons of beat 7 share the style. */
 .ping-btn {
   appearance: none;
   border: 1px solid var(--accent);
@@ -603,8 +783,7 @@
   background: rgba(88, 166, 255, 0.22);
   transform: translateY(-1px);
 }
-/* #c5-fx-ping is a direct selectElement() target, so it must be declared here for
-   CSS validation. */
+/* the ping button sits above the panel it reveals */
 #c5-fx-ping {
   margin-bottom: 0.75rem;
 }
@@ -622,89 +801,523 @@
 #c5-fx-panel {
   min-width: 0;
 }
-
-/* Chapter 6 — mock-editor reenactments (no live LSP; strings are real). ---- */
-.mock-editor {
-  width: 100%;
+/* Chapter 6 — the keys the chapter binds with on key, as key caps */
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  margin: 0.2rem;
+  padding: 0 0.6rem;
   border: 1px solid #30363d;
+  border-bottom-width: 3px;
   border-radius: 8px;
-  overflow: hidden;
-  font-family: ui-monospace, "Cascadia Code", monospace;
-  font-size: 0.82rem;
+  background: #21262d;
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+/* Chapter 6 — the LabelController's span on its own row, the two language
+   buttons (its siblings: the controller replaces the span's content) below it */
+#c5-fx-label {
+  grid-template-columns: repeat(2, auto);
+}
+#c5-fx-label-text {
+  grid-column: 1 / -1;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+/* ---- Mock IDE (Chapter 7 · The Editor) -------------------------------- */
+/* One frame per beat (.fx.ide), a CSS-built VS Code. Popups (.ide-pop) are
+   hidden until a sub-step adds .in; the two-class reveal rule is declared here
+   (see the state-class section). No live LSP: every string is real tool output. */
+.fx.ide,
+.fx.term {
+  place-items: stretch;
+  align-content: start;
+  gap: 0;
+  padding: 0;
   text-align: left;
 }
-.mock-tab {
+.ide {
+  overflow: hidden;
+  border: 1px solid #30363d;
+  border-radius: 8px;
   background: #0b0f14;
-  color: var(--muted);
-  padding: 0.3rem 0.7rem;
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+.ide-titlebar {
+  display: flex;
+  background: #161b22;
   border-bottom: 1px solid #30363d;
 }
-.mock-body {
-  padding: 0.6rem 0.8rem;
+.ide-tab {
+  padding: 0.3rem 0.8rem;
+  color: var(--muted);
+  border-right: 1px solid #30363d;
+}
+.ide-tab.is-active {
   color: var(--ink);
-  white-space: pre-wrap;
+  background: #0b0f14;
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
-.mock-statusbar {
-  background: var(--accent);
-  color: #0b1320;
-  padding: 0.2rem 0.7rem;
-  font-size: 0.72rem;
-}
-.mock-arrow {
-  color: var(--accent);
-  margin: 0 0.5rem;
-}
-/* red wavy underline on a typo'd token */
-.squiggle {
-  text-decoration: underline wavy #f85149;
-  text-underline-offset: 3px;
-}
-/* a diagnostic / hover tooltip */
-.diagnostic {
-  margin-top: 0.5rem;
+.ide-editor {
   padding: 0.4rem 0.6rem;
-  border-left: 3px solid #f85149;
-  background: rgba(248, 81, 73, 0.1);
-  color: var(--ink);
-  font-size: 0.76rem;
+  min-width: 0;
 }
-.lightbulb {
-  margin-top: 0.4rem;
-  color: var(--accent);
-  font-size: 0.76rem;
-}
-/* a completion popup */
-.complete-popup {
-  width: 100%;
-  border: 1px solid #30363d;
-  border-radius: 8px;
+.ide-line {
+  white-space: pre;
   overflow: hidden;
-  font-family: ui-monospace, monospace;
-  font-size: 0.82rem;
-  text-align: left;
+  text-overflow: ellipsis;
 }
-.complete-item {
-  padding: 0.3rem 0.7rem;
-  color: var(--ink);
+.ide-line.is-current {
+  background: rgba(88, 166, 255, 0.06);
 }
-.complete-item.is-sel {
+/* the line number, inside its line */
+.ide-gutter {
+  display: inline-block;
+  width: 2.2rem;
+  padding-right: 0.6rem;
+  color: #6e7681;
+  text-align: right;
+}
+.ide-caret {
+  display: inline-block;
+  width: 1px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: caret-blink 1s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.ide-dim {
+  color: var(--muted);
+}
+.ide-pop {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.ide-pop.in {
+  opacity: 1;
+  transform: none;
+}
+/* hover card: a diagnostic and / or the provider's markdown */
+.ide-hover {
+  max-width: 30rem;
+  margin: 0.2rem 0 0.3rem 1.2rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  white-space: normal;
+}
+.ide-hover hr,
+.ide-signature hr {
+  margin: 0.35rem 0;
+  border: 0;
+  border-top: 1px solid #30363d;
+}
+.ide-hover code,
+.ide-signature code {
+  color: var(--str);
+}
+.ide-signature {
+  max-width: 30rem;
+  margin: 0.2rem 0 0.3rem 1.2rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+}
+.ide-signature b {
+  color: var(--accent);
+}
+.ide-lightbulb {
+  width: max-content;
+  max-width: 30rem;
+  margin: 0.2rem 0 0.3rem 1.2rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+}
+.ide-bulb {
+  color: #e3b341;
+}
+/* completion list (also the snippet picker) */
+.ide-complete {
+  width: max-content;
+  max-width: 100%;
+  margin: 0.1rem 0 0.4rem 1.2rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+}
+.ide-complete-item {
+  padding: 0 0.6rem;
+  white-space: nowrap;
+}
+.ide-complete-item.is-sel {
   background: rgba(88, 166, 255, 0.18);
   color: var(--accent);
 }
-.complete-detail {
+.ide-complete-detail {
+  margin-left: 1rem;
   color: var(--muted);
 }
-/* a JSDoc hover card */
-.hover-card {
-  width: 100%;
-  padding: 0.6rem 0.8rem;
+.ide-columns {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+}
+.ide-inlay {
+  display: inline-block;
+  margin: 0 0.15rem;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: #21262d;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.ide-blocklabel {
+  display: inline-block;
+  color: #e3b341;
+}
+.ide-selection {
+  background: rgba(88, 166, 255, 0.35);
+}
+/* CodeLens line above code */
+.ide-lens {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+/* bottom panel: Problems */
+.ide-panel {
+  border-top: 1px solid #30363d;
+  padding: 0.3rem 0.6rem;
+}
+.ide-panel-title {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+.ide-count {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #30363d;
+  color: var(--ink);
+}
+.ide-problem {
+  padding: 0.1rem 0;
+}
+.ide-x {
+  color: #f85149;
+}
+/* command palette, quick pick, references peek */
+.ide-palette {
+  margin: 0.3rem 0.6rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+}
+.ide-palette .ide-panel-title {
+  padding: 0.2rem 0.6rem;
+}
+.ide-palette-item {
+  padding: 0.1rem 0.6rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-palette-item.is-sel {
+  background: rgba(88, 166, 255, 0.18);
+}
+.ide-filter {
+  margin: 0.2rem 0.6rem;
+  padding: 0 0.4rem;
+  border: 1px solid #30363d;
+  color: var(--muted);
+}
+.ide-outline {
+  padding: 0.4rem 0.6rem;
+}
+.ide-outline-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-outline-item[data-depth="1"] {
+  padding-left: 1rem;
+}
+.ide-outline-item[data-depth="2"] {
+  padding-left: 2rem;
+}
+/* the preview webview: controls, scrubber, a stage, the EventBus Debug Viewer */
+.ide-preview {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.4rem 0.6rem;
+}
+.ide-preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.ide-button,
+.ide-select {
+  padding: 0 0.4rem;
+  border: 1px solid #30363d;
+  border-radius: 3px;
+  background: #21262d;
+}
+.ide-scrubber {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  background: #30363d;
+}
+.ide-scrubber-knob {
+  position: absolute;
+  top: -4px;
+  left: 37.5%; /* 24s of 64s */
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.ide-preview-stage {
+  padding: 1rem;
+  border: 1px dashed #30363d;
+  color: var(--muted);
+  text-align: center;
+}
+.ide-debug {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  padding: 0.3rem 0;
+}
+.ide-debug .ide-panel-title {
+  padding: 0 0.6rem;
+}
+.ide-debug-event {
+  padding: 0.2rem 0.6rem;
+  white-space: pre-wrap;
+}
+.ide-toast {
+  margin: 0.3rem 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+}
+.ide-preview-errors {
+  margin: 0.3rem 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #f85149;
+  border-radius: 6px;
+  background: rgba(248, 81, 73, 0.08);
+}
+/* the Timeline view: lanes of bars over a 57 s axis, the preview's playhead */
+.ide-gantt {
+  padding: 0.4rem 0.6rem;
+}
+.ide-gantt-track {
+  position: relative;
+  margin-top: 0.3rem;
+}
+.ide-gantt-axis,
+.ide-lane {
+  position: relative;
+  height: 22px;
+}
+.ide-gantt-axis span {
+  position: absolute;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+.ide-bar {
+  position: absolute;
+  top: 2px;
+  height: 18px;
+  box-sizing: border-box;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ide-bar.sequence {
+  overflow: hidden;
+  border-right: 1px solid #0b0f14;
+  background: rgba(88, 166, 255, 0.35);
+}
+.ide-bar.stagger {
+  overflow: visible;
+  background: rgba(210, 168, 255, 0.45);
+}
+.ide-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 35.09%; /* 20s */
+  width: 2px;
+  background: #f85149;
+  transition: left 2s linear;
+}
+/* the sub-step moves it to 24s (the id rule beats the one-class .in) */
+#c6-gantt-playhead.in {
+  left: 42.11%;
+}
+/* the Locale Editor: key tree + the selected key's table */
+.ide-locale {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  padding: 0.4rem 0.6rem;
+}
+.ide-locale-tree [data-depth="1"] {
+  padding-left: 0.8rem;
+}
+.ide-locale-tree [data-depth="2"] {
+  padding-left: 1.6rem;
+}
+.ide-locale-tree .is-sel {
+  background: rgba(88, 166, 255, 0.18);
+}
+.ide-locale-table {
+  align-self: start;
+  border-collapse: collapse;
+}
+.ide-locale-table th,
+.ide-locale-table td {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid #30363d;
+  text-align: left;
+}
+.ide-status {
+  display: flex;
+  gap: 1rem;
+  padding: 0.1rem 0.6rem;
+  background: var(--accent);
+  color: #0b1320;
+  font-size: 0.7rem;
+}
+.ide-status span:last-child {
+  margin-left: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ide-caret {
+    animation: none;
+  }
+  .ide-playhead {
+    transition: none;
+  }
+}
+
+/* ---- Mock terminal (Chapter 8 · The Command Line) --------------------- */
+/* One frame per beat (.fx.term; the .fx.ide rule above resets .fx's centring).
+   The beat's first command carries a static .typing: it types as the frame
+   appears. Output lines (.term-line.out) and later commands
+   (.term-line.cmd.later) are hidden until the beat's stagger adds .in; both
+   hidden states are two-class rules, so their reveal rules are declared here
+   (see the state-class section). Every line is real CLI output. */
+.term {
+  overflow: hidden;
   border: 1px solid #30363d;
   border-radius: 8px;
   background: #0b0f14;
   color: var(--ink);
-  font-family: ui-monospace, monospace;
+  font-family: ui-monospace, "Cascadia Code", monospace;
   font-size: 0.8rem;
+  line-height: 1.5;
   text-align: left;
+}
+.term-titlebar {
+  padding: 0.2rem 0.8rem;
+  border-bottom: 1px solid #30363d;
+  background: #161b22;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+.term-body {
+  padding: 0.5rem 0.8rem;
+  min-width: 0;
+}
+/* one line of the session; an empty output line keeps its height */
+.term-line {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.term-prompt {
+  color: var(--accent);
+}
+.term-line.cmd.typing {
+  animation: clip-sweep 0.9s var(--ease) both;
+}
+.term-line.out,
+.term-line.cmd.later {
+  opacity: 0;
+}
+.term-line.out.in {
+  opacity: 1;
+  transition: opacity 0.15s var(--ease);
+}
+.term-line.cmd.later.in {
+  opacity: 1;
+  animation: clip-sweep 0.9s var(--ease) both;
+}
+/* the colours the CLI prints (chalk) */
+.term .ok {
+  color: #3fb950;
+}
+.term .err {
+  color: #f85149;
+}
+.term .warn {
+  color: #d29922;
+}
+.term .dim {
+  color: var(--muted);
+}
+.term .cyan {
+  color: #39c5cf;
+}
+.term u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* the block cursor on the beat's last prompt */
+.term-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--ink);
+  animation: caret-blink 1s steps(1) infinite;
+}
+/* reduced motion: no blinking caret, and commands appear whole instead of
+   typing (the clip-sweep animations above) */
+@media (prefers-reduced-motion: reduce) {
+  .term-caret,
+  .term-line.cmd.typing,
+  .term-line.cmd.later.in {
+    animation: none;
+  }
 }
 
 /* ---- Shared narration subtitle (toggled per chapter) ----------------- */
@@ -781,13 +1394,10 @@
 }
 
 /* ---- Chapter progress bar (under the narration) ----------------------- */
-/* Written when each chapter timeline ran for 3600s (a setup event kept the view
-   up until you leave), so the engine's ProgressbarController would barely move.
-   With `on enter` / `on leave` the duration is the chapter's real length, so the
-   controller could take this over. For now the fill animates over the chapter's
-   real length while that chapter is active; re-entering a chapter restarts it,
-   just like its timeline. The lengths mirror each chapter's last beat end in
-   tour.eligian, so update them together. */
+/* enterChapter attaches the engine's ProgressbarController to #progress-fill:
+   it sets the fill's width from the timeline's position and duration, so the
+   bar follows pause, seek and replay, and a click on #progress seeks. No
+   chapter length is kept here. */
 #progress {
   position: absolute;
   left: 1.5rem;
@@ -805,38 +1415,18 @@
   height: 100%;
   background: var(--accent);
   opacity: 0.6;
+  transition: width 0.25s linear;
 }
 #stage:has(.chapter.is-active) #progress {
   opacity: 1;
 }
-#stage:has(#ch1.is-active) #progress-fill {
-  animation: progress-fill 42s linear forwards;
-}
-#stage:has(#ch2.is-active) #progress-fill {
-  animation: progress-fill 46s linear forwards;
-}
-#stage:has(#ch3.is-active) #progress-fill {
-  animation: progress-fill 48s linear forwards;
-}
-#stage:has(#ch4.is-active) #progress-fill {
-  animation: progress-fill 47s linear forwards;
-}
-#stage:has(#ch5.is-active) #progress-fill {
-  animation: progress-fill 48s linear forwards;
-}
-#stage:has(#ch6.is-active) #progress-fill {
-  animation: progress-fill 48s linear forwards;
-}
-@keyframes progress-fill {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
 
 /* ---- State classes toggled by the presentation library --------------- */
+/* One class each (specificity 0,1,0), and resetChapter removes every one of
+   them inside a chapter's view on leave and on replay. A component hidden by a
+   two-class or id rule (#c3-badge, .term-line.out) is not revealed by these: it
+   declares its own reveal rule (#c3-badge.active, .term-line.out.in), or stays
+   single-class and is declared before this section. */
 .in {
   opacity: 1;
   transform: translateY(0);
@@ -854,6 +1444,16 @@
 }
 .active {
   opacity: 1;
+}
+/* lit for the duration of a beat (a target block, loop chips, wave chips) */
+.lit {
+  box-shadow: 0 0 0 3px var(--accent);
+  opacity: 1;
+}
+/* the dimmed state of a component (Chapter 3's badge) */
+.muted {
+  opacity: 0.5;
+  filter: grayscale(1);
 }
 
 @keyframes clip-sweep {
