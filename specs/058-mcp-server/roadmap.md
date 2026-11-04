@@ -1,6 +1,6 @@
 # Roadmap: Eligian MCP server (spec 058)
 
-Audience: engineers and agents implementing it with speckit (`/speckit.specify` → `plan` → `tasks`) in `f:\projects\eligius\eligian`.
+Audience: engineers and agents implementing it in `f:\projects\eligius\eligian` through the phase workflow `.claude\workflows\mcp-server-phase.js` (stages `specify` → `plan` → `build` per phase; see AGENTS.md "Feature phases").
 
 Facts below were checked against the repo on 2026-11-04 (CLI `eligian` 1.0.1, `effect` 4.0.7, `eligius` 4.2.0, 79 operations in the registry, 46 timeline events) and against `code.claude.com/docs/en/mcp` (tool search, `_meta` keys, output limits). Claims that could not be verified are marked **[UNVERIFIED]** and carry the test that settles them.
 
@@ -397,7 +397,7 @@ Day = one engineer-day, including the AGENTS.md checklist (`pnpm build`, `pnpm c
 ### Phase 0 — Foundation (5 days)
 
 Touches: `LANGUAGE_SPEC.md`, `packages\language\src\validators\**`, `packages\language\src\eligian-document-validator.ts`, `packages\language\src\compiler\pipeline.ts`, `packages\language\src\compiler\index.ts`, `packages\cli\esbuild.mjs`, `packages\cli\src\smoke\dom-environment.ts`, `packages\cli\src\dev\host-module.ts`, `packages\cli\src\bundler\*`, `packages\cli\src\__tests__\package-bin.spec.ts`, `examples\eligian-tour\ELIGIUS_EXECUTION_MODEL.md`, `examples\README.md` (demo labelled), `packages\cli\package.json` + `packages\cli\vitest.config.ts` (coverage gate), `packages\cli\KNOWN_ISSUES.md`, root and `packages\cli` `AGENTS.md`.
-- `specs\058-mcp-server\` via `/speckit.specify` from this roadmap; `plan.md`, `tasks.md`.
+- `specs\058-mcp-server\phase-0-foundation\` (`spec.md`, `plan.md`, `tasks.md`, `compliance.md`) written by the phase workflow from this roadmap.
 - **A code on every diagnostic**: `validators\codes.ts` registry of constants; the 9 `accept()` sites without `code` (timeline-validator 7, action-validator 2) get one; `eligian-document-validator.ts` wraps Typir diagnostics (`type-mismatch`, …) and Langium linker errors (`unresolved-reference`) with codes; parser errors `syntax-error`; `compileDiagnostic` gets codes. Test: `checkFiles` over the fixture corpus → 100% coded.
 - **Runtime re-verification**: `mcp-runtime-claims.spec.ts` with one probe per claim in `ELIGIUS_EXECUTION_MODEL.md` (start/end independence, called-action copy, seek reconcile, forward skip, controller survival across switch, `loopLength`, returning `undefined`); fix the document where a probe disagrees.
 - `getCompilerVersion`/`VERSION` injected at build time; test against the package files.

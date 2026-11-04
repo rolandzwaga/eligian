@@ -59,6 +59,13 @@ Research/reference (read-only, do NOT import):
 - Do NOT offer to open a PR or push — these are user-only actions.
 - Ignore CRLF/EOL diff noise.
 
+### Feature phases (workflows, not speckit)
+Speckit is retired: the `/speckit.*` commands are gone, `.specify/memory/constitution.md` and `.specify/templates/` stay as references. A multi-phase feature gets a roadmap in `specs/<NNN>-<name>/roadmap.md` and a phase workflow in `.claude/workflows/<name>-phase.js` (first one: `mcp-server-phase.js`, cloned from `f:/projects/iterum/.claude/workflows/profundum-phase.js`). One phase runs in three stages, each a Workflow call with `args`:
+1. `{phase: N, stage: "specify"}` → `spec.md` (FR/SC), three adversarial skeptics, a clarify scan; the main loop asks the user the returned questions with AskUserQuestion (multiple choice).
+2. `{phase: N, stage: "plan", clarifications: {Q1: "...", ...}}` → answers encoded into FR/SC rows (gated), `plan.md`, skeptics, `tasks.md` with ordered groups and `[P]` parallel markers.
+3. `{phase: N, stage: "build"}` → one implementer per task, a gate after every group (`pnpm typecheck`, `pnpm run ci`, scoped vitest, `effect:check` for Effect code, examples gates; full set + coverage on the last group) with a bounded fixer loop, adversarial FR/SC compliance with verbatim output, `compliance.md`; the roadmap phase is marked complete only on a fully green table. A task or fixer may stop with `blocked`; the ruling goes into the spec FR/SC row first, then `args.unblock` / `retry_tasks` / `gate_epochs` on resume.
+Artifacts: `specs/<NNN>-<name>/phase-N-<slug>/`. The workflow never commits. Rules for editing a workflow while a run can still be resumed are at the top of the script.
+
 ## Conventions
 
 - **Functional:** external immutability, internal mutation allowed for performance.

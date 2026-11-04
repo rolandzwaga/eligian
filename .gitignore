@@ -51,3 +51,6 @@ packages/extension/LICENSE
 packages/extension/CHANGELOG.md
 packages/cli/LICENSE
 packages/cli/*.tgz
+
+# Claude Code workflows are source (the *.js rule above is for build output)
+!/.claude/workflows/*.js
