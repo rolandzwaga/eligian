@@ -278,3 +278,35 @@ they feed.** (Documented in `examples/eligian-tour/presentation.eligian` and
 warn when an action forwards a parameter to an operation whose required input
 property won't be satisfied — turning today's silent no-op into a compile-time
 hint. Optional.
+
+---
+
+## 🟠 V2 — OPEN — `addController` with an object argument miscompiles silently
+
+Found 2026-11-04 by the tour audit (the tour's own docs used this form). Follow-up
+from `examples/eligian-tour/storyboards/EXPANSION_PLAN.md` §10.1.7.
+
+`addController` takes positional parameters (`LANGUAGE_SPEC.md` "Controllers"):
+`addController("DOMEventListenerController", "click", ["ping"])`,
+`addController("LabelController", "hub.title")`. Passing the controller's inputs
+as one object literal instead passes `check` with 0 errors / 0 warnings and
+compiles to the object nested under the first positional property name:
+
+```eligian
+addController("DOMEventListenerController", { eventName: "click", actions: ["ping"] })
+```
+```json
+{ "systemName": "addControllerToElement",
+  "operationData": { "eventName": { "eventName": "click", "actions": ["ping"] } } }
+```
+
+At runtime the controller gets `eventName = { … }` and no `actions`: nothing
+happens, and neither `check` (lint included) nor `smoke` reports it.
+
+**Fix to make:** a validator (or the typir type of the controller's metadata
+parameters) that rejects an object literal where a controller's positional
+parameter expects a string / array, with a message pointing at the positional form;
+`eligian smoke` could additionally flag an `addControllerToElement` whose required
+controller inputs are missing. Reproduce with the snippet above in a scratch
+program (`layout` with `#stage` and `#btn`) and `node packages/cli/bin/cli.js
+<file> -o out.json`.
