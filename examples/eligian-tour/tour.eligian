@@ -33,6 +33,14 @@ locales "./locales.json"
 
 import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView, enterChapter, replayChapter, leaveChapter } from "./presentation.eligian"
 
+// Chapter 05's own subjects: a named asset import (placed by cfPlaceHint in
+// beat 4) and the host module (declared here; Engine Reach calls stampTime).
+import hint from "./hint.html"
+extensions "./host.js" {
+  operation stampTime(selector: string)
+  function shout
+}
+
 // Chapter-3 helpers: the executed code mirrors the taught snippets.
 // House rule: const lives in actions (or at program level), not in timeline
 // blocks, so the loop and the conditional live here.
@@ -66,6 +74,13 @@ action ch3LoopControl() [
     if (@@n > 9) { break }                       // breakForEach
     with "#c3-n-" + @@n { addClass("lit") }      // runtime concat: "#c3-n-3", "#c3-n-7"
   }
+]
+
+// Chapter-05 helper: writes the named HTML import into its panel; @hint is
+// the content of hint.html, inlined at compile time.
+action cfPlaceHint() [
+  selectElement("#cf-fx-hint")
+  setElementContent(@hint)
 ]
 
 // Chapter-5 helpers — a REAL eventbus round-trip the chapter wires live. Clicking
@@ -107,11 +122,13 @@ action hubUnwire() [
     removeControllerFromElement("KeyboardController")
     removeControllerFromElement("KeyboardController")
     removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
   }
   with "#card-ch1" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch2" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch3" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch4" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-chf" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch5" { removeControllerFromElement("DOMEventListenerController") }
   with "#card-ch6" { removeControllerFromElement("DOMEventListenerController") }
 ]
@@ -131,12 +148,14 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-ch2" navigate "Actions"
     on click "#card-ch3" navigate "Logic"
     on click "#card-ch4" navigate "Timeline Power Tools"
+    on click "#card-chf" navigate "Files & Imports"
     on click "#card-ch5" navigate "Engine Reach"
     on click "#card-ch6" navigate "Tooling Magic"
     on key "1" navigate "Timeline & Time"
     on key "2" navigate "Actions"
     on key "3" navigate "Logic"
     on key "4" navigate "Timeline Power Tools"
+    on key "5" navigate "Files & Imports"
     on key "6" navigate "Engine Reach"
     on key "7" navigate "Tooling Magic"
   ]
@@ -556,6 +575,105 @@ timeline "Timeline Power Tools" in "#stage" using raf {
     selectElement(@@item)
     removeClass("lit")
   ]
+}
+
+// ===========================================================================
+// Chapter 05 — Files & Imports. Eight beats: program vs library, the languages
+// block, default imports, named asset imports, library imports and private
+// actions, the extensions import, comments and JSDoc, keywords. Its real code
+// is this file's own head: the languages block, the default imports, the
+// library import, `import hint` (placed by cfPlaceHint in beat 4) and the
+// extensions declaration.
+// ===========================================================================
+timeline "Files & Imports" in "#stage" using raf {
+
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
+  on enter [
+    enterChapter("#chf")
+    on click "#cf-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#chf")
+  ]
+  on leave [
+    leaveChapter("#chf", "#cf-to-hub")
+  ]
+
+  sequence each [ clearSpots() ] {
+    // Beat 1 — two kinds of file: a program and a library (0–7 s)
+    for 7s as b1 [
+      narrate("An .eligian file is a program — timelines, actions, imports — or a library that starts with library and holds only actions.")
+      revealBlock("#cf-code-files")
+      spotlight("#cf-tok-library")
+      callout("#cf-cl-files", "a library may import other libraries; no timelines, consts or assets; it cannot be compiled on its own")
+      demo("#cf-fx-files")
+    ]
+
+    // Beat 2 — languages: this file's own block (7–14 s)
+    for 7s as b2 [
+      narrate("languages comes first: the codes, their labels, and a star on the default. One entry is its own default.")
+      revealBlock("#cf-code-languages")
+      spotlight("#cf-tok-star")
+      callout("#cf-cl-languages", "xx-XX codes, unique; compiles to language + availableLanguages")
+      demo("#cf-fx-languages")
+    ]
+
+    // Beat 3 — default imports: this file's layout, styles and locales (14–22 s)
+    for 8s as b3 [
+      narrate("Four default imports, one of each: layout, styles, provider, locales. Paths are relative to the file.")
+      revealBlock("#cf-code-defaults")
+      spotlight("#cf-tok-styles")
+      callout("#cf-cl-defaults", "one of each per file; ./ or ../ only — no absolute paths or URLs")
+      demo("#cf-fx-defaults")
+    ]
+
+    // Beat 4 — named imports: REAL, cfPlaceHint places @hint (22–30 s)
+    for 8s as b4 [
+      narrate("A named import gives an asset a name. An HTML file becomes a string you can place with @name.")
+      revealBlock("#cf-code-named")
+      spotlight("#cf-tok-import")
+      callout("#cf-cl-named", "names are unique per file; contextual keywords allowed as names")
+      cfPlaceHint()
+      demo("#cf-fx-hint")
+    ]
+
+    // Beat 5 — library imports, aliases and private actions (30–38 s)
+    for 8s as b5 [
+      narrate("import { … } from a library: public actions by name, renamed with as. private keeps a helper at home.")
+      revealBlock("#cf-code-lib")
+      spotlight("#cf-tok-private")
+      callout("#cf-cl-lib", "errors: private import, missing action, name clash with an operation or a local action, circular libraries")
+      demo("#cf-fx-lib")
+    ]
+
+    // Beat 6 — extensions: the host module this file declares (38–46 s)
+    for 8s as b6 [
+      narrate("extensions declares your own JavaScript: operations, controllers and functions the module exports. The compiler trusts the declaration; the bundle carries the module.")
+      revealBlock("#cf-code-ext")
+      spotlight("#cf-tok-ext")
+      callout("#cf-cl-ext", "one per program; .js .mjs .ts .mts .jsx .tsx; no Eligius names; params name, name?, name: type")
+      demo("#cf-fx-ext")
+    ]
+
+    // Beat 7 — comments and JSDoc (46–53 s)
+    for 7s as b7 [
+      narrate("Comments: // and /* */. A /** doc */ with @param above an action becomes hover documentation.")
+      revealBlock("#cf-code-doc")
+      spotlight("#cf-tok-jsdoc")
+      callout("#cf-cl-doc", "typing /** + Enter above an action fills the template (Chapter 07)")
+      demo("#cf-fx-doc")
+    ]
+
+    // Beat 8 — keywords: reserved vs contextual (53–60 s)
+    for 7s as b8 [
+      narrate("Sixteen reserved words can't be names. Every other keyword is contextual — fine as a parameter or const; action names are stricter. Hub.")
+      revealBlock("#cf-code-keywords")
+      spotlight("#cf-tok-reserved")
+      callout("#cf-cl-keywords", "reserved: action break const continue else endable false for if import null on sequence stagger timeline true · action names accept fewer: plain names and the verbs (play, toggle, run, key, …), so action loop() fails (Chapter 07)")
+      demo("#cf-fx-done")
+    ]
+  }
 }
 
 // ===========================================================================

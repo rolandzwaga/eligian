@@ -34,6 +34,7 @@
         <li id="card-ch2" class="card"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
         <li id="card-ch3" class="card"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
         <li id="card-ch4" class="card"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
+        <li id="card-chf" class="card"><span class="card-num">05</span><span class="card-name">Files &amp; Imports</span></li>
         <li id="card-ch5" class="card"><span class="card-num">06</span><span class="card-name">Engine Reach</span></li>
         <li id="card-ch6" class="card"><span class="card-num">07</span><span class="card-name">Tooling Magic</span></li>
       </ul>
@@ -396,6 +397,110 @@
       <div id="c4-cl-stagger" class="callout"></div>
       <div id="c4-cl-items" class="callout"></div>
       <div id="c4-cl-inline" class="callout"></div>
+    </div>
+  </section>
+
+  <!-- ====================== CHAPTER 5 · Files & Imports ============== -->
+  <section id="chf" class="view chapter">
+
+    <header class="chrome">
+      <button id="cf-to-hub" class="to-hub">&larr; Hub</button>
+      <nav class="progress-rail" aria-label="chapters">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </nav>
+      <span class="chapter-label">05 · Files &amp; Imports</span>
+    </header>
+
+    <section class="code-pane">
+      <pre id="cf-code-files" class="code"><code><span class="tok com">// tour.eligian — a program</span>
+<span class="tok kw">languages</span> { <span class="tok op">*</span> <span class="tok str">"en-US"</span> <span class="tok str">"English"</span> }
+<span class="tok kw">layout</span> <span class="tok str">"./layout.html"</span>
+<span class="tok kw">timeline</span> <span class="tok str">"Hub"</span> <span class="tok kw">in</span> <span class="tok str">"#stage"</span> <span class="tok kw">using</span> <span class="tok kw">raf</span> { … }
+
+<span class="tok com">// presentation.eligian — a library</span>
+<span class="tok kw" id="cf-tok-library">library</span> <span class="tok fn">presentation</span>
+<span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok">template</span><span class="tok op">:</span> <span class="tok kw">string</span>) [ … ]</code></pre>
+
+      <pre id="cf-code-languages" class="code"><code><span class="tok kw">languages</span> {
+  <span class="tok op" id="cf-tok-star">*</span> <span class="tok str">"en-US"</span> <span class="tok str">"English"</span>
+    <span class="tok str">"nl-NL"</span> <span class="tok str">"Nederlands"</span>
+}</code></pre>
+
+      <pre id="cf-code-defaults" class="code"><code><span class="tok kw">layout</span> <span class="tok str">"./layout.html"</span>     <span class="tok com">// → layoutTemplate</span>
+<span class="tok kw" id="cf-tok-styles">styles</span> <span class="tok str">"./tour.css"</span>        <span class="tok com">// → cssFiles; classes and selectors are checked against it</span>
+<span class="tok kw">provider</span> <span class="tok str">"./clip.mp4"</span>      <span class="tok com">// → checked to exist; a video / audio timeline still names its media with from</span>
+<span class="tok kw">locales</span> <span class="tok str">"./locales.json"</span>   <span class="tok com">// → config.locales (needs a languages block)</span></code></pre>
+
+      <pre id="cf-code-named" class="code"><code><span class="tok kw" id="cf-tok-import">import</span> <span class="tok">hint</span> <span class="tok kw">from</span> <span class="tok str">"./hint.html"</span>          <span class="tok com">// type from the extension</span>
+<span class="tok kw">import</span> <span class="tok">theme</span> <span class="tok kw">from</span> <span class="tok str">"./x.txt"</span> <span class="tok kw">as</span> <span class="tok kw">css</span>      <span class="tok com">// or forced with as html | css | media</span>
+
+<span class="tok fn">selectElement</span>(<span class="tok str">"#cf-fx-hint"</span>)
+<span class="tok fn">setElementContent</span>(<span class="tok">@hint</span>)</code></pre>
+
+      <pre id="cf-code-lib" class="code"><code><span class="tok kw">import</span> { <span class="tok fn">revealBlock</span>, <span class="tok fn">narrate</span> <span class="tok kw">as</span> <span class="tok fn">say</span> } <span class="tok kw">from</span> <span class="tok str">"./presentation.eligian"</span>
+
+<span class="tok kw">library</span> <span class="tok fn">presentation</span>
+<span class="tok kw" id="cf-tok-private">private</span> <span class="tok kw">action</span> <span class="tok fn">setClass</span>(<span class="tok">selector</span>, <span class="tok">className</span>, <span class="tok">visible</span>) [ … ]   <span class="tok com">// callable here only</span>
+<span class="tok kw">private</span> <span class="tok kw">endable</span> <span class="tok kw">action</span> <span class="tok fn">spotOn</span>(<span class="tok">selector</span>) [ … ] [ … ]   <span class="tok com">// endable too</span>
+<span class="tok kw">action</span> <span class="tok fn">reveal</span>(<span class="tok">selector</span>) [ <span class="tok fn">setClass</span>(<span class="tok">selector</span>, <span class="tok str">"in"</span>, <span class="tok kw">true</span>) ]</code></pre>
+
+      <pre id="cf-code-ext" class="code"><code><span class="tok kw" id="cf-tok-ext">extensions</span> <span class="tok str">"./host.js"</span> {
+  <span class="tok kw">operation</span> <span class="tok fn">stampTime</span>(<span class="tok">selector</span><span class="tok op">:</span> <span class="tok kw">string</span>)   <span class="tok com">// called like a built-in</span>
+  <span class="tok kw">controller</span> <span class="tok fn">Confetti</span>(<span class="tok">count</span><span class="tok op">:</span> <span class="tok kw">number</span>)      <span class="tok com">// addController("Confetti", 25) (display only)</span>
+  <span class="tok kw">function</span> <span class="tok fn">shout</span>                          <span class="tok com">// customFunction("shout")</span>
+}</code></pre>
+
+      <pre id="cf-code-doc" class="code"><code><span class="tok com">// a line comment</span>
+<span class="tok com">/* a block comment */</span>
+<span class="tok com" id="cf-tok-jsdoc">/**
+ * Swap the narration line.
+ * @param {string} template Subtitle text for this beat
+ */</span>
+<span class="tok kw">action</span> <span class="tok fn">narrate</span>(<span class="tok">template</span><span class="tok op">:</span> <span class="tok kw">string</span>) [ … ]</code></pre>
+
+      <pre id="cf-code-keywords" class="code"><code><span class="tok kw">action</span> <span class="tok fn">f</span>(<span class="tok">event</span>, <span class="tok">duration</span>) [ … ]   <span class="tok com">// contextual keywords are fine as names</span>
+<span class="tok kw">const</span> <span class="tok">s</span> <span class="tok op">=</span> <span class="tok num">5</span>                        <span class="tok com">// even a time unit</span>
+<span class="tok kw">action</span> <span class="tok fn">toggle</span>() [ … ]              <span class="tok com">// verbs too</span>
+<span class="tok kw">const</span> <span class="tok kw squiggle" id="cf-tok-reserved">for</span> <span class="tok op">=</span> <span class="tok num">1</span>                      <span class="tok com">// ✗ 'for' is a keyword, so it cannot be used as a name here. Choose another name.</span></code></pre>
+    </section>
+
+    <section class="effect-pane">
+      <div id="cf-fx-files" class="fx">
+        <span class="fx-frame">tour.eligian · program</span>
+        <span class="fx-chip">import { … } from</span>
+        <span class="fx-frame">presentation.eligian · library</span>
+      </div>
+      <div id="cf-fx-languages" class="fx">
+        <span class="fx-chip">en-US ★</span><span class="fx-chip">nl-NL</span>
+      </div>
+      <div id="cf-fx-defaults" class="fx">
+        <span class="fx-chip">layout</span><span class="fx-chip">styles</span><span class="fx-chip">provider</span><span class="fx-chip">locales</span>
+      </div>
+      <!-- Beat 4: empty until cfPlaceHint() writes hint.html (the named import @hint) into it -->
+      <div id="cf-fx-hint" class="fx"></div>
+      <div id="cf-fx-lib" class="fx">
+        <span class="fx-chip">public</span><span class="fx-chip">private</span>
+      </div>
+      <div id="cf-fx-ext" class="fx">
+        <span class="fx-frame">host.js: export const operations = { stampTime }</span>
+      </div>
+      <!-- Beat 7: the hover a call to narrate shows (the markdown, verbatim from the hover provider) -->
+      <div id="cf-fx-doc" class="fx">
+        <div class="hover-card">### narrate<br/><br/>Swap the narration line.<br/><br/>**Parameters:**<br/>- `template` (`string`) - Subtitle text for this beat</div>
+      </div>
+      <div id="cf-fx-done" class="fx"><span class="fx-done">Chapter 5 ✓</span></div>
+    </section>
+
+    <div class="callout-layer">
+      <div id="cf-cl-files" class="callout"></div>
+      <div id="cf-cl-languages" class="callout"></div>
+      <div id="cf-cl-defaults" class="callout"></div>
+      <div id="cf-cl-named" class="callout"></div>
+      <div id="cf-cl-lib" class="callout"></div>
+      <div id="cf-cl-ext" class="callout"></div>
+      <div id="cf-cl-doc" class="callout"></div>
+      <div id="cf-cl-keywords" class="callout"></div>
     </div>
   </section>
 
