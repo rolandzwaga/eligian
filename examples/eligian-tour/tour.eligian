@@ -160,14 +160,14 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-ch4" navigate "Timeline Power Tools"
     on click "#card-chf" navigate "Files & Imports"
     on click "#card-ch5" navigate "Engine Reach"
-    on click "#card-ch6" navigate "Tooling Magic"
+    on click "#card-ch6" navigate "The Editor"
     on key "1" navigate "Timeline & Time"
     on key "2" navigate "Actions"
     on key "3" navigate "Logic"
     on key "4" navigate "Timeline Power Tools"
     on key "5" navigate "Files & Imports"
     on key "6" navigate "Engine Reach"
-    on key "7" navigate "Tooling Magic"
+    on key "7" navigate "The Editor"
   ]
   on leave [
     hideView("#hub")
@@ -808,16 +808,19 @@ timeline "Engine Reach" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 6 — Tooling Magic. The dev-time half of Eligian: compile + live
-// preview, CSS validation, autocomplete, JSDoc hover, semantic validation,
-// CSS hot-reload, locale editor. UNLIKE Chapters 1–5 this teaches VS Code/LSP
-// tooling, which a running timeline can't exercise — so the effect pane REENACTS
-// the editor (mock panels with strings copied verbatim from the real providers).
-// No new actions, no runtime self-demo: the genuine dogfood is historical (this
-// whole tour was authored, validated, autocompleted and compiled by these tools).
-// See storyboards/chapter-06-tooling-magic.md §3.
+// Chapter 07 — The Editor (#ch6). The VS Code extension, one beat per feature:
+// install, diagnostics, CSS and selector checks, dataflow fixes, completion,
+// signature help and inlay hints, hovers and JSDoc, navigation, the Outline,
+// snippets / format / block labels, the preview, runtime errors and Eligius
+// lint, the Timeline view, locales / New Presentation / compile, settings.
+// The effect pane is a REENACTMENT: a CSS-built mock of VS Code (there is no
+// language server at runtime) whose strings are copied from the providers or
+// captured with `eligian check` and the real LSP providers; the sources are
+// listed per beat in storyboards/chapter-07-the-editor.md. Sub-steps inside a
+// beat are timed `at eK.start + Ns` events after the sequence. The one live
+// tie-in: opened in the extension's preview, beat 11 shows what you look at.
 // ===========================================================================
-timeline "Tooling Magic" in "#stage" using raf {
+timeline "The Editor" in "#stage" using raf {
 
   // setup: show this chapter + narration + progress on enter; wire back, Esc,
   // space and r. On leave: hide, reset the view, unwire.
@@ -833,56 +836,172 @@ timeline "Tooling Magic" in "#stage" using raf {
   ]
 
   sequence each [ clearSpots() ] {
-    // Beat 1 — the editor is half the language
-    for 7s [
-      narrate("Eligian isn't just shorter Eligius JSON — it's a typed, tooled way to write it. Everything you've watched was authored with these tools.")
+    // Beat 1 — install: the editor is the other half (0–8 s)
+    for 8s as e1 [
+      narrate("The other half of Eligian is the editor. Install the extension and every .eligian file gets highlighting, checking, completion, hover, a preview — all of which wrote this tour. What follows is a mock-up with the real texts.")
       revealBlock("#c6-code-why")
-      callout("#c6-cl-why", "concise on the left, type-safe everywhere, live in the preview")
+      spotlight("#c6-tok-why")
+      callout("#c6-cl-e1", "one extension: highlighting, diagnostics, completion, hovers, preview, Timeline view, Locale Editor")
       demo("#c6-fx-editor")
     ]
 
-    // Beat 2 — compile + live preview
-    for 8s [
-      narrate("Preview Timeline compiles your .eligian on the fly, runs it in an embedded engine, and reloads on every save. This tour is what you'd see there.")
-      revealBlock("#c6-code-preview")
-      spotlight("#c6-tok-preview")
-      callout("#c6-cl-preview", "compiles + runs in a webview engine; a FileWatcher reloads on save")
-      demo("#c6-fx-preview")
+    // Beat 2 — validation + Problems (8–15 s)
+    for 7s as e2 [
+      narrate("Syntax errors speak plainly, and every semantic rule — imports, names, arguments, events, timelines — lands in Problems while you type.")
+      revealBlock("#c6-code-syntax")
+      spotlight("#c6-tok-syntax")
+      callout("#c6-cl-e2", "one line per syntax error: a keyword used as a name is explained, expected tokens read as words")
+      demo("#c6-fx-problems")
     ]
 
-    // Beat 3 ⭐ — CSS validation + quick-fix (the tour's own safety net)
-    for 9s [
-      narrate("Every class and selector is checked against your imported CSS. Typo one and you get a squiggle, a suggestion, and a one-click fix.")
+    // Beat 3 ⭐ — CSS & selectors (15–22 s)
+    for 7s as e3 [
+      narrate("Every class and selector is checked against your CSS and your layout — even when it travels through an action parameter. Typo one: a squiggle, a suggestion, a one-click fix.")
       revealBlock("#c6-code-css")
       spotlight("#c6-tok-css")
-      callout("#c6-cl-css", "CSS class 'buton' is not defined. Did you mean: button?")
-      demo("#c6-fx-squiggle")
+      callout("#c6-cl-e3", "CSS ∪ layout for selectors; CSS only for class names · eligian.validation.selectorNotInLayout")
+      demo("#c6-fx-css")
     ]
 
-    // Beat 4 — autocomplete everywhere
-    for 8s [
-      narrate("Type and the editor knows what fits: operations with their parameters, the nine controllers, label IDs, CSS classes, even an on event skeleton.")
+    // Beat 4 — dataflow + quick fix (22–29 s)
+    for 7s as e4 [
+      narrate("The dataflow check knows what each block carries. A missing selected element gets a fix: Insert selectElement, or Add target.")
+      revealBlock("#c6-code-dataflow")
+      spotlight("#c6-tok-dataflow")
+      callout("#c6-cl-e4", "an action's hover lists what it needs from the caller")
+      demo("#c6-fx-dataflow")
+    ]
+
+    // Beat 5 — completion (29–36 s)
+    for 7s as e5 [
+      narrate("Type and the editor knows what fits: operations, your actions, controllers, CSS classes and ids, DOM events, keys, timeline names, label keys, even whole event skeletons.")
       revealBlock("#c6-code-complete")
       spotlight("#c6-tok-complete")
-      callout("#c6-cl-complete", "operations show their signature and docs; controllers list their params")
+      callout("#c6-cl-e5", "the list depends on the place: a call, a navigate target, a key, a controller name")
       demo("#c6-fx-complete")
     ]
 
-    // Beat 5 — JSDoc hover + semantic validation
-    for 8s [
-      narrate("Document an action with @param and the editor hovers those docs at every call — and flags wrong argument counts, unknown ops, bad nav or event names.")
+    // Beat 6 — signature help + inlay hints (36–43 s)
+    for 7s as e6 [
+      narrate("Inside a call the signature follows your cursor; resolved times and parameter names sit in the code as inlay hints.")
+      revealBlock("#c6-code-hints")
+      spotlight("#c6-tok-hints")
+      callout("#c6-cl-e6", "settings: eligian.inlayHints.*")
+      demo("#c6-fx-hints")
+    ]
+
+    // Beat 7 — hover + JSDoc (43–50 s)
+    for 7s as e7 [
+      narrate("Hover anything: an operation's docs from Eligius, your action's JSDoc, the CSS rule behind a class. Type /** above an action and the template writes itself.")
       revealBlock("#c6-code-jsdoc")
       spotlight("#c6-tok-jsdoc")
-      callout("#c6-cl-jsdoc", "@param docs on hover; semantic checks catch the rest")
+      callout("#c6-cl-e7", "call: the JSDoc · definition: what call sites are checked for · timeline: its header")
       demo("#c6-fx-hover")
     ]
 
-    // Beat 6 — hot-reload, locales, the whole picture + end card
-    for 8s [
-      narrate("Tweak your CSS and it hot-reloads into the running preview. Edit translations in a dedicated editor. Concise, type-safe, live — that's Eligian. Click ← Hub.")
+    // Beat 8 — navigation (50–57 s)
+    for 7s as e8 [
+      narrate("F12 jumps from navigate to the timeline, from a selector to the CSS rule or the layout element. Shift+F12 finds references across .eligian, CSS and HTML; F2 renames a timeline everywhere.")
+      revealBlock("#c6-code-nav")
+      spotlight("#c6-tok-nav")
+      callout("#c6-cl-e8", "eligian.codeLens.cssReferences · Find Eligian References in CSS and HTML files")
+      demo("#c6-fx-nav")
+    ]
+
+    // Beat 9 — outline (57–64 s)
+    for 7s as e9 [
+      narrate("The Outline lists timelines with their lifecycle blocks and events at their resolved times — Ctrl+Shift+O jumps to any beat.")
+      revealBlock("#c6-code-outline")
+      spotlight("#c6-tok-outline")
+      callout("#c6-cl-e9", "also the breadcrumbs and Go to Symbol")
+      demo("#c6-fx-outline")
+    ]
+
+    // Beat 10 — snippets, format, block labels (64–71 s)
+    for 7s as e10 [
+      narrate("Snippets scaffold an action, a timeline, a chapter. Format Document tidies whitespace only. And every start and end block is labelled in the margin; a range rewrites itself as start for duration in one click.")
+      revealBlock("#c6-code-format")
+      spotlight("#c6-tok-format")
+      callout("#c6-cl-e10", "the same rules as eligian fmt")
+      demo("#c6-fx-format")
+    ]
+
+    // Beat 11 — preview (71–78 s); hot reload is told, not shown
+    for 7s as e11 [
+      narrate("Ctrl+K V opens the preview: the real engine in a webview, recompiled on every save and keeping its place; CSS, layout, locale and host-module edits reload live. Scrub, pick a timeline or a language, or start from a line.")
+      revealBlock("#c6-code-preview")
+      spotlight("#c6-tok-preview")
+      callout("#c6-cl-e11", "eligian.preview.highlightActiveEvents · eligian.codeLens.preview")
+      demo("#c6-fx-preview")
+    ]
+
+    // Beat 12 — runtime errors + lint (78–85 s)
+    for 7s as e12 [
+      narrate("An engine error during preview becomes a diagnostic on the operation that failed, with Go to Source; a compile error shows in the preview, with Retry Compilation. And Eligius' own lint runs 200 ms after you stop typing.")
+      revealBlock("#c6-code-runtime")
+      spotlight("#c6-tok-runtime")
+      callout("#c6-cl-e12", "source 'eligius-runtime' / 'Eligius lint'; setting eligian.validation.eligiusLint")
+      demo("#c6-fx-runtime")
+    ]
+
+    // Beat 13 — timeline view (85–92 s)
+    for 7s as e13 [
+      narrate("The Eligian panel draws each timeline as a Gantt chart: a bar per event at its resolved time, the preview's playhead moving through. Click a bar to jump to its source; double-click to preview from there.")
+      revealBlock("#c6-code-gantt")
+      spotlight("#c6-tok-gantt")
+      callout("#c6-cl-e13", "bars named by their labels; stagger rows by their item")
+      demo("#c6-fx-gantt")
+    ]
+
+    // Beat 14 — locales, new presentation, compile (92–99 s)
+    for 7s as e14 [
+      narrate("Edit translations in the Locale Editor — Ctrl+Click the locales path, or Open With. New Presentation writes a starter project; Compile Current File writes the JSON beside your file.")
+      revealBlock("#c6-code-locales")
+      spotlight("#c6-tok-locales")
+      // &lt; &gt;: callout writes HTML, so a literal <key> would be a tag
+      callout("#c6-cl-e14", "label quick fixes: Create labels file · Create label entry 'hub.title' · Use '&lt;key&gt;'")
+      demo("#c6-fx-locale")
+    ]
+
+    // Beat 15 — settings + recap (99–106 s)
+    for 7s as e15 [
+      narrate("Ten settings tune it: lint, selector checks, playhead highlights, CodeLenses, inlay hints. Concise, checked, live — that's Eligian in the editor. Hub.")
       revealBlock("#c6-code-recap")
       spotlight("#c6-tok-recap")
+      callout("#c6-cl-e15", "Settings › Extensions › Eligian")
       demo("#c6-fx-done")
     ]
   }
+
+  // Sub-steps: the popups and panels inside a beat's frame appear one after
+  // the other (revealCard adds .in; resetChapter removes it on leave and replay).
+  at e2.start + 2s for 5s [ revealCard("#c6-pop-problems") ]
+  at e3.start + 2s for 5s [ revealCard("#c6-pop-css-diag") ]
+  at e3.start + 4s for 3s [ revealCard("#c6-pop-css-fix") ]
+  at e4.start + 2s for 5s [ revealCard("#c6-pop-df-hover") ]
+  at e4.start + 4s for 3s [ revealCard("#c6-pop-df-fix") ]
+  at e5.start + 2s for 5s [ revealCard("#c6-pop-complete-nav") ]
+  at e5.start + 4s for 3s [ revealCard("#c6-pop-complete-more") ]
+  at e6.start + 2s for 5s [ revealCard("#c6-pop-sig") ]
+  at e6.start + 4s for 3s [ revealCard("#c6-fx-hints .ide-inlay") ]
+  at e7.start + 1.5s for 5.5s [ revealCard("#c6-pop-hover-def") ]
+  at e7.start + 3s for 4s [ revealCard("#c6-pop-hover-tl") ]
+  at e7.start + 4.5s for 2.5s [ revealCard("#c6-pop-jsdoc") ]
+  at e8.start + 2s for 5s [ revealCard("#c6-pop-nav-lens") ]
+  at e8.start + 4s for 3s [ revealCard("#c6-pop-nav-peek") ]
+  at e8.start + 5.5s for 1.5s [ revealCard("#c6-pop-nav-fix") ]
+  at e9.start + 2s for 5s [ revealCard("#c6-fx-outline .ide-pop") ]
+  at e10.start + 2s for 5s [ revealCard("#c6-pop-snippets") ]
+  at e10.start + 4s for 3s [ revealCard("#c6-fx-format .ide-blocklabel") ]
+  at e10.start + 5.5s for 1.5s [ revealCard("#c6-pop-refactor") ]
+  at e11.start + 2s for 5s [ revealCard("#c6-pop-lens") ]
+  at e11.start + 4s for 3s [ revealCard("#c6-pop-playhead") ]
+  at e11.start + 5.5s for 1.5s [ revealCard("#c6-pop-debug") ]
+  at e12.start + 2s for 5s [ revealCard("#c6-pop-toast") ]
+  at e12.start + 4s for 3s [ revealCard("#c6-pop-lint") ]
+  at e12.start + 5.5s for 1.5s [ revealCard("#c6-pop-compile") ]
+  at e13.start + 2s for 5s [ revealCard("#c6-gantt-playhead") ]
+  at e14.start + 2s for 5s [ revealCard("#c6-pop-locale-table") ]
+  at e14.start + 4s for 3s [ revealCard("#c6-pop-starters") ]
+  at e14.start + 5.5s for 1.5s [ revealCard("#c6-pop-langblock") ]
 }
