@@ -70,7 +70,7 @@ The classes live in the `/* ---- Mock terminal ---- */` section of `tour.css`, r
 | `.term` | the frame: `#0b0f14`, 1px `#30363d` border, radius 8, monospace 0.8rem, left-aligned |
 | `.term-titlebar` | muted title strip (`eligian — bash`) |
 | `.term-body`, `.term-line` | the session; one `div` per line, `white-space: pre-wrap`, an empty line keeps its height |
-| `.term-line.cmd`, `.term-prompt` | a command line; the `$` in the accent. The beat's **first** command carries a static `typing` (`clip-sweep`, 0.9 s): it types as the frame appears. Every later command is `.term-line.cmd.later` with an id (`#cc-cmd-<beat>-<n>`, n from 2), hidden like an output line and typed by its own `.term-line.cmd.later.in { opacity: 1; animation: clip-sweep 0.9s … }` when the stagger reaches it |
+| `.term-line.cmd`, `.term-prompt` | a command line; the `$` in the accent. The beat's **first** command carries a static `typing` (`clip-sweep`, 0.9 s): it types as the frame appears. Every later command is `.term-line.cmd.later` with an id (`#cc-cmd-<beat>-<n>`, n from 2), hidden like an output line and typed by its own `.term-line.cmd.later.in { opacity: 1; animation: clip-sweep 0.9s … }` when the stagger reaches it. Under `prefers-reduced-motion` neither command types: it appears whole |
 | `.term-line.out` | an output line (`#cc-out-<beat>-<n>`), `opacity: 0` until its own `.term-line.out.in { opacity: 1 }` (0.15 s). The shared one-class `.in` loses to the two-class hidden state and would reveal nothing (the state-class rule of `tour.css`) |
 | `.ok` (green `#3fb950`), `.err` (red `#f85149`), `.warn` (yellow `#d29922`), `.dim` (muted), `.cyan` (`#39c5cf`), `u` | the chalk colours the CLI prints, scoped as `.term .ok` etc.; `u` is the underlined file name of `check` |
 | `.term-caret` | the block cursor on the beat's last prompt; `caret-blink` (shared with the Mock IDE), off under `prefers-reduced-motion` |
@@ -215,12 +215,13 @@ timeline "T" in "#stage" using raf {
 - **Spot / callout:** `#cc-tok-bundle`; `#cc-cl-t4` "next to the input as tour.bundle/, or -o a directory ·
   --inline-threshold in bytes (51200 by default)".
 - **Frame** `#cc-fx-bundle`: `$ eligian examples/eligian-tour/tour.eligian --bundle` → `✓ Bundle created:
-  examples/eligian-tour/tour.bundle` / `  Files: 2` / `  Size: 1205.2 KB` / `  Time: <n>ms` (grey) · the same again →
+  examples/eligian-tour/tour.bundle` / `  Files: 2` / `  Size: 1205.8 KB` / `  Time: 1927ms` (grey) · the same again →
   `` / `Bundle failed: Output directory already exists: examples/eligian-tour/tour.bundle. Use --force to overwrite.`
   (red) · `$ eligian examples/eligian-tour/tour.eligian --bundle --check` → `Error: --bundle and --check cannot be
   combined: --check validates only and writes no output, but --bundle always writes a bundle directory`.
-- **Re-captured in WP-11:** `Size` and `Time` depend on the finished tour (this chapter's own layout is in the bundle);
-  the values in the frame are those of the run that built this chapter.
+- **Re-captured from the finished tour:** `Size` and `Time` depend on the tour (this chapter's own layout is in the
+  bundle, so the size is self-referential: re-run until it settles). `Size` equals a fresh run; `Time` varies per run
+  and is the one of the captured run.
 - **Source:** `bundler/index.ts`, `bundler/runtime-bundler.ts` (`extractUsedOperations`), `cli-options.ts`.
 
 ### Beat 5 — the eligian map (31–38 s, `as t5`)
@@ -290,8 +291,8 @@ timeline "T" in "#stage" using raf {
   `  timeline 'Logic': 3 positions FAIL (1)` / `  error  start operation selectElement (in boom): selectElement:
   selector is either empty or not defined.` / `         boom.eligian:3:17 — 'Logic' at 9s` /
   `1 file, 1 timeline played, 1 error, 0 warnings` (exit 1).
-- **Re-captured in WP-11:** the tour's timeline lines and counts (the finished tour). This chapter's 254 positions are
-  its eleven staggers' starts and ends.
+- **Re-captured from the finished tour:** the tour's timeline lines and counts equal a fresh
+  `eligian smoke examples/eligian-tour`. This chapter's 254 positions are its eleven staggers' starts and ends.
 - **Source:** `smoke/` (`smoke-command.ts`).
 
 ### Beat 9 — dev (64–72 s, `as t9`)
@@ -383,7 +384,7 @@ with `FORCE_COLOR=1`, stdout and stderr on one descriptor (their real order), an
 | 1 | `eligian --version`, `eligian --help`; npm's lines from `npm install -g eligian --prefix <temp>` |
 | 2 | `eligian init my-talk --template chapters` twice, in an empty temp dir |
 | 3, 5 | the commands on a tour copy; `brace.eligian` |
-| 4 | `--bundle` on a tour copy (delete `tour.bundle` first), then again, then `--bundle --check` |
+| 4 | `--bundle` from the repo root (the bundle carries module paths, so a tour copy elsewhere reads a few hundred bytes more), then again, then `--bundle --check`; delete `examples/eligian-tour/tour.bundle` afterwards |
 | 6, 7, 11 | `eligian check` on `demo.eligian`, `contract.eligian`, `jump.eligian`; the exit codes with `echo $?` |
 | 8 | `eligian smoke` on a tour copy and on `boom.eligian` |
 | 9 | `eligian dev` on a tour copy, with a client on `/__eligian/events` and the three edits of §1 |

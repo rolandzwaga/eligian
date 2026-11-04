@@ -1318,8 +1318,12 @@
   background: var(--ink);
   animation: caret-blink 1s steps(1) infinite;
 }
+/* reduced motion: no blinking caret, and commands appear whole instead of
+   typing (the clip-sweep animations above) */
 @media (prefers-reduced-motion: reduce) {
-  .term-caret {
+  .term-caret,
+  .term-line.cmd.typing,
+  .term-line.cmd.later.in {
     animation: none;
   }
 }
