@@ -2,11 +2,18 @@
   Eligian Tour — stage layout (hub + chapters in one config).
 
   Rendered into the engine container (#eligius-container) as the layoutTemplate.
-  Structure:
+  Structure (views in hub order; the section ids keep their history, the display
+  numbers follow the hub):
     #stage
-      #hub        (.view)            landing menu of chapter cards
-      #ch1        (.view .chapter)   Chapter 1 walkthrough
-      #ch2        (.view .chapter)   Chapter 2 walkthrough
+      #hub        (.view)            landing menu: eight chapter cards
+      #ch1        (.view .chapter)   01 · Timeline & Time
+      #ch2        (.view .chapter)   02 · Actions & Composition
+      #ch3        (.view .chapter)   03 · Logic & Data
+      #ch4        (.view .chapter)   04 · Timeline Power Tools
+      #chf        (.view .chapter)   05 · Files & Imports
+      #ch5        (.view .chapter)   06 · Engine Reach
+      #ch6        (.view .chapter)   07 · The Editor (mock VS Code)
+      #chc        (.view .chapter)   08 · The Command Line (mock terminal)
       #narration                     SHARED subtitle bar (toggled per chapter)
       #progress                      SHARED chapter progress bar (ProgressbarController)
 
@@ -16,8 +23,11 @@
   Switching timelines toggles which view is .is-active (showView / hideView).
   Code is PRE-TOKENIZED here (spans with .tok + an id per highlightable token);
   the library only toggles classes / sets text at runtime — no runtime tokenizer.
-  Every id/class selected or class toggled by the .eligian must be defined in
-  tour.css (CSS validation, B2).
+  Ids come from this file, classes from tour.css; the compiler validates both,
+  also when they reach an operation through an action parameter (spec 056).
+  Chapters 07 and 08 reenact the editor and the terminal: their frames are
+  CSS-built mock UI (tour.css "Mock IDE" / "Mock terminal"), every string in them
+  copied from the real tools.
 -->
 <div id="stage">
 

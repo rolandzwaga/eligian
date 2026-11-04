@@ -1,13 +1,15 @@
 /* Eligian Tour — theme + walkthrough animations.
  *
- * Every selector/class referenced from the .eligian files must be defined here:
- * the compiler validates selectors/classes against imported CSS (see B2 in
- * packages/cli/KNOWN_ISSUES.md). Dark, editor-grade, one accent, restrained motion.
+ * Ids come from layout.html, classes from this file: the compiler validates
+ * every selector and class name the .eligian files use against both, also when
+ * they reach an operation through an action parameter (spec 056). So a class the
+ * library toggles must be defined here; an id needs no rule of its own.
+ * Dark, editor-grade, one accent, restrained motion.
  *
- * Structure: #stage holds stacked ".view"s (hub + per-chapter). Structural panes
- * are classes (.chrome/.code-pane/.effect-pane/.callout-layer) shared by every
- * chapter; only leaf elements the .eligian selects keep ids. "Id-registration"
- * blocks exist solely so each DSL-selected id is declared for CSS validation.
+ * Structure: #stage holds stacked ".view"s (the hub + eight chapters). Structural
+ * panes are classes (.chrome/.code-pane/.effect-pane/.callout-layer) shared by
+ * every chapter; only leaf elements the .eligian selects keep ids. Chapters 07
+ * and 08 are mock UI: the "Mock IDE" and "Mock terminal" sections below.
  */
 
 :root {
@@ -113,19 +115,11 @@
   font-size: 0.85rem;
   cursor: pointer;
   transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+  flex: 0 0 auto;
 }
 .to-hub:hover {
   border-color: var(--accent);
   color: var(--ink);
-}
-/* id-registration: navigate selectors */
-#c1-to-hub,
-#c2-to-hub,
-#c3-to-hub,
-#c4-to-hub,
-#c5-to-hub,
-#c6-to-hub {
-  flex: 0 0 auto;
 }
 
 .code-pane {
@@ -261,26 +255,6 @@
   font-family: inherit;
   white-space: pre;
 }
-/* id-registration: revealBlock targets */
-#code-ch1,
-#code-at,
-#code-units,
-#code-arith,
-#code-full,
-#c2-code-def,
-#c2-code-params,
-#c2-code-call,
-#c2-code-byname,
-#c2-code-endable,
-#c2-code-lib,
-#c5-code-overview,
-#c5-code-eventbus,
-#c5-code-onevent,
-#c5-code-controller,
-#c5-code-label,
-#c5-code-recap {
-  min-width: 0;
-}
 
 /* ---- Tokens ----------------------------------------------------------- */
 .tok {
@@ -306,18 +280,6 @@
 .tok.com {
   color: var(--muted);
   font-style: italic;
-}
-/* id-registration: spotlight targets */
-#tok-timeline,
-#tok-raf,
-#tok-at,
-#tok-plus,
-#c2-tok-action,
-#c2-tok-param,
-#c2-tok-call,
-#c2-tok-template,
-#c2-tok-endable {
-  font-weight: 600;
 }
 
 /* ---- Callout chips ---------------------------------------------------- */
@@ -650,21 +612,6 @@
   opacity: 0;
   transition: opacity 0.3s var(--ease);
 }
-/* id-registration: demo targets */
-#fx-stage,
-#fx-providers,
-#fx-hero,
-#fx-ruler,
-#fx-chain,
-#fx-endcard,
-#c2-fx-chain,
-#c2-fx-fade,
-#c2-fx-call,
-#c2-fx-slot,
-#c2-fx-toggle,
-#c2-fx-lib {
-  min-width: 0;
-}
 .fx-frame {
   display: inline-grid;
   place-items: center;
@@ -844,8 +791,7 @@
   background: rgba(88, 166, 255, 0.22);
   transform: translateY(-1px);
 }
-/* #c5-fx-ping is a direct selectElement() target, so it must be declared here for
-   CSS validation. */
+/* the ping button sits above the panel it reveals */
 #c5-fx-ping {
   margin-bottom: 0.75rem;
 }

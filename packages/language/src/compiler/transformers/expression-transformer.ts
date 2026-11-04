@@ -180,8 +180,8 @@ export const transformExpression = (
           // on '.' and doing plain key access (get-property-chain-value.ts) — it
           // has no bracket parsing, so `eventArgs[0]` looks up the literal key
           // "eventArgs[0]" (undefined). `eventArgs.0` resolves the array element
-          // (arrays index by string key). Verified in-engine via the tour's
-          // Chapter-5 `on event` round-trip.
+          // (arrays index by string key). Verified in-engine via the tour's Engine
+          // Reach `on event` round-trip (ch5OnPing reads eventArgs.0).
           return `$operationData.eventArgs.${index}`;
         }
 

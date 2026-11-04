@@ -55,7 +55,7 @@ ProgressbarController). The engine runs the leaving timeline's `on leave`, then 
 | `callout(selector, template)` | show a chip with literal text on a token | selectElement + setElementContent + addClass("show") |
 | `narrate(template)` | swap the subtitle line (literal text) | selectElement("#narration") + setElementContent + the `.fresh` entry animation |
 | `demo(selector)` | run the effect in the effect pane | selectElement + addClass("active") + scrollToElement + animate |
-| `revealCard(selector)` | reveal one item (Chapter 4's stagger) | selectElement + addClass("in") |
+| `revealCard(selector)` | reveal one item (Chapter 4's stagger, Chapter 7's sub-steps) | selectElement + addClass("in") |
 | `showView(selector)` / `hideView(selector)` | show / hide a top-level view | selectElement + addClass / removeClass("is-active") |
 | `enterChapter(view)` | show the view + narration, attach the ProgressbarController | showView ×2 + selectElement("#progress-fill") + addController("ProgressbarController") |
 | `resetChapter(view)` | undo every state class the beats added inside the view | `with view + " .in" { … }` … one `with` per state class |

@@ -2,6 +2,26 @@
 
 This directory contains a comprehensive demonstration of all Eligian language features.
 
+## The Eligian Tour
+
+**[eligian-tour/](eligian-tour/)** is a presentation about Eligian, written in Eligian: a hub and eight
+chapters (Timeline & Time, Actions & Composition, Logic & Data, Timeline Power Tools, Files & Imports,
+Engine Reach, The Editor, The Command Line). Each chapter is an annotated walkthrough: the code pane
+reveals the snippet it explains, the effect pane runs it, and the chapter itself is written with the
+constructs it teaches. The editor and CLI chapters reenact VS Code and a terminal in CSS-built mock UI,
+with every string copied from the real tools.
+
+- Watch it: https://rolandzwaga.github.io/eligian/ (built by `.github/workflows/pages.yml` with
+  `eligian … --bundle`), or locally with `eligian dev examples/eligian-tour/tour.eligian --open`
+  (from the repo root: `node packages/cli/bin/cli.js dev examples/eligian-tour/tour.eligian --open`).
+- Keys: `1`–`8` open a chapter from the hub, `Esc` returns, `space` pauses, `r` replays.
+- Files: `tour.eligian` (the hub and every chapter timeline), `presentation.eligian` (the walkthrough
+  library), `layout.html`, `tour.css`, `locales.json`, `hint.html`, `host.js` (a host module);
+  `storyboards/` holds one storyboard per chapter and `ELIGIUS_EXECUTION_MODEL.md` the runtime model the
+  tour relies on.
+- Like every example, it is checked in CI: `pnpm run check:examples`, `pnpm run smoke:examples` and
+  `pnpm run fmt:examples`.
+
 ## Files
 
 ### Main Demo

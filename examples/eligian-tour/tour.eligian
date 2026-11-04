@@ -1,26 +1,26 @@
 /**
- * Eligian Tour — single-file entry (hub + chapters).
+ * Eligian Tour — single-file entry: the hub and eight chapters, one Eligius config.
  *
- * The whole presentation compiles to ONE Eligius config: a hub menu plus every
- * chapter, each as its own `timeline`. The engine renders the shared layout once
- * and switches between timelines when a card (or the back button) is clicked —
- * that click→switch is the `navigate` sugar, which compiles to a
- * DOMEventListenerController that broadcasts `request-timeline-uri`.
+ * Chapters, in hub order: 01 Timeline & Time, 02 Actions, 03 Logic, 04 Timeline
+ * Power Tools, 05 Files & Imports, 06 Engine Reach, 07 The Editor, 08 The Command
+ * Line. Each is its own `timeline`; the engine renders the layout once and switches
+ * timelines. `navigate` compiles to a DOMEventListenerController whose action
+ * broadcasts request-timeline-uri [name, 0] (the engine listens and switches).
  *
- * VIEW MANAGEMENT — each timeline shows ONLY its own view, through its
- * lifecycle blocks:
- *   on enter → enterChapter(self) (show + progress bar) + wire nav and keys
- *   on leave → leaveChapter(self, back) (hide, reset the view, unwire)
- * replay (r) → replayChapter(self): reset the view, then seek to 0.
- * The engine's switch lifecycle runs the leaving timeline's `on leave`, then the
- * entering timeline's `on enter`, so no timeline needs to hide the others. They
- * are not events: the view stays up after the last beat, and the timeline's
- * duration is its last beat's end. (See ELIGIUS_EXECUTION_MODEL.md §7b.)
- * `#narration` is a shared subtitle bar each chapter shows/hides alongside its
- * own view. Keyboard: 1–8 on the hub, Esc back, space pauses, r replays.
+ * VIEW MANAGEMENT — each timeline shows ONLY its own view, in its lifecycle blocks
+ * (the engine runs the leaving timeline's on leave, then the entering one's on enter;
+ * they are not events, so a chapter's duration is its last beat's end):
+ *   on enter → enterChapter(self): show the view + narration, start the progress bar
+ *   on leave → leaveChapter(self, back): hide, reset the view, unwire
+ *   r        → replayChapter(self): reset the view, then seek to 0
+ * Keyboard: 1–8 on the hub, Esc back, space pauses, r replays. See
+ * ELIGIUS_EXECUTION_MODEL.md §7b.
  *
- * Snippets in the code pane are hand-authored display assets (pre-tokenized in
- * layout.html); this file is the real machinery driving them.
+ * Snippets in the code pane are hand-authored display assets, pre-tokenized in
+ * layout.html; every one is grammar-valid Eligian or verbatim tool output (checked by
+ * pasting it into `eligian check`). This file is the real machinery driving them. Also
+ * here: host.js (the extensions module), locales.json (the hub title and tagline, the
+ * Engine Reach label), hint.html (Chapter 05's named import).
  */
 languages {
   * "en-US" "English"
@@ -41,7 +41,7 @@ extensions "./host.js" {
   function shout
 }
 
-// Chapter-3 helpers: the executed code mirrors the taught snippets.
+// Chapter 03 helpers: the executed code mirrors the taught snippets.
 // House rule: const lives in actions (or at program level), not in timeline
 // blocks, so the loop and the conditional live here.
 action ch3Badge(count) [
@@ -76,7 +76,7 @@ action ch3LoopControl() [
   }
 ]
 
-// Chapter-05 helper: writes the named HTML import into its panel; @hint is
+// Chapter 05 helper: writes the named HTML import into its panel; @hint is
 // the content of hint.html, inlined at compile time.
 action cfPlaceHint() [
   selectElement("#cf-fx-hint")
@@ -180,7 +180,7 @@ timeline "Hub" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 1 — Timeline & Time. Eight beats on the raf clock, written with the
+// Chapter 01 — Timeline & Time (#ch1). Eight beats on the raf clock, written with the
 // forms it teaches: a program-level time constant (@beat, @long), a chain of
 // labelled `at` events (open.end, providers.end, …), a relative start (+0s),
 // and one `target` beat with an end block.
@@ -288,7 +288,7 @@ timeline "Timeline & Time" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 2 — Actions & Composition. Eight beats, built entirely from the
+// Chapter 02 — Actions & Composition (#ch2). Eight beats, built entirely from the
 // presentation library it describes: defining and calling actions, how
 // parameters reach operations, endable actions, the dataflow contract the
 // compiler infers, erased-parameter save / restore, and libraries.
@@ -382,7 +382,7 @@ timeline "Actions" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 3 — Logic & Data. Eight beats: const folding, literals, operators,
+// Chapter 03 — Logic & Data (#ch3). Eight beats: const folding, literals, operators,
 // if / else if, for, break / continue, with, and the data sigils. Its real
 // demos are the helper actions above: the badge (beat 4) runs a real
 // if / else if / else, the bullet list (beat 5) and the number chips (beat 6)
@@ -486,7 +486,7 @@ timeline "Logic" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 4 — Timeline Power Tools. Seven beats: timing by hand, `sequence`,
+// Chapter 04 — Timeline Power Tools (#ch4). Seven beats: timing by hand, `sequence`,
 // editing one duration, `stagger`, sequence items (inline blocks, labels,
 // each / then), the inline stagger anchored with `at`, and a recap. The chapter
 // is written with what it teaches: its beats are one sequence whose then flips
@@ -592,7 +592,7 @@ timeline "Timeline Power Tools" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 05 — Files & Imports. Eight beats: program vs library, the languages
+// Chapter 05 — Files & Imports (#chf). Eight beats: program vs library, the languages
 // block, default imports, named asset imports, library imports and private
 // actions, the extensions import, comments and JSDoc, keywords. Its real code
 // is this file's own head: the languages block, the default imports, the

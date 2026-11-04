@@ -177,7 +177,7 @@ source alone (`eligian`).
   `Unknown CSS ID in selector: 'tok-timelin'. Did you mean: tok-timeline?` `eligian [Ln 7, Col 13]`; +2 s the hover
   `Unknown CSS class: 'activ'. Did you mean: active? eligian`; +4 s the lightbulb `Change to 'active'` / `Create
   '.activ' in tour.css`.
-- **F21:** the class is a typo of a class tour.css really has (`active`), so the suggestion is real; `Open CSS file`
+- **Accuracy:** the class is a typo of a class tour.css really has (`active`), so the suggestion is real; `Open CSS file`
   is the follow-up command of the create fix, not a menu entry. `spotlight` is a library action: the selector role of
   its parameter is inferred (spec 056), so the literal is checked at the call site.
 - **Source:** `validators/operation-call/css-parameter-validator.ts:52`, `css/selector-validation.ts`,
@@ -226,7 +226,7 @@ source alone (`eligian`).
   +4 s after `on key "` `ArrowRight` (detail `Right arrow`), `ArrowLeft`, `ArrowUp`, `ArrowDown`, `space`, `Enter`, `Escape`, and after
   `addController("` the nine controllers, `DOMEventListenerController` (detail `Controller:
   DOMEventListenerController(eventName, actions?, actionOperationData?)`) … `SubtitlesController`.
-- **F22:** `fadeIn` is not an operation; items filter on the bare name (`completion/operations.ts:60`,
+- **Accuracy:** `fadeIn` is not an operation; items filter on the bare name (`completion/operations.ts:60`,
   `completion/actions.ts:71`), so `revealBlock` is not in the `ani` list. CSS classes and ids, DOM events, label keys
   and the `on event` skeleton are named in the narration and the callout, not drawn.
 - **Source:** `completion/operations.ts:58,63`, `completion/actions.ts:69-74`, `completion/controllers.ts`,
@@ -273,7 +273,7 @@ source alone (`eligian`).
   "Logic"`: `### Timeline "Logic"` / `- **Provider:** raf` / `` - **Container:** `#stage` `` / `- **Duration:**
   computed from the events when compiling` / `- **Loops:** no`; +4.5 s `/**` + Enter: ` * Description` (the snippet
   placeholder, selected) / ` * @param {string} selector`.
-- **F24:** the arg-count message is the validator's own; the call hover is the JSDoc markdown (the `{string}` type
+- **Accuracy:** the arg-count message is the validator's own; the call hover is the JSDoc markdown (the `{string}` type
   comes from presentation.eligian's JSDoc), the definition hover lists the parameter roles only, and the two never
   appear in one card. Operation hovers (Eligius' descriptions) and CSS class hovers are named in the narration only.
 - **Source:** `jsdoc/jsdoc-formatter.ts:18-39`, `eligian-hover-provider.ts:55-65,196-212,238-241`,
@@ -443,7 +443,7 @@ source alone (`eligian`).
    (3, 4, 8, 10, 14), symbols (9), Gantt bars (13) and the CSS lens (8) against the providers in
    `packages/language/src` run on a copy of the tour; the command, setting, snippet and webview texts against
    `packages/extension/package.json`, `snippets/eligian.json`, `preview.html`, `locale-editor.ts`, `starters.ts`.
-4. Every row of the extension coverage table (the plan's §3b) points at a beat that shows it, or is marked narration
+4. Every row of the extension coverage table (§3) points at a beat that shows it, or is marked narration
    only: hot reload and untrusted-workspace host modules (beat 11's narration, Chapter 06 beat 8), operation and CSS
    hovers (beat 7's narration), CSS / DOM-event / label-key completion and the `on event` skeleton (beat 5's
    narration).
@@ -469,13 +469,54 @@ styles needs copies of `layout.html` and `tour.css` next to it):
 | 14 | code actions on `locales "./locales.json"` in a program without `languages` (run from the scratch directory's drive: the labels file is read relative to the document) |
 
 Findings while building the chapter (recorded, not changed here):
-- The plan's mock showed `eligian(<code>)` after CSS, parse, `setData` and navigate diagnostics. Those validators put
-  the code in the diagnostic's `data` only, so VS Code shows the source alone (`eligian`); `check` reads the code from
+- The chapter's first design showed `eligian(<code>)` after CSS, parse, `setData` and navigate diagnostics. Those
+  validators put the code in the diagnostic's `data` only, so VS Code shows the source alone (`eligian`); `check` reads the code from
   the data and prints it. The dataflow, argument-count, runtime and lint diagnostics set `code` and show
   `source(code)`.
 - The imported-action completion detail is `(selector) - imported action`, without the parameter type.
-- The CSS CodeLens on `#tok-timeline` reads `1 Eligian reference` (one `spotlight("#tok-timeline")` in tour.eligian);
-  today it sits on the id-registration line of tour.css that WP-10 deletes, after which it moves to the rule shown.
+- The CSS CodeLens on `#tok-timeline` reads `1 Eligian reference` (one `spotlight("#tok-timeline")` in tour.eligian,
+  line 210). It sits on the first rule naming the id, which since the id-registration blocks left tour.css is the
+  rule the frame shows, `#tok-timeline { anchor-name: --cl-name; }`.
+
+### Extension coverage
+
+One row per item the extension contributes (`packages/extension/package.json` unless noted) and the beat that
+shows it.
+
+| Item | Beat |
+|---|---|
+| Command `eligian.compile` *Eligian: Compile Current File* (also editor context menu) | 14 |
+| Command `eligian.newPresentation` *Eligian: New Presentation…* (starters from `starters.ts`) | 14 |
+| Command `eligian.preview` *Eligian: Preview Timeline* + keybinding `ctrl+k v` / `cmd+k v` (also context menu) | 11 |
+| Command `eligian.previewAt` *Eligian: Preview From Time* (hidden from the palette; CodeLens / Gantt double-click) | 11, 13 |
+| Command `eligian.openLabelEditor` *Eligian: Edit Locales* (also context menu) | 14 |
+| Command `eligian.showTimelineView` *Eligian: Show Timeline View* + the `Eligian` panel container with the `Timeline` webview view | 13 |
+| Command `eligian.findEligianReferences` *Eligian: Find Eligian References* (CSS / HTML context menu) | 8 |
+| Internal command `eligian.generateJSDoc` (the `/**` template) | 7 |
+| Internal command `eligian.openLocaleFile` (Ctrl+Click on the `locales` path) | 14 |
+| Internal commands `eligian.createLabelsFile`, `eligian.createLabelEntry` (label quick fixes) | 14 (callout) |
+| Custom editor `eligian.localeEditor` *Locale Editor* (`**/*locale*.json`, Open With) | 14 |
+| Snippets `snippets/eligian.json`: Action, Endable action, Event action, Timeline, Chapter timeline, Languages block, Library | 10 |
+| Setting `eligian.validation.selectorNotInLayout` | 3 (callout), 15 |
+| Setting `eligian.validation.eligiusLint` | 12, 15 |
+| Setting `eligian.preview.highlightActiveEvents` | 11, 15 |
+| Setting `eligian.codeLens.preview` | 11, 15 |
+| Setting `eligian.codeLens.cssReferences` | 8, 15 |
+| Settings `eligian.inlayHints.parameterNames`, `.sequenceTimes`, `.staggerTimes`, `.computedTimes`, `.timelineDuration` | 6, 15 |
+| Diagnostics: syntax errors, semantic rules, `setData` targets | 2 |
+| CSS / selector validation + *Change to* / *Create '.x' in …* fixes | 3 |
+| Dataflow errors + *Insert selectElement* / *Add target* fixes | 4 |
+| Completion (operations, actions, controllers, CSS, DOM events, keys, timeline names, label keys, event skeletons) | 5 |
+| Signature help, inlay hints | 6 |
+| Hovers: call (JSDoc + requirements), definition (roles), timeline header, operations | 7 |
+| Go to Definition, references, CSS CodeLens, rename, *Change to "…"* / *Create timeline "…"* on a navigate target | 8 |
+| Outline / document symbols | 9 |
+| Format Document, block-label decorations, *Convert to '… for …'* range refactor | 10 |
+| Preview webview: controls, scrubber, timeline / language selects, *Keep position on reload*, EventBus Debug Viewer, Compilation Errors + *Retry Compilation*, *Preview from* CodeLens, playhead highlight | 11 |
+| Runtime-error diagnostics (`eligius-runtime`) + toast with *Go to Source*; Eligius lint diagnostics (`Eligius lint`) | 12 |
+| Timeline (Gantt) view | 13 |
+| *Generate language block* fix | 14 |
+| Hot reload of CSS / HTML / locales / host module; untrusted-workspace host stand-ins | narration only (11; Chapter 06 beat 8) |
 
 ## 4. Resolved decisions
 

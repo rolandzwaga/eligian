@@ -362,11 +362,11 @@ timeline "T" in "#stage" using raf {
 3. **Every output line is verbatim**: equal to a run of `node packages/cli/bin/cli.js` (eligian 1.0.1) on the tour or
    on the scratch files of §1 (npm's lines: a real `npm install -g` into a scratch prefix). Lines left out are marked
    `…`; the illustrative parts are only the times of beats 1, 4 and 9.
-4. Every row of the CLI coverage table (the plan's §3c) points at a beat that shows it: bins / `--version` / `--help` /
-   `help` (1), `init` and its options (2), `compile` and `-o` / `--check` / `--minify` / `--no-optimize` / `-v` / `-q`
-   (3), `--bundle` / `--inline-threshold` / `--sourcemap` / `--force` (4), `--eligian-map` (5), `check` patterns /
-   `--max-warnings` / `--warnings-as-errors` (6), `--format` / `--no-lint` / `--selector-not-in-layout` (7), `smoke`
-   (8), `dev` (9), `fmt` (10), exit codes (11).
+4. Every CLI command, option and exit code (`eligian <command> --help`, eligian 1.0.1) points at a beat that shows
+   it: bins / `--version` / `--help` / `help` (1), `init` and its options (2), `compile` and `-o` / `--check` /
+   `--minify` / `--no-optimize` / `-v` / `-q` (3), `--bundle` / `--inline-threshold` / `--sourcemap` / `--force` (4),
+   `--eligian-map` (5), `check` patterns / `--max-warnings` / `--warnings-as-errors` (6), `--format` / `--no-lint` /
+   `--selector-not-in-layout` (7), `smoke` (8), `dev` (9), `fmt` (10), exit codes (11).
 5. The hub shows eight cards; key `8` and `#card-chc` open the chapter.
 6. Leaving and re-entering, or pressing `r`, starts the chapter like the first visit: every output line hidden again.
 
