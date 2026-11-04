@@ -360,10 +360,12 @@
 #c2-tok-contract { anchor-name: --c2-cl-contract; }
 #c2-tok-erased { anchor-name: --c2-cl-erased; }
 #c3-tok-const { anchor-name: --c3-cl-const; }
+#c3-tok-literal { anchor-name: --c3-cl-literal; }
 #c3-tok-expr { anchor-name: --c3-cl-expr; }
 #c3-tok-if { anchor-name: --c3-cl-if; }
 #c3-tok-for { anchor-name: --c3-cl-for; }
 #c3-tok-break { anchor-name: --c3-cl-loopctl; }
+#c3-tok-with { anchor-name: --c3-cl-with; }
 #c4-code-manual { anchor-name: --c4-cl-manual; }
 #c4-tok-seq { anchor-name: --c4-cl-seq; }
 #c4-code-sequence { anchor-name: --c4-cl-edit; }
@@ -396,10 +398,12 @@
 #c2-cl-contract { position-anchor: --c2-cl-contract; }
 #c2-cl-erased { position-anchor: --c2-cl-erased; }
 #c3-cl-const { position-anchor: --c3-cl-const; }
+#c3-cl-literal { position-anchor: --c3-cl-literal; }
 #c3-cl-expr { position-anchor: --c3-cl-expr; }
 #c3-cl-if { position-anchor: --c3-cl-if; }
 #c3-cl-for { position-anchor: --c3-cl-for; }
 #c3-cl-loopctl { position-anchor: --c3-cl-loopctl; }
+#c3-cl-with { position-anchor: --c3-cl-with; }
 #c4-cl-manual { position-anchor: --c4-cl-manual; }
 #c4-cl-seq { position-anchor: --c4-cl-seq; }
 #c4-cl-edit { position-anchor: --c4-cl-edit; }
@@ -478,7 +482,7 @@
   }
   #cl-provider,
   #c2-cl-param,
-  #c3-cl-expr,
+  #c3-cl-literal,
   #c4-cl-seq,
   #c5-cl-bus,
   #c6-cl-preview {
@@ -486,7 +490,7 @@
   }
   #cl-range,
   #c2-cl-call,
-  #c3-cl-if,
+  #c3-cl-expr,
   #c4-cl-edit,
   #c5-cl-on,
   #c6-cl-css {
@@ -494,7 +498,7 @@
   }
   #cl-units,
   #c2-cl-name,
-  #c3-cl-for,
+  #c3-cl-if,
   #c4-cl-stagger,
   #c5-cl-ctrl,
   #c6-cl-complete {
@@ -502,18 +506,20 @@
   }
   #cl-relative,
   #c2-cl-endable,
-  #c3-cl-loopctl,
+  #c3-cl-for,
   #c4-cl-inline,
   #c5-cl-loc,
   #c6-cl-jsdoc {
     top: 15rem;
   }
   #c1-cl-label,
-  #c2-cl-contract {
+  #c2-cl-contract,
+  #c3-cl-loopctl {
     top: 18rem;
   }
   #c1-cl-target,
-  #c2-cl-erased {
+  #c2-cl-erased,
+  #c3-cl-with {
     top: 21rem;
   }
   #c1-cl-lifecycle {
@@ -660,10 +666,19 @@
   transform: translateY(8px);
   transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
 }
-/* Chapter 3 — badge toggled by a real if/else (selectElement target) */
+/* Chapter 3 — the badge a real if / else if / else sets: active (full) → muted
+   (dimmer, grey) → plain. The id rule beats the one-class .active and .muted,
+   so both states are declared here (see the state-class section). */
 #c3-badge {
   opacity: 0.35;
-  transition: opacity 0.22s var(--ease);
+  transition: opacity 0.22s var(--ease), filter 0.22s var(--ease);
+}
+#c3-badge.active {
+  opacity: 1;
+}
+#c3-badge.muted {
+  opacity: 0.2;
+  filter: grayscale(1);
 }
 
 /* Chapter 5 — live eventbus round-trip: a real button (DOMEventListenerController

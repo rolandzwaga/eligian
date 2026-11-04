@@ -226,46 +226,69 @@
     </header>
 
     <section class="code-pane">
-      <pre id="c3-code-const" class="code"><code><span class="tok kw" id="c3-tok-const">const</span> <span class="tok">theme</span> <span class="tok op">=</span> <span class="tok str">"dark"</span>      <span class="tok com">// → $globaldata.theme</span>
-
-<span class="tok kw">action</span> <span class="tok fn">greet</span>(<span class="tok">name</span>) [
-  <span class="tok kw">const</span> <span class="tok">greeting</span> <span class="tok op">=</span> <span class="tok str">"hi"</span>    <span class="tok com">// → @greeting</span>
-  <span class="tok fn">setElementContent</span>(<span class="tok">greeting</span>)
+      <pre id="c3-code-const" class="code"><code><span class="tok kw" id="c3-tok-const">const</span> <span class="tok">theme</span> <span class="tok op">=</span> <span class="tok str">"dark"</span>            <span class="tok com">// inlined: @theme → "dark"</span>
+<span class="tok kw">const</span> <span class="tok">beat</span> <span class="tok op">=</span> <span class="tok num">7s</span>                 <span class="tok com">// a time constant (program level only)</span>
+<span class="tok kw">action</span> <span class="tok fn">greet</span>(<span class="tok">label</span>) [
+  <span class="tok kw">const</span> <span class="tok">greeting</span> <span class="tok op">=</span> <span class="tok str">"hi"</span>         <span class="tok com">// inlined too</span>
+  <span class="tok kw">const</span> <span class="tok">copy</span> <span class="tok op">=</span> <span class="tok">label</span>            <span class="tok com">// runtime → setVariable; read as $scope.variables.copy</span>
+  <span class="tok fn">selectElement</span>(<span class="tok str">"#greeting"</span>)
+  <span class="tok fn">setElementContent</span>(<span class="tok">@greeting</span>)
 ]</code></pre>
 
-      <pre id="c3-code-expr" class="code"><code><span class="tok">$operationdata.count</span> <span class="tok op">+</span> <span class="tok num">1</span>
-<span class="tok">$operationdata.count</span> <span class="tok op" id="c3-tok-expr">&gt;=</span> <span class="tok num">3</span> <span class="tok op">&amp;&amp;</span> <span class="tok">@enabled</span>
-<span class="tok op">!</span><span class="tok">$globaldata.muted</span></code></pre>
+      <pre id="c3-code-literals" class="code"><code><span class="tok str">"text"</span>  <span class="tok str">'text'</span>  <span class="tok num">42</span>  <span class="tok num">3.14</span>  <span class="tok kw">true</span>  <span class="tok kw">false</span>  <span class="tok kw">null</span>
+<span class="tok" id="c3-tok-literal">{ opacity<span class="tok op">:</span> <span class="tok num">1</span>, from<span class="tok op">:</span> <span class="tok num">0</span> }</span>        <span class="tok com">// keys may be any word, even keywords</span>
+[<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>]</code></pre>
 
-      <pre id="c3-code-if" class="code"><code><span class="tok kw" id="c3-tok-if">if</span> (<span class="tok">count</span> <span class="tok op">&gt;</span> <span class="tok num">0</span>) {
-  <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+      <pre id="c3-code-expr" class="code"><code><span class="tok kw">const</span> <span class="tok">total</span> <span class="tok op">=</span> <span class="tok num">2</span> <span class="tok op" id="c3-tok-expr">**</span> <span class="tok num">3</span> <span class="tok op">*</span> <span class="tok num">2</span> <span class="tok op">+</span> <span class="tok num">1</span>       <span class="tok com">// 17, folded; ** binds tightest</span>
+<span class="tok kw">if</span> (<span class="tok">count</span> <span class="tok op">&gt;=</span> <span class="tok num">3</span> <span class="tok op">&amp;&amp;</span> <span class="tok">enabled</span>) { … }  <span class="tok com">// comparisons &amp; logic on runtime values: in if</span>
+<span class="tok fn">selectElement</span>(<span class="tok str">"#"</span> <span class="tok op">+</span> <span class="tok">slideId</span>)      <span class="tok com">// runtime string concatenation</span>
+<span class="tok fn">calc</span>(<span class="tok">count</span>, <span class="tok num">1</span>, <span class="tok str">"+"</span>)                <span class="tok com">// runtime arithmetic is an operation</span></code></pre>
+
+      <pre id="c3-code-if" class="code"><code><span class="tok fn">selectElement</span>(<span class="tok str">"#c3-badge"</span>)
+<span class="tok kw">if</span> (<span class="tok">count</span> <span class="tok op">&gt;</span> <span class="tok num">0</span>) {
+  <span class="tok fn">removeClass</span>(<span class="tok str">"muted"</span>) <span class="tok fn">addClass</span>(<span class="tok str">"active"</span>)
+} <span class="tok kw" id="c3-tok-if">else if</span> (<span class="tok">count</span> <span class="tok op">==</span> <span class="tok num">0</span>) {
+  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>) <span class="tok fn">addClass</span>(<span class="tok str">"muted"</span>)
 } <span class="tok kw">else</span> {
-  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>)
+  <span class="tok fn">removeClass</span>(<span class="tok str">"active"</span>) <span class="tok fn">removeClass</span>(<span class="tok str">"muted"</span>)
 }</code></pre>
 
-      <pre id="c3-code-for" class="code"><code><span class="tok fn">setVariable</span>(<span class="tok str">"points"</span>, [<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>])
-<span class="tok kw" id="c3-tok-for">for</span> (<span class="tok">p</span> <span class="tok kw">in</span> <span class="tok">$scope</span>.variables.points) {
-  <span class="tok fn">selectElement</span>(<span class="tok">@@currentItem</span>)
+      <pre id="c3-code-for" class="code"><code><span class="tok kw">const</span> <span class="tok">points</span> <span class="tok op">=</span> [<span class="tok str">"#c3-b1"</span>, <span class="tok str">"#c3-b2"</span>, <span class="tok str">"#c3-b3"</span>]
+<span class="tok kw" id="c3-tok-for">for</span> (<span class="tok">p</span> <span class="tok kw">in</span> <span class="tok">@points</span>) {        <span class="tok com">// forEach / endForEach</span>
+  <span class="tok fn">selectElement</span>(<span class="tok">@@p</span>)        <span class="tok com">// the item; @@loopIndex, @@loopLength too</span>
   <span class="tok fn">addClass</span>(<span class="tok str">"in"</span>)
 }</code></pre>
 
-      <pre id="c3-code-loopctl" class="code"><code><span class="tok kw">for</span> (<span class="tok">n</span> <span class="tok kw">in</span> <span class="tok">@numbers</span>) {
-  <span class="tok kw">if</span> (<span class="tok">@@currentItem</span> <span class="tok op">==</span> <span class="tok num">0</span>) { <span class="tok kw">continue</span> }
-  <span class="tok kw">if</span> (<span class="tok">@@currentItem</span> <span class="tok op">&gt;</span> <span class="tok num">9</span>) { <span class="tok kw" id="c3-tok-break">break</span> }
+      <pre id="c3-code-loopctl" class="code"><code><span class="tok kw">const</span> <span class="tok">numbers</span> <span class="tok op">=</span> [<span class="tok num">0</span>, <span class="tok num">3</span>, <span class="tok num">7</span>, <span class="tok num">12</span>]
+<span class="tok kw">for</span> (<span class="tok">n</span> <span class="tok kw">in</span> <span class="tok">@numbers</span>) {
+  <span class="tok kw">if</span> (<span class="tok">@@n</span> <span class="tok op">==</span> <span class="tok num">0</span>) { <span class="tok kw">continue</span> }                   <span class="tok com">// continueForEach</span>
+  <span class="tok kw">if</span> (<span class="tok">@@n</span> <span class="tok op">&gt;</span> <span class="tok num">9</span>) { <span class="tok kw" id="c3-tok-break">break</span> }                       <span class="tok com">// breakForEach</span>
+  <span class="tok kw">with</span> <span class="tok str">"#c3-n-"</span> <span class="tok op">+</span> <span class="tok">@@n</span> { <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>) }      <span class="tok com">// runtime concat: "#c3-n-3", "#c3-n-7"</span>
 }</code></pre>
+
+      <pre id="c3-code-with" class="code"><code><span class="tok kw" id="c3-tok-with">with</span> <span class="tok str">".tok"</span> { <span class="tok fn">removeClass</span>(<span class="tok str">"spot"</span>) }      <span class="tok com">// selectElement(".tok"), then the block</span>
+<span class="tok kw">with</span> <span class="tok str">"#"</span> <span class="tok op">+</span> <span class="tok">id</span> { <span class="tok fn">addClass</span>(<span class="tok str">"lit"</span>) }        <span class="tok com">// any expression; the selection stays</span></code></pre>
 
       <pre id="c3-code-sigils" class="code"><code><span class="tok" id="c3-tok-sigil">$operationdata</span>.x   <span class="tok com">// this block's data</span>
 <span class="tok">$globaldata</span>.x      <span class="tok com">// program-wide</span>
-<span class="tok">$scope</span>.x           <span class="tok com">// loop / branch scope</span></code></pre>
+<span class="tok">$scope</span>.x           <span class="tok com">// loop / branch scope</span>
+<span class="tok">selector</span>           <span class="tok com">// a parameter → $operationdata.selector</span>
+<span class="tok">@beat</span>              <span class="tok com">// a const</span>
+<span class="tok">@@p</span>  <span class="tok">@@loopIndex</span>   <span class="tok com">// loop scope → $scope.…</span></code></pre>
     </section>
 
     <section class="effect-pane">
       <div id="c3-fx-scopes" class="fx">
-        <span class="fx-chip">$globaldata</span><span class="fx-chip">$scope.variables</span>
+        <span class="fx-chip">"dark" (inlined)</span><span class="fx-chip">$scope.variables.copy</span>
+      </div>
+      <div id="c3-fx-literals" class="fx">
+        <span class="fx-chip">string</span><span class="fx-chip">number</span><span class="fx-chip">boolean</span>
+        <span class="fx-chip">null</span><span class="fx-chip">object</span><span class="fx-chip">array</span>
       </div>
       <div id="c3-fx-eval" class="fx">
-        <span class="fx-chip">2 + 1 → 3</span><span class="fx-chip">3 &gt;= 3 → true</span>
+        <span class="fx-chip">2 ** 3 * 2 + 1 → 17</span><span class="fx-chip">"#" + "hero" → "#hero"</span>
       </div>
+      <!-- Beat 4: a real if / else if / else sets the badge: active → muted → plain -->
       <div id="c3-fx-if" class="fx"><span id="c3-badge" class="fx-hero-box">badge</span></div>
       <div id="c3-fx-list" class="fx">
         <ul class="bullet-list">
@@ -274,18 +297,24 @@
           <li id="c3-b3" class="bullet">break / continue steer it</li>
         </ul>
       </div>
+      <!-- Beat 6: a real for loop lights 3 and 7 (.lit); continue skips 0, break stops at 12 -->
       <div id="c3-fx-loopctl" class="fx">
-        <span class="fx-chip">0</span><span class="fx-chip">3</span><span class="fx-chip">7</span><span class="fx-chip">12</span>
+        <span id="c3-n-0" class="fx-chip">0</span><span id="c3-n-3" class="fx-chip">3</span><span id="c3-n-7" class="fx-chip">7</span><span id="c3-n-12" class="fx-chip">12</span>
+      </div>
+      <div id="c3-fx-with" class="fx">
+        <span class="fx-chip">selectElement(".tok") →</span><span class="fx-chip">removeClass("spot")</span>
       </div>
       <div id="c3-fx-sigils" class="fx"><span class="fx-done">Chapter 3 ✓</span></div>
     </section>
 
     <div class="callout-layer">
       <div id="c3-cl-const" class="callout"></div>
+      <div id="c3-cl-literal" class="callout"></div>
       <div id="c3-cl-expr" class="callout"></div>
       <div id="c3-cl-if" class="callout"></div>
       <div id="c3-cl-for" class="callout"></div>
       <div id="c3-cl-loopctl" class="callout"></div>
+      <div id="c3-cl-with" class="callout"></div>
     </div>
   </section>
 

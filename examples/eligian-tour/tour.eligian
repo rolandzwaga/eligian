@@ -33,32 +33,38 @@ locales "./locales.json"
 
 import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView, enterChapter, replayChapter, leaveChapter } from "./presentation.eligian"
 
-// Chapter-3 helpers — the real logic its beats run, so the executed code mirrors
-// the taught snippets. (`const` is scoped inside an action, not inside a timeline
-// inline block, so the loop/conditional live here rather than in the `at` body.)
-action ch3ToggleBadge(count) [
-  // `count` is a runtime parameter, so this emits a real `when` (a constant
-  // condition would instead be folded to the taken branch at compile time).
+// Chapter-3 helpers: the executed code mirrors the taught snippets.
+// House rule: const lives in actions (or at program level), not in timeline
+// blocks, so the loop and the conditional live here.
+action ch3Badge(count) [
+  // count is a runtime parameter, so this emits a real when / otherwise / endWhen
+  selectElement("#c3-badge")
   if (count > 0) {
-    selectElement("#c3-badge")
+    removeClass("muted")
     addClass("active")
-  } else {
-    selectElement("#c3-badge")
+  } else if (count == 0) {
     removeClass("active")
+    addClass("muted")
+  } else {
+    removeClass("active")
+    removeClass("muted")
   }
 ]
 
 action ch3RevealBullets() [
-  // setVariable stores the collection as a REAL scope variable — no compile-time
-  // folding, because this is an operation call, not a `const` (a literal `const`
-  // would be inlined). The loop then reads it back as $scope.variables.points:
-  // forEach resolves that chain up the scope chain from inside its own child
-  // scope — the eligius parent-scope fix (>= 2.2.2). Before that fix the loop
-  // couldn't see the parent scope's variable and threw at runtime.
-  setVariable("points", ["#c3-b1", "#c3-b2", "#c3-b3"])
-  for (p in $scope.variables.points) {
-    selectElement(@@currentItem)
+  const points = ["#c3-b1", "#c3-b2", "#c3-b3"]   // folded into forEach's collection
+  for (p in @points) {
+    selectElement(@@p)                           // the loop item (= @@currentItem)
     addClass("in")
+  }
+]
+
+action ch3LoopControl() [
+  const numbers = [0, 3, 7, 12]
+  for (n in @numbers) {
+    if (@@n == 0) { continue }                   // continueForEach
+    if (@@n > 9) { break }                       // breakForEach
+    with "#c3-n-" + @@n { addClass("lit") }      // runtime concat: "#c3-n-3", "#c3-n-7"
   }
 ]
 
@@ -343,8 +349,11 @@ timeline "Actions" in "#stage" using raf {
 }
 
 // ===========================================================================
-// Chapter 3 — Logic & Data. Conditionals, loops, variables and the data sigils.
-// Self-demonstrating: Beat 4's bullet list is revealed by a real `for` loop.
+// Chapter 3 — Logic & Data. Eight beats: const folding, literals, operators,
+// if / else if, for, break / continue, with, and the data sigils. Its real
+// demos are the helper actions above: the badge (beat 4) runs a real
+// if / else if / else, the bullet list (beat 5) and the number chips (beat 6)
+// are revealed by real for loops, and beat 7's with is the prelude itself.
 // ===========================================================================
 timeline "Logic" in "#stage" using raf {
 
@@ -362,61 +371,85 @@ timeline "Logic" in "#stage" using raf {
   ]
 
   sequence each [ clearSpots() ] {
-    // Beat 1 — const names a value (scope)
-    for 7s [
-      narrate("const names a value. In an action it's a scope variable; at top level it's global.")
+    // Beat 1 — const: folded when known, a scope variable when not (0–8 s)
+    for 8s as b1 [
+      narrate("const names a value. Known at compile time it is inlined wherever you write @name; a runtime value becomes a scope variable.")
       revealBlock("#c3-code-const")
       spotlight("#c3-tok-const")
-      callout("#c3-cl-const", "action scope → @name · program scope → $globaldata")
+      callout("#c3-cl-const", "@name reads a const · literal → folded in · runtime value → scope variable")
       demo("#c3-fx-scopes")
     ]
 
-    // Beat 2 — expressions and operators
-    for 7s [
-      narrate("Expressions combine values: arithmetic, comparison, logic.")
+    // Beat 2 — literals (8–15 s)
+    for 7s as b2 [
+      narrate("Values are literals: strings in either quote, numbers, booleans, null, objects and arrays.")
+      revealBlock("#c3-code-literals")
+      spotlight("#c3-tok-literal")
+      callout("#c3-cl-literal", "no negative literals: -2 is unary minus applied to 2")
+      demo("#c3-fx-literals")
+    ]
+
+    // Beat 3 — operators fold at compile time (15–24 s)
+    for 9s as b3 [
+      narrate("Operators fold at compile time. On runtime values they belong in if conditions — except string +, which joins at runtime.")
       revealBlock("#c3-code-expr")
       spotlight("#c3-tok-expr")
-      callout("#c3-cl-expr", "+ - * / % **  ·  == != > < >= <=  ·  && || !")
+      callout("#c3-cl-expr", "** · unary - ! · * / % · + - · < <= > >= · == != · && · ||")
       demo("#c3-fx-eval")
     ]
 
-    // Beat 3 — if / else (a REAL conditional toggles the badge)
-    for 9s [
-      narrate("if / else runs operations conditionally — compiles to when / otherwise / endWhen.")
+    // Beat 4 — if / else if / else: REAL, the badge goes active here, then
+    // muted and plain in the two sub-steps after the sequence (24–33 s)
+    for 9s as b4 [
+      narrate("if / else if / else runs operations conditionally — when, otherwise, endWhen, nested.")
       revealBlock("#c3-code-if")
       spotlight("#c3-tok-if")
-      callout("#c3-cl-if", "each branch is its own operation block")
+      callout("#c3-cl-if", "else if = else { if … }: a when nested in the otherwise")
       demo("#c3-fx-if")
-      ch3ToggleBadge(2)
+      ch3Badge(2)
     ]
 
-    // Beat 4 — for loop reveals the bullets (real forEach over a const array) ⭐
-    for 9s [
+    // Beat 5 — for: REAL, a forEach reveals the bullet list ⭐ (33–42 s)
+    for 9s as b5 [
       narrate("for iterates a collection — and this list is being revealed by one right now.")
       revealBlock("#c3-code-for")
       spotlight("#c3-tok-for")
-      callout("#c3-cl-for", "@@currentItem is the current item; compiles to forEach / endForEach")
+      callout("#c3-cl-for", "@@p is the loop item (= @@currentItem); @@loopIndex / @@loopLength count")
       demo("#c3-fx-list")
       ch3RevealBullets()
     ]
 
-    // Beat 5 — break / continue steer the loop
-    for 8s [
-      narrate("break exits the loop; continue skips to the next item — only inside a for.")
+    // Beat 6 — break / continue: REAL, 0 is skipped, 3 and 7 light, 12 stops it (42–50 s)
+    for 8s as b6 [
+      narrate("continue skips an item, break leaves the loop — only inside a for. Watch 0 skipped and the run stop at 12.")
       revealBlock("#c3-code-loopctl")
       spotlight("#c3-tok-break")
-      callout("#c3-cl-loopctl", "continue → continueForEach · break → breakForEach")
+      callout("#c3-cl-loopctl", "continue → continueForEach · break → breakForEach · outside a for: compile error")
       demo("#c3-fx-loopctl")
+      ch3LoopControl()
     ]
 
-    // Beat 6 — sigils recap + the reveal
-    for 8s [
-      narrate("Three places data lives: $operationdata, $globaldata, $scope. Click ← Hub for more.")
+    // Beat 7 — with: REAL, the each prelude (clearSpots) is two with blocks (50–57 s)
+    for 7s as b7 [
+      narrate("with selects an element for a block, in any action or event — this tour's clearSpots is two with blocks.")
+      revealBlock("#c3-code-with")
+      spotlight("#c3-tok-with")
+      callout("#c3-cl-with", "the selection stays after the block — there is nothing to restore")
+      demo("#c3-fx-with")
+    ]
+
+    // Beat 8 — where data lives: the sigils and their short forms (57–64 s)
+    for 7s as b8 [
+      narrate("Where data lives: $operationdata, $globaldata, $scope — and the short forms you have been reading. Hub.")
       revealBlock("#c3-code-sigils")
       spotlight("#c3-tok-sigil")
       demo("#c3-fx-sigils")
     ]
   }
+
+  // Beat 4's sub-steps: the same if, with 0 (else if → muted) and -1 (else → plain)
+  at b4.start + 4s for 1s [ ch3Badge(0) ]
+  at b4.start + 6s for 1s [ ch3Badge(-1) ]
 }
 
 // ===========================================================================
