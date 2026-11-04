@@ -9,26 +9,29 @@
  *
  * VIEW MANAGEMENT — each timeline shows ONLY its own view, through its
  * lifecycle blocks:
- *   on enter → showView(self) + wire nav   (runs when the timeline is switched IN)
- *   on leave → hideView(self)               (runs when it is switched AWAY)
+ *   on enter → enterChapter(self) (show + progress bar) + wire nav and keys
+ *   on leave → leaveChapter(self, back) (hide, reset the view, unwire)
+ * replay (r) → replayChapter(self): reset the view, then seek to 0.
  * The engine's switch lifecycle runs the leaving timeline's `on leave`, then the
  * entering timeline's `on enter`, so no timeline needs to hide the others. They
  * are not events: the view stays up after the last beat, and the timeline's
  * duration is its last beat's end. (See ELIGIUS_EXECUTION_MODEL.md §7b.)
  * `#narration` is a shared subtitle bar each chapter shows/hides alongside its
- * own view.
+ * own view. Keyboard: 1–8 on the hub, Esc back, space pauses, r replays.
  *
  * Snippets in the code pane are hand-authored display assets (pre-tokenized in
  * layout.html); this file is the real machinery driving them.
  */
 languages {
   * "en-US" "English"
+    "nl-NL" "Nederlands"
 }
 
 layout "./layout.html"
 styles "./tour.css"
+locales "./locales.json"
 
-import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView } from "./presentation.eligian"
+import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView, enterChapter, replayChapter, leaveChapter } from "./presentation.eligian"
 
 // Chapter-3 helpers — the real logic its beats run, so the executed code mirrors
 // the taught snippets. (`const` is scoped inside an action, not inside a timeline
@@ -84,23 +87,56 @@ on event "tour-ping" action ch5OnPing(target) [
   addClass("in")
 ]
 
+// Hub unwiring — the engine never detaches controllers on a timeline switch, so
+// the hub's on leave removes every controller its on enter attached: one
+// LabelController per localized line, one KeyboardController per `on key`
+// (on #stage, the timeline's container) and one listener per card.
+action hubUnwire() [
+  with "#hub-title" { removeControllerFromElement("LabelController") }
+  with "#hub-tagline" { removeControllerFromElement("LabelController") }
+  with "#stage" {
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  }
+  with "#card-ch1" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-ch2" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-ch3" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-ch4" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-ch5" { removeControllerFromElement("DOMEventListenerController") }
+  with "#card-ch6" { removeControllerFromElement("DOMEventListenerController") }
+]
+
 // ===========================================================================
-// Hub — the landing menu. Click a card to jump into a chapter.
+// Hub — the landing menu. Click a card (or press its number) to jump into a
+// chapter. The title and tagline are LabelControllers over locales.json.
 // ===========================================================================
 timeline "Hub" in "#stage" using raf {
-
-  // setup: show the hub on enter, hide it on leave; wire the cards
   on enter [
     showView("#hub")
+    selectElement("#hub-title")
+    addController("LabelController", "hub.title")
+    selectElement("#hub-tagline")
+    addController("LabelController", "hub.tagline")
     on click "#card-ch1" navigate "Timeline & Time"
     on click "#card-ch2" navigate "Actions"
     on click "#card-ch3" navigate "Logic"
     on click "#card-ch4" navigate "Timeline Power Tools"
     on click "#card-ch5" navigate "Engine Reach"
     on click "#card-ch6" navigate "Tooling Magic"
+    on key "1" navigate "Timeline & Time"
+    on key "2" navigate "Actions"
+    on key "3" navigate "Logic"
+    on key "4" navigate "Timeline Power Tools"
+    on key "6" navigate "Engine Reach"
+    on key "7" navigate "Tooling Magic"
   ]
   on leave [
     hideView("#hub")
+    hubUnwire()
   ]
 }
 
@@ -110,15 +146,17 @@ timeline "Hub" in "#stage" using raf {
 // ===========================================================================
 timeline "Timeline & Time" in "#stage" using raf {
 
-  // setup: show this chapter + narration on enter, hide on leave; wire back
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
   on enter [
-    showView("#ch1")
-    showView("#narration")
+    enterChapter("#ch1")
     on click "#c1-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#ch1")
   ]
   on leave [
-    hideView("#ch1")
-    hideView("#narration")
+    leaveChapter("#ch1", "#c1-to-hub")
   ]
 
   // Beat 1 — open on the canvas
@@ -183,15 +221,17 @@ timeline "Timeline & Time" in "#stage" using raf {
 // ===========================================================================
 timeline "Actions" in "#stage" using raf {
 
-  // setup: show this chapter + narration on enter, hide on leave; wire back
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
   on enter [
-    showView("#ch2")
-    showView("#narration")
+    enterChapter("#ch2")
     on click "#c2-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#ch2")
   ]
   on leave [
-    hideView("#ch2")
-    hideView("#narration")
+    leaveChapter("#ch2", "#c2-to-hub")
   ]
 
   sequence each [ clearSpots() ] {
@@ -255,15 +295,17 @@ timeline "Actions" in "#stage" using raf {
 // ===========================================================================
 timeline "Logic" in "#stage" using raf {
 
-  // setup: show this chapter + narration on enter, hide on leave; wire back
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
   on enter [
-    showView("#ch3")
-    showView("#narration")
+    enterChapter("#ch3")
     on click "#c3-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#ch3")
   ]
   on leave [
-    hideView("#ch3")
-    hideView("#narration")
+    leaveChapter("#ch3", "#c3-to-hub")
   ]
 
   sequence each [ clearSpots() ] {
@@ -331,15 +373,17 @@ timeline "Logic" in "#stage" using raf {
 // ===========================================================================
 timeline "Timeline Power Tools" in "#stage" using raf {
 
-  // setup: show this chapter + narration on enter, hide on leave; wire back
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
   on enter [
-    showView("#ch4")
-    showView("#narration")
+    enterChapter("#ch4")
     on click "#c4-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#ch4")
   ]
   on leave [
-    hideView("#ch4")
-    hideView("#narration")
+    leaveChapter("#ch4", "#c4-to-hub")
   ]
 
   sequence each [ clearSpots() ] {
@@ -409,15 +453,17 @@ timeline "Timeline Power Tools" in "#stage" using raf {
 // ===========================================================================
 timeline "Engine Reach" in "#stage" using raf {
 
-  // setup: show this chapter + narration on enter, hide on leave; wire back
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
   on enter [
-    showView("#ch5")
-    showView("#narration")
+    enterChapter("#ch5")
     on click "#c5-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#ch5")
   ]
   on leave [
-    hideView("#ch5")
-    hideView("#narration")
+    leaveChapter("#ch5", "#c5-to-hub")
   ]
 
   sequence each [ clearSpots() ] {
@@ -488,15 +534,17 @@ timeline "Engine Reach" in "#stage" using raf {
 // ===========================================================================
 timeline "Tooling Magic" in "#stage" using raf {
 
-  // setup: show this chapter + narration on enter, hide on leave; wire back
+  // setup: show this chapter + narration + progress on enter; wire back, Esc,
+  // space and r. On leave: hide, reset the view, unwire.
   on enter [
-    showView("#ch6")
-    showView("#narration")
+    enterChapter("#ch6")
     on click "#c6-to-hub" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+    on key "r" run replayChapter("#ch6")
   ]
   on leave [
-    hideView("#ch6")
-    hideView("#narration")
+    leaveChapter("#ch6", "#c6-to-hub")
   ]
 
   sequence each [ clearSpots() ] {

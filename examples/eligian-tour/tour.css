@@ -85,6 +85,18 @@
   background: var(--accent);
   transform: scale(1.25);
 }
+/* a status dot in a chapter's chrome; .lit switches it on */
+.pulse-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #30363d;
+  transition: background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.pulse-dot.lit {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.35);
+}
 .chapter-label {
   color: var(--muted);
   font-size: 0.85rem;
@@ -174,6 +186,11 @@
   margin: 0.5rem 0 2.5rem;
   color: var(--muted);
   font-size: 1.05rem;
+}
+#hub-hint {
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 #hub-cards {
   list-style: none;
@@ -781,13 +798,10 @@
 }
 
 /* ---- Chapter progress bar (under the narration) ----------------------- */
-/* Written when each chapter timeline ran for 3600s (a setup event kept the view
-   up until you leave), so the engine's ProgressbarController would barely move.
-   With `on enter` / `on leave` the duration is the chapter's real length, so the
-   controller could take this over. For now the fill animates over the chapter's
-   real length while that chapter is active; re-entering a chapter restarts it,
-   just like its timeline. The lengths mirror each chapter's last beat end in
-   tour.eligian, so update them together. */
+/* enterChapter attaches the engine's ProgressbarController to #progress-fill:
+   it sets the fill's width from the timeline's position and duration, so the
+   bar follows pause, seek and replay, and a click on #progress seeks. No
+   chapter length is kept here. */
 #progress {
   position: absolute;
   left: 1.5rem;
@@ -805,38 +819,18 @@
   height: 100%;
   background: var(--accent);
   opacity: 0.6;
+  transition: width 0.25s linear;
 }
 #stage:has(.chapter.is-active) #progress {
   opacity: 1;
 }
-#stage:has(#ch1.is-active) #progress-fill {
-  animation: progress-fill 42s linear forwards;
-}
-#stage:has(#ch2.is-active) #progress-fill {
-  animation: progress-fill 46s linear forwards;
-}
-#stage:has(#ch3.is-active) #progress-fill {
-  animation: progress-fill 48s linear forwards;
-}
-#stage:has(#ch4.is-active) #progress-fill {
-  animation: progress-fill 47s linear forwards;
-}
-#stage:has(#ch5.is-active) #progress-fill {
-  animation: progress-fill 48s linear forwards;
-}
-#stage:has(#ch6.is-active) #progress-fill {
-  animation: progress-fill 48s linear forwards;
-}
-@keyframes progress-fill {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
 
 /* ---- State classes toggled by the presentation library --------------- */
+/* One class each (specificity 0,1,0), and resetChapter removes every one of
+   them inside a chapter's view on leave and on replay. A component hidden by a
+   two-class or id rule (#c3-badge, .term-line.out) is not revealed by these: it
+   declares its own reveal rule (#c3-badge.active, .term-line.out.in), or stays
+   single-class and is declared before this section. */
 .in {
   opacity: 1;
   transform: translateY(0);
@@ -854,6 +848,16 @@
 }
 .active {
   opacity: 1;
+}
+/* lit for the duration of a beat (a target block, loop chips, wave chips) */
+.lit {
+  box-shadow: 0 0 0 3px var(--accent);
+  opacity: 1;
+}
+/* the dimmed state of a component (Chapter 3's badge) */
+.muted {
+  opacity: 0.5;
+  filter: grayscale(1);
 }
 
 @keyframes clip-sweep {

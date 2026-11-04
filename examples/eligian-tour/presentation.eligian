@@ -10,7 +10,7 @@ library presentation
 /**
  * Reveal a code block: fade it in, run the CSS clip-sweep "typing" effect, and
  * scroll the code pane so the new block is in view.
- * @param selector CSS selector for the code block
+ * @param {string} selector CSS selector for the code block
  */
 action revealBlock(selector: string) [
   selectElement(selector)
@@ -21,7 +21,7 @@ action revealBlock(selector: string) [
 
 /**
  * Spotlight a single code token (caller dims the rest via clearSpots first).
- * @param selector CSS selector for the token span
+ * @param {string} selector CSS selector for the token span
  */
 action spotlight(selector: string) [
   selectElement(selector)
@@ -42,8 +42,8 @@ action clearSpots() [
  * NOTE: the content param MUST be named `template` — the DSL wires a built-in
  * operation's argument by matching the action parameter name to the operation's
  * input property, and setElementContent reads `template` (not `text`).
- * @param selector CSS selector for the callout chip
- * @param template Label text to show
+ * @param {string} selector CSS selector for the callout chip
+ * @param {string} template Label text to show
  */
 action callout(selector: string, template: string) [
   selectElement(selector)
@@ -53,7 +53,7 @@ action callout(selector: string, template: string) [
 
 /**
  * Swap the narration subtitle line and animate the new line in.
- * @param template Subtitle text for this beat (named `template` to feed setElementContent)
+ * @param {string} template Subtitle text for this beat (named `template` to feed setElementContent)
  */
 action narrate(template: string) [
   selectElement("#narration")
@@ -67,7 +67,7 @@ action narrate(template: string) [
 
 /**
  * Run a real effect in the effect pane, scrolling the pane so it is in view.
- * @param selector CSS selector for the effect element to activate
+ * @param {string} selector CSS selector for the effect element to activate
  */
 action demo(selector: string) [
   selectElement(selector)
@@ -79,7 +79,7 @@ action demo(selector: string) [
 /**
  * Reveal a single item by selector — used by Chapter 4's `stagger` block, which
  * passes each staggered item (a card selector) as this action's first argument.
- * @param selector CSS selector for the item to reveal
+ * @param {string} selector CSS selector for the item to reveal
  */
 action revealCard(selector: string) [
   selectElement(selector)
@@ -89,7 +89,7 @@ action revealCard(selector: string) [
 /**
  * Reveal a top-level view (the hub menu or a chapter). Each timeline shows its
  * own view at its start, so switching timelines swaps what's on screen.
- * @param selector CSS selector for the view container
+ * @param {string} selector CSS selector for the view container
  */
 action showView(selector: string) [
   selectElement(selector)
@@ -97,12 +97,70 @@ action showView(selector: string) [
 ]
 
 /**
- * Hide a top-level view. A timeline hides the views it doesn't own at its start
- * (start/end ops are independent runs, so each timeline sets up the full visible
- * state itself — seek-safe).
- * @param selector CSS selector for the view container
+ * Hide a top-level view; each timeline calls it for its own view in on leave.
+ * @param {string} selector CSS selector for the view container
  */
 action hideView(selector: string) [
   selectElement(selector)
   removeClass("is-active")
+]
+
+/**
+ * Enter a chapter: show its view and the narration, and let the engine's
+ * ProgressbarController fill #progress-fill (it follows pause, seek and replay).
+ * @param {string} view CSS selector of the chapter view (#ch3)
+ */
+action enterChapter(view: string) [
+  showView(view)
+  showView("#narration")
+  selectElement("#progress-fill")
+  addController("ProgressbarController")
+]
+
+/**
+ * Undo everything a chapter's beats did to its own view, so re-entering or
+ * replaying it starts like the first visit. Runs in on leave and in replayChapter.
+ * @param {string} view CSS selector of the chapter view (#ch3)
+ */
+action resetChapter(view: string) [
+  with view + " .in" { removeClass("in") removeClass("typing") }
+  with view + " .active" { removeClass("active") }
+  with view + " .show" { removeClass("show") }
+  with view + " .spot" { removeClass("spot") }
+  with view + " .lit" { removeClass("lit") }
+  with view + " .muted" { removeClass("muted") }
+]
+
+/**
+ * Replay a chapter: reset its view, then seek to 0. A seek alone only ends the
+ * actions that no longer cover the position and starts those that do, so it
+ * would keep every class earlier beats added. Bound per chapter as
+ * on key "r" run replayChapter("#chN") (run arguments are literals).
+ * @param {string} view CSS selector of the chapter view
+ */
+action replayChapter(view: string) [
+  resetChapter(view)
+  broadcastEvent([0], "timeline-seek-request")
+]
+
+/**
+ * Leave a chapter: hide its view and the narration, reset it, and detach the
+ * controllers its on enter attached (the engine never detaches controllers on
+ * a timeline switch). Exactly three `on key` statements per chapter: one
+ * removeControllerFromElement per KeyboardController (checked by the
+ * controller-balance test, WP-1).
+ * @param {string} view CSS selector of the chapter view
+ * @param {string} back CSS selector of the chapter's Hub button
+ */
+action leaveChapter(view: string, back: string) [
+  hideView(view)
+  hideView("#narration")
+  resetChapter(view)
+  with "#stage" {
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  }
+  with back { removeControllerFromElement("DOMEventListenerController") }
+  with "#progress-fill" { removeControllerFromElement("ProgressbarController") }
 ]

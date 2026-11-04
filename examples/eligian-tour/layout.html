@@ -8,7 +8,7 @@
       #ch1        (.view .chapter)   Chapter 1 walkthrough
       #ch2        (.view .chapter)   Chapter 2 walkthrough
       #narration                     SHARED subtitle bar (toggled per chapter)
-      #progress                      SHARED chapter progress bar (CSS-driven)
+      #progress                      SHARED chapter progress bar (ProgressbarController)
 
   Each chapter is a self-contained view with its own chrome / .code-pane /
   .effect-pane / .callout-layer. Structural panes are CLASSES shared across
@@ -24,16 +24,20 @@
   <!-- ============================ HUB VIEW ============================ -->
   <section id="hub" class="view">
     <div id="hub-inner">
-      <h1 id="hub-title">The Eligian Tour</h1>
-      <p id="hub-tagline">A presentation that teaches the language it is written in.</p>
+      <!-- data-fallback: the title and tagline are filled by LabelControllers
+           (hub.title / hub.tagline in locales.json; en-US: "The Eligian Tour",
+           "A presentation that teaches the language it is written in.") -->
+      <h1 id="hub-title"></h1>
+      <p id="hub-tagline"></p>
       <ul id="hub-cards">
         <li id="card-ch1" class="card"><span class="card-num">01</span><span class="card-name">Timeline &amp; Time</span></li>
         <li id="card-ch2" class="card"><span class="card-num">02</span><span class="card-name">Actions &amp; Composition</span></li>
         <li id="card-ch3" class="card"><span class="card-num">03</span><span class="card-name">Logic &amp; Data</span></li>
         <li id="card-ch4" class="card"><span class="card-num">04</span><span class="card-name">Timeline Power Tools</span></li>
-        <li id="card-ch5" class="card"><span class="card-num">05</span><span class="card-name">Engine Reach</span></li>
-        <li id="card-ch6" class="card"><span class="card-num">06</span><span class="card-name">Tooling Magic</span></li>
+        <li id="card-ch5" class="card"><span class="card-num">06</span><span class="card-name">Engine Reach</span></li>
+        <li id="card-ch6" class="card"><span class="card-num">07</span><span class="card-name">Tooling Magic</span></li>
       </ul>
+      <p id="hub-hint">Click a card or press 1–8 · Esc returns here · space pauses · r replays</p>
     </div>
   </section>
 
@@ -43,9 +47,8 @@
     <header class="chrome">
       <button id="c1-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot is-current"></span>
-        <span class="dot"></span><span class="dot"></span>
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot is-current"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">01 · Timeline &amp; Time</span>
     </header>
@@ -100,8 +103,7 @@
     <header class="chrome">
       <button id="c2-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span>
-        <span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot is-current"></span><span class="dot"></span><span class="dot"></span>
         <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">02 · Actions &amp; Composition</span>
@@ -172,9 +174,8 @@
     <header class="chrome">
       <button id="c3-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot is-current"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">03 · Logic &amp; Data</span>
     </header>
@@ -248,9 +249,8 @@
     <header class="chrome">
       <button id="c4-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
-        <span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </nav>
       <span class="chapter-label">04 · Timeline Power Tools</span>
     </header>
@@ -314,10 +314,9 @@
       <button id="c5-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
-        <span class="dot"></span>
+        <span class="dot"></span><span class="dot is-current"></span><span class="dot"></span><span class="dot"></span>
       </nav>
-      <span class="chapter-label">05 · Engine Reach</span>
+      <span class="chapter-label">06 · Engine Reach</span>
     </header>
 
     <section class="code-pane">
@@ -379,10 +378,10 @@
     <header class="chrome">
       <button id="c6-to-hub" class="to-hub">&larr; Hub</button>
       <nav class="progress-rail" aria-label="chapters">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="dot is-current"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span><span class="dot is-current"></span><span class="dot"></span>
       </nav>
-      <span class="chapter-label">06 · Tooling Magic</span>
+      <span class="chapter-label">07 · Tooling Magic</span>
     </header>
 
     <section class="code-pane">
@@ -461,7 +460,8 @@
   <!-- Shared narration subtitle (text set at runtime; toggled per chapter) -->
   <footer id="narration"></footer>
 
-  <!-- Chapter progress, under the narration (pure CSS, see tour.css) -->
+  <!-- Chapter progress, under the narration (filled by the ProgressbarController
+       enterChapter attaches; a click on the bar seeks) -->
   <div id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
 
 </div>
