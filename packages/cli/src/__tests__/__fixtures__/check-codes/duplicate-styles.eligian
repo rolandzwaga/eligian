@@ -1,0 +1,6 @@
+styles "./a.css"
+styles "./b.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ ] [ ]
+}

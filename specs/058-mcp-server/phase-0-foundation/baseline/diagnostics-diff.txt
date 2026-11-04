@@ -1,0 +1,92 @@
+diff --git a/specs/058-mcp-server/phase-0-foundation/baseline/diagnostics-before.json b/specs/058-mcp-server/phase-0-foundation/baseline/diagnostics-after.json
+index 1dd5f11..c05d527 100644
+--- a/specs/058-mcp-server/phase-0-foundation/baseline/diagnostics-before.json
++++ b/specs/058-mcp-server/phase-0-foundation/baseline/diagnostics-after.json
+@@ -182,7 +182,7 @@
+   {
+     "file": "packages/cli/src/__tests__/__fixtures__/warning-only.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline \"test\" in \"#app\" using raf from \"x.mp4\" {\n  at 0s..5s showElement()\n}', this warning is found: Timeline provider 'raf' does not use a source file. Remove: from \"x.mp4\"",
++    "message": "Timeline provider 'raf' does not use a source file. Remove: from \"x.mp4\"",
+     "line": 13,
+     "column": 42,
+     "endLine": 13,
+@@ -299,7 +299,7 @@
+   {
+     "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline \"test\" in \".test-container\" using websocket from \"ws://localhost:8080\" {\n  at 0s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\n  ] [\n    removeClass(\"visible\")\n  ]\n}', this warning is found: Timeline provider 'undefined' does not use a source file. Remove: from \"ws://localhost:8080\"",
++    "message": "Timeline provider 'undefined' does not use a source file. Remove: from \"ws://localhost:8080\"",
+     "line": 5,
+     "column": 59,
+     "endLine": 5,
+@@ -353,7 +353,7 @@
+   {
+     "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+     "severity": "error",
+-    "message": "While validating the AstNode 'at 10s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\n  ] [\n    removeClass(\"visible\")\n  ]', this error is found: Timeline event end time (5s) must be greater than start time (10s)",
++    "message": "Timeline event end time (5s) must be greater than start time (10s)",
+     "line": 6,
+     "column": 6,
+     "endLine": 6,
+@@ -413,15 +413,6 @@
+     "endLine": 5,
+     "endColumn": 49
+   },
+-  {
+-    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+-    "severity": "error",
+-    "message": "While validating the AstNode 'timeline \"test\" in \".test-container\" using video {\n  at 0s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\n  ] [\n    removeClass(\"visible\")\n  ]\n}', this error is found: Timeline provider 'video' requires a source file. Add: from \"<file path>\"",
+-    "line": 5,
+-    "column": 44,
+-    "endLine": 5,
+-    "endColumn": 49
+-  },
+   {
+     "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+     "severity": "error",
+@@ -821,7 +812,7 @@
+   {
+     "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline \"test\"', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+     "line": 12,
+     "column": 1,
+     "endLine": 12,
+@@ -848,7 +839,7 @@
+   {
+     "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline \"test2\"', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+     "line": 20,
+     "column": 1,
+     "endLine": 20,
+@@ -875,7 +866,7 @@
+   {
+     "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline \"test3\"', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+     "line": 26,
+     "column": 1,
+     "endLine": 26,
+@@ -1379,7 +1370,7 @@
+   {
+     "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+     "line": 2,
+     "column": 1,
+     "endLine": 2,
+@@ -1757,7 +1748,7 @@
+   {
+     "file": "packages/language/src/compiler/__tests__/__fixtures__/simple.eligian",
+     "severity": "warning",
+-    "message": "While validating the AstNode 'timeline', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+     "line": 2,
+     "column": 1,
+     "endLine": 2,

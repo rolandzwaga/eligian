@@ -47,6 +47,7 @@ import {
 } from '../utils/time-units.js';
 import { duplicateLifecycleMessage, lifecycleBlocks } from '../utils/timeline-lifecycle.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 
 /**
  * Validations for timelines and timeline events.
@@ -67,6 +68,7 @@ export class TimelineValidator extends BaseValidator {
         {
           node: timeline,
           property: 'provider',
+          code: diagnosticCode('timeline-provider-invalid'),
         }
       );
     }
@@ -75,19 +77,28 @@ export class TimelineValidator extends BaseValidator {
   /**
    * Validate that video/audio providers have a source specified.
    *
-   * Video and audio timelines require a source file path.
+   * Video and audio timelines require a source file path; other providers do not use one
+   * (warning).
    */
   checkSourceRequired(timeline: Timeline, accept: ValidationAcceptor): void {
     const requiresSource = timeline.provider === 'video' || timeline.provider === 'audio';
+    const hasSource = timeline.source !== undefined && timeline.source !== '';
 
-    if (requiresSource && !timeline.source) {
+    if (requiresSource && !hasSource) {
       accept(
         'error',
         `Timeline provider '${timeline.provider}' requires a source file. Add: from "<file path>"`,
         {
           node: timeline,
           property: 'provider',
+          code: diagnosticCode('timeline-source-required'),
         }
+      );
+    } else if (!requiresSource && hasSource) {
+      accept(
+        'warning',
+        `Timeline provider '${timeline.provider}' does not use a source file. Remove: from "${timeline.source}"`,
+        { node: timeline, property: 'source', code: diagnosticCode('timeline-source-unused') }
       );
     }
   }
@@ -107,26 +118,38 @@ export class TimelineValidator extends BaseValidator {
       accept('error', duplicateLifecycleMessage(block.kind), {
         node: block,
         property: 'kind',
-        code: 'duplicate_lifecycle_block',
+        code: diagnosticCode('duplicate_lifecycle_block'),
       });
     }
   }
 
   checkTimelineOptions(timeline: Timeline, accept: ValidationAcceptor): void {
     if (timeline.provider === 'scroll' && !timeline.duration) {
-      accept('error', SCROLL_DURATION_REQUIRED_MESSAGE, { node: timeline, property: 'provider' });
+      accept('error', SCROLL_DURATION_REQUIRED_MESSAGE, {
+        node: timeline,
+        property: 'provider',
+        code: diagnosticCode('timeline-scroll-duration-required'),
+      });
     }
     if (timeline.scrollSelector !== undefined && timeline.provider !== 'scroll') {
       accept(
         'error',
         `Only scroll timelines take a scroll container selector ('using scroll "<selector>"'); remove it from this '${timeline.provider}' timeline`,
-        { node: timeline, property: 'scrollSelector' }
+        {
+          node: timeline,
+          property: 'scrollSelector',
+          code: diagnosticCode('timeline-scroll-selector-not-scroll'),
+        }
       );
     }
 
     if (!timeline.duration) return;
     if (containsRelativeTime(timeline.duration)) {
-      accept('error', RELATIVE_DURATION_MESSAGE, { node: timeline, property: 'duration' });
+      accept('error', RELATIVE_DURATION_MESSAGE, {
+        node: timeline,
+        property: 'duration',
+        code: diagnosticCode('timeline-duration-relative'),
+      });
       return;
     }
     const duration = extractTimeValue(timeline.duration);
@@ -135,6 +158,7 @@ export class TimelineValidator extends BaseValidator {
       accept('error', `Timeline duration must be greater than 0 (got ${duration}s)`, {
         node: timeline,
         property: 'duration',
+        code: diagnosticCode('timeline-duration-not-positive'),
       });
       return;
     }
@@ -146,7 +170,7 @@ export class TimelineValidator extends BaseValidator {
         accept(
           'warning',
           `This event ends at ${end}s, after the timeline's duration (${duration}s), so its end is never reached`,
-          { node: event, property: 'timeRange' }
+          { node: event, property: 'timeRange', code: diagnosticCode('event-ends-after-timeline') }
         );
       }
     }
@@ -178,7 +202,7 @@ export class TimelineValidator extends BaseValidator {
         accept('error', 'Invalid CSS selector syntax: the scroll container selector is empty', {
           node: timeline,
           property: 'scrollSelector',
-          data: { code: 'invalid_css_selector_syntax' },
+          data: { code: diagnosticCode('invalid_css_selector_syntax') },
         });
       }
       return;
@@ -189,7 +213,7 @@ export class TimelineValidator extends BaseValidator {
         accept('error', `Invalid CSS selector syntax: ${error}`, {
           node: timeline,
           property: 'scrollSelector',
-          data: { code: 'invalid_css_selector_syntax' },
+          data: { code: diagnosticCode('invalid_css_selector_syntax') },
         });
       }
       return;
@@ -217,7 +241,7 @@ export class TimelineValidator extends BaseValidator {
         accept(
           'error',
           `Unknown scroll container '${token}': it is not in the layout HTML or the imported CSS`,
-          { node: timeline, property, data: { code: 'unknown_scroll_container' } }
+          { node: timeline, property, data: { code: diagnosticCode('unknown_scroll_container') } }
         );
       }
       if (unknown.length > 0) return;
@@ -233,7 +257,11 @@ export class TimelineValidator extends BaseValidator {
       accept(
         'warning',
         `The scroll container '${selector}' may not scroll: no CSS rule or inline style for it sets overflow-y (or overflow) to auto or scroll, and the timeline only moves when it scrolls`,
-        { node: timeline, property, data: { code: 'scroll_container_not_scrollable' } }
+        {
+          node: timeline,
+          property,
+          data: { code: diagnosticCode('scroll_container_not_scrollable') },
+        }
       );
     }
   }
@@ -280,7 +308,7 @@ export class TimelineValidator extends BaseValidator {
       accept('error', 'Invalid CSS selector syntax: the timeline container selector is empty', {
         node: timeline,
         property: 'containerSelector',
-        data: { code: 'invalid_css_selector_syntax' },
+        data: { code: diagnosticCode('invalid_css_selector_syntax') },
       });
       return;
     }
@@ -293,7 +321,7 @@ export class TimelineValidator extends BaseValidator {
       accept('error', `Invalid CSS selector syntax: ${error}`, {
         node: timeline,
         property: 'containerSelector',
-        data: { code: 'invalid_css_selector_syntax' },
+        data: { code: diagnosticCode('invalid_css_selector_syntax') },
       });
       return;
     }
@@ -312,7 +340,7 @@ export class TimelineValidator extends BaseValidator {
           {
             node: timeline,
             property: 'containerSelector',
-            data: { code: 'unknown_css_class_in_selector', suggestions },
+            data: { code: diagnosticCode('unknown_css_class_in_selector'), suggestions },
           }
         );
       }
@@ -324,7 +352,7 @@ export class TimelineValidator extends BaseValidator {
         accept('error', `Unknown CSS ID in timeline container selector: '${id}'`, {
           node: timeline,
           property: 'containerSelector',
-          data: { code: 'unknown_css_id_in_selector' },
+          data: { code: diagnosticCode('unknown_css_id_in_selector') },
         });
       }
     }
@@ -351,7 +379,7 @@ export class TimelineValidator extends BaseValidator {
     if (!isTimeSlot(node)) return;
     accept('error', propertyChainTimeMessage(node), {
       node,
-      data: { code: 'property_chain_in_time_expression' },
+      data: { code: diagnosticCode('property_chain_in_time_expression') },
     });
   }
 
@@ -365,7 +393,10 @@ export class TimelineValidator extends BaseValidator {
       current = current.$container;
     }
     if (isVariableDeclaration(current) && isProgram(current.$container)) return;
-    accept('error', TIME_VALUE_PLACEMENT_MESSAGE, { node, code: 'time_value_placement' });
+    accept('error', TIME_VALUE_PLACEMENT_MESSAGE, {
+      node,
+      code: diagnosticCode('time_value_placement'),
+    });
   }
 
   /**
@@ -378,7 +409,7 @@ export class TimelineValidator extends BaseValidator {
       if (isInteractionStatement(node.$container)) return; // checked by the navigate rules
       const value = timeConstantValue(node);
       if (value.error !== undefined) {
-        accept('error', value.error, { node, code: 'invalid_time_constant' });
+        accept('error', value.error, { node, code: diagnosticCode('invalid_time_constant') });
       }
       return;
     }
@@ -390,7 +421,7 @@ export class TimelineValidator extends BaseValidator {
     if (isVariableDeclaration(current) && isProgram(current.$container)) return;
     accept('error', timeConstantMisuseMessage(declaration.name), {
       node,
-      code: 'time_constant_misuse',
+      code: diagnosticCode('time_constant_misuse'),
     });
   }
 
@@ -403,7 +434,7 @@ export class TimelineValidator extends BaseValidator {
       accept('error', eventEdgeMessage(node), {
         node,
         property: 'edge',
-        code: 'invalid_event_edge',
+        code: diagnosticCode('invalid_event_edge'),
       });
       return;
     }
@@ -418,7 +449,7 @@ export class TimelineValidator extends BaseValidator {
         accept(
           'error',
           `The time of '${node.event?.$refText ?? '?'}' is not known at compile time`,
-          { node, code: 'event_label_time_unknown' }
+          { node, code: diagnosticCode('event_label_time_unknown') }
         );
       }
       return;
@@ -433,7 +464,7 @@ export class TimelineValidator extends BaseValidator {
     if (!isBefore(target, referencing, node, timeline)) {
       accept('error', laterEventMessage(node.event?.$refText ?? '?'), {
         node,
-        code: 'event_label_not_before',
+        code: diagnosticCode('event_label_not_before'),
       });
     }
   }
@@ -449,7 +480,7 @@ export class TimelineValidator extends BaseValidator {
         accept('error', `Duplicate event label '${event.name}' in this timeline`, {
           node: event,
           property: 'name',
-          code: 'duplicate_event_label',
+          code: diagnosticCode('duplicate_event_label'),
         });
       }
       seen.add(event.name);

@@ -1,0 +1,644 @@
+[
+  {
+    "code": "ABSOLUTE_PATH",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:29"
+    ]
+  },
+  {
+    "code": "AMBIGUOUS_EXTENSION",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:49"
+    ]
+  },
+  {
+    "code": "DUPLICATE_DEFAULT_IMPORT",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:60"
+    ]
+  },
+  {
+    "code": "DUPLICATE_IMPORT_NAME",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:39"
+    ]
+  },
+  {
+    "code": "INVALID_PATH_FORMAT",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:29"
+    ]
+  },
+  {
+    "code": "OPERATION_NAME_CONFLICT",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:39"
+    ]
+  },
+  {
+    "code": "RESERVED_KEYWORD",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:39"
+    ]
+  },
+  {
+    "code": "UNKNOWN_EXTENSION",
+    "kind": "pass-through",
+    "sites": [
+      "packages/language/src/validators/validation-errors.ts:49"
+    ]
+  },
+  {
+    "code": "action_name_builtin_conflict",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/action-validator.ts:43",
+      "packages/language/src/validators/import-validator.ts:307"
+    ]
+  },
+  {
+    "code": "circular_library_import",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/import-validator.ts:170"
+    ]
+  },
+  {
+    "code": "control_flow",
+    "kind": "lowercased",
+    "sites": [
+      "packages/language/src/compiler/operations/validation/errors.ts:58"
+    ]
+  },
+  {
+    "code": "duplicate_event_handler",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/program/duplicate-validator.ts:174"
+    ]
+  },
+  {
+    "code": "duplicate_event_label",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:452"
+    ]
+  },
+  {
+    "code": "duplicate_extensions_import",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:33"
+    ]
+  },
+  {
+    "code": "duplicate_host_declaration",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:68"
+    ]
+  },
+  {
+    "code": "duplicate_host_parameter",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:93"
+    ]
+  },
+  {
+    "code": "duplicate_language_code",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/languages-validator.ts:87"
+    ]
+  },
+  {
+    "code": "duplicate_lifecycle_block",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:110"
+    ]
+  },
+  {
+    "code": "duplicate_parameter",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:92"
+    ]
+  },
+  {
+    "code": "empty_event_name",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:132"
+    ]
+  },
+  {
+    "code": "empty_languages_block",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/languages-validator.ts:102"
+    ]
+  },
+  {
+    "code": "end_block_runtime_const",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/expression-validator.ts:69"
+    ]
+  },
+  {
+    "code": "erased-property-access",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/dataflow/operation-dataflow.ts:531"
+    ]
+  },
+  {
+    "code": "event_action_empty_body",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:56"
+    ]
+  },
+  {
+    "code": "event_action_name_builtin_conflict",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/program/duplicate-validator.ts:87"
+    ]
+  },
+  {
+    "code": "event_action_name_conflict",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/program/duplicate-validator.ts:80"
+    ]
+  },
+  {
+    "code": "event_argument_count_mismatch",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:239"
+    ]
+  },
+  {
+    "code": "event_label_not_before",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:436"
+    ]
+  },
+  {
+    "code": "event_label_time_unknown",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:421"
+    ]
+  },
+  {
+    "code": "event_name_must_be_literal",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:122"
+    ]
+  },
+  {
+    "code": "event_name_too_long",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:33"
+    ]
+  },
+  {
+    "code": "event_topic_empty",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:46"
+    ]
+  },
+  {
+    "code": "event_type_mismatch",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:306",
+      "packages/language/src/validators/event-action-validator.ts:316"
+    ]
+  },
+  {
+    "code": "extensions_path_not_relative",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:44"
+    ]
+  },
+  {
+    "code": "extensions_path_type",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:50"
+    ]
+  },
+  {
+    "code": "host_controller_builtin",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:83"
+    ]
+  },
+  {
+    "code": "host_operation_builtin",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:76"
+    ]
+  },
+  {
+    "code": "import_action_not_found",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/import-validator.ts:244"
+    ]
+  },
+  {
+    "code": "import_file_not_found",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/import-validator.ts:125"
+    ]
+  },
+  {
+    "code": "import_name_collision",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/program/import-name-collision-validator.ts:36",
+      "packages/language/src/validators/program/import-name-collision-validator.ts:55"
+    ]
+  },
+  {
+    "code": "import_private_action",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/import-validator.ts:284"
+    ]
+  },
+  {
+    "code": "invalid_constant_expression",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/expression-validator.ts:55"
+    ]
+  },
+  {
+    "code": "invalid_controller_name_type",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/operation-call/label-parameter-validator.ts:74"
+    ]
+  },
+  {
+    "code": "invalid_css_file",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/program/asset-import-validator.ts:216"
+    ]
+  },
+  {
+    "code": "invalid_css_selector",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/css/selector-validation.ts:31"
+    ]
+  },
+  {
+    "code": "invalid_css_selector_syntax",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:181",
+      "packages/language/src/validators/timeline-validator.ts:192",
+      "packages/language/src/validators/timeline-validator.ts:283",
+      "packages/language/src/validators/timeline-validator.ts:296"
+    ]
+  },
+  {
+    "code": "invalid_event_edge",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:406"
+    ]
+  },
+  {
+    "code": "invalid_language_code_format",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/languages-validator.ts:67"
+    ]
+  },
+  {
+    "code": "invalid_parameter_count",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/operation-call/parameter-validator.ts:60"
+    ]
+  },
+  {
+    "code": "invalid_setdata_target",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/operation-call/set-data-validator.ts:7"
+    ]
+  },
+  {
+    "code": "invalid_time_constant",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:381"
+    ]
+  },
+  {
+    "code": "library_invalid_content",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/import-validator.ts:54"
+    ]
+  },
+  {
+    "code": "missing-action-dependency",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/dataflow/operation-dataflow.ts:398",
+      "packages/language/src/dataflow/operation-dataflow.ts:445",
+      "packages/language/src/dataflow/operation-dataflow.ts:476"
+    ]
+  },
+  {
+    "code": "missing-dependency",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/dataflow/operation-dataflow.ts:506"
+    ]
+  },
+  {
+    "code": "missing_default_marker",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/languages-validator.ts:38"
+    ]
+  },
+  {
+    "code": "missing_dependency",
+    "kind": "lowercased",
+    "sites": [
+      "packages/language/src/compiler/operations/validation/errors.ts:49"
+    ]
+  },
+  {
+    "code": "missing_labels_file",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/eligian-validator.ts:22"
+    ]
+  },
+  {
+    "code": "missing_required_parameter",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/operation-call/label-parameter-validator.ts:111"
+    ]
+  },
+  {
+    "code": "multiple_default_markers",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/languages-validator.ts:45"
+    ]
+  },
+  {
+    "code": "no_labels_import",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/type-system-typir/validation/label-id-validation.ts:56"
+    ]
+  },
+  {
+    "code": "parameter_count",
+    "kind": "lowercased",
+    "sites": [
+      "packages/language/src/compiler/operations/validation/errors.ts:29"
+    ]
+  },
+  {
+    "code": "parameter_type",
+    "kind": "lowercased",
+    "sites": [
+      "packages/language/src/compiler/operations/validation/errors.ts:38"
+    ]
+  },
+  {
+    "code": "private_only_in_libraries",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/action-validator.ts:341"
+    ]
+  },
+  {
+    "code": "property_chain_in_time_expression",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:354"
+    ]
+  },
+  {
+    "code": "recursive_action_call",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/action-validator.ts:128"
+    ]
+  },
+  {
+    "code": "reserved_keyword_parameter",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/action-validator.ts:71",
+      "packages/language/src/validators/event-action-validator.ts:80"
+    ]
+  },
+  {
+    "code": "run_not_an_action",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/navigate-validator.ts:103"
+    ]
+  },
+  {
+    "code": "run_runtime_argument",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/navigate-validator.ts:114"
+    ]
+  },
+  {
+    "code": "runtime_concat_context",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/expression-validator.ts:62"
+    ]
+  },
+  {
+    "code": "runtime_concat_operand",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/expression-validator.ts:63"
+    ]
+  },
+  {
+    "code": "runtime_negation_outside_condition",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/expression-validator.ts:34"
+    ]
+  },
+  {
+    "code": "runtime_operator_operand",
+    "kind": "constant",
+    "sites": [
+      "packages/language/src/validators/expression-validator.ts:48"
+    ]
+  },
+  {
+    "code": "scroll_container_not_scrollable",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:236"
+    ]
+  },
+  {
+    "code": "selector_not_in_layout",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/css/selector-sources.ts:92"
+    ]
+  },
+  {
+    "code": "time_constant_misuse",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:393"
+    ]
+  },
+  {
+    "code": "time_value_placement",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:368"
+    ]
+  },
+  {
+    "code": "too_many_parameters",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/operation-call/label-parameter-validator.ts:125"
+    ]
+  },
+  {
+    "code": "unknown_controller",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/operation-call/label-parameter-validator.ts:86"
+    ]
+  },
+  {
+    "code": "unknown_css_class",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/operation-call/css-parameter-validator.ts:53",
+      "packages/language/src/validators/operation-call/css-parameter-validator.ts:138"
+    ]
+  },
+  {
+    "code": "unknown_css_class_in_selector",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/css/selector-validation.ts:46",
+      "packages/language/src/validators/timeline-validator.ts:315"
+    ]
+  },
+  {
+    "code": "unknown_css_id_in_selector",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/css/selector-validation.ts:59",
+      "packages/language/src/validators/timeline-validator.ts:327"
+    ]
+  },
+  {
+    "code": "unknown_dom_event",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/navigate-validator.ts:83"
+    ]
+  },
+  {
+    "code": "unknown_event_name",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:170"
+    ]
+  },
+  {
+    "code": "unknown_host_function",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/extensions-validator.ts:114"
+    ]
+  },
+  {
+    "code": "unknown_key",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/navigate-validator.ts:71"
+    ]
+  },
+  {
+    "code": "unknown_label_id",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/type-system-typir/validation/label-id-validation.ts:76"
+    ]
+  },
+  {
+    "code": "unknown_navigate_target",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/navigate-validator.ts:54"
+    ]
+  },
+  {
+    "code": "unknown_operation",
+    "kind": "lowercased",
+    "sites": [
+      "packages/language/src/compiler/operations/validation/errors.ts:21"
+    ]
+  },
+  {
+    "code": "unknown_scroll_container",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/timeline-validator.ts:220"
+    ]
+  },
+  {
+    "code": "unnecessary_type_annotation",
+    "kind": "literal",
+    "sites": [
+      "packages/language/src/validators/event-action-validator.ts:289"
+    ]
+  }
+]

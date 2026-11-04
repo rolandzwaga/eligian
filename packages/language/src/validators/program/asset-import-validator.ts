@@ -4,6 +4,7 @@ import type { ValidationAcceptor } from 'langium';
 import { URI } from 'vscode-uri';
 import { hasImports, loadProgramAssets } from '../../asset-loading/compiler-integration.js';
 import { MISSING_LABELS_FILE_CODE } from '../../eligian-validator.js';
+import type { AssetError } from '../../errors/index.js';
 import type { Program } from '../../generated/ast.js';
 import { extractTranslationKeys } from '../../locales/translation-key-extractor.js';
 import type { MissingLabelsFileData } from '../../types/code-actions.js';
@@ -16,6 +17,16 @@ import {
 } from '../../utils/path-utils.js';
 import { getImports } from '../../utils/program-helpers.js';
 import { BaseValidator } from '../base-validator.js';
+import { type DiagnosticCode, diagnosticCode } from '../codes.js';
+
+/** The diagnostic code of each asset error (total over `AssetError['_tag']`). */
+const ASSET_ERROR_CODES: Record<AssetError['_tag'], DiagnosticCode> = {
+  HtmlImportError: 'html-import-error',
+  CssImportError: 'css-import-error',
+  CssParseError: 'css-parse-error',
+  MediaImportError: 'media-import-error',
+  LocalesImportError: 'locales-import-error',
+};
 
 /**
  * Asynchronously check whether a file exists, without throwing.
@@ -126,9 +137,13 @@ export class ProgramAssetImportValidator extends BaseValidator {
           accept('error', formatValidationMessage(error.message, error.hint), {
             node: importStmt,
             property: 'path',
+            code: ASSET_ERROR_CODES[error._tag],
           });
         } else {
-          accept('error', formatValidationMessage(error.message, error.hint), { node: program });
+          accept('error', formatValidationMessage(error.message, error.hint), {
+            node: program,
+            code: ASSET_ERROR_CODES[error._tag],
+          });
         }
       }
     } catch (_err) {
@@ -213,7 +228,7 @@ export class ProgramAssetImportValidator extends BaseValidator {
             node: cssImport,
             property: 'path',
             data: {
-              code: 'invalid_css_file',
+              code: diagnosticCode('invalid_css_file'),
             },
           });
         }
@@ -257,6 +272,7 @@ export class ProgramAssetImportValidator extends BaseValidator {
           'Locales import requires a languages block to declare available languages.',
           {
             node: localesImport,
+            code: diagnosticCode('locales-without-languages'),
           }
         );
       }
@@ -318,6 +334,7 @@ export class ProgramAssetImportValidator extends BaseValidator {
         const errorMessage = e instanceof Error ? e.message : String(e);
         accept('warning', `Failed to parse locales file: ${errorMessage}`, {
           node: localesImport,
+          code: diagnosticCode('locales-parse-failed'),
         });
       }
     }

@@ -7,6 +7,8 @@
  * @packageDocumentation
  */
 
+import { ELIGIAN_VERSION } from './version.js';
+
 // Effect services and layers
 export {
   type CompileOptions,
@@ -148,7 +150,7 @@ export type {
 /**
  * Compiler version
  */
-export const VERSION = '0.0.1';
+export const VERSION: string = ELIGIAN_VERSION;
 
 // Idea #24: host operations, controllers and functions (extensions import)
 export {

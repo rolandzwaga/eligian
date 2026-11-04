@@ -10,7 +10,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { HostModule } from '@eligian/language';
-import * as esbuild from 'esbuild';
 
 export interface HostRegistrations {
   operations: Record<string, never>;
@@ -26,6 +25,7 @@ export async function loadHostModule(
     os.tmpdir(),
     `eligian-host-${createHash('sha1').update(host.path).digest('hex').slice(0, 12)}-${Date.now()}.mjs`
   );
+  const esbuild = await import('esbuild');
   await esbuild.build({
     entryPoints: [host.path],
     bundle: true,

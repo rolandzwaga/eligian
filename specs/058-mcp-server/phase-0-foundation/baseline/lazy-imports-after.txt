@@ -1,0 +1,29 @@
+# T021 lazy imports: package-bin.spec.ts on the dev bundle (pnpm -C packages/cli build)
+bundle lines: 89703
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 17ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 340ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 9ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild or effect/ai 16ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the README and the LICENSE 811ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+
+# T021 lazy imports: package-bin.spec.ts on the minified bundle (pnpm -C packages/cli build:prod)
+bundle lines: 6231
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 5ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 350ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 4ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild or effect/ai 7ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the README and the LICENSE 737ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)

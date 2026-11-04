@@ -12,6 +12,7 @@ import type { ValidationProblemAcceptor } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { DefaultImport, NamedImport, Program } from '../../generated/ast.js';
 import { inferAssetType } from '../../utils/asset-type-inference.js';
+import { diagnosticCode } from '../../validators/codes.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 
 /**
@@ -65,6 +66,7 @@ export function registerImportValidation(typir: TypirLangiumServices<EligianSpec
               message: `Duplicate '${importType}' import. Only one ${importType} import is allowed per document.`,
               languageNode: defaultImport,
               languageProperty: 'type',
+              code: diagnosticCode('import-duplicate-default'),
             });
           } else {
             // Track this import type
@@ -108,6 +110,7 @@ export function registerImportValidation(typir: TypirLangiumServices<EligianSpec
           message: `Asset type '${node.assetType}' conflicts with inferred type '${inferredType}' from file extension (path: '${node.path}')`,
           languageNode: node,
           languageProperty: 'assetType',
+          code: diagnosticCode('asset-type-conflict'),
         });
       }
     },

@@ -1,0 +1,100 @@
+# FR-011a table: every runtime claim in examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md (T025)
+# Columns: line(s) | sentence | status. "line(s)" is the sentence span, the last line carries the marker.
+# Rows: 73 (probed: 27, not probed: 46).
+# Check: grep -c '(not probed, Phase 0)' examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md -> must equal 46.
+
+line(s) | sentence | status
+23-25 | An **action** owns one or two ordered lists of **operations** (`startOperations`, `endOperations`). An operation is a function called with `this` = the **scope** and one argument, the **operationData**; it returns operationData (sync or a Promise). | not probed (Phase 0)
+27-28 | `Action.executeOperation` (`src/action/action.ts`) walks the list in a **loop** (iterative in 4.x, so long `forEach` loops do not grow the stack). | not probed (Phase 0)
+29-30 | For operation *i* it copies the operation's configured data and merges it over the data threaded from the previous operation (`Object.assign(operationData, configuredData)`). | not probed (Phase 0)
+31 | It calls the operation with the merged object. | not probed (Phase 0)
+32-33 | The operation's **return value is the operationData of the next operation**; a returned Promise is awaited, then the loop continues with the resolved data. | not probed (Phase 0)
+34-36 | So an operation that returns `undefined` loses the bag: the next operation sees none of the keys earlier operations left, only its own configured data (after `selectElement(…)` and an operation returning `undefined`, `selectedElement` is gone). | probed: an operation that returns undefined hands the next operation an empty operationData
+38-39 | **So `operationData` is one object threaded down the chain**: each operation reads what earlier ones left and adds its own outputs. | not probed (Phase 0)
+40 | A run starts from the data passed to `start()` / `end()`, or `{}`. | not probed (Phase 0)
+44-46 | `selectElement` (`src/operation/select-element.ts`) finds the element below the engine root (`eventbus.request("request-engine-root")` + `.find(selector)`) and writes `operationData.selectedElement`. | not probed (Phase 0)
+47-48 | `addClass` and the other DOM operations **read** `operationData.selectedElement`; they never select on their own. | not probed (Phase 0)
+50-54 | The operation metadata (`src/operation/metadata/*.ts`) declares what each operation needs and produces: `dependentProperties` (must already be present, e.g. `selectedElement` for addClass), `outputProperties` (e.g. `selectedElement` for selectElement) and per-property `required` / `erased` (consumed and removed after use, e.g. `selector`). | not probed (Phase 0)
+61-63 | `Action.start()` runs `startOperations` and `EndableAction.end()` runs `endOperations`, each through `_runOperations` with a scope stack of its own (`src/action/action.ts`, `src/action/endable-action.ts`). | not probed (Phase 0)
+64-66 | The engine dispatches timeline actions itself: `_runActionMethod(action, phase)` calls `action[phase]()` with **no arguments** (`src/eligius-engine.ts`), so each run starts from `{}`. | probed: start and end blocks are independent runs, each starting from an empty operationData
+68-70 | **Therefore nothing carries from start to end.** A `selectedElement` set in `startOperations` does **not** exist in `endOperations`: every block must `selectElement` before it can `addClass` / `animate` / … (or use `target`, rule 8). | probed: start and end blocks are independent runs, each starting from an empty operationData
+72 | the lifecycle action's `on enter` and `on leave` blocks start from `{}`; | probed: on enter and on leave blocks start from an empty operationData
+73-74 | event actions (`on event`) start with only `eventArgs` (`src/eventbus/actionregistry-eventbus-listener.ts`); | probed: an event action starts with only eventArgs
+75-79 | listener actions (a DOMEventListenerController's or KeyboardController's actions) start with a copy of the listener's `actionOperationData` plus `eventTarget`, and `eventKey` for keys (`src/controllers/dom-event-listener-controller.ts`, `keyboard-controller.ts`); nothing the timeline block that wired the listener had in its operationData reaches them. | probed: a listener action starts with the listener's actionOperationData plus eventTarget, and eventKey for keys
+85 | `"$operationdata.x"` → the current operationData. | not probed (Phase 0)
+86 | `"$globaldata.x"` → a deep copy of the value in the global store. | not probed (Phase 0)
+87-88 | `"$scope.x"` → the nearest scope that declares `x` (`$scope.currentItem`, `$scope.loopIndex`, `$scope.variables.foo`). | not probed (Phase 0)
+89 | Any other string (e.g. `"#title"`) → returned as-is. | not probed (Phase 0)
+91-93 | **Resolution is opt-in per operation**: each operation resolves only the fields it cares about (`selectElement` its selector, `forEach` its collection, `when` its operands, `broadcastEvent` its eventArgs, …). | not probed (Phase 0)
+104-105 | **`@@loopLength` is not the length**: inside a `for` over a 3-item array it is `2` on every iteration (the last index). | probed: @@loopLength is the length of the collection minus one
+112-113 | `setVariable` stores the value on the action's root scope (`this.variables[name] = value`). | not probed (Phase 0)
+117-119 | The scope holds `currentIndex`, `newIndex` (set to jump), the loop fields (`loopIndex`, `loopLength`, `loopStartIndex`, `loopEndIndex`, `currentItem`), `whenEvaluation`, `eventbus`, `operations`, `variables`, `parent`. | not probed (Phase 0)
+120-121 | `executeOperation` pushes a child scope on `when` / `forEach` and pops it on `endWhen` / `endForEach` (`_pushScope`, `src/action/action.ts`). | not probed (Phase 0)
+123-125 | **if / else if / else** = `when` / `otherwise` / `endWhen` (an `else if` is a nested `when` inside the `otherwise`). `when` evaluates its expression and, when false, jumps to the matching `otherwise` / `endWhen` (`src/operation/when.ts`). | not probed (Phase 0)
+126-128 | **for** = `forEach` / `endForEach`: `forEach` resolves the collection once, iterates over a snapshot of it and sets `currentItem` each iteration; `endForEach` loops back (`src/operation/for-each.ts`, `end-for-each.ts`). | not probed (Phase 0)
+130-131 | A variable set with `setVariable` belongs to the action: set inside a `when` or `forEach` it is the same variable outside it. | not probed (Phase 0)
+136-137 | `requestAction(systemName)` sets `operationData.actionInstance` (`eventbus.request("request-action", …)`, `src/operation/request-action.ts`). | not probed (Phase 0)
+138-143 | `startAction(actionInstance, actionOperationData)` (`src/operation/start-action.ts`) starts the callee on **its own copy** of the caller's current operationData, merged with `actionOperationData` (the call's arguments, keyed by parameter name). When the callee has finished, the caller continues with **the operationData it had before** (plus `actionInstance`): whatever the callee added, changed or removed stays with the callee. | probed: a called action gets a copy of the caller's operationData plus its arguments, and nothing flows back
+145-147 | So a called action **inherits** its caller's state (a `selectedElement` the caller selected is there), its arguments arrive as `$operationdata.<param>`, and **its outputs do not flow back** (`LANGUAGE_SPEC.md` 4.7, "Outputs don't flow back"). | probed: a called action gets a copy of the caller's operationData plus its arguments, and nothing flows back
+148 | `startAction` calls **`.start()` only**: a plain call runs the start operations. | probed: a plain action call runs the start operations only
+149-150 | End operations run when the engine drives an endable action as a timeline action (§7) or through `endAction`. | not probed (Phase 0)
+160-161 | `getControllerInstance(systemName)` sets `controllerInstance` (`eventbus.request("request-instance", …)`, `src/operation/get-controller-instance.ts`). | not probed (Phase 0)
+162-165 | `addControllerToElement` needs `selectedElement` **and** `controllerInstance`, calls `controllerInstance.init(operationData)` (the **whole** operationData, so the controller's parameters ride along in it) and `attach(eventbus)`, and registers the controller on the element (`src/operation/add-controller-to-element.ts`). | not probed (Phase 0)
+167-168 | **Controllers are not detached on a timeline switch**: a controller attached in `on enter` outlives the chapter unless `on leave` removes it. | probed: a controller attached in on enter survives a timeline switch unless on leave removes it
+169-171 | The engine ends the leaving timeline's actions, but it only detaches controllers when their element is replaced or removed (`removeElement`, `clearElement`, `setElementContent`, the layout at `init`, `destroy`; `detachControllersWithin`). | not probed (Phase 0)
+172-175 | `removeControllerFromElement("KeyboardController")` on the same element removes **one** controller of that name and detaches it (it warns `controller for name '…' was not found on the given element` when there is none; `src/operation/remove-controller-from-element.ts`). | not probed (Phase 0)
+179-180 | Each timeline action registers its start at `duration.start` and its end at `duration.end`; a missing end (or `-1`) is an **open end**, read as Infinity. | not probed (Phase 0)
+181-182 | Position updates dispatch every start and end between the previous and the current position, in order (`_dispatchActionsBetween`, `src/eligius-engine.ts`). | not probed (Phase 0)
+183-185 | A seek or a large jump instead **reconciles** (`_reconcileActions`): it ends the active actions that no longer cover the position and starts the inactive ones that do, the ends first. | probed: a seek ends the active actions that no longer cover the position and starts the inactive ones that do
+186-187 | So a forward jump past a whole range runs neither its start nor its end operations (rule 13). | probed: a forward jump past a range runs neither its start nor its end operations
+188-189 | A `TimelineAction` is `active` from `start()` until `end()`, so a second dispatch of the same start or end is a no-op (`src/action/timeline-action.ts`). | not probed (Phase 0)
+190-191 | `initActions` run once at engine init, after the `layoutTemplate` is rendered into the container. | not probed (Phase 0)
+192-195 | **Timeline switching**: the engine **listens** for the broadcast `request-timeline-uri` with `[uri, position?]` and calls `switchTimeline(uri, position)` (`src/adapters/engine-eventbus-adapter.ts`); it is a broadcast like any other, not a request. | not probed (Phase 0)
+196-197 | The same adapter listens for `timeline-play-toggle-request`, `timeline-seek-request`, `timeline-stop-request`, … . | not probed (Phase 0)
+213-214 | **Why it works:** `switchTimeline` first ends every **active** action of the leaving timeline (`_endActiveActionsReporting`), so its `on leave` runs. | probed: switchTimeline ends the leaving timeline's active actions, so its on leave runs
+215-216 | Then it reconciles the entering timeline at the target position, so that timeline's `on enter` runs. | not probed (Phase 0)
+217 | `stop()` ends the active actions too, so `on leave` also runs on stop. | not probed (Phase 0)
+218-219 | The lifecycle action never ends on its own: its range has no end, and a raf timeline holds its last frame, so `on leave` does **not** run when the content ends. | probed: on leave does not run when the content ends
+220-221 | A switch to the timeline that is already current changes nothing: no `on leave`, no `on enter`, and a following `seek(0)` adds neither. | probed: a switch to the timeline that is already current is a no-op
+232-235 | `init()` starts no timeline: the **first** timeline (the hub) starts on the first position update, which `start()` emits at once, before any animation frame (`RafPositionSource.startTicking` calls `setPosition(getPosition())`), and which a seek emits without playback, `seek(0)` included. | probed: the first timeline starts on the first position update (start or seek), not at init
+241-242 | `src/eventbus/eventbus.ts`: `broadcast(name, args)` calls every `on(name)` handler (topics key handlers as `name:topic`). | not probed (Phase 0)
+243-244 | `request(name, …args)` calls the **first** registered `onRequest(name)` responder and returns its value synchronously ("first responder wins"). | not probed (Phase 0)
+246-247 | **Broadcasts** are what a program sends: the `broadcastEvent` operation calls `eventbus.broadcast` (`src/operation/broadcast-event.ts`). | not probed (Phase 0)
+248-250 | Its parameters are `(eventArgs, eventName, eventTopic?)`, array first: `broadcastEvent(["#c5-fx-panel"], "tour-ping")`. Whoever listens reacts: `on event` actions, controllers, and the engine itself (§7). | not probed (Phase 0)
+251-253 | **Requests are internal to operations**: `request-engine-root` (selectElement), `request-instance` (getControllerInstance), `request-action` (requestAction), `request-function`, … . `broadcastEvent` cannot reach a request responder. | not probed (Phase 0)
+261 | start and end blocks begin with `{}`; | probed: start and end blocks are independent runs, each starting from an empty operationData
+262 | lifecycle blocks begin with `{}`; | probed: on enter and on leave blocks start from an empty operationData
+263 | event actions begin with only `eventArgs`; | probed: an event action starts with only eventArgs
+264-265 | listener actions begin with only the listener's data plus `eventTarget` (and `eventKey`); | probed: a listener action starts with the listener's actionOperationData plus eventTarget, and eventKey for keys
+266-267 | a called action starts with a **copy** of its caller's operationData plus its arguments, and its outputs do not flow back. | probed: a called action gets a copy of the caller's operationData plus its arguments, and nothing flows back
+271-272 | **Operations within one block do thread state**: one `selectElement` then several class / style operations is fine. | not probed (Phase 0)
+273-274 | An operation that returns `undefined` breaks the thread: the next one starts without the earlier keys (§1). | probed: an operation that returns undefined hands the next operation an empty operationData
+275 | **A plain action call runs start operations only.** | probed: a plain action call runs the start operations only
+276 | End operations run through the engine (timeline action) or `endAction`. | not probed (Phase 0)
+280-281 | **Sigils are runtime property chains**, resolved per operation: `$operationdata.x`, `$globaldata.x`, `$scope.x` / `$scope.variables.x` / `$scope.currentItem`. | not probed (Phase 0)
+300-302 | **Unwire in `on leave`**: the engine never detaches controllers on a timeline switch, so remove every controller `on enter` attached (`removeControllerFromElement`, one per controller, on the same element). | probed: a controller attached in on enter survives a timeline switch unless on leave removes it
+303-304 | Otherwise a hub digit stays live inside a chapter and listeners pile up on every visit. | not probed (Phase 0)
+305-306 | **A seek re-runs starts but never undoes what earlier blocks did to the DOM**; beats without end blocks leave their classes behind. | not probed (Phase 0)
+307-308 | A seek ends only the active actions that no longer cover the position and starts those that do. | probed: a seek ends the active actions that no longer cover the position and starts the inactive ones that do
+309-311 | A replay is therefore *reset, then seek* (`replayChapter`: `resetChapter(view)`, then `broadcastEvent([0], "timeline-seek-request")`), and a switch to the timeline that is already current is a no-op, so a self-`navigate` cannot replay either. | probed: a switch to the timeline that is already current is a no-op
+
+# Corrections (FR-011; from baseline/runtime-claims-disagreements.txt, 1 disagreement)
+- Claim 15. Old (lines 207-209): "At init the **first** timeline (the hub) starts on the first
+  position tick; in headless jsdom nothing ticks until the position moves".
+  New (lines 232-237): init() starts no timeline; the first timeline starts on the first position
+  update, which start() emits at once, before any animation frame
+  (RafPositionSource.startTicking calls setPosition(getPosition())), and which a seek emits
+  without playback, seek(0) included; "nothing ticks until the position moves" became
+  "nothing starts until start() or a seek".
+
+# Added (FR-011; claims the document did not state)
+- Claim 6, line 104-105 (sec. 3): @@loopLength is the last index (3 items -> 2).
+- Claim 7, lines 34-36 (sec. 1) and 273-274 (rule 2): an operation returning undefined drops the bag.
+
+# Other edits
+- Line 1 retitled (FR-011a); line 3 "verified against" -> "read from the source of", and a
+  "Markers" paragraph (lines 11-17) explains the two markers. Its "(probed: "<title>")" is a
+  placeholder, not a claim, and is not a table row; it does not spell out the not-probed marker,
+  so grep -c counts only the 46 claim rows.
+- Unmarked: sentences about what the Eligian compiler emits (call/controller/interaction
+  compilation, constant folding, validation rules 4, 6-11), design advice, history, pointers.

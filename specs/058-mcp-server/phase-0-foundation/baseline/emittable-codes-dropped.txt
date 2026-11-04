@@ -1,0 +1,30 @@
+packages/language/src/compiler/operations/mapper.ts:34  code: 'MAPPING_ERROR'  -- compiler/operations (excluded from (i); not an OperationValidationError code, never a diagnostic)
+packages/language/src/compiler/operations/mapper.ts:83  code: 'MAPPING_ERROR'  -- compiler/operations (excluded from (i); not an OperationValidationError code, never a diagnostic)
+packages/language/src/compiler/operations/validation/control-flow.ts:54  code: 'CONTROL_FLOW'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/control-flow.ts:70  code: 'CONTROL_FLOW'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/control-flow.ts:88  code: 'CONTROL_FLOW'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/control-flow.ts:105  code: 'CONTROL_FLOW'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/control-flow.ts:116  code: 'CONTROL_FLOW'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/existence.ts:35  code: 'UNKNOWN_OPERATION'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/parameter-count.ts:32  code: 'PARAMETER_COUNT'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/compiler/operations/validation/parameter-types.ts:221  code: 'PARAMETER_TYPE'  -- compiler/operations (excluded from (i); reaches a diagnostic only lowercased, via (iii))
+packages/language/src/labels/types.ts:94  const DEFAULT_LANGUAGE_CODE = 'en-US'  -- constant never used as a code: value
+packages/language/src/type-system-typir/utils/locale-metadata-extractor.ts:90  code: 'en-US'  -- comment
+packages/language/src/type-system-typir/utils/locale-metadata-extractor.ts:91  code: 'nl-NL'  -- comment
+packages/language/src/type-system-typir/validation/label-id-validation.ts:17  code: 'unknown_label_id'  -- type position
+packages/language/src/type-system-typir/validation/label-id-validation.ts:38  code: 'unknown_label_id'  -- comment
+packages/language/src/type-system-typir/validation/languages-validation.ts:76  code: '${entry.code}'  -- inside string text
+packages/language/src/types/code-actions.ts:81  code: 'unknown_label_id'  -- type position
+packages/language/src/utils/error-builder.ts:15  code: 'ERROR_CODE'  -- comment
+packages/language/src/utils/error-builder.ts:32  code: 'DUPLICATE_IMPORT_NAME'  -- comment
+packages/language/src/validators/asset-type-validator.ts:45  code: 'UNKNOWN_EXTENSION'  -- comment
+packages/language/src/validators/asset-type-validator.ts:49  code: 'AMBIGUOUS_EXTENSION'  -- comment
+packages/language/src/validators/import-name-validator.ts:38  code: 'DUPLICATE_IMPORT_NAME'  -- comment
+packages/language/src/validators/import-name-validator.ts:41  code: 'RESERVED_KEYWORD'  -- comment
+packages/language/src/validators/import-name-validator.ts:44  code: 'OPERATION_NAME_CONFLICT'  -- comment
+packages/language/src/validators/languages-validator.ts:84  code: '${entry.code}'  -- inside string text
+packages/language/src/validators/locale-import-validator.ts:21  code: 'invalid_locales_json'  -- type position
+packages/language/src/validators/locale-import-validator.ts:94  code: 'invalid_locales_schema'  -- not in an accept info object (investigated: validateLocalesJSON is called only at asset-loading/compiler-integration.ts, whose createLocalesImportError drops the code; asset-import-validator accepts asset errors without a code, so it never reaches a diagnostic)
+packages/language/src/validators/locale-import-validator.ts:104  code: 'invalid_locales_schema'  -- not in an accept info object (investigated: validateLocalesJSON is called only at asset-loading/compiler-integration.ts, whose createLocalesImportError drops the code; asset-import-validator accepts asset errors without a code, so it never reaches a diagnostic)
+packages/language/src/validators/locale-import-validator.ts:132  code: 'invalid_locales_json'  -- not in an accept info object (investigated: validateLocalesJSON is called only at asset-loading/compiler-integration.ts, whose createLocalesImportError drops the code; asset-import-validator accepts asset errors without a code, so it never reaches a diagnostic)
+count: 90

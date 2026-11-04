@@ -2,9 +2,10 @@ import type { ValidationAcceptor } from 'langium';
 import { isActionDefinition, isObjectLiteral, type OperationCall } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 
 /** Diagnostic code for a setData key whose target Eligius does not recognise. */
-export const INVALID_SET_DATA_TARGET_CODE = 'invalid_setdata_target';
+export const INVALID_SET_DATA_TARGET_CODE = diagnosticCode('invalid_setdata_target');
 
 /** Data on an {@link INVALID_SET_DATA_TARGET_CODE} diagnostic that the quick fix can apply. */
 export interface InvalidSetDataTargetData {

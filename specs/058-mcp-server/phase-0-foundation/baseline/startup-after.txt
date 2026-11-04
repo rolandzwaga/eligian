@@ -1,0 +1,67 @@
+T022 startup timing (FR-020, FR-020a, SC-009, SC-018) — 2026-11-04T18:59Z, Windows 11, node v24.7.0
+Before (startup-before.txt): 846 851 865 883 889 median 865
+
+== Final run (stub reverted, CLI rebuilt): pnpm -C packages/cli exec vitest run src/__tests__/package-bin.spec.ts --reporter=verbose
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 16ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 350ms
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5)
+--version startup (ms): 359 337 347 314 314 median 337
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 10ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5) 2014ms
+ ↓ src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild or effect/ai 16ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the README and the LICENSE 850ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed | 1 skipped (11)
+   Start at  19:59:19
+   Duration  3.80s (tests 89%, import 11%)
+
+
+== Scratch run (SC-018) with a temporary stub 'mcp' command in packages/cli/src/main.ts
+   (reads one stdin line, writes {"jsonrpc":"2.0","id":1,"result":{}}); CLI rebuilt; stub reverted afterwards,
+   git diff packages/cli/src/main.ts shows only T020's version-injection change; CLI rebuilt again.
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 16ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 313ms
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5)
+--version startup (ms): 337 337 310 301 335 median 335
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 11ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5) 1951ms
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s
+mcp initialize answered in 326 ms
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s 332ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild or effect/ai 17ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the README and the LICENSE 834ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  19:59:08
+   Duration  3.93s (tests 91%, import 9%)
+
+
+
+=== T038 SC-009 Windows startup on the final tree — 2026-11-04T19:38:18Z, Windows 11, node v24.7.0 ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes); packages/cli/dist/cli.mjs = dev bundle rebuilt by T035
+Nothing else under load (only two idle node.exe processes: the editor's MCP servers).
+$ node -e "const{spawnSync}=require('node:child_process');const t=[];for(let i=0;i<6;i++){const s=performance.now();spawnSync(process.execPath,['packages/cli/bin/cli.js','--version']);t.push(performance.now()-s)}t.shift();t.sort((a,b)=>a-b);console.log(t.map(Math.round).join(' '),'median',Math.round(t[2]))"
+334 336 338 344 344 median 338
+exit=0
+Before (startup-before.txt, T006): 846 851 865 883 889 median 865 (the spec quotes 1,075-1,109 ms)
+Verdict: median 338 ms < 3,000 ms and <= 1,109 ms (the before maximum) -> SC-009 met.

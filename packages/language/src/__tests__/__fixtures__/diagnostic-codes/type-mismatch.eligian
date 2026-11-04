@@ -1,0 +1,6 @@
+// Typir core: a timeline action call whose argument type does not match the parameter's
+styles "./styles.css"
+action show(name: string) [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show(42)
+}

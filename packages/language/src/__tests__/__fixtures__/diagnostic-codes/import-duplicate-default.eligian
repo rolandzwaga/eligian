@@ -1,0 +1,7 @@
+// import-validation.ts (Typir): two styles imports
+styles "./styles.css"
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

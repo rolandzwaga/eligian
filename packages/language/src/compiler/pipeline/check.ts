@@ -15,8 +15,9 @@ import type { LangiumDocument } from 'langium';
 import { URI } from 'langium';
 import { DiagnosticSeverity } from 'vscode-languageserver-protocol';
 import { isLibrary, isProgram, type Library, type Program } from '../../generated/ast.js';
+import { type DiagnosticCode, diagnosticCode } from '../../validators/codes.js';
 import type { SelectorNotInLayout } from '../../validators/validation-settings.js';
-import { compile } from '../pipeline.js';
+import { type CompileError, compile } from '../pipeline.js';
 import {
   extractLibraryImports,
   extractLibraryImportsFromLibrary,
@@ -36,8 +37,8 @@ export interface CheckDiagnostic {
   readonly column: number;
   readonly endLine: number;
   readonly endColumn: number;
-  /** Diagnostic code (e.g. `missing-action-dependency`), when the validator sets one. */
-  readonly code?: string;
+  /** Diagnostic code (e.g. `missing-action-dependency`). */
+  readonly code: string;
 }
 
 export interface CheckFileResult {
@@ -87,7 +88,6 @@ export const checkFiles = (
       if (!validated.has(file) || diagnostics.some(d => d.severity === 'error')) continue;
       const failure = await Effect.runPromise(
         Effect.flip(compile(readFileSync(file, 'utf-8'), { sourceUri: file })).pipe(
-          Effect.map(error => error as { message: string; location?: CompileLocation }),
           Effect.orElseSucceed(() => undefined)
         )
       );
@@ -104,9 +104,22 @@ interface CompileLocation {
   readonly length?: number;
 }
 
+const COMPILE_ERROR_CODES: Record<CompileError['_tag'], DiagnosticCode> = {
+  ParseError: 'compile-parse-error',
+  ValidationError: 'compile-validation-error',
+  TypeError: 'compile-type-error',
+  TransformError: 'compile-transform-error',
+  EmitError: 'compile-emit-error',
+};
+
+/** One registry code per compile-error `_tag`; `kind` is ignored. */
+export function compileErrorCode(error: Pick<CompileError, '_tag'>): DiagnosticCode {
+  return COMPILE_ERROR_CODES[error._tag];
+}
+
 function compileDiagnostic(
   file: string,
-  error: { message: string; location?: CompileLocation }
+  error: Pick<CompileError, '_tag' | 'message'> & { readonly location?: CompileLocation }
 ): CheckDiagnostic {
   const location = error.location ?? {};
   // A location in an imported library is reported on line 1 of the checked file
@@ -122,6 +135,7 @@ function compileDiagnostic(
     column,
     endLine: line,
     endColumn: column + (inThisFile && location.length ? location.length : 0),
+    code: compileErrorCode(error),
   };
 }
 
@@ -157,6 +171,7 @@ async function validateFiles(
         column: 1,
         endLine: 1,
         endColumn: 1,
+        code: diagnosticCode('file-unreadable'),
       });
       return undefined;
     }
@@ -217,7 +232,7 @@ async function validateFiles(
           column: diagnostic.range.start.character + 1,
           endLine: diagnostic.range.end.line + 1,
           endColumn: diagnostic.range.end.character + 1,
-          code: diagnosticCode(diagnostic),
+          code: codeOf(diagnostic),
         });
       }
       if (isProgram(document.parseResult.value)) programs.add(file);
@@ -231,7 +246,8 @@ async function validateFiles(
   return programs;
 }
 
-function diagnosticCode(diagnostic: { code?: unknown; data?: unknown }): string | undefined {
+/** `code`, else `data.code`; `'uncoded'` (not a registry code) when there is neither. */
+function codeOf(diagnostic: { code?: unknown; data?: unknown }): string {
   const code = diagnostic.code ?? (diagnostic.data as { code?: unknown } | undefined)?.code;
-  return typeof code === 'string' || typeof code === 'number' ? String(code) : undefined;
+  return typeof code === 'string' || typeof code === 'number' ? String(code) : 'uncoded';
 }

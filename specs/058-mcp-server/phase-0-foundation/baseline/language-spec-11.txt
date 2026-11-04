@@ -1,0 +1,127 @@
+T026 — LANGUAGE_SPEC.md §11.2, §11.3, new §11.4 (FR-022, FR-023, FR-028, FR-029, SC-011)
+Date: 2026-11-04. Tree: 1e2e750771bf058d633b8660d04a55537527df4c + working-tree changes of the phase.
+CLI: node packages/cli/bin/cli.js (rebuilt first: pnpm -C packages/language build && pnpm -C packages/cli build).
+
+== Procedure (plan E / SC-011) ==
+A scratch verifier (not committed; scratchpad t026/verify-spec-11.mjs) reads LANGUAGE_SPEC.md from
+'### 11.2 ' to '## 12. ' and:
+ 1. writes the section's ```html block to probes/layout.html and its ```css block to probes/styles.css;
+ 2. writes every ```eligian block to probes/snippet-<n>.eligian, runs 'check' (must exit 0) and
+    'compile <f> -o <f>.json -q';
+ 3. normalises the compiled JSON (SC-011): every 'id' value -> "<id>", then every string equal to
+    an original id -> "<id>";
+ 4. compares every ```json block with the normalised output of the latest snippet at the path named
+    before it ('JSON path: `<path>`', `$` = whole document): JSON.stringify(parse(block), null, 2)
+    === JSON.stringify(subtree, null, 2), i.e. same values and same key order;
+ 5. compares every §11.3 table row's third column with the compiled startOperations of the named
+    probe action, rendered as `systemName(<JSON operationData>)` (`()` when absent or empty).
+
+== Red run, before the edit (old §11.2/§11.3) ==
+$ node verify-spec-11.mjs ; exit 1
+$ node packages/cli/bin/cli.js check probes/snippet-1.eligian   (§11.2)
+1 file, 2 errors, 0 warnings → exit 1
+probes/snippet-1.eligian
+1 file, 2 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/snippet-1.eligian -o probes/snippet-1.eligian.json -q → exit 1
+json block in §11.2: no "JSON path:" named before it
+snippets: 1, §11.3 rows: 0, failures: 3
+
+== Green run, after the edit ==
+$ node verify-spec-11.mjs ; exit 0
+$ node packages/cli/bin/cli.js check probes/snippet-1.eligian   (§11.2)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/snippet-1.eligian -o probes/snippet-1.eligian.json -q → exit 0
+json block §11.2 vs snippet-1 at $: 0 differences
+$ node packages/cli/bin/cli.js check probes/snippet-2.eligian   (§11.3)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/snippet-2.eligian -o probes/snippet-2.eligian.json -q → exit 0
+$ node packages/cli/bin/cli.js check probes/snippet-3.eligian   (§11.4)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/snippet-3.eligian -o probes/snippet-3.eligian.json -q → exit 0
+json block §11.4 vs snippet-3 at actions[0]: 0 differences
+§11.3 row `ifThen`: 0 differences
+§11.3 row `ifElse`: 0 differences
+§11.3 row `eachItem`: 0 differences
+§11.3 row `breakLoop`: 0 differences
+§11.3 row `continueLoop`: 0 differences
+§11.3 row `currentItem`: 0 differences
+§11.3 row `variable`: 0 differences
+§11.3 row `folded`: 0 differences
+§11.3 row `callsIfThen`: 0 differences
+snippets: 3, §11.3 rows: 9, failures: 0
+
+== Supporting probes for prose claims (same layout.html / styles.css) ==
+--- p2.eligian
+styles "./styles.css"
+layout "./layout.html"
+
+action fadeIn(sel: string) [
+  selectElement(sel)
+  animate({opacity: 1}, 1000)
+]
+
+action variable(mode: string) [
+  const chosen = mode
+  log(@chosen)
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..2s fadeIn("#title")
+}
+$ node packages/cli/bin/cli.js check p2.eligian
+1 file, 0 errors, 0 warnings
+exit 0
+$ node packages/cli/bin/cli.js compile p2.eligian -o p2.json -q
+exit 0
+actions[*].startOperations as [systemName, operationData]:
+  fadeIn [["selectElement",{"selector":"$operationdata.sel"}],["animate",{"animationProperties":{"opacity":1},"animationDuration":1000}]]
+  variable [["setOperationData",{"properties":{"value":"$operationdata.mode"}}],["setVariable",{"name":"chosen"}],["setOperationData",{"properties":{"logValue":"$scope.variables.chosen"}}],["log",null]]
+--- p3.eligian
+styles "./styles.css"
+layout "./layout.html"
+
+const greeting = "hello"
+
+action greet() [
+  log(@greeting)
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..1s greet()
+}
+$ node packages/cli/bin/cli.js check p3.eligian
+1 file, 0 errors, 0 warnings
+exit 0
+$ node packages/cli/bin/cli.js compile p3.eligian -o p3.json -q
+exit 0
+actions[*].startOperations as [systemName, operationData]:
+  greet [["log",{"logValue":"hello"}]]
+--- p4.eligian
+styles "./styles.css"
+layout "./layout.html"
+
+action eachItem(items: array) [
+  for (item in items) {
+    log(@@item)
+  }
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..1s eachItem(["a"])
+}
+$ node packages/cli/bin/cli.js check p4.eligian
+1 file, 0 errors, 0 warnings
+exit 0
+$ node packages/cli/bin/cli.js compile p4.eligian -o p4.json -q
+exit 0
+actions[*].startOperations as [systemName, operationData]:
+  eachItem [["forEach",{"collection":"$operationdata.items","itemName":"item"}],["setOperationData",{"properties":{"logValue":"$scope.currentItem"}}],["log",null],["endForEach",{}]]
+
+p2 -> §11.2 bullet: a parameter forwarded under another name stays (selectElement {"selector":"$operationdata.sel"}).
+p3 -> §11.3 bullet: a program-level const with a literal value is folded (log {"logValue":"hello"}; initActions []).
+p4 -> §11.3 bullet: the loop variable @@item compiles to $scope.currentItem.
+
+== Code citations in the new text ==
+compiler/transformers/operation-transformer.ts:132-145  same-named forwarded argument omitted from operationData
+compiler/transformers/runtime-values.ts:1-31            materialisation of runtime chains into setOperationData
+compiler/transformers/erased-parameters.ts              preserveErasedParameters (:55-82), usedAgain (:89-109), preservedParameterKey (:34)

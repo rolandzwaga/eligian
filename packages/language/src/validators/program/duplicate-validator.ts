@@ -11,6 +11,7 @@ import {
 } from '../../generated/ast.js';
 import { getActions, getElements, getTimelines } from '../../utils/program-helpers.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 
 /**
  * Program-level duplicate detection (actions, constants, timelines, event
@@ -77,14 +78,22 @@ export class ProgramDuplicateValidator extends BaseValidator {
         accept(
           'warning',
           `Event action '${eventAction.name}' has the same name as an action. Use a distinct name to keep emitted action names unambiguous.`,
-          { node: eventAction, property: 'name', code: 'event_action_name_conflict' }
+          {
+            node: eventAction,
+            property: 'name',
+            code: diagnosticCode('event_action_name_conflict'),
+          }
         );
       }
       if (hasOperation(eventAction.name)) {
         accept(
           'warning',
           `Event action '${eventAction.name}' has the same name as a built-in operation.`,
-          { node: eventAction, property: 'name', code: 'event_action_name_builtin_conflict' }
+          {
+            node: eventAction,
+            property: 'name',
+            code: diagnosticCode('event_action_name_builtin_conflict'),
+          }
         );
       }
     }
@@ -171,7 +180,7 @@ export class ProgramDuplicateValidator extends BaseValidator {
           accept('warning', message, {
             node: action,
             property: 'eventName',
-            code: 'duplicate_event_handler',
+            code: diagnosticCode('duplicate_event_handler'),
           });
         }
       }

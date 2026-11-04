@@ -26,7 +26,7 @@ Research/reference (read-only, do NOT import):
 
 ## Tooling
 
-- **Package manager: pnpm only** (version pinned via `packageManager` in package.json; currently 11.9). Never npm/yarn — breaks workspace resolution.
+- **Package manager: pnpm only** (version pinned via `packageManager` in package.json; currently 12.14). Never npm/yarn — breaks workspace resolution.
 - **Type-check/build: TypeScript 7** (`typescript@7`, the native Go compiler; the `tsc` bin IS tsgo). `pnpm typecheck` = `tsc -b tsconfig.build.json`. TS 7 has no JS compiler API — the one script that needs it (`scripts/generate-html-metadata.ts`) imports the TS 6 API from `@typescript/typescript6`.
 - **Effect: v4** (`effect@4`). Key v3→v4 renames already applied: `Context.Tag` → `Context.Service`, `Cause.failureOption` → `Cause.findErrorOption`, `Effect.catchAll` → `Effect.catch`, `Effect.either`/`Either` → `Effect.result`/`Result` (`_tag` is `Success`/`Failure`). `Effect.runPromise` now rejects with the typed error itself (no `FiberFailure` wrapper). Migration guide: https://github.com/Effect-TS/effect/blob/main/MIGRATION.md
 - **Lint/format: Biome** (v2.5). Bundling: esbuild. Tests: Vitest. One-off scripts in `scripts/` and `tools/` run via `tsx`.

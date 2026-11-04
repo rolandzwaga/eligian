@@ -1,0 +1,6 @@
+// Parser: a timeline without its container selector
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" using raf {
+  at 0s..1s show()
+}

@@ -8,6 +8,7 @@
  */
 
 import { findSimilarClasses } from '../../css/levenshtein.js';
+import { diagnosticCode } from '../../validators/codes.js';
 import type { LabelRegistryService } from '../utils/label-registry.js';
 
 /**
@@ -53,7 +54,7 @@ export function validateLabelID(
 
   if (availableLabelIDs.length === 0) {
     return {
-      code: 'no_labels_import',
+      code: diagnosticCode('no_labels_import'),
       message: 'Translation key parameter used but no locales imported',
       hint: "Add a locales import statement: locales './locales.json'",
     };
@@ -73,7 +74,7 @@ export function validateLabelID(
       : `Available translation keys: ${availableLabelIDs.slice(0, 5).join(', ')}${availableLabelIDs.length > 5 ? '...' : ''}`;
 
   return {
-    code: 'unknown_label_id',
+    code: diagnosticCode('unknown_label_id'),
     message: `Unknown translation key: '${labelId}'`,
     hint,
     labelId,

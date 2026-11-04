@@ -11,6 +11,7 @@
 import type { ValidationProblemAcceptor } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { VariableDeclaration } from '../../generated/ast.js';
+import { diagnosticCode } from '../../validators/codes.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 import { RESERVED_KEYWORDS } from '../types/typir-types.js';
 import { findConstCycle, formatConstCycle } from '../utils/const-cycles.js';
@@ -64,6 +65,7 @@ export function registerConstantValidation(typir: TypirLangiumServices<EligianSp
           message: `'${constantName}' is a reserved keyword and cannot be used as a constant name`,
           languageNode: node,
           languageProperty: 'name',
+          code: diagnosticCode('constant-reserved-name'),
         });
       }
 
@@ -77,6 +79,7 @@ export function registerConstantValidation(typir: TypirLangiumServices<EligianSp
           message: `Constant '${constantName}' refers to itself (${formatConstCycle(cycle)})`,
           languageNode: node,
           languageProperty: 'value',
+          code: diagnosticCode('constant-cycle'),
         });
       }
     },

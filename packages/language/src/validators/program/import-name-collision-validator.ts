@@ -6,6 +6,7 @@ import { isNamedImport } from '../../utils/ast-helpers.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getElements, getImports } from '../../utils/program-helpers.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 import { validateImportName } from '../import-name-validator.js';
 import { RESERVED_KEYWORDS } from '../validation-constants.js';
 
@@ -33,7 +34,7 @@ export function reportImportNameCollisions(
         accept('error', `Duplicate import: action '${finalName}' is already imported`, {
           node: actionImport,
           property: actionImport.alias ? 'alias' : 'action',
-          code: 'import_name_collision',
+          code: diagnosticCode('import_name_collision'),
         });
       } else {
         importedNames.add(finalName);
@@ -52,7 +53,7 @@ export function reportImportNameCollisions(
           {
             node: actionImport,
             property: actionImport.alias ? 'alias' : 'action',
-            code: 'import_name_collision',
+            code: diagnosticCode('import_name_collision'),
           }
         );
       }

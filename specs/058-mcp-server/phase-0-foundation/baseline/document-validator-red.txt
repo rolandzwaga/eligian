@@ -1,0 +1,16 @@
+command: pnpm -C packages/language exec vitest run src/__tests__/eligian-document-validator.spec.ts
+date: 2026-11-04 (T011, before T015/T016)
+result: 10 failed | 1 passed (11)
+passing (already true today): EligianDocumentValidator codes > unknown operation name: no linking diagnostic
+failing:
+  EligianDocumentValidator codes > parse error: code syntax-error, data.code parsing-error
+  EligianDocumentValidator codes > lexer error: syntax-error + lexing-error
+  EligianDocumentValidator codes > linking error: unresolved-reference, data kept
+  EligianDocumentValidator codes > Typir rule and Typir core diagnostics lose the prefix; code, severity and range kept
+  stripTypirPrefix > an error prefix
+  stripTypirPrefix > a warning prefix
+  stripTypirPrefix > a node text that itself contains ", this error is found: "
+  stripTypirPrefix > sub-problems after the message are kept
+  stripTypirPrefix > a non-matching message is returned unchanged
+  stripTypirPrefix > a prefix naming a different problem message is returned unchanged
+causes: no top-level code on lexer/parser diagnostics (syntax-error); linking diagnostic has no code/data (unresolved-reference, linking-error); Typir prefix not stripped and no Typir rule code; stripTypirPrefix not exported (TypeError: stripTypirPrefix is not a function)

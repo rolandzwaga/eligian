@@ -51,6 +51,7 @@
       "packages/**/*.ts",
       "packages/**/*.json",
       "!**/fixtures",
+      "!**/__fixtures__/diagnostic-codes/bad-locales.json",
       "!**/*.html",
       "!**/*.css",
       "!!**/specs",

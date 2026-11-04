@@ -1,0 +1,5 @@
+// operation-existence-validator.ts: an operation called directly in a timeline event
+styles "./styles.css"
+timeline "t" in "#app" using raf {
+  at 0s..1s selectElement("#app")
+}

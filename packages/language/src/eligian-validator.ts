@@ -3,6 +3,7 @@ import { LANGUAGE_CODE_REGEX } from './compiler/constants.js';
 import type { EligianServices } from './eligian-module.js';
 import type { EligianAstType } from './generated/ast.js';
 import { ActionValidator } from './validators/action-validator.js';
+import { diagnosticCode } from './validators/codes.js';
 import { DataflowValidator } from './validators/dataflow-validator.js';
 import { EventActionValidator } from './validators/event-action-validator.js';
 import { ExpressionValidator } from './validators/expression-validator.js';
@@ -19,7 +20,7 @@ import { TimelineValidator } from './validators/timeline-validator.js';
  * Diagnostic code for missing labels file
  * Feature 039: Label File Creation Quick Fix
  */
-export const MISSING_LABELS_FILE_CODE = 'missing_labels_file';
+export const MISSING_LABELS_FILE_CODE = diagnosticCode('missing_labels_file');
 
 /**
  * Validate language code format (IETF BCP 47: xx-XX)

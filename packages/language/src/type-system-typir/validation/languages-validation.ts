@@ -18,6 +18,7 @@
 import type { ValidationProblemAcceptor } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { LanguagesBlock } from '../../generated/ast.js';
+import { diagnosticCode } from '../../validators/codes.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 
 /**
@@ -76,6 +77,7 @@ export function registerLanguagesValidation(typir: TypirLangiumServices<EligianS
             message: `Duplicate language code: '${entry.code}'`,
             languageNode: entry,
             languageProperty: 'code',
+            code: diagnosticCode('languages-duplicate-code'),
           });
         } else {
           seenCodes.add(entry.code);
@@ -93,6 +95,7 @@ export function registerLanguagesValidation(typir: TypirLangiumServices<EligianS
             message:
               "Multiple languages declared but no default language marked with '*'. Mark exactly one language as default.",
             languageNode: node,
+            code: diagnosticCode('languages-missing-default'),
           });
         }
 
@@ -105,6 +108,7 @@ export function registerLanguagesValidation(typir: TypirLangiumServices<EligianS
               message: "Only one language can be marked as default with '*'",
               languageNode: defaultEntries[i],
               languageProperty: 'isDefault',
+              code: diagnosticCode('languages-multiple-defaults'),
             });
           }
         }

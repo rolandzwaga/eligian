@@ -78,7 +78,7 @@ export async function smokeConfig(
   options: SmokeOptions = {}
 ): Promise<SmokeResult> {
   const { EngineFactory, EligiusResourceImporter } = await loadEligius();
-  const window = smokeWindow();
+  const window = await smokeWindow();
   window.document.body.innerHTML = `<div id="${ROOT_ID}"></div>`;
 
   const playable = config.timelines.filter(t => t.type !== 'mediaplayer');

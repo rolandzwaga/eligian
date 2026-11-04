@@ -1,0 +1,6 @@
+// Lexer: a character no token starts with
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show() §
+}

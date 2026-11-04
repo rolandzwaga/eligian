@@ -9,6 +9,7 @@ import { isStaggerBlock, type OperationCall } from '../../generated/ast.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 import { findCallableActionByName } from './action-resolution.js';
 
 /**
@@ -57,7 +58,7 @@ export class ParameterValidator extends BaseValidator {
         {
           node,
           property: 'args',
-          code: 'invalid_parameter_count',
+          code: diagnosticCode('invalid_parameter_count'),
         }
       );
     }

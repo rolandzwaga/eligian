@@ -20,6 +20,7 @@ import { invalidKeyName } from '../utils/key-names.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { getTimelines } from '../utils/program-helpers.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 
 /**
  * Validates interaction statements (`on <event> "<sel>" <verb>`: `navigate` for
@@ -51,7 +52,7 @@ export class NavigateValidator extends BaseValidator {
       accept('error', message, {
         node,
         property: 'target',
-        data: { code: 'unknown_navigate_target' },
+        data: { code: diagnosticCode('unknown_navigate_target') },
       });
     }
   }
@@ -68,7 +69,7 @@ export class NavigateValidator extends BaseValidator {
       invalid === ''
         ? '\'on key\' needs at least one key, such as "ArrowRight" or "shift+right, space"'
         : `Unknown key '${invalid}' in "${node.keys}". Use key names such as "ArrowRight", "space", "Enter", "Escape", "PageDown", "F1", a letter or digit, joined to modifiers (shift, alt, ctrl, meta) with '+' and separated by ','`;
-    accept('error', message, { node, property: 'keys', code: 'unknown_key' });
+    accept('error', message, { node, property: 'keys', code: diagnosticCode('unknown_key') });
   }
 
   /** Idea #19: the event of an interaction should be a DOM event name. */
@@ -80,7 +81,7 @@ export class NavigateValidator extends BaseValidator {
     accept('warning', `'${node.event}' is not a known DOM event.${hint}`, {
       node,
       property: 'event',
-      code: 'unknown_dom_event',
+      code: diagnosticCode('unknown_dom_event'),
       data: { suggestions: similar },
     });
   }
@@ -100,7 +101,7 @@ export class NavigateValidator extends BaseValidator {
         accept(
           'error',
           `'run' starts an action, and '${name}' is an operation: wrap it in an action`,
-          { node: call, property: 'operationName', code: 'run_not_an_action' }
+          { node: call, property: 'operationName', code: diagnosticCode('run_not_an_action') }
         );
       }
       return;
@@ -111,7 +112,7 @@ export class NavigateValidator extends BaseValidator {
         accept(
           'error',
           `A 'run' argument must be known when the listener is attached (a literal or constant): '${runtime.$cstNode?.text ?? '?'}' is a runtime value`,
-          { node: runtime, code: 'run_runtime_argument' }
+          { node: runtime, code: diagnosticCode('run_runtime_argument') }
         );
       }
     }

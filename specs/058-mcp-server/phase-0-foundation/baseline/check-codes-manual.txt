@@ -1,0 +1,121 @@
+T023 manual runs, 2026-11-04T20:01:24+01:00, on the built CLI (packages/cli/bin/cli.js)
+
+$ node packages/cli/bin/cli.js check packages/cli/src/__tests__/__fixtures__/check-codes/duplicate-styles.eligian --format json
+{
+  "files": [
+    {
+      "file": "packages/cli/src/__tests__/__fixtures__/check-codes/duplicate-styles.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Duplicate 'styles' import. Only one styles import is allowed per document.",
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 7,
+          "code": "import-duplicate-default"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "hints": 0
+  }
+}
+exit=1
+
+$ node packages/cli/bin/cli.js check packages/cli/src/__tests__/__fixtures__/check-codes/video-without-from.eligian --format json
+{
+  "files": [
+    {
+      "file": "packages/cli/src/__tests__/__fixtures__/check-codes/video-without-from.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Timeline provider 'video' requires a source file. Add: from \"<file path>\"",
+          "line": 3,
+          "column": 35,
+          "endLine": 3,
+          "endColumn": 40,
+          "code": "timeline-source-required"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "hints": 0
+  }
+}
+exit=1
+
+$ node packages/cli/bin/cli.js check packages/cli/src/__tests__/__fixtures__/check-codes/unknown-label.eligian --format json
+{
+  "files": [
+    {
+      "file": "packages/cli/src/__tests__/__fixtures__/check-codes/unknown-label.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Could not resolve reference to LabeledEvent named 'nope'.",
+          "line": 5,
+          "column": 6,
+          "endLine": 5,
+          "endColumn": 10,
+          "code": "unresolved-reference"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "hints": 0
+  }
+}
+exit=1
+
+$ node packages/cli/bin/cli.js check packages/cli/src/__tests__/__fixtures__/check-codes/stray-token.eligian --format json
+{
+  "files": [
+    {
+      "file": "packages/cli/src/__tests__/__fixtures__/check-codes/stray-token.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Unexpected '}': expected the end of the file (or a timeline, action, constant or import).",
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 2,
+          "code": "syntax-error"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "hints": 0
+  }
+}
+exit=1
+
+Mutation check: expected 'unresolved-reference' changed to 'unresolved_reference' in check-codes.spec.ts:
+  FAIL ... undeclared label → unresolved-reference
+  AssertionError: expected 'unresolved-reference' to be 'unresolved_reference'
+  Tests  1 failed | 5 passed (6)
+Restored; $ pnpm -C packages/cli exec vitest run src/__tests__/check-codes.spec.ts
+ Test Files  1 passed (1)
+      Tests  6 passed (6)

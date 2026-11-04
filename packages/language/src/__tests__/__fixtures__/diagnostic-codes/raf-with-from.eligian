@@ -1,0 +1,6 @@
+// A raf timeline with a source file: exactly one warning (FR-004a)
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf from "./clip.mp4" {
+  at 0s..1s show()
+}

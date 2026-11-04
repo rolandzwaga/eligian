@@ -21,10 +21,10 @@ npm package `eligian` (CLI only, no library API): `dist/cli.mjs` bundles the wor
 
 **⚠️ Do NOT run `node packages/cli/dist/cli.mjs` directly.** `dist/cli.mjs` is the esbuild *bundle* of `src/main.ts`: it **defines and `export`s `main` as default but does not invoke it** (top-level await for the version read is fine; the run happens in `bin/cli.js`). Running the bundle directly is a **silent no-op — exit 0, no output, no file** — which looks exactly like "the CLI does nothing." It isn't broken; you're running the wrong file. (This trap cost a prior agent real time: they ran the bundle, saw silence, and wrongly concluded `main()` was never called. Don't repeat it — run `bin/cli.js`.)
 
-> Note: `package.json` `"bin"` currently maps `eligian` → `./dist/cli.mjs` (the no-op bundle), and `bin/` is not in the `files` allowlist, so `pnpm exec eligian` / an installed `eligian` is currently a no-op. Until that's reconciled, invoke `bin/cli.js` explicitly.
+> Note: `package.json` `"bin"` maps both `eligian` and `eligian-cli` to `./bin/cli.js`, which is in the `files` allowlist (with `dist/cli.mjs`), so `pnpm exec eligian` / an installed `eligian` runs the launcher.
 
 ## Layout (`src/`)
-- `bin/cli.js` — the executable launcher (imports `main` from `dist/cli.mjs` and calls it; see "Running the CLI" above). `main.ts` — CLI program definition (commander setup, `export default main`; does NOT self-invoke). `index.ts` — package exports. `compile-file.ts` — single-file compile orchestration.
+- `bin/cli.js` — the executable launcher (imports `main` from `dist/cli.mjs` and calls it; see "Running the CLI" above). `main.ts` — CLI program definition (commander setup, `export default main`; does NOT self-invoke). `compile-file.ts` — single-file compile orchestration.
 - `bundler/` — asset & output bundling:
   - `asset-collector.ts`, `css-processor.ts`, `html-generator.ts`, `runtime-bundler.ts`, `inline-overhead.ts`, `url-utils.ts`, `types.ts`, `index.ts`.
   - `runtime-bundler.ts` generates the bundle entry: the operations, providers (position sources, container providers, playlists, incl. a timeline's own `positionSource` override) and controllers the config names, imported from `eligius/runtime` (not `eligius`: its fluent API and `EligiusResourceImporter` keep every operation alive) and registered with `createImporter`, plus the host module's exports. `__tests__/bundler/bundle-runs.spec.ts` plays a built bundle in jsdom.

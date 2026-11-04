@@ -9,6 +9,7 @@ import { getLibraryImportsOf } from '../utils/action-scope.js';
 import { formatValidationMessage } from '../utils/error-builder.js';
 import { validateAssetType } from './asset-type-validator.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 import { validateImportPath } from './import-path-validator.js';
 import { reportImportNameCollisions } from './program/import-name-collision-validator.js';
 
@@ -51,7 +52,7 @@ export class ImportValidator extends BaseValidator {
       ) {
         accept('error', `Library files can only contain action definitions.`, {
           node: action,
-          code: 'library_invalid_content',
+          code: diagnosticCode('library_invalid_content'),
         });
       }
     }
@@ -122,7 +123,7 @@ export class ImportValidator extends BaseValidator {
       accept('error', `Library file not found: '${originalPath}'`, {
         node: libraryImport,
         property: 'path',
-        code: 'import_file_not_found',
+        code: diagnosticCode('import_file_not_found'),
       });
     }
   }
@@ -167,7 +168,7 @@ export class ImportValidator extends BaseValidator {
     accept(
       'error',
       formatValidationMessage(message, 'Remove one of the imports to break the cycle'),
-      { node: libraryImport, property: 'path', code: 'circular_library_import' }
+      { node: libraryImport, property: 'path', code: diagnosticCode('circular_library_import') }
     );
   }
 
@@ -241,7 +242,7 @@ export class ImportValidator extends BaseValidator {
           {
             node: actionImport,
             property: 'action',
-            code: 'import_action_not_found',
+            code: diagnosticCode('import_action_not_found'),
           }
         );
       }
@@ -281,7 +282,7 @@ export class ImportValidator extends BaseValidator {
           {
             node: actionImport,
             property: 'action',
-            code: 'import_private_action',
+            code: diagnosticCode('import_private_action'),
           }
         );
       }
@@ -304,7 +305,7 @@ export class ImportValidator extends BaseValidator {
           {
             node: actionImport,
             property: 'alias',
-            code: 'action_name_builtin_conflict',
+            code: diagnosticCode('action_name_builtin_conflict'),
           }
         );
       }

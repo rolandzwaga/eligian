@@ -106,6 +106,15 @@ export {
   resolveImportRelativePath,
   stripImportQuotes,
 } from './utils/path-utils.js';
+// Spec 058 (FR-001a): the diagnostic code registry
+export {
+  DIAGNOSTIC_CODES,
+  type DiagnosticCode,
+  type DiagnosticCodeEntry,
+  type DiagnosticSource,
+  diagnosticCode,
+  isDiagnosticCode,
+} from './validators/codes.js';
 export { validateLocalesJSON } from './validators/locale-import-validator.js';
 // Idea #18: `eligian.validation.selectorNotInLayout` / `eligian check --selector-not-in-layout`
 export {

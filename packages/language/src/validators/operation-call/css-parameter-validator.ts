@@ -7,6 +7,7 @@ import { reportSelectorIssues } from '../../css/selector-validation.js';
 import { isStringLiteral, type OperationCall } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 
 /**
  * Validates CSS `className` and `selector` parameters of operation calls against
@@ -50,7 +51,7 @@ export class CssParameterValidator extends BaseValidator {
         accept(
           'error',
           `Unknown CSS class: '${arg.value}'.${suggestions.length > 0 ? ` Did you mean: ${suggestions.join(', ')}?` : ''}`,
-          { node: arg, data: { code: 'unknown_css_class' } }
+          { node: arg, data: { code: diagnosticCode('unknown_css_class') } }
         );
       }
     });
@@ -135,7 +136,7 @@ export class CssParameterValidator extends BaseValidator {
         accept('error', message, {
           node: arg,
           data: {
-            code: 'unknown_css_class',
+            code: diagnosticCode('unknown_css_class'),
           },
         });
       }

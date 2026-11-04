@@ -1,0 +1,196 @@
+=== T033 build, type and lint gates (plan gates 1-5; SC-015) — 2026-11-04T19:33:15Z ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes)
+First pass: pnpm build exit 0, pnpm typecheck exit 0, pnpm run typecheck:tests exit 1:
+  packages/language/src/__tests__/diagnostic-code-registry.spec.ts(283,59) TS2345: Set<DiagnosticCode>.has(string)
+    fix: const actual = new Set<string>(DIAGNOSTIC_CODES.map(e => e.code))
+  packages/language/src/__tests__/eligian-document-validator.spec.ts(177,7) TS2353: register<Program>({ Program })
+    fix: register<EligianAstType>(...) (ValidationChecks<T> keys are AST type names; cf. eligian-validator.ts:106)
+Second pass (restart): typecheck:tests exit 1:
+  packages/cli/src/__tests__/check-command.spec.ts(149,11) TS2741: 'code' missing in CheckDiagnostic (required since plan A5)
+    fix: the codeless 'info' fixture entry is typed 'as CheckDiagnostic' (it covers reporters.ts' fallback: ruleId 'eligian', no title=); assertions unchanged
+Final pass (restart, all from the top):
+pnpm build: exit 0
+--- last 3 lines ---
+packages/extension build: [20:32:54] Build succeeded
+packages/extension build: [20:32:54] Build succeeded
+packages/extension build: Done
+pnpm typecheck: exit 0
+$ tsc -b tsconfig.build.json
+pnpm run typecheck:tests: exit 0
+$ tsc -p packages/language/tsconfig.test.json && tsc -p packages/cli/tsconfig.test.json && tsc -p packages/extension/tsconfig.test.json && tsc -p packages/shared-utils/tsconfig.test.json
+pnpm check: exit 0
+Checked 716 files in 293ms. No fixes applied.
+pnpm run ci: exit 0
+Checked 716 files in 190ms. No fixes applied.
+
+
+=== T034 Effect gates (plan gates 6 and 6a; FR-035) — 2026-11-04T19:33:44Z ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes)
+## $ pnpm effect:check
+$ pnpm effect:check:language && pnpm effect:check:cli
+$ effect-tsgo diagnostics --project packages/language/tsconfig.src.json --format text --strict
+Checked 254 files out of 254 files. 
+0 errors, 0 warnings and 0 messages.
+$ effect-tsgo diagnostics --project packages/cli/tsconfig.json --format text --strict
+Checked 277 files out of 277 files. 
+0 errors, 0 warnings and 0 messages.
+exit: 0
+## $ pnpm exec effect-tsgo diagnostics --project packages/language/tsconfig.test.json --format text --strict
+Checked 500 files out of 500 files. 
+0 errors, 0 warnings and 0 messages.
+exit: 0
+## $ pnpm exec effect-tsgo diagnostics --project packages/cli/tsconfig.test.json --format text --strict
+F:/projects/eligius/eligian/packages/cli/src/__tests__/cli-low-fixes.spec.ts(256,28): warning effect(globalErrorInEffectFailure): Global 'Error' loses type safety as untagged errors merge together in the Effect failure channel. Consider using a tagged error and optionally wrapping the original in a 'cause' property.
+Checked 307 files out of 307 files. 
+0 errors, 1 warnings and 0 messages.
+exit: 1
+## Verdict
+- effect:check: language src 0 errors / 0 warnings, cli 0 errors / 0 warnings (exit 0) -- passes gate 6.
+- language test project: 0 errors / 0 warnings (exit 0) -- passes gate 6a.
+- cli test project: 1 warning, globalErrorInEffectFailure @ cli-low-fixes.spec.ts:256:28 -- identical to the T005 allowed set (exit 1 from --strict on that pre-existing warning only); no new finding -- passes gate 6a.
+
+
+=== T035 test suites and both bundle variants (plan gates 7-8; SC-005, SC-008, SC-010, SC-018) — 2026-11-04T19:35:13Z ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes)
+## $ pnpm test   (root pnpm -r test) -> exit 0
+packages/shared-utils: Test Files  7 passed (7)            | Tests  105 passed (105)
+packages/language:     Test Files  246 passed | 1 skipped (247) | Tests  3312 passed | 23 skipped (3335)
+packages/extension:    Test Files  63 passed (63)          | Tests  628 passed (628)
+packages/cli:          Test Files  27 passed | 1 skipped (28)   | Tests  364 passed | 19 skipped (383)
+## $ pnpm -C packages/cli build:prod -> exit 0
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production
+Build succeeded
+## $ pnpm -C packages/cli exec vitest run src/__tests__/package-bin.spec.ts  (on the production bundle) -> exit 0
+Test Files  1 passed (1)
+Tests  10 passed | 1 skipped (11)
+only skipped: ↓ the eligian npm package > mcp answers initialize in under 3 s
+## $ pnpm -C packages/cli build  (dev bundle restored) -> exit 0
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly
+Build succeeded
+## $ pnpm -C packages/cli exec vitest run src/__tests__/mcp-runtime-claims.spec.ts -> exit 0
+Test Files  1 passed (1)
+Tests  16 passed (16)   (0 skipped)
+## Verdict
+- gate 7: pnpm test green in all four packages (shared-utils, language, extension, cli).
+- gate 8: production bundle passes package-bin.spec with only the initialize case skipped; dev bundle rebuilt.
+- runtime claims: 16 passed, 0 skipped.
+
+
+=== T036 example gates (plan gate 9; FR-035, SC-015) — 2026-11-04T19:36:24Z ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes)
+## $ pnpm run check:examples -> exit 0
+9 files, 0 errors, 0 warnings
+## $ pnpm run smoke:examples -> exit 0
+9 files, 11 timelines played, 0 errors, 0 warnings
+## $ pnpm run fmt:examples -> exit 0
+All 12 files formatted
+## Verdict
+- gate 9: check (0 errors, 0 warnings), smoke and fmt all exit 0.
+
+
+=== T037 coverage gates (plan gate 10; FR-031, FR-032, SC-013) — 2026-11-04T19:37:48Z ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes)
+## $ pnpm test:coverage:ci   (root: pnpm -r --workspace-concurrency=1 test:coverage:ci) -> exit 0
+packages/language: Test Files  246 passed | 1 skipped (247) | Tests  3312 passed | 23 skipped (3335)
+File               | % Stmts | % Branch | % Funcs | % Lines |
+All files          |   90.98 |     82.3 |   93.74 |   92.25 |                   
+  thresholds (packages/language/vitest.config.ts): statements 79 / branches 69.9 / functions 80 / lines 79.8 -> met
+packages/cli:      Test Files  27 passed | 1 skipped (28)   | Tests  364 passed | 19 skipped (383)
+File               | % Stmts | % Branch | % Funcs | % Lines |
+All files          |   76.99 |    64.59 |    77.9 |   77.48 |                   
+  thresholds (packages/cli/vitest.config.ts, T008): statements 76.6 / branches 64.5 / functions 77.6 / lines 77.1 -> met
+  (T007 before: 76.65 / 64.52 / 77.61 / 77.11)
+packages/shared-utils, packages/extension: test:coverage:ci = vitest run (no coverage): 105 passed; 628 passed.
+## Verdict
+- gate 10: both coverage-gated packages meet their thresholds; no threshold changed, no test added.
+
+
+=== T038 measurements and diffs on the final tree (plan gates 11-12; SC-002, SC-007a, SC-009, SC-014, SC-016, SC-021) — 2026-11-04T19:38:18Z ===
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c (working tree with Phase 0 changes)
+## SC-009 Windows startup (T006 command; full output in startup-after.txt)
+334 336 338 344 344 median 338   (before: median 865, max 889; spec quote 1,075-1,109) -> < 3,000 ms and <= 1,109 ms: met
+## SC-007a version defines
+$ pnpm -C packages/extension build -> exit 0 (Build succeeded)
+$ pnpm -C packages/language build -> exit 0 (Langium generator finished; Build succeeded; git status of packages/language/src/generated: clean)
+$ grep -rhoE --include='*.js' --include='*.cjs' --include='*.mjs' '.{0,11}__ELIGI(AN|US)_VERSION__' packages/extension/out packages/language/dist | grep -vcE '(typeof |"string" ?\? ?)__ELIGI(AN|US)_VERSION__$'
+0
+(context: every occurrence, sort | uniq -c, all guarded by the typeof fallback of compiler/version.ts:)
+      3 "string" ? __ELIGIAN_VERSION__
+      3 "string" ? __ELIGIUS_VERSION__
+      3 N = typeof __ELIGIAN_VERSION__
+      3 N = typeof __ELIGIUS_VERSION__
+-> SC-007a met (0 unguarded references).
+## T018 re-run: SC-002 uncoded accept sites
+$ node <scratch>/scan.mjs .   (spec.md Appendix A)
+packages/language/src/validators/operation-call/label-parameter-validator.ts:207
+packages/language/src/validators/operation-call/set-data-validator.ts:53
+uncoded accept sites: 2
+-> exactly 2 sites, byte-identical to uncoded-accepts-after.txt (T018). SC-002 met.
+## T018 re-run: SC-016 diagnostic snapshot
+$ pnpm exec tsx specs/058-mcp-server/phase-0-foundation/baseline/snapshot-diagnostics.ts after -> exit 0 (files: 39, diagnostics: 197)
+$ git diff --no-index baseline/diagnostics-before.json baseline/diagnostics-after.json -> exit 1 (differences), 92 lines
+-> regenerated diagnostics-after.json byte-identical to T018's; the diff byte-identical to diagnostics-diff.txt. Changed lines (cut at 120 chars):
+-    "message": "While validating the AstNode 'timeline \"test\" in \"#app\" using raf from \"x.mp4\" {\n  at 0s..5s sho
++    "message": "Timeline provider 'raf' does not use a source file. Remove: from \"x.mp4\"",
+-    "message": "While validating the AstNode 'timeline \"test\" in \".test-container\" using websocket from \"ws://loca
++    "message": "Timeline provider 'undefined' does not use a source file. Remove: from \"ws://localhost:8080\"",
+-    "message": "While validating the AstNode 'at 10s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\
++    "message": "Timeline event end time (5s) must be greater than start time (10s)",
+-  {
+-    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+-    "severity": "error",
+-    "message": "While validating the AstNode 'timeline \"test\" in \".test-container\" using video {\n  at 0s..5s [\n  
+-    "line": 5,
+-    "column": 44,
+-    "endLine": 5,
+-    "endColumn": 49
+-  },
+-    "message": "While validating the AstNode 'timeline \"test\"', this warning is found: Timeline has no events. Add at
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+-    "message": "While validating the AstNode 'timeline \"test2\"', this warning is found: Timeline has no events. Add a
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+-    "message": "While validating the AstNode 'timeline \"test3\"', this warning is found: Timeline has no events. Add a
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+-    "message": "While validating the AstNode 'timeline', this warning is found: Timeline has no events. Add at least on
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+-    "message": "While validating the AstNode 'timeline', this warning is found: Timeline has no events. Add at least on
++    "message": "Timeline has no events. Add at least one event inside the timeline block.",
+-> every line is a stripped 'While validating the AstNode ... is found: ' prefix (FR-004a, same position, suffix unchanged)
+   or the removed duplicate video-from diagnostic in invalid/missing-source.eligian (FR-004b). No other line. SC-016 met.
+## T030 re-run (SC-021)
+$ grep -n "unknown-operation" specs/058-mcp-server/roadmap.md   (expect 0)
+exit=1 count=0
+$ grep -n "unknown_operation" specs/058-mcp-server/roadmap.md   (expect >= 2)
+count=2 lines: 35 385 
+$ git diff --numstat specs/058-mcp-server/roadmap.md
+2	2	specs/058-mcp-server/roadmap.md
+$ git diff -U0 specs/058-mcp-server/roadmap.md | grep -E "^@@"
+@@ -35 +35 @@ The eval set in §6 is the definition. Phase exit criteria use it:
+@@ -385 +385 @@ Exit rule: A1 ≥ A0 on pass rate **and** A1 lower on rounds, tool calls and tok
+$ grep -rn "unknown-operation" packages/language/src
+packages/language/src/__tests__/diagnostic-code-registry.spec.ts:305:      'unknown-operation',
+packages/language/src/__tests__/library-action-scoping.spec.ts:79:  test('a library can call an action it imports (resolves, no unknown-operation error)', async
+count=2
+$ grep -rn "unknown-operation" packages/language/src --exclude-dir=__tests__   (non-test source; expect 0)
+count=0
+-> same result as roadmap-metrics.txt: roadmap 0 / 2; the 2 packages/language/src hits are test-only (a negative isDiagnosticCode guard and a test title), 0 in non-test source.
+## T031 re-run (SC-014)
+$ grep -n "11\.9" AGENTS.md   (expect 0)
+exit=1 count=0
+$ grep -n "currently 12\.14" AGENTS.md
+29:- **Package manager: pnpm only** (version pinned via `packageManager` in package.json; currently 12.14). Never npm/ya
+$ grep -n packageManager package.json
+50:  "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d1
+$ grep -n 'dist/cli.mjs` (the no-op bundle)' packages/cli/AGENTS.md   (expect 0)
+exit=1
+$ grep -n '`index.ts` — package exports' packages/cli/AGENTS.md   (expect 0)
+exit=1
+$ test -e packages/cli/src/index.ts   (expect false)
+false (does not exist)
+$ grep -n "Note:" packages/cli/AGENTS.md
+24:> Note: `package.json` `"bin"` maps both `eligian` and `eligian-cli` to `./bin/cli.js`, which is in the `files` allowlist (with `dist/cli.mjs`), so `pnpm exec eligian` / an installed `eligian` runs
+-> same result as docs-drift.txt: no drift.
+## Verdict
+- gate 11 / SC-009: startup median 338 ms (< 3,000 and <= 1,109).
+- gate 12 / SC-007a: 0 unguarded __ELIGIAN_VERSION__ / __ELIGIUS_VERSION__ references.
+- SC-002: 2 uncoded accept sites; SC-016: snapshot diff only FR-004a/b lines; SC-021 and SC-014 greps unchanged from T030 / T031.

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { CheckFileResult } from '@eligian/language';
+import type { CheckDiagnostic, CheckFileResult } from '@eligian/language';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   expandPatterns,
@@ -146,6 +146,7 @@ timeline "t" in ".c" using raf { at 0s..1s a() at 1s..2s [ selectElement("#a") a
             endColumn: 9,
             code: 'some_code',
           },
+          // No code: covers the reporters' fallback (`eligian` rule, no `title=`).
           {
             file: '/work/src/a.eligian',
             severity: 'info',
@@ -154,7 +155,7 @@ timeline "t" in ".c" using raf { at 0s..1s a() at 1s..2s [ selectElement("#a") a
             column: 1,
             endLine: 1,
             endColumn: 2,
-          },
+          } as CheckDiagnostic,
         ],
       },
     ];

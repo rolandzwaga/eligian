@@ -1,0 +1,244 @@
+T027 — LANGUAGE_SPEC.md §4.2, §5.9, §8.1.1, §12.1 (FR-024, FR-025, FR-026, FR-027, FR-029, SC-011)
+Date: 2026-11-04. Tree: 1e2e750771bf058d633b8660d04a55537527df4c + working-tree changes of the phase.
+CLI: node packages/cli/bin/cli.js (dist/cli.mjs and language dist/index.cjs built 2026-11-04 20:15; no
+packages/{language,cli}/src non-test .ts file is newer than dist/cli.mjs).
+
+== Procedure (plan E / SC-011) ==
+A scratch verifier (not committed; scratchpad t027/verify-spec-4-5-8-12.mjs, same normalisation and
+path lookup as T026's verify-spec-11.mjs) reads LANGUAGE_SPEC.md sections '### 4.2 '..'### 4.3 ',
+'### 5.9 '..'### 5.10 ', '### 8.1.1 '..'### 8.2 ', '### 12.1 '..'### 12.2 ' and:
+ 1. takes §11.2's ```html block as layout.html and its ```css block as styles.css (the sections say
+    their snippets compile next to them); every styles / layout / CSS import path a snippet names gets
+    a copy of that file (theme.css, ../styles/global.css);
+ 2. writes every ```eligian block to probes/<section>/snippet-<n>.eligian (or to the path named by a
+    first line '// In <path>:'), runs 'check' (must exit 0) and 'compile <f> -o <f>.json -q';
+ 3. normalises the compiled JSON (SC-011): every 'id' value -> "<id>", then every string equal to an
+    original id -> "<id>";
+ 4. compares every ```json block with the normalised output of the latest snippet of its section at
+    the path named before it ('JSON path: `<path>`'): JSON.stringify(parse(block), null, 2) ===
+    JSON.stringify(subtree, null, 2), i.e. same values and same key order.
+Syntax templates (`endable action <name> [...]`, `addController("<controllerName>", ...)`) are now
+```bnf blocks, as §5.1 already does; the duplicate-styles error is a ```text block (it is not a snippet).
+
+== Red run, before the edit (old sections) ==
+$ node verify-spec-4-5-8-12.mjs
+$ node packages/cli/bin/cli.js check probes/4.2/snippet-1.eligian   (§4.2)
+1 file, 17 errors, 0 warnings → exit 1
+probes/4.2/snippet-1.eligian
+  1:16  error    Expected a name here, but found '<'.  syntax-error
+  2:3   error    Expected ']' here, but found '<'.  syntax-error
+  2:9   error    Expected '(' here, but found '-'.  syntax-error
+  2:21  error    Unexpected '*' here.  syntax-error
+  3:1   error    Unexpected ']' here.  syntax-error
+  4:3   error    Expected ']' here, but found '<'.  syntax-error
+  4:7   error    Expected '(' here, but found '-'.  syntax-error
+  4:19  error    Unexpected '*' here.  syntax-error
+  5:1   error    Unexpected ']' here.  syntax-error
+  7:16  error    Expected a name here, but found '<'.  syntax-error
+  7:23  error    Expected ')' here, but found '<'.  syntax-error
+  2:10  error    Could not resolve reference to Parameter named 'operations'.  unresolved-reference
+  4:8   error    Could not resolve reference to Parameter named 'operations'.  unresolved-reference
+  1:1   error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+  7:1   error    Duplicate action definition 'undefined'. Action already defined.  duplicate_action
+  2:4   error    Unknown operation: "start". Did you mean: wait?  unknown_operation
+  4:4   error    Unknown operation: "end". Did you mean: log, when?  unknown_operation
+
+1 file, 17 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/4.2/snippet-1.eligian -o probes/4.2/snippet-1.eligian.json -q → exit 1
+$ node packages/cli/bin/cli.js check probes/4.2/snippet-2.eligian   (§4.2)
+1 file, 4 errors, 0 warnings → exit 1
+probes/4.2/snippet-2.eligian
+  1:1   error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+  2:17  error    Unknown CSS class in selector: 'overlay'.  unknown_css_class_in_selector
+  3:12  error    Unknown CSS class: 'visible'.  unknown_css_class
+  5:15  error    Unknown CSS class: 'visible'.  unknown_css_class
+
+1 file, 4 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/4.2/snippet-2.eligian -o probes/4.2/snippet-2.eligian.json -q → exit 1
+$ node packages/cli/bin/cli.js check probes/5.9/snippet-1.eligian   (§5.9)
+1 file, 2 errors, 0 warnings → exit 1
+probes/5.9/snippet-1.eligian
+  1:1   error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+  2:17  error    Unknown CSS ID in selector: 'language-display'.  unknown_css_id_in_selector
+
+1 file, 2 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/5.9/snippet-1.eligian -o probes/5.9/snippet-1.eligian.json -q → exit 1
+json block 1 in §5.9: no "JSON path:" named before it
+$ node packages/cli/bin/cli.js check probes/8.1.1/snippet-1.eligian   (§8.1.1)
+1 file, 2 errors, 0 warnings → exit 1
+probes/8.1.1/snippet-1.eligian
+  1:1  error    Expected the end of the file here, but found 'addController'.  syntax-error
+  1:1  error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+
+1 file, 2 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/8.1.1/snippet-1.eligian -o probes/8.1.1/snippet-1.eligian.json -q → exit 1
+$ node packages/cli/bin/cli.js check probes/8.1.1/snippet-2.eligian   (§8.1.1)
+1 file, 2 errors, 0 warnings → exit 1
+probes/8.1.1/snippet-2.eligian
+  2:1  error    Expected the end of the file here, but found 'selectElement'.  syntax-error
+  1:1  error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+
+1 file, 2 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/8.1.1/snippet-2.eligian -o probes/8.1.1/snippet-2.eligian.json -q → exit 1
+$ node packages/cli/bin/cli.js check probes/12.1/snippet-1.eligian   (§12.1)
+1 file, 3 errors, 0 warnings → exit 1
+probes/12.1/snippet-1.eligian
+  1:1  error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+  2:1  error    Duplicate 'styles' import. Only one styles import is allowed per document.  import-duplicate-default
+  3:1  error    Duplicate 'styles' import. Only one styles import is allowed per document.  import-duplicate-default
+
+1 file, 3 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/12.1/snippet-1.eligian -o probes/12.1/snippet-1.eligian.json -q → exit 1
+$ node packages/cli/bin/cli.js check probes/12.1/examples/demo.eligian   (§12.1)
+1 file, 2 errors, 0 warnings → exit 1
+probes/12.1/examples/demo.eligian
+  2:1  error    A timeline declaration is required. Add: timeline "<name>" using <provider> { ... }  timeline-required
+  3:1  error    Duplicate 'styles' import. Only one styles import is allowed per document.  import-duplicate-default
+
+1 file, 2 errors, 0 warnings
+$ node packages/cli/bin/cli.js compile probes/12.1/examples/demo.eligian -o probes/12.1/examples/demo.eligian.json -q → exit 1
+snippets: 7, json blocks: 1, failures: 15
+exit 1
+
+$ diff <(sed -n "/^### 8\.1\.1/,/^### 8\.2/p" LANGUAGE_SPEC.md | grep -oE "\b[A-Z][A-Za-z]+Controller\b" | sort -u) <(grep -oE "\"name\": \"[A-Za-z]+Controller\"" packages/language/src/completion/metadata/controllers.generated.ts | grep -oE "[A-Za-z]+Controller" | sort -u)
+1c1,2
+< AudioController
+---
+> DOMEventListenerController
+> KeyboardController
+2a4,5
+> LottieController
+> MutationObserverController
+4c7,9
+< VideoController
+---
+> ProgressbarController
+> RoutingController
+> SubtitlesController
+exit 1
+$ sed -n '/^### 8\.1\.1/,/^### 8\.2/p' LANGUAGE_SPEC.md | grep -ci 'do-not-use\|do not use'
+0
+
+== Green run, after the edit ==
+$ node verify-spec-4-5-8-12.mjs
+$ node packages/cli/bin/cli.js check probes/4.2/snippet-1.eligian   (§4.2)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/4.2/snippet-1.eligian -o probes/4.2/snippet-1.eligian.json -q → exit 0
+json block §4.2 vs snippet-1 at actions[0]: 0 differences
+json block §4.2 vs snippet-1 at timelines[0].timelineActions[0]: 0 differences
+$ node packages/cli/bin/cli.js check probes/5.9/snippet-1.eligian   (§5.9)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/5.9/snippet-1.eligian -o probes/5.9/snippet-1.eligian.json -q → exit 0
+json block §5.9 vs snippet-1 at eventActions[0]: 0 differences
+$ node packages/cli/bin/cli.js check probes/8.1.1/snippet-1.eligian   (§8.1.1)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/8.1.1/snippet-1.eligian -o probes/8.1.1/snippet-1.eligian.json -q → exit 0
+json block §8.1.1 vs snippet-1 at actions[1]: 0 differences
+$ node packages/cli/bin/cli.js check probes/12.1/snippet-1.eligian   (§12.1)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/12.1/snippet-1.eligian -o probes/12.1/snippet-1.eligian.json -q → exit 0
+json block §12.1 vs snippet-1 at cssFiles: 0 differences
+$ node packages/cli/bin/cli.js check probes/12.1/examples/demo.eligian   (§12.1)
+1 file, 0 errors, 0 warnings → exit 0
+$ node packages/cli/bin/cli.js compile probes/12.1/examples/demo.eligian -o probes/12.1/examples/demo.eligian.json -q → exit 0
+snippets: 5, json blocks: 5, failures: 0
+exit 0
+
+$ diff <(sed -n "/^### 8\.1\.1/,/^### 8\.2/p" LANGUAGE_SPEC.md | grep -oE "\b[A-Z][A-Za-z]+Controller\b" | sort -u) <(grep -oE "\"name\": \"[A-Za-z]+Controller\"" packages/language/src/completion/metadata/controllers.generated.ts | grep -oE "[A-Za-z]+Controller" | sort -u)
+exit 0 (empty diff)
+$ sed -n '/^### 8\.1\.1/,/^### 8\.2/p' LANGUAGE_SPEC.md | grep -ci 'do-not-use\|do not use'
+1
+| `RoutingController` | `json`* (object) | | **Do-not-use**: its metadata says "This is a work in progress, do not use t
+
+== Supporting probes for prose claims (same layout.html / styles.css) ==
+--- old42.eligian (the old §4.2 end block / old §8.1.1 forms, completed into a program)
+styles "./styles.css"
+layout "./layout.html"
+
+endable action showThenHide [
+  selectElement("#title")
+  addClass("on")
+] [
+  removeClass("on")
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..2s showThenHide()
+}
+$ node packages/cli/bin/cli.js check old42.eligian
+old42.eligian
+  12:13  error    Action 'showThenHide' requires 'selectedElement' (used by removeClass in 'showThenHide'), which is not available here - ensure it is created before calling 'showThenHide' (for example with selectElement)  missing-action-dependency
+
+1 file, 1 error, 0 warnings
+exit 1
+--- old811.eligian (the old §4.2 end block / old §8.1.1 forms, completed into a program)
+styles "./styles.css"
+layout "./layout.html"
+
+action setup [
+  selectElement("#title")
+  addController("NavigationController", {
+    pages: ["home", "about", "contact"],
+    defaultPage: "home"
+  })
+  selectElement("#title")
+  addController("VideoController")
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..2s setup()
+}
+$ node packages/cli/bin/cli.js check old811.eligian
+old811.eligian
+  11:17  error    Unknown controller: 'VideoController'.  unknown_controller
+
+1 file, 1 error, 0 warnings
+exit 1
+--- dup.eligian (two styles imports; FR-027)
+styles "./styles.css"
+styles "./styles.css"
+layout "./layout.html"
+
+timeline "main" in "#app" using raf {
+  at 0s..2s [
+    selectElement("#title")
+    addClass("on")
+  ] [
+    selectElement("#title")
+    removeClass("on")
+  ]
+}
+$ node packages/cli/bin/cli.js check dup.eligian
+dup.eligian
+  2:1  error    Duplicate 'styles' import. Only one styles import is allowed per document.  import-duplicate-default
+
+1 file, 1 error, 0 warnings
+exit 1
+--- notopic.eligian (§5.9 snippet without 'topic "settings"')
+$ node packages/cli/bin/cli.js compile notopic.eligian -o notopic.json -q && keys of eventActions[0]
+[ 'id', 'name', 'eventName', 'startOperations' ]
+--- miss.eligian (§12.1 snippet, named import of a missing ./missing.css)
+$ node packages/cli/bin/cli.js check miss.eligian
+miss.eligian
+  3:19  error    Asset file not found: ./missing.css. Check that the file path is correct and the file exists  css-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+
+== Sources quoted by the sections ==
+controllers.generated.ts: 9 controllers; :111 LottieController description (lottie-web optional peer, dynamic import()),
+  :190 RoutingController description ('This is a work in progress, do not use this yet please....')
+packages/extension/package.json:294:    "lottie-web": "5.13.0",
+validators/operation-call/label-parameter-validator.ts: codes invalid_controller_name_type, unknown_controller,
+  missing_required_parameter, too_many_parameters (checkControllerCall); compiler/transformers/operation-transformer.ts:244-281
+  maps args[1+] positionally to controller.parameters[i].name and emits getControllerInstance + addControllerToElement.
+compiler/transformers/navigate-operations.ts:69,72: DOMEventListenerController / KeyboardController for interactions.
+type-system-typir/validation/import-validation.ts:64-70: duplicate default import -> import-duplicate-default.
+ELIGIUS_EXECUTION_MODEL.md probed titles cited: :66 'start and end blocks are independent runs, each starting from an
+  empty operationData'; :74 'an event action starts with only eventArgs'.
+
+== Out of scope (not edited, reported) ==
+1908:   // → Shows: LabelController, NavigationController, VideoController, ...
+1943:- `VideoController` - Video playback controls
+1944:- `AudioController` - Audio playback controls
+(§5.12 'Controller Autocomplete' still names VideoController / AudioController; T027 covers §8.1.1 only.)

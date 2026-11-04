@@ -1,0 +1,46 @@
+Phase 0 deviations from tasks.md / plan.md, one entry per task.
+
+T012 (plan R8): asset-import-validator.ts:131 (an asset error whose path matches no import node,
+reported on the program) has no fixture in diagnostic-codes.spec.ts. Every asset error that
+loadProgramAssets produces carries its import's path (compiler-integration.ts), so no source file
+reaches that branch. It is covered instead by
+packages/language/src/__tests__/asset-import-validator-codes.spec.ts, which stubs
+loadProgramAssets (vi.mock) with one error per AssetError tag whose path matches no import and
+asserts the program-level diagnostic carries ASSET_ERROR_CODES[error._tag]. T010's it.todo in
+diagnostic-codes.spec.ts is replaced by a pointer comment to that spec.
+
+T014 (plan A2, test plan row "FR-001 (no literals)"):
+- Converted files outside the plan's list: none. Every `kind: 'literal'` baseline file is in
+  validators/** or is one of css/selector-validation.ts, css/selector-sources.ts,
+  dataflow/operation-dataflow.ts, type-system-typir/validation/label-id-validation.ts. Within the
+  plan's validators/** scope the conversion also touched files that the task's short file list
+  did not name: action-validator.ts, event-action-validator.ts, extensions-validator.ts,
+  import-validator.ts, languages-validator.ts, navigate-validator.ts,
+  operation-call/css-parameter-validator.ts, operation-call/label-parameter-validator.ts,
+  program/asset-import-validator.ts (:231 only), program/duplicate-validator.ts,
+  program/import-name-collision-validator.ts and timeline-validator.ts.
+- validators/locale-import-validator.ts:94,104,132 (`code: 'invalid_locales_schema'` /
+  `'invalid_locales_json'`) stay string literals. They are LocaleValidationError codes, not
+  diagnostic codes: emittable-codes-dropped.txt records them as investigated and never reaching a
+  diagnostic, so they are not in the registry and diagnosticCode() cannot take them. The test
+  reads emittable-codes-dropped.txt at run time and exempts exactly its
+  "not in an accept info object" (file, code) pairs.
+- "an identifier" in the test is read as an identifier or member / element access (problem.code,
+  ASSET_ERROR_CODES[error._tag]), optionally `.toLowerCase()`, ending the value. `__tests__`
+  directories are outside the scanned scope. The test also fails on a `*_CODE = '…'` constant
+  whose value is a bare string literal (the constants the task converts).
+
+T018 (SC-002, SC-016; plan R9): no deviation.
+- uncoded-accepts-after.txt: 2 sites (label-parameter-validator.ts:207, set-data-validator.ts:53,
+  the data-variable sites) and `uncoded accept sites: 2`.
+- diagnostics-after.json: 39 files, 197 diagnostics (198 before). diagnostics-diff.txt has 8
+  stripped `While validating the AstNode … is found: ` prefixes (same file, severity, range;
+  suffix unchanged) and 1 removed duplicate (missing-source.eligian 5:44-5:49, the Typir
+  "Timeline provider 'video' requires a source file" copy; the validator's copy, same range and
+  message suffix, remains). No other line differs.
+- Plan R9: no Typir double report surfaces. The after snapshot has no two diagnostics with the
+  same file, range and message; the 8 same-start pairs report different problems (e.g. invalid
+  provider + empty timeline), and the one same-problem pair (examples/libraries/errors/
+  missing-import.eligian 5:13, "Unknown action" + "Unknown operation") comes from
+  validators/operation-call/operation-existence-validator.ts:96 and
+  compiler/operations/validation/existence.ts:37, not Typir, and is unchanged from before.

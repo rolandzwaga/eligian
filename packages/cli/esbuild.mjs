@@ -12,6 +12,7 @@
 //   node esbuild.mjs --production  npm (prepack): minified, names kept, no source maps
 //   node esbuild.mjs --watch
 import { readFileSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
@@ -22,6 +23,10 @@ const minify = production || process.argv.includes('--minify');
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(here, 'package.json'), 'utf-8'));
+// The installed eligius, for getCompilerVersion(); a resolution failure fails the build
+const eligiusVersion = JSON.parse(
+  readFileSync(createRequire(import.meta.url).resolve('eligius/package.json'), 'utf-8')
+).version;
 
 /** The workspace packages, by import specifier: their TypeScript entry points */
 const WORKSPACE_SOURCES = {
@@ -81,6 +86,11 @@ const cliCtx = await esbuild.context({
   format: 'esm', // ESM format required for top-level await and import.meta
   loader: { '.ts': 'ts' },
   platform: 'node',
+  // The versions read by @eligian/language's compiler/version.ts
+  define: {
+    __ELIGIAN_VERSION__: JSON.stringify(pkg.version),
+    __ELIGIUS_VERSION__: JSON.stringify(eligiusVersion),
+  },
   // This package's dependencies and their subpaths (eligius/lint, ...)
   external: Object.keys(pkg.dependencies ?? {}).flatMap(name => [name, `${name}/*`]),
   // Bundled CommonJS dependencies may call require() for Node built-ins

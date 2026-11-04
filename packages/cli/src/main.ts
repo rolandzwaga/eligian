@@ -7,9 +7,7 @@
  */
 
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import * as url from 'node:url';
-import { parseSelectorNotInLayout, STARTERS } from '@eligian/language';
+import { getCompilerVersion, parseSelectorNotInLayout, STARTERS } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
@@ -32,23 +30,8 @@ import { runInit } from './init.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
 import { parseSmokeFormat, runSmoke, SMOKE_FORMATS } from './smoke/smoke-command.js';
 
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
-const packagePath = path.resolve(__dirname, '..', 'package.json');
-
-/**
- * Read the CLI version from package.json. Falls back to '0.0.0' if the file is
- * missing or unreadable so a packaging issue cannot crash the CLI at startup.
- */
-async function readPackageVersion(): Promise<string> {
-  try {
-    const packageContent = await fs.readFile(packagePath, 'utf-8');
-    return JSON.parse(packageContent).version ?? '0.0.0';
-  } catch {
-    return '0.0.0';
-  }
-}
-
-const packageVersion = await readPackageVersion();
+/** The package version, injected by the CLI build (esbuild `define`) */
+const version = getCompilerVersion().compiler;
 
 /**
  * Exit codes
@@ -296,7 +279,7 @@ export default function main(): void {
   program
     .name('eligian')
     .description('Eligian DSL compiler - compile .eligian files to Eligius JSON')
-    .version(packageVersion)
+    .version(version)
     .addHelpText(
       'after',
       "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init) for its options."
@@ -349,7 +332,7 @@ export default function main(): void {
         warningsAsErrors: cmdOptions.warningsAsErrors === true,
         lint: cmdOptions.lint !== false,
         cwd: process.cwd(),
-        version: packageVersion,
+        version,
       });
       if (outcome.output) console.log(outcome.output);
       if (outcome.error) console.error(chalk.red(outcome.error));

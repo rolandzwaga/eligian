@@ -29,9 +29,10 @@ import {
   type VariableReference,
 } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 
 /** Diagnostic code for `!` applied to a runtime value outside an `if` condition. */
-export const RUNTIME_NEGATION_CODE = 'runtime_negation_outside_condition';
+export const RUNTIME_NEGATION_CODE = diagnosticCode('runtime_negation_outside_condition');
 
 /**
  * Same wording as the compiler's TransformError
@@ -45,28 +46,28 @@ export const RUNTIME_NEGATION_MESSAGE =
  * arithmetic (`x + 10`, `-x`) anywhere, comparisons/logic (`x > 5`) outside an `if` condition.
  * The message is {@link runtimeOperatorMessage}, shared with the compiler.
  */
-export const RUNTIME_OPERATOR_CODE = 'runtime_operator_operand';
+export const RUNTIME_OPERATOR_CODE = diagnosticCode('runtime_operator_operand');
 
 /**
  * Diagnostic code for an all-constant expression that has no valid value (`10 % 0`, `"abc" - 1`,
  * `true + 1`, a non-finite result). The message is the constant evaluator's reason, which the
  * compiler reports too.
  */
-export const INVALID_CONSTANT_CODE = 'invalid_constant_expression';
+export const INVALID_CONSTANT_CODE = diagnosticCode('invalid_constant_expression');
 
 /**
  * Diagnostic codes for runtime string concatenation (`"#" + id`, compiler/runtime-concat.ts):
  * used outside operation/action-call arguments and action-level consts, or with an object or
  * array operand.
  */
-export const RUNTIME_CONCAT_CONTEXT_CODE = 'runtime_concat_context';
-export const RUNTIME_CONCAT_OPERAND_CODE = 'runtime_concat_operand';
+export const RUNTIME_CONCAT_CONTEXT_CODE = diagnosticCode('runtime_concat_context');
+export const RUNTIME_CONCAT_OPERAND_CODE = diagnosticCode('runtime_concat_operand');
 
 /**
  * Diagnostic code for a reference, in the end block of an endable action or inline stagger
  * block, to a runtime (non-foldable) const of the start block.
  */
-export const END_BLOCK_RUNTIME_CONST_CODE = 'end_block_runtime_const';
+export const END_BLOCK_RUNTIME_CONST_CODE = diagnosticCode('end_block_runtime_const');
 
 /** End-block property → start-block property of the same node (see eligian-scope-provider.ts). */
 const START_LIST_OF_END_LIST: Readonly<Record<string, string>> = {

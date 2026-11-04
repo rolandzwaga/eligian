@@ -127,11 +127,41 @@ function lineBreakAfter(cst: CstNode): boolean {
   return next !== undefined && next.range.start.line > cst.range.end.line;
 }
 
+/**
+ * The keyword CST nodes of each node, by keyword, collected in one walk of its
+ * CST (as `GrammarUtils.findNodesForKeyword` does for one keyword: a child
+ * node's subtree is skipped). The rules ask for some sixty keywords per node;
+ * one walk instead of one per keyword keeps large documents fast.
+ */
+const keywordIndex = new WeakMap<AstNode, Map<string, CstNode[]>>();
+
+function keywordsOf(node: AstNode): Map<string, CstNode[]> {
+  const cached = keywordIndex.get(node);
+  if (cached) return cached;
+  const index = new Map<string, CstNode[]>();
+  keywordIndex.set(node, index);
+  const root = node.$cstNode;
+  if (!root) return index;
+  const iterator = CstUtils.streamCst(root).iterator();
+  for (let next = iterator.next(); !next.done; next = iterator.next()) {
+    const cst = next.value;
+    if (cst.astNode !== root.astNode) {
+      iterator.prune();
+      continue;
+    }
+    if (GrammarAST.isKeyword(cst.grammarSource) && !inDatatypeRule(cst)) {
+      const value = cst.grammarSource.value;
+      const nodes = index.get(value);
+      if (nodes) nodes.push(cst);
+      else index.set(value, [cst]);
+    }
+  }
+  return index;
+}
+
 /** The keyword CST nodes of `node` itself (not of its children, not in names), in order. */
 function ownKeywords(node: AstNode, keyword: string): CstNode[] {
-  return node.$cstNode
-    ? GrammarUtils.findNodesForKeyword(node.$cstNode, keyword).filter(cst => !inDatatypeRule(cst))
-    : [];
+  return keywordsOf(node).get(keyword) ?? [];
 }
 
 /**

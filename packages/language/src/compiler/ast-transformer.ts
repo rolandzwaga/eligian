@@ -73,6 +73,7 @@ import type {
   TimelineConfigIR,
   TTimelineProviderSettings,
 } from './types/eligius-ir.js';
+import { ELIGIAN_VERSION } from './version.js';
 
 // Re-exported for backward compatibility: these were defined in this module
 // before the W2 decomposition and are imported from here by tests and callers.
@@ -322,7 +323,7 @@ export const transformAST = (
       ...(host ? { host } : {}),
       metadata: {
         dslVersion: '1.0.0',
-        compilerVersion: '0.0.1',
+        compilerVersion: ELIGIAN_VERSION,
         compiledAt: new Date().toISOString(),
         sourceFile: undefined,
       },

@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import type { HostModule } from '@eligian/language';
 import { Effect } from 'effect';
 import type { IEngineConfiguration } from 'eligius';
-import * as esbuild from 'esbuild';
+import type * as esbuild from 'esbuild';
 import { type RuntimeBundleConfig, RuntimeBundleError } from './types.js';
 
 /**
@@ -294,8 +294,8 @@ export function bundleRuntime(
     // Using ESM format for modern browsers (94.58% global support per caniuse.com)
     // Benefits: smaller bundles, code splitting support, top-level await, native browser optimization
     const result = yield* Effect.tryPromise({
-      try: () =>
-        esbuild.build({
+      try: async () =>
+        (await import('esbuild')).build({
           entryPoints: [entryPointPath],
           bundle: true,
           // ESM format for modern browsers - loaded via <script type="module">

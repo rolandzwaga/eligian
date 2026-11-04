@@ -1,0 +1,10 @@
+// languages-validation.ts (Typir): several languages, none marked default
+languages {
+  "en-US" "English"
+  "nl-NL" "Nederlands"
+}
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

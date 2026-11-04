@@ -39,13 +39,13 @@
     "eligian-cli": "./bin/cli.js"
   },
   "scripts": {
-    "clean": "shx rm -fr *.tsbuildinfo out dist LICENSE *.tgz",
+    "clean": "shx rm -fr *.tsbuildinfo out dist coverage LICENSE *.tgz",
     "build": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
     "build:prod": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production",
     "prepack": "pnpm run build:prod",
     "build:clean": "pnpm run clean && pnpm run build",
     "test": "vitest run",
-    "test:coverage:ci": "vitest run",
+    "test:coverage:ci": "vitest run --coverage",
     "test:watch": "vitest"
   },
   "dependencies": {

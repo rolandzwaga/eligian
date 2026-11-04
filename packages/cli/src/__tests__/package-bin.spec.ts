@@ -8,22 +8,37 @@
  * The bundle and pack checks run once the CLI was built (CI builds first).
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const pkg = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf-8')) as {
   name: string;
+  version: string;
   bin: Record<string, string>;
   files: string[];
   dependencies: Record<string, string>;
 };
 const bundlePath = resolve(packageRoot, 'dist', 'cli.mjs');
 const built = existsSync(bundlePath) && existsSync(resolve(packageRoot, 'LICENSE'));
+const bin = resolve(packageRoot, 'bin', 'cli.js');
+// The mcp command counts once the CLI lists it in its --help (no flag to keep in sync)
+const hasMcp =
+  built &&
+  /^\s+mcp\b/m.test(execFileSync(process.execPath, [bin, '--help'], { encoding: 'utf-8' }));
+const eligiusVersion = (
+  JSON.parse(
+    readFileSync(
+      createRequire(resolve(packageRoot, 'package.json')).resolve('eligius/package.json'),
+      'utf-8'
+    )
+  ) as { version: string }
+).version;
 
 describe('the eligian npm package', () => {
   test.each(['eligian', 'eligian-cli'])('%s points at the bin/cli.js launcher', name => {
@@ -64,6 +79,103 @@ describe('the eligian npm package', () => {
     // A bundle has no relative imports: those are Eligian source in the starter templates
     const relative = (specifier: string) => specifier.startsWith('.');
     expect([...specifiers].filter(s => !builtin(s) && !declared(s) && !relative(s))).toEqual([]);
+  });
+
+  test.skipIf(!built)('--version prints the package version', () => {
+    const result = spawnSync(
+      process.execPath,
+      [resolve(packageRoot, 'bin', 'cli.js'), '--version'],
+      {
+        encoding: 'utf-8',
+      }
+    );
+    expect(result.stdout.trim()).toBe(pkg.version);
+  });
+
+  test.skipIf(!built)('the bundle carries the injected versions', () => {
+    const code = readFileSync(bundlePath, 'utf-8');
+    expect(code).not.toContain('__ELIGIAN_VERSION__');
+    expect(code).not.toContain('__ELIGIUS_VERSION__');
+    expect(code).toContain(JSON.stringify(pkg.version));
+    expect(code).toContain(JSON.stringify(eligiusVersion));
+  });
+
+  test.skipIf(!built)('--version starts in under 3 s (median of 5)', { timeout: 60_000 }, () => {
+    spawnSync(process.execPath, [bin, '--version']); // warm-up, not counted
+    const times: number[] = [];
+    for (let run = 0; run < 5; run++) {
+      const start = performance.now();
+      spawnSync(process.execPath, [bin, '--version']);
+      times.push(Math.round(performance.now() - start));
+    }
+    const median = [...times].sort((a, b) => a - b)[2];
+    console.info(`--version startup (ms): ${times.join(' ')} median ${median}`);
+    expect(median).toBeLessThan(3000);
+  });
+
+  test.skipIf(!built || !hasMcp)(
+    'mcp answers initialize in under 3 s',
+    { timeout: 20_000 },
+    async () => {
+      const child = spawn(process.execPath, [bin, 'mcp']);
+      try {
+        const start = performance.now();
+        const answered = new Promise<{ id?: unknown; result?: unknown }>(
+          (resolveAnswer, reject) => {
+            let buffered = '';
+            child.stdout.setEncoding('utf-8');
+            child.stdout.on('data', (chunk: string) => {
+              buffered += chunk;
+              const lines = buffered.split('\n');
+              buffered = lines.pop() ?? '';
+              for (const line of lines) {
+                try {
+                  const message = JSON.parse(line) as { id?: unknown; result?: unknown };
+                  if (message.id === 1 && message.result !== undefined) resolveAnswer(message);
+                } catch {
+                  // not a protocol frame
+                }
+              }
+            });
+            child.on('error', reject);
+            child.on('exit', code => reject(new Error(`mcp exited (${code}) before answering`)));
+          }
+        );
+        child.stdin.write(
+          `${JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-06-18',
+              capabilities: {},
+              clientInfo: { name: 'package-bin.spec', version: '0' },
+            },
+          })}\n`
+        );
+        const answer = await answered;
+        const elapsed = performance.now() - start;
+        console.info(`mcp initialize answered in ${Math.round(elapsed)} ms`);
+        expect(answer.result).toBeDefined();
+        expect(elapsed).toBeLessThan(3000);
+      } finally {
+        child.kill();
+      }
+    }
+  );
+
+  // jsdom, esbuild and effect/ai load only on the paths that use them
+  test.skipIf(!built)('no static import of jsdom, esbuild or effect/ai', () => {
+    const code = readFileSync(bundlePath, 'utf-8');
+    const staticImports = [
+      ...code.matchAll(
+        /(?:^|[;\n])\s*import\s*[^;'"(]*?from\s*["'](jsdom|esbuild|effect\/ai)(\/[^"']*)?["']/g
+      ),
+      ...code.matchAll(/(?:^|[;\n])\s*import\s*["'](jsdom|esbuild|effect\/ai)(\/[^"']*)?["']/g),
+    ].map(match => match[0].trim());
+    expect(staticImports).toEqual([]);
+    expect(code).toMatch(/\bimport\(\s*["']jsdom["']\s*\)/);
+    expect(code).toMatch(/\bimport\(\s*["']esbuild["']\s*\)/);
   });
 
   // npm starts a process of its own: slow while the other suites run in parallel

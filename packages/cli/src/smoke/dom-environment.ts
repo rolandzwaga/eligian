@@ -5,35 +5,36 @@
  * first loaded, so the window is created once and each file gets a fresh
  * body).
  */
-import { JSDOM, VirtualConsole } from 'jsdom';
+import type { JSDOM } from 'jsdom';
 
 type Eligius = typeof import('eligius');
 
-let dom: JSDOM | undefined;
+let dom: Promise<JSDOM> | undefined;
 let eligius: Promise<Eligius> | undefined;
 
 /** Messages jsdom reports (scripts it cannot run, APIs it does not implement). */
 export const jsdomMessages: string[] = [];
 
-/** The shared window, created (and made global) on first use. */
-export function smokeWindow(): Window & typeof globalThis {
-  if (!dom) {
+/** The shared window, created (and made global) on first use; jsdom is imported then. */
+export async function smokeWindow(): Promise<Window & typeof globalThis> {
+  dom ??= import('jsdom').then(({ JSDOM, VirtualConsole }) => {
     const virtualConsole = new VirtualConsole();
     virtualConsole.on('jsdomError', error => jsdomMessages.push(error.message));
-    dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+    const created = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
       pretendToBeVisual: true,
       url: 'http://localhost/',
       virtualConsole,
     });
-    stubMissingBrowserApis(dom.window as unknown as Window & typeof globalThis);
-    installGlobals(dom.window as unknown as Window & typeof globalThis);
-  }
-  return dom.window as unknown as Window & typeof globalThis;
+    stubMissingBrowserApis(created.window as unknown as Window & typeof globalThis);
+    installGlobals(created.window as unknown as Window & typeof globalThis);
+    return created;
+  });
+  return (await dom).window as unknown as Window & typeof globalThis;
 }
 
 /** Eligius, imported once the window exists. */
-export function loadEligius(): Promise<Eligius> {
-  smokeWindow();
+export async function loadEligius(): Promise<Eligius> {
+  await smokeWindow();
   eligius ??= import('eligius');
   return eligius;
 }

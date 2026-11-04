@@ -18,6 +18,7 @@ import type { ValidationProblemAcceptor } from 'typir';
 import { isBottomType, isTopType, isType, type Type } from 'typir';
 import type { TypirLangiumServices } from 'typir-langium';
 import type { ForStatement, IfStatement } from '../../generated/ast.js';
+import { diagnosticCode } from '../../validators/codes.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 
 /**
@@ -81,6 +82,7 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
             message: `If condition should be boolean type, got '${typeName}'`,
             languageNode: node,
             languageProperty: 'condition',
+            code: diagnosticCode('if-condition-not-boolean'),
           });
         }
       }
@@ -92,6 +94,7 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
           message: 'If statement has empty then branch',
           languageNode: node,
           languageProperty: 'thenOps',
+          code: diagnosticCode('if-empty-then'),
         });
       }
 
@@ -140,6 +143,7 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
             message: `For loop collection must be array type, got '${typeName}'`,
             languageNode: node,
             languageProperty: 'collection',
+            code: diagnosticCode('for-collection-not-array'),
           });
         }
       }
@@ -151,6 +155,7 @@ export function registerControlFlowValidation(typir: TypirLangiumServices<Eligia
           message: 'For loop has empty body',
           languageNode: node,
           languageProperty: 'body',
+          code: diagnosticCode('for-empty-body'),
         });
       }
     },

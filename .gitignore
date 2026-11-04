@@ -36,6 +36,7 @@ check-*.js
 check-*.mjs
 *.log
 .DS_Store
+/packages/cli/coverage
 /packages/language/coverage
 /packages/shared-utils/coverage
 /TODO.txt

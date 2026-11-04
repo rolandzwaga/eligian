@@ -1,0 +1,7 @@
+// asset-import-validator.ts: a locales import without a languages block
+styles "./styles.css"
+locales "./locales.json"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

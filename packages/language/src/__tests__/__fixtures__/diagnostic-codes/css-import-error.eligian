@@ -1,0 +1,6 @@
+// asset-import-validator.ts: a styles import whose file does not exist
+styles "./does-not-exist.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

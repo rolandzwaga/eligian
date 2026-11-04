@@ -6,9 +6,18 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Effect } from 'effect';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, test } from 'vitest';
+import {
+  createEmitError,
+  createParseError,
+  createTransformError,
+  createTypeError,
+  createValidationError,
+} from '../../errors/index.js';
+import { isDiagnosticCode } from '../../validators/codes.js';
+import { compileErrorCode } from '../pipeline/check.js';
 import { getOrCreateServices } from '../pipeline/services.js';
-import { checkFiles } from '../pipeline.js';
+import { type CompileError, checkFiles } from '../pipeline.js';
 
 describe('checkFiles', () => {
   let dir: string;
@@ -96,6 +105,7 @@ timeline "t" in ".c" using raf { at 0s..1s highlight() }
     expect(brokenResult.diagnostics.some(d => d.severity === 'error')).toBe(true);
     expect(missingResult.diagnostics).toHaveLength(1);
     expect(missingResult.diagnostics[0].message).toMatch(/^Cannot read file: /);
+    expect(missingResult.diagnostics[0].code).toBe('file-unreadable');
   });
 
   test('leaves no documents behind in the shared compiler workspace', async () => {
@@ -106,5 +116,49 @@ timeline "t" in ".c" using raf { at 0s..1s highlight() }
     await check(file);
 
     expect(documents.all.count()).toBe(before);
+  });
+});
+
+describe('compileErrorCode', () => {
+  const location = { line: 1, column: 1, length: 0 };
+  const TAGS: readonly (readonly [CompileError['_tag'], CompileError, string])[] = [
+    ['ParseError', createParseError({ message: 'm', location }), 'compile-parse-error'],
+    [
+      'ValidationError',
+      createValidationError({ kind: 'SemanticValidation', message: 'm', location }),
+      'compile-validation-error',
+    ],
+    [
+      'TypeError',
+      createTypeError({ message: 'm', location, expected: 'string', actual: 'number' }),
+      'compile-type-error',
+    ],
+    [
+      'TransformError',
+      createTransformError({ kind: 'InvalidEvent', message: 'm', location }),
+      'compile-transform-error',
+    ],
+    ['EmitError', createEmitError({ message: 'm' }), 'compile-emit-error'],
+  ];
+
+  it.each(TAGS)('%s → its code', (_tag, error, code) => {
+    expect(error._tag).toBe(_tag);
+    expect(compileErrorCode(error)).toBe(code);
+    expect(isDiagnosticCode(compileErrorCode(error))).toBe(true);
+  });
+
+  it('5 distinct codes', () => {
+    expect(new Set(TAGS.map(([, error]) => compileErrorCode(error))).size).toBe(5);
+  });
+
+  it('kind does not change the code', () => {
+    const validation = (['UndefinedReference', 'DuplicateDefinition'] as const).map(kind =>
+      compileErrorCode(createValidationError({ kind, message: 'm', location }))
+    );
+    const transform = (['UnknownNode', 'InvalidImport'] as const).map(kind =>
+      compileErrorCode(createTransformError({ kind, message: 'm', location }))
+    );
+    expect(validation).toEqual(['compile-validation-error', 'compile-validation-error']);
+    expect(transform).toEqual(['compile-transform-error', 'compile-transform-error']);
   });
 });
