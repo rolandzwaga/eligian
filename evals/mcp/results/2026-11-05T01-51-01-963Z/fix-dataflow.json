@@ -1,0 +1,67 @@
+{
+  "arm": "A1",
+  "runId": "2026-11-05T01-51-01-963Z",
+  "head": "fa5dbfacc9e779831e1ddc62b1e7aad2daf30dab",
+  "treeClean": true,
+  "case": "fix-dataflow",
+  "model": "claude-sonnet-5-5",
+  "projectDir": "C:\\Users\\scab\\AppData\\Local\\Temp\\eligian-eval-fix-dataflow-RW1ELz",
+  "pass": false,
+  "failures": [
+    "case fix-dataflow: action 'reveal' lost its 'clearOperationData'"
+  ],
+  "rounds": 1,
+  "checkToolCalls": 2,
+  "checkBashCalls": 0,
+  "toolCallCount": 5,
+  "toolCallSequence": [
+    "mcp__eligian__eligian_check",
+    "Read",
+    "Edit",
+    "Edit",
+    "mcp__eligian__eligian_check"
+  ],
+  "tokensFromTools": 3113,
+  "wallMs": 12253,
+  "agent": {
+    "exitCode": 0,
+    "isError": false,
+    "numTurns": 6,
+    "durationMs": 10313,
+    "totalCostUsd": 0.2113572,
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 46791,
+      "cache_read_input_tokens": 136286,
+      "output_tokens": 1041,
+      "output_tokens_details": {
+        "thinking_tokens": 217
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 46791,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 265,
+          "cache_read_input_tokens": 46463,
+          "cache_creation_input_tokens": 328,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 328
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    }
+  }
+}

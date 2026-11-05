@@ -699,7 +699,7 @@ General:
   - This is a recorded relaxation of the roadmap's Phase 1 exit criterion, and the roadmap states it as such (FR-056).
 
   The commands and their output, for both platforms, are quoted in `compliance.md`.
-- **SC-017 (eval cases)**: `tsx evals/mcp/run.ts --case fix-dataflow --arm A1` and `tsx evals/mcp/run.ts --case fix-selectors --arm A1` each write a result JSON with `pass: true` under the FR-051 gate.
+- **SC-017 (eval cases)**: `tsx evals/mcp/run.ts --case fix-dataflow --arm A1` and `tsx evals/mcp/run.ts --case fix-selectors --arm A1` each write a result JSON with `pass: true` under the FR-051 gate. *(Met 2026-11-05 on commit `fa5dbfa`: fix-selectors `2026-11-05T01-51-01-963Z`, fix-dataflow `2026-11-05T01-52-53-934Z`; the earlier failures and their triage are in `compliance.md` Closure.)*
   - The JSON records: `rounds` and its two source counts (FR-051), the tool-call count and sequence, tokens-from-tools, wall time, the pinned model, the run id, `git rev-parse HEAD`, and whether the tree outside `evals/mcp/results/` was clean.
   - **Sample policy**: §6.4 says intermediate phases run arm A1 only, 1 run per case.
     - Every run the harness completes is committed under `evals/mcp/results/<run>/`, failed runs included.

@@ -342,6 +342,17 @@ function importPath(source: string, keyword: 'layout'): string | undefined {
 // ---------------------------------------------------------------------------------------------
 // Case checks (§6.2; compiled output compared by action name and timeline uri, never by id)
 
+/**
+ * The source call a compiled operation came from. The compiler rewrites a bare
+ * `clearOperationData()` whose block still uses an action parameter into
+ * `setOperationData({ properties: { <parameter>: … }, override: true })`
+ * (`erased-parameters.ts`), so that form counts as the `clearOperationData` call.
+ */
+const sourceCall = (op: { systemName: string; operationData?: Record<string, unknown> }): string =>
+  op.systemName === 'setOperationData' && op.operationData?.override === true
+    ? 'clearOperationData'
+    : op.systemName;
+
 function checkFixDataflow(startDir: string, entry: string, config: Config): string[] {
   const failures: string[] = [];
   const source = fs.readFileSync(path.join(startDir, entry), 'utf8');
@@ -357,7 +368,7 @@ function checkFixDataflow(startDir: string, entry: string, config: Config): stri
       continue;
     }
     const own = [action.startOperations ?? [], action.endOperations ?? []];
-    const compiled = own.flat().map(op => op.systemName);
+    const compiled = own.flat().map(sourceCall);
     // No code deleted: every operation the start body called is still called (as a multiset),
     // which keeps the addClass and the operation that read the erased property.
     const remaining = [...compiled];
