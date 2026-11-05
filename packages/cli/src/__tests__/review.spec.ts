@@ -1,20 +1,22 @@
 /**
- * The review pass (spec 058, FR-030, SC-007): `controller-imbalance` and
- * `class-never-removed` over one compiled program, located at source.
+ * The review pass (spec 058, FR-030, SC-007; phase 2 FR-050, FR-056, SC-009,
+ * SC-022): the review checks over one compiled program, located at source.
  */
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { type CheckDiagnostic, checkFiles, type QuickFix } from '@eligian/language';
+import { TIMELINE_REVIEW_CODES } from '@eligian/language/mcp';
 import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { checkPaths, isLibrary } from '../check/check-command.js';
-import { REVIEW_CODES, reviewConfig } from '../check/review.js';
+import { lottieInstalled, REVIEW_CODES, reviewConfig } from '../check/review.js';
 import { compileFile } from '../compile-file.js';
 
 const FIXTURES = path.join(__dirname, '__fixtures__', 'mcp', 'review');
 const fixture = (name: string) => path.join(FIXTURES, `${name}.eligian`);
+const caseFile = (name: string) => path.join(FIXTURES, name, 'main.eligian');
 const TOUR = path.resolve(__dirname, '../../../../examples/eligian-tour');
 const CLI = path.resolve(__dirname, '..', '..', 'bin', 'cli.js');
 const built = fs.existsSync(path.resolve(__dirname, '..', '..', 'dist', 'cli.mjs'));
@@ -62,11 +64,142 @@ describe('reviewConfig', () => {
     };
   }
 
-  it('exports the review codes', () => {
-    expect(REVIEW_CODES).toEqual(['controller-imbalance', 'class-never-removed']);
+  it('REVIEW_CODES has nine codes in order', () => {
+    expect(REVIEW_CODES).toEqual([
+      'controller-imbalance',
+      'class-never-removed',
+      ...TIMELINE_REVIEW_CODES,
+      'host-operation-in-block-without-select',
+      'lottie-web-not-installed',
+    ]);
+    expect(REVIEW_CODES).toHaveLength(9);
+  });
+
+  it('timeline findings become located warnings', async () => {
+    // T008's media-file-missing case, with the layout and CSS compileFile needs
+    const file = caseFile('media-file-missing');
+    const findings = await review(file);
+
+    expect(findings).toEqual([
+      expect.objectContaining({
+        file,
+        severity: 'warning',
+        code: 'media-file-missing',
+        line: 6,
+        column: 8,
+        endLine: 6,
+      }),
+    ]);
+    expect(findings[0]!.message).toContain(path.join('media', 'missing.mp4'));
+  });
+
+  describe('host-operation-in-block-without-select', () => {
+    it('positive in a timeline event', async () => {
+      const file = caseFile('host-op-in-event');
+      const findings = await review(file);
+
+      expect(findings).toEqual([
+        expect.objectContaining({
+          file,
+          severity: 'warning',
+          code: 'host-operation-in-block-without-select',
+          line: 10,
+          column: 5,
+        }),
+      ]);
+      expect(findings[0]!.message).toContain('highlight');
+    });
+
+    it('not reported in a named-action body (FR-050 ruling, OQ-1)', async () => {
+      // A called action receives a copy of its caller's operation data, selection included
+      expect(await review(caseFile('host-op-in-named-action'))).toEqual([]);
+    });
+
+    it('target counts as a select', async () => {
+      expect(await review(caseFile('host-op-target'))).toEqual([]);
+    });
+
+    it('with counts as a select', async () => {
+      expect(await review(caseFile('host-op-with'))).toEqual([]);
+    });
+
+    it('a selector parameter exempts the operation', async () => {
+      expect(await review(caseFile('host-op-selector-param'))).toEqual([]);
+    });
+  });
+
+  describe('lottie-web-not-installed', () => {
+    /** A fresh copy of the lottie fixture under os.tmpdir(), where lottie-web does not resolve (P9). */
+    function lottieProject(): string {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-lottie-'));
+      fs.cpSync(path.join(FIXTURES, 'lottie'), dir, { recursive: true });
+      return dir;
+    }
+
+    it('tmpdir project without lottie-web: exactly one warning at the addController call', async () => {
+      const dir = lottieProject();
+      try {
+        const file = path.join(dir, 'main.eligian');
+        expect(lottieInstalled(dir)).toBe(false);
+
+        expect(await review(file)).toEqual([
+          expect.objectContaining({
+            file,
+            severity: 'warning',
+            code: 'lottie-web-not-installed',
+            line: 7,
+            column: 5,
+          }),
+        ]);
+        // And no other diagnostic through the check command (SC-022(1))
+        const [checked] = await checkPaths([file], { lint: true, review: true });
+        expect(checked!.diagnostics.map(d => [d.code, d.line])).toEqual([
+          ['lottie-web-not-installed', 7],
+        ]);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('with node_modules/lottie-web/package.json: 0', async () => {
+      const dir = lottieProject();
+      try {
+        const lottie = path.join(dir, 'node_modules', 'lottie-web');
+        fs.mkdirSync(lottie, { recursive: true });
+        fs.writeFileSync(path.join(lottie, 'package.json'), '{ "name": "lottie-web" }');
+
+        expect(await review(path.join(dir, 'main.eligian'))).toEqual([]);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('lottieInstalled walks up from the program directory', () => {
+      const root = path.resolve('/project');
+      const marker = path.join(root, 'node_modules', 'lottie-web', 'package.json');
+      const seen: string[] = [];
+      const exists = (p: string) => {
+        seen.push(p);
+        return p === marker;
+      };
+
+      expect(lottieInstalled(path.join(root, 'src', 'deck'), exists)).toBe(true);
+      expect(seen).toEqual([
+        path.join(root, 'src', 'deck', 'node_modules', 'lottie-web', 'package.json'),
+        path.join(root, 'src', 'node_modules', 'lottie-web', 'package.json'),
+        marker,
+      ]);
+      expect(lottieInstalled(path.join(root, 'src'), () => false)).toBe(false);
+    });
   });
 
   describe('controller-imbalance', () => {
+    it('removals through selector / className parameters balance (SC-016 three-chapters)', async () => {
+      // Was "ProgressbarController on \"undefined\"" and a class-never-removed: the walker read
+      // the selection from selectElement's own operationData only
+      expect(await review(fixture('removal-through-parameters'))).toEqual([]);
+    });
+
     it('with on leave', async () => {
       const file = fixture('imbalance-with-leave');
       const source = fs.readFileSync(file, 'utf-8');
@@ -246,5 +379,76 @@ describe('reviewConfig', () => {
       },
       60000
     );
+  });
+});
+
+/** `eligian check`'s defaults: lint and review on, `--selector-not-in-layout ids`. */
+const DEFAULTS = { selectorNotInLayout: 'ids', lint: true, review: true } as const;
+const codesOf = async (file: string, options: Parameters<typeof checkPaths>[1] = DEFAULTS) => {
+  const results = await checkPaths([file], options);
+  return results.flatMap(r => r.diagnostics.map(d => [d.code, d.line]));
+};
+
+describe('container cases via checkPaths', () => {
+  const container = (name: string) => path.join(FIXTURES, 'container', `${name}.eligian`);
+
+  it('#ghost default → selector_not_in_layout only', async () => {
+    // Both checks range the `in` selector; the review warning is dropped (FR-050, I-4)
+    expect(await codesOf(container('ghost-id'))).toEqual([['selector_not_in_layout', 6]]);
+  });
+
+  it('.ghostc with off → timeline-container-not-in-layout only', async () => {
+    expect(
+      await codesOf(container('ghost-class'), { ...DEFAULTS, selectorNotInLayout: 'off' })
+    ).toEqual([['timeline-container-not-in-layout', 6]]);
+  });
+
+  it('#ghost with off → timeline-container-not-in-layout only', async () => {
+    expect(
+      await codesOf(container('ghost-id'), { ...DEFAULTS, selectorNotInLayout: 'off' })
+    ).toEqual([['timeline-container-not-in-layout', 6]]);
+  });
+
+  it('no layout → 0', async () => {
+    expect(await codesOf(container('no-layout'))).toEqual([]);
+    expect(
+      await codesOf(container('no-layout'), { ...DEFAULTS, selectorNotInLayout: 'off' })
+    ).toEqual([]);
+  });
+});
+
+describe('media checks via checkPaths (SC-009(1): one warning and no other diagnostic)', () => {
+  it('media-from-duplicate: two video timelines, one file → exactly one warning on the second', async () => {
+    expect(await codesOf(caseFile('media-from-duplicate'))).toEqual([['media-from-duplicate', 15]]);
+  });
+
+  it('media-from-duplicate: a file each → 0', async () => {
+    expect(await codesOf(caseFile('media-from-distinct'))).toEqual([]);
+  });
+
+  it('media-timeline-first-without-start-gesture: on enter only pauses → exactly one warning', async () => {
+    expect(await codesOf(caseFile('start-gesture-missing'))).toEqual([
+      ['media-timeline-first-without-start-gesture', 5],
+    ]);
+  });
+
+  it('media-timeline-first-without-start-gesture: on click "#start" play → 0', async () => {
+    expect(await codesOf(caseFile('start-gesture-present'))).toEqual([]);
+  });
+});
+
+describe('entry-timeline-without-enter', () => {
+  const entry = (name: string) => path.join(FIXTURES, 'entry', `${name}.eligian`);
+
+  it('two timelines, the first without on enter: exactly one warning at its name', async () => {
+    expect(await codesOf(entry('two-no-enter'))).toEqual([['entry-timeline-without-enter', 4]]);
+  });
+
+  it('two timelines, the first with on enter: 0', async () => {
+    expect(await codesOf(entry('two-with-enter'))).toEqual([]);
+  });
+
+  it('a single timeline without on enter: 0', async () => {
+    expect(await codesOf(entry('single'))).toEqual([]);
   });
 });

@@ -6,6 +6,8 @@
  * Operation cards lead with NEEDS / PROVIDES / ERASES (`operationCard`, shared with the docs
  * generator). With `path`, the program is parsed (not loaded into the workspace, C5) under the
  * compiler lock, so the host operations and controllers of its `extensions` import count.
+ * Phase 2 (FR-073, FR-074; plan F1): operation and controller cards carry their overlay from
+ * the docs (`loadKnowledge`); a controller's status line comes from its overlay only.
  *
  * `Tool` is `@stability unstable`; the server is built on it (roadmap §2, decision 1: `effect` is
  * pinned exactly).
@@ -37,7 +39,9 @@ import {
 import { Effect, Schema } from 'effect';
 import { CompilerLock } from '../compiler-lock.js';
 import { type ToolError, ToolFailure, toToolError } from '../errors.js';
+import { loadKnowledge } from '../knowledge/load.js';
 import { controllerCard, eventLine, eventName, operationCard } from '../knowledge/render.js';
+import type { Knowledge } from '../knowledge/types.js';
 import { type EffectAi, projectRoot, resolveInputPath } from '../paths.js';
 
 /** What every tool handler receives from the server (plan C9). */
@@ -127,10 +131,11 @@ export const makeTool = (ai: EffectAi) =>
 const header = (context: ToolContext, resolvedPath: string | undefined): string =>
   `eligian ${context.versions.compiler} · eligius ${context.versions.eligius} · ${NAME} · ${resolvedPath ?? '-'}`;
 
-/** The registry operations plus, with a program, its host operations (C5). */
+/** The registry operations plus, with a program, its host operations (C5), and the overlays. */
 interface Lookup {
   readonly program: Program | undefined;
   readonly hostSignatures: readonly OperationSignature[];
+  readonly overlays: Pick<Knowledge['overlays'], 'operations' | 'controllers'>;
 }
 
 const names = (signatures: readonly OperationSignature[]): string[] =>
@@ -146,7 +151,7 @@ function operationCardOf(name: string, lookup: Lookup): CardValue | undefined {
   return {
     name,
     kind: host ? 'host-operation' : 'operation',
-    text: operationCard(signature, { host }),
+    text: operationCard(signature, { host, overlay: lookup.overlays.operations[name] }),
   };
 }
 
@@ -237,7 +242,7 @@ function entriesOf(
       });
       return [...CONTROLLERS, ...host].map(metadata => ({
         name: metadata.name,
-        description: controllerCard(metadata),
+        description: controllerCard(metadata, lookup.overlays.controllers[metadata.name]),
       }));
     }
     case 'event':
@@ -283,12 +288,12 @@ function parseProgram(source: string): Program {
   return getOrCreateServices().Eligian.parser.LangiumParser.parse<Program>(source).value;
 }
 
-function lookupOf(program: Program): Lookup {
+function lookupOf(program: Program, overlays: Lookup['overlays']): Lookup {
   const hostSignatures = hostOperations(program).flatMap(declaration => {
     const signature = getOperationSignature(declaration.name, program);
     return signature && !isRegistryOperation(declaration.name) ? [signature] : [];
   });
-  return { program, hostSignatures };
+  return { program, hostSignatures, overlays };
 }
 
 export const handle = (
@@ -297,10 +302,12 @@ export const handle = (
 ): Effect.Effect<OperationsSuccess, ToolError, CompilerLock> => {
   const input = params.path;
   if (input === undefined) {
-    return Effect.sync(() => ({
-      header: header(context, undefined),
-      ...answer(params, { program: undefined, hostSignatures: [] }),
-    }));
+    return loadKnowledge(context.docsRoot).pipe(
+      Effect.map(knowledge => ({
+        header: header(context, undefined),
+        ...answer(params, { program: undefined, hostSignatures: [], overlays: knowledge.overlays }),
+      }))
+    );
   }
   return Effect.gen(function* () {
     const root = yield* projectRoot(context.ai, context.cwd);
@@ -309,10 +316,11 @@ export const handle = (
       try: () => fs.readFile(file, 'utf8'),
       catch: toToolError('read', file),
     });
+    const knowledge = yield* loadKnowledge(context.docsRoot);
     const lock = yield* CompilerLock;
     const result = yield* lock.run(
       context.requestId,
-      Effect.sync(() => answer(params, lookupOf(parseProgram(source))))
+      Effect.sync(() => answer(params, lookupOf(parseProgram(source), knowledge.overlays)))
     );
     return { header: header(context, file), ...result };
   });

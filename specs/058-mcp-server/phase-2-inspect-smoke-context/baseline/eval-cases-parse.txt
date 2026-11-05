@@ -1,0 +1,24 @@
+# T042 eval cases: parse check (2026-11-05T09:53:59Z)
+
+$ node -e (JSON.parse of the ten files; case fields)
+ok   title-card.json parses; keys id,prompt,entry,model,scenario; model claude-sonnet-5-5; start dir: none
+ok   title-card.scenario.json parses; 14 steps, 9 assertions
+ok   three-chapters.json parses; keys id,prompt,entry,model,scenario; model claude-sonnet-5-5; start dir: none
+ok   three-chapters.scenario.json parses; 10 steps, 15 assertions
+ok   staggered-list.json parses; keys id,prompt,entry,model,scenario; model claude-sonnet-5-5; start dir: none
+ok   staggered-list.scenario.json parses; 10 steps, 11 assertions
+ok   keyboard-deck.json parses; keys id,prompt,entry,model,scenario; model claude-sonnet-5-5; start dir: none
+ok   keyboard-deck.scenario.json parses; 9 steps, 27 assertions
+ok   library-reuse.json parses; keys id,prompt,entry,model,scenario; model claude-sonnet-5-5; start dir: none
+ok   library-reuse.scenario.json parses; 8 steps, 7 assertions
+all ten files parse
+exit 0
+
+$ pnpm exec tsx <scratchpad>/parse-scenarios.mts  (imports parseScenario from packages/cli/src/smoke/scenario.ts; a multi-line tsx -e script fails to spawn through pnpm on Windows: ERR_PNPM_CLI_EXEC_SPAWN)
+ok   title-card.scenario.json: parseScenario ok (14 steps, 9 assertions)
+ok   three-chapters.scenario.json: parseScenario ok (10 steps, 15 assertions)
+ok   staggered-list.scenario.json: parseScenario ok (10 steps, 11 assertions)
+ok   keyboard-deck.scenario.json: parseScenario ok (9 steps, 27 assertions)
+ok   library-reuse.scenario.json: parseScenario ok (8 steps, 7 assertions)
+all five scenarios pass parseScenario
+exit 0

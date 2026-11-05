@@ -1,0 +1,10 @@
+// Scenario position: #pause and #play pause and resume the timeline
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    on click "#pause" pause
+    on click "#play" play
+  ]
+  at 0s..60s [ log("playing") ] []
+}

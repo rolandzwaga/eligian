@@ -16,7 +16,9 @@ import {
   compileWithMap,
   DIAGNOSTIC_CODES,
   getAllOperations,
+  getCompilerVersion,
   STARTERS,
+  starterFiles,
 } from '@eligian/language';
 import { LINT_RULES_CHECKED_BY_ELIGIAN } from '@eligian/language/eligius-lint';
 import { CONTROLLERS, getOrCreateServices, TIMELINE_EVENTS } from '@eligian/language/mcp';
@@ -29,11 +31,20 @@ import {
   rankDiagnosticCodes,
   SELECTION_SIZE,
 } from '../../scripts/rank-diagnostic-codes.js';
+import {
+  OPERATION_RANKING_FILE,
+  OPERATION_SELECTION_SIZE,
+  type OperationRanking,
+  rankOperations,
+} from '../../scripts/rank-operations.js';
 import { REVIEW_CODES } from '../check/review.js';
 import { sourceOf } from '../mcp/diagnostics.js';
 import { ELIGIUS_LINT_RULES } from '../mcp/knowledge/lint-rules.js';
 import { eventName } from '../mcp/knowledge/render.js';
 import type { IndexEntry, Overlays } from '../mcp/knowledge/types.js';
+import type { EffectAi } from '../mcp/paths.js';
+import { handle as docsHandle } from '../mcp/tools/docs.js';
+import { SMOKE_CODES } from '../smoke/smoke-runner.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROBE_FIXTURES = path.join(HERE, '__fixtures__', 'mcp', 'curriculum-probe');
@@ -45,6 +56,7 @@ const RUNTIME_CLAIMS_SPEC = path.join(HERE, 'mcp-runtime-claims.spec.ts');
 const EXECUTION_MODEL = fileURLToPath(
   new URL('../../../../examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md', import.meta.url)
 );
+const TOUR = path.dirname(EXECUTION_MODEL);
 const ELIGIUS_ROOT = path.dirname(createRequire(import.meta.url).resolve('eligius/package.json'));
 
 const tempDirs: string[] = [];
@@ -278,6 +290,7 @@ describe('generated docs', () => {
     const expected = [
       ...DIAGNOSTIC_CODES.map(entry => entry.code),
       ...REVIEW_CODES,
+      ...SMOKE_CODES,
       'compile-failed',
       ...ELIGIUS_LINT_RULES.map(rule => `eligius-${rule}`),
     ];
@@ -383,7 +396,7 @@ describe('literate probes', () => {
   }, 120_000);
 });
 
-/** The 13 hand-written chunks of FR-039 and their kinds. */
+/** The hand-written chunks of FR-039 (Phase 1) and FR-070 (Phase 2) and their kinds. */
 const FR_039_CHUNKS: Record<string, IndexEntry['kind']> = {
   'what-is-eligius': 'orientation',
   'what-is-eligian': 'orientation',
@@ -397,8 +410,89 @@ const FR_039_CHUNKS: Record<string, IndexEntry['kind']> = {
   'map-controllers': 'mapping',
   'runtime-engine-lifecycle': 'runtime',
   'runtime-scheduling': 'runtime',
+  // FR-070 C: the remaining runtime chunks
+  'timing-models': 'runtime',
+  'runtime-quirks': 'runtime',
+  'runtime-state-pitfalls': 'runtime',
   storyboard: 'workflow',
+  // FR-070 B: the remaining mapping chunks
+  'map-program-and-config': 'mapping',
+  'map-erased-parameters': 'mapping',
+  'map-control-flow-and-data': 'mapping',
+  'map-event-actions': 'mapping',
+  'map-imports-and-assets': 'mapping',
+  'map-locales-and-languages': 'mapping',
+  // FR-070 D: the workflow chunks
+  'layout-html': 'workflow',
+  'css-conventions': 'workflow',
+  'provider-choice': 'workflow',
+  'presentation-patterns': 'workflow',
+  'assets-and-host-modules': 'workflow',
+  'host-modules-contract': 'workflow',
+  'verification-ladder': 'workflow',
 };
+
+/** SC-013(1): the 16 chunks FR-070 adds (B: 6 mapping, C: 3 runtime, D: 7 workflow). */
+const FR_070_CHUNKS = [
+  'map-program-and-config',
+  'map-erased-parameters',
+  'map-control-flow-and-data',
+  'map-event-actions',
+  'map-imports-and-assets',
+  'map-locales-and-languages',
+  'timing-models',
+  'runtime-quirks',
+  'runtime-state-pitfalls',
+  'layout-html',
+  'css-conventions',
+  'provider-choice',
+  'presentation-patterns',
+  'assets-and-host-modules',
+  'host-modules-contract',
+  'verification-ladder',
+] as const;
+
+/** The generated `reference` chunks (`generated/<id>.md`). */
+const REFERENCE_CHUNKS = [
+  'config-shape',
+  'controllers',
+  'dataflow-tables',
+  'diagnostics',
+  'events',
+  'operations-index',
+  'syntax-cheatsheet',
+] as const;
+
+/** An FR-075 example marker line. */
+const EXAMPLE_OPEN = /^\s*\/\/\s*@mcp-example\s/;
+
+/** The marker lines of one text. */
+const markersIn = (text: string): number =>
+  text.split(/\r?\n/).filter(line => EXAMPLE_OPEN.test(line)).length;
+
+/** The markers the tour's `.eligian` files carry. */
+const tourMarkers = (): number =>
+  fs
+    .readdirSync(TOUR)
+    .filter(file => file.endsWith('.eligian'))
+    .reduce((sum, file) => sum + markersIn(fs.readFileSync(path.join(TOUR, file), 'utf8')), 0);
+
+/** The markers the starters carry: every `starterFiles` `.eligian` text. */
+const starterMarkers = (): number =>
+  STARTERS.flatMap(({ name }) =>
+    Object.entries(starterFiles(name))
+      .filter(([file]) => file.endsWith('.eligian'))
+      .map(([, text]) => markersIn(text))
+  ).reduce((sum, count) => sum + count, 0);
+
+/** SC-014: the chunks whose every teaching unit cites a probed runtime claim. */
+const RUNTIME_CHUNKS = [
+  'runtime-engine-lifecycle',
+  'runtime-scheduling',
+  'timing-models',
+  'runtime-quirks',
+  'runtime-state-pitfalls',
+] as const;
 
 /** The hand-written curriculum chunks: file name → source text, by file name. */
 const curriculumSources = (): Map<string, string> =>
@@ -467,7 +561,24 @@ describe('curriculum', () => {
 
     const counts: Record<string, number> = {};
     for (const kind of Object.values(FR_039_CHUNKS)) counts[kind] = (counts[kind] ?? 0) + 1;
-    expect(counts).toEqual({ orientation: 5, mapping: 5, runtime: 2, workflow: 1 });
+    expect(counts).toEqual({ orientation: 5, mapping: 11, runtime: 5, workflow: 8 });
+
+    // The whole index: the curriculum kinds plus the generated ones; one example per marker
+    const indexCounts: Record<string, number> = {};
+    for (const entry of index) indexCounts[entry.kind] = (indexCounts[entry.kind] ?? 0) + 1;
+    expect(indexCounts).toEqual({
+      ...counts,
+      reference: REFERENCE_CHUNKS.length,
+      starter: STARTERS.length,
+      operation: getAllOperations().length,
+      example: tourMarkers() + starterMarkers(),
+    });
+    expect(
+      index
+        .filter(entry => entry.kind === 'reference')
+        .map(entry => entry.id)
+        .sort()
+    ).toEqual([...REFERENCE_CHUNKS].sort());
 
     // The curriculum is exactly these chunks: no hand-written chunk outside the list
     const ids = [...curriculumSources().values()].map(text => chunkOf(text).id);
@@ -478,14 +589,21 @@ describe('curriculum', () => {
     const claims = runtimeClaims();
     expect(claims.length).toBeGreaterThan(0);
     const model = readText(EXECUTION_MODEL);
-    const runtime = [...curriculumSources()].filter(([name]) => name.startsWith('runtime-'));
-    expect(runtime.map(([name]) => name)).toEqual([
-      'runtime-engine-lifecycle.md',
-      'runtime-scheduling.md',
-    ]);
+    // SC-014: an explicit list, since a `runtime-` prefix filter would miss `timing-models`
+    const sources = curriculumSources();
+    const runtime = RUNTIME_CHUNKS.map(id => [`${id}.md`, sources.get(`${id}.md`)] as const);
+    expect(runtime.filter(([, text]) => text === undefined).map(([name]) => name)).toEqual([]);
+    // Every `kind: runtime` chunk is in the list
+    expect(
+      Object.entries(FR_039_CHUNKS)
+        .filter(([, kind]) => kind === 'runtime')
+        .map(([id]) => id)
+        .sort()
+    ).toEqual([...RUNTIME_CHUNKS].sort());
 
-    for (const [name, text] of runtime) {
-      const { body } = chunkOf(text);
+    for (const [name, text = ''] of runtime) {
+      const { id, body } = chunkOf(text);
+      expect(`${id}.md`).toBe(name);
       // (c) no sentence the model doc marks as not probed
       expect(text, name).not.toContain('not probed');
       // (a) every teaching paragraph and list item cites a probe
@@ -530,12 +648,13 @@ describe('probes', () => {
     return fragments;
   };
 
-  it('every map-* probe matches its snapshot', async () => {
+  // SC-013(2): the probes of the map-* chunks and of presentation-patterns
+  it('every map-* and presentation-patterns probe matches its snapshot', async () => {
     const outDir = await generatedDocs();
     const mapChunks = Object.keys(FR_039_CHUNKS)
-      .filter(id => id.startsWith('map-'))
+      .filter(id => id.startsWith('map-') || id === 'presentation-patterns')
       .sort();
-    expect(mapChunks).toHaveLength(5);
+    expect(mapChunks).toHaveLength(12);
     for (const chunk of mapChunks) {
       const source = readText(path.join(CURRICULUM, `${chunk}.md`));
       const probes = source.split('\n').filter(line => /^```eligian probe\s*$/.test(line)).length;
@@ -600,7 +719,17 @@ describe('overlays', () => {
   });
 
   it('the review overlays exist and are not allowlisted', async () => {
-    expect([...REVIEW_CODES].sort()).toEqual(['class-never-removed', 'controller-imbalance']);
+    expect([...REVIEW_CODES].sort()).toEqual([
+      'class-never-removed',
+      'controller-imbalance',
+      'entry-timeline-without-enter',
+      'host-operation-in-block-without-select',
+      'lottie-web-not-installed',
+      'media-file-missing',
+      'media-from-duplicate',
+      'media-timeline-first-without-start-gesture',
+      'timeline-container-not-in-layout',
+    ]);
     const overlays = codeOverlays();
     const generatedOverlays: Overlays = JSON.parse(
       fs.readFileSync(path.join(await generatedDocs(), 'overlays.json'), 'utf8')
@@ -613,6 +742,28 @@ describe('overlays', () => {
     }
   }, 120_000);
 
+  // SC-013(6) / FR-076: the codes Phase 2 adds (review, smoke, FR-055) have overlays, and the
+  // Phase 1 allowlist only shrinks (126 entries at a7bceb8, the Phase 1 close)
+  it('new codes have overlays; the allowlist is not larger than Phase 1', async () => {
+    const PHASE_1_ALLOWLIST_SIZE = 126;
+    const newCodes = [...REVIEW_CODES, ...SMOKE_CODES, 'unknown-listener-action'];
+    expect(SMOKE_CODES.length).toBeGreaterThan(0);
+    const overlays = codeOverlays();
+    const generatedOverlays: Overlays = JSON.parse(
+      fs.readFileSync(path.join(await generatedDocs(), 'overlays.json'), 'utf8')
+    );
+    const listed = allowlist();
+    for (const code of newCodes) {
+      expect(overlays.get(code), code).toBe(`${code}.md`);
+      expect(generatedOverlays.byCode[code]?.docs, code).toBe(`diagnostic/${code}`);
+      expect(listed, code).not.toContain(code);
+      // T041: cause + fix in at most 120 words
+      const body = chunkOf(readText(path.join(OVERLAYS_DIR, `${code}.md`))).body;
+      expect(wordCount(body), code).toBeLessThanOrEqual(120);
+    }
+    expect(listed.length).toBeLessThanOrEqual(PHASE_1_ALLOWLIST_SIZE);
+  }, 120_000);
+
   // T048 timed the ranking at ~2 s locally (baseline/ranking-time.txt), so it runs everywhere
   it('the ranking selection equals the script output', async () => {
     const ranking = await rankDiagnosticCodes();
@@ -620,6 +771,19 @@ describe('overlays', () => {
     expect(ranking.selection).toHaveLength(SELECTION_SIZE);
     expect(committed.selection).toEqual(ranking.selection);
     expect(committed.caseCodes).toEqual(ranking.caseCodes);
+  }, 300_000);
+
+  // FR-073 / I-9, ruling 2026-11-05 (T036): the selection is every operation the examples
+  // and starters call, at most 25 (13 today), not padded to 25
+  it('the operation ranking equals a fresh run and every selected operation is counted', async () => {
+    const ranking = await rankOperations();
+    const committed: OperationRanking = JSON.parse(readText(OPERATION_RANKING_FILE));
+    expect(committed).toEqual(ranking);
+    expect(committed.selection.length).toBeGreaterThan(0);
+    expect(committed.selection.length).toBeLessThanOrEqual(OPERATION_SELECTION_SIZE);
+    expect(committed.selection).toEqual(
+      committed.counts.slice(0, OPERATION_SELECTION_SIZE).map(({ name }) => name)
+    );
   }, 300_000);
 
   it('the selection contains the case 13 and 14 start codes and has overlays', () => {
@@ -635,5 +799,382 @@ describe('overlays', () => {
     expect(selection.slice(0, caseCodes.length)).toEqual(caseCodes);
     const overlays = codeOverlays();
     for (const code of selection) expect(overlays.get(code), code).toBe(`${code}.md`);
+  });
+});
+
+describe('phase 2 generator', () => {
+  /** A temp copy of the tour's `.eligian` files (the only tour files the generator reads). */
+  const tourCopy = (): string => {
+    const dir = tempDir();
+    for (const name of fs.readdirSync(TOUR).filter(file => file.endsWith('.eligian'))) {
+      fs.copyFileSync(path.join(TOUR, name), path.join(dir, name));
+    }
+    return dir;
+  };
+
+  /** Appends `lines` to `file`; returns the 1-based line number of the first appended line. */
+  const append = (file: string, lines: readonly string[], eol = '\n'): number => {
+    const text = fs.readFileSync(file, 'utf8');
+    const base = text.endsWith('\n') ? text : `${text}${eol}`;
+    fs.writeFileSync(file, `${base}${lines.join(eol)}${eol}`);
+    return base.split(/\r?\n/).length;
+  };
+
+  it('generator fails on an unclosed marker', async () => {
+    const tourDir = tourCopy();
+    const line = append(path.join(tourDir, 'tour.eligian'), [
+      '// @mcp-example left-open Left open',
+    ]);
+    const run = generateKnowledge({ outDir: tempDir(), curriculumDir: PROBE_FIXTURES, tourDir });
+    await expect(run).rejects.toThrow(new RegExp(`tour\\.eligian:${line}\\b`));
+    await expect(run).rejects.toThrow(/unclosed/);
+    await expect(run).rejects.toThrow(/left-open/);
+  }, 120_000);
+
+  it('generator fails on a duplicate example id', async () => {
+    const tourDir = tourCopy();
+    const marker = ['// @mcp-example twice Twice', '// nothing', '// @mcp-end'];
+    append(path.join(tourDir, 'presentation.eligian'), marker);
+    const line = append(path.join(tourDir, 'tour.eligian'), marker);
+    const run = generateKnowledge({ outDir: tempDir(), curriculumDir: PROBE_FIXTURES, tourDir });
+    // Files are scanned in name order: the second occurrence is in tour.eligian
+    await expect(run).rejects.toThrow(new RegExp(`tour\\.eligian:${line}\\b`));
+    await expect(run).rejects.toThrow(/duplicate example id 'twice'/);
+  }, 120_000);
+
+  it('one example file per marker', async () => {
+    const tourDir = tourCopy();
+    append(path.join(tourDir, 'presentation.eligian'), [
+      '  // @mcp-example first-pair The first pair',
+      '  at 0s..1s [',
+      '    log("one")',
+      '  ]',
+      '  // @mcp-end',
+    ]);
+    // CRLF is accepted
+    append(
+      path.join(tourDir, 'tour.eligian'),
+      ['// @mcp-example second-pair The second pair', 'const beat = 7s', '// @mcp-end'],
+      '\r\n'
+    );
+    const outDir = tempDir();
+    await generateKnowledge({ outDir, curriculumDir: PROBE_FIXTURES, tourDir });
+
+    const files = fs.readdirSync(path.join(outDir, 'generated', 'examples')).sort();
+    // The two appended markers plus the tour's own (T044) and the starters'
+    expect(files).toHaveLength(2 + tourMarkers() + starterMarkers());
+    expect(files).toEqual(expect.arrayContaining(['first-pair.md', 'second-pair.md']));
+    const index: IndexEntry[] = JSON.parse(
+      fs.readFileSync(path.join(outDir, 'index.json'), 'utf8')
+    );
+    const examples = index.filter(entry => entry.kind === 'example');
+    expect(examples.map(entry => entry.id).sort()).toEqual(
+      files.map(file => `example/${file.replace(/\.md$/, '')}`).sort()
+    );
+    const first = examples.find(entry => entry.id === 'example/first-pair');
+    expect(first?.title).toBe('The first pair');
+    expect(first?.card).toBe('The first pair');
+
+    const read = (name: string): string =>
+      fs.readFileSync(path.join(outDir, 'generated', 'examples', name), 'utf8');
+    const text = read('first-pair.md');
+    expect(text).toContain('```eligian\nat 0s..1s [\n  log("one")\n]\n```');
+    expect(text).toContain('examples/eligian-tour/presentation.eligian');
+    expect(text).not.toContain('@mcp-');
+    const second = read('second-pair.md');
+    expect(second).toContain('```eligian\nconst beat = 7s\n```');
+    expect(second).not.toContain('\r');
+  }, 120_000);
+
+  it('probes run in presentation-patterns and in operation/controller overlays', async () => {
+    const curriculumDir = tempDir();
+    const probe = (...operations: string[]): string =>
+      [
+        '```eligian probe',
+        'styles "./probe.css"',
+        'layout "./probe-layout.html"',
+        '',
+        'action ping [',
+        '  log("ping")',
+        ']',
+        '',
+        'timeline "main" in "#stage" using raf {',
+        '  at 0s..1s [',
+        ...operations.map(operation => `    ${operation}`),
+        '  ]',
+        '}',
+        '```',
+      ].join('\n');
+    const chunk = (id: string, kind: string, text: string): string =>
+      [
+        '---',
+        `id: ${id}`,
+        `title: "${id}"`,
+        `kind: ${kind}`,
+        'use_cases:',
+        '  - test',
+        'see:',
+        '  - operations-index',
+        `card: The ${id} test chunk.`,
+        '---',
+        '',
+        text,
+        '',
+        'see: operations-index',
+        '',
+      ].join('\n');
+    const overlay = (fields: readonly string[], body: string): string =>
+      ['---', ...fields, '---', '', body, ''].join('\n');
+    fs.writeFileSync(
+      path.join(curriculumDir, 'presentation-patterns.md'),
+      chunk(
+        'presentation-patterns',
+        'workflow',
+        probe('selectElement("#title")', 'addClass("visible")')
+      )
+    );
+    // A chunk outside the filter: its probe block is left as it is
+    fs.writeFileSync(
+      path.join(curriculumDir, 'storyboard.md'),
+      chunk('storyboard', 'workflow', probe('log("not compiled")'))
+    );
+    fs.mkdirSync(path.join(curriculumDir, 'operations'));
+    fs.writeFileSync(
+      path.join(curriculumDir, 'operations', 'addClass.md'),
+      overlay(
+        ['operation: addClass', 'card: Adds a class to the selected element; select it first.'],
+        `Operation overlay body.\n\n${probe('selectElement("#box")', 'addClass("active")')}`
+      )
+    );
+    fs.mkdirSync(path.join(curriculumDir, 'controllers'));
+    fs.writeFileSync(
+      path.join(curriculumDir, 'controllers', 'DOMEventListenerController.md'),
+      overlay(
+        [
+          'controller: DOMEventListenerController',
+          'status: recommended',
+          'card: Runs actions on a DOM event of the selected element.',
+        ],
+        `Controller overlay body.\n\n${probe(
+          'selectElement("#next")',
+          'addController("DOMEventListenerController", "click", ["ping"])'
+        )}`
+      )
+    );
+
+    const outDir = tempDir();
+    await generateKnowledge({ outDir, curriculumDir, tourDir: tempDir() });
+    const read = (file: string): string => fs.readFileSync(path.join(outDir, file), 'utf8');
+    const compiledBlocks = (text: string): number =>
+      text.split('\n').filter(line => /^`{3,}json compiled$/.test(line)).length;
+
+    expect(compiledBlocks(read('curriculum/presentation-patterns.md'))).toBe(1);
+    expect(compiledBlocks(read('curriculum/storyboard.md'))).toBe(0);
+
+    const operation = read('generated/operations/addClass.md');
+    expect(operation).toContain('Operation overlay body.');
+    expect(operation).toContain('Adds a class to the selected element; select it first.');
+    expect(compiledBlocks(operation)).toBe(1);
+
+    const controllers = read('generated/controllers.md');
+    expect(controllers).toContain('Controller overlay body.');
+    expect(controllers).toContain('STATUS: recommended');
+    expect(controllers).toMatch(/^- `DOMEventListenerController`: recommended$/m);
+    expect(compiledBlocks(controllers)).toBe(1);
+
+    const overlays: Overlays = JSON.parse(read('overlays.json'));
+    expect(overlays.operations).toEqual({
+      addClass: { card: 'Adds a class to the selected element; select it first.' },
+    });
+    expect(overlays.controllers).toEqual({
+      DOMEventListenerController: {
+        status: 'recommended',
+        card: 'Runs actions on a DOM event of the selected element.',
+      },
+    });
+
+    // A broken overlay probe fails, naming the overlay
+    fs.writeFileSync(
+      path.join(curriculumDir, 'operations', 'removeClass.md'),
+      overlay(['operation: removeClass', 'card: Removes a class.'], probe('noSuchOperation()'))
+    );
+    const broken = generateKnowledge({ outDir: tempDir(), curriculumDir, tourDir: tempDir() });
+    await expect(broken).rejects.toThrow(/removeClass/);
+    await expect(broken).rejects.toThrow(/noSuchOperation/);
+  }, 120_000);
+
+  it('the diagnostics catalogue lists SMOKE_CODES (smoke), the nine REVIEW_CODES (review) and unknown-listener-action', async () => {
+    const diagnostics = fs.readFileSync(
+      path.join(await generatedDocs(), 'generated', 'diagnostics.md'),
+      'utf8'
+    );
+    const sources = new Map(
+      diagnostics
+        .split('\n')
+        .map(line => /^- (\S+) · (\S+) · (\S+)$/.exec(line))
+        .filter(match => match !== null)
+        .map(match => [match[1], match[2]] as const)
+    );
+    expect(SMOKE_CODES.length).toBeGreaterThan(0);
+    for (const code of SMOKE_CODES) expect(sources.get(code), code).toBe('smoke');
+    expect(REVIEW_CODES).toHaveLength(9);
+    for (const code of REVIEW_CODES) expect(sources.get(code), code).toBe('review');
+    expect(sources.get('unknown-listener-action')).toBe('validator');
+  }, 120_000);
+});
+
+describe('phase 2 knowledge', () => {
+  let outDir: string;
+  let index: IndexEntry[];
+  let overlays: Overlays;
+  const read = (file: string): string => readText(path.join(outDir, file));
+  const entry = (id: string): IndexEntry | undefined => index.find(e => e.id === id);
+  const fenceCount = (text: string, info: RegExp): number =>
+    text.split('\n').filter(line => info.test(line)).length;
+  const PROBE = /^`{3,}eligian probe\s*$/;
+  const COMPILED = /^`{3,}json compiled$/;
+
+  beforeAll(async () => {
+    outDir = await generatedDocs();
+    index = JSON.parse(read('index.json'));
+    overlays = JSON.parse(read('overlays.json'));
+  }, 120_000);
+
+  // SC-013(1): the FR-035 chunk format
+  it('the 16 chunks exist and meet the limits', () => {
+    expect(FR_070_CHUNKS).toHaveLength(16);
+    for (const id of FR_070_CHUNKS) {
+      const file = path.join(CURRICULUM, `${id}.md`);
+      expect(fs.existsSync(file), id).toBe(true);
+      const text = readText(file);
+      const frontmatter = FRONTMATTER.exec(text)?.[1] ?? '';
+      for (const key of ['id', 'title', 'kind', 'use_cases', 'see', 'card']) {
+        expect(frontmatter, `${id}: ${key}`).toMatch(new RegExp(`^${key}:`, 'm'));
+      }
+      expect(chunkOf(text).id).toBe(id);
+      const listed = entry(id);
+      expect(listed?.kind, id).toBe(FR_039_CHUNKS[id]);
+      expect(wordCount(listed?.card ?? ''), id).toBeGreaterThan(0);
+      expect(wordCount(listed?.card ?? ''), id).toBeLessThanOrEqual(120);
+      const words = wordCount(chunkOf(text).body);
+      expect(words, id).toBeGreaterThanOrEqual(300);
+      expect(words, id).toBeLessThanOrEqual(1500);
+      expect(listed?.see.length, id).toBeGreaterThan(0);
+      // The generator appends the see line to the chunk it writes
+      const generatedLines = read(`curriculum/${id}.md`).trimEnd().split('\n');
+      const last = generatedLines[generatedLines.length - 1];
+      expect(last, id).toBe(`see: ${listed?.see.join(', ')}`);
+    }
+  });
+
+  // SC-013(4) / FR-074
+  it('9 controller overlays: status, card ≤ 120 words, compiling probe', () => {
+    expect(CONTROLLERS).toHaveLength(9);
+    const dir = path.join(CURRICULUM, 'controllers');
+    const names = CONTROLLERS.map(({ name }) => name).sort();
+    expect(
+      fs
+        .readdirSync(dir)
+        .filter(file => file.endsWith('.md'))
+        .sort()
+    ).toEqual(names.map(name => `${name}.md`));
+    const controllerOverlays = overlays.controllers ?? {};
+    expect(Object.keys(controllerOverlays).sort()).toEqual(names);
+
+    const statuses: Record<string, string | undefined> = {};
+    for (const name of names) {
+      const text = readText(path.join(dir, `${name}.md`));
+      const frontmatter = FRONTMATTER.exec(text)?.[1] ?? '';
+      expect(frontmatter, name).toMatch(new RegExp(`^controller: ${name}$`, 'm'));
+      const overlay = controllerOverlays[name];
+      statuses[name] = overlay?.status;
+      expect(wordCount(overlay?.card ?? ''), name).toBeGreaterThan(0);
+      expect(wordCount(overlay?.card ?? ''), name).toBeLessThanOrEqual(120);
+      // The probe calls the controller
+      const body = chunkOf(text).body;
+      expect(fenceCount(body, PROBE), name).toBeGreaterThanOrEqual(1);
+      expect(body, name).toContain(`addController("${name}"`);
+    }
+    expect(statuses).toEqual({
+      DOMEventListenerController: 'recommended',
+      KeyboardController: 'recommended',
+      LabelController: 'recommended',
+      LottieController: 'constrained',
+      MutationObserverController: 'recommended',
+      NavigationController: 'recommended',
+      ProgressbarController: 'recommended',
+      RoutingController: 'do-not-use',
+      SubtitlesController: 'recommended',
+    });
+    expect(readText(path.join(dir, 'LottieController.md'))).toContain('lottie-web');
+
+    // The generator compiled every probe: each controller's section carries a compiled block
+    const lines = read('generated/controllers.md').split('\n');
+    const headings = names.map(name => lines.indexOf(`## ${name}`));
+    for (const [i, name] of names.entries()) {
+      expect(headings[i], name).toBeGreaterThan(-1);
+      const end = Math.min(...headings.filter(start => start > headings[i]), lines.length);
+      const section = lines.slice(headings[i], end).join('\n');
+      expect(section, name).toContain(`STATUS: ${statuses[name]}`);
+      expect(fenceCount(section, COMPILED), name).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  // SC-013(3) / FR-073: 25 is a cap (ruling T036): overlays for exactly the selection
+  it('the 25 ranked operations have overlays', () => {
+    const { selection }: OperationRanking = JSON.parse(readText(OPERATION_RANKING_FILE));
+    expect(selection.length).toBeGreaterThan(0);
+    expect(selection.length).toBeLessThanOrEqual(OPERATION_SELECTION_SIZE);
+    const dir = path.join(CURRICULUM, 'operations');
+    const sorted = [...selection].sort();
+    expect(
+      fs
+        .readdirSync(dir)
+        .filter(file => file.endsWith('.md'))
+        .sort()
+    ).toEqual(sorted.map(name => `${name}.md`));
+    const operationOverlays = overlays.operations ?? {};
+    expect(Object.keys(operationOverlays).sort()).toEqual(sorted);
+
+    for (const name of selection) {
+      const text = readText(path.join(dir, `${name}.md`));
+      expect(FRONTMATTER.exec(text)?.[1] ?? '', name).toMatch(
+        new RegExp(`^operation: ${name}$`, 'm')
+      );
+      const card = operationOverlays[name]?.card ?? '';
+      expect(wordCount(card), name).toBeGreaterThan(0);
+      expect(wordCount(card), name).toBeLessThanOrEqual(120);
+      expect(fenceCount(chunkOf(text).body, PROBE), name).toBeGreaterThanOrEqual(1);
+      // Merged into the generated operation chunk, its probe compiled
+      const merged = read(`generated/operations/${name}.md`);
+      expect(merged, name).toContain(card);
+      expect(fenceCount(merged, COMPILED), name).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  // SC-013(7) / FR-077: the no-argument `eligian_docs` answer over the real generated docs
+  it('index ≤ 12000 chars', async () => {
+    const ai: EffectAi = await import('effect/ai');
+    const payload = await Effect.runPromise(
+      docsHandle(
+        {},
+        { ai, cwd: process.cwd(), docsRoot: outDir, versions: getCompilerVersion(), requestId: '1' }
+      )
+    );
+    // FR-077 second ruling: the operations are not listed (eligian_operations has them)
+    const listed = index.filter(item => item.kind !== 'operation');
+    expect(payload.index?.map(item => item.id)).toEqual(listed.map(item => item.id));
+    expect(payload.operations?.count).toBe(index.length - listed.length);
+    expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+  });
+
+  // SC-013(9) / FR-075: a drift check; no chunk is required to cite an example
+  it('see: example ids exist', () => {
+    const ids = new Set(index.map(item => item.id));
+    expect([...ids].some(id => id.startsWith('example/'))).toBe(true);
+    const cited = index.flatMap(item =>
+      item.see.filter(id => id.startsWith('example/')).map(id => `${item.id} → ${id}`)
+    );
+    expect(cited.filter(line => !ids.has(line.slice(line.indexOf('→ ') + 2)))).toEqual([]);
   });
 });

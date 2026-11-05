@@ -1,0 +1,7 @@
+// withLoadedDocuments fixture: no imports
+library b
+
+action mark(selector: string) [
+  selectElement(selector)
+  addClass("loaded-marker")
+]

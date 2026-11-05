@@ -1,0 +1,8 @@
+// withLoadedDocuments fixture: imports b
+library a
+
+import { mark } from "./b.eligian"
+
+action highlight(selector: string) [
+  mark(selector)
+]

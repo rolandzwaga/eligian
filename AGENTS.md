@@ -44,9 +44,9 @@ Research/reference (read-only, do NOT import):
 - `pnpm run check:examples` (`eligian check` on every example; CI runs it with `--format github`). `check` also runs Eligius' `lintConfiguration` (`eligius/lint`) over each clean program's compiled config, findings at their source via `locateConfigPath` (`packages/cli/src/check/lint.ts` on `lintCompiledConfig`; `eligius-<rule>` codes; W111 left out; `--no-lint`)
 - `eligian dev <entry> [--port] [--open]`: the bundle in the browser, rebuilt on change in a temp dir (`packages/cli/src/dev/`: node:http + SSE; CSS swapped in place, otherwise reload resuming the timeline / position via `window.EligiusBundled.ready`, build errors as an overlay)
 - `pnpm run smoke:examples` (`eligian smoke`: plays every timeline in jsdom on the real engine, runtime failures at their source; `packages/cli/src/smoke/`. CI runs it with `--format github`)
-- `eligian init [dir] --template blank|chapters|video|library` writes a starter project; the starters live in `packages/language/src/starters/starters.ts` (shared with the extension's *Eligian: New Presentation…*) and `packages/cli/src/__tests__/init.spec.ts` checks every one clean
+- `eligian init [dir] --template blank|chapters|video|library` writes a starter project; the starters live in `packages/language/src/starters/starters.ts` (shared with the extension's *Eligian: New Presentation…*) and `packages/cli/src/__tests__/init.spec.ts` checks every one clean, except that the `video` starter carries one `media-file-missing` warning until `media/intro.mp4` exists
 - `pnpm run fmt:examples` (`eligian fmt --check` on every example; `eligian fmt --write <patterns>` formats; CI runs it with `--format github`). Formatter rules: `packages/language/src/lsp/format-rules.ts` (whitespace only; spec 054)
-- `eligian mcp`: the MCP server for coding agents over stdio (spec 058; stdout is protocol frames only, logs on stderr). Five tools: `eligian_docs`, `eligian_operations`, `eligian_check`, `eligian_fmt`, `eligian_init`; `ELIGIAN_MCP_LOG=<file>` also appends the per-call telemetry lines there. The docs (`packages/cli/dist/docs`) come from `pnpm -C packages/cli generate:knowledge` (`scripts/generate-knowledge.ts`), which every CLI build runs; client snippets in `packages/cli/README.md`
+- `eligian mcp`: the MCP server for coding agents over stdio (spec 058; stdout is protocol frames only, logs on stderr). Eight tools: `eligian_docs`, `eligian_operations`, `eligian_check`, `eligian_fmt`, `eligian_init`, `eligian_compile`, `eligian_project`, `eligian_smoke`; `ELIGIAN_MCP_LOG=<file>` also appends the per-call telemetry lines there. The docs (`packages/cli/dist/docs`) come from `pnpm -C packages/cli generate:knowledge` (`scripts/generate-knowledge.ts`), which every CLI build runs; client snippets in `packages/cli/README.md`
 - `pnpm effect:check` (Effect LSP diagnostics; also `:language` / `:cli`) — see Effect LSP above
 
 ### Task completion checklist
@@ -91,7 +91,7 @@ packages/
 │       ├── generated/                       # Langium-generated (do not edit)
 │       └── __tests__/                       # incl. test-helpers.ts
 ├── cli/        CLI compiler — main.ts, compile-file.ts, bundler/ (asset/CSS bundling, tagged errors)
-│   └── src/mcp/  `eligian mcp` (effect/ai, lazily imported): server.ts, stdio.ts, paths.ts (project root + path policy), tools/ (docs, operations, check, fmt, init), knowledge/ (curriculum + loader for dist/docs)
+│   └── src/mcp/  `eligian mcp` (effect/ai, lazily imported): server.ts, stdio.ts, paths.ts (project root + path policy), tools/ (docs, operations, check, fmt, init, compile, project, smoke), knowledge/ (curriculum + loader for dist/docs)
 ├── shared-utils/  errors.ts, file-loader.ts, path-resolver.ts, tag-guard.ts, locale-guards.ts
 └── extension/  VS Code extension (LSP client + webview preview)
 

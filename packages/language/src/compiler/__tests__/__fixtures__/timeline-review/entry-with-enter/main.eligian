@@ -1,0 +1,9 @@
+// The entry timeline has an on enter block
+timeline "Hub" in "#hub" using raf {
+  on enter [
+    on click "#watch" navigate "Clip"
+  ]
+}
+
+timeline "Clip" in "#player" using video from "./media/clip.mp4" {
+}

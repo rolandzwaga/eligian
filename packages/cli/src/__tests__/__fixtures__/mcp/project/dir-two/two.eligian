@@ -1,0 +1,6 @@
+// eligian_project (SC-005): the second of two programs in a directory.
+layout "./layout.html"
+
+timeline "two" in "#stage" using raf {
+  at 0s..1s [ selectElement("#stage") ] []
+}

@@ -1,8 +1,10 @@
 /**
  * Spec 058 Phase 1 (FR-020–FR-022, FR-037, SC-010; plan C5, C9): `eligian_operations`.
  * The handler is tested directly (D2) with the production lock; the wire-level cases
- * come with the server (Group 18).
+ * come with the server (Group 18). Phase 2 (FR-073, FR-074; plan F1): the cards carry the
+ * operation and controller overlays of `docsRoot` (the `docs-mini` fixture's synthetic ones).
  */
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -32,6 +34,13 @@ const HOST_DIR = path.join(
   'host'
 );
 const FIXTURE = path.join(HOST_DIR, 'main.eligian');
+const DOCS = path.join(path.dirname(HOST_DIR), 'docs-mini');
+
+/** The `docs-mini` overlays the cards must carry. */
+const OVERLAYS = JSON.parse(fs.readFileSync(path.join(DOCS, 'overlays.json'), 'utf8')) as {
+  operations: Record<string, { card: string }>;
+  controllers: Record<string, { status: string; card: string }>;
+};
 
 /** A declared failure on the wire (FR-005, FR-006): its `error`, after the shape checks. */
 const expectFailure = (result: ToolCallResult, kind: string) => {
@@ -52,7 +61,7 @@ describe('eligian_operations', () => {
     context = {
       ai,
       cwd: HOST_DIR,
-      docsRoot: HOST_DIR,
+      docsRoot: DOCS,
       versions: getCompilerVersion(),
       requestId: '1',
     };
@@ -87,10 +96,30 @@ describe('eligian_operations', () => {
     expect(result.entries).toHaveLength(9);
     const description = (name: string) =>
       result.entries?.find(entry => entry.name === name)?.description ?? '';
-    expect(description('RoutingController')).toMatch(/^STATUS: do-not-use/);
-    expect(description('LottieController')).toMatch(/^STATUS: constrained/);
-    expect(description('LabelController')).not.toMatch(/^STATUS:/);
+    expect(description('RoutingController')).toMatch(/^STATUS: do-not-use\n/);
+    expect(description('LottieController')).toMatch(/^STATUS: constrained\n/);
+    expect(description('LabelController')).toMatch(/^STATUS: recommended\n/);
+    // no overlay in docs-mini: no status line
+    expect(description('KeyboardController')).not.toContain('STATUS:');
     expect(result.cards).toEqual([]);
+  });
+
+  it('cards include the overlay', async () => {
+    const operations = await run({ names: ['addClass', 'selectElement'] });
+    const [addClass, selectElement] = operations.cards;
+    expect(addClass.text.endsWith(`\n\n${OVERLAYS.operations.addClass.card}`)).toBe(true);
+    expect(addClass.text.split('\n')[0]).toBe('NEEDS: selectedElement');
+    // no overlay for selectElement in docs-mini: the card ends with the description
+    expect(OVERLAYS.operations.selectElement).toBeUndefined();
+    expect(selectElement.text).not.toContain('Overlay:');
+
+    const controllers = await run({ kind: 'controller' });
+    for (const [name, overlay] of Object.entries(OVERLAYS.controllers)) {
+      const description = controllers.entries?.find(entry => entry.name === name)?.description;
+      expect(description, name).toBeDefined();
+      expect(description?.startsWith(`STATUS: ${overlay.status}\n`), name).toBe(true);
+      expect(description?.endsWith(`\n\n${overlay.card}`), name).toBe(true);
+    }
   });
 
   it('kind event: 46', async () => {
@@ -182,7 +211,7 @@ describe('eligian_operations on the wire', () => {
   const servers: InMemoryServer[] = [];
 
   const start = async (): Promise<InMemoryServer> => {
-    const server = await startInMemoryServer({ cwd: HOST_DIR, docsRoot: HOST_DIR });
+    const server = await startInMemoryServer({ cwd: HOST_DIR, docsRoot: DOCS });
     servers.push(server);
     return server;
   };

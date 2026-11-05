@@ -1,0 +1,31 @@
+layout "./layout.html"
+
+const items = [$globaldata.first, "b"]
+
+action showPanel [
+  selectElement("#panel")
+  setStyle({ display: "block" })
+]
+
+action hidePanel [
+  selectElement("#panel")
+  setStyle({ display: "none" })
+]
+
+on event "timeline-complete" action onComplete() [
+  log("done")
+]
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    showPanel()
+  ]
+  at 0s..2s [
+    selectElement("#box")
+    setStyle({ opacity: 1 })
+  ] [
+    selectElement("#box")
+    setStyle({ opacity: 0 })
+  ]
+  at 2s..4s hidePanel()
+}

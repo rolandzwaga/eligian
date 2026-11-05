@@ -1,0 +1,46 @@
+{
+  "actions": {},
+  "timelines": {
+    "Type": {
+      "type": "animation",
+      "duration": 3,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-3",
+          "duration": {
+            "start": 0,
+            "end": 3
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "active"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

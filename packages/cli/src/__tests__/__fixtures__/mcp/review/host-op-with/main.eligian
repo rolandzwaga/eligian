@@ -1,0 +1,12 @@
+// with compiles to selectElement + its body: it counts as a select
+layout "./layout.html"
+
+extensions "./host.ts" {
+  operation highlight(color: string)
+}
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    with "#box" { highlight("red") }
+  ]
+}

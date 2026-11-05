@@ -1,0 +1,7 @@
+{
+  "id": "library-reuse",
+  "prompt": "Build a small animation library (fadeIn, fadeOut, slideIn with a direction parameter) in its own file and use it from a 15-second showcase timeline. The entry file is `main.eligian` in the current directory, with one timeline named `showcase`; the library is a file under `lib/`. The library actions take the element selector first: `fadeIn` adds the class `fade-in`; `fadeOut` removes `fade-in` and adds `fade-out`; `slideIn` adds the class `slide-in` and the class its direction parameter names (`from-left`, `from-right`, `from-top` or `from-bottom`). The showcase beats: at 1s fadeIn `#title`; at 4s slideIn `#panel-left` with `from-left`; at 7s slideIn `#panel-right` with `from-right`; at 12s fadeOut `#title`. The classes a beat adds stay on for at least 2 seconds after the beat starts. Use the element ids `#title`, `#panel-left` and `#panel-right`.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "library-reuse.scenario.json"
+}

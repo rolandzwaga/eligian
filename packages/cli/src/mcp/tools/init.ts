@@ -1,26 +1,27 @@
 /**
  * Spec 058 Phase 1 (FR-025, FR-026; plan C9, C11): `eligian_init` scaffolds a project from a
- * starter through `runInit` (the files from `starterFiles`), then writes the agent files
- * `.mcp.json`, `AGENTS.md` and `CLAUDE.md`, each only when absent. A refusal (starter files
- * exist, no `force`) and a failed write are `ToolIoError`.
+ * starter through `runInit` (the files from `starterFiles`). A refusal (starter files exist, no
+ * `force`) and a failed write are `ToolIoError`.
+ *
+ * Phase 2 (FR-065, Q7, I-1; plan D8, P12): `runInit` also writes the agent files of each
+ * `client` through `setupAgents` (merged into existing files, always the `node` form); the reply
+ * lists each with its status (`agentFiles`), replacing Phase 1's write-if-absent `skipped`.
  *
  * `effect/ai`'s `Tool` is `@stability unstable` (roadmap §2, decision 1: `effect` is pinned exactly).
  */
 // @effect-diagnostics unstableApiUsage:off
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import { STARTER_ENTRY, type StarterName, starterFiles } from '@eligian/language';
 import { Effect, Schema } from 'effect';
+import type { AgentClient } from '../../agents.js';
 import { runInit, titleFromDirectory } from '../../init.js';
 import { type ToolError, ToolFailure, ToolIoError, toToolError } from '../errors.js';
-import { agentsMdBlock } from '../instructions.js';
 import { type EffectAi, projectRoot, resolveInputPath } from '../paths.js';
 
 export const NAME = 'eligian_init' as const;
 
 export const KEYWORDS: readonly string[] = ['scaffold', 'new', 'project', 'starter', 'template'];
 
-export const DESCRIPTION = `Scaffold a new Eligian presentation project from a starter template (blank, chapters, video, library) in a directory: main.eligian, layout, CSS, locales, package.json, plus .mcp.json, AGENTS.md and CLAUDE.md for agents. Existing starter files are refused unless force: true; an existing agent file is never touched and is reported as skipped with the content it would get. The reply lists the files written and the next steps (npm install first).`;
+export const DESCRIPTION = `Scaffold a new Eligian presentation project from a starter template (blank, chapters, video, library) in a directory: main.eligian, layout, CSS, locales, package.json, plus the agent files of each client. client: claude, cursor, vscode, codex (default ["claude"]): claude gets .mcp.json and CLAUDE.md, cursor .cursor/mcp.json and .cursor/rules/eligian.mdc, vscode .vscode/mcp.json and .github/copilot-instructions.md, codex .codex/config.toml, and every client the AGENTS.md block; agents: false writes none. Existing agent files are merged: only the eligian server entry and the marked eligian block change. Each agent file is reported as written, updated, unchanged or refused (invalid JSON is left untouched). Existing starter files are refused unless force: true. The reply lists the files written and the next steps (npm install first).`;
 
 const TEMPLATES = [
   'blank',
@@ -29,19 +30,22 @@ const TEMPLATES = [
   'library',
 ] as const satisfies readonly StarterName[];
 
+const CLIENTS = ['claude', 'cursor', 'vscode', 'codex'] as const satisfies readonly AgentClient[];
+
 export const Parameters = Schema.Struct({
   directory: Schema.String,
   template: Schema.Literals(TEMPLATES),
   title: Schema.optionalKey(Schema.String),
   force: Schema.optionalKey(Schema.Boolean),
   agents: Schema.optionalKey(Schema.Boolean),
+  client: Schema.optionalKey(Schema.Array(Schema.Literals(CLIENTS))),
 });
 export type InitParameters = typeof Parameters.Type;
 
-const Skipped = Schema.Struct({
+const AgentFile = Schema.Struct({
   file: Schema.String,
-  reason: Schema.String,
-  content: Schema.String,
+  status: Schema.Literals(['written', 'updated', 'unchanged', 'refused']),
+  message: Schema.optionalKey(Schema.String),
 });
 
 export const Success = Schema.Struct({
@@ -49,7 +53,7 @@ export const Success = Schema.Struct({
   directory: Schema.String,
   template: Schema.String,
   written: Schema.Array(Schema.String),
-  skipped: Schema.Array(Skipped),
+  agentFiles: Schema.Array(AgentFile),
   nextSteps: Schema.Array(Schema.String),
 });
 export type InitSuccess = typeof Success.Type;
@@ -68,6 +72,7 @@ export const summarizeArgs = (params: InitParameters): Readonly<Record<string, u
   template: params.template,
   force: params.force ?? false,
   agents: params.agents ?? true,
+  client: params.client ?? ['claude'],
 });
 
 export const makeTool = (ai: EffectAi) =>
@@ -83,45 +88,13 @@ export const makeTool = (ai: EffectAi) =>
 const header = (context: ToolContext, resolvedPath: string): string =>
   `eligian ${context.versions.compiler} · eligius ${context.versions.eligius} · ${NAME} · ${resolvedPath}`;
 
-/** The agent files by name, with the content each gets (FR-026). */
-const agentFiles = (target: string): ReadonlyArray<readonly [string, string]> => [
-  [
-    '.mcp.json',
-    `${JSON.stringify(
-      {
-        mcpServers: {
-          eligian: {
-            command: 'node',
-            args: [path.join(target, 'node_modules', 'eligian', 'bin', 'cli.js'), 'mcp'],
-          },
-        },
-      },
-      null,
-      2
-    )}\n`,
-  ],
-  ['AGENTS.md', agentsMdBlock()],
-  ['CLAUDE.md', '@AGENTS.md\n'],
-];
-
-const isAlreadyThere = (cause: unknown): boolean =>
-  typeof cause === 'object' && cause !== null && Reflect.get(cause, 'code') === 'EEXIST';
-
-/** Creates `file` only when it does not exist yet ('wx'): whether it was written. */
-const writeIfAbsent = (file: string, content: string): Effect.Effect<boolean, ToolError> =>
-  Effect.tryPromise({
-    try: () =>
-      fs.writeFile(file, content, { encoding: 'utf-8', flag: 'wx' }).then(
-        () => true,
-        (cause: unknown) => (isAlreadyThere(cause) ? false : Promise.reject(cause))
-      ),
-    catch: toToolError('write', file),
-  });
-
+/** §4's next steps, without `explain` (I-1: Phase 3). */
 const nextSteps = (target: string): string[] => [
-  `Run npm install in ${target}: it installs eligian, and the server path in .mcp.json exists only afterwards (restart the MCP client to load it).`,
+  `Run npm install in ${target}: it installs eligian, and the server path in the agent config exists only afterwards (restart the MCP client to load it).`,
   'Read eligian_docs ids storyboard and decisions, then write STORYBOARD.md.',
+  'Call eligian_project before writing selectors: the ids, classes, locale keys and asset files you may reference.',
   `Run eligian_check on ${STARTER_ENTRY} after every edit, until 0 errors and 0 warnings.`,
+  'Call eligian_compile once after your first timeline passes check (select it).',
   'Run eligian_fmt with write: true once check is clean.',
   `Look at it: npx eligian dev ${STARTER_ENTRY} (npm run check / npm run build for the CLI).`,
 ];
@@ -143,6 +116,8 @@ export const handle = (
           title: params.title,
           force: params.force ?? false,
           cwd: root.root,
+          agents: params.agents === false ? [] : (params.client ?? ['claude']),
+          docsRoot: context.docsRoot,
         }),
       catch: toToolError('write', target),
     });
@@ -154,28 +129,12 @@ export const handle = (
       });
     }
 
-    const written = [...starter];
-    const skipped: Array<typeof Skipped.Type> = [];
-    if (params.agents ?? true) {
-      for (const [file, content] of agentFiles(target)) {
-        if (yield* writeIfAbsent(path.join(target, file), content)) {
-          written.push(file);
-        } else {
-          skipped.push({
-            file,
-            reason: 'already exists; left untouched (add the content below by hand)',
-            content,
-          });
-        }
-      }
-    }
-
     return {
       header: header(context, target),
       directory: target,
       template: params.template,
-      written,
-      skipped,
+      written: starter,
+      agentFiles: [...(outcome.agentFiles ?? [])],
       nextSteps: nextSteps(target),
     };
   });

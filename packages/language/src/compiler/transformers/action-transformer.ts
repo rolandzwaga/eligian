@@ -14,13 +14,7 @@ import type {
   RegularActionDefinition,
 } from '../../generated/ast.js';
 import type { ConstantMap } from '../types/constant-folding.js';
-import type {
-  EndableActionIR,
-  IEventActionConfiguration,
-  IOperationConfiguration,
-  OperationConfigIR,
-  TOperationData,
-} from '../types/eligius-ir.js';
+import type { EndableActionIR, EventActionIR, OperationConfigIR } from '../types/eligius-ir.js';
 import { transformOperationStatement } from './operation-transformer.js';
 import { createParameterContext, type ScopeContext } from './scope.js';
 import { getSourceLocation } from './source-location.js';
@@ -127,14 +121,15 @@ export const transformActionDefinition = (
  *   under their import alias). Without it only the program's local actions are
  *   found, so a call to an imported library action would be treated as an
  *   unknown operation.
- * @returns IEventActionConfiguration JSON
+ * @returns EventActionIR (an IEventActionConfiguration with the source locations of the event
+ *   action and its operations, for the source map; `stripEventActionSourceLocation` removes them)
  */
 export const transformEventAction = (
   eventAction: EventActionDefinition,
   programConstants: ConstantMap = new Map(),
   program?: Program,
   allActions?: ActionDefinition[]
-): Effect.Effect<IEventActionConfiguration, TransformError> =>
+): Effect.Effect<EventActionIR, TransformError> =>
   Effect.gen(function* () {
     // Guard: eventName is required for transformation (grammar allows optional for completion).
     // B2: surfaced through the typed error channel instead of a synchronous throw, so a
@@ -177,20 +172,14 @@ export const transformEventAction = (
       operationIRs.push(...ops);
     }
 
-    // Convert OperationConfigIR[] to IOperationConfiguration[]
-    const startOperations: IOperationConfiguration<TOperationData>[] = operationIRs.map(opIR => ({
-      id: opIR.id,
-      systemName: opIR.systemName,
-      operationData: opIR.operationData,
-    }));
-
-    // Build IEventActionConfiguration
+    // Build EventActionIR (spec 058 Phase 2 FR-013: the locations feed the source map)
     return {
       id: crypto.randomUUID(), // UUID v4 per Constitution Principle VII
       name: eventAction.name,
       eventName: eventAction.eventName, // Safe: guarded above
       eventTopic: eventAction.eventTopic, // undefined if not present
-      startOperations,
+      startOperations: operationIRs,
       // Note: No endOperations property - event actions don't have end operations
+      sourceLocation: getSourceLocation(eventAction),
     };
   });

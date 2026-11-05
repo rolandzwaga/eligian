@@ -12,6 +12,7 @@
  */
 library presentation
 
+// @mcp-example jsdoc-action A library action with JSDoc @param
 /**
  * Reveal a code block: fade it in, run the CSS clip-sweep "typing" effect, and
  * scroll the code pane so the new block is in view.
@@ -23,6 +24,7 @@ action revealBlock(selector: string) [
   addClass("typing")
   scrollToElement("smooth", "nearest")
 ]
+// @mcp-end
 
 /**
  * Spotlight a single code token (caller dims the rest via clearSpots first).
@@ -33,6 +35,7 @@ action spotlight(selector: string) [
   addClass("spot")
 ]
 
+// @mcp-example with-blocks with blocks around operations
 /**
  * Clear every token spotlight and hide the previous beat's callout chip.
  */
@@ -40,6 +43,7 @@ action clearSpots() [
   with ".tok" { removeClass("spot") }
   with ".callout" { removeClass("show") }
 ]
+// @mcp-end
 
 /**
  * Animate an arrow+label callout chip onto a token.

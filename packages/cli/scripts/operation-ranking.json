@@ -1,0 +1,71 @@
+{
+  "counts": [
+    {
+      "name": "selectElement",
+      "count": 71
+    },
+    {
+      "name": "removeControllerFromElement",
+      "count": 43
+    },
+    {
+      "name": "addClass",
+      "count": 33
+    },
+    {
+      "name": "removeClass",
+      "count": 24
+    },
+    {
+      "name": "animate",
+      "count": 10
+    },
+    {
+      "name": "addController",
+      "count": 8
+    },
+    {
+      "name": "setStyle",
+      "count": 8
+    },
+    {
+      "name": "broadcastEvent",
+      "count": 5
+    },
+    {
+      "name": "setElementContent",
+      "count": 4
+    },
+    {
+      "name": "scrollToElement",
+      "count": 2
+    },
+    {
+      "name": "toggleClass",
+      "count": 2
+    },
+    {
+      "name": "log",
+      "count": 1
+    },
+    {
+      "name": "wait",
+      "count": 1
+    }
+  ],
+  "selection": [
+    "selectElement",
+    "removeControllerFromElement",
+    "addClass",
+    "removeClass",
+    "animate",
+    "addController",
+    "setStyle",
+    "broadcastEvent",
+    "setElementContent",
+    "scrollToElement",
+    "toggleClass",
+    "log",
+    "wait"
+  ]
+}

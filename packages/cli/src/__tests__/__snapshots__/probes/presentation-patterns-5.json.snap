@@ -1,0 +1,176 @@
+{
+  "actions": {
+    "__on__seek__4": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "timeline-seek-request",
+            "eventArgs": [
+              4
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "__on__seek__0": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "timeline-seek-request",
+            "eventArgs": [
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Steps": {
+      "type": "animation",
+      "duration": 8,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-4",
+          "duration": {
+            "start": 0,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__on__seek__4"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-4-8",
+          "duration": {
+            "start": 4,
+            "end": 8
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__on__seek__0"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

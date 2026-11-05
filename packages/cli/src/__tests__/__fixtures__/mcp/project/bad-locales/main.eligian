@@ -1,0 +1,11 @@
+// eligian_project (SC-005): locales.json is not valid JSON (a trailing comma), so the
+// project reports keys [] and one locales-parse-failed problem, not a tool error.
+languages {
+  * "en-US" "English"
+}
+layout "./layout.html"
+locales "./locales.json"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#stage") ] []
+}

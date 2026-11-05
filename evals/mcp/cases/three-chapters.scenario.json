@@ -1,0 +1,31 @@
+{
+  "steps": [
+    { "snapshot": "hub" },
+    { "click": "#to-problem" },
+    { "snapshot": "problem" },
+    { "click": "#back-problem" },
+    { "snapshot": "back" },
+    { "click": "#to-problem" },
+    { "click": "#back-problem" },
+    { "snapshot": "back-again" },
+    { "click": "#lang-nl" },
+    { "snapshot": "dutch" }
+  ],
+  "assertions": [
+    { "after": "hub", "timeline": "Hub" },
+    { "after": "hub", "selector": "#hub-title", "text": "Our product story" },
+    { "after": "problem", "timeline": "Problem" },
+    { "after": "problem", "selector": "#hub", "visible": false },
+    { "after": "problem", "selector": "#problem", "visible": true },
+    { "after": "back", "timeline": "Hub" },
+    { "after": "back", "selector": "#hub", "visible": true },
+    { "after": "back", "selector": "#back-problem", "controllers": [] },
+    { "after": "back", "selector": "#to-problem", "controllers": ["DOMEventListenerController"] },
+    { "after": "back", "selector": "#hub-title", "controllers": ["LabelController"] },
+    { "after": "back-again", "timeline": "Hub" },
+    { "after": "back-again", "selector": "#back-problem", "controllers": [] },
+    { "after": "back-again", "selector": "#to-problem", "controllers": ["DOMEventListenerController"] },
+    { "after": "back-again", "selector": "#hub-title", "controllers": ["LabelController"] },
+    { "after": "dutch", "selector": "#hub-title", "text": "Ons productverhaal" }
+  ]
+}

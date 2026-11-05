@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import type { CheckFileResult } from '@eligian/language';
 import { afterAll, describe, expect, it } from 'vitest';
 import { checkPaths } from '../check/check-command.js';
+import { parseScenario } from '../smoke/scenario.js';
 
 const CASES = path.resolve(__dirname, '../../../../evals/mcp/cases');
 const startOf = (id: string) => path.join(CASES, id, 'start');
@@ -31,6 +32,53 @@ describe('eval case definitions', () => {
     };
 
     expect(definition.model).toMatch(PINNED_MODEL);
+  });
+});
+
+/** The Phase 2 positive cases (spec 058 phase 2, FR-090): no start state, a scenario beside each. */
+const PHASE_2_CASES = [
+  'title-card',
+  'three-chapters',
+  'staggered-list',
+  'keyboard-deck',
+  'library-reuse',
+] as const;
+
+const readJson = (file: string): unknown => JSON.parse(fs.readFileSync(file, 'utf-8'));
+
+describe('phase 2 cases', () => {
+  it.each(PHASE_2_CASES)('%s parses and its scenario decodes with parseScenario', id => {
+    const definition = readJson(path.join(CASES, `${id}.json`)) as {
+      id: string;
+      prompt: string;
+      entry: string;
+      scenario: string;
+    };
+
+    expect(definition.id).toBe(id);
+    expect(definition.prompt.length).toBeGreaterThan(0);
+    expect(definition.entry).toBe('main.eligian');
+    expect(definition.scenario).toBe(`${id}.scenario.json`);
+    expect(fs.existsSync(startOf(id))).toBe(false);
+    const parsed = parseScenario(readJson(path.join(CASES, definition.scenario)));
+    expect(parsed).toMatchObject({ ok: true });
+  });
+
+  it('every case pins claude-sonnet-5-5', () => {
+    const cases = fs
+      .readdirSync(CASES)
+      .filter(file => file.endsWith('.json') && !file.endsWith('.scenario.json'));
+
+    expect(cases).toEqual(
+      expect.arrayContaining(
+        [...PHASE_2_CASES, 'fix-dataflow', 'fix-selectors'].map(id => `${id}.json`)
+      )
+    );
+    for (const file of cases) {
+      expect((readJson(path.join(CASES, file)) as { model: string }).model, file).toBe(
+        'claude-sonnet-5-5'
+      );
+    }
   });
 });
 

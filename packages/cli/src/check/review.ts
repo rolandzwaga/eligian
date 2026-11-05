@@ -13,19 +13,46 @@
  *
  * Both follow `requestAction` / `startAction` (and `endAction`, into the
  * action's end block) with the call's arguments substituted (`walkOperations`, shared with `controllerBalance`).
+ *
+ * Phase 2 (FR-050, FR-056):
+ * - the five timeline checks (`timelineFindings`, shared with the MCP
+ *   server's `assets.problems`), at the reported property;
+ * - `host-operation-in-block-without-select`: a host operation with no
+ *   `selectElement` before it in a list whose operation data starts fresh
+ *   (timeline, init and event actions; named-action bodies inherit their
+ *   caller's selection and are exempt). `target` and `with` compile to a
+ *   leading `selectElement`; a declared `selector` parameter exempts it;
+ * - `lottie-web-not-installed`: a `LottieController` where no
+ *   `node_modules/lottie-web` is found from the program's directory upward.
  */
-import type { CheckDiagnostic, EligianMapAction, QuickFix } from '@eligian/language';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import {
+  type CheckDiagnostic,
+  type EligianMapAction,
+  hostOperations,
+  type QuickFix,
+} from '@eligian/language';
 import {
   type ControllerBalance,
   controllerBalance,
   type LifecycleInsertionPoint,
   lifecycleInsertionPoints,
+  TIMELINE_REVIEW_CODES,
+  type TimelineFinding,
+  timelineFindings,
   type WalkEvent,
   walkOperations,
 } from '@eligian/language/mcp';
 import type { CompileResult } from '../compile-file.js';
 
-export const REVIEW_CODES = ['controller-imbalance', 'class-never-removed'] as const;
+export const REVIEW_CODES = [
+  'controller-imbalance',
+  'class-never-removed',
+  ...TIMELINE_REVIEW_CODES,
+  'host-operation-in-block-without-select',
+  'lottie-web-not-installed',
+] as const;
 export type ReviewCode = (typeof REVIEW_CODES)[number];
 
 type Compiled = Pick<CompileResult, 'config' | 'map' | 'program'>;
@@ -45,7 +72,7 @@ export function reviewConfig(compiled: Compiled, file: string): CheckDiagnostic[
   const points = lifecycleInsertionPoints(compiled.program);
   const text = compiled.program.$cstNode?.root.fullText ?? '';
   const balances = controllerBalance(compiled.config);
-  return compiled.config.timelines.flatMap((timeline, index) => {
+  const perTimeline = compiled.config.timelines.flatMap((timeline, index) => {
     const balance = balances[index];
     const point = points[index];
     const name = point?.timeline ?? timeline.uri;
@@ -54,6 +81,12 @@ export function reviewConfig(compiled: Compiled, file: string): CheckDiagnostic[
       ...classesNeverRemoved(compiled, file, timeline, name),
     ];
   });
+  return [
+    ...perTimeline,
+    ...timelineFindings(compiled.program, file).map(finding => timelineWarning(file, finding)),
+    ...hostOperationsWithoutSelect(compiled, file),
+    ...lottieNotInstalled(compiled, file),
+  ];
 }
 
 function diagnostic(
@@ -270,4 +303,127 @@ function classesNeverRemoved(
     });
   }
   return findings;
+}
+
+// --- timeline checks (FR-050) -------------------------------------------------
+
+/** A `timelineFindings` entry as a warning at the reported property. */
+const timelineWarning = (file: string, finding: TimelineFinding): CheckDiagnostic => ({
+  file,
+  severity: 'warning',
+  message: finding.message,
+  line: finding.line,
+  column: finding.column,
+  endLine: finding.endLine,
+  endColumn: finding.endColumn,
+  code: finding.code,
+});
+
+// --- operation lists ----------------------------------------------------------
+
+type Operations = Timeline['timelineActions'][number]['startOperations'];
+type Operation = Operations[number];
+
+interface OperationList {
+  readonly id: string;
+  readonly phase: 'start' | 'end';
+  readonly operations: Operations;
+  /** A named action's body: it runs on a copy of its caller's operation data */
+  readonly named: boolean;
+}
+
+interface ListedAction {
+  readonly id: string;
+  readonly startOperations: Operations;
+  readonly endOperations?: Operations;
+}
+
+/** Every operation list of the compiled config, start and end. */
+function operationLists(config: Compiled['config']): OperationList[] {
+  const lists = (actions: readonly ListedAction[] | undefined, named: boolean) =>
+    (actions ?? []).flatMap((action): OperationList[] => [
+      { id: action.id, phase: 'start', operations: action.startOperations, named },
+      ...(action.endOperations
+        ? [{ id: action.id, phase: 'end' as const, operations: action.endOperations, named }]
+        : []),
+    ]);
+  return [
+    ...lists(config.initActions, false),
+    ...lists(config.eventActions, false),
+    ...config.timelines.flatMap(timeline => lists(timeline.timelineActions, false)),
+    ...lists(config.actions, true),
+  ];
+}
+
+/** The source location of operation `index` of `list`, or of its action. */
+function locationOf(compiled: Compiled, list: OperationList, index: number) {
+  const mapped = compiled.map.actions[list.id];
+  return mapped?.[list.phase][index]?.location ?? mapped?.location;
+}
+
+// --- host-operation-in-block-without-select ---------------------------------
+
+function hostOperationsWithoutSelect(compiled: Compiled, file: string): CheckDiagnostic[] {
+  // A declared `selector` parameter: the operation selects for itself (I-3)
+  const unselected = new Set(
+    hostOperations(compiled.program)
+      .filter(operation => !operation.parameters.some(parameter => parameter.name === 'selector'))
+      .map(operation => operation.name)
+  );
+  if (unselected.size === 0) return [];
+  return operationLists(compiled.config)
+    .filter(list => !list.named)
+    .flatMap(list => {
+      const firstSelect = list.operations.findIndex(op => op.systemName === 'selectElement');
+      return list.operations.flatMap((op, index) =>
+        unselected.has(op.systemName) && (firstSelect === -1 || firstSelect > index)
+          ? [
+              diagnostic(
+                file,
+                'host-operation-in-block-without-select',
+                `Host operation "${op.systemName}" runs with no selectElement before it in this block: select an element first (selectElement, target or with), or declare a "selector" parameter`,
+                locationOf(compiled, list, index)
+              ),
+            ]
+          : []
+      );
+    });
+}
+
+// --- lottie-web-not-installed -------------------------------------------------
+
+const LOTTIE_CONTROLLER = 'LottieController';
+
+const isLottieInstance = (op: Operation): boolean =>
+  op.systemName === 'getControllerInstance' &&
+  (op.operationData as { systemName?: unknown } | undefined)?.systemName === LOTTIE_CONTROLLER;
+
+/** Whether `lottie-web` is installed in a node_modules at or above `fromDir` (P9). */
+export function lottieInstalled(
+  fromDir: string,
+  exists: (p: string) => boolean = fs.existsSync
+): boolean {
+  let dir = path.resolve(fromDir);
+  for (;;) {
+    if (exists(path.join(dir, 'node_modules', 'lottie-web', 'package.json'))) return true;
+    const parent = path.dirname(dir);
+    if (parent === dir) return false;
+    dir = parent;
+  }
+}
+
+function lottieNotInstalled(compiled: Compiled, file: string): CheckDiagnostic[] {
+  // `addController("LottieController", …)` compiles to getControllerInstance + addControllerToElement
+  const calls = operationLists(compiled.config).flatMap(list =>
+    list.operations.flatMap((op, index) => (isLottieInstance(op) ? [{ list, index }] : []))
+  );
+  if (calls.length === 0 || lottieInstalled(path.dirname(file))) return [];
+  return calls.map(({ list, index }) =>
+    diagnostic(
+      file,
+      'lottie-web-not-installed',
+      `${LOTTIE_CONTROLLER} needs lottie-web, which is not installed in this project: run "npm install lottie-web" next to the presentation`,
+      locationOf(compiled, list, index)
+    )
+  );
 }

@@ -1,0 +1,84 @@
+{
+  "actions": {},
+  "timelines": {
+    "Story": {
+      "type": "animation",
+      "duration": 10,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "ProgressbarController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {}
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "ProgressbarController"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-0-10",
+          "duration": {
+            "start": 0,
+            "end": 10
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

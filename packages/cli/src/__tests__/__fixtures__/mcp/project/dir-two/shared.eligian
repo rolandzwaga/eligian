@@ -1,0 +1,6 @@
+library shared
+
+/** Selects an element */
+action pulse(selector: string) [
+  selectElement(selector)
+]

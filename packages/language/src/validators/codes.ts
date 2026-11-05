@@ -140,6 +140,9 @@ const SOURCES = {
   'timeline-required': 'validator',
   'validation-exception': 'validator',
 
+  // Validator codes added in Phase 2
+  'unknown-listener-action': 'validator',
+
   // Eligian Typir rule codes (type-system-typir/validation/**)
   'constant-reserved-name': 'type',
   'constant-cycle': 'type',

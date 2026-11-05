@@ -17,6 +17,10 @@
  * local runs, so it is not a test here (tasks.md T044): it was run once by hand, output in
  * `specs/058-mcp-server/phase-1-mvp-server/baseline/sc005-negative-control.txt`. The overlap
  * metric (`calls wait on the lock`) stays mandatory.
+ *
+ * Spec 058 Phase 2 (SC-017): `eligian_check` (A), `eligian_compile` (B) and `eligian_project`
+ * (D) fired at once, 20 iterations, on a server of their own. The call ids are paired with the
+ * tools exactly (`pairedRecorder`), so the overlap metric is read per tool.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -30,8 +34,10 @@ import {
   compilerLockLayer,
 } from '../mcp/compiler-lock.js';
 import { NAME as CHECK } from '../mcp/tools/check.js';
+import { NAME as COMPILE } from '../mcp/tools/compile.js';
 import { NAME as FMT } from '../mcp/tools/fmt.js';
 import { NAME as OPERATIONS } from '../mcp/tools/operations.js';
+import { NAME as PROJECT } from '../mcp/tools/project.js';
 import {
   type InMemoryServer,
   type JsonRpcResponse,
@@ -46,6 +52,9 @@ const CALL_A = { paths: ['a-layout/main.eligian'], selectorNotInLayout: 'ids' };
 const CALL_B = { paths: ['b-plain/main.eligian'], selectorNotInLayout: 'off' };
 const CALL_C = { paths: ['c-fmt/unformatted.eligian'], write: false };
 const CALL_D = { paths: ['d-other/main.eligian'] };
+/** SC-017: the compile and project calls, on fixtures other than check's A */
+const CALL_COMPILE = { path: 'b-plain/main.eligian', response_format: 'detailed' };
+const CALL_PROJECT = { path: 'd-other/main.eligian', response_format: 'detailed' };
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
@@ -102,6 +111,39 @@ function gate() {
   return { promise, open: () => open() };
 }
 
+/**
+ * A recorder that pairs every call id with its tool (SC-017). `callTool` sees no call id (C12),
+ * so the latch, run right after each acquire, waits until every call whose section released
+ * has answered. Between two acquires exactly one section releases and exactly one call answers
+ * (a call answers only after its one section released), so the k-th release is the k-th
+ * answer. Each call here runs one section; the test asserts that.
+ */
+function pairedRecorder() {
+  const answered: string[] = [];
+  const waiting: { count: number; resolve: () => void }[] = [];
+  const rec = recorder(() => {
+    const released = rec.of('release').length;
+    return answered.length >= released
+      ? Promise.resolve()
+      : new Promise<void>(resolve => {
+          waiting.push({ count: released, resolve });
+        });
+  });
+  const answer = (tool: string) => {
+    answered.push(tool);
+    for (const waiter of [...waiting]) {
+      if (answered.length >= waiter.count) {
+        waiting.splice(waiting.indexOf(waiter), 1);
+        waiter.resolve();
+      }
+    }
+  };
+  /** Call id → tool, by release order = answer order. */
+  const toolOf = (): ReadonlyMap<string, string> =>
+    new Map(rec.of('release').map((release, k) => [release.id, answered[k]]));
+  return { ...rec, answer, answered: answered as readonly string[], toolOf };
+}
+
 /** The acquire / release interval of every call that released. */
 const intervals = (events: readonly LockEvent[]) =>
   events
@@ -112,11 +154,14 @@ const intervals = (events: readonly LockEvent[]) =>
       end: release.at,
     }));
 
-/** In how many cases a call's `onQueued` lies inside another call's acquire / release interval. */
-const waitsOnTheLock = (events: readonly LockEvent[]): number => {
+/**
+ * In how many cases a call's `onQueued` lies inside another call's acquire / release interval;
+ * `only` restricts the queued calls counted.
+ */
+const waitsOnTheLock = (events: readonly LockEvent[], only?: (id: string) => boolean): number => {
   const held = intervals(events);
   return events
-    .filter(event => event.kind === 'queued')
+    .filter(event => event.kind === 'queued' && (only === undefined || only(event.id)))
     .filter(queued =>
       held.some(other => other.id !== queued.id && other.start < queued.at && queued.at < other.end)
     ).length;
@@ -180,21 +225,28 @@ interface IterationRun {
 }
 
 /**
- * Sequential baselines of A, B and the fmt call first, then `ITERATIONS` times the three at
- * once, on one server with `lock`. A call that fails counts as a mismatch.
+ * Sequential baselines of the calls first (default: A, B and the fmt call), then `ITERATIONS`
+ * times the calls at once, on one server with `lock`. A call that fails counts as a mismatch.
+ * `answered` hears every call's tool as it answers (SC-017's pairing).
  */
-async function runIterations(lock: Layer.Layer<CompilerLock>): Promise<IterationRun> {
-  const server = await start(lock);
-  const calls: [string, unknown][] = [
+async function runIterations(
+  lock: Layer.Layer<CompilerLock>,
+  calls: readonly (readonly [string, unknown])[] = [
     [CHECK, CALL_A],
     [CHECK, CALL_B],
     [FMT, CALL_C],
-  ];
-  const call = ([name, args]: [string, unknown]): Promise<unknown> =>
-    server.callTool(name, args).then(
-      result => (result.isError ? { isError: result.payload } : withoutHeader(result.payload)),
-      (error: unknown) => ({ rejected: String(error) })
-    );
+  ],
+  answered: (tool: string) => void = () => {}
+): Promise<IterationRun> {
+  const server = await start(lock);
+  const call = ([name, args]: readonly [string, unknown]): Promise<unknown> =>
+    server
+      .callTool(name, args)
+      .then(
+        result => (result.isError ? { isError: result.payload } : withoutHeader(result.payload)),
+        (error: unknown) => ({ rejected: String(error) })
+      )
+      .finally(() => answered(name));
 
   const baselines: unknown[] = [];
   for (const each of calls) baselines.push(await call(each));
@@ -206,7 +258,7 @@ async function runIterations(lock: Layer.Layer<CompilerLock>): Promise<Iteration
     iterations.push(results);
     results.forEach((result, n) => {
       if (JSON.stringify(result) !== JSON.stringify(baselines[n])) {
-        mismatches.push(`iteration ${i}, call ${'ABC'[n]}`);
+        mismatches.push(`iteration ${i}, call ${n} (${calls[n][0]})`);
       }
     });
   }
@@ -245,6 +297,67 @@ describe('the compiler lock', () => {
     expect(waitsOnTheLock(locked.events)).toBeGreaterThanOrEqual(1);
     // and no two sections ever overlapped
     const held = intervals(locked.events).sort((x, y) => x.start - y.start);
+    for (let i = 1; i < held.length; i++) {
+      expect(held[i].start).toBeGreaterThanOrEqual(held[i - 1].end);
+    }
+  }, 180_000);
+
+  const paired = pairedRecorder();
+  let pairedRun: Promise<IterationRun> | undefined;
+  /** SC-017: the 20 iterations of check, compile and project, run once for the two tests. */
+  const pairedIterations = () => {
+    pairedRun ??= runIterations(
+      compilerLockLayer(paired.hooks),
+      [
+        [CHECK, CALL_A],
+        [COMPILE, CALL_COMPILE],
+        [PROJECT, CALL_PROJECT],
+      ],
+      paired.answer
+    );
+    return pairedRun;
+  };
+
+  it('check, compile and project at once equal sequential (20 iterations)', async () => {
+    const run = await pairedIterations();
+
+    // the baselines are real results, not failures
+    const [checked, compiled, inspected] = run.baselines as {
+      diagnostics?: { code: string }[];
+      ok?: boolean;
+      summary?: unknown;
+      programs?: unknown[];
+    }[];
+    expect(checked.diagnostics!.map(d => d.code)).toContain('selector_not_in_layout');
+    expect(compiled.ok).toBe(true);
+    expect(compiled.summary).toBeDefined();
+    expect(inspected.programs).toHaveLength(1);
+
+    expect(run.iterations).toHaveLength(ITERATIONS);
+    expect(run.mismatches).toEqual([]);
+    for (const results of run.iterations) expect(results).toEqual(run.baselines);
+  }, 180_000);
+
+  it('compile and project wait on the lock', async () => {
+    await pairedIterations();
+
+    // one section per call, every call paired with its tool
+    const calls = (1 + ITERATIONS) * 3;
+    expect(paired.of('queued')).toHaveLength(calls);
+    expect(new Set(paired.of('acquire').map(event => event.id)).size).toBe(calls);
+    expect(paired.of('release')).toHaveLength(calls);
+    expect(paired.answered).toHaveLength(calls);
+    const toolOf = paired.toolOf();
+    const callsOf = (tool: string) => [...toolOf.values()].filter(each => each === tool);
+    expect(callsOf(CHECK)).toHaveLength(1 + ITERATIONS);
+    expect(callsOf(COMPILE)).toHaveLength(1 + ITERATIONS);
+    expect(callsOf(PROJECT)).toHaveLength(1 + ITERATIONS);
+
+    const waits = (tool: string) => waitsOnTheLock(paired.events, id => toolOf.get(id) === tool);
+    expect(waits(COMPILE)).toBeGreaterThanOrEqual(1);
+    expect(waits(PROJECT)).toBeGreaterThanOrEqual(1);
+    // and no two sections ever overlapped
+    const held = intervals(paired.events).sort((x, y) => x.start - y.start);
     for (let i = 1; i < held.length; i++) {
       expect(held[i].start).toBeGreaterThanOrEqual(held[i - 1].end);
     }

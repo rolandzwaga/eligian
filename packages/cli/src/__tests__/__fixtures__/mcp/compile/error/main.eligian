@@ -1,0 +1,8 @@
+// eligian_compile fixture (spec 058 phase 2, SC-004(4)): a program with errors.
+timeline "main" in "#stage" using raf {
+  at 0s..1s [
+    selectElement("#box")
+    addClass("lit")
+    noSuchOperation()
+  ]
+}

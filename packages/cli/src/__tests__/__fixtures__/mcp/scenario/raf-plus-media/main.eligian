@@ -1,0 +1,10 @@
+// Scenario media timeline: navigating to the video timeline is a scenario problem
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 0s..30s [ log("playing") ] []
+}
+
+timeline "film" in "#stage" using video from "./media/film.mp4" {
+  at 0s..5s [ log("film") ] []
+}

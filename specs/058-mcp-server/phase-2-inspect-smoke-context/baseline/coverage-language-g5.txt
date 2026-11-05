@@ -1,0 +1,2 @@
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+All files          |   91.22 |    82.69 |    93.8 |    92.5 |                   

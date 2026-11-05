@@ -1,0 +1,207 @@
+# T051 build, type and lint gates (2026-11-05T12:18:16+01:00)
+HEAD: a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f (+ working tree)
+pnpm build: exit 0
+## last 5 build lines
+packages/extension build: [12:16:39] Build succeeded
+packages/extension build: Done
+packages/cli build: generate-knowledge: 224 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+packages/cli build: [12:16:41] Build succeeded
+packages/cli build: Done
+pnpm typecheck: exit 0
+$ tsc -b tsconfig.build.json
+pnpm run typecheck:tests: exit 0
+$ tsc -p packages/language/tsconfig.test.json && tsc -p packages/cli/tsconfig.test.json && tsc -p packages/extension/tsconfig.test.json && tsc -p packages/shared-utils/tsconfig.test.json
+pnpm check: exit 0
+Checked 812 files in 2s. No fixes applied.
+pnpm run ci: exit 0
+Checked 812 files in 1324ms. No fixes applied.
+## dist artifacts
+packages/cli/dist/cli.mjs
+packages/cli/dist/docs/agents-block.md
+packages/cli/dist/docs/index.json
+packages/language/dist/index.cjs
+packages/language/dist/mcp/index.cjs
+No source fixes needed; T051 passed first run.
+
+
+# T052 Effect gates (2026-11-05T12:18:52+01:00)
+pnpm effect:check:language: exit 0
+$ effect-tsgo diagnostics --project packages/language/tsconfig.src.json --format text --strict
+Checked 258 files out of 258 files. 
+0 errors, 0 warnings and 0 messages.
+pnpm effect:check:cli: exit 0
+$ effect-tsgo diagnostics --project packages/cli/tsconfig.json --format text --strict
+Checked 307 files out of 307 files. 
+0 errors, 0 warnings and 0 messages.
+No source fixes needed; T052 passed first run.
+
+
+# T053 tests gate (2026-11-05T12:19:09+01:00)
+RESULT: NOT GREEN (blocked: load-sensitive timeouts; ruling needed, no test edited)
+
+## pnpm test (3 runs, all exit 1; pnpm -r stops at packages/language)
+run 1:
+packages/language test:  FAIL  src/compiler/__tests__/examples-compile.spec.ts > shipped example programs compile > eligian-tour/tour.eligian
+packages/language test:  FAIL  src/compiler/__tests__/time-resolver.spec.ts > resolveTimelineTimes matches the compiler > every timeline of examples/eligian-tour/tour.eligian
+packages/language test:  Test Files  2 failed | 252 passed | 1 skipped (255)
+packages/language test:       Tests  2 failed | 3377 passed | 23 skipped (3402)
+packages/language test:    Duration  84.06s (import 75%, tests 14%, transform 7%, environment 3%, worker 1%)
+run 2 (machine busier: shared-utils 7.30s vs 2.91s):
+packages/language test:  FAIL  src/compiler/__tests__/tour-controllers.spec.ts > the tour detaches every controller its lifecycle blocks attach
+packages/language test:  FAIL  src/compiler/__tests__/examples-compile.spec.ts > shipped example programs compile > eligian-tour/tour.eligian
+packages/language test:  FAIL  src/compiler/__tests__/time-resolver.spec.ts > resolveTimelineTimes matches the compiler > every timeline of examples/eligian-tour/tour.eligian
+packages/language test:  Test Files  3 failed | 251 passed | 1 skipped (255)
+packages/language test:       Tests  2 failed | 3374 passed | 26 skipped (3402)
+packages/language test:    Duration  124.84s (import 74%, tests 16%, transform 6%, environment 3%)
+run 3 (CPU idle beforehand, LoadPercentage 1):
+packages/language test:  FAIL  src/compiler/__tests__/examples-compile.spec.ts > shipped example programs compile > eligian-tour/tour.eligian
+packages/language test:  FAIL  src/compiler/__tests__/time-resolver.spec.ts > resolveTimelineTimes matches the compiler > every timeline of examples/eligian-tour/tour.eligian
+packages/language test:  Test Files  2 failed | 252 passed | 1 skipped (255)
+packages/language test:       Tests  2 failed | 3377 passed | 23 skipped (3402)
+packages/language test:    Duration  80.79s (import 78%, tests 15%, transform 4%, environment 3%, worker 1%)
+Every failure is 'Test timed out in 5000ms' (hook: 10000ms) on a compile of examples/eligian-tour/tour.eligian (1400 lines);
+the three specs use vitest's default timeouts: examples-compile.spec.ts:61, time-resolver.spec.ts:64, tour-controllers.spec.ts:33 (beforeAll).
+
+## Isolation: both tour tests pass alone
+examples-compile tour 2538ms, time-resolver tour 2517ms (real checkout, 2 files)
+
+## Bisect on a HEAD export (git archive HEAD into scratch, pnpm install --frozen-lockfile, language generate)
+HEAD as is:                               Test Files 251 passed | 1 skipped (252)  (exit 0)
++ current examples/eligian-tour .eligian: Test Files 251 passed | 1 skipped (252)  (exit 0)
++ current language src (non-test):        Test Files 2 failed | 249 passed | 1 skipped (252)  (only the 2 HEAD specs pinning the export / code lists, expected)
++ current language tests (= working tree): Test Files 254 passed | 1 skipped (255)  (exit 0)
+=> the working-tree language package passes in the scratch copy; T044's markers do not change compile time
+   (CLI compile HEAD vs now tour: 5406/5816/5228 ms vs 5759/5196/5211 ms; outputs differ only in the uuid).
+
+## Full-suite per-test durations (vitest --reporter=json), tour tests
+real: 2 failed
+  8039 | passed | unknown-listener-action tour stays clean
+  5616 | failed | shipped example programs compile eligian-tour/tour.eligian
+  5345 | failed | resolveTimelineTimes matches the compiler every timeline of examples/eligian-tour/tour.eli
+  1529 | passed | formatter (audit idea #15) examples\eligian-tour\tour.eligian: whitespace only, same AST, 
+scratch: 0 failed
+  7131 | passed | unknown-listener-action tour stays clean
+  4126 | passed | resolveTimelineTimes matches the compiler every timeline of examples/eligian-tour/tour.eli
+  3965 | passed | shipped example programs compile eligian-tour/tour.eligian
+  1659 | passed | formatter (audit idea #15) examples\eligian-tour\tour.eligian: whitespace only, same AST, 
+=> under full-suite load the tour compile takes 4.0-5.6 s against the 5 s default; the new
+   listener-action-names.spec.ts 'tour stays clean' (120_000 timeout, 7-8 s) runs a further tour check concurrently.
+
+## packages/cli test (run directly, since pnpm -r stopped): exit 1
+     × timeoutMs 5000 → partial within 7 s, ≥ 1 timeline 5161ms
+ FAIL  src/__tests__/mcp-smoke.spec.ts > eligian_smoke > timeoutMs 5000 → partial within 7 s, ≥ 1 timeline
+ Test Files  1 failed | 56 passed | 1 skipped (58)
+      Tests  1 failed | 904 passed | 18 skipped (923)
+   Duration  65.61s (tests 75%, import 24%, transform 1%)
+## packages/extension test: exit 0
+ Test Files  63 passed (63)
+      Tests  628 passed (628)
+   Duration  22.71s (environment 69%, import 13%, transform 10%, setup 4%, tests 3%, worker 1%)
+
+## Named specs (10 files): exit 1, 0 skipped
+     × timeoutMs 5000 → partial within 7 s, ≥ 1 timeline 5104ms
+ FAIL  src/__tests__/mcp-smoke.spec.ts > eligian_smoke > timeoutMs 5000 → partial within 7 s, ≥ 1 timeline
+ Test Files  1 failed | 9 passed (10)
+      Tests  1 failed | 201 passed (202)
+   Duration  51.10s (tests 88%, import 11%, transform 1%)
+mcp-smoke.spec.ts alone: exit 0, Tests 13 passed (13); timeout case 5045ms
+=> 'timeoutMs 5000 -> partial within 7 s, >= 1 timeline' (mcp-smoke.spec.ts:134) holds no timeline line under parallel load.
+
+## grep -l "skipIf(!built" packages/cli/src/__tests__/*.ts
+packages/cli/src/__tests__/check-command.spec.ts
+packages/cli/src/__tests__/mcp-paths.spec.ts
+packages/cli/src/__tests__/mcp-stdout.spec.ts
+packages/cli/src/__tests__/package-bin.spec.ts
+packages/cli/src/__tests__/review.spec.ts
+=> all five are in the named command; none added.
+
+## tasklist /FI "IMAGENAME eq esbuild.exe" (after the timeout test)
+INFO: No tasks are running which match the specified criteria.
+
+## T054 coverage gate (plan gate 5; FR-080, FR-098)
+Columns: % Stmts | % Branch | % Funcs | % Lines. Thresholds (vitest.config.ts): language lines 79.8 / functions 80 /
+branches 69.9 / statements 79; cli lines 77.1 / functions 77.6 / branches 64.5 / statements 76.6.
+
+### pnpm -C packages/language test:coverage:ci
+run 1: exit 1  Test Files 2 failed | 252 passed | 1 skipped (255); Tests 2 failed | 3377 passed | 23 skipped (3402)
+  FAIL examples-compile.spec.ts > shipped example programs compile > eligian-tour/tour.eligian (Test timed out in 5000ms)
+  FAIL time-resolver.spec.ts > resolveTimelineTimes matches the compiler > every timeline of examples/eligian-tour/tour.eligian
+  (no coverage table: vitest skips the report when a test fails)
+run 2 (vitest run --coverage --coverage.reportOnFailure, same config): exit 0
+  Test Files 254 passed | 1 skipped (255); Tests 3379 passed | 23 skipped (3402); no "ERROR: Coverage" line
+run 3: exit 1, the same two tour timeouts as run 1 (Duration 94.61s)
+before (T004): All files          |   91.17 |    82.54 |   93.84 |   92.45 |
+after  (run 2): All files          |   91.23 |    82.72 |    93.8 |   92.51 |
+=> every metric above threshold; the non-zero exits are the load-sensitive tour timeouts already recorded above.
+
+### pnpm -C packages/cli test:coverage:ci
+exit 1  Test Files 1 failed | 56 passed | 1 skipped (58); Tests 1 failed | 904 passed | 18 skipped (923)
+  FAIL mcp-smoke.spec.ts > eligian_smoke > timeoutMs 5000 → partial within 7 s, ≥ 1 timeline (5154ms)
+  (the trailing `pnpm run test:bin` is not reached; run separately: exit 0, Tests 12 passed (12))
+measured with --coverage.reportOnFailure --exclude src/__tests__/package-bin.spec.ts: same single failure (5097ms),
+  no "ERROR: Coverage" line
+before (T004): All files          |   83.06 |    72.61 |   85.76 |   83.11 |
+after:         All files          |   86.31 |    76.32 |    88.6 |   86.53 |
+new code: src/mcp 96.68/93.71/95.65/96.51, src/mcp/knowledge 97.71/89.56/100/98.61, src/mcp/tools 94.07/80.41/93.24/95.31
+  (smoke.ts 93.1/78.15/93.33/94.96, scenario.ts 94.92/87.76/100/95.97, agents.ts 98.68/90.67/100/99.23)
+=> every metric above threshold, no tests added; the exit 1 is the mcp-smoke timeout case recorded above.
+RESULT T054: thresholds met in both packages; commands NOT GREEN (exit 1) on the same load-sensitive timeouts
+  that need the ruling already requested above (no test edited, no threshold changed).
+
+
+# T055 example gates (plan gate 6; FR-051) (2026-11-05T12:54:21+01:00)
+HEAD: a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f (+ working tree)
+
+## pnpm run check:examples
+$ node packages/cli/bin/cli.js check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0 && node packages/cli/bin/cli.js check examples/demo.eligian --selector-not-in-layout off
+8 files, 0 errors, 0 warnings
+examples/demo.eligian
+  162:28  warning  The container "#container" of timeline "Eligian Demo" is not in the layout (missing #container); it must exist when the layout is rendered  timeline-container-not-in-layout
+  224:5   warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  224:5   warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5   warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5   warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+
+1 file, 0 errors, 5 warnings
+exit 0
+
+## pnpm run fmt:examples
+$ node packages/cli/bin/cli.js fmt "examples/**/*.eligian" "!examples/libraries/errors/**"
+All 12 files formatted
+exit 0
+
+## pnpm run smoke:examples (last 3 lines)
+examples/libraries/utils.eligian (library: nothing to play)
+9 files, 11 timelines played, 0 errors, 0 warnings
+exit 0
+
+## Compared with the T003 baselines
+check, strict run (all examples but demo, --max-warnings 0): '8 files, 0 errors, 0 warnings' = check-examples-before.txt
+check, demo.eligian (--selector-not-in-layout off): 5 warnings vs 4 before; the one new warning is
+  162:28 timeline-container-not-in-layout on "#container", the true positive recorded in T018
+  (check-examples-after-review.txt: examples/demo-layout.html has only class="container"); identical to that file.
+fmt: diff against fmt-examples-before.txt (output lines): 0 lines
+smoke: diff against smoke-examples-before.txt (output lines): 0 lines
+
+## git diff --stat -- examples/
+ examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md | 49 ++++++++++++++++++++++++
+ examples/eligian-tour/presentation.eligian       |  4 ++
+ examples/eligian-tour/tour.eligian               | 30 +++++++++++++++
+ 3 files changed, 83 insertions(+)
+## git status --porcelain -- examples/ (untracked included)
+ M examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md
+ M examples/eligian-tour/presentation.eligian
+ M examples/eligian-tour/tour.eligian
+## changed lines in examples/**/*.eligian that are not // @mcp-... comments
+0
+Note: examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md (+49) is T043's sanctioned edit (spec.md:60, SC-014:
+  '(probed: "<title>")' markers for the new runtime claims); a Markdown doc, not an example program.
+  The only .eligian changes are T044's comment markers.
+RESULT T055: green (all three exit 0; matches the baselines, the one check delta is the T018 true positive).
+
+# Final gates after the main-loop closure (2026-11-05, FR-013 / T032 / Lottie / SC-016 changes)
+pnpm typecheck: exit 0. pnpm run ci: "Checked 812 files ... No fixes applied." pnpm effect:check: language 258 files 0/0/0; cli 307 files 0/0/0.
+pnpm test: shared-utils 105 passed; language 3380 passed | 23 skipped; extension 628 passed; cli 912 passed | 18 skipped + package-bin 12 passed. TEST exit=0
+pnpm -C packages/cli test:coverage:ci: Statements 86.29% / Branches 76.51% / Functions 88.61% / Lines 86.54%. exit 0
+pnpm -C packages/language test:coverage:ci: Statements 91.26% / Branches 82.73% / Functions 93.8% / Lines 92.55%. exit 0
+pnpm run check:examples: exit 0 (demo.eligian "1 file, 0 errors, 5 warnings" on the selector-not-in-layout-off run). smoke:examples: "9 files, 11 timelines played, 0 errors, 0 warnings". fmt:examples: "All 12 files formatted".

@@ -1,0 +1,85 @@
+T049 / FR-057 — which clients read AGENTS.md natively
+Date checked: 2026-11-05 (each page fetched with WebFetch this day; quotes are verbatim from the fetched page text)
+
+RESULT: all four clients read AGENTS.md natively as of 2026-11-05.
+  - Claude Code: yes, v2.1.277+, but by default only when no CLAUDE.md / .claude/CLAUDE.md / CLAUDE.local.md
+    exists in the working directory or above; some sessions cannot read it. A CLAUDE.md containing
+    `@AGENTS.md` (what `eligian init` writes, decision 3) works in every session and is never read twice.
+  - Cursor: yes, project root and subdirectories (nested files combined, more specific wins).
+  - VS Code Copilot: yes, the Copilot harness and the Local harness read `.github/copilot-instructions.md`
+    or `AGENTS.md`; `chat.useAgentsMdFile` (workspace-root AGENTS.md, Local harness) defaults to true;
+    nested AGENTS.md (`chat.useNestedAgentsMdFiles`) is experimental and defaults to false.
+  - Codex: yes, global (~/.codex) plus every directory from the project root down to the cwd;
+    AGENTS.override.md takes precedence in each directory.
+Decision 3 already fixes which files are written; this finding changes wording only.
+
+------------------------------------------------------------------------
+1. Claude Code
+URL: https://code.claude.com/docs/en/memory  (title: "How Claude remembers your project")
+> Give Claude persistent instructions with CLAUDE.md or AGENTS.md files, and let Claude accumulate
+> learnings automatically with auto memory.
+> **CLAUDE.md files**: instructions you write to give Claude persistent context. Claude can also read a
+> repository's `AGENTS.md` files in place of CLAUDE.md
+> Claude Code can read `AGENTS.md` as your project instructions, so a repository already set up for other
+> coding agents works without adding a `CLAUDE.md`, an import, or a setting.
+> | An `AGENTS.md`, and no `CLAUDE.md` or `CLAUDE.local.md` in your working directory or above it | Your `AGENTS.md` |
+> | An `AGENTS.md` and a `CLAUDE.md` or `CLAUDE.local.md` in your working directory or above it | Your `CLAUDE.md` files only |
+> | A `CLAUDE.md` that already imports `AGENTS.md` | Your `CLAUDE.md`, with `AGENTS.md` included through the import |
+> Reading `AGENTS.md` directly requires Claude Code v2.1.277 or later. In some sessions Claude can't read
+> `AGENTS.md`, so import it from a `CLAUDE.md` there instead.
+> By default, Claude reads `AGENTS.md` only when you have no `CLAUDE.md` in your working directory or above it.
+> * **At session start**: every `AGENTS.md` and `.claude/AGENTS.md` in your working directory and the
+>   directories above it.
+> * **As Claude works in subdirectories**: a subdirectory's `AGENTS.md`, when Claude opens a file there with
+>   the Read tool and that subdirectory has none of the three `CLAUDE.md` files of its own
+> | `claude-md-or-agents-md` | Your `CLAUDE.md` files, or your `AGENTS.md` files when you have no `CLAUDE.md`
+>   or `CLAUDE.local.md` in your working directory or above it. This is the default |
+> * **A `CLAUDE.md` containing `@AGENTS.md`**: you can leave it. Keeping the import never makes Claude read
+>   `AGENTS.md` twice, whichever **Project instructions** value you use. Remove the `CLAUDE.md` if it holds
+>   nothing else, or keep it if some of your sessions can't load `AGENTS.md` directly.
+
+------------------------------------------------------------------------
+2. Cursor
+URL: https://cursor.com/docs/context/rules  (Cursor docs, "Rules")
+> If you prefer plain markdown, use AGENTS.md instead.
+> Cursor supports AGENTS.md in the project root and subdirectories.
+> Unlike Project Rules, AGENTS.md is a plain markdown file without metadata or complex configurations.
+> Nested AGENTS.md support in subdirectories is now available.
+> You can place AGENTS.md files in any subdirectory of your project, they will be automatically applied when
+> working with files in that directory or its children.
+> Instructions from nested AGENTS.md files are combined with parent directories, with more specific
+> instructions taking precedence.
+
+------------------------------------------------------------------------
+3. VS Code Copilot
+URL: https://code.visualstudio.com/docs/copilot/customization/custom-instructions
+     (title: "Use custom instructions in VS Code")
+> use a supported project instructions file for your harness.
+> | Copilot | `.github/copilot-instructions.md` or `AGENTS.md` |
+> | Anthropic Claude | `CLAUDE.md` |
+> | OpenAI Codex | `AGENTS.md` |
+> | Local | `.github/copilot-instructions.md` or `AGENTS.md` |
+> `AGENTS.md` is a cross-agent format, not a Codex-only file.
+> Project-wide: The harness includes guidance from its project instruction files.
+
+URL: https://code.visualstudio.com/docs/copilot/reference/copilot-settings  (title: "AI settings reference")
+> chat.useAgentsMdFile — Automatically attach instructions from workspace-root AGENTS.md files to chat
+> requests in Local harness sessions only. [does not control Copilot instruction discovery or discovery in
+> other harnesses] Default: true
+> chat.useNestedAgentsMdFiles — List AGENTS.md files in workspace subfolders for on-demand loading in Local
+> harness sessions. [requires chat.useAgentsMdFile; does not affect other harnesses] ... is experimental and
+> might change or be removed. Default: false
+(The bracketed parts are the fetch tool's paraphrase of the setting row, not verbatim.)
+
+------------------------------------------------------------------------
+4. Codex
+URL: https://developers.openai.com/codex/guides/agents-md
+     (308 Permanent Redirect to https://learn.chatgpt.com/docs/agent-configuration/agents-md,
+      title: "Custom instructions with AGENTS.md")
+> Codex reads `AGENTS.override.md` if it exists. Otherwise, Codex reads `AGENTS.md`.  [global scope,
+>   Codex home directory, default ~/.codex]
+> Starting at the project root (typically the Git root), Codex walks down to your current working directory.
+> Add overrides in nested directories when specific teams need different rules.
+> Codex stops searching once it reaches your current directory.
+> Files closer to your current directory override earlier guidance because they appear later in the
+> combined prompt.

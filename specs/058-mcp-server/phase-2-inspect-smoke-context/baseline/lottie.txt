@@ -1,0 +1,525 @@
+T048 — FR-056 Lottie runs (SC-020, SC-022 evidence)
+Date: 2026-11-05. Repo HEAD a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f (+ the uncommitted Phase 2 working tree).
+Machine: Windows 11, node v24.7.0, npm 11.10.0, Chrome 156.0.8078.80 (headless=new, driven over CDP).
+$SCRATCH = C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad
+(written as $SCRATCH below). The probe project ($SCRATCH/lottie-probe), the tarball and the helper
+scripts were removed afterwards (see "Cleanup").
+
+== Verdicts against FR-056's definition of "works" ==
+
+Probe as the curriculum teaches it (main.eligian: addController("LottieController", "./anim.json")
+in on enter, removed in on leave; lottie-web 5.13.0 installed in the project):
+  compile --bundle + open the bundle : DOES NOT WORK. No <svg> in #anim; console.error
+      "LottieController: provide the animation as 'json' or 'animationData'" (engine action error,
+      logged by Eligius because nothing subscribes to the engine's error event).
+  dev, on page load                  : DOES NOT WORK. Same console.error, no <svg>.
+  smoke --strict                     : DOES NOT WORK. exit 1, smoke-engine-error with the same message.
+  lottie-web not resolvable + check  : AS SPECIFIED (SC-022(1)). Exactly one diagnostic: warning
+      lottie-web-not-installed at main.eligian 6:5 (the addController call), exit 0. With
+      lottie-web installed: 0 diagnostics (SC-022(2)).
+
+Why: the DSL maps addController's positional arguments onto the controller metadata parameters,
+and for LottieController that list is only `url`
+(packages/language/src/completion/metadata/controllers.generated.ts:110-118; transform at
+packages/language/src/compiler/transformers/operation-transformer.ts:245-260), so the compiled
+operation is addControllerToElement({ url: "./anim.json" }). Eligius 4.2's LottieController.init
+requires `json` or `animationData` in the operation data and uses `url` only to parse
+[freeze=..,end=..] (bundle.js of run 1a, LottieController.init). The animation data must come
+from a preceding loadJson(url), whose `json` output stays in the operation data.
+
+Supplementary variants (not required by T048; recorded to locate the gaps):
+  loadjson.eligian (loadJson("./anim.json") before addController):
+    compile --bundle, bundle as written : no <svg>; console.error "loadJson: ./anim.json responded
+        404 Not Found". The bundler does not copy the file: mapConfigAssetRefs
+        (packages/cli/src/bundler/asset-collector.ts:294) only covers timelineProviderSettings
+        src/path and positionSource sources, not operation-data urls.
+    same bundle, anim.json copied beside index.html by hand : WORKS. <svg> 56 ms after load, no
+        console message, no exception, no engine error event (only the browser's favicon.ico 404
+        network entry, which is not a console error).
+    dev : no <svg>; anim.json 404. The dev server serves only its build output directory
+        (packages/cli/src/dev/dev-server.ts:190-206).
+    smoke --strict : exit 1, "loadJson: ./anim.json failed: Failed to parse URL from ./anim.json"
+        (relative URL fetched by Node inside smoke).
+  datauri.eligian (loadJson("data:application/json;base64,<anim.json>")):
+    dev : WORKS. <svg> 31 ms after load, no console message, no engine error event.
+    smoke --strict : exit 1, "LottieController requires the optional peer dependency 'lottie-web'"
+        although lottie-web IS installed: imported under smoke's global jsdom window, lottie-web
+        throws at module load ("Cannot set properties of null (setting 'fillStyle')": jsdom's
+        HTMLCanvasElement.getContext is not implemented without the `canvas` package). A plain
+        node import of lottie-web from the same project succeeds. So LottieController cannot run
+        under `eligian smoke` at all; Eligius' message misattributes the cause.
+
+Defects for triage (not fixed by T048; T048 only records):
+  D-L1 addController("LottieController", url) never works at runtime: the controller needs `json`
+       / `animationData`; the overlay packages/cli/src/mcp/knowledge/curriculum/controllers/LottieController.md
+       (card + probe) and its "works where lottie-web resolves" claim teach the failing form.
+  D-L2 --bundle and dev do not carry the animation JSON (operation-data urls are not assets;
+       dev serves only the build dir).
+  D-L3 smoke cannot load lottie-web under jsdom (canvas), so a Lottie program never smokes clean;
+       the error says lottie-web is missing when it is installed.
+
+== Setup commands (run before the recorded log) ==
+
+$ git rev-parse HEAD
+a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f
+$ pnpm -C packages/cli pack          # prepack = build:prod
+  (tail) … dist/docs/index.json / dist/docs/overlays.json / LICENSE / package.json / README.md
+  Tarball Details
+  eligian-1.1.0.tgz
+$ mv packages/cli/eligian-1.1.0.tgz $SCRATCH/
+$ mkdir -p $SCRATCH/lottie-probe && cd $SCRATCH/lottie-probe
+$ npm init -y
+$ npm install $SCRATCH/eligian-1.1.0.tgz
+  … found 0 vulnerabilities
+$ npm install lottie-web
+  … found 0 vulnerabilities
+(main.eligian, loadjson.eligian, datauri.eligian, layout.html, anim.json written; contents below)
+
+Helper scripts (in $SCRATCH/lottie-tools, outside the probe project; removed afterwards):
+  serve.mjs        static http server for a bundle directory (index.html loads bundle.js as a module,
+                   so file:// is not usable); logs every request and its status to stderr.
+  cdp-probe.mjs    launches Chrome headless=new with a temp profile, opens the URL over CDP,
+                   collects Runtime.consoleAPICalled / Runtime.exceptionThrown / Log.entryAdded,
+                   subscribes engine.on('error') once window.EligiusBundled.ready resolves (errors
+                   before that are console.error'd by Eligius, which has no subscriber yet), polls
+                   for `#anim svg` for 2000 ms after Page.loadEventFired, waits 1.5 s, prints the
+                   time to the <svg>, #anim's outerHTML (truncated to 600 chars) and the logs.
+  lottie-in-jsdom.mjs  makes a jsdom window global like dom-environment.ts installGlobals and
+                   imports lottie-web from the probe project.
+  record.sh        runs everything below and records each command, its output and its exit code.
+
+== Recorded log (record.sh) ==
+
+# --- setup (cwd: $SCRATCH/lottie-probe; $SCRATCH = $SCRATCH)
+$ node --version
+v24.7.0
+[exit 0]
+
+$ npm ls
+lottie-probe@1.0.0 C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\***\scratchpad\lottie-probe
++-- eligian@1.1.0
+`-- lottie-web@5.13.0
+
+[exit 0]
+
+$ cat package.json
+{
+  "name": "lottie-probe",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "eligian": "file:../eligian-1.1.0.tgz",
+    "lottie-web": "^5.13.0"
+  }
+}
+[exit 0]
+
+$ cat main.eligian
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#anim")
+    addController("LottieController", "./anim.json")
+  ]
+  on leave [
+    with "#anim" { removeControllerFromElement("LottieController") }
+  ]
+
+  at 0s..10s [
+    selectElement("#label")
+    setElementContent("playing")
+  ] [
+    selectElement("#label")
+    setElementContent("")
+  ]
+}
+[exit 0]
+
+$ cat loadjson.eligian
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#anim")
+    loadJson("./anim.json")
+    addController("LottieController", "./anim.json")
+  ]
+  on leave [
+    with "#anim" { removeControllerFromElement("LottieController") }
+  ]
+
+  at 0s..10s [
+    selectElement("#label")
+    setElementContent("playing")
+  ] [
+    selectElement("#label")
+    setElementContent("")
+  ]
+}
+[exit 0]
+
+$ cat layout.html
+<div id="stage">
+  <div id="anim" style="width: 200px; height: 200px"></div>
+  <p id="label"></p>
+</div>
+[exit 0]
+
+$ cat anim.json
+{"v":"5.7.4","fr":30,"ip":0,"op":60,"w":200,"h":200,"nm":"probe","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"box","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":1,"k":[{"t":0,"s":[0],"i":{"x":[0.5],"y":[0.5]},"o":{"x":[0.5],"y":[0.5]}},{"t":60,"s":[360]}]},"p":{"a":0,"k":[100,100,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ao":0,"shapes":[{"ty":"gr","nm":"g","it":[{"ty":"rc","nm":"r","d":1,"s":{"a":0,"k":[80,80]},"p":{"a":0,"k":[0,0]},"r":{"a":0,"k":0}},{"ty":"fl","nm":"f","c":{"a":0,"k":[0.9,0.2,0.2,1]},"o":{"a":0,"k":100},"r":1},{"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}]}],"ip":0,"op":60,"st":0,"bm":0}]}
+[exit 0]
+
+$ head -c 300 datauri.eligian; echo ' …'; echo; sed -n '7,$p' datauri.eligian
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#anim")
+    loadJson("data:application/json;base64,eyJ2IjoiNS43LjQiLCJmciI6MzAsImlwIjowLCJvcCI6NjAsInciOjIwMCwiaCI6MjAwLCJubSI6InByb2JlIiwiZGRkIjowLCJhc3NldHMiOltdLCJsYXllcnMiOlt7ImRkZCI6MCwiaW5kIjoxLCJ0e …
+
+    addController("LottieController", "./anim.json")
+  ]
+  on leave [
+    with "#anim" { removeControllerFromElement("LottieController") }
+  ]
+
+  at 0s..10s [
+    selectElement("#label")
+    setElementContent("playing")
+  ] [
+    selectElement("#label")
+    setElementContent("")
+  ]
+}
+[exit 0]
+
+# datauri.eligian = loadjson.eligian with loadJson("./anim.json") replaced by loadJson("data:application/json;base64,<anim.json>")
+# --- run 0: check with lottie-web installed (SC-022(2): no warning expected)
+$ node node_modules/eligian/bin/cli.js check main.eligian
+1 file, 0 errors, 0 warnings
+[exit 0]
+
+$ node node_modules/eligian/bin/cli.js check loadjson.eligian datauri.eligian
+2 files, 0 errors, 0 warnings
+[exit 0]
+
+# --- run 1: compile --bundle, then open the bundle page in headless Chrome 156 via CDP ($SCRATCH/lottie-tools/cdp-probe.mjs; served over http by $SCRATCH/lottie-tools/serve.mjs because index.html loads bundle.js as a module)
+# run 1a: main.eligian (the curriculum form: addController("LottieController", "./anim.json") only)
+$ node node_modules/eligian/bin/cli.js compile main.eligian --bundle -o out/
+✓ Bundle created: out/
+  Files: 2
+  Size: 1050.8 KB
+  Time: 601ms
+[exit 0]
+
+$ ls out
+bundle.js
+index.html
+[exit 0]
+
+$ grep -c 'LottieController requires the optional peer dependency' out/bundle.js
+1
+[exit 0]
+
+$ node node_modules/eligian/bin/cli.js compile main.eligian -o main.json && node -e "console.log(JSON.stringify(require('./main.json').timelines[0].timelineActions[0].startOperations.map(o => [o.systemName, o.operationData])))"
+✓ Compiled main.eligian → main.json
+[["selectElement",{"selector":"#anim"}],["getControllerInstance",{"systemName":"LottieController"}],["addControllerToElement",{"url":"./anim.json"}]]
+[exit 0]
+
+$ node $SCRATCH/lottie-tools/cdp-probe.mjs http://127.0.0.1:5301/ '#anim'
+{
+  "url": "http://127.0.0.1:5301/",
+  "loadEvent": true,
+  "svgWithin2s": false,
+  "svgAfterLoadMs": -1,
+  "outerHTMLTruncated": "<div id=\"anim\" style=\"width: 200px; height: 200px\"></div>",
+  "labelText": "playing",
+  "engineErrorEvents": [],
+  "consoleLog": [
+    "[console.error] Error in action start 'timeline-lifecycle' at operation 'addControllerToElement' (index 2): LottieController: provide the animation as 'json' or 'animationData' Error: LottieController: provide the animation as 'json' or 'animationData'\n    at LottieController.init (http://127.0.0.1:5301/bundle.js:24565:32)\n    at Object.addControllerToElement$1 (http://127.0.0.1:5301/bundle.js:23909:22)\n    at TimelineAction.executeOperation (http://127.0.0.1:5301/bundle.js:23239:56)\n    at http://127.0.0.1:5301/bundle.js:23161:12\n    at new Promise (<anonymous>)\n    at TimelineAction._runOperations (http://127.0.0.1:5301/bundle.js:23160:12)\n    at TimelineAction._runOperations (http://127.0.0.1:5301/bundle.js:23417:18)\n    at TimelineAction.start (http://127.0.0.1:5301/bundle.js:23145:17)\n    at http://127.0.0.1:5301/bundle.js:23363:39\n    at TimelineAction._execute (http://127.0.0.1:5301/bundle.js:23404:16)"
+  ],
+  "exceptions": [],
+  "logEntries": [
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5301/favicon.ico"
+  ]
+}
+[exit 0]
+
+$ cat $SCRATCH/serve-1a.log
+[serve] C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\out on http://127.0.0.1:5301/
+[serve] 200 /
+[serve] 200 /bundle.js
+[serve] 404 /favicon.ico
+[exit 0]
+
+# run 1b: loadjson.eligian (loadJson("./anim.json") before addController), the bundle as written
+$ node node_modules/eligian/bin/cli.js compile loadjson.eligian --bundle -o out-loadjson/
+✓ Bundle created: out-loadjson/
+  Files: 2
+  Size: 1052.0 KB
+  Time: 826ms
+[exit 0]
+
+$ ls out-loadjson
+bundle.js
+index.html
+[exit 0]
+
+$ node $SCRATCH/lottie-tools/cdp-probe.mjs http://127.0.0.1:5302/ '#anim'
+{
+  "url": "http://127.0.0.1:5302/",
+  "loadEvent": true,
+  "svgWithin2s": false,
+  "svgAfterLoadMs": -1,
+  "outerHTMLTruncated": "<div id=\"anim\" style=\"width: 200px; height: 200px\"></div>",
+  "labelText": "playing",
+  "engineErrorEvents": [],
+  "consoleLog": [
+    "[console.error] Error in action start 'timeline-lifecycle' at operation 'loadJson' (index 1): loadJson: ./anim.json responded 404 Not Found Error: loadJson: ./anim.json responded 404 Not Found\n    at Object.loadJson$1 (http://127.0.0.1:5302/bundle.js:23985:27)"
+  ],
+  "exceptions": [],
+  "logEntries": [
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5302/anim.json",
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5302/favicon.ico"
+  ]
+}
+[exit 0]
+
+# run 1c: the same bundle with anim.json copied beside index.html by hand (the bundler does not copy it)
+$ cp anim.json out-loadjson/ && ls out-loadjson
+anim.json
+bundle.js
+index.html
+[exit 0]
+
+$ node $SCRATCH/lottie-tools/cdp-probe.mjs http://127.0.0.1:5302/ '#anim'
+{
+  "url": "http://127.0.0.1:5302/",
+  "loadEvent": true,
+  "svgWithin2s": true,
+  "svgAfterLoadMs": 56,
+  "outerHTMLTruncated": "<div id=\"anim\" style=\"width: 200px; height: 200px\"><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 200 200\" width=\"200\" height=\"200\" preserveAspectRatio=\"xMidYMid meet\" style=\"width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px); content-visibility: visible;\"><defs><clipPath id=\"__lottie_element_2\"><rect width=\"200\" height=\"200\" x=\"0\" y=\"0\"></rect></clipPath></defs><g clip-path=\"url(#__lottie_element_2)\"><g transform=\"matrix(1,0,0,1,100,100)\" opacity=\"1\" style=\"display: block;\"><g opacity=\"1\" transform=\"matrix(1,0,0,1,0,0)\"><path fill",
+  "labelText": "playing",
+  "engineErrorEvents": [],
+  "consoleLog": [],
+  "exceptions": [],
+  "logEntries": [
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5302/favicon.ico"
+  ]
+}
+[exit 0]
+
+$ cat $SCRATCH/serve-1b.log
+[serve] C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\out-loadjson on http://127.0.0.1:5302/
+[serve] 200 /
+[serve] 200 /bundle.js
+[serve] 404 /anim.json
+[serve] 404 /favicon.ico
+[serve] 200 /
+[serve] 200 /bundle.js
+[serve] 200 /anim.json
+[serve] 404 /favicon.ico
+[exit 0]
+
+# --- run 2: dev, on page load (headless Chrome via CDP)
+# run 2 (main.eligian)
+$ node $SCRATCH/lottie-tools/cdp-probe.mjs http://localhost:5310/ '#anim'
+{
+  "url": "http://localhost:5310/",
+  "loadEvent": true,
+  "svgWithin2s": false,
+  "svgAfterLoadMs": -1,
+  "outerHTMLTruncated": "<div id=\"anim\" style=\"width: 200px; height: 200px\"></div>",
+  "labelText": "playing",
+  "engineErrorEvents": [],
+  "consoleLog": [
+    "[console.error] Error in action start 'timeline-lifecycle' at operation 'addControllerToElement' (index 2): LottieController: provide the animation as 'json' or 'animationData' Error: LottieController: provide the animation as 'json' or 'animationData'\n    at LottieController.init (http://localhost:5310/bundle.js:24565:32)\n    at Object.addControllerToElement$1 (http://localhost:5310/bundle.js:23909:22)\n    at TimelineAction.executeOperation (http://localhost:5310/bundle.js:23239:56)\n    at http://localhost:5310/bundle.js:23161:12\n    at new Promise (<anonymous>)\n    at TimelineAction._runOperations (http://localhost:5310/bundle.js:23160:12)\n    at TimelineAction._runOperations (http://localhost:5310/bundle.js:23417:18)\n    at TimelineAction.start (http://localhost:5310/bundle.js:23145:17)\n    at http://localhost:5310/bundle.js:23363:39\n    at TimelineAction._execute (http://localhost:5310/bundle.js:23404:16)"
+  ],
+  "exceptions": [],
+  "logEntries": [
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:5310/favicon.ico"
+  ]
+}
+[exit 0]
+
+$ cat $SCRATCH/dev-main.log
+[11:57:54] built in 1042ms
+eligian dev main.eligian → http://localhost:5310/ (Ctrl+C to stop)
+[exit 0]
+
+# run 2 (loadjson.eligian)
+$ node $SCRATCH/lottie-tools/cdp-probe.mjs http://localhost:5311/ '#anim'
+{
+  "url": "http://localhost:5311/",
+  "loadEvent": true,
+  "svgWithin2s": false,
+  "svgAfterLoadMs": -1,
+  "outerHTMLTruncated": "<div id=\"anim\" style=\"width: 200px; height: 200px\"></div>",
+  "labelText": "playing",
+  "engineErrorEvents": [],
+  "consoleLog": [
+    "[console.error] Error in action start 'timeline-lifecycle' at operation 'loadJson' (index 1): loadJson: ./anim.json responded 404 Not Found Error: loadJson: ./anim.json responded 404 Not Found\n    at Object.loadJson$1 (http://localhost:5311/bundle.js:23985:27)"
+  ],
+  "exceptions": [],
+  "logEntries": [
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:5311/anim.json",
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:5311/favicon.ico"
+  ]
+}
+[exit 0]
+
+$ cat $SCRATCH/dev-loadjson.log
+[11:58:07] built in 833ms
+eligian dev loadjson.eligian → http://localhost:5311/ (Ctrl+C to stop)
+[exit 0]
+
+# run 2 (datauri.eligian)
+$ node $SCRATCH/lottie-tools/cdp-probe.mjs http://localhost:5312/ '#anim'
+{
+  "url": "http://localhost:5312/",
+  "loadEvent": true,
+  "svgWithin2s": true,
+  "svgAfterLoadMs": 31,
+  "outerHTMLTruncated": "<div id=\"anim\" style=\"width: 200px; height: 200px\"><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 200 200\" width=\"200\" height=\"200\" preserveAspectRatio=\"xMidYMid meet\" style=\"width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px); content-visibility: visible;\"><defs><clipPath id=\"__lottie_element_2\"><rect width=\"200\" height=\"200\" x=\"0\" y=\"0\"></rect></clipPath></defs><g clip-path=\"url(#__lottie_element_2)\"><g transform=\"matrix(1,0,0,1,100,100)\" opacity=\"1\" style=\"display: block;\"><g opacity=\"1\" transform=\"matrix(1,0,0,1,0,0)\"><path fill",
+  "labelText": "playing",
+  "engineErrorEvents": [],
+  "consoleLog": [],
+  "exceptions": [],
+  "logEntries": [
+    "[log.error] network: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:5312/favicon.ico"
+  ]
+}
+[exit 0]
+
+$ cat $SCRATCH/dev-datauri.log
+[11:58:19] built in 741ms
+eligian dev datauri.eligian → http://localhost:5312/ (Ctrl+C to stop)
+[exit 0]
+
+# --- run 3: smoke --strict
+$ node node_modules/eligian/bin/cli.js smoke main.eligian --strict
+main.eligian
+  timeline 'main': 2 positions FAIL (1)
+  error  start operation addControllerToElement: LottieController: provide the animation as 'json' or 'animationData'
+         main.eligian:6:5 — 'main' at 0s
+  warning  controller for name 'LottieController' was not found on the given element
+         main.eligian — 'main' at 10s
+1 file, 1 timeline played, 1 error, 1 warning
+[exit 1]
+
+$ node node_modules/eligian/bin/cli.js smoke loadjson.eligian --strict
+loadjson.eligian
+  timeline 'main': 2 positions FAIL (1)
+  error  start operation loadJson: loadJson: ./anim.json failed: Failed to parse URL from ./anim.json
+         loadjson.eligian:6:5 — 'main' at 0s
+  warning  controller for name 'LottieController' was not found on the given element
+         loadjson.eligian — 'main' at 10s
+1 file, 1 timeline played, 1 error, 1 warning
+[exit 1]
+
+$ node node_modules/eligian/bin/cli.js smoke datauri.eligian --strict
+datauri.eligian
+  timeline 'main': 2 positions FAIL (1)
+  error  start operation addControllerToElement: LottieController requires the optional peer dependency 'lottie-web'. Install it with: npm install lottie-web
+         datauri.eligian:7:5 — 'main' at 0s
+  warning  controller for name 'LottieController' was not found on the given element
+         datauri.eligian — 'main' at 10s
+1 file, 1 timeline played, 1 error, 1 warning
+[exit 1]
+
+# cause of the datauri failure: lottie-web, imported under smoke's global jsdom window ($SCRATCH/lottie-tools/lottie-in-jsdom.mjs mirrors dom-environment.ts installGlobals), throws at module load
+$ node $SCRATCH/lottie-tools/lottie-in-jsdom.mjs $SCRATCH/lottie-probe
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+lottie-web import failed: TypeError: Cannot set properties of null (setting 'fillStyle')
+    at C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\node_modules\lottie-web\build\player\lottie.js:1119:21
+    at C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\node_modules\lottie-web\build\player\lottie.js:1122:6
+    at C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\node_modules\lottie-web\build\player\lottie.js:1301:4
+    at C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\node_modules\lottie-web\build\player\lottie.js:2:83
+    at Object.<anonymous> (C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\lottie-probe\node_modules\lottie-web\build\player\lottie.js:5:3)
+[exit 0]
+
+$ node -e "import('lottie-web').then(m => console.log('plain node import ok:', typeof m.default))"
+plain node import ok: object
+[exit 0]
+
+# --- run 4: lottie-web not resolvable
+$ npm uninstall lottie-web
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@asamuzakjp/css-color@7.1.9',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@asamuzakjp/dom-selector@10.0.5',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jsdom@30.1.3',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'w3c-xmlserializer@6.0.0',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+
+removed 1 package, and audited 54 packages in 2s
+
+13 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[exit 0]
+
+$ npm ls
+lottie-probe@1.0.0 C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\***\scratchpad\lottie-probe
+`-- eligian@1.1.0
+
+[exit 0]
+
+$ node node_modules/eligian/bin/cli.js check main.eligian
+main.eligian
+  6:5  warning  LottieController needs lottie-web, which is not installed in this project: run "npm install lottie-web" next to the presentation  lottie-web-not-installed
+
+1 file, 0 errors, 1 warning
+[exit 0]
+
+$ node node_modules/eligian/bin/cli.js check main.eligian --format json
+{
+  "files": [
+    {
+      "file": "main.eligian",
+      "diagnostics": [
+        {
+          "severity": "warning",
+          "message": "LottieController needs lottie-web, which is not installed in this project: run \"npm install lottie-web\" next to the presentation",
+          "line": 6,
+          "column": 5,
+          "endLine": 6,
+          "endColumn": 53,
+          "code": "lottie-web-not-installed"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 0,
+    "warnings": 1,
+    "infos": 0,
+    "hints": 0
+  }
+}
+[exit 0]
+

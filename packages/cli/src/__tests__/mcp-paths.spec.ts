@@ -296,6 +296,12 @@ describe('the server', () => {
     base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-server-paths-')));
     docsRoot = path.join(base, 'docs');
     await generateKnowledge({ outDir: docsRoot });
+    // The first server start and tool call load effect/ai and the tool modules once: 0.25 s
+    // alone, 6 s under the parallel workers' load, 30 s once under coverage (spec 058 FR-098),
+    // which no test here measures. They are paid here, under the hook's timeout
+    const warm = await startInMemoryServer({ cwd: base, docsRoot });
+    await warm.callTool('eligian_operations', { names: ['addClass'] });
+    await warm.close();
   }, 300_000);
 
   afterEach(async () => {

@@ -1,0 +1,6 @@
+// timeline-container-not-in-layout: the layout has no .ghostc element
+layout "./layout.html"
+
+timeline "Main"
+  in ".ghostc" using raf {
+}

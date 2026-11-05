@@ -4,6 +4,7 @@ import type { OperationCall } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
 import { CssParameterValidator } from './operation-call/css-parameter-validator.js';
 import { LabelParameterValidator } from './operation-call/label-parameter-validator.js';
+import { ListenerActionValidator } from './operation-call/listener-action-validator.js';
 import { OperationExistenceValidator } from './operation-call/operation-existence-validator.js';
 import { ParameterValidator } from './operation-call/parameter-validator.js';
 import { SetDataValidator } from './operation-call/set-data-validator.js';
@@ -24,6 +25,7 @@ export class OperationCallValidator extends BaseValidator {
   private readonly parameters: ParameterValidator;
   private readonly css: CssParameterValidator;
   private readonly labels: LabelParameterValidator;
+  private readonly listeners: ListenerActionValidator;
   private readonly setData: SetDataValidator;
 
   constructor(services: EligianServices) {
@@ -32,6 +34,7 @@ export class OperationCallValidator extends BaseValidator {
     this.parameters = new ParameterValidator(services);
     this.css = new CssParameterValidator(services);
     this.labels = new LabelParameterValidator(services);
+    this.listeners = new ListenerActionValidator(services);
     this.setData = new SetDataValidator(services);
   }
 
@@ -70,6 +73,11 @@ export class OperationCallValidator extends BaseValidator {
 
   checkControllerCall(operation: OperationCall, accept: ValidationAcceptor): void {
     this.labels.checkControllerCall(operation, accept);
+  }
+
+  /** Spec 058 FR-055: action names in listener-controller action lists. */
+  checkListenerActionNames(operation: OperationCall, accept: ValidationAcceptor): void {
+    this.listeners.checkListenerActionNames(operation, accept);
   }
 
   checkLabelIDParameter(operation: OperationCall, accept: ValidationAcceptor): void {

@@ -1,0 +1,116 @@
+{
+  "actions": {},
+  "timelines": {
+    "List": {
+      "type": "animation",
+      "duration": 4.8,
+      "timelineActions": [
+        {
+          "name": "stagger-inline-0-1-4",
+          "duration": {
+            "start": 1,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        },
+        {
+          "name": "stagger-inline-1-1.4-4.4",
+          "duration": {
+            "start": 1.4,
+            "end": 4.4
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        },
+        {
+          "name": "stagger-inline-2-1.8-4.8",
+          "duration": {
+            "start": 1.8,
+            "end": 4.8
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -167,6 +167,7 @@ export function registerValidationChecks(services: EligianServices) {
     OperationCall: [
       v.operationCall.checkTimelineOperationCall, // T020: Check timeline context for unified syntax
       v.operationCall.checkControllerCall, // Feature 035: Validate addController calls
+      v.operationCall.checkListenerActionNames, // Spec 058 FR-055: listener action names
       v.operationCall.checkOperationExists,
       v.operationCall.checkParameterCount,
       v.operationCall.checkParameterTypes,

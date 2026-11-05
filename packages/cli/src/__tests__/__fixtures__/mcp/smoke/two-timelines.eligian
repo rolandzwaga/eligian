@@ -1,0 +1,10 @@
+// Two raf timelines for the ndjson and --timeline cases of smoke-ndjson.spec.ts
+layout "./layout.html"
+
+timeline "A" in "#stage" using raf {
+  at 0s..1s [ log("A") ] []
+}
+
+timeline "B" in "#stage" using raf {
+  at 0s..2s [ log("B") ] []
+}

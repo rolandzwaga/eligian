@@ -1,0 +1,15 @@
+// Scenario snapshot controllers and running actions: on click attaches a DOMEventListenerController
+layout "./layout.html"
+styles "./styles.css"
+
+action mark() [
+  selectElement("#box")
+  addClass("on")
+]
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    on click "#btn" run mark()
+  ]
+  at 0s..30s [ log("running") ] []
+}

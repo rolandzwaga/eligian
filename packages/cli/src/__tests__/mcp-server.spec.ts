@@ -1,11 +1,14 @@
 /**
- * Spec 058 Phase 1 (FR-002, FR-003, FR-005, FR-016–FR-018; SC-003, SC-004, SC-029; plan C10):
- * the composed MCP server, in-process through `mcp-test-client.ts`: the tool surface, the
- * description and instruction budgets, the protocol list and the FR-005 payload shape of one
- * valid call per tool.
+ * Spec 058 Phase 1 (FR-002, FR-003, FR-005, FR-016–FR-018; SC-003, SC-004, SC-029; plan C10)
+ * and Phase 2 (FR-001, FR-002, FR-004; SC-001, SC-002; plan D7): the composed MCP server,
+ * in-process through `mcp-test-client.ts`: the eight tools, their annotations, the description
+ * and instruction budgets, the protocol list, the FR-005 payload shape of one valid call per
+ * tool and the declared failure of the three Phase 2 tools.
  *
  * The docs are generated into a temp dir once (`docsRoot`); every test gets a fresh project
  * root (`cwd`) holding one formatted program, and a fresh server, closed in `afterEach`.
+ * `eligian_smoke` runs the stub CLI of `mcp-smoke.spec.ts` (`smoke.cliPath`), so no bundle is
+ * needed here.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -20,18 +23,46 @@ import { INSTRUCTIONS, MCP_PHASE } from '../mcp/instructions.js';
 import type { IndexEntry } from '../mcp/knowledge/types.js';
 import { serverProtocols } from '../mcp/server.js';
 import * as check from '../mcp/tools/check.js';
+import * as compile from '../mcp/tools/compile.js';
 import * as docs from '../mcp/tools/docs.js';
 import * as fmt from '../mcp/tools/fmt.js';
 import * as init from '../mcp/tools/init.js';
 import * as operations from '../mcp/tools/operations.js';
+import * as project from '../mcp/tools/project.js';
+import * as smoke from '../mcp/tools/smoke.js';
 import { type InMemoryServer, startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROGRAM = path.join(HERE, '__fixtures__', 'mcp', 'fmt', 'formatted.eligian');
+/** Stands in for bin/cli.js in the smoke child (see mcp-smoke.spec.ts) */
+const STUB = path.join(HERE, '__fixtures__', 'mcp', 'smoke-tool', 'stub-cli.mjs');
 
-const TOOL_NAMES: readonly string[] = [docs.NAME, operations.NAME, check.NAME, fmt.NAME, init.NAME];
+const TOOL_NAMES: readonly string[] = [
+  docs.NAME,
+  operations.NAME,
+  check.NAME,
+  fmt.NAME,
+  init.NAME,
+  compile.NAME,
+  project.NAME,
+  smoke.NAME,
+];
 const UPFRONT: readonly string[] = [docs.NAME, operations.NAME, check.NAME];
-const DEFERRED = { [fmt.NAME]: fmt.KEYWORDS, [init.NAME]: init.KEYWORDS };
+/** Phase 2: deferred, read-only, with `anthropic/maxResultSizeChars` (FR-002) */
+const READONLY: readonly string[] = [compile.NAME, project.NAME, smoke.NAME];
+const DEFERRED = {
+  [fmt.NAME]: fmt.KEYWORDS,
+  [init.NAME]: init.KEYWORDS,
+  [compile.NAME]: compile.KEYWORDS,
+  [project.NAME]: project.KEYWORDS,
+  [smoke.NAME]: smoke.KEYWORDS,
+};
+/** Per Phase 2 tool: a call on the `main.eligian` of `cwd`, and the same with a missing path */
+const PHASE_2_CALLS: readonly (readonly [string, unknown, unknown])[] = [
+  [compile.NAME, { path: 'main.eligian' }, { path: 'missing.eligian' }],
+  [project.NAME, { path: 'main.eligian' }, { path: 'missing.eligian' }],
+  [smoke.NAME, { paths: ['main.eligian'] }, { paths: ['missing.eligian'] }],
+];
 
 const versions = getCompilerVersion();
 const headerOf = (tool: string, resolved: string): string =>
@@ -50,7 +81,7 @@ describe('the MCP server', () => {
   const servers: InMemoryServer[] = [];
 
   const start = async (): Promise<InMemoryServer> => {
-    const server = await startInMemoryServer({ cwd, docsRoot });
+    const server = await startInMemoryServer({ cwd, docsRoot, smoke: { cliPath: STUB } });
     servers.push(server);
     return server;
   };
@@ -84,18 +115,40 @@ describe('the MCP server', () => {
   });
 
   describe('tool surface', () => {
-    it('lists exactly five tools with their annotations', async () => {
+    it('lists exactly eight tools', async () => {
       const tools = await listTools();
 
-      expect(tools.map(tool => tool.name).sort()).toEqual([...TOOL_NAMES].sort());
+      expect(tools.map(tool => tool.name).sort()).toEqual([
+        'eligian_check',
+        'eligian_compile',
+        'eligian_docs',
+        'eligian_fmt',
+        'eligian_init',
+        'eligian_operations',
+        'eligian_project',
+        'eligian_smoke',
+      ]);
+      expect([...TOOL_NAMES].sort()).toEqual(tools.map(tool => tool.name).sort());
+    });
+  });
+
+  describe('annotations', () => {
+    it('three upfront, three readonly with maxResultSizeChars', async () => {
+      const tools = await listTools();
+
       const alwaysLoad = tools
         .filter(tool => tool._meta?.['anthropic/alwaysLoad'] === true)
         .map(tool => tool.name)
         .sort();
       expect(alwaysLoad).toEqual([...UPFRONT].sort());
+      expect(tools.filter(tool => READONLY.includes(tool.name))).toHaveLength(3);
       for (const tool of tools) {
         if (UPFRONT.includes(tool.name)) {
           expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+        } else if (READONLY.includes(tool.name)) {
+          expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+          expect(tool._meta ?? {}, tool.name).not.toHaveProperty(['anthropic/alwaysLoad']);
+          expect(tool._meta?.['anthropic/maxResultSizeChars'], tool.name).toBe(200000);
         } else {
           expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
           expect(tool.annotations?.idempotentHint, tool.name).toBe(true);
@@ -124,7 +177,7 @@ describe('the MCP server', () => {
       }
     });
 
-    it('deferred ≤ 16384, KEYWORDS in the first 200 chars', async () => {
+    it('deferred descriptions ≤ 16384 and KEYWORDS in the first 200', async () => {
       const tools = await listTools();
 
       for (const [name, keywords] of Object.entries(DEFERRED)) {
@@ -224,5 +277,40 @@ describe('the MCP server', () => {
         path.join(cwd, 'project')
       );
     });
+  });
+
+  describe('header first', () => {
+    it.each(PHASE_2_CALLS.map(([tool, args]) => [tool, args] as const))(
+      '%s: content[0].text starts with the header, no truncated key',
+      async (tool, args) => {
+        const server = await start();
+        const { payload, isError, raw } = await server.callTool(tool, args);
+        const text = (raw as { content: { type: string; text: string }[] }).content[0].text;
+
+        expect(isError).toBe(false);
+        expect(text.startsWith('{"header":')).toBe(true);
+        expect(Object.keys(payload)[0]).toBe('header');
+        expect(payload.header).toBe(headerOf(tool, path.join(cwd, 'main.eligian')));
+        expect(payload).not.toHaveProperty('truncated');
+        expect(text).not.toContain('"truncated"');
+      },
+      60_000
+    );
+  });
+
+  describe('errors', () => {
+    it('missing path is not-found', async () => {
+      for (const [tool, , missing] of PHASE_2_CALLS) {
+        const server = await start();
+        const { payload, isError, raw } = await server.callTool(tool, missing);
+        const text = (raw as { content: { type: string; text: string }[] }).content[0].text;
+
+        expect(isError, tool).toBe(true);
+        expect(text.startsWith('{"header":'), tool).toBe(true);
+        expect(raw, tool).not.toHaveProperty('structuredContent');
+        expect(payload.error.kind, tool).toBe('not-found');
+        expect(payload.error.message, tool).toContain('missing.eligian');
+      }
+    }, 60_000);
   });
 });

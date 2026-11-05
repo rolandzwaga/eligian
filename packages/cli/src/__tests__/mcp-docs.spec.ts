@@ -68,13 +68,23 @@ describe('eligian_docs', () => {
   it('no arguments: the index', async () => {
     const payload = await call({});
 
-    expect(payload.index?.map(e => e.id)).toEqual(index.map(e => e.id));
+    // FR-077 ruling 2026-11-05: operations are not listed, they have their own tool
+    const listed = index.filter(e => e.kind !== 'operation');
+    expect(payload.index?.map(e => e.id)).toEqual(listed.map(e => e.id));
+    expect(payload.operations?.count).toBe(index.length - listed.length);
+    expect(payload.operations?.see).toContain('eligian_operations');
     for (const [i, item] of (payload.index ?? []).entries()) {
-      const source = index[i];
-      if (source.kind === 'operation') {
+      const source = listed[i];
+      if (source.kind === 'example') {
         expect(item).toEqual({ id: source.id, title: source.title });
       } else {
-        expect(item).toEqual(source);
+        // FR-077 ruling 2026-11-05: use_cases, words and see are detail data
+        expect(item).toEqual({
+          id: source.id,
+          title: source.title,
+          kind: source.kind,
+          card: source.card,
+        });
       }
     }
     expect(index.some(e => e.kind === 'operation')).toBe(true);
@@ -83,6 +93,69 @@ describe('eligian_docs', () => {
     expect(payload.bodies).toBeUndefined();
     expect(payload.hits).toBeUndefined();
     expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+  });
+
+  it('example entries are listed with id and title only', async () => {
+    // FR-075 / FR-077: a synthetic docs root, so the rule holds before the generator emits examples
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-docs-examples-'));
+    try {
+      const entries: IndexEntry[] = [
+        {
+          id: 'example/title-card',
+          title: 'A title card',
+          kind: 'example',
+          use_cases: ['title card'],
+          words: 40,
+          see: [],
+          card: 'A title card that fades in.',
+        },
+        {
+          id: 'operation/addClass',
+          title: 'addClass',
+          kind: 'operation',
+          use_cases: [],
+          words: 9,
+          see: [],
+          card: 'NEEDS: selectedElement',
+        },
+        {
+          id: 'map-dataflow',
+          title: 'Map: dataflow',
+          kind: 'mapping',
+          use_cases: ['operation data'],
+          words: 31,
+          see: ['example/title-card'],
+          card: 'How operation data flows.',
+        },
+      ];
+      fs.writeFileSync(path.join(root, 'index.json'), JSON.stringify(entries));
+      fs.writeFileSync(path.join(root, 'overlays.json'), '{"byCode":{},"bySource":{}}');
+
+      const payload = await Effect.runPromise(handle({}, { ...context(), docsRoot: root }));
+
+      expect(payload.operations).toEqual({
+        count: 1,
+        see: expect.stringContaining('eligian_operations'),
+      });
+      expect(payload.index).toEqual([
+        { id: 'example/title-card', title: 'A title card' },
+        {
+          id: 'map-dataflow',
+          title: 'Map: dataflow',
+          kind: 'mapping',
+          card: 'How operation data flows.',
+        },
+      ]);
+      // `ids` still returns the example's card
+      const cards = await Effect.runPromise(
+        handle({ ids: ['example/title-card'] }, { ...context(), docsRoot: root })
+      );
+      expect(cards.cards).toEqual([
+        { id: 'example/title-card', title: 'A title card', card: 'A title card that fades in.' },
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('ids: cards', async () => {

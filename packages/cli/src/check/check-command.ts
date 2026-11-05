@@ -207,11 +207,34 @@ export async function withCompiledChecks(
   const merged = results.map(result => {
     const added = extra.get(result.file);
     return added
-      ? { ...result, diagnostics: [...result.diagnostics, ...added].sort(byLine) }
+      ? {
+          ...result,
+          diagnostics: [...result.diagnostics, ...withoutReported(added, result.diagnostics)].sort(
+            byLine
+          ),
+        }
       : result;
   });
   const unchecked = [...extra.entries()]
     .filter(([file]) => !results.some(r => r.file === file))
     .map(([file, diagnostics]) => ({ file, diagnostics: [...diagnostics].sort(byLine) }));
   return [...merged, ...unchecked];
+}
+
+/**
+ * The review warnings minus the container warnings the validation already
+ * reports (spec 058 FR-050, I-4): `selector_not_in_layout` and
+ * `timeline-container-not-in-layout` both range the timeline's `in` selector.
+ */
+function withoutReported(
+  added: readonly CheckDiagnostic[],
+  validated: readonly CheckDiagnostic[]
+): CheckDiagnostic[] {
+  return added.filter(
+    d =>
+      d.code !== 'timeline-container-not-in-layout' ||
+      !validated.some(
+        v => v.code === 'selector_not_in_layout' && v.line === d.line && v.column === d.column
+      )
+  );
 }

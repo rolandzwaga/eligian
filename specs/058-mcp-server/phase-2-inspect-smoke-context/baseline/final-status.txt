@@ -1,0 +1,270 @@
+# T059 Final diff review (2026-11-05T12:22:33Z)
+branch: feat/mcp-server-roadmap   HEAD: a7bceb8
+
+## Checks
+1. Generated files: 'git status --short --untracked-files=all | grep -E "(/generated/|\.generated\.ts)"' -> no match (exit 1); 'git diff --stat -- **/generated/** *.generated.ts' -> empty. PASS.
+   (registry.generated.ts, html-elements.generated.ts, completion/metadata/ are git-ignored build outputs, not tracked changes.)
+2. examples/: changed files = examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md examples/eligian-tour/presentation.eligian examples/eligian-tour/tour.eligian 
+   - tour.eligian, presentation.eligian: every added line is a '// @mcp-example <id> <title>' or '// @mcp-end' comment (T044);
+     17 @mcp-example markers, 17 @mcp-end markers, 0 removed lines, 0 non-marker changed lines. PASS.
+   - ELIGIUS_EXECUTION_MODEL.md: +49 lines, the '(probed: "<title>")' claim markers for the new runtime claims (Group 15 T043 file list; spec.md:60, SC-014),
+     not T044 comments. Sanctioned by the spec, not an unplanned example change. NOTE for comply: T059's wording 'examples/ changed only by T044's comments' does not cover this file; it is covered by spec.md:60 / FR-071 / SC-014.
+3. packages/cli/package.json dependencies: chalk, commander, effect, eligius, esbuild, jquery, tinyglobby, jsdom
+   lottie-web in dependencies: false; in devDependencies: false. SC-022(3) PASS.
+   Only package.json change: scripts."rank:operations" added.
+4. Stray files: no *.tgz anywhere outside node_modules (find), none git-ignored; no untracked file matching tmp|temp|scratch|.bak|.orig|.rej|.log|.tgz|demo. PASS.
+   Untracked evals/mcp/results/<run>/ directories are kept on purpose (T058: every result JSON stays, failed runs included).
+
+## git status --short
+ M .github/workflows/ci.yml
+ M AGENTS.md
+ M CHANGELOG.md
+ M evals/mcp/gate.ts
+ M evals/mcp/run.ts
+ M examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md
+ M examples/eligian-tour/presentation.eligian
+ M examples/eligian-tour/tour.eligian
+ M packages/cli/AGENTS.md
+ M packages/cli/README.md
+ M packages/cli/package.json
+ M packages/cli/scripts/diagnostic-code-ranking.json
+ M packages/cli/scripts/generate-knowledge.ts
+ M packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/overlays.json
+ M packages/cli/src/__tests__/__fixtures__/mcp/missing-overlays.json
+ M packages/cli/src/__tests__/__fixtures__/mcp/review/non-literal-selector.eligian
+ M packages/cli/src/__tests__/check-codes.spec.ts
+ M packages/cli/src/__tests__/eval-cases.spec.ts
+ M packages/cli/src/__tests__/init.spec.ts
+ M packages/cli/src/__tests__/mcp-concurrency.spec.ts
+ M packages/cli/src/__tests__/mcp-diagnostics.spec.ts
+ M packages/cli/src/__tests__/mcp-docs.spec.ts
+ M packages/cli/src/__tests__/mcp-init.spec.ts
+ M packages/cli/src/__tests__/mcp-instructions.spec.ts
+ M packages/cli/src/__tests__/mcp-knowledge.spec.ts
+ M packages/cli/src/__tests__/mcp-operations.spec.ts
+ M packages/cli/src/__tests__/mcp-render.spec.ts
+ M packages/cli/src/__tests__/mcp-runtime-claims.spec.ts
+ M packages/cli/src/__tests__/mcp-server.spec.ts
+ M packages/cli/src/__tests__/mcp-stdout.spec.ts
+ M packages/cli/src/__tests__/mcp-telemetry.spec.ts
+ M packages/cli/src/__tests__/package-bin.spec.ts
+ M packages/cli/src/__tests__/review.spec.ts
+ M packages/cli/src/__tests__/smoke.spec.ts
+ M packages/cli/src/check/check-command.ts
+ M packages/cli/src/check/review.ts
+ M packages/cli/src/init.ts
+ M packages/cli/src/main.ts
+ M packages/cli/src/mcp/diagnostics.ts
+ M packages/cli/src/mcp/instructions.ts
+ M packages/cli/src/mcp/knowledge/load.ts
+ M packages/cli/src/mcp/knowledge/render.ts
+ M packages/cli/src/mcp/knowledge/types.ts
+ M packages/cli/src/mcp/server.ts
+ M packages/cli/src/mcp/stdio.ts
+ M packages/cli/src/mcp/tools/docs.ts
+ M packages/cli/src/mcp/tools/init.ts
+ M packages/cli/src/mcp/tools/operations.ts
+ M packages/cli/src/smoke/dom-environment.ts
+ M packages/cli/src/smoke/smoke-command.ts
+ M packages/cli/src/smoke/smoke-runner.ts
+ M packages/language/src/__tests__/diagnostic-code-registry.spec.ts
+ M packages/language/src/__tests__/mcp-entry.spec.ts
+ M packages/language/src/compiler/index.ts
+ M packages/language/src/compiler/pipeline/check.ts
+ M packages/language/src/dataflow/operation-dataflow.ts
+ M packages/language/src/eligian-validator.ts
+ M packages/language/src/mcp.ts
+ M packages/language/src/starters/starters.ts
+ M packages/language/src/validators/codes.ts
+ M packages/language/src/validators/operation-call-validator.ts
+ M specs/058-mcp-server/roadmap.md
+?? evals/mcp/cases/keyboard-deck.json
+?? evals/mcp/cases/keyboard-deck.scenario.json
+?? evals/mcp/cases/library-reuse.json
+?? evals/mcp/cases/library-reuse.scenario.json
+?? evals/mcp/cases/staggered-list.json
+?? evals/mcp/cases/staggered-list.scenario.json
+?? evals/mcp/cases/three-chapters.json
+?? evals/mcp/cases/three-chapters.scenario.json
+?? evals/mcp/cases/title-card.json
+?? evals/mcp/cases/title-card.scenario.json
+?? evals/mcp/results/2026-11-05T12-00-58-987Z/
+?? evals/mcp/results/2026-11-05T12-02-49-582Z/
+?? evals/mcp/results/2026-11-05T12-05-38-348Z/
+?? evals/mcp/results/2026-11-05T12-07-17-660Z/
+?? evals/mcp/results/2026-11-05T12-08-42-136Z/
+?? evals/mcp/results/2026-11-05T12-10-20-808Z/
+?? evals/mcp/results/2026-11-05T12-12-03-398Z/
+?? evals/mcp/results/2026-11-05T12-14-12-496Z/
+?? evals/mcp/results/2026-11-05T12-15-38-409Z/
+?? evals/mcp/results/2026-11-05T12-17-35-622Z/
+?? packages/cli/scripts/operation-ranking.json
+?? packages/cli/scripts/rank-operations.ts
+?? packages/cli/src/__tests__/__fixtures__/agents/
+?? packages/cli/src/__tests__/__fixtures__/mcp/compile/
+?? packages/cli/src/__tests__/__fixtures__/mcp/fragment/
+?? packages/cli/src/__tests__/__fixtures__/mcp/project/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/container/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/entry/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/host-op-in-event/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/host-op-in-named-action/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/host-op-selector-param/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/host-op-target/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/host-op-with/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/lottie/
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/media-file-missing/
+?? packages/cli/src/__tests__/__fixtures__/mcp/scenario/
+?? packages/cli/src/__tests__/__fixtures__/mcp/smoke-tool/
+?? packages/cli/src/__tests__/__fixtures__/mcp/smoke/
+?? packages/cli/src/__tests__/__fixtures__/mcp/staleness/
+?? packages/cli/src/__tests__/__snapshots__/probes/map-control-flow-and-data-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-erased-parameters-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-event-actions-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-imports-and-assets-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-locales-and-languages-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-program-and-config-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-10.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-2.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-3.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-4.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-5.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-6.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-7.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-8.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/presentation-patterns-9.json.snap
+?? packages/cli/src/__tests__/agents.spec.ts
+?? packages/cli/src/__tests__/compile-file-release.spec.ts
+?? packages/cli/src/__tests__/config-fragment.spec.ts
+?? packages/cli/src/__tests__/fresh-bundle.ts
+?? packages/cli/src/__tests__/mcp-compile.spec.ts
+?? packages/cli/src/__tests__/mcp-project.spec.ts
+?? packages/cli/src/__tests__/mcp-scenario.spec.ts
+?? packages/cli/src/__tests__/mcp-smoke.spec.ts
+?? packages/cli/src/__tests__/mcp-staleness.spec.ts
+?? packages/cli/src/__tests__/smoke-ndjson.spec.ts
+?? packages/cli/src/__tests__/storyboard.spec.ts
+?? packages/cli/src/agents.ts
+?? packages/cli/src/mcp/config-fragment.ts
+?? packages/cli/src/mcp/knowledge/curriculum/assets-and-host-modules.md
+?? packages/cli/src/mcp/knowledge/curriculum/controllers/
+?? packages/cli/src/mcp/knowledge/curriculum/css-conventions.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/entry-timeline-without-enter.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/host-operation-in-block-without-select.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/host-operation-returned-non-object.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/locales-import-error.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/lottie-web-not-installed.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/media-file-missing.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/media-from-duplicate.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/media-timeline-first-without-start-gesture.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/scenario-assertion-failed.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/scenario-media-timeline.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/scenario-selector-not-found.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/scenario-unknown-timeline.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-compile-failed.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-console-error.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-console-warn.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-engine-error.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-host-export-missing.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-run-failed.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-selector-miss.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-step-timeout.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-timeout.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-unhandled-rejection.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/smoke-unknown-timeline.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/timeline-container-not-in-layout.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown-listener-action.md
+?? packages/cli/src/mcp/knowledge/curriculum/host-modules-contract.md
+?? packages/cli/src/mcp/knowledge/curriculum/layout-html.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-control-flow-and-data.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-erased-parameters.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-event-actions.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-imports-and-assets.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-locales-and-languages.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-program-and-config.md
+?? packages/cli/src/mcp/knowledge/curriculum/operations/
+?? packages/cli/src/mcp/knowledge/curriculum/presentation-patterns.md
+?? packages/cli/src/mcp/knowledge/curriculum/provider-choice.md
+?? packages/cli/src/mcp/knowledge/curriculum/runtime-quirks.md
+?? packages/cli/src/mcp/knowledge/curriculum/runtime-state-pitfalls.md
+?? packages/cli/src/mcp/knowledge/curriculum/timing-models.md
+?? packages/cli/src/mcp/knowledge/curriculum/verification-ladder.md
+?? packages/cli/src/mcp/storyboard.ts
+?? packages/cli/src/mcp/tools/compile.ts
+?? packages/cli/src/mcp/tools/project.ts
+?? packages/cli/src/mcp/tools/smoke.ts
+?? packages/cli/src/smoke/scenario.ts
+?? packages/language/src/__tests__/__fixtures__/listener-actions/
+?? packages/language/src/__tests__/listener-action-names.spec.ts
+?? packages/language/src/compiler/__tests__/__fixtures__/loaded-documents/
+?? packages/language/src/compiler/__tests__/__fixtures__/timeline-review/
+?? packages/language/src/compiler/__tests__/timeline-review.spec.ts
+?? packages/language/src/compiler/__tests__/with-loaded-documents.spec.ts
+?? packages/language/src/compiler/timeline-review.ts
+?? packages/language/src/validators/operation-call/listener-action-validator.ts
+?? specs/058-mcp-server/phase-2-inspect-smoke-context/
+
+## git diff --stat
+ .github/workflows/ci.yml                           |   6 +-
+ AGENTS.md                                          |   6 +-
+ CHANGELOG.md                                       |  13 +-
+ evals/mcp/gate.ts                                  | 241 ++++++++-
+ evals/mcp/run.ts                                   |   5 +-
+ examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md   |  49 ++
+ examples/eligian-tour/presentation.eligian         |   4 +
+ examples/eligian-tour/tour.eligian                 |  30 ++
+ packages/cli/AGENTS.md                             |   2 +-
+ packages/cli/README.md                             | 185 ++++++-
+ packages/cli/package.json                          |   1 +
+ packages/cli/scripts/diagnostic-code-ranking.json  |  94 +++-
+ packages/cli/scripts/generate-knowledge.ts         | 420 ++++++++++-----
+ .../__fixtures__/mcp/docs-mini/overlays.json       |  19 +
+ .../__fixtures__/mcp/missing-overlays.json         |   1 -
+ .../mcp/review/non-literal-selector.eligian        |   3 +
+ packages/cli/src/__tests__/check-codes.spec.ts     |  25 +
+ packages/cli/src/__tests__/eval-cases.spec.ts      |  48 ++
+ packages/cli/src/__tests__/init.spec.ts            | 151 +++++-
+ packages/cli/src/__tests__/mcp-concurrency.spec.ts | 143 +++++-
+ packages/cli/src/__tests__/mcp-diagnostics.spec.ts | 150 +++++-
+ packages/cli/src/__tests__/mcp-docs.spec.ts        |  81 ++-
+ packages/cli/src/__tests__/mcp-init.spec.ts        | 143 +++++-
+ .../cli/src/__tests__/mcp-instructions.spec.ts     | 206 ++++++--
+ packages/cli/src/__tests__/mcp-knowledge.spec.ts   | 567 ++++++++++++++++++++-
+ packages/cli/src/__tests__/mcp-operations.spec.ts  |  41 +-
+ packages/cli/src/__tests__/mcp-render.spec.ts      |  54 +-
+ .../cli/src/__tests__/mcp-runtime-claims.spec.ts   | 363 ++++++++++++-
+ packages/cli/src/__tests__/mcp-server.spec.ts      | 110 +++-
+ packages/cli/src/__tests__/mcp-stdout.spec.ts      |  38 ++
+ packages/cli/src/__tests__/mcp-telemetry.spec.ts   |  46 ++
+ packages/cli/src/__tests__/package-bin.spec.ts     |  41 +-
+ packages/cli/src/__tests__/review.spec.ts          | 188 ++++++-
+ packages/cli/src/__tests__/smoke.spec.ts           | 121 ++++-
+ packages/cli/src/check/check-command.ts            |  25 +-
+ packages/cli/src/check/review.ts                   | 162 +++++-
+ packages/cli/src/init.ts                           |  25 +-
+ packages/cli/src/main.ts                           | 117 ++++-
+ packages/cli/src/mcp/diagnostics.ts                |  93 +++-
+ packages/cli/src/mcp/instructions.ts               | 107 +++-
+ packages/cli/src/mcp/knowledge/load.ts             |  12 +-
+ packages/cli/src/mcp/knowledge/render.ts           |  38 +-
+ packages/cli/src/mcp/knowledge/types.ts            |  30 +-
+ packages/cli/src/mcp/server.ts                     |  30 +-
+ packages/cli/src/mcp/stdio.ts                      |  16 +-
+ packages/cli/src/mcp/tools/docs.ts                 |  40 +-
+ packages/cli/src/mcp/tools/init.ts                 |  89 +---
+ packages/cli/src/mcp/tools/operations.ts           |  28 +-
+ packages/cli/src/smoke/dom-environment.ts          |  23 +
+ packages/cli/src/smoke/smoke-command.ts            | 136 ++++-
+ packages/cli/src/smoke/smoke-runner.ts             | 332 ++++++++++--
+ .../src/__tests__/diagnostic-code-registry.spec.ts |   1 +
+ packages/language/src/__tests__/mcp-entry.spec.ts  |   4 +
+ packages/language/src/compiler/index.ts            |   8 +
+ packages/language/src/compiler/pipeline/check.ts   | 118 +++--
+ .../language/src/dataflow/operation-dataflow.ts    |   2 +-
+ packages/language/src/eligian-validator.ts         |   1 +
+ packages/language/src/mcp.ts                       |   8 +
+ packages/language/src/starters/starters.ts         |   4 +-
+ packages/language/src/validators/codes.ts          |   3 +
+ .../src/validators/operation-call-validator.ts     |   8 +
+ specs/058-mcp-server/roadmap.md                    |   4 +-
+ 62 files changed, 4446 insertions(+), 613 deletions(-)

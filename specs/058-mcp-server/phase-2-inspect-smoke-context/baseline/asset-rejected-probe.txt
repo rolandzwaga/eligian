@@ -1,0 +1,258 @@
+T006 Step 0e probe: asset-rejected fixture search. RESULT: NONE FOUND (blocked).
+HEAD: a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f
+
+Why: the plan assumes validateLocalesJSON's schema check runs only in the compiler.
+It does not. ProgramAssetImportValidator.checkAssetLoading (packages/language/src/validators/program/asset-import-validator.ts:116)
+calls the same loadProgramAssets (compiler-integration.ts:226 -> validateLocalesJSON) and reports every
+result.errors entry as an error (asset-import-validator.ts:137/143, code locales-import-error etc.).
+It is registered in eligian-validator.ts:116. compileFile parses with parseSource(sourceCode, absoluteInputPath)
+(compile-file.ts:265), which runs that validator and throws CompilationError('Validation failed') at
+compile-file.ts:276 BEFORE its own loadProgramAssets/AssetError branch (compile-file.ts:293-301).
+So for an on-disk program the AssetError branch is unreachable, and check reports the same error.
+The only skip is isSyntheticDocumentUri (file:///<n>.eligian, file:///memory/<x>.eligian), not a committable fixture.
+
+Shared files of every variant:
+--- lib/anim.eligian
+library anim
+
+action reveal(selector: string) [
+  selectElement(selector)
+  addClass("visible")
+]
+--- layout.html
+<div id="app">
+  <div id="box">Hello</div>
+</div>
+--- main.eligian
+languages {
+  * "en-US" "English"
+}
+
+layout "./layout.html"
+locales "./locales.json"
+
+import { reveal } from "./lib/anim.eligian"
+
+timeline "Main" in "#app" using raf {
+  at 0s..2s reveal("#box")
+}
+
+=================== variant: number
+--- locales.json
+{"en-US":{"greeting":42}}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/number/main.eligian
+  6:9  error    Property "/en-US/greeting" must be a string. See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Property "/en-US/greeting" must be a string. See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: array
+--- locales.json
+{"en-US":["a"]}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/array/main.eligian
+  6:9  error    Property "/en-US" must be a object. See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Property "/en-US" must be a object. See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: badcode
+--- locales.json
+{"en_US":{"greeting":"hi"}}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/badcode/main.eligian
+  6:9  error    Invalid locale code "en_US". Use format like "en-US" or "nl-NL". See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Invalid locale code "en_US". Use format like "en-US" or "nl-NL". See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: empty
+--- locales.json
+{}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/empty/main.eligian
+  6:9  error    Locales file must contain at least one locale (e.g., "en-US"). See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Locales file must contain at least one locale (e.g., "en-US"). See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: topstring
+--- locales.json
+{"en-US":"hello"}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/topstring/main.eligian
+  6:9  error    Property "/en-US" must be a object. See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Property "/en-US" must be a object. See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: refbad
+--- locales.json
+{"en-US":{"$ref":"x.txt"}}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/refbad/main.eligian
+  6:9  error    must NOT be valid. See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: must NOT be valid. See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: nullval
+--- locales.json
+{"en-US":{"greeting":null}}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/nullval/main.eligian
+  6:9  error    Property "/en-US/greeting" must be a string. See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Property "/en-US/greeting" must be a string. See schema documentation for required fields and types
+  at 6:9
+
+  4 | 
+  5 | layout "./layout.html"
+> 6 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  7 | 
+  8 | import { reveal } from "./lib/anim.eligian"
+
+exit 1
+
+=================== variant: badhtml
+--- layout.html
+<div id="app"><div id="box">Hi</span></div>
+--- locales.json
+{"en-US":{"greeting":"hi"}}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+1 file, 0 errors, 0 warnings
+exit 0
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+✓ Compiled C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/badhtml/main.eligian → C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/badhtml/out.json
+exit 0
+
+=================== variant: valid
+--- locales.json
+{"en-US":{"greeting":"hi"}}
+$ node packages/cli/bin/cli.js check <variant>/main.eligian --max-warnings 0
+1 file, 0 errors, 0 warnings
+exit 0
+$ node packages/cli/bin/cli.js compile <variant>/main.eligian -o <scratch>/out.json
+✓ Compiled C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/valid/main.eligian → C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/variants/valid/out.json
+exit 0
+
+## RULING 2026-11-05 (main loop): fixture committed as __fixtures__/mcp/compile/compile-rejected/ (validation rejects; see spec SC-004(4))
+$ node packages/cli/bin/cli.js check <fixture>/main.eligian --max-warnings 0
+packages/cli/src/__tests__/__fixtures__/mcp/compile/compile-rejected/main.eligian
+  7:9  error    Property "/en-US/greeting" must be a string. See schema documentation for required fields and types  locales-import-error
+
+1 file, 1 error, 0 warnings
+exit 1
+$ node packages/cli/bin/cli.js compile <fixture>/main.eligian -o <scratch>/out.json
+
+Compilation failed:
+
+Validation Error: Property "/en-US/greeting" must be a string. See schema documentation for required fields and types
+  at 7:9
+
+  5 | languages { * "en-US" "English" }
+  6 | layout "./layout.html"
+> 7 | locales "./locales.json"
+              ^^^^^^^^^^^^^^^^
+  8 | import { fade } from "./lib/anim.eligian"
+  9 |
+
+exit 1

@@ -1,0 +1,1 @@
+tools/list: eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke

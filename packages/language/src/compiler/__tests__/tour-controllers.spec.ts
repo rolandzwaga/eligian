@@ -33,7 +33,8 @@ describe('the tour detaches every controller its lifecycle blocks attach', () =>
   beforeAll(async () => {
     config = await Effect.runPromise(compile(readFileSync(TOUR, 'utf-8'), { sourceUri: TOUR }));
     balances = controllerBalance(config);
-  });
+    // the tour compiles in over 5 s under the full suite's load (058 Phase 2 T053 ruling)
+  }, 30_000);
 
   function balance(uri: string): ControllerBalance {
     const entry = balances.find(candidate => candidate.timeline === uri);

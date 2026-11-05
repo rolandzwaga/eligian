@@ -1,19 +1,15 @@
 /**
  * Spec 058 Phase 1 (FR-020, FR-036, FR-037; plan C7, C9): the knowledge card
  * renderers shared by `eligian_operations` and the docs generator, and the
- * curated Eligius lint rule list.
+ * curated Eligius lint rule list. Phase 2 (FR-073, FR-074; plan F1): the operation
+ * and controller overlays; the controller status comes from the overlay only.
  */
 import { getOperationSignature, type OperationSignature } from '@eligian/language';
 import { CONTROLLERS, TIMELINE_EVENTS } from '@eligian/language/mcp';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, it, test } from 'vitest';
 import { ELIGIUS_LINT_RULES } from '../mcp/knowledge/lint-rules.js';
-import {
-  CONTROLLER_STATUS,
-  controllerCard,
-  eventLine,
-  eventName,
-  operationCard,
-} from '../mcp/knowledge/render.js';
+import * as render from '../mcp/knowledge/render.js';
+import { controllerCard, eventLine, eventName, operationCard } from '../mcp/knowledge/render.js';
 
 function signature(name: string): OperationSignature {
   const found = getOperationSignature(name);
@@ -71,25 +67,41 @@ describe('operationCard', () => {
     expect(lines[2].startsWith('ERASES:')).toBe(true);
     expect(lines).toContain('CALL: score(points)');
   });
+
+  it('operationCard appends the overlay card', () => {
+    const overlay = { card: 'Select once, then chain addClass / removeClass on the selection.' };
+    const plain = operationCard(signature('addClass'));
+    const card = operationCard(signature('addClass'), { overlay });
+    expect(card).toBe(`${plain}\n\n${overlay.card}`);
+    expect(card.split('\n')[0]).toBe('NEEDS: selectedElement');
+    // no overlay: the card is unchanged
+    expect(operationCard(signature('addClass'), {})).toBe(plain);
+    // a host card takes an overlay the same way
+    const host = operationCard(signature('addClass'), { host: true, overlay });
+    expect(host.split('\n')[0]).toBe('NEEDS: none declared (host operations declare no needs)');
+    expect(host.endsWith(`\n\n${overlay.card}`)).toBe(true);
+  });
 });
 
 describe('controllers', () => {
-  test('status of Routing and Lottie', () => {
-    expect(CONTROLLER_STATUS).toEqual({
-      RoutingController: 'do-not-use',
-      LottieController: 'constrained',
-    });
+  it('controllerCard takes its status from the overlay', () => {
+    // FR-074: the overlay statuses are the single source; the render table is gone
+    expect(render).not.toHaveProperty('CONTROLLER_STATUS');
+    expect(render).not.toHaveProperty('STATUS_REASON');
     expect(CONTROLLERS).toHaveLength(9);
     for (const controller of CONTROLLERS) {
-      const first = controllerCard(controller).split('\n')[0];
-      const status = CONTROLLER_STATUS[controller.name];
-      if (status) {
-        expect(first.startsWith(`STATUS: ${status}`)).toBe(true);
-      } else {
-        expect(controllerCard(controller)).not.toContain('STATUS:');
+      // no overlay: no status line
+      expect(controllerCard(controller)).not.toContain('STATUS:');
+      for (const status of ['recommended', 'constrained', 'do-not-use'] as const) {
+        const overlay = { status, card: `Overlay card of ${controller.name}.` };
+        const card = controllerCard(controller, overlay);
+        const lines = card.split('\n');
+        expect(lines[0]).toBe(`STATUS: ${status}`);
+        expect(lines[1]).toBe(`CONTROLLER: ${controller.name}`);
+        expect(lines.filter(line => line.startsWith('STATUS:'))).toHaveLength(1);
+        expect(card.endsWith(`\n\n${overlay.card}`)).toBe(true);
       }
     }
-    expect(CONTROLLERS.filter(c => !CONTROLLER_STATUS[c.name])).toHaveLength(7);
   });
 
   test('a card gives needs, parameters and the addController form', () => {

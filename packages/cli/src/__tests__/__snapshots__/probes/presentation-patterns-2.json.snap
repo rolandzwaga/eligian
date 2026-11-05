@@ -1,0 +1,182 @@
+{
+  "actions": {
+    "__nav__slide_2_4e093620": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Slide 2",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "__nav__slide_1_51093ad9": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Slide 1",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Slide 1": {
+      "type": "animation",
+      "duration": 0,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "ArrowRight",
+                "actions": [
+                  "__nav__slide_2_4e093620"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "Slide 2": {
+      "type": "animation",
+      "duration": 0,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "ArrowLeft",
+                "actions": [
+                  "__nav__slide_1_51093ad9"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

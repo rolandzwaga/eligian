@@ -1,0 +1,7 @@
+// Scenario visible: #inner is hidden by its parent's display: none (from the injected CSS)
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..30s [ log("playing") ] []
+}

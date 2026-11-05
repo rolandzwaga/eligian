@@ -181,14 +181,17 @@ describe('the eligian npm package', () => {
     }
   );
 
-  // jsdom, esbuild and effect/ai load only on the paths that use them
-  test.skipIf(!built)('no static import of jsdom, esbuild or effect/ai', () => {
+  // jsdom, esbuild, effect/ai and the eligius engine load only on the paths that use them
+  // (SC-018; `eligius/lint` is allowed)
+  test.skipIf(!built)('no static import of jsdom, esbuild, effect/ai or the eligius engine', () => {
     const code = readFileSync(bundlePath, 'utf-8');
     const staticImports = [
       ...code.matchAll(
-        /(?:^|[;\n])\s*import\s*[^;'"(]*?from\s*["'](jsdom|esbuild|effect\/ai)(\/[^"']*)?["']/g
+        /(?:^|[;\n])\s*import\s*[^;'"(]*?from\s*["'](jsdom|esbuild|effect\/ai|eligius(?!\/))(\/[^"']*)?["']/g
       ),
-      ...code.matchAll(/(?:^|[;\n])\s*import\s*["'](jsdom|esbuild|effect\/ai)(\/[^"']*)?["']/g),
+      ...code.matchAll(
+        /(?:^|[;\n])\s*import\s*["'](jsdom|esbuild|effect\/ai|eligius(?!\/))(\/[^"']*)?["']/g
+      ),
     ].map(match => match[0].trim());
     expect(staticImports).toEqual([]);
     expect(code).toMatch(/\bimport\(\s*["']jsdom["']\s*\)/);
@@ -218,9 +221,37 @@ describe('the eligian npm package', () => {
             .map(file => `dist/docs/${file.split('\\').join('/')}`)
         : [];
       expect(docs).toContain('dist/docs/index.json');
-      expect(packed.files.map(file => file.path).sort()).toEqual(
+      const packedPaths = packed.files.map(file => file.path).sort();
+      expect(packedPaths).toEqual(
         ['LICENSE', 'README.md', 'bin/cli.js', 'dist/cli.mjs', 'package.json', ...docs].sort()
       );
+      // FR-096: the sources' docs are among them: every hand-written chunk and overlay
+      // (`curriculum/*.md`, `curriculum/{diagnostics,operations,controllers}/*.md`), one
+      // `generated/examples/<id>.md` per `// @mcp-example <id>` marker of the tour, the overlay map
+      const curriculumDir = resolve(packageRoot, 'src', 'mcp', 'knowledge', 'curriculum');
+      const markdown = (dir: string) =>
+        readdirSync(resolve(curriculumDir, dir)).filter(name => name.endsWith('.md'));
+      const curriculum = [
+        ...markdown('.').map(name => `dist/docs/curriculum/${name}`),
+        ...['diagnostics', 'operations', 'controllers'].flatMap(dir =>
+          markdown(dir).map(name => `dist/docs/curriculum/${dir}/${name}`)
+        ),
+      ];
+      const tourDir = resolve(packageRoot, '..', '..', 'examples', 'eligian-tour');
+      const examples = readdirSync(tourDir)
+        .filter(name => name.endsWith('.eligian'))
+        .flatMap(name => [
+          ...readFileSync(resolve(tourDir, name), 'utf-8').matchAll(
+            /^\s*\/\/\s*@mcp-example\s+([a-z0-9]+(?:-[a-z0-9]+)*)\s/gm
+          ),
+        ])
+        .map(match => `dist/docs/generated/examples/${match[1]}.md`);
+      expect(curriculum.length).toBeGreaterThan(0);
+      expect(examples.length).toBeGreaterThan(0);
+      const missing = [...curriculum, ...examples, 'dist/docs/overlays.json'].filter(
+        file => !packedPaths.includes(file)
+      );
+      expect(missing).toEqual([]);
     }
   );
 });

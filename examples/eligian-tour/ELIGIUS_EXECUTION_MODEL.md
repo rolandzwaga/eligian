@@ -46,6 +46,11 @@ A run starts from the data passed to `start()` / `end()`, or `{}`. (not probed, 
   writes `operationData.selectedElement`. (not probed, Phase 0)
 - `addClass` and the other DOM operations **read** `operationData.selectedElement`;
   they never select on their own. (not probed, Phase 0)
+- A selector that matches nothing is not an error: `selectedElement` is an empty
+  selection, and `addClass` and the other DOM operations on it do nothing, so the
+  block runs on and the screen does not change. A selector that exists only in the
+  CSS passes the compiler's selector check and still matches nothing in the layout;
+  `eligian smoke --strict` reports it as `smoke-selector-miss`. (probed: "a selectElement that matches no element raises no engine error, and the operations after it change nothing")
 
 The operation metadata (`src/operation/metadata/*.ts`) declares what each operation
 needs and produces: `dependentProperties` (must already be present, e.g.
@@ -130,6 +135,21 @@ The scope holds `currentIndex`, `newIndex` (set to jump), the loop fields
 - A variable set with `setVariable` belongs to the action: set inside a `when` or
   `forEach` it is the same variable outside it. (not probed, Phase 0)
 
+### Quirks of `when` expressions (mined from eligius' `src/test/differential/quirks.spec.ts`)
+
+- A bare operand is true unless it is falsy in JavaScript, so the **strings** `"false"`
+  and `"0"` are true, while the number `0` and the boolean `false` are not: an `if (v)`
+  over a parameter that arrives as the text `"false"` takes the `if` branch. (probed: "a when condition treats the strings 'false' and '0' as true")
+  The compiler folds a literal condition by the same rule (`if ("false")` compiles to
+  `when` `"true"`, with a type warning).
+- `==` against a property chain that does not resolve is strict: with no `missing` in
+  the operationData, `$operationdata.missing == null` is false, so the `else` branch
+  runs. Test a key you set yourself (`setOperationData({ shown: false })`), not the
+  absence of one. (probed: "an == comparison against a property chain that does not resolve is strict, so it is false even against null")
+- `!` binds tighter than `==`: `!a == b` is `(!a) == b`, so with `a = 0` it is
+  `true == b`. Eligian parses it the same way and emits parentheses only for
+  `!(a == b)`; write them when that is what you mean. (probed: "! binds tighter than ==, so !a == b compares (!a) with b")
+
 ## 5. Calling an action (the unified call syntax)
 
 A DSL action call compiles to `requestAction` + `startAction`:
@@ -163,6 +183,13 @@ controller's metadata (`LANGUAGE_SPEC.md` "Controllers") and compiles to
   `controllerInstance.init(operationData)` (the **whole** operationData, so the
   controller's parameters ride along in it) and `attach(eventbus)`, and registers the
   controller on the element (`src/operation/add-controller-to-element.ts`). (not probed, Phase 0)
+- That operationData is the block's own object, not a copy: a controller that keeps
+  it (`ProgressbarController`, `NavigationController` and `RoutingController` store it
+  as their `operationData`) sees every key the rest of the block adds after the
+  `addController`. Keep what follows an `addController` free of keys the controller
+  reads, or add the controller last. (probed: "addController hands the controller the block's operationData itself, not a copy")
+  The DOMEventListenerController and the KeyboardController copy their
+  `actionOperationData` instead: their listener actions start from that copy (§2). (probed: "a listener action starts with the listener's actionOperationData plus eventTarget, and eventKey for keys")
 
 **Controllers are not detached on a timeline switch**: a controller attached in
 `on enter` outlives the chapter unless `on leave` removes it. (probed: "a controller attached in on enter survives a timeline switch unless on leave removes it")
@@ -180,6 +207,14 @@ was not found on the given element` when there is none;
   `duration.end`; a missing end (or `-1`) is an **open end**, read as Infinity. (not probed, Phase 0)
 - Position updates dispatch every start and end between the previous and the
   current position, in order (`_dispatchActionsBetween`, `src/eligius-engine.ts`). (not probed, Phase 0)
+  The order is the position's, not the source's: with `at 300ms…` written before
+  `at 100ms…`, playback starts the 100 ms event first. (probed: "during playback the starts run in position order, whatever the order of the events in the source")
+- A `raf` timeline's position moves in ticks of 100 ms (`RafPositionSource`,
+  `DEFAULT_TICK_INTERVAL`), so a start between two ticks runs at the next one:
+  stagger items 40 ms apart from 100 ms (0.1, 0.14, 0.18) start one at 0.1 and two
+  together at 0.2. (probed: "a raf timeline advances in 100 ms ticks, so starts less than a tick apart run in the same tick")
+  A `custom` timeline compiles to the same `animation` type and plays on the same
+  ticks. (probed: "a custom timeline plays on the same 100 ms ticks as a raf timeline")
 - A seek or a large jump instead **reconciles** (`_reconcileActions`): it ends the
   active actions that no longer cover the position and starts the inactive ones
   that do, the ends first. (probed: "a seek ends the active actions that no longer cover the position and starts the inactive ones that do")
@@ -235,6 +270,20 @@ was not found on the given element` when there is none;
   seek emits without playback, `seek(0)` included. (probed: "the first timeline starts on the first position update (start or seek), not at init")
   So in headless jsdom nothing starts until `start()` or a seek (`eligian smoke` seeks
   every timeline to each of its event boundaries).
+
+### 7c. Time units and work in flight
+
+- Two clocks: the times of a range (`at 0s..1s`, `duration: { start: 0, end: 1 }`)
+  are seconds on the timeline, while `wait` takes milliseconds of wall-clock time:
+  `wait(300)` holds the block for 0.3 s (`src/operation/wait.ts`, a `setTimeout`). (probed: "wait takes milliseconds, while the times of a range are timeline seconds")
+- `animate` takes its duration in milliseconds too, and the block goes on when the
+  animation has finished (`src/operation/animate.ts`, jQuery's `animate`). (probed: "animate takes its duration in milliseconds")
+- Nothing cancels a `wait` that has begun: a pause does not stop the clock it waits
+  on, and a seek or a switch that ends the range lets the operations after the wait
+  run first, because the end waits for the running start. (probed: "a wait in flight is not cancelled by a pause, a seek or a timeline switch")
+- A listener action (a click or key handler) is not a timeline action, so nothing
+  ends it: a switch to another timeline does not wait for it, and its operations
+  after a `wait` run on the next view. (probed: "a listener action runs outside the timeline, so its operations after a wait run after a switch to another timeline")
 
 ## 8. Eventbus: broadcasts and requests
 

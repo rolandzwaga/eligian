@@ -14,6 +14,7 @@ import type {
   EventActionIR,
   IEndableActionConfiguration,
   IEngineInfo,
+  IEventActionConfiguration,
   ILabel,
   IOperationConfiguration,
   ITimelineActionConfiguration,
@@ -469,6 +470,19 @@ export function stripSourceLocation(action: EndableActionIR): IEndableActionConf
     name: action.name,
     startOperations: action.startOperations.map(stripOperationSourceLocation),
     endOperations: action.endOperations.map(stripOperationSourceLocation),
+  };
+}
+
+/**
+ * Spec 058 Phase 2 FR-013: Strip sourceLocation from EventActionIR → IEventActionConfiguration
+ */
+export function stripEventActionSourceLocation(action: EventActionIR): IEventActionConfiguration {
+  return {
+    id: action.id,
+    name: action.name,
+    eventName: action.eventName,
+    eventTopic: action.eventTopic,
+    startOperations: action.startOperations.map(stripOperationSourceLocation),
   };
 }
 

@@ -11,6 +11,9 @@ action reveal(target: string) [
 ]
 
 timeline "concatenated" in "#stage" using raf {
+  on enter [
+    selectElement("#stage")
+  ]
   on leave [
     resetView("#panel")
   ]

@@ -38,6 +38,19 @@ const CLAIMS = [
   'on leave does not run when the content ends',
   'a switch to the timeline that is already current is a no-op',
   'the first timeline starts on the first position update (start or seek), not at init',
+  // Phase 2 (FR-071): the claims of timing-models, runtime-quirks and runtime-state-pitfalls
+  'wait takes milliseconds, while the times of a range are timeline seconds',
+  'animate takes its duration in milliseconds',
+  'a wait in flight is not cancelled by a pause, a seek or a timeline switch',
+  'a listener action runs outside the timeline, so its operations after a wait run after a switch to another timeline',
+  "a when condition treats the strings 'false' and '0' as true",
+  'an == comparison against a property chain that does not resolve is strict, so it is false even against null',
+  '! binds tighter than ==, so !a == b compares (!a) with b',
+  "addController hands the controller the block's operationData itself, not a copy",
+  'during playback the starts run in position order, whatever the order of the events in the source',
+  'a raf timeline advances in 100 ms ticks, so starts less than a tick apart run in the same tick',
+  'a custom timeline plays on the same 100 ms ticks as a raf timeline',
+  'a selectElement that matches no element raises no engine error, and the operations after it change nothing',
 ] as const;
 
 const FIXTURES = fileURLToPath(new URL('./__fixtures__/runtime-claims/', import.meta.url));
@@ -115,11 +128,14 @@ async function probe(
   }
 }
 
-/** Compile and play a probe with `eligian smoke`'s seek-every-boundary run. */
-async function smokeProbe(body: string): Promise<void> {
+/**
+ * Compile and play a probe with `eligian smoke`'s seek-every-boundary run; the problems are
+ * exactly `expectedCodes` (none by default).
+ */
+async function smokeProbe(body: string, expectedCodes: readonly string[] = []): Promise<void> {
   const { config, map, host } = await compileProbe(body);
   const result = await smokeConfig(config, map, host ? { host } : {});
-  expect(result.problems).toEqual([]);
+  expect(result.problems.map(problem => problem.code)).toEqual(expectedCodes);
 }
 
 type ProbeGlobal = { __eligianProbe?: Recorded[] };
@@ -316,10 +332,14 @@ timeline "B" in "#stage" using raf {
   });
 
   test(CLAIMS[6], async () => {
-    await smokeProbe(`timeline "T" in "#stage" using raf {
+    await smokeProbe(
+      `timeline "T" in "#stage" using raf {
   at 0s..1s [ selectElement("#a") recordBag("before", 0) returnUndefined() recordBag("after", 0) ] [ recordBag("end", 0) ]
 }
-`);
+`,
+      // FR-033: smoke reports the undefined return once, and the run goes on
+      ['host-operation-returned-non-object']
+    );
     expect(bagKeys(entry('before'))).toContain('selectedElement');
     expect(bagKeys(entry('after'))).toEqual([]);
   });
@@ -514,9 +534,340 @@ timeline "T" in "#stage" using raf {
     });
   });
 
+  test(CLAIMS[15], async () => {
+    const body = `timeline "T" in "#stage" using raf {
+  at 0s..1s [ recordBag("before", 0) wait(300) recordBag("waited", 0) ] [ recordBag("end", 0) ]
+}
+`;
+    // The range is in seconds on the timeline
+    const { config } = await compileProbe(body);
+    expect(config.timelines[0].timelineActions[0].duration).toEqual({ start: 0, end: 1 });
+
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await withFakeTimers(window, async () => {
+        const seeking = engine.seek(0);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(labels()).toContain('before');
+        // The wait is in milliseconds: not done after 250 ms, done after 350 ms
+        await vi.advanceTimersByTimeAsync(250);
+        expect(labels()).not.toContain('waited');
+        await vi.advanceTimersByTimeAsync(100);
+        expect(labels()).toContain('waited');
+        await seeking;
+      });
+    });
+  });
+
+  test(CLAIMS[16], async () => {
+    await probe(
+      `timeline "T" in "#stage" using raf {
+  at 0s..1s [ selectElement("#a") animate({ opacity: 0 }, 300) recordBag("animated", 0) ] [ recordBag("end", 0) ]
+}
+`,
+      async (engine, window) => {
+        await engine.init();
+        const began = performance.now();
+        const seeking = engine.seek(0);
+        // Real timers: jQuery's animation runs on the window's own clock
+        await vi.waitFor(() => expect(labels()).toContain('animated'), {
+          timeout: 5000,
+          interval: 10,
+        });
+        const elapsed = performance.now() - began;
+        expect(elapsed).toBeGreaterThanOrEqual(250);
+        expect(elapsed).toBeLessThan(5000);
+        expect(window.document.getElementById('a')?.style.opacity).toBe('0');
+        await seeking;
+      }
+    );
+  });
+
+  test(CLAIMS[17], async () => {
+    const body = `timeline "A" in "#stage" using raf {
+  at 0s..2s [ recordBag("start", 0) wait(500) recordBag("waited", 0) ] [ recordBag("end", 0) ]
+  at 4s..5s [ recordBag("later", 0) ] [ recordBag("later-end", 0) ]
+}
+timeline "B" in "#stage" using raf {
+  at 0s..1s [ recordBag("B-start", 0) ] [ recordBag("B-end", 0) ]
+}
+`;
+    // A pause during playback
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await withFakeTimers(window, async () => {
+        const started = engine.start();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(labels()).toContain('start');
+        await engine.pause();
+        await vi.advanceTimersByTimeAsync(600);
+        await started;
+        expect(labels()).toContain('waited');
+        expect(labels()).not.toContain('end');
+      });
+    });
+
+    // A seek past the range: the end waits for the start's wait
+    clearLog();
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await withFakeTimers(window, async () => {
+        const first = engine.seek(0);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(labels()).toContain('start');
+        const second = engine.seek(4.5);
+        await vi.advanceTimersByTimeAsync(600);
+        await first;
+        await second;
+        const seen = labels();
+        expect(seen).toContain('waited');
+        expect(seen).toContain('later');
+        expect(seen.indexOf('waited')).toBeLessThan(seen.indexOf('end'));
+      });
+    });
+
+    // A switch to another timeline
+    clearLog();
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await withFakeTimers(window, async () => {
+        const first = engine.seek(0);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(labels()).toContain('start');
+        const switched = engine.switchTimeline('B', 0);
+        await vi.advanceTimersByTimeAsync(600);
+        await first;
+        await switched;
+        expect(engine.currentTimelineUri).toBe('B');
+        expect(labels()).toContain('waited');
+        expect(labels()).toContain('B-start');
+      });
+    });
+  });
+
+  test(CLAIMS[18], async () => {
+    await probe(
+      `action flash() [ recordBag("flash-start", 0) wait(3000) recordBag("flash-end", 0) ]
+timeline "A" in "#stage" using raf {
+  on enter [ on click "#btn" run flash() ]
+  on leave [ selectElement("#btn") removeControllerFromElement("DOMEventListenerController") ]
+  at 0s..1s [ recordBag("A-start", 0) ] [ recordBag("A-end", 0) ]
+}
+timeline "B" in "#stage" using raf {
+  on enter [ recordBag("B-enter", 0) ]
+  at 0s..1s [ recordBag("B-start", 0) ] [ recordBag("B-end", 0) ]
+}
+`,
+      async (engine, window) => {
+        await engine.init();
+        await withFakeTimers(window, async () => {
+          const first = engine.seek(0);
+          await vi.advanceTimersByTimeAsync(0);
+          await first;
+          window.document
+            .getElementById('btn')
+            ?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+          await vi.advanceTimersByTimeAsync(0);
+          expect(labels()).toContain('flash-start');
+          // The switch does not wait for the listener action
+          const switched = engine.switchTimeline('B', 0);
+          await vi.advanceTimersByTimeAsync(0);
+          await switched;
+          expect(engine.currentTimelineUri).toBe('B');
+          expect(labels()).toContain('B-enter');
+          expect(labels()).not.toContain('flash-end');
+          await vi.advanceTimersByTimeAsync(3000);
+          const seen = labels();
+          expect(seen).toContain('flash-end');
+          expect(seen.indexOf('B-enter')).toBeLessThan(seen.indexOf('flash-end'));
+        });
+      }
+    );
+  });
+
+  test(CLAIMS[19], async () => {
+    await probe(
+      `action check(v) [ if (v) { recordBag("truthy", v) } ]
+timeline "T" in "#stage" using raf {
+  at 0s..1s [ check("false") check("0") check(0) check(false) ] [ recordBag("end", 0) ]
+}
+`,
+      async engine => {
+        await engine.init();
+        await engine.seek(0);
+        await settle();
+        expect(
+          recorded()
+            .filter(e => e.label === 'truthy')
+            .map(e => e.value)
+        ).toEqual(['false', '0']);
+      }
+    );
+  });
+
+  test(CLAIMS[20], async () => {
+    await probe(
+      `timeline "T" in "#stage" using raf {
+  at 0s..1s [
+    if ($operationdata.missing == null) { recordBag("equal", 0) } else { recordBag("not-equal", 0) }
+  ] [ recordBag("end", 0) ]
+}
+`,
+      async engine => {
+        await engine.init();
+        await engine.seek(0);
+        await settle();
+        expect(labels()).toContain('not-equal');
+        expect(labels()).not.toContain('equal');
+      }
+    );
+  });
+
+  test(CLAIMS[21], async () => {
+    await probe(
+      `action compare(a, b) [ if (!a == b) { recordBag("matched", b) } ]
+timeline "T" in "#stage" using raf {
+  at 0s..1s [ compare(0, false) compare(0, true) ] [ recordBag("end", 0) ]
+}
+`,
+      async engine => {
+        await engine.init();
+        await engine.seek(0);
+        await settle();
+        // (!0) == false is false and (!0) == true is true; !(0 == false) would be true
+        expect(
+          recorded()
+            .filter(e => e.label === 'matched')
+            .map(e => e.value)
+        ).toEqual([true]);
+      }
+    );
+  });
+
+  test(CLAIMS[22], async () => {
+    await probe(
+      `timeline "T" in "#stage" using raf {
+  at 0s..1s [
+    selectElement("#a")
+    addController("ProgressbarController")
+    recordBag("added-later", 0)
+    getControllerFromElement("ProgressbarController")
+    recordBag("seen", $operationdata.controllerInstance.operationData.label)
+  ] [ selectElement("#a") removeControllerFromElement("ProgressbarController") ]
+}
+`,
+      async engine => {
+        await engine.init();
+        await engine.seek(0);
+        await settle();
+        // A key the block added after addController is in the controller's operationData
+        expect(entry('seen')?.value).toBe('added-later');
+      }
+    );
+  });
+
+  test(CLAIMS[23], async () => {
+    const body = `timeline "T" in "#stage" using raf {
+  at 300ms..1s [ recordBag("late", 0) ] [ recordBag("late-end", 0) ]
+  at 100ms..1s [ recordBag("early", 0) ] [ recordBag("early-end", 0) ]
+}
+`;
+    // The config keeps the source order
+    const { config } = await compileProbe(body);
+    expect(config.timelines[0].timelineActions.map(action => action.duration.start)).toEqual([
+      0.3, 0.1,
+    ]);
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await withFakeTimers(window, async () => {
+        const started = engine.start();
+        await vi.advanceTimersByTimeAsync(450);
+        await started;
+        const seen = labels();
+        expect(seen).toContain('early');
+        expect(seen).toContain('late');
+        expect(seen.indexOf('early')).toBeLessThan(seen.indexOf('late'));
+      });
+    });
+  });
+
+  /**
+   * Play a 40 ms stagger of three items from 100 ms: after each 100 ms of the clock, the
+   * position and the number of items started so far, until the position reaches 0.3.
+   */
+  const staggerTicks = async (provider: string): Promise<Array<[number, number]>> => {
+    clearLog();
+    const body = `timeline "T" in "#stage" using ${provider} {
+  stagger 40ms ["#a", "#b", "#btn"] at 100ms for 1s [ recordBag("item", 0) ]
+}
+`;
+    const { config } = await compileProbe(body);
+    expect(config.timelines[0].type).toBe('animation');
+    expect(config.timelines[0].timelineActions.map(action => action.duration.start)).toEqual([
+      0.1, 0.14, 0.18,
+    ]);
+    const samples: Array<[number, number]> = [];
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await withFakeTimers(window, async () => {
+        const started = engine.start();
+        await vi.advanceTimersByTimeAsync(0);
+        for (let step = 0; step < 10 && engine.position < 0.3; step++) {
+          await vi.advanceTimersByTimeAsync(100);
+          samples.push([engine.position, labels().filter(label => label === 'item').length]);
+        }
+        await engine.pause();
+        await started;
+      });
+    });
+    return samples;
+  };
+
+  test(CLAIMS[24], async () => {
+    const samples = await staggerTicks('raf');
+    // The position moves in steps of 0.1 s, and never stops at 0.14 or 0.18
+    const positions = [...new Set(samples.map(([position]) => position))];
+    expect(positions.filter(position => position > 0)).toEqual([0.1, 0.2, 0.3]);
+    const startedAt = new Map(samples);
+    // 0.1: the first item; 0.2: the items at 0.14 and 0.18 together
+    expect(startedAt.get(0.1)).toBe(1);
+    expect(startedAt.get(0.2)).toBe(3);
+  });
+
+  test(CLAIMS[25], async () => {
+    expect(await staggerTicks('custom')).toEqual(await staggerTicks('raf'));
+  });
+
+  test(CLAIMS[26], async () => {
+    // `.on` is a class of the probe's CSS that no element of its layout carries
+    const body = `timeline "T" in "#stage" using raf {
+  at 0s..1s [ selectElement(".on") addClass("on") recordBag("after-miss", 0) ] [ selectElement(".on") removeClass("on") ]
+}
+`;
+    await probe(body, async (engine, window) => {
+      await engine.init();
+      await engine.seek(0);
+      await settle();
+      expect(labels()).toContain('after-miss');
+      expect(window.document.querySelectorAll('.on')).toHaveLength(0);
+    });
+    clearLog();
+    // eligian smoke reports the miss only in strict mode
+    const { config, map, host } = await compileProbe(body);
+    const relaxed = await smokeConfig(config, map, host ? { host } : {});
+    expect(relaxed.problems).toEqual([]);
+    expect(labels()).toContain('after-miss');
+    clearLog();
+    const strict = await smokeConfig(config, map, host ? { host, strict: true } : { strict: true });
+    const codes = strict.problems.map(problem => problem.code);
+    expect(codes.length).toBeGreaterThan(0);
+    expect(codes.every(code => code === 'smoke-selector-miss')).toBe(true);
+    expect(labels()).toContain('after-miss');
+  });
+
   test('ELIGIUS_EXECUTION_MODEL.md states every probed claim', () => {
     const document = fs.readFileSync(EXECUTION_MODEL, 'utf-8');
-    expect(CLAIMS).toHaveLength(15);
+    expect(CLAIMS).toHaveLength(27);
     expect(CLAIMS.filter(title => !document.includes(title))).toEqual([]);
   });
 });

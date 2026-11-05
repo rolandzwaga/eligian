@@ -1,0 +1,52 @@
+// The eligian_project fixture (spec 058 phase 2, SC-005): timelines A and B share one
+// video file (media-from-duplicate on B), C plays a missing audio file (media-file-missing),
+// D is a raf timeline in a container the layout lacks (timeline-container-not-in-layout),
+// with an `on enter` block. `highlight(target)` passes `target` to selectElement.
+languages {
+  * "en-US" "English"
+    "nl-NL" "Nederlands"
+}
+layout "./layout.html"
+styles "./styles.css"
+locales "./locales.json"
+import theme from "./theme.css"
+import { fade } from "./lib/anim.eligian"
+
+extensions "./host.ts" {
+  operation trackEvent(eventName: string, weight?: number)
+  controller Confetti(count: number)
+  function formatPrice
+}
+
+const beat = 2s
+
+action highlight(target) [
+  selectElement(target)
+  addClass("lit")
+]
+
+on event "language-change" action languageChanged(languageCode: string) [
+  selectElement("#title")
+  addClass("lit")
+]
+
+timeline "A" in "#stage" using video from "./media/present.mp4" {
+  at 0s..1s highlight("#title")
+}
+
+timeline "B" in "#stage" using video from "./media/present.mp4" {
+  at 0s..1s highlight("#title")
+}
+
+timeline "C" in "#stage" using audio from "./media/missing.mp3" {
+  at 0s..1s fade("#title")
+}
+
+timeline "D" in ".ghostc" using raf {
+  on enter [
+    selectElement("#title")
+    addClass("lit")
+  ]
+  at 0s..@beat highlight("#title")
+  at 2s..3s fade("#subtitle")
+}

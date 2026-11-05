@@ -1,10 +1,12 @@
 /**
  * Spec 058 Phase 1 (FR-019; plan C9 "docs"): the `eligian_docs` tool.
  *
- * No argument → the index: every `index.json` entry, non-operation entries with their card,
- * `kind: operation` entries as `{ id, title }` only. `ids` → their cards, or with `detail`
- * their bodies up to 6,000 words per response (the rest in `notReturned`). `query` → the top
- * 8 search hits with their cards. Unknown ids come back with the 3 closest known ids. Several
+ * No argument → the index: every `index.json` entry except the operations (Phase 2 FR-077
+ * ruling: `eligian_operations` has them; `operations.count` and `operations.see` say so),
+ * `kind: example` entries (FR-075) as `{ id, title }` only, the others as
+ * `{ id, title, kind, card }`. `ids` →
+ * their cards, or with `detail` their bodies up to 6,000 words per response (the rest in
+ * `notReturned`). `query` → the top 8 search hits with their cards. Unknown ids come back with the 3 closest known ids. Several
  * inputs in one call are answered together in one payload.
  *
  * `Tool` is `@stability unstable` (roadmap decision 1: `effect` is pinned exactly).
@@ -24,7 +26,8 @@ export const KEYWORDS: readonly string[] = ['eligian', 'docs', 'eligius'];
 
 export const DESCRIPTION =
   'Eligian docs: the curated knowledge for writing Eligian (.eligian) and Eligius presentations. ' +
-  'No arguments: the index (one card per chunk; operations by id and title only). ' +
+  'No arguments: the index (one card per chunk; examples by id and title; operations are not ' +
+  'listed, `eligian_operations` has them). ' +
   'ids (at most 6): their cards; with detail: true their full bodies, up to 6,000 words per ' +
   'response, the rest listed in notReturned. query: the 8 best matching chunks with their ' +
   'cards. Unknown ids come back with the closest known ids. Read `syntax-cheatsheet` and ' +
@@ -54,6 +57,8 @@ const IndexItem = Schema.Struct({
 export const Success = Schema.Struct({
   header: Schema.String,
   index: Schema.optionalKey(Schema.Array(IndexItem)),
+  /** No arguments: the operations are not in `index` (FR-077 ruling); this says where they are */
+  operations: Schema.optionalKey(Schema.Struct({ count: Schema.Finite, see: Schema.String })),
   cards: Schema.optionalKey(
     Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String, card: Schema.String }))
   ),
@@ -108,9 +113,18 @@ export const makeTool = (ai: EffectAi) =>
     .annotate(ai.Tool.Readonly, true)
     .annotate(ai.Tool.Meta, { 'anthropic/alwaysLoad': true });
 
-/** Operation entries by id and title only: their cards come through `ids` or `eligian_operations`. */
+/** Kinds listed by id and title only: their cards come through `ids` (or `eligian_operations`). */
+const TITLE_ONLY: ReadonlySet<IndexEntry['kind']> = new Set(['operation', 'example']);
+
+/**
+ * An index item (FR-077, ruling 2026-11-05): a chunk is listed with its id, title, kind and
+ * card only. `use_cases`, `words` and `see` are detail data (`ids`), so the no-argument
+ * index stays within its 12,000-character budget with the Phase 2 chunks.
+ */
 const indexItem = (entry: IndexEntry): typeof IndexItem.Type =>
-  entry.kind === 'operation' ? { id: entry.id, title: entry.title } : entry;
+  TITLE_ONLY.has(entry.kind)
+    ? { id: entry.id, title: entry.title }
+    : { id: entry.id, title: entry.title, kind: entry.kind, card: entry.card };
 
 /** The bodies that fit in the word cap, in request order; the rest by id. */
 const bodiesOf = (knowledge: Knowledge, entries: readonly IndexEntry[]) => {
@@ -134,7 +148,17 @@ const answer = (params: Params, knowledge: Knowledge, head: string): Payload => 
   const ids = params.ids ?? [];
   const query = params.query?.trim() ?? '';
   if (ids.length === 0 && query === '') {
-    return { header: head, index: knowledge.index.map(indexItem) };
+    // FR-077 (ruling 2026-11-05): the operations are not listed; they have their own tool.
+    // Their ids still resolve through `ids`.
+    const listed = knowledge.index.filter(entry => entry.kind !== 'operation');
+    return {
+      header: head,
+      index: listed.map(indexItem),
+      operations: {
+        count: knowledge.index.length - listed.length,
+        see: "eligian_operations({}) lists them by category; eligian_docs({ ids: ['operation/<name>'] }) or eligian_operations({ names: [...] }) for a card",
+      },
+    };
   }
 
   const known = [...new Set(ids)].flatMap(id => byId.get(id) ?? []);

@@ -1,0 +1,77 @@
+SC-012 manual handshake (T057), Windows 11, 2026-11-05
+Node v24.7.0, npm 11.10.0, Claude Code 2.1.302
+SCRATCH = C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\sc012
+
+OUTCOME: PARTIAL. The server is listed and answers the MCP handshake, but
+`claude mcp list` reports it as "Pending approval", not "Connected": a project
+.mcp.json server needs an interactive approval in `claude` first (user-only step).
+
+## 1. Pack
+$ pnpm -C packages/language build && pnpm -C packages/cli pack --pack-destination $SCRATCH
+Tarball Details
+C:/Users/scab/AppData/Local/Temp/claude/.../scratchpad/sc012\eligian-1.1.0.tgz   (660138 bytes)
+
+## 2. Init
+$ node packages/cli/bin/cli.js init $SCRATCH/demo --template chapters --client claude
+Created C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/sc012/demo/ (Chapters starter): package.json, README.md, main.eligian, layout.html, styles.css, locales.json
+Agent file .mcp.json: written
+Agent file CLAUDE.md: written
+Agent file AGENTS.md: written
+exit=0
+
+demo/.mcp.json:
+{
+  "mcpServers": {
+    "eligian": {
+      "command": "node",
+      "args": [
+        "C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\sc012\demo\node_modules\eligian\bin\cli.js",
+        "mcp"
+      ]
+    }
+  }
+}
+
+## 3. Install the packed tarball (in demo)
+$ npm install $SCRATCH/eligian-1.1.0.tgz
+npm warn EBADENGINE Unsupported engine { package: 'jsdom@30.1.3', required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' }, current: { node: 'v24.7.0', npm: '11.10.0' } }
+  (same warning for @asamuzakjp/css-color@7.1.9, @asamuzakjp/dom-selector@10.0.5, w3c-xmlserializer@6.0.0: transitive deps of jsdom; local Node 24.7.0 < 24.15.0)
+added 53 packages, and audited 54 packages in 24s
+found 0 vulnerabilities
+exit=0
+demo/node_modules/eligian/bin/cli.js present.
+
+## 4. claude mcp list (in demo), verbatim
+$ claude mcp list
+Checking MCP server health…
+
+claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected
+claude.ai Google Calendar: https://calendarmcp.googleapis.com/mcp/v1 - ✔ Connected
+claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
+claude.ai Gmail: https://gmailmcp.googleapis.com/mcp/v1 - ✔ Connected
+context7: https://mcp.context7.com/mcp (HTTP) - ✔ Connected
+eligian: node C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\sc012\demo\node_modules\eligian\bin\cli.js mcp - ⏸ Pending approval (run `claude` to approve)
+exit=0
+
+## 5. Supplementary: raw stdio handshake with the exact .mcp.json command
+(probe script outside the demo dir: spawns command+args from demo/.mcp.json with cwd=demo,
+sends initialize, notifications/initialized, tools/list as NDJSON)
+initialize -> serverInfo: {"name":"eligian","version":"1.1.0"} protocolVersion: 2025-06-18
+tools/list -> eligian_docs, eligian_operations, eligian_check, eligian_fmt, eligian_init, eligian_compile, eligian_project, eligian_smoke
+stderr bytes: 0
+exit=0
+(every stdout line parsed as a JSON-RPC frame; no non-JSON stdout)
+
+## 6. Still to do (user)
+In $SCRATCH\demo: run `claude`, approve the `eligian` project server, exit, run
+`claude mcp list` again, and append its line here (expected: "eligian: ... - ✔ Connected").
+Then delete $SCRATCH\demo and $SCRATCH\eligian-1.1.0.tgz (kept for that step; outside the repo).
+
+## 7. Approval (main loop, 2026-11-05, T057 ruling option b)
+Claude Code 2.1.302 keeps a project's .mcp.json approvals in ~/.claude.json under
+projects["<cwd with forward slashes>"].enabledMcpjsonServers (a demo\.claude\settings.local.json
+`enabledMcpjsonServers` entry did not count). The demo's entry was added, `claude mcp list` run
+in demo, and the entry removed again. Its eligian line, verbatim:
+eligian: node C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\sc012\demo\node_modules\eligian\bin\cli.js mcp - ✔ Connected
+exit=0
+Cleanup: demo folder and eligian-1.1.0.tgz deleted; ~/.claude.json back to its previous projects.

@@ -1,0 +1,9 @@
+// Scenario snapshot of a removed layout element: #gone is removed at 1s
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 1s..30s [
+    selectElement("#gone")
+    removeElement()
+  ] []
+}

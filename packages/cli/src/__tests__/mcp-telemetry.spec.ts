@@ -1,15 +1,27 @@
 /**
  * Spec 058 Phase 1 (FR-008; plan C5, C12): every tool call writes one JSON telemetry line to
  * stderr (and appends it to `ELIGIAN_MCP_LOG` when set), and assigns the per-server call id.
+ * Phase 2 (FR-004; SC-002(3)): the same holds for `eligian_compile`, `eligian_project` and
+ * `eligian_smoke` on the wire (in-process server; smoke runs the stub CLI of mcp-smoke.spec.ts).
  *
  * `process.stderr.write` is spied and restored after each test.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Effect, Exit } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import { makeTelemetry, type TelemetryLine } from '../mcp/telemetry.js';
+import * as compile from '../mcp/tools/compile.js';
+import * as project from '../mcp/tools/project.js';
+import * as smoke from '../mcp/tools/smoke.js';
+import { startInMemoryServer } from './mcp-test-client.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SMOKE_ROOT = path.join(HERE, '__fixtures__', 'mcp', 'smoke-tool');
+const STUB = path.join(SMOKE_ROOT, 'stub-cli.mjs');
+const DOCS = path.join(HERE, '__fixtures__', 'mcp', 'docs-mini');
 
 describe('telemetry', () => {
   let stderr: string[];
@@ -140,4 +152,38 @@ describe('telemetry', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain(logFile);
   });
+
+  it('one line per call for compile, project, smoke', async () => {
+    const server = await startInMemoryServer({
+      cwd: SMOKE_ROOT,
+      docsRoot: DOCS,
+      smoke: { cliPath: STUB },
+    });
+    try {
+      const calls: [string, unknown][] = [
+        [compile.NAME, { path: 'b/main.eligian' }],
+        [project.NAME, { path: 'b/main.eligian' }],
+        [smoke.NAME, { paths: ['b/main.eligian'] }],
+      ];
+      for (const [tool, args] of calls) {
+        const result = await server.callTool(tool, args);
+        expect(result.isError, tool).toBe(false);
+      }
+    } finally {
+      await server.close();
+    }
+
+    // Only the telemetry lines: the logger and the smoke child's `smoke: ` lines are not JSON
+    const tools = stderr
+      .flatMap(chunk => chunk.split('\n'))
+      .filter(line => line.startsWith('{'))
+      .map(line => JSON.parse(line) as Partial<TelemetryLine>)
+      .filter(line => typeof line.tool === 'string')
+      .map(line => ({ tool: line.tool, ok: line.ok }));
+    expect(tools).toEqual([
+      { tool: compile.NAME, ok: true },
+      { tool: project.NAME, ok: true },
+      { tool: smoke.NAME, ok: true },
+    ]);
+  }, 60_000);
 });

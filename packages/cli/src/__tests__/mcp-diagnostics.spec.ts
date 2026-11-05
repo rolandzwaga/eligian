@@ -7,9 +7,17 @@
  */
 import * as path from 'node:path';
 import type { CheckDiagnostic, CheckFileResult } from '@eligian/language';
+import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
-import { excerptOf, sourceOf, toMcpDiagnostics } from '../mcp/diagnostics.js';
+import {
+  excerptOf,
+  McpDiagnosticSchema,
+  smokeToMcpDiagnostics,
+  sourceOf,
+  toMcpDiagnostics,
+} from '../mcp/diagnostics.js';
 import type { Overlays } from '../mcp/knowledge/types.js';
+import { SMOKE_CODES, type SmokeProblem } from '../smoke/smoke-runner.js';
 
 const FILE = path.resolve('project', 'main.eligian');
 
@@ -69,6 +77,13 @@ describe('sourceOf', () => {
     expect(sourceOf('compile-failed')).toBe('compiler');
     expect(sourceOf('controller-imbalance')).toBe('review');
     expect(sourceOf('class-never-removed')).toBe('review');
+  });
+
+  it('sourceOf maps every SMOKE_CODES code to smoke', () => {
+    for (const code of SMOKE_CODES) expect(sourceOf(code)).toBe('smoke');
+    // Checked before the validator fallback; a validator code stays validator
+    expect(sourceOf('missing-dependency')).toBe('validator');
+    expect(sourceOf('uncoded')).toBe('validator');
   });
 
   it('unknown codes fall back to validator', () => {
@@ -214,5 +229,138 @@ describe('toMcpDiagnostics', () => {
       readSource
     );
     expect(mcp.file).toBe(path.resolve('rel/x.eligian'));
+  });
+});
+
+/** Spec 058 Phase 2 (FR-045; plan D5): the `smoke` source and the step fields. */
+describe('smokeToMcpDiagnostics', () => {
+  const problem = (
+    overrides: Partial<SmokeProblem> & Pick<SmokeProblem, 'code'>
+  ): SmokeProblem & { file: string } => ({
+    file: FILE,
+    severity: 'error',
+    message: `smoke ${overrides.code}`,
+    ...overrides,
+  });
+
+  it('smokeToMcpDiagnostics anchors a location-less problem at 1:1 of its file', () => {
+    const [located, unlocated] = smokeToMcpDiagnostics(
+      [
+        problem({ code: 'smoke-engine-error', location: { file: FILE, line: 4, column: 12 } }),
+        problem({ code: 'smoke-run-failed' }),
+      ],
+      { byCode: {}, bySource: {} },
+      readSource
+    );
+    expect(located).toMatchObject({
+      source: 'smoke',
+      severity: 'error',
+      code: 'smoke-engine-error',
+      message: 'smoke smoke-engine-error',
+      file: FILE,
+      line: 4,
+      column: 12,
+      excerpt: '  at 1s..2s fadeIn("#box")',
+    });
+    expect(unlocated).toMatchObject({
+      source: 'smoke',
+      code: 'smoke-run-failed',
+      file: FILE,
+      line: 1,
+      column: 1,
+      excerpt: 'styles "./main.css"',
+    });
+  });
+
+  it('carries timeline, time, step, expected, actual', () => {
+    const [assertion, plain] = smokeToMcpDiagnostics(
+      [
+        problem({
+          code: 'scenario-assertion-failed',
+          timeline: 't',
+          time: 1.5,
+          step: 2,
+          expected: '"visible"',
+          actual: '"hidden"',
+        }),
+        problem({ code: 'smoke-console-warn', severity: 'warning' }),
+      ],
+      { byCode: {}, bySource: {} },
+      readSource
+    );
+    expect(assertion).toMatchObject({
+      timeline: 't',
+      time: 1.5,
+      step: 2,
+      expected: '"visible"',
+      actual: '"hidden"',
+    });
+    expect(plain.severity).toBe('warning');
+    for (const key of ['timeline', 'time', 'step', 'expected', 'actual']) {
+      expect(plain).not.toHaveProperty(key);
+    }
+  });
+
+  it('keeps problem order across files and uses the overlays', () => {
+    const lib = path.resolve('project', 'lib.eligian');
+    const reads: string[] = [];
+    const out = smokeToMcpDiagnostics(
+      [
+        problem({ code: 'smoke-engine-error', location: { file: lib, line: 1, column: 1 } }),
+        problem({ code: 'smoke-console-error', step: 0 }),
+        problem({
+          code: 'smoke-engine-error',
+          location: { file: lib, line: 1, column: 1 },
+          step: 1,
+        }),
+      ],
+      {
+        byCode: {},
+        bySource: { smoke: { docs: 'diagnostic/smoke', fix: 'Read the smoke message.' } },
+      },
+      file => {
+        reads.push(file);
+        return file === lib ? 'library line' : SOURCE;
+      }
+    );
+    expect(out.map(d => [d.code, d.file, d.step])).toEqual([
+      ['smoke-engine-error', lib, undefined],
+      ['smoke-console-error', FILE, 0],
+      ['smoke-engine-error', lib, 1],
+    ]);
+    expect(out[0].excerpt).toBe('library line');
+    expect(out[1].excerpt).toBe('styles "./main.css"');
+    expect(reads).toEqual([lib, FILE]);
+    expect(out.every(d => d.docs === 'diagnostic/smoke')).toBe(true);
+    expect(out[0].fix).toBe('Read the smoke message.');
+    expect(out[1].fix).toBe('Read the smoke message.');
+    expect(out[2]).not.toHaveProperty('fix');
+  });
+
+  it('the schema decodes the new fields', () => {
+    const [mcp] = smokeToMcpDiagnostics(
+      [
+        problem({
+          code: 'scenario-assertion-failed',
+          timeline: 't',
+          time: 0.25,
+          step: 3,
+          expected: '1',
+          actual: '2',
+        }),
+      ],
+      { byCode: {}, bySource: {} },
+      readSource
+    );
+    const decode = Schema.decodeUnknownSync(McpDiagnosticSchema);
+    expect(decode(mcp)).toMatchObject({
+      source: 'smoke',
+      timeline: 't',
+      time: 0.25,
+      step: 3,
+      expected: '1',
+      actual: '2',
+    });
+    expect(() => decode({ ...mcp, step: 1.5 })).toThrow();
   });
 });

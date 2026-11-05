@@ -1,0 +1,11 @@
+// Scenario seek and class-driven visibility: at 1s the headline loses "hidden" (display: none)
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 1s..30s [
+    selectElement("#headline")
+    removeClass("hidden")
+    addClass("in")
+  ] []
+}

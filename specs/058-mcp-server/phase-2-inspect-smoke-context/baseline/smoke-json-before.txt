@@ -1,0 +1,150 @@
+### clean.eligian (exit 0)
+[
+  {
+    "file": "clean.eligian",
+    "timelines": [
+      {
+        "name": "Clean",
+        "boundaries": 3
+      },
+      {
+        "name": "Second",
+        "boundaries": 2
+      }
+    ],
+    "problems": []
+  }
+]
+### broken.eligian (exit 1)
+[
+  {
+    "file": "broken.eligian",
+    "timelines": [
+      {
+        "name": "Broken",
+        "boundaries": 3
+      }
+    ],
+    "problems": [
+      {
+        "severity": "error",
+        "message": "start operation selectElement (in boom): selectElement: selector is either empty or not defined.",
+        "timeline": "Broken",
+        "time": 1,
+        "location": {
+          "file": "C:\\Users\\scab\\AppData\\Local\\Temp\\claude\\6adf1a082b4b5525\\36f8780e-961a-4331-8c14-5cdda6313511\\scratchpad\\smoke-fixtures\\broken.eligian",
+          "line": 3,
+          "column": 17,
+          "length": 34
+        }
+      }
+    ]
+  }
+]
+### shared.eligian (exit 1)
+[
+  {
+    "file": "shared.eligian",
+    "timelines": [
+      {
+        "name": "Shared",
+        "boundaries": 2
+      }
+    ],
+    "problems": [
+      {
+        "severity": "error",
+        "message": "start operation selectElement (in boom): selectElement: selector is either empty or not defined.",
+        "timeline": "Shared",
+        "time": 0,
+        "location": {
+          "file": "C:\\Users\\scab\\AppData\\Local\\Temp\\claude\\6adf1a082b4b5525\\36f8780e-961a-4331-8c14-5cdda6313511\\scratchpad\\smoke-fixtures\\shared.eligian",
+          "line": 3,
+          "column": 17,
+          "length": 34
+        }
+      }
+    ]
+  }
+]
+### lib.eligian media.eligian (exit 0)
+[
+  {
+    "file": "lib.eligian",
+    "library": true,
+    "timelines": [],
+    "problems": []
+  },
+  {
+    "file": "media.eligian",
+    "timelines": [
+      {
+        "name": "./intro.mp4",
+        "boundaries": 0,
+        "skipped": "media timelines need a browser"
+      }
+    ],
+    "problems": []
+  }
+]
+### broken.eligian --strict (exit 1)
+[
+  {
+    "file": "broken.eligian",
+    "timelines": [
+      {
+        "name": "Broken",
+        "boundaries": 3
+      }
+    ],
+    "problems": [
+      {
+        "timeline": "Broken",
+        "time": 1,
+        "severity": "error",
+        "message": "selectElement(\"#ghost\") matched no element",
+        "location": {
+          "file": "C:\\Users\\scab\\AppData\\Local\\Temp\\claude\\6adf1a082b4b5525\\36f8780e-961a-4331-8c14-5cdda6313511\\scratchpad\\smoke-fixtures\\broken.eligian",
+          "line": 5,
+          "column": 54,
+          "length": 23
+        }
+      },
+      {
+        "severity": "error",
+        "message": "start operation selectElement (in boom): selectElement: selector is either empty or not defined.",
+        "timeline": "Broken",
+        "time": 1,
+        "location": {
+          "file": "C:\\Users\\scab\\AppData\\Local\\Temp\\claude\\6adf1a082b4b5525\\36f8780e-961a-4331-8c14-5cdda6313511\\scratchpad\\smoke-fixtures\\broken.eligian",
+          "line": 3,
+          "column": 17,
+          "length": 34
+        }
+      }
+    ]
+  }
+]
+### lib.eligian (exit 0)
+[
+  {
+    "file": "lib.eligian",
+    "library": true,
+    "timelines": [],
+    "problems": []
+  }
+]
+### media.eligian (exit 0)
+[
+  {
+    "file": "media.eligian",
+    "timelines": [
+      {
+        "name": "./intro.mp4",
+        "boundaries": 0,
+        "skipped": "media timelines need a browser"
+      }
+    ],
+    "problems": []
+  }
+]

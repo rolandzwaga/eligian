@@ -1,0 +1,7 @@
+// Imported by lib/a.eligian only after the library edit of mcp-staleness.spec.ts.
+library b
+
+action glow(target) [
+  selectElement(target)
+  addClass("lit")
+]

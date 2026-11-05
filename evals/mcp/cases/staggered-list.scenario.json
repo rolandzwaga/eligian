@@ -1,0 +1,27 @@
+{
+  "steps": [
+    { "seek": 0.2 },
+    { "snapshot": "at-0.2" },
+    { "seek": 1 },
+    { "snapshot": "at-1" },
+    { "seek": 2.1 },
+    { "snapshot": "at-2.1" },
+    { "seek": 3 },
+    { "snapshot": "at-3" },
+    { "seek": 5 },
+    { "snapshot": "at-5" }
+  ],
+  "assertions": [
+    { "after": "at-0.2", "selector": "#card-1", "visible": true },
+    { "after": "at-0.2", "selector": "#card-2", "visible": false },
+    { "after": "at-1", "selector": "#card-3", "notHasClass": "highlight" },
+    { "after": "at-2.1", "selector": "#card-1", "visible": true },
+    { "after": "at-2.1", "selector": "#card-2", "visible": true },
+    { "after": "at-2.1", "selector": "#card-3", "visible": true },
+    { "after": "at-2.1", "selector": "#card-4", "visible": true },
+    { "after": "at-2.1", "selector": "#card-5", "visible": true },
+    { "after": "at-2.1", "selector": "#card-6", "visible": true },
+    { "after": "at-3", "selector": "#card-3", "hasClass": "highlight" },
+    { "after": "at-5", "selector": "#card-3", "notHasClass": "highlight" }
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "actions": {
+    "revealUpTo": {
+      "startOperations": [
+        {
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "$operationdata.items",
+            "itemName": "item"
+          }
+        },
+        {
+          "systemName": "when",
+          "operationData": {
+            "expression": "$scope.loopIndex >= $operationdata.limit"
+          }
+        },
+        {
+          "systemName": "breakForEach",
+          "operationData": {}
+        },
+        {
+          "systemName": "endWhen",
+          "operationData": {}
+        },
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$scope.currentItem"
+          }
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "visible"
+          }
+        },
+        {
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    "lightAll": {
+      "startOperations": [
+        {
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "$operationdata.ids",
+            "itemName": "id"
+          }
+        },
+        {
+          "systemName": "when",
+          "operationData": {
+            "expression": "$scope.currentItem == $operationdata.skip"
+          }
+        },
+        {
+          "systemName": "continueForEach",
+          "operationData": {}
+        },
+        {
+          "systemName": "endWhen",
+          "operationData": {}
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "strings": [
+                "#",
+                "$scope.currentItem"
+              ]
+            }
+          }
+        },
+        {
+          "systemName": "concatenateStrings",
+          "operationData": {}
+        },
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$operationdata.result"
+          }
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "active"
+          }
+        },
+        {
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    },
+    "setActive": {
+      "startOperations": [
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#box"
+          }
+        },
+        {
+          "systemName": "when",
+          "operationData": {
+            "expression": "$operationdata.enabled"
+          }
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "systemName": "otherwise",
+          "operationData": {}
+        },
+        {
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "systemName": "endWhen",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Flow": {
+      "type": "animation",
+      "duration": 6,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-2",
+          "duration": {
+            "start": 0,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "revealUpTo"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "items": [
+                    "#title",
+                    "#box",
+                    "#panel"
+                  ],
+                  "limit": 2
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "timeline-action-2-4",
+          "duration": {
+            "start": 2,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "lightAll"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "ids": [
+                    "title",
+                    "box",
+                    "panel"
+                  ],
+                  "skip": "box"
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "timeline-action-4-6",
+          "duration": {
+            "start": 4,
+            "end": 6
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "setActive"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "enabled": true
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    }
+  }
+}

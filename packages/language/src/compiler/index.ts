@@ -87,6 +87,14 @@ export {
   validateParameterTypes,
 } from './operations/validator.js';
 export type { CheckDiagnosticData, QuickFix } from './pipeline/check.js';
+// Spec 058 phase 2 (A1): workspace helpers on the root singleton (`eligian_project`)
+export { type LoadedDocuments, withLoadedDocuments } from './pipeline/check.js';
+export {
+  parseSourceTracked,
+  releaseWorkspaceDocuments,
+  type TrackedParse,
+} from './pipeline/parser.js';
+export { getOrCreateServices } from './pipeline/services.js';
 // Compilation pipeline exports
 export {
   type CheckDiagnostic,

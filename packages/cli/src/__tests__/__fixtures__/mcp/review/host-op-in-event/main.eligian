@@ -1,0 +1,12 @@
+// host-operation-in-block-without-select: a host operation in a timeline event, no selectElement before it
+layout "./layout.html"
+
+extensions "./host.ts" {
+  operation highlight(color: string)
+}
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    highlight("red")
+  ]
+}

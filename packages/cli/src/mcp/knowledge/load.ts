@@ -1,10 +1,11 @@
 /**
  * Spec 058 Phase 1 (FR-019; plan C7): reads the generated docs once per `docsRoot`.
  *
- * `index.json` is the list of chunks; `overlays.json` the diagnostic overlays; every `.md`
- * file under `docsRoot` whose frontmatter has an `id` is a chunk body (overlay files carry
- * `code` / `source` instead and are skipped). Bodies are kept without their frontmatter,
- * with their `##` headings. Any failure is `ToolInternal` naming `docsRoot`: the docs ship
+ * `index.json` is the list of chunks; `overlays.json` the diagnostic overlays and (Phase 2
+ * FR-073, FR-074) the operation and controller overlays, a missing map read as `{}`; every
+ * `.md` file under `docsRoot` whose frontmatter has an `id` is a chunk body (overlay files
+ * carry `code` / `source` / `operation` / `controller` instead and are skipped). Bodies are
+ * kept without their frontmatter, with their `##` headings. Any failure is `ToolInternal` naming `docsRoot`: the docs ship
  * with the CLI, so a missing or broken file is a packaging bug, not a user input error.
  */
 import fs from 'node:fs/promises';
@@ -65,7 +66,8 @@ const read = (docsRoot: string) => {
     if (!Array.isArray(index)) {
       return yield* failure(new Error('index.json is not an array'));
     }
-    const overlays = (yield* parseJson('overlays.json')) as Overlays;
+    const parsed = (yield* parseJson('overlays.json')) as Overlays;
+    const overlays: Required<Overlays> = { operations: {}, controllers: {}, ...parsed };
     const files = yield* Effect.tryPromise({
       try: () => fs.readdir(docsRoot, { recursive: true }),
       catch: failure,

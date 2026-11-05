@@ -1,0 +1,7 @@
+// media-file-missing: the video file does not exist
+timeline "Clip" in "#player" using video
+  from "./media/missing.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+}

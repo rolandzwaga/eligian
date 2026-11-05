@@ -1,0 +1,6 @@
+// media-timeline-first-without-start-gesture: nothing starts the video
+timeline "Clip" in "#player" using video from "./media/clip.mp4" {
+  on enter [
+    on click "#start" pause
+  ]
+}

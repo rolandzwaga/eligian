@@ -1,13 +1,39 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
+
+/**
+ * Specs whose assertions hold a wall-clock budget for a spawned `eligian smoke` child (spec 058
+ * SC-008(2): the first `timeline` line must arrive within `timeoutMs`). Under the load of the
+ * parallel workers the child's start-up took over 10 s (2.9 s alone), so they run after the
+ * other files, on their own, in the same run (the coverage stays one report).
+ */
+const TIMED = ['src/__tests__/mcp-smoke.spec.ts'];
+
+/**
+ * `package-bin.spec.ts`: its startup timings (spec 058 SC-001, SC-020) measure the bundle, not
+ * the load of the other test workers. `test` / `test:coverage:ci` run the `cli` and `cli-timed`
+ * projects, then `test:bin` runs this one on its own; a bare `vitest run` runs it last.
+ */
+const BIN = ['src/__tests__/package-bin.spec.ts'];
 
 export default defineConfig({
   test: {
     // CLI tests spawn child processes which are slow
     // Increase timeout to prevent failures when running in parallel with other packages
     testTimeout: 30000, // 30 seconds per test
-    // `test` / `test:coverage:ci` exclude package-bin.spec.ts and run it afterwards on its own
-    // (`test:bin`): its startup timings (spec 058 SC-001, SC-020) measure the bundle, not the
-    // load of the parallel test workers.
+    projects: [
+      {
+        extends: true,
+        test: { name: 'cli', exclude: [...configDefaults.exclude, ...TIMED, ...BIN] },
+      },
+      {
+        extends: true,
+        test: { name: 'cli-timed', include: TIMED, sequence: { groupOrder: 1 } },
+      },
+      {
+        extends: true,
+        test: { name: 'cli-bin', include: BIN, sequence: { groupOrder: 2 } },
+      },
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

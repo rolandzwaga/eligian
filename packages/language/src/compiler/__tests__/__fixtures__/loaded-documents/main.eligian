@@ -1,0 +1,9 @@
+// withLoadedDocuments fixture: main imports a, a imports b
+layout "./layout.html"
+styles "./styles.css"
+
+import { highlight } from "./lib/a.eligian"
+
+timeline "main" in "#app" using raf {
+  at 0s..1s highlight("#box")
+}

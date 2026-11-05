@@ -152,8 +152,9 @@ function runCase(
     exec('npm', ['init', '-y'], { cwd: dir });
     exec('npm', ['install', tarball], { cwd: dir });
     const cli = path.join(dir, 'node_modules', 'eligian', 'bin', 'cli.js');
-    // 2. The case's start files.
-    fs.cpSync(path.join(CASES_DIR, id, 'start'), dir, { recursive: true });
+    // 2. The case's start files; a case without a start directory starts empty (phase 2 FR-091).
+    const start = path.join(CASES_DIR, id, 'start');
+    if (fs.existsSync(start)) fs.cpSync(start, dir, { recursive: true });
     // 3. .mcp.json and the arm's AGENTS.md.
     const mcpLog = path.join(dir, 'mcp.log');
     const mcpConfig = path.join(dir, '.mcp.json');

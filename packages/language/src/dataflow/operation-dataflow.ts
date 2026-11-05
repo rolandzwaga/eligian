@@ -105,7 +105,7 @@ const DOM_EVENT_CONTROLLER = 'DOMEventListenerController';
  * listener and (Eligius 3.1) the KeyboardController.
  */
 const KEYBOARD_CONTROLLER = 'KeyboardController';
-const ACTION_CONTROLLERS: ReadonlySet<string> = new Set([
+export const ACTION_CONTROLLERS: ReadonlySet<string> = new Set([
   DOM_EVENT_CONTROLLER,
   KEYBOARD_CONTROLLER,
 ]);

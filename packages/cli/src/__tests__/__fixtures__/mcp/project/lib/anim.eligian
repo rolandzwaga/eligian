@@ -1,0 +1,7 @@
+library anim
+
+/** Shows an element by class */
+action fade(selector: string) [
+  selectElement(selector)
+  addClass("visible")
+]

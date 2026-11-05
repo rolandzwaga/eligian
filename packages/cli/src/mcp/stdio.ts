@@ -12,6 +12,11 @@ import { Effect, Layer, Logger, PlatformError, Sink, Stdio, Stream } from 'effec
 
 export interface CapturedStdout {
   readonly write: (chunk: string | Uint8Array) => boolean;
+  /**
+   * Resolves once every earlier write has been handed to the OS: a pipe write is asynchronous
+   * (on Windows), and `process.exit` drops what is still queued (spec 058 Phase 2, plan P14).
+   */
+  readonly flush: () => Promise<void>;
 }
 
 const CONSOLE_METHODS = ['log', 'info', 'debug', 'warn', 'error'] as const;
@@ -37,7 +42,14 @@ let captured: CapturedStdout | undefined;
 export function redirectConsoleToStderr(): CapturedStdout {
   if (captured) return captured;
   const stdoutWrite = process.stdout.write;
-  captured = { write: chunk => stdoutWrite.call(process.stdout, chunk) };
+  captured = {
+    write: chunk => stdoutWrite.call(process.stdout, chunk),
+    // A write's callback runs after the earlier writes: an empty one marks the end of the queue
+    flush: () =>
+      new Promise<void>(resolve => {
+        stdoutWrite.call(process.stdout, '', 'utf-8', () => resolve());
+      }),
+  };
 
   // `process.stderr.write` is looked up on every call, so a later replacement is honoured.
   process.stdout.write = ((...args: unknown[]) =>
@@ -51,7 +63,7 @@ export function redirectConsoleToStderr(): CapturedStdout {
 }
 
 /** The `Stdio` service over `process.stdin` and the captured stdout writer. */
-export function layerNodeStdio(stdout: CapturedStdout): Layer.Layer<Stdio.Stdio> {
+export function layerNodeStdio(stdout: Pick<CapturedStdout, 'write'>): Layer.Layer<Stdio.Stdio> {
   return Layer.succeed(
     Stdio.Stdio,
     Stdio.make({

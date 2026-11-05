@@ -4,8 +4,9 @@
  *
  *   tsx evals/mcp/gate.ts <project dir> --case <id> [--transcript <file>] [--wall-ms <n>]
  *
- * Steps: 1 check (strict), 2 fmt --check, 3 smoke --strict, 4 compile --eligian-map, 5 budget
- * (rounds, wall clock, tokens-from-tools); then the case checks over `out/config.json`.
+ * Steps: 1 check (strict), 2 fmt --check, 3 smoke --strict (`--scenario` when the case has one,
+ * phase 2 FR-091), 4 compile --eligian-map, 5 budget (rounds, wall clock, tokens-from-tools); then
+ * the case checks over `out/config.json` (for the phase 2 cases, the §6.2 Structural column).
  * Prints one JSON line `{ pass, failures }`; exit 0 = pass, 1 = fail, 2 = usage error.
  *
  * Runs under tsx, outside Biome and every tsconfig, and imports nothing from `packages/**`.
@@ -27,6 +28,8 @@ export interface EvalCase {
   readonly prompt: string;
   readonly entry: string;
   readonly model: string;
+  /** Phase 2 (FR-090): the scenario file beside the case, `<id>.scenario.json` */
+  readonly scenario?: string;
 }
 
 export interface ToolCall {
@@ -150,11 +153,21 @@ interface ActionLike {
   readonly name: string;
   readonly startOperations?: readonly Operation[];
   readonly endOperations?: readonly Operation[];
+  /** timeline actions only */
+  readonly duration?: { readonly start: number; readonly end?: number };
 }
 interface Config {
   readonly actions?: readonly ActionLike[];
   readonly eventActions?: readonly ActionLike[];
-  readonly timelines?: readonly { readonly uri: string; readonly timelineActions: readonly ActionLike[] }[];
+  readonly initActions?: readonly ActionLike[];
+  readonly timelines?: readonly {
+    readonly uri: string;
+    readonly type?: string;
+    readonly duration?: number;
+    readonly timelineActions: readonly ActionLike[];
+  }[];
+  readonly availableLanguages?: readonly { readonly languageCode: string }[];
+  readonly cssFiles?: readonly string[];
 }
 
 /** Every operation list of the config with the action (if any) that owns it. */
@@ -466,6 +479,211 @@ function checkFixSelectors(
 }
 
 // ---------------------------------------------------------------------------------------------
+// Phase 2 structural checks (spec 058 phase 2, FR-091, I-7): the §6.2 Structural column of
+// cases 1, 2, 3, 6 and 8, over out/config.json and the produced files.
+
+/** Every operation of the config: actions, event actions, init actions and timeline actions. */
+function everyOperation(config: Config): Operation[] {
+  const init = (config.initActions ?? []).flatMap(a => [
+    ...(a.startOperations ?? []),
+    ...(a.endOperations ?? []),
+  ]);
+  return [...operationLists(config).flatMap(list => list.operations), ...init];
+}
+
+/** The ids of the layout the entry imports (`layout "…"`); empty when there is none. */
+function layoutIds(dir: string, entry: string): Set<string> {
+  const source = fs.readFileSync(path.join(dir, entry), 'utf8');
+  const layout = importPath(source, 'layout');
+  const file = layout === undefined ? undefined : path.resolve(path.dirname(path.join(dir, entry)), layout);
+  return file !== undefined && fs.existsSync(file)
+    ? htmlIds(fs.readFileSync(file, 'utf8'))
+    : new Set<string>();
+}
+
+function missingIds(caseId: string, dir: string, entry: string, ids: readonly string[]): string[] {
+  const present = layoutIds(dir, entry);
+  return ids
+    .filter(id => !present.has(id))
+    .map(id => `case ${caseId}: the layout has no element with id '${id}'`);
+}
+
+/** Does the config add `controller` anywhere (a literal getControllerInstance or via a call)? */
+function addsController(config: Config, controller: string): boolean {
+  return (
+    everyOperation(config).some(
+      op => op.systemName === 'getControllerInstance' && op.operationData?.systemName === controller
+    ) || controllerBalance(config).some(b => b.added.some(use => use.endsWith(` ${controller}`)))
+  );
+}
+
+/** Case 1: 1 raf timeline of duration 10; play / pause actions; ids; CSS state classes. */
+function checkTitleCard(dir: string, entry: string, config: Config): string[] {
+  const failures: string[] = [];
+  const timelines = config.timelines ?? [];
+  if (timelines.length !== 1) {
+    failures.push(`case title-card: ${timelines.length} timelines, expected 1`);
+  }
+  for (const timeline of timelines) {
+    if (timeline.type !== 'animation') {
+      failures.push(`case title-card: timeline '${timeline.uri}' is '${timeline.type}', not a raf (animation) timeline`);
+    }
+    if (timeline.duration !== 10) {
+      failures.push(`case title-card: timeline '${timeline.uri}' lasts ${timeline.duration}, expected 10`);
+    }
+  }
+  const actions = new Set((config.actions ?? []).map(a => a.name));
+  for (const name of ['__on__play', '__on__pause']) {
+    if (!actions.has(name)) failures.push(`case title-card: no '${name}' action (on click … play / pause)`);
+  }
+  failures.push(...missingIds('title-card', dir, entry, ['headline', 'subtitle']));
+  // The state classes: `in` (the prompt) and every literal class the program adds or toggles.
+  const classes = new Set(['in']);
+  for (const op of everyOperation(config)) {
+    const className = op.operationData?.className;
+    if (
+      (op.systemName === 'addClass' || op.systemName === 'toggleClass') &&
+      typeof className === 'string' &&
+      !className.startsWith('$')
+    ) {
+      classes.add(className);
+    }
+  }
+  const entryDir = path.dirname(path.join(dir, entry));
+  const css = (config.cssFiles ?? [])
+    .map(file => path.resolve(entryDir, file))
+    .filter(file => fs.existsSync(file))
+    .map(file => fs.readFileSync(file, 'utf8'))
+    .join('\n');
+  for (const className of classes) {
+    const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!new RegExp(`\\.${escaped}(?![\\w-])`).test(css)) {
+      failures.push(`case title-card: the CSS defines no rule for the state class '${className}'`);
+    }
+  }
+  return failures;
+}
+
+/** Case 2: ≥ 4 timelines; navigate actions; en-US + nl-NL; a LabelController; chapter lifecycles. */
+function checkThreeChapters(config: Config): string[] {
+  const failures: string[] = [];
+  const timelines = config.timelines ?? [];
+  if (timelines.length < 4) {
+    failures.push(`case three-chapters: ${timelines.length} timelines, expected at least 4`);
+  }
+  if (!(config.actions ?? []).some(a => a.name.startsWith('__nav__'))) {
+    failures.push('case three-chapters: no __nav__* action (on click … navigate)');
+  }
+  const languages = new Set((config.availableLanguages ?? []).map(l => l.languageCode));
+  for (const code of ['en-US', 'nl-NL']) {
+    if (!languages.has(code)) failures.push(`case three-chapters: the languages block has no '${code}'`);
+  }
+  if (!addsController(config, 'LabelController')) {
+    failures.push('case three-chapters: no LabelController is added');
+  }
+  for (const chapter of ['Problem', 'Solution', 'Results']) {
+    const timeline = timelines.find(t => t.uri === chapter);
+    if (timeline === undefined) {
+      failures.push(`case three-chapters: no timeline '${chapter}'`);
+      continue;
+    }
+    const lifecycle = timeline.timelineActions.find(a => a.name === 'timeline-lifecycle');
+    if ((lifecycle?.startOperations ?? []).length === 0) {
+      failures.push(`case three-chapters: timeline '${chapter}' has no on enter`);
+    }
+    if ((lifecycle?.endOperations ?? []).length === 0) {
+      failures.push(`case three-chapters: timeline '${chapter}' has no on leave`);
+    }
+  }
+  return failures;
+}
+
+/** Case 3: one stagger whose 6 timeline actions start 0.4 s apart; the 6 card ids. */
+function checkStaggeredList(dir: string, entry: string, config: Config): string[] {
+  const failures: string[] = [];
+  const source = stripComments(fs.readFileSync(path.join(dir, entry), 'utf8'));
+  const staggers = (source.match(/^\s*stagger\b/gm) ?? []).length;
+  if (staggers !== 1) failures.push(`case staggered-list: ${staggers} stagger blocks, expected 1`);
+  const runs = (config.timelines ?? []).map(timeline =>
+    timeline.timelineActions
+      .filter(a => a.name.startsWith('stagger-'))
+      .map(a => a.duration?.start ?? Number.NaN)
+      .sort((a, b) => a - b)
+  );
+  const spaced = (starts: readonly number[]) =>
+    starts.length === 6 && starts.every((s, i) => i === 0 || Math.abs(s - starts[i - 1] - 0.4) < 1e-6);
+  if (!runs.some(spaced)) {
+    failures.push(
+      `case staggered-list: no timeline has 6 stagger actions 0.4 s apart (stagger starts: ${runs.map(r => `[${r.join(', ')}]`).join(' ')})`
+    );
+  }
+  failures.push(
+    ...missingIds('staggered-list', dir, entry, [1, 2, 3, 4, 5, 6].map(n => `card-${n}`))
+  );
+  return failures;
+}
+
+/** Case 6: 12 slide timelines, each adding a KeyboardController on enter and removing it on leave. */
+function checkKeyboardDeck(config: Config): string[] {
+  const failures: string[] = [];
+  const timelines = config.timelines ?? [];
+  if (timelines.length !== 12) {
+    failures.push(`case keyboard-deck: ${timelines.length} timelines, expected 12`);
+  }
+  const balances = new Map(controllerBalance(config).map(b => [b.timeline, b]));
+  const keyboard = (uses: readonly string[]) =>
+    uses.filter(use => use.endsWith(' KeyboardController')).sort();
+  for (let n = 1; n <= 12; n++) {
+    const uri = `slide-${n}`;
+    const balance = balances.get(uri);
+    if (balance === undefined) {
+      failures.push(`case keyboard-deck: no timeline '${uri}'`);
+      continue;
+    }
+    const added = keyboard(balance.added);
+    const removed = keyboard(balance.removed);
+    if (added.length === 0) {
+      failures.push(`case keyboard-deck: timeline '${uri}' adds no KeyboardController in on enter`);
+    } else if (JSON.stringify(added) !== JSON.stringify(removed)) {
+      failures.push(
+        `case keyboard-deck: timeline '${uri}' adds [${added.join(', ')}] but removes [${removed.join(', ')}] in on leave`
+      );
+    }
+  }
+  return failures;
+}
+
+/** Case 8: a `library` file under lib/; fadeIn, fadeOut and slideIn imported from it and used. */
+function checkLibraryReuse(dir: string, entry: string, config: Config): string[] {
+  const failures: string[] = [];
+  const libDir = path.join(dir, 'lib');
+  const libraries = fs.existsSync(libDir)
+    ? (fs.readdirSync(libDir, { recursive: true }) as string[])
+        .filter(file => file.endsWith('.eligian'))
+        .filter(file =>
+          /^\s*library\s+[A-Za-z_]/.test(stripComments(fs.readFileSync(path.join(libDir, file), 'utf8')))
+        )
+    : [];
+  if (libraries.length === 0) failures.push('case library-reuse: no `library` file under lib/');
+  const source = stripComments(fs.readFileSync(path.join(dir, entry), 'utf8'));
+  const imported = new Set(
+    [...source.matchAll(/\bimport\s*\{([^}]*)\}\s*from\s*"([^"]+)"/g)]
+      .filter(m => /^(\.\/)?lib\//.test(m[2]))
+      .flatMap(m => m[1].split(',').map(name => name.trim().split(/\s+/)[0]))
+  );
+  const requested = new Set(
+    everyOperation(config)
+      .filter(op => op.systemName === 'requestAction')
+      .map(op => op.operationData?.systemName)
+  );
+  for (const name of ['fadeIn', 'fadeOut', 'slideIn']) {
+    if (!imported.has(name)) failures.push(`case library-reuse: '${name}' is not imported from lib/`);
+    if (!requested.has(name)) failures.push(`case library-reuse: '${name}' is never called`);
+  }
+  return failures;
+}
+
+// ---------------------------------------------------------------------------------------------
 
 export interface GateOptions {
   readonly dir: string;
@@ -536,8 +754,11 @@ export function runGate(options: GateOptions): GateResult {
     failures.push(`step 2 (fmt --check): exit ${fmt.status}; ${tail(fmt.stdout || fmt.stderr)}`);
   }
 
-  // Step 3: smoke --strict (no scenario, no determinism in Phase 1).
-  const smoke = eligian(['smoke', entry, '--strict', '--format', 'json']);
+  // Step 3: smoke --strict, with the case's scenario when it has one (FR-091; no determinism
+  // before Phase 3). A failed assertion is a problem of the json report.
+  const scenario =
+    evalCase.scenario === undefined ? [] : ['--scenario', path.join(CASES_DIR, evalCase.scenario)];
+  const smoke = eligian(['smoke', entry, '--strict', '--format', 'json', ...scenario]);
   if (smoke.status !== 0) {
     failures.push(`step 3 (smoke --strict): exit ${smoke.status}; ${smokeProblems(smoke.stdout) ?? tail(smoke.stdout || smoke.stderr)}`);
   }
@@ -574,6 +795,16 @@ export function runGate(options: GateOptions): GateResult {
       failures.push(...checkFixDataflow(startDir, entry, config));
     } else if (evalCase.id === 'fix-selectors') {
       failures.push(...checkFixSelectors(dir, startDir, entry, config, checkCodes));
+    } else if (evalCase.id === 'title-card') {
+      failures.push(...checkTitleCard(dir, entry, config));
+    } else if (evalCase.id === 'three-chapters') {
+      failures.push(...checkThreeChapters(config));
+    } else if (evalCase.id === 'staggered-list') {
+      failures.push(...checkStaggeredList(dir, entry, config));
+    } else if (evalCase.id === 'keyboard-deck') {
+      failures.push(...checkKeyboardDeck(config));
+    } else if (evalCase.id === 'library-reuse') {
+      failures.push(...checkLibraryReuse(dir, entry, config));
     } else {
       failures.push(`case ${evalCase.id}: no case checks are defined`);
     }

@@ -1,0 +1,21 @@
+{
+  "steps": [
+    { "seek": 2 },
+    { "snapshot": "at-2" },
+    { "seek": 5 },
+    { "snapshot": "at-5" },
+    { "seek": 8 },
+    { "snapshot": "at-8" },
+    { "seek": 13 },
+    { "snapshot": "at-13" }
+  ],
+  "assertions": [
+    { "after": "at-2", "selector": "#title", "hasClass": "fade-in" },
+    { "after": "at-5", "selector": "#panel-left", "hasClass": "slide-in" },
+    { "after": "at-5", "selector": "#panel-left", "hasClass": "from-left" },
+    { "after": "at-8", "selector": "#panel-right", "hasClass": "slide-in" },
+    { "after": "at-8", "selector": "#panel-right", "hasClass": "from-right" },
+    { "after": "at-13", "selector": "#title", "hasClass": "fade-out" },
+    { "after": "at-13", "selector": "#title", "notHasClass": "fade-in" }
+  ]
+}

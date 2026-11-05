@@ -2,8 +2,8 @@
  * Spec 058 Phase 1 (FR-002, FR-003, FR-018; plan C10): the Eligian MCP server.
  *
  * `effect/ai` is loaded here only, with a dynamic `import('effect/ai')` at server start (FR-003);
- * the tool modules get its values through their `makeTool(ai)`. The five tools are registered
- * with `McpServer.toolkit` over `McpServer.layerStdio`. Every handler runs inside the per-server
+ * the tool modules get its values through their `makeTool(ai)`. The eight tools (Phase 2 FR-001)
+ * are registered with `McpServer.toolkit` over `McpServer.layerStdio`. Every handler runs inside the per-server
  * telemetry wrapper, with defects caught at the tool boundary and tagged errors mapped to the
  * declared `{ header, error }` failure (C3). The compiler lock is provided once per server, and
  * the stderr logger is the outermost provide, so the whole graph logs to stderr (C10).
@@ -21,10 +21,13 @@ import type { EffectAi } from './paths.js';
 import { layerNodeStdio, redirectConsoleToStderr, stderrLoggerLayer } from './stdio.js';
 import { makeTelemetry } from './telemetry.js';
 import * as check from './tools/check.js';
+import * as compile from './tools/compile.js';
 import * as docs from './tools/docs.js';
 import * as fmt from './tools/fmt.js';
 import * as init from './tools/init.js';
 import * as operations from './tools/operations.js';
+import * as project from './tools/project.js';
+import * as smoke from './tools/smoke.js';
 
 export interface ServerOptions {
   readonly cwd: string;
@@ -32,6 +35,8 @@ export interface ServerOptions {
   readonly docsRoot?: URL | string;
   /** The compiler lock of this server; default `CompilerLockLive` */
   readonly lock?: Layer.Layer<CompilerLock>;
+  /** The `eligian_smoke` test seams (`cliPath`, `onSpawn`); default none (Phase 2 FR-041) */
+  readonly smoke?: smoke.SmokeToolOptions;
 }
 
 /** The protocol versions the server negotiates, in preference order (SC-029). */
@@ -85,7 +90,10 @@ export async function makeServerLayer(
     operations.makeTool(ai),
     check.makeTool(ai),
     fmt.makeTool(ai),
-    init.makeTool(ai)
+    init.makeTool(ai),
+    compile.makeTool(ai),
+    project.makeTool(ai),
+    smoke.makeTool(ai)
   );
   const handlers = toolkit.toLayer({
     eligian_docs: params =>
@@ -107,6 +115,22 @@ export async function makeServerLayer(
     eligian_init: params =>
       boundary(init.NAME, init.summarizeArgs(params), requestId =>
         init.handle(params, { ...context, requestId })
+      ),
+    eligian_compile: params =>
+      boundary(compile.NAME, compile.summarizeArgs(params), requestId =>
+        compile.handle(params, { ...context, requestId })
+      ),
+    eligian_project: params =>
+      boundary(project.NAME, project.summarizeArgs(params), requestId =>
+        project.handle(params, { ...context, requestId })
+      ),
+    eligian_smoke: params =>
+      boundary(smoke.NAME, smoke.summarizeArgs(params), requestId =>
+        smoke.handle(params, {
+          ...context,
+          requestId,
+          ...(options.smoke === undefined ? {} : { smoke: options.smoke }),
+        })
       ),
   });
 

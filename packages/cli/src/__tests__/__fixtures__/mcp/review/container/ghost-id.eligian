@@ -1,0 +1,8 @@
+// The container #ghost is in the CSS but not in the layout: selector_not_in_layout
+// (default ids) and timeline-container-not-in-layout report the same range
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Main" in "#ghost" using raf {
+  at 0s..1s [ log("tick") ] [ ]
+}

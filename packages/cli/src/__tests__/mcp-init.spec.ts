@@ -1,8 +1,11 @@
 /**
  * Spec 058 Phase 1 (FR-025, FR-026, SC-012; plan C9, C11): `eligian_init` writes a starter
- * plus the agent files (`.mcp.json`, `AGENTS.md`, `CLAUDE.md`), refuses to overwrite starter
- * files without `force`, never touches an existing agent file, and every template it writes
- * checks clean with the 1.1.0 defaults (the check runs test-side; the tool carries none).
+ * plus the agent files, refuses to overwrite starter files without `force`, and every template
+ * it writes checks clean with the 1.1.0 defaults (the check runs test-side; the tool carries none).
+ *
+ * Phase 2 (FR-065, Q7, I-1; plan D8, P12; SC-011(7)): the agent files of each `client` go
+ * through `setupAgents` (merged into existing files, always the `node` form) and the reply
+ * lists each with its status.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,14 +14,27 @@ import { getCompilerVersion, STARTER_ENTRY, starterFiles } from '@eligian/langua
 import { Effect } from 'effect';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runCheck } from '../check/check-command.js';
-import { agentsMdBlock } from '../mcp/instructions.js';
 import type { EffectAi } from '../mcp/paths.js';
-import { handle, type InitParameters, NAME, type ToolContext } from '../mcp/tools/init.js';
+import {
+  DESCRIPTION,
+  handle,
+  type InitParameters,
+  KEYWORDS,
+  NAME,
+  type ToolContext,
+} from '../mcp/tools/init.js';
 import {
   type InMemoryServer,
   startInMemoryServer,
   type ToolCallResult,
 } from './mcp-test-client.js';
+
+/** A stand-in for the generated `dist/docs/agents-block.md` (agents.spec.ts uses it too). */
+const DOCS_ROOT = path.join(import.meta.dirname, '__fixtures__', 'agents', 'docs');
+const BLOCK = fs
+  .readFileSync(path.join(DOCS_ROOT, 'agents-block.md'), 'utf-8')
+  .replace(/\r\n/g, '\n');
+const cliPath = (dir: string) => path.join(dir, 'node_modules', 'eligian', 'bin', 'cli.js');
 
 /** A declared failure on the wire (FR-005, FR-006): its `error`, after the shape checks. */
 const expectFailure = (result: ToolCallResult, kind: string) => {
@@ -51,7 +67,7 @@ describe('eligian_init', () => {
   const context = (): ToolContext => ({
     ai,
     cwd: tmp,
-    docsRoot: tmp,
+    docsRoot: DOCS_ROOT,
     versions,
     requestId: 'test-1',
   });
@@ -69,18 +85,19 @@ describe('eligian_init', () => {
     );
     expect(payload.directory).toBe(tmp);
     expect(payload.template).toBe(template);
-    expect(payload.skipped).toEqual([]);
+    expect(payload.agentFiles).toEqual([
+      { file: '.mcp.json', status: 'written' },
+      { file: 'CLAUDE.md', status: 'written' },
+      { file: 'AGENTS.md', status: 'written' },
+    ]);
 
     const starter = Object.keys(starterFiles(template, { title: 'x' }));
+    expect(payload.written).toEqual(starter);
     for (const file of [...starter, '.mcp.json', 'AGENTS.md', 'CLAUDE.md']) {
       expect(fs.existsSync(path.join(tmp, file)), file).toBe(true);
-      expect(payload.written).toContain(file);
     }
 
-    const agents = read('AGENTS.md');
-    expect(agents).toContain('<!-- eligian:begin -->');
-    expect(agents).toContain('<!-- eligian:end -->');
-    expect(agents).toContain('node_modules/eligian/dist/docs');
+    expect(read('AGENTS.md')).toBe(BLOCK);
     expect(read('CLAUDE.md')).toBe('@AGENTS.md\n');
 
     const mcp = JSON.parse(read('.mcp.json')) as {
@@ -105,8 +122,20 @@ describe('eligian_init', () => {
       cwd: tmp,
       version: versions.compiler,
     });
-    expect(outcome.error).toBeUndefined();
-    expect(outcome.exitCode, outcome.output).toBe(0);
+    if (template === 'video') {
+      // The starter writes no media file: one warning until media/intro.mp4 exists (FR-051, Q1)
+      const diagnostics = (
+        JSON.parse(outcome.output) as {
+          files: { diagnostics: { code?: string; message: string }[] }[];
+        }
+      ).files.flatMap(file => file.diagnostics);
+      expect(diagnostics.map(diagnostic => diagnostic.code)).toEqual(['media-file-missing']);
+      expect(diagnostics[0].message).toContain(path.join('media', 'intro.mp4'));
+      expect(outcome.exitCode).toBe(1);
+    } else {
+      expect(outcome.error).toBeUndefined();
+      expect(outcome.exitCode, outcome.output).toBe(0);
+    }
   });
 
   it('refuses existing starter files', async () => {
@@ -119,28 +148,85 @@ describe('eligian_init', () => {
     expect(fs.existsSync(path.join(tmp, '.mcp.json'))).toBe(false);
   });
 
-  it('skips existing agent files', async () => {
-    fs.writeFileSync(path.join(tmp, '.mcp.json'), '{ "mine": true }\n');
+  it('merges into existing agent files', async () => {
+    const other = { command: 'other-server', args: ['--stdio'] };
+    const original = JSON.stringify({ mcpServers: { other }, mine: true }, null, 4);
+    fs.writeFileSync(path.join(tmp, '.mcp.json'), `${original.replace(/\n/g, '\r\n')}\r\n`);
     fs.writeFileSync(path.join(tmp, 'AGENTS.md'), '# my agents\n');
     const payload = await run({ directory: tmp, template: 'blank' });
 
-    expect(read('.mcp.json')).toBe('{ "mine": true }\n');
-    expect(read('AGENTS.md')).toBe('# my agents\n');
+    expect(payload.agentFiles).toEqual([
+      { file: '.mcp.json', status: 'updated' },
+      { file: 'CLAUDE.md', status: 'written' },
+      { file: 'AGENTS.md', status: 'updated' },
+    ]);
     expect(payload.written).not.toContain('.mcp.json');
     expect(payload.written).not.toContain('AGENTS.md');
-    expect(payload.written).toContain('CLAUDE.md');
+    // The other server and key are kept; only mcpServers.eligian is set
+    expect(JSON.parse(read('.mcp.json'))).toEqual({
+      mcpServers: { other, eligian: { command: 'node', args: [cliPath(tmp), 'mcp'] } },
+      mine: true,
+    });
+    expect(read('AGENTS.md')).toBe(`# my agents\n\n${BLOCK}`);
+    expect(read('CLAUDE.md')).toBe('@AGENTS.md\n');
 
-    const skipped = new Map(payload.skipped.map(entry => [entry.file, entry]));
-    expect([...skipped.keys()].sort()).toEqual(['.mcp.json', 'AGENTS.md']);
-    expect(skipped.get('AGENTS.md')?.content).toBe(agentsMdBlock());
-    const mcp = JSON.parse(skipped.get('.mcp.json')?.content ?? '{}') as {
-      mcpServers: { eligian: { args: string[] } };
-    };
-    expect(mcp.mcpServers.eligian.args).toEqual([
-      path.join(tmp, 'node_modules', 'eligian', 'bin', 'cli.js'),
-      'mcp',
+    // A second run changes nothing
+    const again = await run({ directory: tmp, template: 'blank', force: true });
+    expect(again.agentFiles.map(entry => entry.status)).toEqual([
+      'unchanged',
+      'unchanged',
+      'unchanged',
     ]);
-    for (const entry of payload.skipped) expect(entry.reason).not.toBe('');
+  });
+
+  it('client cursor reports .cursor/mcp.json, .cursor/rules/eligian.mdc and AGENTS.md with statuses', async () => {
+    const payload = await run({ directory: tmp, template: 'blank', client: ['cursor'] });
+
+    expect(payload.agentFiles).toEqual([
+      { file: '.cursor/mcp.json', status: 'written' },
+      { file: '.cursor/rules/eligian.mdc', status: 'written' },
+      { file: 'AGENTS.md', status: 'written' },
+    ]);
+    expect(fs.existsSync(path.join(tmp, '.mcp.json'))).toBe(false);
+    expect(fs.existsSync(path.join(tmp, 'CLAUDE.md'))).toBe(false);
+    const mcp = JSON.parse(read('.cursor/mcp.json')) as {
+      mcpServers: { eligian: { command: string; args: string[] } };
+    };
+    // Always the node form, also without node_modules (Q7)
+    expect(mcp.mcpServers.eligian).toEqual({ command: 'node', args: [cliPath(tmp), 'mcp'] });
+
+    const again = await run({
+      directory: tmp,
+      template: 'blank',
+      client: ['cursor'],
+      force: true,
+    });
+    expect(again.agentFiles).toEqual([
+      { file: '.cursor/mcp.json', status: 'unchanged' },
+      { file: '.cursor/rules/eligian.mdc', status: 'unchanged' },
+      { file: 'AGENTS.md', status: 'unchanged' },
+    ]);
+  });
+
+  it('DESCRIPTION names client and the four statuses, without "never touched" or "skipped"', () => {
+    expect(DESCRIPTION).toContain('client');
+    for (const client of ['claude', 'cursor', 'vscode', 'codex']) {
+      expect(DESCRIPTION).toContain(client);
+    }
+    for (const status of ['written', 'updated', 'unchanged', 'refused']) {
+      expect(DESCRIPTION).toContain(status);
+    }
+    expect(DESCRIPTION).not.toContain('never touched');
+    expect(DESCRIPTION).not.toContain('skipped');
+    const head = DESCRIPTION.slice(0, 200).toLowerCase();
+    for (const keyword of KEYWORDS) expect(head, keyword).toContain(keyword);
+  });
+
+  it('nextSteps names eligian_project and has no explain', async () => {
+    const payload = await run({ directory: tmp, template: 'blank' });
+    const steps = payload.nextSteps.join('\n');
+    expect(steps).toContain('eligian_project');
+    expect(steps).not.toContain('explain');
   });
 
   it('writes no agent files with agents: false', async () => {
@@ -149,6 +235,7 @@ describe('eligian_init', () => {
     expect(fs.existsSync(path.join(tmp, 'AGENTS.md'))).toBe(false);
     expect(fs.existsSync(path.join(tmp, 'CLAUDE.md'))).toBe(false);
     expect(payload.written).toEqual(Object.keys(starterFiles('blank', { title: 'x' })));
+    expect(payload.agentFiles).toEqual([]);
   });
 
   it('a write failure is ToolIoError', async () => {

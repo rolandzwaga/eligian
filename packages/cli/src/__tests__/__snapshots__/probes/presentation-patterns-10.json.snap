@@ -1,0 +1,72 @@
+{
+  "actions": {
+    "setLanguage": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventArgs": [
+              "$operationdata.code"
+            ],
+            "eventName": "language-change"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Main": {
+      "type": "animation",
+      "duration": 0,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "setLanguage"
+                ],
+                "actionOperationData": {
+                  "code": "nl-NL"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

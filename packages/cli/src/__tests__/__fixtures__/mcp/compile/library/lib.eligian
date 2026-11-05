@@ -1,0 +1,7 @@
+library effects
+
+/** Shows an element */
+action show(selector: string) [
+  selectElement(selector)
+  addClass("visible")
+]

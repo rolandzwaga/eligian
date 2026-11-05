@@ -46,10 +46,11 @@
     "prepack": "pnpm run build:prod",
     "generate:knowledge": "tsx scripts/generate-knowledge.ts --out dist/docs",
     "rank:diagnostic-codes": "tsx scripts/rank-diagnostic-codes.ts",
+    "rank:operations": "tsx scripts/rank-operations.ts",
     "build:clean": "pnpm run clean && pnpm run build",
-    "test": "vitest run --exclude src/__tests__/package-bin.spec.ts && pnpm run test:bin",
-    "test:coverage:ci": "vitest run --coverage --exclude src/__tests__/package-bin.spec.ts && pnpm run test:bin",
-    "test:bin": "vitest run src/__tests__/package-bin.spec.ts",
+    "test": "vitest run --project cli --project cli-timed && pnpm run test:bin",
+    "test:coverage:ci": "vitest run --coverage --project cli --project cli-timed && pnpm run test:bin",
+    "test:bin": "vitest run --project cli-bin",
     "test:watch": "vitest"
   },
   "dependencies": {

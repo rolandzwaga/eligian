@@ -1,0 +1,42 @@
+// The mcp-staleness.spec.ts fixture (spec 058 phase 2, FR-085, SC-015). Each test copies it to
+// a temp dir and edits one file between two tool calls: `.fresh` is missing from styles.css
+// (unknown_css_class), `#later` is in styles.css but not in layout.html
+// (selector_not_in_layout), `farewell` is missing from locales.json (unknown_label_id), and
+// lib/a.eligian declares `pulse` with one parameter while it is called with two.
+languages {
+  * "en-US" "English"
+}
+layout "./layout.html"
+styles "./styles.css"
+locales "./locales.json"
+import { pulse } from "./lib/a.eligian"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [
+    selectElement("#stage")
+    addClass("fresh")
+  ] [
+    selectElement("#stage")
+    removeClass("fresh")
+  ]
+  at 1s..2s [
+    selectElement("#later")
+    addClass("lit")
+  ] [
+    selectElement("#later")
+    removeClass("lit")
+  ]
+  at 2s..3s [
+    selectElement("#stage")
+    addController("LabelController", "farewell")
+  ] [
+    selectElement("#stage")
+    removeControllerFromElement("LabelController")
+  ]
+  at 3s..4s pulse("#stage", "lit")
+  // pulse adds lit to #stage (lib/a v1 / v2): removed again, so the review stays quiet
+  at 4s..5s [
+    selectElement("#stage")
+    removeClass("lit")
+  ] []
+}

@@ -83,7 +83,6 @@
   "languages-missing-default",
   "languages-multiple-defaults",
   "library_invalid_content",
-  "locales-import-error",
   "locales-parse-failed",
   "locales-without-languages",
   "media-import-error",

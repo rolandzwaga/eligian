@@ -1,0 +1,7 @@
+{
+  "id": "three-chapters",
+  "prompt": "A three-chapter product story (Problem, Solution, Results). A hub with three buttons, each chapter its own timeline with a Back button. Chapter text in English and Dutch, with a language toggle. The entry file is `main.eligian` in the current directory. Name the timelines `Hub`, `Problem`, `Solution` and `Results`; the presentation starts on `Hub`. Use these element ids: `#hub`, `#problem`, `#solution` and `#results` (the views, each visible only while its timeline is active); `#to-problem`, `#to-solution` and `#to-results` (the hub buttons); `#back-problem`, `#back-solution` and `#back-results` (the Back button of each chapter, which returns to `Hub`); `#hub-title` (the hub heading, a localized label that reads `Our product story` in English and `Ons productverhaal` in Dutch); `#lang-nl` and `#lang-en` (the language toggle, usable on the hub: switch to Dutch, switch to English). English (`en-US`) is the default, Dutch is `nl-NL`. Only `#hub-title` and the chapter text are localized; the buttons keep fixed English text (no label controller on them). An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "three-chapters.scenario.json"
+}

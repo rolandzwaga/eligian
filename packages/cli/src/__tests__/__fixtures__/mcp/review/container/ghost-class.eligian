@@ -1,0 +1,8 @@
+// The container .ghostc is in the CSS but not in the layout: only
+// timeline-container-not-in-layout reports a class with selectorNotInLayout off
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Main" in ".ghostc" using raf {
+  at 0s..1s [ log("tick") ] [ ]
+}

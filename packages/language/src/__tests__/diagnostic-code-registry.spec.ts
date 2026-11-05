@@ -86,6 +86,7 @@ const NEW_CODES: readonly string[] = [
   'locales-parse-failed',
   'timeline-required',
   'validation-exception',
+  'unknown-listener-action', // Phase 2 (FR-055)
   // compiler
   'compile-parse-error',
   'compile-validation-error',

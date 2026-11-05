@@ -1,0 +1,15 @@
+# T001 build before any change
+HEAD: a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f
+pnpm install --frozen-lockfile: exit 0
+pnpm build: exit 0
+## last 5 build lines
+packages/extension build: [08:33:27] Build succeeded
+packages/extension build: Done
+packages/cli build: generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+packages/cli build: [08:33:28] Build succeeded
+packages/cli build: Done
+## dist artifacts
+packages/cli/dist/cli.mjs
+packages/cli/dist/docs/index.json
+packages/language/dist/index.cjs
+packages/language/dist/mcp/index.cjs

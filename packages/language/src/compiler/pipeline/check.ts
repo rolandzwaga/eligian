@@ -14,6 +14,7 @@ import { Effect } from 'effect';
 import type { LangiumDocument } from 'langium';
 import { URI } from 'langium';
 import { type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-protocol';
+import type { EligianServices } from '../../eligian-module.js';
 import { isLibrary, isProgram, type Library, type Program } from '../../generated/ast.js';
 import { selectElementFix } from '../../lsp/select-element-fix.js';
 import { type DiagnosticCode, diagnosticCode } from '../../validators/codes.js';
@@ -161,20 +162,32 @@ function compileDiagnostic(
   };
 }
 
+/** The documents {@link withLoadedDocuments} loaded, while its callback runs. */
+export interface LoadedDocuments {
+  /** The shared compiler services: the singleton checkFiles and compileFile use */
+  readonly services: EligianServices;
+  /** The files and every library they import (transitively), by URI string */
+  readonly documents: ReadonlyMap<string, LangiumDocument>;
+  /** The document of one of `files`, by absolute path */
+  readonly documentOf: (file: string) => LangiumDocument | undefined;
+}
+
 /**
- * Load, link and validate the files plus every library they import, recording
- * the diagnostics of `files`. Returns the programs that were validated (library
- * files are validated but not compiled).
+ * Load `files` and their libraries into the shared workspace, link them, load their CSS
+ * imports into the CSS registry, run `use`, then clear the CSS registrations and release
+ * every loaded document (also when `use` throws). No validation is run.
+ *
+ * A file that cannot be read is skipped and reported through `onUnreadable`.
  */
-async function validateFiles(
+export async function withLoadedDocuments<T>(
   files: readonly string[],
-  results: Map<string, CheckDiagnostic[]>
-): Promise<Set<string>> {
+  use: (loaded: LoadedDocuments) => Promise<T> | T,
+  onUnreadable?: (file: string, error: unknown) => void
+): Promise<T> {
   const services = getOrCreateServices();
   const { LangiumDocumentFactory, LangiumDocuments, DocumentBuilder } = services.shared.workspace;
   const cssRegistry = services.Eligian.css.CSSRegistry;
   const documents = new Map<string, LangiumDocument>();
-  const programs = new Set<string>();
 
   const addDocument = (fsPath: string): LangiumDocument | undefined => {
     const uri = URI.file(fsPath);
@@ -185,16 +198,7 @@ async function validateFiles(
     try {
       content = readFileSync(fsPath, 'utf-8');
     } catch (error) {
-      results.get(fsPath)?.push({
-        file: fsPath,
-        severity: 'error',
-        message: `Cannot read file: ${error instanceof Error ? error.message : String(error)}`,
-        line: 1,
-        column: 1,
-        endLine: 1,
-        endColumn: 1,
-        code: diagnosticCode('file-unreadable'),
-      });
+      onUnreadable?.(fsPath, error);
       return undefined;
     }
     const document = LangiumDocumentFactory.fromString(content, uri);
@@ -239,35 +243,69 @@ async function validateFiles(
       if (isProgram(document.parseResult.value)) loadCssImports(document, cssRegistry);
     }
 
-    for (const file of files) {
-      const document = documents.get(URI.file(file).toString());
-      if (!document) continue;
-      const diagnostics =
-        await services.Eligian.validation.DocumentValidator.validateDocument(document);
-      const target = results.get(file)!;
-      for (const diagnostic of diagnostics) {
-        const data = dataOf(document, diagnostic);
-        target.push({
-          file,
-          severity: SEVERITY[diagnostic.severity ?? DiagnosticSeverity.Error] ?? 'error',
-          message: diagnostic.message,
-          line: diagnostic.range.start.line + 1,
-          column: diagnostic.range.start.character + 1,
-          endLine: diagnostic.range.end.line + 1,
-          endColumn: diagnostic.range.end.character + 1,
-          code: codeOf(diagnostic),
-          ...(data && { data }),
-        });
-      }
-      if (isProgram(document.parseResult.value)) programs.add(file);
-    }
+    return await use({
+      services: services.Eligian,
+      documents,
+      documentOf: file => documents.get(URI.file(file).toString()),
+    });
   } finally {
     for (const document of documents.values()) {
       cssRegistry.clearDocument(document.uri.toString());
     }
     releaseWorkspaceDocuments([...documents.values()].map(d => d.uri));
   }
-  return programs;
+}
+
+/**
+ * Load, link and validate the files plus every library they import, recording
+ * the diagnostics of `files`. Returns the programs that were validated (library
+ * files are validated but not compiled).
+ */
+function validateFiles(
+  files: readonly string[],
+  results: Map<string, CheckDiagnostic[]>
+): Promise<Set<string>> {
+  return withLoadedDocuments(
+    files,
+    async loaded => {
+      const programs = new Set<string>();
+      for (const file of files) {
+        const document = loaded.documentOf(file);
+        if (!document) continue;
+        const diagnostics =
+          await loaded.services.validation.DocumentValidator.validateDocument(document);
+        const target = results.get(file)!;
+        for (const diagnostic of diagnostics) {
+          const data = dataOf(document, diagnostic);
+          target.push({
+            file,
+            severity: SEVERITY[diagnostic.severity ?? DiagnosticSeverity.Error] ?? 'error',
+            message: diagnostic.message,
+            line: diagnostic.range.start.line + 1,
+            column: diagnostic.range.start.character + 1,
+            endLine: diagnostic.range.end.line + 1,
+            endColumn: diagnostic.range.end.character + 1,
+            code: codeOf(diagnostic),
+            ...(data && { data }),
+          });
+        }
+        if (isProgram(document.parseResult.value)) programs.add(file);
+      }
+      return programs;
+    },
+    (file, error) => {
+      results.get(file)?.push({
+        file,
+        severity: 'error',
+        message: `Cannot read file: ${error instanceof Error ? error.message : String(error)}`,
+        line: 1,
+        column: 1,
+        endLine: 1,
+        endColumn: 1,
+        code: diagnosticCode('file-unreadable'),
+      });
+    }
+  );
 }
 
 /** `data.suggestions` (a `string[]`) and the selectElement quick fix; undefined when neither exists. */

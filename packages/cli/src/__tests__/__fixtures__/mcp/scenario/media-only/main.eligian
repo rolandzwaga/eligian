@@ -1,0 +1,6 @@
+// Scenario on a media-only program: nothing can run in jsdom
+layout "./layout.html"
+
+timeline "film" in "#stage" using video from "./media/film.mp4" {
+  at 0s..5s [ log("film") ] []
+}

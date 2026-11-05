@@ -1,0 +1,7 @@
+// The video file exists and the timeline starts on a click
+timeline "Clip" in "#player" using video
+  from "./media/clip.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+}

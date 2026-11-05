@@ -1,0 +1,167 @@
+{
+  "actions": {
+    "resetView": {
+      "startOperations": [
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#box"
+          }
+        },
+        {
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "visible"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "replay": {
+      "startOperations": [
+        {
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "resetView"
+          }
+        },
+        {
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {}
+          }
+        },
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventArgs": [
+              0
+            ],
+            "eventName": "timeline-seek-request"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Intro": {
+      "type": "animation",
+      "duration": 4,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "replay"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "resetView"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {}
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-1-2",
+          "duration": {
+            "start": 1,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "timeline-action-2-4",
+          "duration": {
+            "start": 2,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

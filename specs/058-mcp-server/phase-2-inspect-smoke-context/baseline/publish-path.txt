@@ -1,0 +1,126 @@
+# T056 publish path — 2026-11-05T11:54:59Z, HEAD a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f, node v24.7.0, npm 11.10.0, MINGW64_NT-10.0-26200
+
+## 1. pnpm -C packages/cli run build:prod && ls dist/docs/index.json dist/docs/agents-block.md
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production
+generate-knowledge: 224 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[12:55:08] Build succeeded
+build:prod exit 0
+-rw-r--r-- 1 scab 197609  7229 Nov  5 12:55 packages/cli/dist/docs/agents-block.md
+-rw-r--r-- 1 scab 197609 50421 Nov  5 12:55 packages/cli/dist/docs/index.json
+ls exit 0
+
+## 2. pnpm -C packages/cli pack
+dist/docs/generated/operations/setOperationData.md
+dist/docs/generated/operations/setStyle.md
+dist/docs/generated/operations/setVariable.md
+dist/docs/generated/operations/sortArray.md
+dist/docs/generated/operations/splitString.md
+dist/docs/generated/operations/startAction.md
+dist/docs/generated/operations/substringText.md
+dist/docs/generated/operations/toggleClass.md
+dist/docs/generated/operations/toggleElement.md
+dist/docs/generated/operations/toggleFormElement.md
+dist/docs/generated/operations/validateForm.md
+dist/docs/generated/operations/wait.md
+dist/docs/generated/operations/when.md
+dist/docs/generated/starters/blank.md
+dist/docs/generated/starters/chapters.md
+dist/docs/generated/starters/library.md
+dist/docs/generated/starters/video.md
+dist/docs/generated/syntax-cheatsheet.md
+dist/docs/index.json
+dist/docs/overlays.json
+LICENSE
+package.json
+README.md
+Tarball Details
+eligian-1.1.0.tgz
+pack exit 0
+-rw-r--r-- 1 scab 197609 660138 Nov  5 12:55 packages/cli/eligian-1.1.0.tgz
+
+## 3. Global state before: npm ls -g eligian
+C:\Program Files\nodejs -> .\
+`-- (empty)
+
+npm ls exit 1
+
+## 4. publish-cli.yml "Try the package", run locally (Git Bash, repo root)
+$ npm install -g ./packages/cli/eligian-*.tgz
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+
+added 53 packages in 32s
+exit 0
+$ eligian --version
+1.1.0
+exit 0
+$ eligian check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0
+8 files, 0 errors, 0 warnings
+exit 0
+$ eligian check examples/demo.eligian --selector-not-in-layout off
+examples/demo.eligian
+  162:28  warning  The container "#container" of timeline "Eligian Demo" is not in the layout (missing #container); it must exist when the layout is rendered  timeline-container-not-in-layout
+  224:5   warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  224:5   warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5   warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5   warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+
+1 file, 0 errors, 5 warnings
+exit 0
+$ eligian smoke "examples/eligian-tour/*.eligian"
+  timeline 'Hub': 1 position ok
+  timeline 'Timeline & Time': 9 positions ok
+  timeline 'Actions': 9 positions ok
+  timeline 'Logic': 13 positions ok
+  timeline 'Timeline Power Tools': 19 positions ok
+  timeline 'Files & Imports': 9 positions ok
+  timeline 'Engine Reach': 10 positions ok
+  timeline 'The Editor': 45 positions ok
+  timeline 'The Command Line': 254 positions ok
+2 files, 9 timelines played, 0 errors, 0 warnings
+exit 0
+$ command -v eligian
+/c/Program Files/nodejs/eligian
+C:\Program Files\nodejs -> .\
+`-- eligian@1.1.0
+
+$ npx -y @modelcontextprotocol/inspector@2.13.0 --cli --method tools/call --tool-name eligian_docs --format json eligian mcp | node -e <publish-cli.yml check>
+{"t":"2026-11-05T11:57:17.208Z","tool":"eligian_docs","ms":220,"chars":9151,"ok":true,"args":{}}
+eligian_docs: 57 index entries
+exit 0/0
+
+## 5. Inspector tools/list gate against the installed tarball (ci.yml want= string)
+bin: C:\Program Files\nodejs\node_modules/eligian/bin/cli.js
+Schema portability: 0 errors, 3 warnings across 1 tool. Re-run with --strict for details.
+tools/list: eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke
+exit 0/0
+$ (same gate through the global eligian shim) mcp-inspector ... eligian mcp
+Schema portability: 0 errors, 3 warnings across 1 tool. Re-run with --strict for details.
+tools/list: eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke (8)
+exit 0/0
+
+## 6. Restore the global state
+$ npm uninstall -g eligian
+
+removed 53 packages in 2s
+exit 0
+$ npm ls -g eligian
+C:\Program Files\nodejs -> .\
+`-- (empty)
+
+npm ls exit 1 (same as section 3: empty, exit 1)
+$ command -v eligian
+(none)
+
+## 7. Clean up
+$ rm packages/cli/eligian-*.tgz
+exit 0
+ls: cannot access 'packages/cli/*.tgz': No such file or directory
+$ pnpm -C packages/cli build
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly
+generate-knowledge: 224 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[12:57:45] Build succeeded
+build exit 0
+-rwxr-xr-x 1 scab 197609 3752153 Nov  5 12:57 packages/cli/dist/cli.mjs
+-rw-r--r-- 1 scab 197609   50421 Nov  5 12:57 packages/cli/dist/docs/index.json

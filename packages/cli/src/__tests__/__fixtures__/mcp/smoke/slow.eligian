@@ -1,0 +1,12 @@
+// A quick timeline, then one whose walk takes more than 3 s: every event start waits 1.2 s
+layout "./layout.html"
+
+timeline "A" in "#stage" using raf {
+  at 0s..1s [ log("A") ] []
+}
+
+timeline "B" in "#stage" using raf {
+  at 0s..1s [ wait(1200) ] []
+  at 1s..2s [ wait(1200) ] []
+  at 2s..3s [ wait(1200) ] []
+}

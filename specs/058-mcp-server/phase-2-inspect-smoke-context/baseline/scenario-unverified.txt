@@ -1,0 +1,37 @@
+T021: the outcome of the two FR-034 [UNVERIFIED] items (SC-020), settled by passing tests
+
+Command: pnpm -C packages/cli exec vitest run src/__tests__/mcp-scenario.spec.ts -t "class-driven visible|visible false via hidden|snapshot shape|removed element" --reporter=verbose
+
+ ✓ src/__tests__/mcp-scenario.spec.ts > scenario > class-driven visible against injected CSS
+ ✓ src/__tests__/mcp-scenario.spec.ts > scenario > visible false via hidden and via ancestor display none
+ ✓ src/__tests__/mcp-scenario.spec.ts > scenario > removed element: exists false and visible false at the next step
+ ✓ src/__tests__/mcp-scenario.spec.ts > scenario > snapshot shape
+ Test Files  1 passed (1)
+      Tests  4 passed | 25 skipped (29)
+
+Full file (pnpm -C packages/cli exec vitest run src/__tests__/mcp-scenario.spec.ts src/__tests__/smoke.spec.ts):
+ Test Files  2 passed (2)
+      Tests  41 passed (41)
+
+FR-034 item 5 (P5): does jsdom 30.1.3's getComputedStyle cascade display / visibility / opacity
+from injected <style> elements?
+  VERIFIED, yes. The scenario engine's styles are injected by injectStyles (dom-environment.ts) as
+  <style data-eligian-smoke> in head. Evidence:
+  - "class-driven visible against injected CSS": fixture headline, #headline class="hidden" with
+    .hidden { display: none } in styles.css; visible false at the start, true after seek 1.5
+    (removeClass("hidden") at 1s); the injected styles are removed after the scenario.
+  - "visible false via hidden and via ancestor display none": fixture ancestor-none, #inner
+    inside #wrap.off with .off { display: none } in styles.css → visible false (the ancestor walk);
+    fixture hidden-attr, #note with the hidden attribute → visible false.
+  No rule-resolving fallback was built.
+
+FR-034 item 6 (P6): where does eligius 4.2.0 record the controllers attached to an element?
+  VERIFIED: the jQuery data array "eligiusEngineControllers" of the element
+  (node_modules/eligius/dist/engine-factory-39T5FByM.mjs: attachControllerToElement), each
+  controller with a `name`. scenario.ts reads it with (await import('jquery')).default after
+  loadEligius(): one jquery@4.0.0 copy, the engine's instance. Evidence:
+  - "snapshot shape": fixture listener (on click "#btn" run mark()) → snapshot btn.controllers
+    equals ["DOMEventListenerController"], and the assertion
+    { after: 's', selector: '#btn', controllers: ['DOMEventListenerController'] } passes.
+  - "key target order" (case 2): the key step's fallback finds the element whose
+    eligiusEngineControllers names include KeyboardController (#panel) and dispatches there.

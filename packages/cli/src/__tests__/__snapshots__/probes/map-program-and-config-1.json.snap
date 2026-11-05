@@ -1,0 +1,157 @@
+{
+  "actions": {
+    "greet": {
+      "startOperations": [
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#title"
+          }
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "template": "$operationdata.text"
+            }
+          }
+        },
+        {
+          "systemName": "setElementContent"
+        }
+      ],
+      "endOperations": []
+    },
+    "__nav__outro_335a3648": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Outro",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Intro": {
+      "type": "animation",
+      "duration": 2,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__outro_335a3648"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-0-2",
+          "duration": {
+            "start": 0,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "greet"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "text": "Welcome"
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    },
+    "Outro": {
+      "type": "animation",
+      "duration": 3,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-3",
+          "duration": {
+            "start": 0,
+            "end": 3
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -48,7 +48,9 @@ export const STARTERS: readonly Starter[] = [
     name: 'video',
     label: 'Video',
     description: 'A timeline driven by a video, with captions and play / pause buttons',
-    notes: ['Add your video as media/intro.mp4 (or change the path in main.eligian).'],
+    notes: [
+      'Add your video as media/intro.mp4 (or change the path in main.eligian); until then `eligian check` reports `media-file-missing`.',
+    ],
   },
   {
     name: 'library',

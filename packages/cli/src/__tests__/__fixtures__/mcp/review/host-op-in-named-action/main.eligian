@@ -1,0 +1,17 @@
+// A host operation in a named-action body: it may rely on its caller's selection (FR-050 ruling, OQ-1)
+layout "./layout.html"
+
+extensions "./host.ts" {
+  operation highlight(color: string)
+}
+
+action paint() [
+  highlight("red")
+]
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    selectElement("#box")
+    paint()
+  ]
+}

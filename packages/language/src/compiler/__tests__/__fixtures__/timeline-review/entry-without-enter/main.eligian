@@ -1,0 +1,9 @@
+// entry-timeline-without-enter: the entry timeline sets nothing up
+timeline "Hub" in "#hub" using raf {
+}
+
+timeline "Chapter" in "#chapter" using raf {
+  on enter [
+    on click "#back" navigate "Hub"
+  ]
+}

@@ -6,8 +6,35 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { isLibrary, runSmoke } from '../smoke/smoke-command.js';
-import { boundaries } from '../smoke/smoke-runner.js';
+import { isLibrary, runSmoke, smokeFile } from '../smoke/smoke-command.js';
+import { boundaries, SMOKE_CODES } from '../smoke/smoke-runner.js';
+
+/** The FR-033 fixture: a host operation that returns undefined, called twice after a selectElement. */
+const HOST_UNDEFINED = path.join(__dirname, '__fixtures__', 'mcp', 'scenario', 'host-undefined');
+
+/** T002's outputs of the built CLI before Phase 2 (FR-031: pretty and github stay byte-identical). */
+const BASE = path.resolve(
+  __dirname,
+  '../../../../specs/058-mcp-server/phase-2-inspect-smoke-context/baseline'
+);
+
+/** A baseline file's sections: `### <patterns and flags> (exit N)`, then the command's stdout. */
+function baselineSections(file: string): { args: string[]; exitCode: number; stdout: string }[] {
+  const text = fs.readFileSync(path.join(BASE, file), 'utf-8').replace(/\r\n/g, '\n');
+  return text
+    .split(/^### /m)
+    .filter(section => section !== '')
+    .map(section => {
+      const newline = section.indexOf('\n');
+      const heading = /^(.*) \(exit (\d+)\)$/.exec(section.slice(0, newline));
+      if (!heading) throw new Error(`not a baseline heading: ${section.slice(0, newline)}`);
+      return {
+        args: heading[1].split(' '),
+        exitCode: Number(heading[2]),
+        stdout: section.slice(newline + 1),
+      };
+    });
+}
 
 const LAYOUT = '<div id="stage"><div id="a"></div><div id="b"></div></div>\n';
 const STYLES = '#stage {}\n#a {}\n#b {}\n#ghost {}\n.on {}\n';
@@ -50,6 +77,11 @@ timeline "Shared" in "#stage" using raf {
 }
 `
     );
+    write(
+      'slow.eligian',
+      `${HEADER}timeline "Slow" in "#stage" using raf { at 0s..1s [ wait(200) ] [] }\n`
+    );
+    write('uncompilable.eligian', `${HEADER}timeline "Bad" in "#stage" using raf {\n  at 0s..1s [`);
     write('lib.eligian', '// helpers\nlibrary helpers\naction noop() [ selectElement("#a") ]\n');
     write(
       'media.eligian',
@@ -87,6 +119,7 @@ timeline "Shared" in "#stage" using raf {
     const [result] = JSON.parse(outcome.output);
     expect(result.problems).toEqual([
       {
+        code: 'smoke-engine-error',
         severity: 'error',
         message:
           'start operation selectElement (in boom): selectElement: selector is either empty or not defined.',
@@ -104,6 +137,7 @@ timeline "Shared" in "#stage" using raf {
     const [result] = JSON.parse(outcome.output);
     expect(result.problems).toEqual([
       expect.objectContaining({
+        code: 'smoke-engine-error',
         message:
           'start operation selectElement (in boom): selectElement: selector is either empty or not defined.',
         location: expect.objectContaining({ line: 3, column: 17 }),
@@ -131,6 +165,108 @@ timeline "Shared" in "#stage" using raf {
     expect(outcome.output).toContain(
       "timeline './intro.mp4' skipped (media timelines need a browser)"
     );
+  });
+
+  it('every problem has a SMOKE_CODES code', async () => {
+    const outcomes = [
+      await smoke(['*.eligian'], 'json', true),
+      await runSmoke(['main.eligian'], { format: 'json', strict: true, cwd: HOST_UNDEFINED }),
+    ];
+    const problems = outcomes.flatMap(outcome =>
+      (JSON.parse(outcome.output) as { problems: { code?: string }[] }[]).flatMap(r => r.problems)
+    );
+    expect(problems.length).toBeGreaterThan(0);
+    for (const problem of problems) expect(SMOKE_CODES).toContain(problem.code);
+    expect(problems.map(p => p.code)).toEqual(
+      expect.arrayContaining(['smoke-compile-failed', 'smoke-selector-miss', 'smoke-engine-error'])
+    );
+  });
+
+  it('host op returning undefined: exactly one host-operation-returned-non-object at the call site', async () => {
+    const outcome = await runSmoke(['main.eligian'], {
+      format: 'json',
+      strict: false,
+      cwd: HOST_UNDEFINED,
+    });
+    expect(outcome.exitCode).toBe(1);
+    const [result] = JSON.parse(outcome.output);
+    const nonObject = result.problems.filter(
+      (p: { code: string }) => p.code === 'host-operation-returned-non-object'
+    );
+    expect(nonObject).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        location: expect.objectContaining({ line: 11 }),
+      }),
+    ]);
+  });
+
+  it('a step timeout is smoke-step-timeout', async () => {
+    // slow.eligian's event runs wait(200): the seek to 0 cannot finish within 1 ms
+    const outcome = await runSmoke(['slow.eligian'], {
+      format: 'json',
+      strict: false,
+      cwd,
+      stepTimeoutMs: 1,
+    });
+    expect(outcome.exitCode).toBe(1);
+    const [result] = JSON.parse(outcome.output);
+    expect(result.problems).toEqual([
+      expect.objectContaining({
+        code: 'smoke-step-timeout',
+        severity: 'error',
+        message: expect.stringMatching(/did not finish within 1 ms$/),
+      }),
+    ]);
+  });
+
+  it('pretty and github outputs are byte-identical to the baseline', async () => {
+    for (const format of ['pretty', 'github'] as const) {
+      const sections = baselineSections(`smoke-${format}-before.txt`);
+      expect(sections.length).toBeGreaterThan(0);
+      for (const { args, exitCode, stdout } of sections) {
+        const outcome = await smoke(
+          args.filter(arg => arg !== '--strict'),
+          format,
+          args.includes('--strict')
+        );
+        // The CLI prints the output with console.log: one newline after it
+        expect(`${outcome.output}\n`, `${format}: ${args.join(' ')}`).toBe(stdout);
+        expect(outcome.exitCode, `${format}: ${args.join(' ')}`).toBe(exitCode);
+      }
+    }
+  });
+
+  it('a program that does not compile: the pre-Phase-2 message, a space after the colon', async () => {
+    // FR-031: pretty and github stay byte-identical; the baseline holds no uncompilable file
+    const pretty = await smoke(['uncompilable.eligian']);
+    expect(pretty.exitCode).toBe(1);
+    expect(pretty.output).toMatch(/^ {2}error {2}does not compile: \S/m);
+    const github = await smoke(['uncompilable.eligian'], 'github');
+    expect(github.output).toMatch(
+      /^::error file=uncompilable\.eligian,title=eligian smoke::does not compile: \S/m
+    );
+    const [result] = JSON.parse((await smoke(['uncompilable.eligian'], 'json')).output);
+    expect(result.problems).toEqual([
+      {
+        code: 'smoke-compile-failed',
+        severity: 'error',
+        message: expect.stringMatching(/^does not compile: \S/),
+      },
+    ]);
+  });
+
+  it('smokeFile is exported and returns a SmokeResult', async () => {
+    const result = await smokeFile(path.join(cwd, 'clean.eligian'), {
+      format: 'json',
+      strict: false,
+      cwd,
+    });
+    expect(result.timelines).toEqual([
+      { name: 'Clean', boundaries: 3 },
+      { name: 'Second', boundaries: 2 },
+    ]);
+    expect(result.problems).toEqual([]);
   });
 
   it('exits with 2 when nothing matches', async () => {

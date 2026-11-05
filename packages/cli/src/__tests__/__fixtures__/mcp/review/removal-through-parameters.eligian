@@ -1,0 +1,28 @@
+// controller-imbalance / class-never-removed negative: the removals run in actions whose
+// parameters (selector, className) reach selectElement / removeClass by name
+layout "./layout.html"
+styles "./styles.css"
+
+action detach(selector: string) [
+  selectElement(selector)
+  removeControllerFromElement("ProgressbarController")
+]
+
+action unmark(className: string) [
+  selectElement("#box")
+  removeClass(className)
+]
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#bar")
+    addController("ProgressbarController")
+    selectElement("#box")
+    addClass("lit")
+  ]
+  on leave [
+    detach("#bar")
+    unmark("lit")
+  ]
+  at 0s..2s [ selectElement("#box") ] []
+}

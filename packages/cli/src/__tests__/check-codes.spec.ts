@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import * as path from 'node:path';
 import { DIAGNOSTIC_CODES, isDiagnosticCode } from '@eligian/language';
 import { describe, expect, it } from 'vitest';
+import { runCheck } from '../check/check-command.js';
 
 const bin = path.join(__dirname, '../../bin/cli.js');
 const FIXTURES = path.join(__dirname, '__fixtures__/check-codes');
@@ -92,5 +93,29 @@ describe('eligian check --format json codes', () => {
     expect(DIAGNOSTIC_CODES.length).toBeGreaterThan(0);
     expect(isDiagnosticCode('syntax-error')).toBe(true);
     expect(isDiagnosticCode('not-a-registered-code')).toBe(false);
+  });
+
+  it('unknown-listener-action is reported without compiling, beside an unrelated error', async () => {
+    // T013's with-error program: unknown listener names next to an unknown operation (SC-010(4))
+    const file = path.resolve(
+      __dirname,
+      '../../../language/src/__tests__/__fixtures__/listener-actions/with-error.eligian'
+    );
+    const outcome = await runCheck([file], {
+      format: 'json',
+      warningsAsErrors: false,
+      cwd: path.dirname(file),
+      version: 'test',
+      selectorNotInLayout: 'ids',
+      lint: true,
+      review: true,
+    });
+    const report = JSON.parse(outcome.output) as JsonReport;
+    const diagnostics = report.files.flatMap(f => f.diagnostics);
+
+    expect(outcome.exitCode).toBe(1);
+    expect(diagnostics.filter(d => d.code === 'unknown-listener-action').length).toBeGreaterThan(0);
+    expect(diagnostics.filter(d => d.message.includes('notAnOperation')).length).toBeGreaterThan(0);
+    expect(diagnostics.filter(d => d.code === 'compile-failed')).toEqual([]);
   });
 });

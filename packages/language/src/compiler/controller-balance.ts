@@ -73,6 +73,15 @@ export function resolveOperationData(value: unknown, data: OperationData): unkno
   return value;
 }
 
+/**
+ * An operation's property: its own operationData's, else the data's. An action parameter named
+ * like the property reaches the operation by name, through the data: `selectElement(selector)`
+ * in `action unclick(selector: string)` compiles to operationData null.
+ */
+function property(own: OperationData, key: string, data: OperationData): unknown {
+  return resolveOperationData(key in own ? own[key] : data[key], data);
+}
+
 interface WalkState {
   readonly actions: ReadonlyMap<string, ActionBody>;
   readonly events: WalkEvent[];
@@ -99,13 +108,13 @@ function walk(
     const own = operation.operationData ?? {};
     switch (operation.systemName) {
       case 'selectElement':
-        selector = resolveOperationData(own.selector, data);
+        selector = property(own, 'selector', data);
         break;
       case 'setOperationData':
         Object.assign(data, resolveOperationData(own.properties ?? {}, data));
         break;
       case 'getControllerInstance':
-        controller = resolveOperationData(own.systemName, data);
+        controller = property(own, 'systemName', data);
         break;
       case 'addControllerToElement':
         state.events.push({ kind: 'controller-added', selector, controller, at: position });
@@ -114,7 +123,7 @@ function walk(
         state.events.push({
           kind: 'controller-removed',
           selector,
-          controller: resolveOperationData(own.controllerName, data),
+          controller: property(own, 'controllerName', data),
           at: position,
         });
         break;
@@ -124,7 +133,7 @@ function walk(
         state.events.push({
           kind: CLASS_EVENTS[operation.systemName],
           selector,
-          className: resolveOperationData(own.className, data),
+          className: property(own, 'className', data),
           at: position,
         });
         break;

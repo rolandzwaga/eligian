@@ -8,6 +8,8 @@
  * spawn `bin/cli.js mcp` with a preload (`__fixtures__/mcp/noise.mjs`, `crash.mjs`) that
  * fires once the trigger file exists; they need the built CLI. The defect run is in-process:
  * a compiler lock whose `run` dies makes `eligian_check` hit the tool boundary (plan C10).
+ * Spec 058 Phase 2 (SC-008(5)): an `eligian_smoke` call through the spawned server, with the
+ * default `cliPath`, leaves stdout pure NDJSON.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,6 +24,7 @@ import { spawnServer, startInMemoryServer } from './mcp-test-client.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(HERE, '__fixtures__', 'mcp');
 const NOISE_PROJECT = path.join(FIXTURES, 'noise-project');
+const SMOKE_PROJECT = path.join(FIXTURES, 'smoke-tool');
 const built = fs.existsSync(path.resolve(HERE, '..', '..', 'dist', 'cli.mjs'));
 
 const NOISE_SENTINELS = [
@@ -249,6 +252,41 @@ describe('stdout carries only protocol frames (server runs)', () => {
         // SC-019: a planned red until T055 bumps the CLI version to 1.1.0
         expect(payload.header).toMatch(HEADER);
         expect(text.startsWith('{"header":"eligian 1.1.0 · ')).toBe(true);
+      } finally {
+        server.child.kill();
+      }
+    },
+    60_000
+  );
+
+  // SC-008(5): the smoke child's stdout is read by the tool, never passed through
+  test.skipIf(!built)(
+    'stdout stays pure NDJSON during an eligian_smoke call (default cliPath)',
+    async () => {
+      const server = spawnServer({ cwd: SMOKE_PROJECT });
+      const recorded = recordStdout(server.child);
+      try {
+        const initialize = await server.request('initialize', INITIALIZE);
+        expect(initialize.result).toBeDefined();
+        server.notify('notifications/initialized');
+
+        const smoke = await server.request('tools/call', {
+          name: 'eligian_smoke',
+          arguments: { paths: [path.join(SMOKE_PROJECT, 'a', 'main.eligian')] },
+        });
+        expect(smoke.error).toBeUndefined();
+        const result = smoke.result as { content: { text: string }[]; isError?: boolean };
+        const text = result.content[0].text;
+        expect(result.isError, text).not.toBe(true);
+        // a timeline came back: the default cliPath (the bundle's bin/cli.js) resolved
+        const payload = JSON.parse(text) as { files: { timelines: unknown[] }[] };
+        const timelines = payload.files.flatMap(file => file.timelines);
+        expect(timelines.length, text).toBeGreaterThanOrEqual(1);
+
+        await server.close();
+        await recorded.closed;
+
+        expectOnlyFrames(recorded.stdout());
       } finally {
         server.child.kill();
       }

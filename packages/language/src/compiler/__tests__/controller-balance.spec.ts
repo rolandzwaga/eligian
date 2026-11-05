@@ -89,6 +89,36 @@ describe('walkOperations', () => {
     expect(result.unresolved).toEqual([]);
   });
 
+  it('an operation without its own property reads the parameter of that name from the data', () => {
+    // `action unclick(selector) [ selectElement(selector) … ]` and `removeClass(className)`
+    // compile to operationData null: the argument reaches them by name, through the data
+    const actions = new Map<string, ActionBody>([
+      [
+        'unclick',
+        {
+          startOperations: [
+            op('selectElement'),
+            op('removeControllerFromElement', { controllerName: 'DOMEventListenerController' }),
+          ],
+        },
+      ],
+      ['unmark', { startOperations: [op('selectElement', { selector: '#b' }), op('removeClass')] }],
+    ]);
+    const result = walkOperations(
+      [...call('unclick', { selector: '#a' }), ...call('unmark', { className: 'on' })],
+      actions
+    );
+    expect(result.events).toEqual([
+      {
+        kind: 'controller-removed',
+        selector: '#a',
+        controller: 'DOMEventListenerController',
+        at: 1,
+      },
+      { kind: 'class-removed', selector: '#b', className: 'on', at: 3 },
+    ]);
+  });
+
   it('follows endAction into the end operations', () => {
     const actions = new Map<string, ActionBody>([
       [

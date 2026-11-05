@@ -17,6 +17,7 @@ import * as mcp from '../mcp.js';
 describe('@eligian/language/mcp', () => {
   it('exports exactly the list', () => {
     expect(Object.keys(mcp).sort()).toEqual([
+      'ASSET_REVIEW_CODES',
       'CONTROLLERS',
       'DOM_EVENTS',
       'EligianDocumentSymbolProvider',
@@ -24,6 +25,7 @@ describe('@eligian/language/mcp', () => {
       'KEY_COMPLETIONS',
       'SELF_RESOLVED',
       'TIMELINE_EVENTS',
+      'TIMELINE_REVIEW_CODES',
       'argumentRole',
       'calledAction',
       'controllerBalance',
@@ -41,7 +43,9 @@ describe('@eligian/language/mcp', () => {
       'scanLayoutElements',
       'selectorNames',
       'similarTimelineNames',
+      'timelineFindings',
       'timelineNamed',
+      'timelineNames',
       'timelineSymbolAt',
       'walkOperations',
     ]);

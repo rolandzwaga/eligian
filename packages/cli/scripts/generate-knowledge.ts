@@ -1,15 +1,20 @@
 /**
  * The Eligian docs generator (spec 058 phase 1, FR-032, FR-035, FR-036, FR-038;
- * plan "Generator", "Literate probes"). Writes the docs the MCP server serves and
- * the CLI package ships:
+ * plan "Generator", "Literate probes"; phase 2 FR-072–FR-076, plan F2). Writes the
+ * docs the MCP server serves and the CLI package ships:
  *
  * - `index.json`: every chunk's frontmatter plus its body word count, sorted by id;
- * - `overlays.json`: the diagnostic overlays of `curriculum/diagnostics/*.md`;
+ * - `overlays.json`: the diagnostic overlays of `curriculum/diagnostics/*.md`, the
+ *   operation overlays of `curriculum/operations/*.md` and the controller overlays of
+ *   `curriculum/controllers/*.md` (status and card);
  * - `agents-block.md`: the AGENTS.md block `eligian_init` writes;
  * - `curriculum/*.md`: the hand-written chunks, with the compiled JSON of every
- *   literate probe of a `map-*` chunk spliced in after it;
- * - `generated/*.md`: the chunks built from the registry, the grammar, the
- *   starters, the Eligius schema and the diagnostic code registry.
+ *   literate probe of a `map-*` chunk and of `presentation-patterns` spliced in after it;
+ * - `generated/*.md`: the chunks built from the registry (merged with the operation and
+ *   controller overlays, whose probes are spliced too), the grammar, the starters, the
+ *   Eligius schema and the diagnostic code registry;
+ * - `generated/examples/<id>.md`: one per `// @mcp-example <id> <title>` … `// @mcp-end`
+ *   marker in the tour's `.eligian` files and in the starters.
  *
  * Deterministic: sorted iteration, `\n` line endings, no timestamps. The output
  * directory is deleted first, so no stale chunk survives a dev build.
@@ -26,7 +31,6 @@ import {
   formatErrors,
   getAllOperations,
   getOperationsByCategory,
-  type IEngineConfiguration,
   isConstantValueArray,
   type OperationSignature,
   STARTERS,
@@ -41,26 +45,37 @@ import {
 import { Effect } from 'effect';
 import { metadata as eligiusMetadata } from 'eligius/metadata';
 import { REVIEW_CODES } from '../src/check/review.js';
+import { configFragment } from '../src/mcp/config-fragment.js';
 import { sourceOf } from '../src/mcp/diagnostics.js';
-import { agentsMdBlock } from '../src/mcp/instructions.js';
+import { agentsMdBlock, chunkFile } from '../src/mcp/instructions.js';
 import { ELIGIUS_LINT_RULES } from '../src/mcp/knowledge/lint-rules.js';
 import {
-  CONTROLLER_STATUS,
   controllerCard,
   eventLine,
   eventName,
   operationCard,
 } from '../src/mcp/knowledge/render.js';
-import type { ChunkKind, IndexEntry, Overlay } from '../src/mcp/knowledge/types.js';
+import type {
+  ChunkKind,
+  ControllerOverlay,
+  ControllerStatus,
+  IndexEntry,
+  OperationOverlay,
+  Overlay,
+} from '../src/mcp/knowledge/types.js';
+import { SMOKE_CODES } from '../src/smoke/smoke-runner.js';
 
 export interface GenerateOptions {
   readonly outDir: string;
   /** The hand-written chunks; default `src/mcp/knowledge/curriculum` */
   readonly curriculumDir?: string;
+  /** The `.eligian` files scanned for example markers; default `examples/eligian-tour` */
+  readonly tourDir?: string;
 }
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CURRICULUM = path.join(HERE, '..', 'src', 'mcp', 'knowledge', 'curriculum');
+const DEFAULT_TOUR = path.join(HERE, '..', '..', '..', 'examples', 'eligian-tour');
 /** What the literate probes may import (`./probe.css`, `./probe-layout.html`) */
 const PROBE_ASSETS = path.join(DEFAULT_CURRICULUM, 'probe-assets');
 
@@ -200,66 +215,24 @@ function listField(
 }
 
 // ---------------------------------------------------------------------------
-// Literate probes (FR-038)
+// Literate probes (FR-038; phase 2 FR-072–FR-074)
 
-type Json = null | boolean | number | string | readonly Json[] | { readonly [key: string]: Json };
-
-/** `value` with every `id` key removed, at any depth: ids are random per compile. */
-function withoutIds(value: unknown): Json {
-  if (Array.isArray(value)) return value.map(withoutIds);
-  if (typeof value === 'object' && value !== null) {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key, nested]) => key !== 'id' && nested !== undefined)
-        .map(([key, nested]) => [key, withoutIds(nested)])
-    );
-  }
-  return value as Json;
-}
-
-/** The part of a compiled configuration a probe shows, keyed by action name / timeline uri. */
-function probeFragment(config: IEngineConfiguration): Json {
-  const actions = Object.fromEntries(
-    config.actions.map(action => [
-      action.name,
-      withoutIds({ startOperations: action.startOperations, endOperations: action.endOperations }),
-    ])
-  );
-  const timelines = Object.fromEntries(
-    config.timelines.map(timeline => [
-      timeline.uri,
-      withoutIds({
-        type: timeline.type,
-        duration: timeline.duration,
-        timelineActions: timeline.timelineActions.map(action => ({
-          ...(action.name ? { name: action.name } : {}),
-          duration: action.duration,
-          startOperations: action.startOperations,
-          endOperations: action.endOperations,
-        })),
-      }),
-    ])
-  );
-  const initActions = config.initActions ?? [];
-  return {
-    actions,
-    timelines,
-    ...(initActions.length > 0 ? { initActions: withoutIds(initActions) } : {}),
-  };
-}
-
-async function compileProbe(chunkId: string, index: number, source: string): Promise<string> {
-  const sourceUri = path.join(PROBE_ASSETS, `probe-${chunkId}-${index}.eligian`);
+/**
+ * The compiled fragment of one probe. `label` names the probe file (`probe-<label>-<n>`),
+ * next to the probe assets, so it must not contain a path separator.
+ */
+async function compileProbe(label: string, index: number, source: string): Promise<string> {
+  const sourceUri = path.join(PROBE_ASSETS, `probe-${label}-${index}.eligian`);
   try {
     const { config } = await Effect.runPromise(compileWithMap(source, { sourceUri }));
-    return JSON.stringify(probeFragment(config), null, 2);
+    return JSON.stringify(configFragment(config), null, 2);
   } catch (error) {
     const [formatted] =
       typeof error === 'object' && error !== null && '_tag' in error
         ? formatErrors([error as Parameters<typeof formatErrors>[0][number]], source)
         : [];
     const reason = formatted ? formatted.message : String(error);
-    throw new Error(`${chunkId}: probe ${index} does not compile: ${reason}`);
+    throw new Error(`${label}: probe ${index} does not compile: ${reason}`);
   }
 }
 
@@ -267,7 +240,7 @@ const PROBE_OPEN = /^```eligian probe\s*$/;
 const FENCE_CLOSE = /^```\s*$/;
 
 /** The body with the compiled JSON spliced in after every probe. */
-async function spliceProbes(chunkId: string, body: string): Promise<string> {
+async function spliceProbes(label: string, body: string): Promise<string> {
   const lines = body.split('\n');
   const out: string[] = [];
   let index = 0;
@@ -277,15 +250,18 @@ async function spliceProbes(chunkId: string, body: string): Promise<string> {
     const start = i + 1;
     let end = start;
     while (end < lines.length && !FENCE_CLOSE.test(lines[end])) end++;
-    if (end === lines.length) throw new Error(`${chunkId}: probe ${index + 1} is not closed`);
+    if (end === lines.length) throw new Error(`${label}: probe ${index + 1} is not closed`);
     out.push(...lines.slice(start, end + 1));
     i = end;
     index++;
-    const json = await compileProbe(chunkId, index, `${lines.slice(start, end).join('\n')}\n`);
+    const json = await compileProbe(label, index, `${lines.slice(start, end).join('\n')}\n`);
     out.push('', fence(json, 'json compiled'));
   }
   return out.join('\n');
 }
+
+/** The chunks whose probes are compiled: the mapping chunks and `presentation-patterns`. */
+const runsProbes = (id: string): boolean => id.startsWith('map-') || id === 'presentation-patterns';
 
 // ---------------------------------------------------------------------------
 // Curriculum and overlays
@@ -314,60 +290,243 @@ async function curriculumChunks(curriculumDir: string): Promise<Chunk[]> {
       use_cases: listField(file, fields, 'use_cases'),
       see: listField(file, fields, 'see'),
       card: stringField(file, fields, 'card'),
-      body: id.startsWith('map-') ? await spliceProbes(id, body) : body,
+      body: runsProbes(id) ? await spliceProbes(id, body) : body,
       file: `curriculum/${id}.md`,
     });
   }
   return chunks;
 }
 
+/** The overlay directories of the curriculum (FR-073, FR-074, FR-076). */
+const OVERLAY_DIRS = ['diagnostics', 'operations', 'controllers'] as const;
+type OverlayDir = (typeof OVERLAY_DIRS)[number];
+
 interface OverlayFile {
+  readonly dir: OverlayDir;
+  /** The file name, `<name>.md` */
   readonly name: string;
+  /** The absolute path, for errors */
+  readonly file: string;
+  /** The whole file, `\n` line endings: copied to the output as it is */
   readonly text: string;
-  readonly code?: string;
-  readonly source?: string;
-  readonly fix: string;
+  readonly fields: Readonly<Record<string, string | readonly string[]>>;
+  readonly body: string;
 }
 
-function overlayFiles(curriculumDir: string): OverlayFile[] {
-  const dir = path.join(curriculumDir, 'diagnostics');
-  if (!fs.existsSync(dir)) return [];
+/** The `.md` files of one overlay directory, sorted by name. */
+function overlayFiles(curriculumDir: string, dir: OverlayDir): OverlayFile[] {
+  const directory = path.join(curriculumDir, dir);
+  if (!fs.existsSync(directory)) return [];
   return fs
-    .readdirSync(dir)
+    .readdirSync(directory)
     .filter(name => name.endsWith('.md'))
     .sort(byText)
     .map(name => {
-      const file = path.join(dir, name);
+      const file = path.join(directory, name);
       const { fields, body } = parseMarkdown(file);
-      const code = typeof fields.code === 'string' ? fields.code : undefined;
-      const source = typeof fields.source === 'string' ? fields.source : undefined;
-      if ((code === undefined) === (source === undefined)) {
-        throw new Error(`${file}: an overlay has either a 'code' or a 'source'`);
-      }
-      return {
-        name,
-        text: normalize(fs.readFileSync(file, 'utf8')),
-        ...(code === undefined ? {} : { code }),
-        ...(source === undefined ? {} : { source }),
-        fix: body.trim(),
-      };
+      return { dir, name, file, text: normalize(fs.readFileSync(file, 'utf8')), fields, body };
     });
 }
 
-function overlaysOf(files: readonly OverlayFile[]): {
+/** The diagnostic overlays: each has either a `code` or a `source`. */
+function diagnosticOverlays(files: readonly OverlayFile[]): {
   byCode: Record<string, Overlay>;
   bySource: Record<string, Overlay>;
 } {
   const byCode: Record<string, Overlay> = {};
   const bySource: Record<string, Overlay> = {};
   for (const overlay of files) {
-    if (overlay.code !== undefined) {
-      byCode[overlay.code] = { docs: `diagnostic/${overlay.code}`, fix: overlay.fix };
-    } else if (overlay.source !== undefined) {
-      bySource[overlay.source] = { docs: `diagnostic/source-${overlay.source}`, fix: overlay.fix };
+    const code = typeof overlay.fields.code === 'string' ? overlay.fields.code : undefined;
+    const source = typeof overlay.fields.source === 'string' ? overlay.fields.source : undefined;
+    if ((code === undefined) === (source === undefined)) {
+      throw new Error(`${overlay.file}: an overlay has either a 'code' or a 'source'`);
+    }
+    const fix = overlay.body.trim();
+    if (code !== undefined) {
+      byCode[code] = { docs: `diagnostic/${code}`, fix };
+    } else if (source !== undefined) {
+      bySource[source] = { docs: `diagnostic/source-${source}`, fix };
     }
   }
   return { byCode, bySource };
+}
+
+/** A named overlay's frontmatter name: a known name, in the file `<name>.md`. */
+function overlayName(
+  overlay: OverlayFile,
+  key: 'operation' | 'controller',
+  known: readonly string[]
+): string {
+  const name = stringField(overlay.file, overlay.fields, key);
+  if (!known.includes(name)) throw new Error(`${overlay.file}: unknown ${key} '${name}'`);
+  if (overlay.name !== `${name}.md`) {
+    throw new Error(`${overlay.file}: the overlay of ${key} '${name}' is named ${name}.md`);
+  }
+  return name;
+}
+
+/** An overlay merged into a generated chunk: the map entry and the body, probes spliced. */
+interface Merged<T> {
+  readonly overlay: T;
+  readonly body: string;
+}
+
+/** The operation overlays by operation name (FR-073). */
+async function operationOverlays(
+  files: readonly OverlayFile[]
+): Promise<Map<string, Merged<OperationOverlay>>> {
+  const known = getAllOperations().map(signature => signature.systemName);
+  const merged = new Map<string, Merged<OperationOverlay>>();
+  for (const overlay of files) {
+    const name = overlayName(overlay, 'operation', known);
+    merged.set(name, {
+      overlay: { card: stringField(overlay.file, overlay.fields, 'card') },
+      body: await spliceProbes(`operation-${name}`, overlay.body),
+    });
+  }
+  return merged;
+}
+
+const CONTROLLER_STATUSES: readonly ControllerStatus[] = [
+  'recommended',
+  'constrained',
+  'do-not-use',
+];
+
+/** The controller overlays by controller name (FR-074): the single source of the status. */
+async function controllerOverlays(
+  files: readonly OverlayFile[]
+): Promise<Map<string, Merged<ControllerOverlay>>> {
+  const known = CONTROLLERS.map(controller => controller.name);
+  const merged = new Map<string, Merged<ControllerOverlay>>();
+  for (const overlay of files) {
+    const name = overlayName(overlay, 'controller', known);
+    const status = stringField(overlay.file, overlay.fields, 'status') as ControllerStatus;
+    if (!CONTROLLER_STATUSES.includes(status)) {
+      throw new Error(
+        `${overlay.file}: status '${status}' is not one of ${CONTROLLER_STATUSES.join(', ')}`
+      );
+    }
+    merged.set(name, {
+      overlay: { status, card: stringField(overlay.file, overlay.fields, 'card') },
+      body: await spliceProbes(`controller-${name}`, overlay.body),
+    });
+  }
+  return merged;
+}
+
+/** The map entries of merged overlays, sorted by name. */
+const overlayEntries = <T>(merged: ReadonlyMap<string, Merged<T>>): Record<string, T> =>
+  Object.fromEntries(
+    [...merged.keys()].sort(byText).map(name => [name, (merged.get(name) as Merged<T>).overlay])
+  );
+
+// ---------------------------------------------------------------------------
+// Examples (FR-075): `// @mcp-example <id> <title>` … `// @mcp-end`
+
+interface ExampleSource {
+  /** Where an error points: a path, or `starter <name>/<file>` */
+  readonly file: string;
+  /** The source path the example chunk names */
+  readonly shown: string;
+  readonly text: string;
+}
+
+/** The tour's `.eligian` files, then every starter's `.eligian` files, in name order. */
+function exampleSources(tourDir: string): ExampleSource[] {
+  const tour = fs.existsSync(tourDir)
+    ? fs
+        .readdirSync(tourDir)
+        .filter(name => name.endsWith('.eligian'))
+        .sort(byText)
+        .map(name => ({
+          file: path.join(tourDir, name),
+          shown: `examples/eligian-tour/${name}`,
+          text: fs.readFileSync(path.join(tourDir, name), 'utf8'),
+        }))
+    : [];
+  const starters = [...STARTERS]
+    .sort((a, b) => byText(a.name, b.name))
+    .flatMap(starter => {
+      const files = starterFiles(starter.name);
+      return Object.keys(files)
+        .filter(name => name.endsWith('.eligian'))
+        .sort(byText)
+        .map(name => ({
+          file: `starter ${starter.name}/${name}`,
+          shown: `eligian init --template ${starter.name}: ${name}`,
+          text: files[name],
+        }));
+    });
+  return [...tour, ...starters];
+}
+
+const EXAMPLE_OPEN = /^\s*\/\/\s*@mcp-example\b(.*)$/;
+const EXAMPLE_END = /^\s*\/\/\s*@mcp-end\s*$/;
+const EXAMPLE_HEAD = /^\s+([a-z0-9]+(?:-[a-z0-9]+)*)\s+(\S.*?)\s*$/;
+
+/** The lines without their common indentation; blank lines become empty. */
+function dedent(lines: readonly string[]): string[] {
+  const indents = lines
+    .filter(line => line.trim() !== '')
+    .map(line => (/^[ \t]*/.exec(line) as RegExpExecArray)[0].length);
+  const common = indents.length === 0 ? 0 : Math.min(...indents);
+  return lines.map(line => (line.trim() === '' ? '' : line.slice(common).trimEnd()));
+}
+
+/** One chunk per marker; an unclosed marker, a stray end or a duplicate id throws. */
+function exampleChunks(sources: readonly ExampleSource[]): Chunk[] {
+  const seen = new Map<string, string>();
+  const chunks: Chunk[] = [];
+  for (const source of sources) {
+    const at = (line: number): string => `${source.file}:${line}`;
+    const lines = normalize(source.text).split('\n');
+    let open: { readonly id: string; readonly title: string; readonly line: number } | undefined;
+    for (let i = 0; i < lines.length; i++) {
+      const marker = EXAMPLE_OPEN.exec(lines[i]);
+      if (marker !== null) {
+        if (open !== undefined) {
+          throw new Error(
+            `${at(open.line)}: unclosed @mcp-example '${open.id}' (the next marker is at line ${i + 1})`
+          );
+        }
+        const head = EXAMPLE_HEAD.exec(marker[1]);
+        if (head === null) {
+          throw new Error(`${at(i + 1)}: write the marker as // @mcp-example <id> <title>`);
+        }
+        const [, id, title] = head;
+        const first = seen.get(id);
+        if (first !== undefined) {
+          throw new Error(`${at(i + 1)}: duplicate example id '${id}' (first at ${first})`);
+        }
+        seen.set(id, at(i + 1));
+        open = { id, title, line: i + 1 };
+        continue;
+      }
+      if (!EXAMPLE_END.test(lines[i])) continue;
+      if (open === undefined) throw new Error(`${at(i + 1)}: @mcp-end without an @mcp-example`);
+      // Blank lines at either end go; the first line keeps its indentation
+      const snippet = dedent(lines.slice(open.line, i))
+        .join('\n')
+        .replace(/^\n+|\n+$/g, '');
+      if (snippet === '') throw new Error(`${at(open.line)}: example '${open.id}' is empty`);
+      chunks.push({
+        id: `example/${open.id}`,
+        title: open.title,
+        kind: 'example',
+        use_cases: ['example'],
+        see: ['syntax-cheatsheet'],
+        card: open.title,
+        body: [`From \`${source.shown}\`:`, '', fence(snippet, 'eligian')].join('\n'),
+        file: `generated/examples/${open.id}.md`,
+      });
+      open = undefined;
+    }
+    if (open !== undefined) {
+      throw new Error(`${at(open.line)}: unclosed @mcp-example '${open.id}' (no // @mcp-end)`);
+    }
+  }
+  return chunks;
 }
 
 // ---------------------------------------------------------------------------
@@ -463,8 +622,9 @@ function operationsIndexChunk(): Chunk {
   };
 }
 
-function operationChunk(signature: OperationSignature): Chunk {
-  const card = operationCard(signature);
+/** The operation card, then the body of its overlay when it has one (FR-073). */
+function operationChunk(signature: OperationSignature, merged?: Merged<OperationOverlay>): Chunk {
+  const card = operationCard(signature, merged === undefined ? {} : { overlay: merged.overlay });
   const summary = card
     .split('\n')
     .filter(line => /^(NEEDS|PROVIDES|ERASES|RESOLVES CHAINS IN|CALL):/.test(line))
@@ -476,7 +636,7 @@ function operationChunk(signature: OperationSignature): Chunk {
     use_cases: signature.category ? [signature.category.toLowerCase()] : [],
     see: ['operations-index', 'dataflow-tables'],
     card: summary,
-    body: card,
+    body: merged === undefined ? card : `${card}\n\n${merged.body.trim()}`,
     file: `generated/operations/${signature.systemName}.md`,
   };
 }
@@ -551,18 +711,23 @@ function dataflowChunk(): Chunk {
   };
 }
 
-function controllersChunk(): Chunk {
+/** Every controller with the status of its overlay, the card, then the overlay body (FR-074). */
+function controllersChunk(overlays: ReadonlyMap<string, Merged<ControllerOverlay>>): Chunk {
   const controllers = [...CONTROLLERS].sort((a, b) => byText(a.name, b.name));
-  const statuses = Object.keys(CONTROLLER_STATUS)
-    .sort(byText)
-    .map(name => `- ${code(name)}: ${CONTROLLER_STATUS[name]}`);
+  const statuses = controllers.map(
+    ({ name }) => `- ${code(name)}: ${overlays.get(name)?.overlay.status ?? 'no overlay yet'}`
+  );
+  const flagged = controllers
+    .map(({ name }) => ({ name, status: overlays.get(name)?.overlay.status }))
+    .filter(({ status }) => status !== undefined && status !== 'recommended')
+    .map(({ name, status }) => `${name} is ${status}`);
   return {
     id: 'controllers',
     title: 'Controllers',
     kind: 'reference',
     use_cases: ['add a controller', 'addController', 'controller parameters'],
     see: ['operations-index', 'events'],
-    card: `The ${controllers.length} Eligius controllers: what each needs, its parameters and the addController call. RoutingController is do-not-use; LottieController is constrained.`,
+    card: `The ${controllers.length} Eligius controllers: what each needs, its status, its parameters and the addController call.${flagged.length === 0 ? '' : ` ${flagged.join('; ')}.`}`,
     body: [
       'A controller is attached with `addController("<Name>", …)` after a `selectElement`, and removed',
       'with `removeControllerFromElement("<Name>")`.',
@@ -571,12 +736,16 @@ function controllersChunk(): Chunk {
       '',
       ...statuses,
       '',
-      ...controllers.flatMap(controller => [
-        `## ${controller.name}`,
-        '',
-        fence(controllerCard(controller), 'text'),
-        '',
-      ]),
+      ...controllers.flatMap(controller => {
+        const merged = overlays.get(controller.name);
+        return [
+          `## ${controller.name}`,
+          '',
+          fence(controllerCard(controller, merged?.overlay), 'text'),
+          '',
+          ...(merged === undefined ? [] : [merged.body.trim(), '']),
+        ];
+      }),
     ].join('\n'),
     file: 'generated/controllers.md',
   };
@@ -696,7 +865,7 @@ function syntaxCheatsheetChunk(): Chunk {
     kind: 'reference',
     use_cases: ['eligian syntax', 'keywords', 'grammar', 'is this valid eligian'],
     see: ['operations-index', 'events'],
-    card: 'Every Eligian keyword and every grammar rule, generated from the grammar itself. If a construct is not here, Eligian does not have it.',
+    card: 'Every Eligian keyword and every grammar rule, generated from the grammar itself, with the timeline constructs by intent (at, stagger, sequence, on enter / leave, on click / key, with). If a construct is not here, Eligian does not have it.',
     body: [
       'Generated from the Eligian grammar. If a construct is not here, Eligian does not have it.',
       '',
@@ -710,6 +879,19 @@ function syntaxCheatsheetChunk(): Chunk {
       '(the `ActionName` rule):',
       '',
       contextual.map(code).join(', '),
+      '',
+      '## Timeline constructs by intent',
+      '',
+      'Pick the construct from the intent before writing events by hand.',
+      '',
+      '| Intent | Construct |',
+      '|---|---|',
+      '| one thing over a time range | `at <start>..<end> [ start ops ] [ end ops ]` or `at <start> for <d> […] […]`; `target "<sel>"` before the block selects first |',
+      '| several items one after another, a fixed delay apart (a list revealed item by item) | `stagger <delay> [items] at <t> for <d> [ start ops ] [ end ops ]`, `@@item` is the item: `stagger 400ms ["#a", "#b", "#c"] at 0s for 4s [ selectElement(@@item) addClass("visible") ] []`; or `stagger <delay> [items] with action() for <d>` |',
+      '| several steps back to back, each with its own duration | `sequence { call() for 2s  for 1s [ ops ] [ ops ] }`, `sequence each [ prelude ] then [ postlude ] { … }` |',
+      '| ops when the timeline is entered / left | `on enter [ ops ]` / `on leave [ ops ]` |',
+      '| a click or a key that navigates, plays, pauses, seeks or runs an action | `on click "#sel" navigate "Other"`, `on key "ArrowRight" navigate "Next"`, `on click "#sel" run act(args)` |',
+      '| select, then operate on the selection | `with "#sel" { ops }` |',
       '',
       '## Rules',
       '',
@@ -836,11 +1018,12 @@ function configShapeChunk(): Chunk {
   };
 }
 
-function diagnosticsChunk(overlays: ReturnType<typeof overlaysOf>): Chunk {
+function diagnosticsChunk(overlays: ReturnType<typeof diagnosticOverlays>): Chunk {
   const codes = [
     ...new Set([
       ...DIAGNOSTIC_CODES.map(entry => entry.code),
       ...REVIEW_CODES,
+      ...SMOKE_CODES,
       'compile-failed',
       ...ELIGIUS_LINT_RULES.map(rule => `eligius-${rule}`),
     ]),
@@ -856,11 +1039,11 @@ function diagnosticsChunk(overlays: ReturnType<typeof overlaysOf>): Chunk {
     kind: 'reference',
     use_cases: ['diagnostic code', 'error code', 'warning code', 'fix a diagnostic'],
     see: ['config-shape', 'operations-index'],
-    card: 'Every diagnostic code eligian_check can report, with the stage that reports it and the id of its overlay (cause + fix). eligian_check inlines the overlay text in the diagnostic.',
+    card: 'Every diagnostic code eligian_check and eligian_smoke can report, with the stage that reports it and the id of its overlay (cause + fix). Both tools inline the overlay text in the diagnostic.',
     body: [
       'One line per code: `code · source · overlay id`. The source is the stage that reports it',
-      '(`parser`, `validator`, `type`, `linker`, `compiler`, `eligius-lint`, `review`). The overlay',
-      "holds the cause and the fix; `eligian_check` puts its text in the diagnostic's `fix` field.",
+      '(`parser`, `validator`, `type`, `linker`, `compiler`, `eligius-lint`, `review`, `smoke`). The',
+      "overlay holds the cause and the fix; the tools put its text in the diagnostic's `fix` field.",
       '`-` means the code has no overlay yet.',
       '',
       ...lines,
@@ -892,27 +1075,43 @@ export async function generateKnowledge(
 ): Promise<{ readonly files: readonly string[] }> {
   const outDir = path.resolve(options.outDir);
   const curriculumDir = path.resolve(options.curriculumDir ?? DEFAULT_CURRICULUM);
+  const tourDir = path.resolve(options.tourDir ?? DEFAULT_TOUR);
 
-  // Build everything before touching outDir: a broken probe leaves the old docs.
-  const overlays = overlayFiles(curriculumDir);
-  const overlayMap = overlaysOf(overlays);
+  // Build everything before touching outDir: a broken probe or marker leaves the old docs.
+  const overlays = OVERLAY_DIRS.flatMap(dir => overlayFiles(curriculumDir, dir));
+  const ofDir = (dir: OverlayDir): OverlayFile[] => overlays.filter(file => file.dir === dir);
+  const diagnostics = diagnosticOverlays(ofDir('diagnostics'));
+  const operations = await operationOverlays(ofDir('operations'));
+  const controllers = await controllerOverlays(ofDir('controllers'));
+  const overlayMap = {
+    ...diagnostics,
+    operations: overlayEntries(operations),
+    controllers: overlayEntries(controllers),
+  };
   const chunks: Chunk[] = [
     ...(await curriculumChunks(curriculumDir)),
     operationsIndexChunk(),
-    ...operationsSorted().map(operationChunk),
+    ...operationsSorted().map(signature =>
+      operationChunk(signature, operations.get(signature.systemName))
+    ),
     dataflowChunk(),
-    controllersChunk(),
+    controllersChunk(controllers),
     eventsChunk(),
     syntaxCheatsheetChunk(),
     ...starterChunks(),
     configShapeChunk(),
-    diagnosticsChunk(overlayMap),
+    diagnosticsChunk(diagnostics),
+    ...exampleChunks(exampleSources(tourDir)),
   ].sort((a, b) => byText(a.id, b.id));
 
   const ids = new Set<string>();
   for (const chunk of chunks) {
     if (ids.has(chunk.id)) throw new Error(`duplicate chunk id '${chunk.id}'`);
     ids.add(chunk.id);
+    // The AGENTS.md index derives every path from id and kind (FR-066).
+    if (chunkFile(chunk) !== chunk.file) {
+      throw new Error(`chunk '${chunk.id}' is written to ${chunk.file}, not ${chunkFile(chunk)}`);
+    }
   }
 
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -936,10 +1135,10 @@ export async function generateKnowledge(
       card: chunk.card,
     });
   }
-  for (const overlay of overlays) write(`curriculum/diagnostics/${overlay.name}`, overlay.text);
+  for (const overlay of overlays) write(`curriculum/${overlay.dir}/${overlay.name}`, overlay.text);
   write('index.json', `${JSON.stringify(index, null, 2)}\n`);
   write('overlays.json', `${JSON.stringify(overlayMap, null, 2)}\n`);
-  write('agents-block.md', agentsMdBlock());
+  write('agents-block.md', agentsMdBlock(index));
 
   return { files: files.sort(byText) };
 }

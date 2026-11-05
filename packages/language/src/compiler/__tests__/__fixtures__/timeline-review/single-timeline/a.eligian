@@ -1,0 +1,11 @@
+// Nested library A - Top of the chain (imports B, which imports C)
+library effects
+
+import { slideAndFade } from "./b.eligian"
+
+action complexEffect(selector: string) [
+  selectElement(selector)
+  addClass("highlight")
+  slideAndFade(selector)
+  removeClass("highlight")
+]
