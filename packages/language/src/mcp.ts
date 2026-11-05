@@ -4,10 +4,12 @@
  */
 
 export {
+  type ActionBody,
   type ControllerBalance,
   controllerBalance,
   resolveOperationData,
   type WalkEvent,
+  type WalkedOperation,
   type WalkResult,
   walkOperations,
 } from './compiler/controller-balance.js';
@@ -21,7 +23,16 @@ export {
   timelineFindings,
   timelineNames,
 } from './compiler/timeline-review.js';
+export {
+  interactionActionName,
+  type PlaybackVerb,
+} from './compiler/transformers/navigate-operations.js';
 export { SELF_RESOLVED } from './compiler/transformers/runtime-values.js';
+export {
+  COMMON_HTML_ATTRIBUTES,
+  getElementAttributes,
+  HTML_ELEMENT_NAMES,
+} from './completion/html-elements.generated.js';
 export {
   CONTROLLERS,
   type ControllerMetadata,
@@ -40,6 +51,7 @@ export {
 export { layoutElementsOf, type SelectorNames, selectorNames } from './css/selector-sources.js';
 export { HTMLRegistryService } from './html/html-registry.js';
 export { type LayoutElements, readLayoutHtml, scanLayoutElements } from './html/layout-elements.js';
+export type { HTMLAttributeMetadata } from './html/metadata-types.js';
 export { EligianDocumentSymbolProvider } from './lsp/eligian-document-symbol-provider.js';
 export {
   navigatesTo,

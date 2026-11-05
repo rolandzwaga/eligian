@@ -1,0 +1,21 @@
+{
+  "id": "scrollytelling",
+  "prompt": "A scroll-driven explainer: as the reader scrolls a 4000px article, four illustrations appear and the heading changes. The entry file is `main.eligian` in the current directory, with one timeline named `story` that follows the scroll position of the element `#article` (the scrollable element, whose content is 4000px tall) and has a duration of 100s. Use these element ids: `#article`, `#heading` and `#illustration-1` to `#illustration-4`. The illustrations appear at 15s, 40s, 65s and 90s (`#illustration-1` at 15s, `#illustration-4` at 90s); each is hidden before it appears and stays visible from then on, up to and including the very end of the article (position 100s). The text of `#heading` is exactly `Where it begins` from 0s, `The turning point` from 40s, `What it changed` from 65s and `Where it goes next` from 90s up to and including position 100s. An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "scrollytelling.scenario.json",
+  "assertions": [
+    { "kind": "timelines.count", "equals": 1 },
+    {
+      "kind": "timeline",
+      "at": 0,
+      "positionSource": "ScrollPositionSource",
+      "hasDuration": true
+    },
+    { "kind": "timeline.scrollSelectorInLayout", "at": 0 },
+    { "kind": "timeline.rangedActions", "at": 0, "min": 4 },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

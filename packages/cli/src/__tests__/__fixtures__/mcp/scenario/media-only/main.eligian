@@ -1,4 +1,4 @@
-// Scenario on a media-only program: nothing can run in jsdom
+// Scenario on a media-only program: it plays on the fake media clock (FR-037)
 layout "./layout.html"
 
 timeline "film" in "#stage" using video from "./media/film.mp4" {

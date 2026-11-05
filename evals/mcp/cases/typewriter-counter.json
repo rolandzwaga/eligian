@@ -1,0 +1,16 @@
+{
+  "id": "typewriter-counter",
+  "prompt": "Type out a sentence character by character over 4 seconds, then count a number up from 0 to 250 over 3 seconds. The entry file is `main.eligian` in the current directory, with one timeline named `typewriter` that runs 8 seconds. The sentence is exactly `Every great story starts with a single line.`; it is typed into `#sentence`, which is empty at 0s, grows one character at a time and reads the full sentence from 4s (including at exactly 4s) to the end of the timeline. The number is shown in `#counter`: it counts up from `0` at 4s to `250` at 7s and its text is exactly `250` from 7s (including at exactly 7s) to the end of the timeline.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "typewriter-counter.scenario.json",
+  "assertions": [
+    { "kind": "source.blocks", "anyOf": ["for", "sequence"] },
+    { "kind": "operations.used", "anyOf": ["calc", "math"], "all": ["setElementContent"] },
+    { "kind": "origins.present", "all": ["erased-save", "erased-restore"] },
+    { "kind": "check.codesAbsent", "codes": ["eligius-W151"] },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

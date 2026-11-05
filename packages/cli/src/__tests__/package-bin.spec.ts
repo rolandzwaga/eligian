@@ -14,7 +14,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -28,6 +28,8 @@ const pkg = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf-8
 const bundlePath = resolve(packageRoot, 'dist', 'cli.mjs');
 const built = existsSync(bundlePath) && existsSync(resolve(packageRoot, 'LICENSE'));
 const bin = resolve(packageRoot, 'bin', 'cli.js');
+// FR-083: the eval assertion library, built next to the CLI and never packed
+const evalsBundlePath = resolve(packageRoot, 'dist', 'evals', 'assert.mjs');
 // The mcp command counts once the CLI lists it in its --help (no flag to keep in sync)
 const hasMcp =
   built &&
@@ -40,6 +42,18 @@ const eligiusVersion = (
     )
   ) as { version: string }
 ).version;
+
+/** The files `npm pack` would put in the tarball (POSIX paths, sorted) */
+function packedFiles(): string[] {
+  // --ignore-scripts: no prepack (production build) for a listing
+  const output = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+    cwd: packageRoot,
+    encoding: 'utf-8',
+    shell: process.platform === 'win32',
+  });
+  const [packed] = JSON.parse(output) as Array<{ files: Array<{ path: string }> }>;
+  return packed.files.map(file => file.path).sort();
+}
 
 /** The `initialize` response frame of the spawned `eligian mcp` */
 interface InitializeAnswer {
@@ -206,13 +220,6 @@ describe('the eligian npm package', () => {
       timeout: 30_000,
     },
     () => {
-      // --ignore-scripts: no prepack (production build) for a listing
-      const output = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
-        cwd: packageRoot,
-        encoding: 'utf-8',
-        shell: process.platform === 'win32',
-      });
-      const [packed] = JSON.parse(output) as Array<{ files: Array<{ path: string }> }>;
       // Every file the knowledge generator wrote (the build runs it), POSIX separators
       const docsDir = resolve(packageRoot, 'dist', 'docs');
       const docs = existsSync(docsDir)
@@ -221,7 +228,7 @@ describe('the eligian npm package', () => {
             .map(file => `dist/docs/${file.split('\\').join('/')}`)
         : [];
       expect(docs).toContain('dist/docs/index.json');
-      const packedPaths = packed.files.map(file => file.path).sort();
+      const packedPaths = packedFiles();
       expect(packedPaths).toEqual(
         ['LICENSE', 'README.md', 'bin/cli.js', 'dist/cli.mjs', 'package.json', ...docs].sort()
       );
@@ -252,6 +259,34 @@ describe('the eligian npm package', () => {
         file => !packedPaths.includes(file)
       );
       expect(missing).toEqual([]);
+    }
+  );
+
+  // FR-083 / FR-080: the eval harness imports the build output; npm never ships it
+  test.skipIf(!built)(
+    'dist/evals/assert.mjs exists after a build and is not packed',
+    { timeout: 30_000 },
+    () => {
+      expect(existsSync(evalsBundlePath)).toBe(true);
+      expect(packedFiles().filter(file => file.startsWith('dist/evals/'))).toEqual([]);
+    }
+  );
+
+  test.skipIf(!built)(
+    'the eval bundle loads and exports evaluateAssertions, runGateSteps, computeMetrics, parseHarnessArgs',
+    { timeout: 30_000 },
+    async () => {
+      const evals = (await import(
+        /* @vite-ignore */ pathToFileURL(evalsBundlePath).href
+      )) as Record<string, unknown>;
+      for (const name of [
+        'evaluateAssertions',
+        'runGateSteps',
+        'computeMetrics',
+        'parseHarnessArgs',
+      ]) {
+        expect(typeof evals[name], name).toBe('function');
+      }
     }
   );
 });

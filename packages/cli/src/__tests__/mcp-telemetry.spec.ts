@@ -4,6 +4,9 @@
  * Phase 2 (FR-004; SC-002(3)): the same holds for `eligian_compile`, `eligian_project` and
  * `eligian_smoke` on the wire (in-process server; smoke runs the stub CLI of mcp-smoke.spec.ts).
  *
+ * Phase 3 (FR-007; SC-012(3); plan C2, P10): `explain` is in the compile line's `args`, the
+ * check line carries `result.codes`, and `telemetryText` keeps every line within 1,000 chars.
+ *
  * `process.stderr.write` is spied and restored after each test.
  */
 import fs from 'node:fs';
@@ -12,7 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Effect, Exit } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
-import { makeTelemetry, type TelemetryLine } from '../mcp/telemetry.js';
+import { makeTelemetry, type TelemetryLine, telemetryText } from '../mcp/telemetry.js';
+import * as check from '../mcp/tools/check.js';
 import * as compile from '../mcp/tools/compile.js';
 import * as project from '../mcp/tools/project.js';
 import * as smoke from '../mcp/tools/smoke.js';
@@ -22,6 +26,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SMOKE_ROOT = path.join(HERE, '__fixtures__', 'mcp', 'smoke-tool');
 const STUB = path.join(SMOKE_ROOT, 'stub-cli.mjs');
 const DOCS = path.join(HERE, '__fixtures__', 'mcp', 'docs-mini');
+const CHECK_CASES = path.join(HERE, '__fixtures__', 'mcp', 'check');
 
 describe('telemetry', () => {
   let stderr: string[];
@@ -186,4 +191,136 @@ describe('telemetry', () => {
       { tool: smoke.NAME, ok: true },
     ]);
   }, 60_000);
+
+  /** The telemetry lines in the stderr chunks, split by line (other stderr output is not JSON). */
+  const toolLines = (): Partial<TelemetryLine>[] =>
+    stderr
+      .flatMap(chunk => chunk.split('\n'))
+      .filter(line => line.startsWith('{'))
+      .map(line => JSON.parse(line) as Partial<TelemetryLine>)
+      .filter(line => typeof line.tool === 'string');
+
+  it('explain is in args', async () => {
+    const server = await startInMemoryServer({ cwd: SMOKE_ROOT, docsRoot: DOCS });
+    try {
+      const result = await server.callTool(compile.NAME, { path: 'b/main.eligian', explain: true });
+      expect(result.isError).toBe(false);
+    } finally {
+      await server.close();
+    }
+
+    const lines = toolLines().filter(line => line.tool === compile.NAME);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].args?.explain).toBe(true);
+  }, 60_000);
+
+  it('check codes are in result', async () => {
+    const server = await startInMemoryServer({ cwd: CHECK_CASES, docsRoot: DOCS });
+    let diagnostics: readonly { readonly code: string; readonly source: string }[] = [];
+    try {
+      const result = await server.callTool(check.NAME, {
+        paths: ['unknown-operation/main.eligian', 'warnings-only/main.eligian'],
+      });
+      expect(result.isError).toBe(false);
+      diagnostics = (result.payload as unknown as check.CheckSuccess).diagnostics;
+    } finally {
+      await server.close();
+    }
+
+    const expected: Record<string, number> = {};
+    for (const d of diagnostics) {
+      const key = d.code === '' ? d.source : d.code;
+      expected[key] = (expected[key] ?? 0) + 1;
+    }
+    expect(Object.keys(expected).length).toBeGreaterThanOrEqual(2);
+    const lines = toolLines().filter(line => line.tool === check.NAME);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].result).toEqual({ codes: expected });
+    expect(lines[0]).not.toHaveProperty('truncated');
+  }, 60_000);
+
+  it('summarizeResult counts a codeless diagnostic under its source', () => {
+    const diagnostic = (code: string, source: string) => ({ code, source });
+    const success = {
+      diagnostics: [
+        diagnostic('unknown_operation', 'validator'),
+        diagnostic('unknown_operation', 'validator'),
+        diagnostic('', 'parser'),
+        diagnostic('eligius-x', 'eligius-lint'),
+      ],
+    } as unknown as check.CheckSuccess;
+
+    expect(check.summarizeResult(success)).toEqual({
+      codes: { unknown_operation: 2, parser: 1, 'eligius-x': 1 },
+    });
+  });
+
+  /** A synthetic eligian_check line with `n` distinct codes, code i counted i + 1 times. */
+  const lineWithCodes = (n: number): TelemetryLine => ({
+    t: new Date(0).toISOString(),
+    tool: check.NAME,
+    ms: 12,
+    chars: 3456,
+    ok: true,
+    args: { paths: 1, selectorNotInLayout: 'ids', lint: true, review: true, maxWarnings: 0 },
+    result: {
+      codes: Object.fromEntries(
+        Array.from({ length: n }, (_, i) => [`some-diagnostic-code-${i}`, i + 1])
+      ),
+    },
+  });
+
+  it('50 codes → ≤ 1000 chars, truncated: true', () => {
+    const line = lineWithCodes(50);
+    expect(JSON.stringify(line).length).toBeGreaterThan(1000);
+
+    const text = telemetryText(line);
+    expect(text.length).toBeLessThanOrEqual(1000);
+    const parsed = JSON.parse(text) as TelemetryLine;
+    expect(parsed.truncated).toBe(true);
+    const kept = parsed.result?.codes as Record<string, number>;
+    const keptCounts = Object.values(kept);
+    expect(keptCounts.length).toBeGreaterThan(0);
+    expect(keptCounts.length).toBeLessThan(50);
+    // the kept codes are the largest counts: every dropped count is below every kept one
+    const dropped = Array.from({ length: 50 }, (_, i) => i + 1).filter(
+      count => !keptCounts.includes(count)
+    );
+    expect(Math.max(...dropped)).toBeLessThan(Math.min(...keptCounts));
+    for (const [code, count] of Object.entries(kept)) {
+      expect(code).toBe(`some-diagnostic-code-${count - 1}`);
+    }
+    // the rest of the line is unchanged
+    const { result: _r1, truncated: _t1, ...restParsed } = parsed;
+    const { result: _r2, ...restLine } = line;
+    expect(restParsed).toEqual(restLine);
+  });
+
+  it('a line that fits has no truncated key', () => {
+    const line = lineWithCodes(3);
+    const text = telemetryText(line);
+    expect(text).toBe(JSON.stringify(line));
+    expect(JSON.parse(text)).not.toHaveProperty('truncated');
+  });
+
+  it('withTelemetry adds the summarized result on success only', async () => {
+    const telemetry = makeTelemetry(undefined);
+    const summarize = (value: { n: number }) => ({ n: value.n });
+
+    await Effect.runPromise(
+      telemetry.withTelemetry('eligian_check', {}, () => Effect.succeed({ n: 3 }), summarize)
+    );
+    await Effect.runPromiseExit(
+      telemetry.withTelemetry(
+        'eligian_check',
+        {},
+        () => Effect.fail({ _tag: 'X' } as const) as Effect.Effect<{ n: number }, { _tag: 'X' }>,
+        summarize
+      )
+    );
+
+    const [success, failure] = telemetryLines();
+    expect(success.result).toEqual({ n: 3 });
+    expect(failure).not.toHaveProperty('result');
+  });
 });

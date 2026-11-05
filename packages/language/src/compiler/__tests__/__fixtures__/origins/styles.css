@@ -1,0 +1,13 @@
+#stage {
+  position: relative;
+}
+
+#box,
+#a,
+#b {
+  width: 100px;
+}
+
+.on {
+  color: red;
+}

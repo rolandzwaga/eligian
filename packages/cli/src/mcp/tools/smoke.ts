@@ -75,7 +75,9 @@ export const DESCRIPTION =
   'for one file, or `timelines` for a subset. After `timeoutMs` (default 45000) the child is ' +
   'stopped and the result holds what was played so far, with `partial: true`. `ok: true` means ' +
   'no runtime error and not partial; with `strict` (the default) a selectElement that matches ' +
-  'nothing is an error. A scenario is an array of steps, `{ steps, assertions }`, or the path of ' +
+  'nothing is an error. `determinism: true` compares linear play, a straight seek and a seek ' +
+  'back from the end at every boundary; about three times slower, so pass `timelines` for a ' +
+  'subset. A scenario is an array of steps, `{ steps, assertions }`, or the path of ' +
   'a scenario JSON file, and applies to one program file. Steps: `{ "seek": <s> }`, ' +
   '`{ "click": "<selector>" }`, `{ "key": "<key>", "in"?: "<selector>" }`, ' +
   '`{ "navigate": "<timeline>" }`, `{ "wait": <ms> }`, `{ "snapshot": "<label>" }`. Each step ' +
@@ -96,6 +98,7 @@ const DEFAULT_TIMEOUT_MS = 45_000;
 export const Parameters = Schema.Struct({
   paths: Schema.Array(Schema.String).check(Schema.isMinLength(1)),
   strict: Schema.optionalKey(Schema.Boolean),
+  determinism: Schema.optionalKey(Schema.Boolean),
   timelines: Schema.optionalKey(Schema.Array(Schema.String)),
   scenario: Schema.optionalKey(Schema.Union([Schema.Array(ScenarioStep), Scenario, Schema.String])),
   assertions: Schema.optionalKey(Schema.Array(Assertion)),
@@ -108,7 +111,6 @@ type Params = typeof Parameters.Type;
 const TimelineSchema = Schema.Struct({
   name: Schema.String,
   boundaries: Schema.Int,
-  skipped: Schema.optionalKey(Schema.String),
 });
 
 const FileSchema = Schema.Struct({
@@ -138,6 +140,7 @@ type SmokeSuccess = typeof Success.Type;
 export const summarizeArgs = (params: Params): Readonly<Record<string, unknown>> => ({
   paths: params.paths.length,
   strict: params.strict ?? true,
+  ...(params.determinism === undefined ? {} : { determinism: params.determinism }),
   ...(params.timelines === undefined ? {} : { timelines: params.timelines.length }),
   ...(params.scenario === undefined
     ? {}
@@ -409,6 +412,7 @@ export const handle = (
           '--format',
           'ndjson',
           ...((params.strict ?? true) ? ['--strict'] : []),
+          ...(params.determinism === true ? ['--determinism'] : []),
           ...(params.timelines ?? []).flatMap(name => ['--timeline', name]),
           ...(scenarioFile === undefined ? [] : ['--scenario', scenarioFile]),
           ...(params.stepTimeoutMs === undefined

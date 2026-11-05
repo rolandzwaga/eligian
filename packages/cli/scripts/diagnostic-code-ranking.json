@@ -1,12 +1,16 @@
 {
   "counts": [
     {
-      "code": "unknown_css_id_in_selector",
-      "count": 66
+      "code": "unknown_css_class",
+      "count": 69
     },
     {
-      "code": "unknown_css_class",
-      "count": 65
+      "code": "unknown_css_id_in_selector",
+      "count": 68
+    },
+    {
+      "code": "class-never-removed",
+      "count": 36
     },
     {
       "code": "syntax-error",
@@ -18,11 +22,11 @@
     },
     {
       "code": "selector_not_in_layout",
-      "count": 22
+      "count": 23
     },
     {
-      "code": "class-never-removed",
-      "count": 19
+      "code": "controller-imbalance",
+      "count": 17
     },
     {
       "code": "timeline-empty",
@@ -33,15 +37,15 @@
       "count": 13
     },
     {
-      "code": "controller-imbalance",
-      "count": 12
+      "code": "entry-timeline-without-enter",
+      "count": 9
     },
     {
       "code": "timeline-provider-invalid",
       "count": 8
     },
     {
-      "code": "entry-timeline-without-enter",
+      "code": "media-file-missing",
       "count": 7
     },
     {
@@ -54,7 +58,7 @@
     },
     {
       "code": "unknown_operation",
-      "count": 6
+      "count": 7
     },
     {
       "code": "locales-import-error",
@@ -101,11 +105,11 @@
       "count": 2
     },
     {
-      "code": "media-file-missing",
+      "code": "media-from-duplicate",
       "count": 2
     },
     {
-      "code": "media-from-duplicate",
+      "code": "missing-action-dependency",
       "count": 2
     },
     {
@@ -197,10 +201,6 @@
       "count": 1
     },
     {
-      "code": "missing-action-dependency",
-      "count": 1
-    },
-    {
       "code": "missing_default_marker",
       "count": 1
     },
@@ -262,15 +262,16 @@
     "missing-action-dependency",
     "selector_not_in_layout",
     "syntax-error",
-    "unknown_css_id_in_selector",
     "unknown_css_class",
-    "unknown_css_class_in_selector",
+    "unknown_css_id_in_selector",
     "class-never-removed",
+    "unknown_css_class_in_selector",
+    "controller-imbalance",
     "timeline-empty",
     "missing-dependency",
-    "controller-imbalance",
-    "timeline-provider-invalid",
     "entry-timeline-without-enter",
+    "timeline-provider-invalid",
+    "media-file-missing",
     "timeline-required",
     "unknown_event_name",
     "unknown_operation",
@@ -284,7 +285,6 @@
     "parameter_count",
     "constant-cycle",
     "eligius-E120",
-    "media-file-missing",
     "media-from-duplicate",
     "recursive_action_call"
   ]

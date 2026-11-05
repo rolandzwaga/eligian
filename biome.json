@@ -64,7 +64,12 @@
   },
   "overrides": [
     {
-      "includes": ["**/*.generated.ts", "**/*.d.ts", "**/__tests__/**/fixtures/**/*.json"],
+      "includes": [
+        "**/*.generated.ts",
+        "**/*.d.ts",
+        "**/__tests__/**/fixtures/**/*.json",
+        "**/__fixtures__/configs-before/**"
+      ],
       "linter": {
         "enabled": false
       },

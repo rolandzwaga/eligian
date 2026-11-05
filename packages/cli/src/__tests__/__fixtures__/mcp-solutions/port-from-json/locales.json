@@ -1,0 +1,20 @@
+{
+  "en-US": {
+    "hub": {
+      "title": "Port"
+    },
+    "tour": {
+      "title": "Timeline & Time",
+      "intro": "An Eligian presentation is one or more timelines."
+    }
+  },
+  "nl-NL": {
+    "hub": {
+      "title": "Port"
+    },
+    "tour": {
+      "title": "Tijdlijn & tijd",
+      "intro": "Een Eligian-presentatie bestaat uit een of meer tijdlijnen."
+    }
+  }
+}

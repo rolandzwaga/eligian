@@ -197,6 +197,13 @@ function openPanel(): MockWebview {
   return h.webviews[h.webviews.length - 1];
 }
 
+// A compile reaches the webview only after real file I/O (the CSS files are
+// read from a fresh temp dir). Under the parallel `pnpm test` run that can take
+// longer than vi.waitFor's 1 s default, which made this spec flaky; the waits
+// get 5 s and the tests room for several of them.
+const IO_WAIT = { timeout: 5000 };
+vi.setConfig({ testTimeout: 20_000 });
+
 /** Resolve the n-th compile request (0-based) and wait until `isDone` holds. */
 async function finishCompile(
   webview: MockWebview,
@@ -204,9 +211,9 @@ async function finishCompile(
   result: CompileResult,
   isDone: (webview: MockWebview) => boolean
 ): Promise<void> {
-  await vi.waitFor(() => expect(h.pendingCompiles.length).toBeGreaterThan(index));
+  await vi.waitFor(() => expect(h.pendingCompiles.length).toBeGreaterThan(index), IO_WAIT);
   h.pendingCompiles[index].resolve(result);
-  await vi.waitFor(() => expect(isDone(webview)).toBe(true));
+  await vi.waitFor(() => expect(isDone(webview)).toBe(true), IO_WAIT);
 }
 
 function rootsOf(webview: MockWebview): string[] {
@@ -394,8 +401,9 @@ describe('PreviewPanel CSS set follows the source (#47)', () => {
     vi.useRealTimers();
 
     // Positive control: the still-imported file hot-reloads
-    await vi.waitFor(() =>
-      expect(webview.messages().some(m => m.type === 'css-reload')).toBe(true)
+    await vi.waitFor(
+      () => expect(webview.messages().some(m => m.type === 'css-reload')).toBe(true),
+      IO_WAIT
     );
     const reloaded = webview
       .messages()
@@ -409,15 +417,15 @@ describe('PreviewPanel CSS set follows the source (#47)', () => {
 describe('PreviewPanel overlapping compiles (#49)', () => {
   test('an older compile that finishes last does not overwrite the newer config', async () => {
     const webview = openPanel();
-    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(1));
+    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(1), IO_WAIT);
 
     // Second compile (e.g. save or Retry) starts while the first is still running
     (panel as any).compileAndUpdate();
-    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(2));
+    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(2), IO_WAIT);
 
     // Newer compile finishes first
     h.pendingCompiles[1].resolve(okResult({ id: 'newer' }));
-    await vi.waitFor(() => expect(initializeCount(webview)).toBe(1));
+    await vi.waitFor(() => expect(initializeCount(webview)).toBe(1), IO_WAIT);
 
     // Older compile finishes afterwards: its results must be discarded
     h.pendingCompiles[0].resolve(okResult({ id: 'older' }));
@@ -432,12 +440,12 @@ describe('PreviewPanel overlapping compiles (#49)', () => {
 
   test('a stale failed compile does not replace a newer successful preview with errors', async () => {
     const webview = openPanel();
-    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(1));
+    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(1), IO_WAIT);
     (panel as any).compileAndUpdate();
-    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(2));
+    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(2), IO_WAIT);
 
     h.pendingCompiles[1].resolve(okResult({ id: 'newer' }));
-    await vi.waitFor(() => expect(initializeCount(webview)).toBe(1));
+    await vi.waitFor(() => expect(initializeCount(webview)).toBe(1), IO_WAIT);
     h.pendingCompiles[0].resolve({
       success: false,
       config: null,
@@ -451,7 +459,7 @@ describe('PreviewPanel overlapping compiles (#49)', () => {
 
   test('a compile finishing after the panel was disposed posts nothing', async () => {
     const webview = openPanel();
-    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(1));
+    await vi.waitFor(() => expect(h.pendingCompiles.length).toBe(1), IO_WAIT);
     panel?.dispose();
     const before = webview.messages().length;
 

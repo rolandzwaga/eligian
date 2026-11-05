@@ -1,0 +1,85 @@
+/* The element the presentation runs in */
+#stage {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+.title {
+  margin: 0;
+  padding: 2rem 2rem 0;
+  font-size: 2.5rem;
+}
+
+/* Hidden until an event adds .is-visible */
+.beat {
+  margin: 1rem 2rem;
+  font-size: 1.5rem;
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 0.4s, transform 0.4s;
+}
+
+.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.controls {
+  position: absolute;
+  right: 2rem;
+  bottom: 2rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.controls button {
+  padding: 0.5rem 1rem;
+  font: inherit;
+}
+
+/* One view at a time: a timeline shows its own view on enter */
+.view {
+  display: none;
+}
+
+.is-active {
+  display: block;
+}
+
+.cards {
+  display: flex;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.card {
+  padding: 2rem 3rem;
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.lead {
+  margin: 1rem 2rem;
+  font-size: 1.25rem;
+  color: #4a5368;
+}
+
+/* The target beat lights this box at its start and unlights it at its end */
+.box {
+  margin: 1rem 2rem;
+  padding: 1rem 2rem;
+  width: max-content;
+  border: 2px solid #c3c9d9;
+  border-radius: 0.5rem;
+}
+
+.is-lit {
+  border-color: #3060e0;
+  background: #e3eafc;
+}

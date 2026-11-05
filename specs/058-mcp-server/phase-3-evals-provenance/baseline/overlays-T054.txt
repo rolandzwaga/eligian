@@ -1,0 +1,26 @@
+# T054 diagnostics overlays batch 3 — 2026-11-05T21:01:25+01:00
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T054
+generate-knowledge: 245 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T054
+exit 0
+# word counts of each body (frontmatter excluded), limit 120
+event-duration-not-positive words=55 overlays.json=1
+event-duration-relative words=47 overlays.json=1
+event-ends-after-timeline words=49 overlays.json=1
+event-start-negative words=48 overlays.json=1
+event_action_empty_body words=46 overlays.json=1
+event_action_name_builtin_conflict words=50 overlays.json=1
+event_action_name_conflict words=51 overlays.json=1
+event_argument_count_mismatch words=55 overlays.json=1
+event_label_not_before words=58 overlays.json=1
+event_label_time_unknown words=60 overlays.json=1
+event_name_must_be_literal words=46 overlays.json=1
+event_name_too_long words=43 overlays.json=1
+event_topic_empty words=36 overlays.json=1
+event_type_mismatch words=51 overlays.json=1
+extensions_path_not_relative words=34 overlays.json=1
+extensions_path_type words=43 overlays.json=1
+file-unreadable words=49 overlays.json=1
+for-collection-not-array words=58 overlays.json=1
+for-empty-body words=33 overlays.json=1
+host_controller_builtin words=46 overlays.json=1
+host_operation_builtin words=47 overlays.json=1

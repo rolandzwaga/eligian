@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"examples/demo.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"Eligian Demo\",\n        \"boundaries\": 28\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

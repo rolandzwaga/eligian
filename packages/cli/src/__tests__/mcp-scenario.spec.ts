@@ -10,6 +10,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { compileFile } from '../compile-file.js';
 import { loadEligius, smokeWindow } from '../smoke/dom-environment.js';
 import {
   type ElementSnapshot,
@@ -19,7 +20,7 @@ import {
   type ScenarioStepResult,
 } from '../smoke/scenario.js';
 import { runSmoke, smokeFile } from '../smoke/smoke-command.js';
-import type { SmokeResult } from '../smoke/smoke-runner.js';
+import { type SmokeResult, smokeConfig } from '../smoke/smoke-runner.js';
 import { requireFreshBundle } from './fresh-bundle.js';
 
 /** The parsed scenario, failing the test with the message when parsing refuses. */
@@ -135,6 +136,43 @@ describe('parseScenario', () => {
     });
     expect(message).toContain('activeTimelineActions');
     expect(message).toContain('reserved');
+  });
+
+  it('rejects domEquals with a selector', () => {
+    for (const domEquals of [{ freshAt: 0 }, { linearAt: 12 }]) {
+      const message = refused({
+        steps: [{ wait: 1 }],
+        assertions: [{ after: 0, selector: '#box', domEquals }],
+      });
+      expect(message).toContain('assertion 0');
+      expect(message).toContain('domEquals');
+      expect(message).toContain('takes no selector');
+    }
+  });
+
+  it('rejects textPrefixOf without a selector', () => {
+    const message = refused({
+      steps: [{ wait: 1 }],
+      assertions: [{ after: 0, textPrefixOf: 'The quick brown fox' }],
+    });
+    expect(message).toContain('assertion 0');
+    expect(message).toContain('textPrefixOf');
+    expect(message).toContain('selector');
+  });
+
+  it('accepts domEquals { freshAt } and { linearAt } without a selector', () => {
+    const scenario = {
+      steps: [{ seek: 15 }, { click: '#restart' }, { click: '#skip' }],
+      assertions: [
+        { after: 1, domEquals: { freshAt: 0 } },
+        { after: 2, domEquals: { linearAt: 12 } },
+        { after: 0, selector: '#sentence', textPrefixOf: 'The quick brown fox' },
+      ],
+    };
+    expect(accepted(scenario)).toEqual(scenario);
+    expect(refused({ steps: [], assertions: [{ after: 0, domEquals: { atTime: 1 } }] })).toContain(
+      'assertion 0'
+    );
   });
 });
 
@@ -315,24 +353,25 @@ describe('scenario', () => {
     expect(stepOf(unknown, 0).timeline).toBe('slide1');
   });
 
-  it('navigate to a media timeline: one scenario-media-timeline, step 0, timeline unchanged', async () => {
+  it('a scenario navigates to a media timeline', async () => {
     const result = await play(
       'raf-plus-media',
-      accepted({ steps: [{ navigate: 'film' }, { snapshot: 'after' }] })
+      accepted({
+        steps: [{ navigate: 'film' }, { snapshot: 'after' }],
+        assertions: [{ after: 'after', timeline: 'film' }],
+      })
     );
-    expect(result.problems).toEqual([
-      expect.objectContaining({ code: 'scenario-media-timeline', severity: 'error', step: 0 }),
-    ]);
-    expect(stepOf(result, 0).timeline).toBe('main');
-    expect(stepOf(result, 1).timeline).toBe('main');
+    expect(result.problems).toEqual([]);
+    expect(result.problems.map(p => p.code)).not.toContain('scenario-media-timeline');
+    expect(stepOf(result, 0).timeline).toBe('film');
+    expect(stepOf(result, 1).timeline).toBe('film');
   });
 
-  it('media-only program + a scenario: exactly one problem, no step results', async () => {
+  it('a media-only program plays its scenario', async () => {
     const result = await play('media-only', accepted({ steps: [{ wait: 10 }, { snapshot: 's' }] }));
-    expect(result.problems.map(p => p.code)).toEqual(['scenario-media-timeline']);
-    expect(result.problems[0]).toMatchObject({ step: 0, severity: 'error' });
-    expect(result.problems[0].message).toContain('film');
-    expect(result.steps ?? []).toEqual([]);
+    expect(result.problems).toEqual([]);
+    expect(result.steps).toHaveLength(2);
+    expect(stepOf(result, 1)).toMatchObject({ label: 's', timeline: 'film' });
   });
 
   it('key target order', async () => {
@@ -686,5 +725,150 @@ describe('--scenario', () => {
       expect(result.stderr).toContain('click-toggle/main.eligian');
       expect(result.stderr).toContain('headline/main.eligian');
     });
+  });
+});
+
+describe('textPrefixOf', () => {
+  /** The typewriter fixture: #sentence grows "The" → "The quick" → … → SENTENCE over 4 s. */
+  const TYPEWRITER = path.join(FIXTURES, 'typewriter', 'main.eligian');
+  const SENTENCE = 'The quick brown fox';
+
+  /** Seek to `seconds`, then assert `textPrefixOf: full` on #sentence. */
+  const prefixAt = async (seconds: number, full: string): Promise<SmokeResult> => {
+    const { config, map } = await compileFile(TYPEWRITER);
+    const scenario = accepted({
+      steps: [{ seek: seconds }],
+      assertions: [{ after: 0, selector: '#sentence', textPrefixOf: full }],
+    });
+    return smokeConfig(config, map, { scenario, sourceDir: path.dirname(TYPEWRITER) });
+  };
+
+  /** Exactly one scenario-assertion-failed: expected the full string, actual the element text. */
+  const expectOneFailure = (result: SmokeResult, full: string, text: string) => {
+    expect(result.problems).toHaveLength(1);
+    const [problem] = result.problems;
+    expect(problem).toMatchObject({
+      code: 'scenario-assertion-failed',
+      severity: 'error',
+      step: 0,
+    });
+    expect(JSON.parse(problem.expected as string)).toBe(full);
+    expect(JSON.parse(problem.actual as string)).toBe(text);
+    expect(problem.message).toContain('textPrefixOf');
+  };
+
+  it('passes on a proper prefix', async () => {
+    const result = await prefixAt(2.5, SENTENCE);
+    expect(result.problems).toEqual([]);
+    expect(element(stepOf(result, 0), 'sentence').text).toBe('The quick');
+  });
+
+  it('fails on the full string', async () => {
+    const result = await prefixAt(4.5, SENTENCE);
+    expectOneFailure(result, SENTENCE, SENTENCE);
+  });
+
+  it('fails on the empty string', async () => {
+    const result = await prefixAt(0.5, SENTENCE);
+    expectOneFailure(result, SENTENCE, '');
+  });
+
+  it('fails on a non-prefix', async () => {
+    const result = await prefixAt(2.5, 'A quick brown fox');
+    expectOneFailure(result, 'A quick brown fox', 'The quick');
+  });
+});
+
+describe('domEquals', () => {
+  /**
+   * Run `scenario` on a fixture in-process; `engines` counts the reference engines `domEquals`
+   * builds (the test-only `onReferenceEngine` hook, as smoke-determinism.spec.ts counts them).
+   */
+  const replay = async (name: string, scenario: Scenario) => {
+    const file = fixture(name);
+    const { config, map } = await compileFile(file);
+    let engines = 0;
+    const result = await smokeConfig(config, map, {
+      scenario,
+      sourceDir: path.dirname(file),
+      onReferenceEngine: () => {
+        engines++;
+      },
+    });
+    return { ...result, engines };
+  };
+
+  /** Played to 15 s (the "seen" range is active), then #restart is clicked. */
+  const RESTART = accepted({
+    steps: [{ seek: 15 }, { snapshot: 'late' }, { click: '#restart' }, { snapshot: 'restarted' }],
+    assertions: [{ after: 'restarted', domEquals: { freshAt: 0 } }],
+  });
+
+  it('freshAt passes after a resetting restart', async () => {
+    const result = await replay('replay-good', RESTART);
+    expect(result.problems).toEqual([]);
+    // The negative control: before the restart the DOM is not the fresh one
+    expect(element(stepOf(result, 1), 'box').classes).toContain('seen');
+    expect(element(stepOf(result, 3), 'box').classes).toEqual([]);
+    expect(result.engines).toBe(1);
+  });
+
+  it('fails on a leftover class, naming element and property', async () => {
+    const result = await replay('replay-leftover', RESTART);
+    expect(result.problems).toHaveLength(1);
+    const [problem] = result.problems;
+    expect(problem).toMatchObject({
+      code: 'scenario-assertion-failed',
+      severity: 'error',
+      step: 3,
+    });
+    expect(JSON.parse(problem.expected as string)).toEqual([]);
+    expect(JSON.parse(problem.actual as string)).toEqual(['seen']);
+    expect(problem.message).toContain('domEquals');
+    expect(problem.message).toContain('#box');
+    expect(problem.message).toContain('classes');
+  });
+
+  it('linearAt passes after a seek to t from linear play', async () => {
+    const result = await replay(
+      'replay-good',
+      accepted({
+        steps: [{ seek: 12 }, { snapshot: 'at-12' }],
+        assertions: [{ after: 'at-12', domEquals: { linearAt: 12 } }],
+      })
+    );
+    expect(result.problems).toEqual([]);
+    expect(element(stepOf(result, 1), 'box').classes).toEqual(['seen']);
+    expect(result.engines).toBe(1);
+  });
+
+  it('linearAt fails where the seek path differs from linear play', async () => {
+    const result = await replay(
+      'seek-path',
+      accepted({
+        steps: [{ seek: 12 }, { snapshot: 'at-12' }],
+        assertions: [{ after: 'at-12', domEquals: { linearAt: 12 } }],
+      })
+    );
+    expect(result.problems).toHaveLength(1);
+    const [problem] = result.problems;
+    expect(problem).toMatchObject({ code: 'scenario-assertion-failed', step: 1 });
+    // Linear play passed 2s..4s, which adds "visited" and never removes it; the seek skipped it
+    expect(JSON.parse(problem.expected as string)).toEqual(['visited']);
+    expect(JSON.parse(problem.actual as string)).toEqual([]);
+    expect(problem.message).toContain('#box');
+    expect(problem.message).toContain('classes');
+  });
+
+  it('a scenario without domEquals builds no second engine', async () => {
+    const result = await replay(
+      'replay-leftover',
+      accepted({
+        steps: [{ seek: 15 }, { click: '#restart' }, { snapshot: 'restarted' }],
+        assertions: [{ after: 'restarted', selector: '#box', hasClass: 'seen' }],
+      })
+    );
+    expect(result.problems).toEqual([]);
+    expect(result.engines).toBe(0);
   });
 });

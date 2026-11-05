@@ -1,4 +1,4 @@
-// Scenario media timeline: navigating to the video timeline is a scenario problem
+// Scenario media timeline: navigating to the video timeline runs on the fake media clock (FR-037)
 layout "./layout.html"
 
 timeline "main" in "#stage" using raf {

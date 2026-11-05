@@ -1,0 +1,32 @@
+$ pnpm -C packages/cli build && pnpm -C packages/cli exec vitest run src/__tests__/mcp-solutions.spec.ts --reporter=default
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ✓ |cli| src/__tests__/mcp-solutions.spec.ts (21 tests) 120558ms
+   ✓ reference solutions (17)
+     ✓ the port-from-json source passes the gate steps with its scenario (plan F4) 6683ms
+     ✓ audio-lyrics passes gate steps 1–5 5991ms
+     ✓ fix-dataflow passes gate steps 1–5 3986ms
+     ✓ fix-selectors passes gate steps 1–5 3885ms
+     ✓ host-module passes gate steps 1–5 7663ms
+     ✓ keyboard-deck passes gate steps 1–5 10579ms
+     ✓ library-reuse passes gate steps 1–5 5121ms
+     ✓ port-from-json passes gate steps 1–5 6463ms
+     ✓ replay-safe passes gate steps 1–5 4974ms
+     ✓ scrollytelling passes gate steps 1–5 4671ms
+     ✓ staggered-list passes gate steps 1–5 5752ms
+     ✓ three-chapters passes gate steps 1–5 6566ms
+     ✓ title-card passes gate steps 1–5 4950ms
+     ✓ typewriter-counter passes gate steps 1–5 14718ms
+     ✓ video-subtitles passes gate steps 1–5 7453ms
+   ✓ negative controls (4)
+     ✓ a deleted beat fails storyboard.beatsCovered 5596ms
+     ✓ case 4 without its media fails step 1 with media-file-missing 7185ms
+     ✓ a range that adds a class nothing removes fails step 3 with position-nondeterministic 8270ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  21:49:49
+   Duration  122.01s (tests 99%, import 1%)
+
+exit 0

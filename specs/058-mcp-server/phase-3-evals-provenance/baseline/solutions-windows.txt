@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+
+ Test Files  4 passed (4)
+      Tests  236 passed | 14 skipped (250)
+   Start at  20:43:48
+   Duration  110.91s (tests 96%, import 4%, transform 1%)
+

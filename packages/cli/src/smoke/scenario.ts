@@ -7,6 +7,7 @@ import { activeTimelineActions, type EligianMap } from '@eligian/language';
 import { scanLayoutElements } from '@eligian/language/mcp';
 import { Result, Schema } from 'effect';
 import type { IEligiusEngine, IEngineConfiguration } from 'eligius';
+import type { ComparedState, LayoutState } from './determinism.js';
 import type { SmokeProblem } from './smoke-runner.js';
 
 /** A non-negative number: seconds for `seek`, milliseconds for `wait`. */
@@ -33,6 +34,8 @@ export const Assertion = Schema.Struct({
   hasClass: Schema.optionalKey(Schema.String),
   notHasClass: Schema.optionalKey(Schema.String),
   text: Schema.optionalKey(Schema.String),
+  /** FR-015: the element text is a proper prefix of this string (non-empty, strictly shorter) */
+  textPrefixOf: Schema.optionalKey(Schema.String),
   visible: Schema.optionalKey(Schema.Boolean),
   controllers: Schema.optionalKey(Schema.Array(Schema.String)),
   timeline: Schema.optionalKey(Schema.String),
@@ -41,6 +44,16 @@ export const Assertion = Schema.Struct({
       Schema.Finite,
       Schema.Struct({ sameAs: StepReference }),
       Schema.Struct({ greaterThan: StepReference }),
+    ])
+  ),
+  /**
+   * FR-015: every layout id equals a fresh engine's state at t, reached by a straight seek
+   * (`freshAt`) or by linear play (`linearAt`); evaluated by the smoke runner, not `runScenario`
+   */
+  domEquals: Schema.optionalKey(
+    Schema.Union([
+      Schema.Struct({ freshAt: Schema.Finite }),
+      Schema.Struct({ linearAt: Schema.Finite }),
     ])
   ),
 });
@@ -92,7 +105,14 @@ const RESERVED_KEY = 'activeTimelineActions';
 const LAYOUT_ID_SELECTOR = /^#[A-Za-z_][\w-]*$/;
 
 /** The assertion fields that read an element, and so need a `selector`. */
-const ELEMENT_FIELDS = ['hasClass', 'notHasClass', 'text', 'visible', 'controllers'] as const;
+const ELEMENT_FIELDS = [
+  'hasClass',
+  'notHasClass',
+  'text',
+  'textPrefixOf',
+  'visible',
+  'controllers',
+] as const;
 
 const STEP_FORMS =
   '{ "seek": <seconds> }, { "click": "<selector>" }, { "key": "<key>", "in"?: "<selector>" }, ' +
@@ -168,6 +188,9 @@ function crossFieldProblem(scenario: Scenario): string | undefined {
       if (!resolves(reference)) return `${at}: position.${form} ${unresolved(reference)}`;
     }
     const { selector } = assertion;
+    if (selector !== undefined && assertion.domEquals !== undefined) {
+      return `${at}: domEquals compares every layout id and takes no selector`;
+    }
     if (selector === undefined) {
       const field = ELEMENT_FIELDS.find(name => assertion[name] !== undefined);
       if (field !== undefined) {
@@ -198,8 +221,6 @@ export interface ScenarioContext {
 
 /** The longest snapshot text (FR-034 item 4). */
 const TEXT_LIMIT = 200;
-
-const MEDIA = 'mediaplayer';
 
 /** Eligius' jQuery data key of the controllers attached to an element (plan P6). */
 const CONTROLLERS_DATA = 'eligiusEngineControllers';
@@ -296,13 +317,6 @@ export async function runScenario(
           step: index,
           message: `${what}: timeline '${current.navigate}' is not declared (declared: ${declared()})`,
         });
-      } else if (timeline.type === MEDIA) {
-        report({
-          code: 'scenario-media-timeline',
-          severity: 'error',
-          step: index,
-          message: `${what}: timeline '${current.navigate}' is a media timeline, and media timelines need a browser; the scenario stays on '${timelineName()}'`,
-        });
       } else {
         await step(`${what}: navigate to '${current.navigate}'`, () =>
           engine.switchTimeline(timeline.uri, 0)
@@ -335,18 +349,8 @@ export async function runScenario(
   return results;
 }
 
-/** The one problem of a scenario on a program without a non-media timeline (plan C2 step 0). */
-export function mediaOnlyProblem(names: readonly string[]): SmokeProblem {
-  return {
-    code: 'scenario-media-timeline',
-    severity: 'error',
-    step: 0,
-    message: `the scenario cannot run: the program has only media timelines (${names.map(name => `'${name}'`).join(', ')}), and media timelines need a browser`,
-  };
-}
-
 /** The snapshot of one layout id (plan C2 step 3); an absent element is `exists: false`. */
-function elementSnapshot(
+export function elementSnapshot(
   window: Window & typeof globalThis,
   id: string,
   controllersOf: (element: Element) => string[]
@@ -393,6 +397,7 @@ function checkAssertions(
       : results.find(result => result.label === reference);
 
   for (const assertion of scenario.assertions ?? []) {
+    // domEquals is evaluated by the smoke runner after the scenario engine is gone (plan P6)
     const { after, selector } = assertion;
     const result = resolve(after);
     if (!result) continue;
@@ -426,6 +431,9 @@ function checkAssertions(
         fail('notHasClass', assertion.notHasClass, element.classes);
       if (assertion.text !== undefined && element.text !== assertion.text)
         fail('text', assertion.text, element.text);
+      const full = assertion.textPrefixOf;
+      if (full !== undefined && !isProperPrefix(element.text, full))
+        fail('textPrefixOf', full, element.text);
       if (assertion.visible !== undefined && element.visible !== assertion.visible)
         fail('visible', assertion.visible, element.visible);
       if (
@@ -452,6 +460,70 @@ function checkAssertions(
         fail('position', { greaterThan: position.greaterThan, position: other }, actual);
     }
   }
+}
+
+/** The reference a `domEquals` assertion compares with (FR-015). */
+export type DomEqualsKind = 'fresh' | 'linear';
+
+/** The FR-031 state `domEquals` compares. */
+const COMPARED_PROPERTIES = ['classes', 'text', 'style', 'visible'] as const;
+
+/**
+ * FR-015 (plan B4, P6): each `domEquals` assertion compares the snapshot of every layout id at its
+ * step with the state `reference` gives for the step's timeline at t, reached by a straight seek
+ * (`freshAt`) or by linear play (`linearAt`). The smoke runner calls it once the scenario engine
+ * is destroyed: a reference engine needs the window. One scenario-assertion-failed per differing
+ * (element, property), `expected` the reference value and `actual` the step's.
+ */
+export async function checkDomEquals(
+  scenario: Scenario,
+  results: readonly ScenarioStepResult[],
+  reference: (timelineName: string, kind: DomEqualsKind, at: number) => Promise<LayoutState>,
+  report: (problem: SmokeProblem) => void
+): Promise<void> {
+  for (const assertion of scenario.assertions ?? []) {
+    const { after, domEquals } = assertion;
+    if (domEquals === undefined) continue;
+    // parseScenario checked the reference: a label of a snapshot step, or an index in range
+    const result =
+      typeof after === 'number'
+        ? results[after]
+        : results.find(candidate => candidate.label === after);
+    if (!result) continue;
+    const [kind, at]: [DomEqualsKind, number] =
+      'freshAt' in domEquals ? ['fresh', domEquals.freshAt] : ['linear', domEquals.linearAt];
+    const path = kind === 'fresh' ? 'a fresh engine seeked' : 'linear play';
+    const expected = await reference(result.timeline, kind, at);
+    for (const [id, state] of Object.entries(expected)) {
+      const element = result.snapshot[id] as ElementSnapshot | undefined;
+      if (element === undefined) continue;
+      for (const property of COMPARED_PROPERTIES) {
+        const [want, got] = [state[property], element[property]];
+        if (sameValue(want, got)) continue;
+        report({
+          code: 'scenario-assertion-failed',
+          severity: 'error',
+          step: result.index,
+          expected: JSON.stringify(want),
+          actual: JSON.stringify(got),
+          message: `assertion after ${JSON.stringify(after)}: domEquals ${JSON.stringify(domEquals)}: element #${id} ${property} expected ${JSON.stringify(want)} (${path} to ${at}s in '${result.timeline}'), got ${JSON.stringify(got)}`,
+        });
+      }
+    }
+  }
+}
+
+/** Classes compare as a set (their order is not state); the other properties by value. */
+function sameValue(
+  a: ComparedState[keyof ComparedState],
+  b: ComparedState[keyof ComparedState]
+): boolean {
+  return Array.isArray(a) && Array.isArray(b) ? sameMultiset(a, b) : a === b;
+}
+
+/** FR-015: non-empty, strictly shorter, and a prefix of `full`. */
+function isProperPrefix(text: string, full: string): boolean {
+  return text !== '' && text.length < full.length && full.startsWith(text);
 }
 
 function sameMultiset(a: readonly string[], b: readonly string[]): boolean {

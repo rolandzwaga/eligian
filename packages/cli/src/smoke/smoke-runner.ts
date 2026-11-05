@@ -12,10 +12,15 @@
  * - unhandled promise rejections and `console.error` output while it runs
  * - with `strict`: `selectElement` selectors that match no element
  *
- * Media timelines (video / audio) are skipped: jsdom plays no media.
+ * Media timelines (video / audio) are walked too: jsdom plays no media, so a fake clock stands in
+ * for the media element while the run lasts (media-clock.ts; spec 058 phase 3, FR-035–FR-038).
  *
  * With a scenario (spec 058 FR-034), a fresh engine then runs its steps after the walk, with the
- * program's CSS injected (scenario.ts).
+ * program's CSS injected (scenario.ts). Its `domEquals` assertions are checked once that engine is
+ * gone, each against one more fresh engine (`checkDomEquals`, FR-015).
+ *
+ * With `determinism` (spec 058 phase 3, FR-030), every played timeline then runs on three more
+ * fresh engines whose DOM states are compared at every boundary (determinism.ts).
  */
 import * as fs from 'node:fs/promises';
 import * as nodePath from 'node:path';
@@ -27,15 +32,13 @@ import {
   locateEngineError,
   type SourceLocation,
 } from '@eligian/language';
+import { scanLayoutElements } from '@eligian/language/mcp';
 import type { IEngineConfiguration } from 'eligius';
 import { type HostRegistrations, loadHostModule } from '../dev/host-module.js';
+import { checkDeterminism, type DeterminismEnvironment, pathStates } from './determinism.js';
 import { injectStyles, loadEligius, smokeWindow } from './dom-environment.js';
-import {
-  mediaOnlyProblem,
-  runScenario,
-  type Scenario,
-  type ScenarioStepResult,
-} from './scenario.js';
+import { installMediaClock, mediaDurations } from './media-clock.js';
+import { checkDomEquals, runScenario, type Scenario, type ScenarioStepResult } from './scenario.js';
 
 /** The code of every smoke problem (spec 058 FR-032; plan C1). */
 export const SMOKE_CODES = [
@@ -52,9 +55,9 @@ export const SMOKE_CODES = [
   'smoke-unknown-timeline',
   'scenario-selector-not-found',
   'scenario-unknown-timeline',
-  'scenario-media-timeline',
   'scenario-assertion-failed',
   'smoke-timeout',
+  'position-nondeterministic',
 ] as const;
 export type SmokeCode = (typeof SMOKE_CODES)[number];
 
@@ -80,8 +83,6 @@ export interface SmokeTimeline {
   readonly name: string;
   /** The positions the timeline was seeked to */
   readonly boundaries: number;
-  /** Why it was not played (media timelines) */
-  readonly skipped?: string;
 }
 
 export interface SmokeResult {
@@ -107,12 +108,25 @@ export interface SmokeOptions {
   readonly stepTimeoutMs?: number;
   /** Source names by config timeline index (timelineNames) */
   readonly names?: readonly string[];
+  /** Timeline declarations by config index (smoke-command's timelineLocations): FR-031's fallback */
+  readonly timelineLocations?: readonly (SourceLocation | undefined)[];
   /** Play only these timelines (source names); an unknown one is a smoke-unknown-timeline problem */
   readonly timelines?: readonly string[];
   readonly scenario?: Scenario;
   /** The directory the config's relative cssFiles resolve against (the program's directory) */
   readonly sourceDir?: string;
   readonly listener?: SmokeListener;
+  /**
+   * Spec 058 phase 3 (FR-030): also compare the DOM at every boundary reached by linear play, a
+   * straight seek and a seek back from the end (`position-nondeterministic`)
+   */
+  readonly determinism?: boolean;
+  /**
+   * Test-only (SC-009(8), SC-020): called each time a reference engine is built for the
+   * determinism paths or a `domEquals` assertion (`DeterminismEnvironment.createEngine`); the walk
+   * and scenario engines do not count
+   */
+  readonly onReferenceEngine?: () => void;
 }
 
 type TimelineConfig = IEngineConfiguration['timelines'][number];
@@ -170,14 +184,11 @@ export async function smokeConfig(
   const walked = config.timelines.filter(
     (_, index) => selected === undefined || selected.includes(nameOf(index))
   );
-  const playable = walked.filter(t => t.type !== 'mediaplayer');
-  for (const t of walked.filter(t => t.type === 'mediaplayer')) {
-    played({ name: t.uri, boundaries: 0, skipped: 'media timelines need a browser' });
-  }
   // Skips the walk only: a scenario still runs
-  if (playable.length === 0 && options.scenario === undefined) return { timelines, problems };
+  if (walked.length === 0 && options.scenario === undefined) return { timelines, problems };
+  const names = config.timelines.map((_, index) => nameOf(index));
 
-  // The provider settings of the timeline types left out (media) go too: Eligius refuses
+  // The provider settings of the timeline types left out (--timeline) go too: Eligius refuses
   // provider settings without a timeline of their type
   const runnableWith = (timelines: TimelineConfig[]) =>
     ({
@@ -191,8 +202,11 @@ export async function smokeConfig(
         )
       ),
     }) as IEngineConfiguration;
-  const runnable = runnableWith(playable);
+  const runnable = runnableWith(walked);
 
+  // FR-035: the media clock, only while this run lasts (FR-038)
+  const durations = mediaDurations(config);
+  const restoreClock = installMediaClock(window, src => durations.get(src));
   const restore = captureRuntime(report, config, map, options.strict === true);
   const timeout = options.stepTimeoutMs ?? 10000;
   let steps: ScenarioStepResult[] | undefined;
@@ -245,10 +259,27 @@ export async function smokeConfig(
       await new Promise(resolve => setTimeout(resolve, SETTLE_MS));
     };
 
-    if (playable.length > 0) {
+    // The reference engines of determinism and domEquals: fresh ones over `configuration`
+    const referenceEnvironment = async (
+      configuration: IEngineConfiguration
+    ): Promise<DeterminismEnvironment> => ({
+      window,
+      createEngine: () => {
+        options.onReferenceEngine?.();
+        return createEngine(configuration);
+      },
+      step,
+      layoutIds: [...scanLayoutElements(config.layoutTemplate).ids],
+      css: await readCssFiles(config.cssFiles, options.sourceDir),
+      resetBody: () => {
+        window.document.body.innerHTML = `<div id="${ROOT_ID}"></div>`;
+      },
+    });
+
+    if (walked.length > 0) {
       const engine = createEngine(runnable);
       await step('init', () => engine.init());
-      for (const [index, timeline] of playable.entries()) {
+      for (const [index, timeline] of walked.entries()) {
         const name = timeline.uri;
         Object.assign(context, { timeline: name, time: 0 });
         if (index > 0)
@@ -268,44 +299,68 @@ export async function smokeConfig(
     // FR-034: the scenario, on a fresh engine after the walk (I-10)
     if (options.scenario) {
       context = {};
-      const names = config.timelines.map((_, index) => nameOf(index));
-      // Every non-media timeline, whatever --timeline says: a navigate step asks for its target
-      const scenarioTimelines = config.timelines.filter(t => t.type !== 'mediaplayer');
-      if (scenarioTimelines.length === 0) {
-        steps = [];
-        report(mediaOnlyProblem(names));
-      } else {
-        window.document.body.innerHTML = `<div id="${ROOT_ID}"></div>`;
-        const removeStyles = injectStyles(
-          window,
-          await readCssFiles(config.cssFiles, options.sourceDir)
-        );
-        const engine = createEngine(runnableWith(scenarioTimelines));
-        const collected: ScenarioStepResult[] = [];
-        steps = collected;
-        try {
-          await runScenario(engine, window, {
-            config,
-            map,
-            names,
-            scenario: options.scenario,
-            step,
-            report,
-            onStep: result => {
-              collected.push(result);
-              options.listener?.step?.(result);
-            },
-          });
-          await step('scenario stop', () => engine.stop());
-          await step('scenario destroy', () => engine.destroy());
-        } catch (error) {
-          // A started engine keeps playing until it is destroyed
-          engine.destroy().catch(() => {});
-          throw error;
-        } finally {
-          removeStyles();
-        }
+      window.document.body.innerHTML = `<div id="${ROOT_ID}"></div>`;
+      const removeStyles = injectStyles(
+        window,
+        await readCssFiles(config.cssFiles, options.sourceDir)
+      );
+      // Every timeline, whatever --timeline says: a navigate step asks for its target
+      const engine = createEngine(runnableWith(config.timelines));
+      const collected: ScenarioStepResult[] = [];
+      steps = collected;
+      try {
+        await runScenario(engine, window, {
+          config,
+          map,
+          names,
+          scenario: options.scenario,
+          step,
+          report,
+          onStep: result => {
+            collected.push(result);
+            options.listener?.step?.(result);
+          },
+        });
+        await step('scenario stop', () => engine.stop());
+        await step('scenario destroy', () => engine.destroy());
+      } catch (error) {
+        // A started engine keeps playing until it is destroyed
+        engine.destroy().catch(() => {});
+        throw error;
+      } finally {
+        removeStyles();
       }
+      // FR-015 (P6): domEquals, once the scenario engine is gone; one reference engine per
+      // assertion, over every timeline as the scenario's (none without domEquals)
+      const { scenario } = options;
+      if (scenario.assertions?.some(assertion => assertion.domEquals !== undefined)) {
+        const env = await referenceEnvironment(runnableWith(config.timelines));
+        await checkDomEquals(
+          scenario,
+          collected,
+          async (timelineName, kind, at) => {
+            const timeline =
+              config.timelines[names.indexOf(timelineName)] ??
+              config.timelines.find(candidate => candidate.uri === timelineName);
+            if (!timeline) throw new Error(`domEquals: no timeline '${timelineName}'`);
+            const states = await pathStates(env, timeline, kind, [at]);
+            return states.get(at) ?? {};
+          },
+          report
+        );
+      }
+    }
+
+    // FR-030: three fresh engines per played timeline, after the walk and the scenario
+    if (options.determinism === true && walked.length > 0) {
+      context = {};
+      const env = await referenceEnvironment(runnable);
+      await checkDeterminism(env, config, map, {
+        names,
+        timelines: walked,
+        timelineLocations: options.timelineLocations,
+        report,
+      });
     }
   } catch (error) {
     report({
@@ -315,6 +370,7 @@ export async function smokeConfig(
     });
   } finally {
     restore();
+    restoreClock();
   }
   return steps ? { timelines, problems, steps } : { timelines, problems };
 }
@@ -363,7 +419,7 @@ function alsoAt(alternatives: readonly EngineErrorCandidate[], map: EligianMap):
 }
 
 /** A location with its file (the compiled file when the map does not name one). */
-function inFile(
+export function inFile(
   location: SourceLocation | undefined,
   map: EligianMap
 ): (SourceLocation & { file: string }) | undefined {

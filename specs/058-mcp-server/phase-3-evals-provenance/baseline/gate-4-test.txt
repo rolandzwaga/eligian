@@ -1,0 +1,40 @@
+packages/cli test: {"t":"2026-11-05T20:38:58.227Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-05T20:38:58.232Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-05T20:38:58.240Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-05T20:38:58.668Z","tool":"eligian_check","ms":1,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-05T20:38:58.667Z","tool":"eligian_check","ms":77,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-05T20:39:00.221Z","tool":"eligian_compile","ms":108,"chars":2004,"ok":true,"args":{"view":"fragment","select":["timeline"],"explain":true}}
+packages/cli test: Not implemented: navigation to another Document
+packages/cli test: {"t":"2026-11-05T20:39:02.674Z","tool":"eligian_docs","ms":4,"chars":495,"ok":false,"args":{}}
+packages/cli test: {"t":"2026-11-05T20:39:03.113Z","tool":"eligian_operations","ms":4,"chars":493,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-05T20:39:03.161Z","tool":"eligian_operations","ms":0,"chars":569,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-05T20:39:07.538Z","tool":"eligian_check","ms":18,"chars":163,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-05T20:39:09.199Z","tool":"eligian_check","ms":18,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-05T20:39:09.239Z","tool":"eligian_check","ms":0,"chars":589,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-05T20:39:09.242Z","tool":"eligian_operations","ms":1,"chars":594,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-05T20:39:09.276Z","tool":"eligian_check","ms":10,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-05T20:39:09.367Z","tool":"eligian_docs","ms":1,"chars":9896,"ok":true,"args":{}}
+packages/cli test: {"t":"2026-11-05T20:39:09.374Z","tool":"eligian_operations","ms":163,"chars":769,"ok":true,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-05T20:39:09.540Z","tool":"eligian_check","ms":13,"chars":1396,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-05T20:39:09.556Z","tool":"eligian_fmt","ms":101,"chars":339,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-05T20:41:20.033Z","tool":"eligian_smoke","ms":15,"chars":0,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/cli test: 
+packages/cli test:  Test Files  65 passed | 1 skipped (66)
+packages/cli test:       Tests  1296 passed | 32 skipped (1328)
+packages/cli test:    Start at  21:38:26
+packages/cli test:    Duration  191.21s (tests 73%, import 24%, transform 2%)
+packages/cli test: 
+packages/cli test: $ vitest run --project cli-bin
+packages/cli test: 
+packages/cli test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+packages/cli test: 
+packages/cli test: (node:62764) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+packages/cli test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/cli test: 
+packages/cli test:  Test Files  1 passed (1)
+packages/cli test:       Tests  14 passed (14)
+packages/cli test:    Start at  21:41:38
+packages/cli test:    Duration  9.53s (tests 95%, import 5%)
+packages/cli test: 
+packages/cli test: Done
+EXIT=0

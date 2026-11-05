@@ -1,0 +1,30 @@
+T046 operation overlays, batch 1 (12). git HEAD b62b762350146d38ea78cf2d535c60a515d3ca06
+
+## 1. Generator into its own scratch dir
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T046
+generate-knowledge: 404 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T046
+exit 0
+
+## 2. Per name: frontmatter, card <= 120 words, >= 1 probe, card + compiled fence in generated/operations/<name>.md
+ok   addControllerToElement: operation=addControllerToElement cardWords=42 probes=1 cardInMerged=true compiledFences=1
+ok   addGlobalsToOperation: operation=addGlobalsToOperation cardWords=33 probes=1 cardInMerged=true compiledFences=1
+ok   animateWithClass: operation=animateWithClass cardWords=38 probes=1 cardInMerged=true compiledFences=1
+ok   announceToScreenReader: operation=announceToScreenReader cardWords=38 probes=1 cardInMerged=true compiledFences=1
+ok   breakForEach: operation=breakForEach cardWords=31 probes=1 cardInMerged=true compiledFences=1
+ok   calc: operation=calc cardWords=49 probes=1 cardInMerged=true compiledFences=1
+ok   clearElement: operation=clearElement cardWords=34 probes=1 cardInMerged=true compiledFences=1
+ok   clearOperationData: operation=clearOperationData cardWords=34 probes=1 cardInMerged=true compiledFences=1
+ok   clearStorage: operation=clearStorage cardWords=30 probes=1 cardInMerged=true compiledFences=1
+ok   compareDate: operation=compareDate cardWords=36 probes=1 cardInMerged=true compiledFences=1
+ok   concatenateStrings: operation=concatenateStrings cardWords=36 probes=1 cardInMerged=true compiledFences=1
+ok   continueForEach: operation=continueForEach cardWords=40 probes=1 cardInMerged=true compiledFences=1
+all 12 overlays merged with their card and a compiled fence
+exit 0
+
+## 3. The 12 probes extracted (with probe-assets) and run through the real CLI
+$ node packages/cli/bin/cli.js check "*.eligian"
+12 files, 0 errors, 0 warnings
+exit 0
+$ node packages/cli/bin/cli.js smoke "*.eligian"
+12 files, 12 timelines played, 0 errors, 0 warnings
+exit 0

@@ -1,0 +1,1259 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "cc7b0ef4-8699-48fa-a106-fe63276cd61e",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div id=\"stage\">\n  <section id=\"hub\" class=\"view\">\n    <h1 id=\"hub-title\" class=\"title\"></h1>\n    <div class=\"cards\">\n      <button id=\"card-1\" class=\"card\">Chapter 1</button>\n      <button id=\"card-2\" class=\"card\">Chapter 2</button>\n      <button id=\"card-3\" class=\"card\">Timeline &amp; Time</button>\n    </div>\n  </section>\n\n  <section id=\"chapter-1\" class=\"view\">\n    <h1 class=\"title\">Chapter 1</h1>\n    <p id=\"c1-beat-1\" class=\"beat\">Press → to skip to the next beat.</p>\n    <p id=\"c1-beat-2\" class=\"beat\">Press Esc to go back to the hub.</p>\n    <div class=\"controls\"><button id=\"back-1\">Back to the hub</button></div>\n  </section>\n\n  <section id=\"chapter-2\" class=\"view\">\n    <h1 class=\"title\">Chapter 2</h1>\n    <p id=\"c2-beat-1\" class=\"beat\">Each chapter is a timeline of its own.</p>\n    <div class=\"controls\"><button id=\"back-2\">Back to the hub</button></div>\n  </section>\n\n  <section id=\"chapter-3\" class=\"view\">\n    <h1 id=\"c3-title\" class=\"title\"></h1>\n    <p id=\"c3-intro\" class=\"lead\"></p>\n    <p id=\"c3-beat-1\" class=\"beat\">A timeline schedules its events on a clock.</p>\n    <p id=\"c3-beat-2\" class=\"beat\">Each event runs over a range: from its start to its end.</p>\n    <div id=\"c3-box\" class=\"box\">target</div>\n    <p id=\"c3-beat-3\" class=\"beat\">Name a time with const, label an event with as.</p>\n    <div class=\"controls\"><button id=\"back-3\">Back to the hub</button></div>\n  </section>\n</div>\n",
+  "cssFiles": [
+    "./styles.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "f6a977df-ed72-43fa-a0f3-d34c151ef79c",
+      "languageCode": "en-US",
+      "label": "English"
+    },
+    {
+      "id": "565a79e1-396a-47ed-af6a-c56992df926b",
+      "languageCode": "nl-NL",
+      "label": "Nederlands"
+    }
+  ],
+  "locales": {
+    "en-US": {
+      "hub": {
+        "title": "Port"
+      },
+      "tour": {
+        "title": "Timeline & Time",
+        "intro": "An Eligian presentation is one or more timelines."
+      }
+    },
+    "nl-NL": {
+      "hub": {
+        "title": "Port"
+      },
+      "tour": {
+        "title": "Tijdlijn & tijd",
+        "intro": "Een Eligian-presentatie bestaat uit een of meer tijdlijnen."
+      }
+    }
+  },
+  "initActions": [],
+  "actions": [
+    {
+      "id": "0859eeb9-39cf-44e4-a221-77e7f987e2cd",
+      "name": "showView",
+      "startOperations": [
+        {
+          "id": "c1ff3fa8-cd77-4be7-b4a4-f45368c73882",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "5796f260-ef7b-4b7e-a467-8ad5677f3878",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "is-active"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "045095f8-b97e-4e52-8885-3d5f0c4a452e",
+      "name": "hideView",
+      "startOperations": [
+        {
+          "id": "d2bb0797-172f-4196-9eec-1d895fca5cf9",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "017b26c9-7445-4aa1-a0ed-29223b48c77a",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "is-active"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "bd411a25-b1bd-4d4f-a809-62a247c06796",
+      "name": "reveal",
+      "startOperations": [
+        {
+          "id": "33a51589-7ff3-4436-aefe-9ebc46f73fb8",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "4fd44d0c-7fa1-4610-a3ae-f9b29f834aa5",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "is-visible"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "84a1fb90-84f9-4990-99fc-e41e10399f59",
+      "name": "conceal",
+      "startOperations": [
+        {
+          "id": "d6bfe3cd-1157-4dbc-9c8e-68947bec4cb2",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "df4470b1-e585-4095-9c36-01b5e3bbd8f4",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "is-visible"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "0387d598-5e3c-45c0-8640-f646c4a5cd7f",
+      "name": "__nav__chapter_1_1beb3be5",
+      "startOperations": [
+        {
+          "id": "1966bf09-8304-40ed-91bb-14d4b46d1f71",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Chapter 1",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "61441882-1723-4ace-9691-8ef9517e9afb",
+      "name": "__nav__chapter_2_18eb372c",
+      "startOperations": [
+        {
+          "id": "16be8e25-0398-43ac-97c6-550bfe7d6c07",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Chapter 2",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "325551a7-550c-4b55-8fd2-2661df90da3c",
+      "name": "__nav__timeline_time_096a5465",
+      "startOperations": [
+        {
+          "id": "47bd2b5a-ee27-467e-b3ad-064a0bc83c8f",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Timeline & Time",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "69fc1113-f415-472e-be3c-b21b447f1226",
+      "name": "__nav__hub_4717fc8c",
+      "startOperations": [
+        {
+          "id": "626d32fa-c3ae-4dbe-a188-0ea1bbb873b6",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Hub",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "1e27f64f-2695-424e-8ca7-e9afb072714c",
+      "name": "__on__seek__4",
+      "startOperations": [
+        {
+          "id": "5c9df350-3454-43ba-b161-f5ac0c40446d",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "timeline-seek-request",
+            "eventArgs": [
+              4
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "a1f3dd8d-0cac-4cab-8bdb-00a679782fdc",
+      "name": "__on__toggle",
+      "startOperations": [
+        {
+          "id": "d92db174-fe0a-47cd-a3ac-4eac186f2df5",
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "timeline-play-toggle-request",
+            "eventArgs": []
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "cd07ed5a-73d4-4037-9502-f7c9ff1e35e5",
+      "uri": "Hub",
+      "type": "animation",
+      "duration": 0,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "d707be80-1a09-493b-9edf-f6be75be8e6b",
+          "name": "timeline-lifecycle",
+          "startOperations": [
+            {
+              "id": "5a98891c-beec-4473-a757-46030174af53",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "1a6ab73d-570c-454b-9621-e15b167dfdd4",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#hub"
+                }
+              }
+            },
+            {
+              "id": "dae48d41-df45-4e4e-a80b-85cf6d46edfb",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#hub-title"
+              }
+            },
+            {
+              "id": "5f8bdc68-07a7-443c-88d2-b681203c68d4",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "LabelController"
+              }
+            },
+            {
+              "id": "2b27f8b4-46bf-405e-ae0c-a4285418ca61",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "translationKey": "hub.title"
+              }
+            },
+            {
+              "id": "13b0e44d-668d-485c-ade9-c929d3b0aca8",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-1"
+              }
+            },
+            {
+              "id": "873107b2-f9a8-4a3b-ae0d-29775a08eb8e",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "1558ac08-ab8e-49b2-9a76-a8a77b075b8d",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__chapter_1_1beb3be5"
+                ]
+              }
+            },
+            {
+              "id": "008ae696-3b7f-43a3-ab64-0d50ce45b14a",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-2"
+              }
+            },
+            {
+              "id": "c984f2dd-c227-4d4b-8dc8-91084e087344",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "6ccfa509-c7c6-4b6a-8d10-45cb5f7a02e3",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__chapter_2_18eb372c"
+                ]
+              }
+            },
+            {
+              "id": "7f4e70f8-e026-4879-af60-b5cff23fa507",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-3"
+              }
+            },
+            {
+              "id": "e5dc54de-b7ba-42a3-b3e4-717d51aeca8c",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "60767bfd-e729-4d92-a2e0-cf3be454fa19",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__timeline_time_096a5465"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "46986808-ee80-486f-859d-8f0b1c069ee9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "fabdc1e8-7156-43de-8e4b-ec15263c7f36",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#hub"
+                }
+              }
+            },
+            {
+              "id": "1a64691a-7eee-440f-937c-8c71f664366e",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-1"
+              }
+            },
+            {
+              "id": "00091f6f-8a33-4884-aade-5ba850f0c397",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "5e21fefc-9ce3-4e59-996d-4892ccfa4cea",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-2"
+              }
+            },
+            {
+              "id": "11f280ef-2184-45d0-98bf-8cd235dfb052",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "2bf267ec-adfa-4305-b826-69405c4c4489",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#card-3"
+              }
+            },
+            {
+              "id": "d5c03f6c-6911-4712-99be-1d8072a51b01",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "44f2c59b-9b23-4c80-9219-e2c315b29dd8",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#hub-title"
+              }
+            },
+            {
+              "id": "a63825ad-4350-4180-8dc3-27dd1ad5944a",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "LabelController"
+              }
+            }
+          ],
+          "duration": {
+            "start": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "8634901f-e129-4202-b110-8d1c8b89842d",
+      "uri": "Chapter 1",
+      "type": "animation",
+      "duration": 8,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "2cd43754-e545-4c73-9e24-4668d6f264ac",
+          "name": "timeline-lifecycle",
+          "startOperations": [
+            {
+              "id": "e765316b-3ae9-474e-80c1-5dbb61a02795",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "f547ea2e-a00c-4f15-84d4-a0ee0c2226b2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#chapter-1"
+                }
+              }
+            },
+            {
+              "id": "63f70c5e-c36e-4395-9d2b-e85382c2f0e6",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#back-1"
+              }
+            },
+            {
+              "id": "0767b92f-b818-4c3b-91be-a7e22b506622",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "53562092-a3c0-4a3e-a0fc-f08a9a69d9bf",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub_4717fc8c"
+                ]
+              }
+            },
+            {
+              "id": "a45026e3-9f8d-498d-a984-11bc81579bfb",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "8c80af90-7128-4ff3-95fb-be795c24e995",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "id": "060dc316-8060-487a-9779-f3a56e5812f4",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "Escape",
+                "actions": [
+                  "__nav__hub_4717fc8c"
+                ]
+              }
+            },
+            {
+              "id": "c2de700c-be7a-440c-9693-385209ac94d6",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "a17a2376-ced7-4c93-99e5-efef1f02c782",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "id": "196ce8c7-d926-4ee0-8671-114c3f882bbd",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "ArrowRight",
+                "actions": [
+                  "__on__seek__4"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "3cdfcaee-c2d7-491a-bc53-ce102735aa7b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "918fe7f9-ad38-447e-a661-18d590db1b22",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#chapter-1"
+                }
+              }
+            },
+            {
+              "id": "d3d1acb4-10ea-4831-8354-f98a5d752d1a",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#back-1"
+              }
+            },
+            {
+              "id": "8ffa9227-a8c2-49e3-b0cb-0c708e96dba3",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "ec60b12a-b637-480e-a140-6c491c2b9ee6",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "02d4d6e9-d364-4dd9-b182-8c6bb7e14500",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            },
+            {
+              "id": "f6972b9a-d6e5-4d9b-a38d-385435e3c4a8",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ],
+          "duration": {
+            "start": 0
+          }
+        },
+        {
+          "id": "8a3ea80e-dc2c-42ec-afa3-ec290ea42067",
+          "name": "timeline-action-0-4",
+          "startOperations": [
+            {
+              "id": "94ed812b-e987-4c01-95b7-79630968849b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "reveal"
+              }
+            },
+            {
+              "id": "5b7c26ba-970c-45a8-a6d8-8c0fcb304192",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c1-beat-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "ff47ba3f-1612-4853-88f2-acaa4384521b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "conceal"
+              }
+            },
+            {
+              "id": "5ec646c2-aac0-4c53-8dd1-e283289744d9",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c1-beat-1"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 4
+          }
+        },
+        {
+          "id": "ba106b0f-fdb2-45aa-9e3b-eb88312f1338",
+          "name": "timeline-action-4-8",
+          "startOperations": [
+            {
+              "id": "b0cd97cd-c1d9-4f8f-9d88-f8cbb459530d",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "reveal"
+              }
+            },
+            {
+              "id": "8c0f53f7-c721-49dd-9310-69af5dc77c2a",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c1-beat-2"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "8cb322f2-8837-4d59-a62a-b919ca6408b9",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "conceal"
+              }
+            },
+            {
+              "id": "a80430d4-b8a2-4df0-a373-2a6f01573198",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c1-beat-2"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 4,
+            "end": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "57b2642a-a24e-4f2d-96f5-21f0da2aafa2",
+      "uri": "Chapter 2",
+      "type": "animation",
+      "duration": 4,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "1f5169e6-59a3-41ff-9e99-9bfedaa6ec36",
+          "name": "timeline-lifecycle",
+          "startOperations": [
+            {
+              "id": "37bbf1ca-a1f2-4c91-a809-f0cea0c39afc",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "5c59016a-3fe1-455c-a4ea-f03d09aa6b09",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#chapter-2"
+                }
+              }
+            },
+            {
+              "id": "0df106e7-59d5-4f87-9ae0-68432d1304c5",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#back-2"
+              }
+            },
+            {
+              "id": "75bd5426-5022-422f-8e89-04cf04e92cde",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "82035a1e-4ae1-40c9-9b55-79a00e0c62d8",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub_4717fc8c"
+                ]
+              }
+            },
+            {
+              "id": "b6fc917a-5460-44b1-9b17-30094c396871",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "a59d1867-0f35-41fb-81a6-4c42a53a6f96",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "id": "83523dc2-d7a3-4513-a0fd-954aa760becf",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "Escape",
+                "actions": [
+                  "__nav__hub_4717fc8c"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "70009624-f167-48f4-aee5-f31721428a47",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "555db6c4-c02b-4127-be8a-0de995ebb54f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#chapter-2"
+                }
+              }
+            },
+            {
+              "id": "b505e912-ba9f-4074-87a7-7599885f7c1e",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#back-2"
+              }
+            },
+            {
+              "id": "d2cac8cd-9055-4105-827d-3427477ca0b7",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "0b5e8fb2-5d14-4f0b-af00-87080168e6d1",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "4ff15567-d35a-457c-af7d-8013edb3c330",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ],
+          "duration": {
+            "start": 0
+          }
+        },
+        {
+          "id": "47c9c508-8107-4d1d-82fe-70163990720c",
+          "name": "timeline-action-0-4",
+          "startOperations": [
+            {
+              "id": "28699515-77ff-4c06-95ed-fca93048a473",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "reveal"
+              }
+            },
+            {
+              "id": "4d409739-a96c-476e-adb1-815532a8cbe2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-beat-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "61d907d1-31cf-4674-85a3-660b8b5d6a1b",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "conceal"
+              }
+            },
+            {
+              "id": "21361739-eb81-43ad-b07b-767b87b35d5f",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c2-beat-1"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 4
+          }
+        }
+      ]
+    },
+    {
+      "id": "72d58dd1-9c28-4247-9046-56da50dad033",
+      "uri": "Timeline & Time",
+      "type": "animation",
+      "duration": 13,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "ece4d701-b118-4f4d-9a44-2d28f85be263",
+          "name": "timeline-lifecycle",
+          "startOperations": [
+            {
+              "id": "54d99425-138d-413d-a87f-8b18ddc32f5a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "showView"
+              }
+            },
+            {
+              "id": "1b68d249-fc1d-412f-ad03-e950aacafba2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#chapter-3"
+                }
+              }
+            },
+            {
+              "id": "f530b355-4260-4b26-920a-79ca60237547",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-title"
+              }
+            },
+            {
+              "id": "59c423d5-1aea-49b3-aa9b-fc497b94f2bb",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "LabelController"
+              }
+            },
+            {
+              "id": "230333bd-a542-4f24-9f89-ddb929f4591f",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "translationKey": "tour.title"
+              }
+            },
+            {
+              "id": "78256a53-cce7-49dc-9658-2d75ec7f03e9",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-intro"
+              }
+            },
+            {
+              "id": "36ebaf1e-0e6a-4bd5-b6ce-dc0b87d5c880",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "LabelController"
+              }
+            },
+            {
+              "id": "02e448ba-2d7d-49b3-b72c-f5b24610649c",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "translationKey": "tour.intro"
+              }
+            },
+            {
+              "id": "d77357c0-e7ad-44eb-aa39-bd6706604b8d",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#back-3"
+              }
+            },
+            {
+              "id": "cd322cbf-2586-4771-8659-f9b755683814",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "315ab4c5-1ca3-48c5-a1a1-064953e22e8d",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__hub_4717fc8c"
+                ]
+              }
+            },
+            {
+              "id": "e4dbd49a-8a75-49b3-918c-98783a96b35a",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "bd1fca88-39a3-4452-9f4f-7f3fd5bb59a7",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "id": "d803413c-59a3-416e-b6ab-c05918203453",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "Escape",
+                "actions": [
+                  "__nav__hub_4717fc8c"
+                ]
+              }
+            },
+            {
+              "id": "189b0c76-b632-45f1-8443-08b9dcebb333",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "bfa0aba1-8752-4848-adfe-80ab87232d4f",
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "id": "ff0a6a2e-8c60-407d-9093-3fea2ded9b9a",
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "space",
+                "actions": [
+                  "__on__toggle"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "fe5bf3d4-6e07-4b9b-8262-7f8573fb96dd",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "hideView"
+              }
+            },
+            {
+              "id": "367e5595-8e27-444d-901c-7f3cac92cb05",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#chapter-3"
+                }
+              }
+            },
+            {
+              "id": "7e8626a9-3a99-4a9d-a3c6-217bb7b896b2",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-title"
+              }
+            },
+            {
+              "id": "d1fb6f8a-0d81-4b0f-bfc8-6a35ad1dde22",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "LabelController"
+              }
+            },
+            {
+              "id": "3e2175c9-f5b9-4178-afa7-fdf902e9ceb8",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-intro"
+              }
+            },
+            {
+              "id": "44b71b8f-9315-4329-9fe2-104402d69c89",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "LabelController"
+              }
+            },
+            {
+              "id": "b04fc481-0eab-4efd-a9da-a97de09d7955",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#back-3"
+              }
+            },
+            {
+              "id": "277a5456-311b-4ee4-8f66-bd4c604af95f",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "id": "a0f36f24-2902-47e9-9b43-52563de50d61",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "id": "d21abcb1-2208-4658-bdc5-a76830dd0131",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            },
+            {
+              "id": "760a1163-4751-4bc3-8f21-20a246d04be4",
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ],
+          "duration": {
+            "start": 0
+          }
+        },
+        {
+          "id": "bfe9fbbd-5256-4898-a13f-d143c2f40932",
+          "name": "timeline-action-0-3",
+          "startOperations": [
+            {
+              "id": "41932a7e-d481-42ba-9b88-38cb0772fae3",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "reveal"
+              }
+            },
+            {
+              "id": "3010ae91-b191-4c5e-ad20-04075c970f2c",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-beat-1"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "e6e038e2-f73f-4db7-9ad7-202c51b32b7a",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "conceal"
+              }
+            },
+            {
+              "id": "52d27187-c226-4b99-b5d6-bef222ba3613",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-beat-1"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 0,
+            "end": 3
+          }
+        },
+        {
+          "id": "34021b5c-ce59-407b-8d3c-74e93f1f5f65",
+          "name": "timeline-action-3-6",
+          "startOperations": [
+            {
+              "id": "41dee48c-73a2-474d-8978-cfb9fa1a2366",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "reveal"
+              }
+            },
+            {
+              "id": "ebe8f020-848f-41ea-a2e7-eaf5a0663fee",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-beat-2"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "a54f7aa9-aec2-47e6-a511-e8dd02708eb6",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "conceal"
+              }
+            },
+            {
+              "id": "f5d2329e-539d-44cd-9a1a-1597b2c751a7",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-beat-2"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 3,
+            "end": 6
+          }
+        },
+        {
+          "id": "9932ac22-4fe8-4f3a-be2b-69da19e82b65",
+          "name": "timeline-action-6-10",
+          "startOperations": [
+            {
+              "id": "a5d84a8a-2180-4fdc-a903-66d85194b7ad",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-box"
+              }
+            },
+            {
+              "id": "0e34289b-50d1-4fed-b40a-f5526d867bca",
+              "systemName": "addClass",
+              "operationData": {
+                "className": "is-lit"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "af3f330f-280c-47fe-b588-0054afc3e41d",
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#c3-box"
+              }
+            },
+            {
+              "id": "900b446e-74d5-461f-8daf-c5f8452ac650",
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "is-lit"
+              }
+            }
+          ],
+          "duration": {
+            "start": 6,
+            "end": 10
+          }
+        },
+        {
+          "id": "eb1d46fd-d925-4c00-899d-46a5a9337e17",
+          "name": "timeline-action-10-13",
+          "startOperations": [
+            {
+              "id": "900981c9-d843-4928-8960-5dd94a94e5f4",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "reveal"
+              }
+            },
+            {
+              "id": "b5039847-02bb-4853-aef4-04c67f8ed4b2",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-beat-3"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "589263bd-0486-4002-b941-e891f1369a52",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "conceal"
+              }
+            },
+            {
+              "id": "33112e5a-a515-4e63-88c3-66b105f835f7",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#c3-beat-3"
+                }
+              }
+            }
+          ],
+          "duration": {
+            "start": 10,
+            "end": 13
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource"
+      }
+    }
+  }
+}

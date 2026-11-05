@@ -1,0 +1,4 @@
+## T043 gate dry run (2026-11-05T19:51:42Z)
+$ pnpm exec tsx evals/mcp/gate.ts <tmp> --case title-card --call-budget off
+{"pass":true,"failures":[]}
+exit 0

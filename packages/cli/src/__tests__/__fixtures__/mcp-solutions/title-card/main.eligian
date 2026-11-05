@@ -1,0 +1,18 @@
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "title" in "#stage" using raf duration 10s {
+  on enter [
+    on click "#play" play
+    on click "#pause" pause
+  ]
+  on leave [
+    selectElement("#play")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#pause")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 1s..8s target "#headline" [ addClass("in") ] [ removeClass("in") ]
+  at 3s..8s target "#subtitle" [ addClass("is-up") ] [ removeClass("is-up") ]
+}

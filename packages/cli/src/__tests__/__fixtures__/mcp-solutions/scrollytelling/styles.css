@@ -1,0 +1,44 @@
+/* The element the presentation runs in */
+#stage {
+  position: relative;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+/* The scrollable element: its scroll position drives the timeline */
+#article {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* The article content: 4000px of scrolling */
+.article-content {
+  position: relative;
+  height: 4000px;
+}
+
+/* The heading stays in view while the reader scrolls */
+.heading {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: 2rem;
+  font-size: 2.5rem;
+  background: #f6f7fb;
+}
+
+.illustration {
+  position: sticky;
+  top: 8rem;
+  margin: 1rem 2rem;
+  padding: 2rem;
+  font-size: 1.5rem;
+  background: #ffffff;
+}
+
+/* An illustration the reader has not scrolled to yet */
+.is-ahead {
+  opacity: 0;
+}

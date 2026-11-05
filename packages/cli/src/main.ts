@@ -424,6 +424,11 @@ export default function main(): void {
       '--scenario <file>',
       'after the walk, replay this scenario ({ "steps": [...], "assertions"?: [...] } JSON) on a fresh engine; one program file only'
     )
+    .option(
+      '--determinism',
+      'also compare the DOM at every boundary reached by linear play, a straight seek and a seek back from the end (position-nondeterministic)',
+      false
+    )
     .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
       const format = parseSmokeFormat(String(cmdOptions.format));
       if (!format) {
@@ -458,6 +463,7 @@ export default function main(): void {
         timelines: cmdOptions.timeline as string[] | undefined,
         stepTimeoutMs,
         scenario,
+        determinism: cmdOptions.determinism === true,
         ...(out ? { writeLine: (line: string) => void out.write(`${line}\n`) } : {}),
       });
       if (outcome.exitCode === 2) console.error(chalk.red(outcome.output));

@@ -1,0 +1,11 @@
+// Origin `call`: an action called from a timeline event
+styles "./styles.css"
+
+action show(sel) [
+  selectElement(sel)
+  addClass("on")
+]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s show("#a")
+}

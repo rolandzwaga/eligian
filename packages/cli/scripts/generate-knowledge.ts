@@ -12,7 +12,8 @@
  *   literate probe of a `map-*` chunk and of `presentation-patterns` spliced in after it;
  * - `generated/*.md`: the chunks built from the registry (merged with the operation and
  *   controller overlays, whose probes are spliced too), the grammar, the starters, the
- *   Eligius schema and the diagnostic code registry;
+ *   Eligius schema, the diagnostic code registry, the DOM events, the key names and the
+ *   HTML element metadata (phase 3 FR-057);
  * - `generated/examples/<id>.md`: one per `// @mcp-example <id> <title>` … `// @mcp-end`
  *   marker in the tour's `.eligian` files and in the starters.
  *
@@ -37,8 +38,13 @@ import {
   starterFiles,
 } from '@eligian/language';
 import {
+  COMMON_HTML_ATTRIBUTES,
   CONTROLLERS,
+  DOM_EVENTS,
+  getElementAttributes,
   getOrCreateServices,
+  HTML_ELEMENT_NAMES,
+  KEY_COMPLETIONS,
   SELF_RESOLVED,
   TIMELINE_EVENTS,
 } from '@eligian/language/mcp';
@@ -770,6 +776,82 @@ function eventsChunk(): Chunk {
   };
 }
 
+// The language data of interactions and layouts (phase 3 FR-057)
+
+function domEventsChunk(): Chunk {
+  return {
+    id: 'dom-events',
+    title: 'DOM events',
+    kind: 'reference',
+    use_cases: ['on click', 'DOM event name', 'interaction event'],
+    see: ['map-events-and-interactions'],
+    card: `The ${DOM_EVENTS.size} DOM events the checker knows for an interaction (on <event> "<sel>" <verb>), one line each with what fires it.`,
+    body: [
+      'One line per DOM event an interaction listens to: `on <event> "<sel>" <verb>`, the verb one of',
+      '`navigate "<timeline>" (at <time>)?`, `play`, `pause`, `toggle`, `stop`, `seek <time>` or',
+      '`run <action>(<args>)`. Not exhaustive: an unknown name is a warning, since an element can',
+      'also receive custom events. For keys use `on key` (`key-names`), not `keydown`.',
+      '',
+      ...[...DOM_EVENTS].map(
+        ([event, description]) => `- ${code(`on ${event} "<sel>" …`)}: ${description}`
+      ),
+    ].join('\n'),
+    file: 'generated/dom-events.md',
+  };
+}
+
+function keyNamesChunk(): Chunk {
+  return {
+    id: 'key-names',
+    title: 'Key names',
+    kind: 'reference',
+    use_cases: ['on key', 'keyboard shortcut', 'KeyboardController keys'],
+    see: ['map-events-and-interactions', 'map-controllers'],
+    card: `The ${KEY_COMPLETIONS.size} common keys of on key "<keys>" (KeyboardController, hotkeys-js names), one line each, and how shortcuts combine.`,
+    body: [
+      'One line per common key of `on key "<keys>" (in "<sel>")? <verb>`, which adds a',
+      "KeyboardController to the `in` element or else the timeline's container. Keys are",
+      'hotkeys-js names (`right`, `space`, `esc`) or `KeyboardEvent.key` names (`ArrowRight`,',
+      '`Escape`), case insensitive; single letters and digits work too. Separate shortcuts with',
+      '`,` and join modifiers with `+` (`shift+ArrowRight`). An unknown key is a compile error.',
+      '',
+      ...[...KEY_COMPLETIONS].map(
+        ([key, description]) => `- ${code(`on key "${key}" …`)}: ${description}`
+      ),
+    ].join('\n'),
+    file: 'generated/key-names.md',
+  };
+}
+
+function htmlElementsChunk(): Chunk {
+  const common = new Set(COMMON_HTML_ATTRIBUTES.map(attribute => attribute.name));
+  const commonNames = [...common].sort(byText);
+  const ownNames = (tag: string): string[] =>
+    [...new Set(getElementAttributes(tag).map(attribute => attribute.name))]
+      .filter(name => !common.has(name))
+      .sort(byText);
+  return {
+    id: 'html-elements',
+    title: 'HTML elements and attributes',
+    kind: 'reference',
+    use_cases: ['layout.html element', 'HTML attribute', 'setElementAttributes'],
+    see: ['layout-html'],
+    card: `The ${HTML_ELEMENT_NAMES.length} HTML elements the language server knows, each with its own attribute names; the attributes every element takes are listed once.`,
+    body: [
+      'Every element takes these attributes:',
+      commonNames.map(code).join(', '),
+      '',
+      'One line per element: its tag, then the attributes of its own (names only).',
+      '',
+      ...HTML_ELEMENT_NAMES.map(tag => {
+        const own = ownNames(tag);
+        return `- ${code(tag)}: ${own.length === 0 ? 'no attributes of its own' : own.join(', ')}`;
+      }),
+    ].join('\n'),
+    file: 'generated/html-elements.md',
+  };
+}
+
 // The grammar, read through the language services (a `loadGrammarFromJson` result)
 
 interface GrammarNode {
@@ -1097,6 +1179,9 @@ export async function generateKnowledge(
     dataflowChunk(),
     controllersChunk(controllers),
     eventsChunk(),
+    domEventsChunk(),
+    keyNamesChunk(),
+    htmlElementsChunk(),
     syntaxCheatsheetChunk(),
     ...starterChunks(),
     configShapeChunk(),

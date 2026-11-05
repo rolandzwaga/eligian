@@ -21,6 +21,10 @@
  * Spec 058 Phase 2 (SC-017): `eligian_check` (A), `eligian_compile` (B) and `eligian_project`
  * (D) fired at once, 20 iterations, on a server of their own. The call ids are paired with the
  * tools exactly (`pairedRecorder`), so the overlap metric is read per tool.
+ *
+ * Spec 058 Phase 3 (FR-062; SC-015(3), (5); plan C3): results are equal across a recycle of
+ * the Langium services (a lock built with a small `recycleAfter`), compared without headers
+ * and without ids (`withoutIds`).
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -33,6 +37,7 @@ import {
   type CompilerLockHooks,
   compilerLockLayer,
 } from '../mcp/compiler-lock.js';
+import { withoutIds } from '../mcp/config-fragment.js';
 import { NAME as CHECK } from '../mcp/tools/check.js';
 import { NAME as COMPILE } from '../mcp/tools/compile.js';
 import { NAME as FMT } from '../mcp/tools/fmt.js';
@@ -55,11 +60,19 @@ const CALL_D = { paths: ['d-other/main.eligian'] };
 /** SC-017: the compile and project calls, on fixtures other than check's A */
 const CALL_COMPILE = { path: 'b-plain/main.eligian', response_format: 'detailed' };
 const CALL_PROJECT = { path: 'd-other/main.eligian', response_format: 'detailed' };
+/** FR-062: a compile call with `select` and the map */
+const CALL_COMPILE_MAP = {
+  path: 'b-plain/main.eligian',
+  select: { timeline: 'other' },
+  includeMap: true,
+  response_format: 'detailed',
+};
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 interface LockEvent {
-  readonly kind: 'queued' | 'acquire' | 'release';
+  readonly kind: 'queued' | 'acquire' | 'release' | 'recycle';
+  /** The call id; for a recycle, the completed section count */
   readonly id: string;
   readonly at: number;
   readonly completed?: boolean;
@@ -82,6 +95,7 @@ function recorder(latch?: (requestId: string) => Promise<void>) {
     onQueued: (id, at) => fire({ kind: 'queued', id, at }),
     onAcquire: (id, at) => fire({ kind: 'acquire', id, at }),
     onRelease: (id, at, completed) => fire({ kind: 'release', id, at, completed }),
+    onRecycle: async count => fire({ kind: 'recycle', id: String(count), at: performance.now() }),
     ...(latch === undefined ? {} : { latch }),
   };
   const until = (test: (events: readonly LockEvent[]) => boolean): Promise<void> =>
@@ -402,6 +416,92 @@ describe('the compiler lock', () => {
         expect(x.end <= y.start || y.end <= x.start).toBe(true);
       }
     }
+  }, 60_000);
+});
+
+describe('recycling', () => {
+  /** A successful call's payload without its header and ids. */
+  const comparable = async (
+    server: InMemoryServer,
+    [name, args]: readonly [string, unknown]
+  ): Promise<unknown> => {
+    const result = await server.callTool(name, args);
+    expect(result.isError, JSON.stringify(result.payload)).toBe(false);
+    return withoutIds(withoutHeader(result.payload));
+  };
+
+  /** Where `event` sits in `events`. */
+  const indexOf = (events: readonly LockEvent[], kind: LockEvent['kind'], id: string): number =>
+    events.findIndex(event => event.kind === kind && event.id === id);
+
+  it('results are equal across a recycle', async () => {
+    const rec = recorder();
+    const server = await start(compilerLockLayer(rec.hooks, { recycleAfter: 3 }));
+    const calls: readonly (readonly [string, unknown])[] = [
+      [CHECK, CALL_A],
+      [COMPILE, CALL_COMPILE_MAP],
+      [PROJECT, CALL_PROJECT],
+    ];
+
+    // sections 1–3 on one service set, the recycle after section 3, sections 4–6 on a fresh set
+    const before: unknown[] = [];
+    for (const each of calls) before.push(await comparable(server, each));
+    expect(rec.of('recycle').map(event => event.id)).toEqual(['3']);
+    const after: unknown[] = [];
+    for (const each of calls) after.push(await comparable(server, each));
+    expect(rec.of('recycle').map(event => event.id)).toEqual(['3', '6']);
+
+    // the results are real ones
+    const [checked, compiled, inspected] = before as {
+      diagnostics?: { code: string }[];
+      ok?: boolean;
+      fragment?: unknown;
+      map?: unknown;
+      programs?: unknown[];
+    }[];
+    expect(checked.diagnostics!.map(d => d.code)).toContain('selector_not_in_layout');
+    expect(compiled.ok).toBe(true);
+    expect(compiled.fragment).toBeDefined();
+    expect(compiled.map).toBeDefined();
+    expect(inspected.programs).toHaveLength(1);
+
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('two concurrent calls straddling the recycle equal their sequential baselines', async () => {
+    const pair: readonly (readonly [string, unknown])[] = [
+      [CHECK, CALL_A],
+      [COMPILE, CALL_COMPILE_MAP],
+    ];
+    // the baselines on a server of their own (default lock, no recycle in reach)
+    const baselineServer = await start();
+    const baselines: unknown[] = [];
+    for (const each of pair) baselines.push(await comparable(baselineServer, each));
+
+    // after the first, every section waits until all three calls queued: the pair is in flight
+    // together
+    const rec: ReturnType<typeof recorder> = recorder(() =>
+      rec.of('acquire').length === 1
+        ? Promise.resolve()
+        : rec.until(events => events.filter(event => event.kind === 'queued').length >= 3)
+    );
+    const server = await start(compilerLockLayer(rec.hooks, { recycleAfter: 2 }));
+    // section 1; the pair then runs sections 2 and 3, with the recycle between them
+    await comparable(server, [CHECK, CALL_D]);
+    const results = await Promise.all(pair.map(each => comparable(server, each)));
+
+    const recycles = rec.of('recycle');
+    expect(recycles.map(event => event.id)).toEqual(['2']);
+    const [, second, third] = rec.of('acquire');
+    const recycleAt = indexOf(rec.events, 'recycle', '2');
+    expect(indexOf(rec.events, 'acquire', second!.id)).toBeLessThan(recycleAt);
+    expect(recycleAt).toBeLessThan(indexOf(rec.events, 'acquire', third!.id));
+    // the two calls were in flight together: the second queued before the first released
+    expect(indexOf(rec.events, 'queued', third!.id)).toBeLessThan(
+      indexOf(rec.events, 'release', second!.id)
+    );
+
+    expect(results).toEqual(baselines);
   }, 60_000);
 });
 

@@ -11,7 +11,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Effect } from 'effect';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, test } from 'vitest';
 import {
   type CollectOptions,
   collectAssets,
@@ -19,8 +19,10 @@ import {
   extractCSSUrls,
   extractHTMLUrls,
   generateUniqueOutputPath,
+  mapConfigAssetRefs,
   resolveAssetPath,
 } from '../../bundler/asset-collector.js';
+import { createBundle } from '../../bundler/index.js';
 import { buildConfig, withProviderSettings } from './config-fixtures.js';
 
 /**
@@ -940,5 +942,105 @@ describe('Asset Collector (Feature 040, Phase 4)', () => {
         expect(asset.sources).toHaveLength(2); // Referenced by both CSS files
       });
     });
+  });
+});
+
+/**
+ * D-L2 (spec 058 FR-065): the url of a `loadJson` operation is a file the runtime
+ * fetches, so `--bundle` (and `dev`, which serves the bundle) must carry it.
+ */
+describe('loadJson urls are assets (FR-065, D-L2)', () => {
+  const probe = path.join(__dirname, '..', '__fixtures__', 'lottie-probe', 'main.eligian');
+  let outDir: string;
+
+  beforeAll(async () => {
+    outDir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await fs.rm(outDir, { recursive: true, force: true });
+  });
+
+  /** A config with one operation of `systemName` per url, in every action list. */
+  function configWith(systemName: string, urls: readonly string[]) {
+    const ops = urls.map(url => ({ systemName, operationData: { url } }));
+    const config = buildConfig({
+      containerSelector: '#stage',
+      initActions: [{ name: 'init', startOperations: ops, endOperations: ops }],
+      actions: [{ name: 'act', startOperations: ops, endOperations: ops }],
+      timelines: [{ uri: 't', timelineActions: [{ startOperations: ops, endOperations: ops }] }],
+    });
+    return {
+      ...config,
+      eventActions: [
+        {
+          id: 'event-1',
+          name: 'onEvent',
+          eventName: 'go',
+          startOperations: config.actions[0].startOperations,
+        },
+      ],
+    };
+  }
+
+  function mappedRefs(config: ReturnType<typeof configWith>): string[] {
+    const refs: string[] = [];
+    mapConfigAssetRefs(config, ref => {
+      refs.push(ref);
+      return ref;
+    });
+    return refs;
+  }
+
+  it('--bundle copies loadJson urls and rewrites them', async () => {
+    const result = await Effect.runPromise(
+      createBundle(probe, { outputDir: path.join(outDir, 'out'), force: true })
+    );
+    const copied = path.join(result.outputDir, 'assets', 'anim.json');
+    const source = await fs.readFile(path.join(path.dirname(probe), 'anim.json'), 'utf-8');
+    expect(await fs.readFile(copied, 'utf-8')).toBe(source);
+
+    const bundle = await fs.readFile(path.join(result.outputDir, 'bundle.js'), 'utf-8');
+    const url = /"?url"?:\s*"([^"]*anim\.json)"/.exec(bundle)?.[1];
+    expect(url).toBe('assets/anim.json');
+    expect(bundle).not.toContain('"./anim.json"');
+  }, 60000);
+
+  it('maps the url of loadJson in init, action, event and timeline start and end lists', () => {
+    const refs = mappedRefs(configWith('loadJson', ['./anim.json']));
+    // init start + end, action start + end, timeline start + end, event start
+    expect(refs).toEqual(Array(7).fill('./anim.json'));
+    const rewritten = mapConfigAssetRefs(
+      configWith('loadJson', ['./anim.json']),
+      () => 'assets/x.json'
+    );
+    const all = [
+      ...rewritten.initActions,
+      ...rewritten.actions,
+      ...(rewritten.eventActions ?? []),
+      ...rewritten.timelines.flatMap(timeline => timeline.timelineActions),
+    ].flatMap(action => [
+      ...action.startOperations,
+      ...('endOperations' in action ? action.endOperations : []),
+    ]);
+    expect(all.map(op => op.operationData?.url)).toEqual(Array(7).fill('assets/x.json'));
+  });
+
+  it('leaves http:, https:, data:, blob:, // and /-rooted urls alone', () => {
+    const urls = [
+      'http://example.com/anim.json',
+      'https://example.com/anim.json',
+      'data:application/json;base64,e30=',
+      'blob:http://localhost/1234',
+      '//cdn.example.com/anim.json',
+      '/anim.json',
+    ];
+    expect(mappedRefs(configWith('loadJson', urls))).toEqual([]);
+  });
+
+  it('does not touch httpPost/httpPut/httpDelete urls', () => {
+    for (const systemName of ['httpPost', 'httpPut', 'httpDelete']) {
+      expect(mappedRefs(configWith(systemName, ['./api.json']))).toEqual([]);
+    }
   });
 });

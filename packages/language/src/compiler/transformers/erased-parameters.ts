@@ -30,6 +30,7 @@ import {
 } from '../../generated/ast.js';
 import { getOperationSignature } from '../operations/index.js';
 import type { OperationConfigIR } from '../types/eligius-ir.js';
+import type { OperationOrigin } from '../types/operation-origin.js';
 import type { ScopeContext } from './scope.js';
 
 /** Where a parameter is kept while an operation erases it. */
@@ -102,23 +103,29 @@ export function preserveErasedParameters(
             ...operation,
             systemName: 'setOperationData',
             operationData: { properties: kept, override: true },
+            origin: 'erased-save',
           }
         : operation
     );
   }
   const sourceLocation = operations[0].sourceLocation;
-  const copy = (from: (name: string) => string, to: (name: string) => string) => ({
+  const copy = (
+    from: (name: string) => string,
+    to: (name: string) => string,
+    origin: OperationOrigin
+  ): OperationConfigIR => ({
     id: crypto.randomUUID(),
     systemName: 'setOperationData',
     operationData: {
       properties: Object.fromEntries(names.map(name => [to(name), `$operationdata.${from(name)}`])),
     },
     sourceLocation,
+    origin,
   });
   return [
-    copy(name => name, preservedParameterKey),
+    copy(name => name, preservedParameterKey, 'erased-save'),
     ...operations,
-    copy(preservedParameterKey, name => name),
+    copy(preservedParameterKey, name => name, 'erased-restore'),
   ];
 }
 

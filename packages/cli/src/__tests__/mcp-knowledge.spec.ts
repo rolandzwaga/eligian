@@ -17,11 +17,19 @@ import {
   DIAGNOSTIC_CODES,
   getAllOperations,
   getCompilerVersion,
+  OPERATION_ORIGINS,
   STARTERS,
   starterFiles,
 } from '@eligian/language';
 import { LINT_RULES_CHECKED_BY_ELIGIAN } from '@eligian/language/eligius-lint';
-import { CONTROLLERS, getOrCreateServices, TIMELINE_EVENTS } from '@eligian/language/mcp';
+import {
+  CONTROLLERS,
+  DOM_EVENTS,
+  getOrCreateServices,
+  HTML_ELEMENT_NAMES,
+  KEY_COMPLETIONS,
+  TIMELINE_EVENTS,
+} from '@eligian/language/mcp';
 import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generateKnowledge } from '../../scripts/generate-knowledge.js';
@@ -42,6 +50,7 @@ import { sourceOf } from '../mcp/diagnostics.js';
 import { ELIGIUS_LINT_RULES } from '../mcp/knowledge/lint-rules.js';
 import { eventName } from '../mcp/knowledge/render.js';
 import type { IndexEntry, Overlays } from '../mcp/knowledge/types.js';
+import { ORIGIN_RULES } from '../mcp/origin-rules.js';
 import type { EffectAi } from '../mcp/paths.js';
 import { handle as docsHandle } from '../mcp/tools/docs.js';
 import { SMOKE_CODES } from '../smoke/smoke-runner.js';
@@ -345,6 +354,65 @@ timeline "main" in "#stage" using custom {
     const [result] = await Effect.runPromise(checkFiles([file]));
     expect(result.diagnostics).toEqual([]);
   });
+
+  // Phase 3 FR-057 / SC-014: the chunks generated from the language data
+  const bodyOf = (id: string): string => chunkOf(read(`generated/${id}.md`)).body;
+  const listLines = (id: string): string[] =>
+    bodyOf(id)
+      .split('\n')
+      .filter(line => line.startsWith('- '));
+
+  it('generated/dom-events.md names every DOM_EVENTS key', () => {
+    const lines = listLines('dom-events');
+    expect(lines).toHaveLength(DOM_EVENTS.size);
+    for (const [event, description] of DOM_EVENTS) {
+      expect(lines, event).toContain(`- \`on ${event} "<sel>" …\`: ${description}`);
+    }
+  });
+
+  it('generated/key-names.md names every KEY_COMPLETIONS key', () => {
+    const lines = listLines('key-names');
+    expect(lines).toHaveLength(KEY_COMPLETIONS.size);
+    for (const [key, description] of KEY_COMPLETIONS) {
+      expect(lines, key).toContain(`- \`on key "${key}" …\`: ${description}`);
+    }
+  });
+
+  it('generated/html-elements.md names every HTML_ELEMENT_NAMES entry', () => {
+    const lines = listLines('html-elements');
+    expect(lines).toHaveLength(HTML_ELEMENT_NAMES.length);
+    HTML_ELEMENT_NAMES.forEach((tag, at) => {
+      expect(lines[at]?.startsWith(`- \`${tag}\``), tag).toBe(true);
+    });
+    // Names only, no enum values; the common attributes are listed once, not per element
+    expect(bodyOf('html-elements')).not.toContain('enum');
+    expect(lines.join('\n')).not.toContain('aria-label');
+  });
+
+  const FR_057_CHUNKS: Record<string, readonly string[]> = {
+    'dom-events': ['map-events-and-interactions'],
+    'key-names': ['map-events-and-interactions', 'map-controllers'],
+    'html-elements': ['layout-html'],
+  };
+
+  it('each has an index entry of kind reference and a see: line', () => {
+    for (const [id, see] of Object.entries(FR_057_CHUNKS)) {
+      const entry = index.find(candidate => candidate.id === id);
+      expect(entry, id).toMatchObject({ kind: 'reference', see });
+      const lines = read(`generated/${id}.md`).trimEnd().split('\n');
+      expect(lines[lines.length - 1], id).toBe(`see: ${see.join(', ')}`);
+    }
+  });
+
+  it('each chunk stays within the Phase 1 FR-035 word limits', () => {
+    for (const id of Object.keys(FR_057_CHUNKS)) {
+      const entry = index.find(candidate => candidate.id === id);
+      expect(entry, id).toBeDefined();
+      expect(wordCount(entry?.card ?? ''), id).toBeLessThanOrEqual(120);
+      // FR-035 caps a generated chunk at 6,000 words; plan G holds these three to 1,500
+      expect(entry?.words, id).toBeLessThanOrEqual(1500);
+    }
+  });
 });
 
 describe('literate probes', () => {
@@ -458,7 +526,10 @@ const REFERENCE_CHUNKS = [
   'controllers',
   'dataflow-tables',
   'diagnostics',
+  'dom-events',
   'events',
+  'html-elements',
+  'key-names',
   'operations-index',
   'syntax-cheatsheet',
 ] as const;
@@ -685,12 +756,13 @@ describe('overlays', () => {
     return overlays;
   };
 
-  /** The FR-036 catalogue: every code `eligian_check` can report. */
+  /** The FR-036 catalogue plus the review and smoke codes (Phase 3 FR-056). */
   const catalogue = (): string[] =>
     [
       ...new Set([
         ...DIAGNOSTIC_CODES.map(entry => entry.code),
         ...REVIEW_CODES,
+        ...SMOKE_CODES,
         'compile-failed',
         ...ELIGIUS_LINT_RULES.map(rule => `eligius-${rule}`),
       ]),
@@ -700,22 +772,18 @@ describe('overlays', () => {
 
   const committedRanking = (): DiagnosticCodeRanking => JSON.parse(readText(RANKING_FILE));
 
-  it('missing overlays are exactly the allowlist', () => {
+  // Phase 3 SC-005(2)(3) / FR-056: every code of the catalogue has its overlay file, and the
+  // Phase 1 allowlist is empty
+  it('no code lacks an overlay', () => {
     const overlays = codeOverlays();
     for (const [code, name] of overlays) expect(name, code).toBe(`${code}.md`);
 
-    const codes = catalogue();
-    const missing = codes.filter(code => !overlays.has(code));
-    const listed = allowlist();
-    expect(listed, 'the allowlist is sorted, without duplicates').toEqual(
-      [...new Set(listed)].sort()
+    const missing = catalogue().filter(
+      code =>
+        overlays.get(code) !== `${code}.md` || !fs.existsSync(path.join(OVERLAYS_DIR, `${code}.md`))
     );
-    // A code missing from the docs and not on the list fails
-    expect(missing.filter(code => !listed.includes(code))).toEqual([]);
-    // A listed code that gained an overlay (or left the catalogue) fails until it is removed
-    expect(listed.filter(code => !missing.includes(code))).toEqual([]);
-    // SC-013: the 30 selected codes have overlays, so the list is at most catalogue − 30
-    expect(listed.length).toBeLessThanOrEqual(codes.length - SELECTION_SIZE);
+    expect(missing, 'codes without curriculum/diagnostics/<code>.md').toEqual([]);
+    expect(allowlist(), 'missing-overlays.json').toEqual([]);
   });
 
   it('the review overlays exist and are not allowlisted', async () => {
@@ -742,10 +810,8 @@ describe('overlays', () => {
     }
   }, 120_000);
 
-  // SC-013(6) / FR-076: the codes Phase 2 adds (review, smoke, FR-055) have overlays, and the
-  // Phase 1 allowlist only shrinks (126 entries at a7bceb8, the Phase 1 close)
-  it('new codes have overlays; the allowlist is not larger than Phase 1', async () => {
-    const PHASE_1_ALLOWLIST_SIZE = 126;
+  // SC-013(6) / FR-076: the codes Phase 2 adds (review, smoke, FR-055) have overlays
+  it('new codes have overlays', async () => {
     const newCodes = [...REVIEW_CODES, ...SMOKE_CODES, 'unknown-listener-action'];
     expect(SMOKE_CODES.length).toBeGreaterThan(0);
     const overlays = codeOverlays();
@@ -761,7 +827,6 @@ describe('overlays', () => {
       const body = chunkOf(readText(path.join(OVERLAYS_DIR, `${code}.md`))).body;
       expect(wordCount(body), code).toBeLessThanOrEqual(120);
     }
-    expect(listed.length).toBeLessThanOrEqual(PHASE_1_ALLOWLIST_SIZE);
   }, 120_000);
 
   // T048 timed the ranking at ~2 s locally (baseline/ranking-time.txt), so it runs everywhere
@@ -1120,23 +1185,29 @@ describe('phase 2 knowledge', () => {
     }
   });
 
-  // SC-013(3) / FR-073: 25 is a cap (ruling T036): overlays for exactly the selection
-  it('the 25 ranked operations have overlays', () => {
-    const { selection }: OperationRanking = JSON.parse(readText(OPERATION_RANKING_FILE));
-    expect(selection.length).toBeGreaterThan(0);
-    expect(selection.length).toBeLessThanOrEqual(OPERATION_SELECTION_SIZE);
+  // Phase 3 SC-005(1) / FR-055: an overlay for every registry operation. getAllOperations()
+  // includes the synthetic `addController` (operations/index.ts), so the sets are equal (the
+  // ruling of 2026-11-05 on plan P4, which counted registry.generated.ts only)
+  it('every operation has an overlay', () => {
+    const registry = getAllOperations().map(({ systemName }) => systemName);
+    expect(registry).toContain('addController');
+    const expected = [...new Set(registry)].sort();
     const dir = path.join(CURRICULUM, 'operations');
-    const sorted = [...selection].sort();
+    const names = fs
+      .readdirSync(dir)
+      .filter(file => file.endsWith('.md'))
+      .map(file => file.slice(0, -'.md'.length))
+      .sort();
     expect(
-      fs
-        .readdirSync(dir)
-        .filter(file => file.endsWith('.md'))
-        .sort()
-    ).toEqual(sorted.map(name => `${name}.md`));
+      expected.filter(name => !names.includes(name)),
+      'operations without curriculum/operations/<name>.md'
+    ).toEqual([]);
+    expect(names.filter(name => !registry.includes(name))).toEqual([]);
+    expect(names).toEqual(expected);
     const operationOverlays = overlays.operations ?? {};
-    expect(Object.keys(operationOverlays).sort()).toEqual(sorted);
+    expect(Object.keys(operationOverlays).sort()).toEqual(expected);
 
-    for (const name of selection) {
+    for (const name of expected) {
       const text = readText(path.join(dir, `${name}.md`));
       expect(FRONTMATTER.exec(text)?.[1] ?? '', name).toMatch(
         new RegExp(`^operation: ${name}$`, 'm')
@@ -1149,6 +1220,23 @@ describe('phase 2 knowledge', () => {
       const merged = read(`generated/operations/${name}.md`);
       expect(merged, name).toContain(card);
       expect(fenceCount(merged, COMPILED), name).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  // Phase 3 SC-005(4): every diagnostics overlay body and every operation card
+  it('overlay bodies and cards ≤ 120 words', () => {
+    const diagnostics = fs.readdirSync(OVERLAYS_DIR).filter(file => file.endsWith('.md'));
+    expect(diagnostics.length).toBeGreaterThan(0);
+    for (const file of diagnostics) {
+      const body = chunkOf(readText(path.join(OVERLAYS_DIR, file))).body;
+      expect(wordCount(body), file).toBeGreaterThan(0);
+      expect(wordCount(body), file).toBeLessThanOrEqual(120);
+    }
+    const cards = Object.entries(overlays.operations ?? {});
+    expect(cards.length).toBeGreaterThan(0);
+    for (const [name, { card }] of cards) {
+      expect(wordCount(card), name).toBeGreaterThan(0);
+      expect(wordCount(card), name).toBeLessThanOrEqual(120);
     }
   });
 
@@ -1176,5 +1264,100 @@ describe('phase 2 knowledge', () => {
       item.see.filter(id => id.startsWith('example/')).map(id => `${item.id} → ${id}`)
     );
     expect(cited.filter(line => !ids.has(line.slice(line.indexOf('→ ') + 2)))).toEqual([]);
+  });
+});
+
+// Spec 058 Phase 3 (FR-046, SC-012(4)): the explain rule table against the origins and the docs
+describe('origin rules', () => {
+  const DIST_INDEX = path.join(HERE, '..', '..', 'dist', 'docs', 'index.json');
+
+  it('ORIGIN_RULES covers OPERATION_ORIGINS; docs ids exist; rules ≤ 300 chars', () => {
+    expect(Object.keys(ORIGIN_RULES).sort()).toEqual([...OPERATION_ORIGINS].sort());
+    if (!fs.existsSync(DIST_INDEX)) {
+      throw new Error(`${DIST_INDEX} is missing: run pnpm -C packages/cli build`);
+    }
+    const ids = new Set((JSON.parse(readText(DIST_INDEX)) as IndexEntry[]).map(entry => entry.id));
+    for (const [origin, { rule, docs }] of Object.entries(ORIGIN_RULES)) {
+      expect(ids.has(docs), `${origin}: ${docs}`).toBe(true);
+      expect(rule.length, origin).toBeGreaterThan(0);
+      expect(rule.length, origin).toBeLessThanOrEqual(300);
+    }
+  });
+});
+
+// Spec 058 Phase 3 (FR-052, SC-013 ladder part): determinism on the ladder, the clock's limits
+describe('verification ladder', () => {
+  const ladder = (): string => readText(path.join(CURRICULUM, 'verification-ladder.md'));
+
+  it('verification-ladder names --determinism and determinism:true, and the clock’s three limits', () => {
+    const text = ladder();
+    expect(text).toContain('--determinism');
+    expect(text).toContain('determinism:true');
+    // The media clock's limits, one phrase each
+    expect(text).toContain('positions only');
+    expect(text).toContain('no decoding');
+    expect(text).toContain('no autoplay policy');
+
+    // The step sits after scenarios and before dev
+    const headings = text.split('\n').filter(line => line.startsWith('## '));
+    const at = (pattern: RegExp): number => headings.findIndex(line => pattern.test(line));
+    const scenarios = at(/smoke with scenarios/);
+    const determinism = at(/determinism/);
+    const dev = at(/^## \d+\. dev\b/);
+    expect(scenarios, headings.join(' | ')).toBeGreaterThanOrEqual(0);
+    expect(determinism, headings.join(' | ')).toBe(scenarios + 1);
+    expect(dev, headings.join(' | ')).toBe(determinism + 1);
+  });
+});
+
+// Spec 058 Phase 3 (FR-065 D-L3, SC-017(2)): the Lottie limit is documented, not fixed
+describe('Lottie D-L3', () => {
+  const README = path.join(HERE, '..', '..', 'README.md');
+  const OVERLAY = path.join(CURRICULUM, 'controllers', 'LottieController.md');
+  /** The text with every run of whitespace as one space (the prose wraps anywhere). */
+  const flat = (text: string): string => text.replace(/\s+/g, ' ');
+  const D_L3_PHRASES = [
+    "`lottie-web` fails at import under smoke's jsdom (no canvas)",
+    'Eligius reports it as a missing peer dependency',
+  ];
+
+  it('the LottieController overlay and the README state D-L3', () => {
+    const overlay = readText(OVERLAY);
+    for (const [name, text] of [
+      ['LottieController.md', overlay],
+      ['README.md', readText(README)],
+    ] as const) {
+      for (const phrase of D_L3_PHRASES) expect(flat(text), name).toContain(phrase);
+    }
+
+    // The status stays constrained
+    expect(FRONTMATTER.exec(overlay)?.[1] ?? '').toMatch(/^status: constrained$/m);
+
+    // The probe loads the animation with loadJson("./anim.json") before attaching the controller
+    const probe = /^`{3,}eligian probe\s*\n([\s\S]*?)\n`{3,}\s*$/m.exec(chunkOf(overlay).body)?.[1];
+    expect(probe).toBeDefined();
+    const load = probe?.indexOf('loadJson("./anim.json")') ?? -1;
+    const attach = probe?.indexOf('addController("LottieController"') ?? -1;
+    expect(load).toBeGreaterThanOrEqual(0);
+    expect(attach).toBeGreaterThan(load);
+  });
+
+  it('SMOKE_CODES has no smoke-controller-unavailable', () => {
+    expect(SMOKE_CODES as readonly string[]).not.toContain('smoke-controller-unavailable');
+  });
+
+  // FR-065: "the overlay states the behaviour that this version ships", and D-L2 is fixed
+  it('the LottieController overlay states the shipped D-L2 behaviour (--bundle and dev carry the JSON)', () => {
+    const overlay = readText(OVERLAY);
+    const card = /^card: "(.*)"$/m.exec(FRONTMATTER.exec(overlay)?.[1] ?? '')?.[1] ?? '';
+    expect(card).toContain(
+      'a local relative url such as ./anim.json travels with --bundle and dev'
+    );
+    expect(flat(chunkOf(overlay).body)).toContain(
+      '`compile --bundle` copies the file into the bundle and rewrites the url to it, and `eligian dev` serves it'
+    );
+    for (const stale of ['not copy', 'serves only its build output', 'yourself']) {
+      expect(flat(overlay)).not.toContain(stale);
+    }
   });
 });

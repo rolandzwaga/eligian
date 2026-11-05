@@ -1,11 +1,13 @@
 /**
- * Heap growth per `eligian_check` (spec 058 phase 1, FR-053, SC-026). Runs N = 100
- * sequential `eligian_check` calls through the in-process server (`startInMemoryServer`)
- * on one fixture, reads `process.memoryUsage().heapUsed` after a forced GC before the
- * first call and after the last, and prints N, both readings and the growth per call in MB.
- * The docs the tool reads are generated into a temp dir first (deleted at the end).
+ * Heap growth per `eligian_check` (spec 058 phase 1, FR-053, SC-026). Runs N (`--calls <n>`,
+ * default 100) sequential `eligian_check` calls through the in-process server
+ * (`startInMemoryServer`) on one fixture, reads `process.memoryUsage().heapUsed` after a
+ * forced GC before the first call and after the last, and prints N, both readings, the growth
+ * per call in MB and the number of compiler-service recycles (every 100 sections, phase 3
+ * FR-061; the 200-call mode is the soak's, FR-063). The docs the tool reads are generated into
+ * a temp dir first (deleted at the end).
  *
- * Run: `node --expose-gc --import tsx packages/cli/scripts/measure-heap.ts`
+ * Run: `node --expose-gc --import tsx packages/cli/scripts/measure-heap.ts [--calls <n>]`
  * (stdout is the report; the server's telemetry lines go to stderr).
  */
 import fs from 'node:fs';
@@ -13,9 +15,22 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startInMemoryServer } from '../src/__tests__/mcp-test-client.js';
+import { compilerLockLayer } from '../src/mcp/compiler-lock.js';
 import { generateKnowledge } from './generate-knowledge.js';
 
-const N = 100;
+/** `--calls <n>`: the number of calls (default 100). */
+function callsArg(argv: readonly string[]): number {
+  const at = argv.indexOf('--calls');
+  if (at === -1) return 100;
+  const n = Number(argv[at + 1]);
+  if (!Number.isInteger(n) || n < 2) {
+    process.stderr.write('measure-heap: --calls takes an integer of at least 2\n');
+    process.exit(1);
+  }
+  return n;
+}
+
+const N = callsArg(process.argv.slice(2));
 const MB = 1024 * 1024;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +67,16 @@ const heapAfterGc = (): number => {
 const docsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-heap-docs-'));
 try {
   await generateKnowledge({ outDir: docsRoot });
-  const server = await startInMemoryServer({ cwd: FIXTURE, docsRoot });
+  const recycles: number[] = [];
+  const server = await startInMemoryServer({
+    cwd: FIXTURE,
+    docsRoot,
+    lock: compilerLockLayer({
+      onRecycle: async completed => {
+        recycles.push(completed);
+      },
+    }),
+  });
   try {
     const before = heapAfterGc();
     let afterFirst = before;
@@ -74,6 +98,7 @@ try {
         `heapUsed before (MB): ${before.toFixed(2)}`,
         `heapUsed after (MB): ${after.toFixed(2)}`,
         `growth per call (MB): ${perCall.toFixed(3)}`,
+        `recycles: ${recycles.length} (after sections ${recycles.join(', ') || '-'})`,
         `(informative) heapUsed after the first call (MB): ${afterFirst.toFixed(2)}; growth per call over calls 2..${N} (MB): ${perCallAfterFirst.toFixed(3)}`,
         '',
       ].join('\n')

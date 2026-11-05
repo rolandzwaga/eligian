@@ -8,12 +8,12 @@ see:
   - "storyboard"
   - "diagnostics"
   - "presentation-patterns"
-card: "check, review warnings, fmt, smoke with scenarios, then dev: each rung clean before the next."
+card: "check, review warnings, fmt, smoke with scenarios, determinism, then dev: each rung clean before the next."
 ---
 
 # Verification ladder
 
-Climb it in order after every change, and do not declare a presentation done until every rung is clean. Each rung catches what the one below cannot.
+Climb it in order after every change, and do not declare a presentation done until every rung is clean. Each rung catches what the one below cannot; the last three are smoke with scenarios → determinism → `dev`.
 
 ## 1. check: 0 errors
 
@@ -65,9 +65,17 @@ Write **one scenario step per interaction** you wired (every `on click`, `on key
 
 Steps: `seek` (seconds), `click`, `key` (with an optional `in`), `navigate` (a timeline name), `wait` (milliseconds) and `snapshot` (a label). Each step returns the active timeline, the position and a snapshot of every layout id (classes, text, visibility, controllers). Assertions name a snapshot label or step index in `after` and check `hasClass`, `notHasClass`, `text`, `visible`, `controllers`, `timeline` or `position` (seconds, `{ "sameAs": <step> }` or `{ "greaterThan": <step> }`); a failed one is `scenario-assertion-failed` with the expected and actual values. Asserting `controllers: []` after leaving a view proves its `on leave` unwired it.
 
-Limits: a scenario applies to one program file; smoke cannot play media, so media timelines are skipped and a scenario cannot enter one (`scenario-media-timeline`); `timelines: ["Hub"]` (CLI `--timeline Hub`) narrows the walk of a long presentation, and `timeoutMs` stops it with `partial: true`.
+Limits: a scenario applies to one program file; `timelines: ["Hub"]` (CLI `--timeline Hub`) narrows the walk of a long presentation, and `timeoutMs` stops it with `partial: true`.
 
-## 5. dev: look at it
+Video and audio timelines are walked too, on a media clock: smoke gives jsdom's media elements a fake clock whose duration is the compiled timeline's, so the walk visits their boundaries, a scenario `seek` moves them and a `wait` while one plays advances it in real time. The clock has three limits. It models positions only: `currentTime`, `duration` and the play, pause and seek events, no frames and no sound. There is no decoding: the media file is never read, so a missing or broken file still smokes (`check` reports a missing one as `media-file-missing`). There is no autoplay policy: `play()` always succeeds, where a browser may refuse it without a user gesture (`media-timeline-first-without-start-gesture`). Those three are verified in `dev`.
+
+## 5. determinism
+
+`determinism:true` on the tool, `--determinism` on the CLI: `eligian_smoke({ paths: ["main.eligian"], determinism: true })` (CLI: `npx eligian smoke main.eligian --determinism`). Smoke then plays every timeline, media included, on three fresh engines and compares, at every event boundary, the classes, text, style and visibility of every layout id reached three ways: linear play through the boundaries, a seek straight to the position, and a seek to the end and back. A viewer who scrubs, seeks to a label or comes back from a later chapter must see what linear play shows. Each difference is a `position-nondeterministic` error with the timeline, the position, the element, the property (for classes, the class name) and the three values, located at the range that selects the element.
+
+The usual cause is a start block that changes the DOM and an end block that does not undo it: an `addClass` with no `removeClass`, a `setElementContent` that nothing restores. Give the range an inverse end block, or move the change to `on enter` / `on leave`, and smoke again. It combines with a scenario, `strict` and `timelines`; it is about three times slower than a plain smoke, so pass `timelines` on a long presentation.
+
+## 6. dev: look at it
 
 `npx eligian dev main.eligian` (`--port`, default 5180, `--open` to open the browser) serves the bundle and rebuilds it when a file changes: CSS is swapped in place, any other change reloads the page at the same timeline and position, and a build error shows as an overlay. It is a long-running process: start it for the user or tell them to run it; it is not an MCP tool.
 
@@ -80,7 +88,7 @@ engine.pause();
 [engine.currentTimelineUri, engine.position];
 ```
 
-`engine.switchTimeline("<uri>", 0)` switches timelines (the uri is the timeline name, or the `from` path of a media timeline). Media timelines are verified here, not in smoke.
+`engine.switchTimeline("<uri>", 0)` switches timelines (the uri is the timeline name, or the `from` path of a media timeline). Real media playback (decoding, the browser's autoplay policy, the start gesture) is verified here, not in smoke.
 
 In VS Code, *Eligian: Preview Timeline* plays the presentation beside the editor; an engine error becomes an `eligius-runtime` diagnostic on the operation that failed.
 

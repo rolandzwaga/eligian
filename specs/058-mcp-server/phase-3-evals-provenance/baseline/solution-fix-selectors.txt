@@ -1,0 +1,32 @@
+# T040 solution fix-selectors, verified from a scratch copy (/tmp/tmp.3oLIEwScha/sol-fix-selectors); the case has no fixtures and no scenario
+$ eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids
+1 file, 0 errors, 0 warnings
+exit 0
+$ eligian fmt --check "**/*.eligian"
+All 1 file formatted
+exit 0
+$ eligian smoke main.eligian --strict --format json --determinism
+[
+  {
+    "file": "main.eligian",
+    "timelines": [
+      {
+        "name": "Main",
+        "boundaries": 3
+      }
+    ],
+    "problems": []
+  }
+]
+exit 0
+$ eligian compile main.eligian --eligian-map -o out/config.json
+✓ Compiled main.eligian → out/config.json
+✓ Eligian map → out/config.eligian-map.json
+exit 0
+
+# runGateSteps (source src/mcp/evals/assert.ts, casesDir evals/mcp/cases, cli packages/cli/bin/cli.js)
+failures: []
+PASS layout.gainedCssOnlyIds: the layout has the CSS-only ids [hero, banner]
+PASS controllers.balanced: every timeline removes what it adds
+PASS check.codesAbsent: none of the codes is reported
+PASS beats.min: 2 ranged timeline actions, expected at least 2

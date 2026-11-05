@@ -1,0 +1,29 @@
+{
+  "runId": "2026-11-05T10-00-00",
+  "case": "title-card",
+  "arm": "A0",
+  "n": 2,
+  "model": "claude-sonnet-5-5",
+  "cliVersion": "1.1.0",
+  "aborted": true,
+  "pass": false,
+  "steps": [],
+  "toolSequence": [],
+  "metrics": {
+    "rounds": -1,
+    "checkToolCalls": 0,
+    "checkBashCalls": 0,
+    "toolCalls": 0,
+    "transcriptToolChars": 0,
+    "toolChars": 0,
+    "channelChars": 0,
+    "operationsBeforeFirstUnknown": false,
+    "hitUnknown": false,
+    "explainCalled": false,
+    "fmtCalled": false
+  },
+  "usage": null,
+  "wallMs": 0,
+  "assertions": [],
+  "rubric": null
+}

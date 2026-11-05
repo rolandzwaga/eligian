@@ -222,11 +222,17 @@ describe('eligian_init', () => {
     for (const keyword of KEYWORDS) expect(head, keyword).toContain(keyword);
   });
 
-  it('nextSteps names eligian_project and has no explain', async () => {
+  it('nextSteps names eligian_project', async () => {
     const payload = await run({ directory: tmp, template: 'blank' });
     const steps = payload.nextSteps.join('\n');
     expect(steps).toContain('eligian_project');
-    expect(steps).not.toContain('explain');
+  });
+
+  it('next steps contain explain:true', async () => {
+    const payload = await run({ directory: tmp, template: 'blank' });
+    expect(payload.nextSteps).toContain(
+      'After the first timeline passes check, call eligian_compile(select, explain:true).'
+    );
   });
 
   it('writes no agent files with agents: false', async () => {

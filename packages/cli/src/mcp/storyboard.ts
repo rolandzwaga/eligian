@@ -17,9 +17,19 @@ export interface StoryboardBeat {
   readonly endBlock: string;
 }
 
+/** Spec 058 Phase 3 (FR-012): one row of the interactions table, cells trimmed. */
+export interface StoryboardInteraction {
+  readonly trigger: string;
+  readonly target: string;
+  readonly verb: string;
+  readonly timeline: string;
+}
+
 export interface Storyboard {
   readonly beats: readonly StoryboardBeat[];
+  /** The number of interaction rows (`interactionRows.length`). */
   readonly interactions: number;
+  readonly interactionRows: readonly StoryboardInteraction[];
   readonly ignoredRows: number;
 }
 
@@ -52,10 +62,10 @@ function isSeparator(cells: readonly string[]): boolean {
   return cells.every(cell => /^:?-+:?$/.test(cell));
 }
 
-/** The §5 tables of a STORYBOARD.md: the beat rows, the interaction row count, the malformed rows. */
+/** The §5 tables of a STORYBOARD.md: beat rows, interaction rows and count, malformed rows. */
 export function readStoryboard(text: string): Storyboard {
   const beats: StoryboardBeat[] = [];
-  let interactions = 0;
+  const interactionRows: StoryboardInteraction[] = [];
   let ignoredRows = 0;
   let kind: TableKind | undefined;
   let width = 0;
@@ -77,8 +87,9 @@ export function readStoryboard(text: string): Storyboard {
       const [timeline, start, end, selector, change, endBlock] = cells;
       beats.push({ timeline, start, end, selector, change, endBlock });
     } else {
-      interactions++;
+      const [trigger, target, verb, timeline] = cells;
+      interactionRows.push({ trigger, target, verb, timeline });
     }
   }
-  return { beats, interactions, ignoredRows };
+  return { beats, interactions: interactionRows.length, interactionRows, ignoredRows };
 }

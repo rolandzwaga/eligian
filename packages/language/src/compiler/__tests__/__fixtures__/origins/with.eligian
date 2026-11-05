@@ -1,0 +1,6 @@
+// Origin `with`: the selectElement a `with` block starts with
+styles "./styles.css"
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s [ with "#box" { addClass("on") } ] [ with "#box" { removeClass("on") } ]
+}

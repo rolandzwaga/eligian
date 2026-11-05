@@ -81,6 +81,23 @@ export const summarizeArgs = (
   params: typeof Parameters.Type
 ): Readonly<Record<string, unknown>> => ({ paths: params.paths.length, ...optionsOf(params) });
 
+export type CheckSuccess = typeof Success.Type;
+
+/**
+ * Phase 3 (FR-007; plan C2): the telemetry `result` of a check, each distinct diagnostic code
+ * with its count; a diagnostic without a code is counted under its source.
+ */
+export const summarizeResult = (
+  success: Pick<CheckSuccess, 'diagnostics'>
+): Readonly<Record<string, unknown>> => {
+  const codes: Record<string, number> = {};
+  for (const d of success.diagnostics) {
+    const key = d.code === '' ? d.source : d.code;
+    codes[key] = (codes[key] ?? 0) + 1;
+  }
+  return { codes };
+};
+
 export const makeTool = (ai: EffectAi) =>
   ai.Tool.make(NAME, {
     description: DESCRIPTION,

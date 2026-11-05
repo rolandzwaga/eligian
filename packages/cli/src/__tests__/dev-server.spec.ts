@@ -129,3 +129,40 @@ describe('eligian dev', () => {
     );
   });
 });
+
+/** D-L2 (spec 058 FR-065): `dev` serves the bundler output, `loadJson` files included. */
+describe('eligian dev on the lottie probe', () => {
+  const probe = path.join(__dirname, '__fixtures__', 'lottie-probe', 'main.eligian');
+  let server: DevServer;
+
+  const get = (url: string) =>
+    new Promise<{ status: number; body: string }>((resolve, reject) => {
+      http
+        .get(url, response => {
+          let body = '';
+          response.on('data', chunk => {
+            body += chunk;
+          });
+          response.on('end', () => resolve({ status: response.statusCode ?? 0, body }));
+        })
+        .on('error', reject);
+    });
+
+  beforeAll(async () => {
+    server = await startDevServer(probe, { port: 0, debounceMs: 50 });
+  }, 60000);
+
+  afterAll(async () => {
+    await server?.close();
+  });
+
+  it('dev serves the loadJson file with 200', async () => {
+    const bundle = await get(`${server.url}bundle.js`);
+    expect(bundle.status).toBe(200);
+    const url = /"?url"?:\s*"([^"]*anim\.json)"/.exec(bundle.body)?.[1];
+    expect(url).toBe('assets/anim.json');
+    const json = await get(`${server.url}${url}`);
+    expect(json.status).toBe(200);
+    expect(JSON.parse(json.body).nm).toBe('probe');
+  });
+});

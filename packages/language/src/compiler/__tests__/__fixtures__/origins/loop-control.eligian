@@ -1,0 +1,15 @@
+// Origin `loop-control`: break and continue inside a for loop
+styles "./styles.css"
+
+action walk() [
+  for (item in ["a", "b", "c"]) {
+    if (@@loopIndex == 0) {
+      continue
+    }
+    break
+  }
+]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s walk()
+}

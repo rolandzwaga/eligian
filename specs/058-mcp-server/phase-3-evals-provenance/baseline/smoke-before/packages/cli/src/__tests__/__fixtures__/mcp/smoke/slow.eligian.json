@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"packages/cli/src/__tests__/__fixtures__/mcp/smoke/slow.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"A\",\n        \"boundaries\": 2\n      },\n      {\n        \"name\": \"B\",\n        \"boundaries\": 4\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

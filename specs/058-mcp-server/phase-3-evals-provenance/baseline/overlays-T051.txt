@@ -1,0 +1,24 @@
+T051 operation overlays batch 6 (7): splitString startAction substringText toggleElement toggleFormElement validateForm when
+HEAD: b62b762350146d38ea78cf2d535c60a515d3ca06
+
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out <scratch>/docs-T051
+generate-knowledge: 364 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\t051\docs-T051
+exit=0
+
+Per operation (overlays.json card, generated/operations/<name>.md):
+splitString: card words=33 cardInMerged=true compiledFences=1
+startAction: card words=43 cardInMerged=true compiledFences=1
+substringText: card words=40 cardInMerged=true compiledFences=1
+toggleElement: card words=40 cardInMerged=true compiledFences=1
+toggleFormElement: card words=31 cardInMerged=true compiledFences=1
+validateForm: card words=45 cardInMerged=true compiledFences=1
+when: card words=45 cardInMerged=true compiledFences=1
+
+eligian check on each probe (copied next to probe-assets):
+splitString.eligian: 1 file, 0 errors, 0 warnings
+startAction.eligian: 1 file, 0 errors, 0 warnings
+substringText.eligian: 1 file, 0 errors, 0 warnings
+toggleElement.eligian: 1 file, 0 errors, 0 warnings
+toggleFormElement.eligian: 1 file, 0 errors, 0 warnings
+validateForm.eligian: 1 file, 0 errors, 0 warnings
+when.eligian: 1 file, 0 errors, 0 warnings

@@ -1,0 +1,22 @@
+layout "./layout.html"
+styles "./styles.css"
+
+import { fadeIn, fadeOut, slideIn } from "./lib/animations.eligian"
+
+// Each beat is a range whose end block removes the classes its start added
+timeline "showcase" in "#stage" using raf {
+  at 1s..12s [ fadeIn("#title") ] [ with "#title" { removeClass("fade-in") } ]
+  at 4s..15s [ slideIn("#panel-left", "from-left") ] [
+    with "#panel-left" {
+      removeClass("slide-in")
+      removeClass("from-left")
+    }
+  ]
+  at 7s..15s [ slideIn("#panel-right", "from-right") ] [
+    with "#panel-right" {
+      removeClass("slide-in")
+      removeClass("from-right")
+    }
+  ]
+  at 12s..15s [ fadeOut("#title") ] [ with "#title" { removeClass("fade-out") } ]
+}

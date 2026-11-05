@@ -88,13 +88,13 @@ export const makeTool = (ai: EffectAi) =>
 const header = (context: ToolContext, resolvedPath: string): string =>
   `eligian ${context.versions.compiler} · eligius ${context.versions.eligius} · ${NAME} · ${resolvedPath}`;
 
-/** §4's next steps, without `explain` (I-1: Phase 3). */
+/** §4's next steps (Phase 3 FR-051). */
 const nextSteps = (target: string): string[] => [
   `Run npm install in ${target}: it installs eligian, and the server path in the agent config exists only afterwards (restart the MCP client to load it).`,
   'Read eligian_docs ids storyboard and decisions, then write STORYBOARD.md.',
   'Call eligian_project before writing selectors: the ids, classes, locale keys and asset files you may reference.',
   `Run eligian_check on ${STARTER_ENTRY} after every edit, until 0 errors and 0 warnings.`,
-  'Call eligian_compile once after your first timeline passes check (select it).',
+  'After the first timeline passes check, call eligian_compile(select, explain:true).',
   'Run eligian_fmt with write: true once check is clean.',
   `Look at it: npx eligian dev ${STARTER_ENTRY} (npm run check / npm run build for the CLI).`,
 ];

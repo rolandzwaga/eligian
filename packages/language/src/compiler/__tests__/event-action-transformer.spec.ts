@@ -17,7 +17,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from '../../__tests__/test-helpers.js';
 import type { EventActionDefinition } from '../../generated/ast.js';
 import { createParameterContext, transformAST, transformEventAction } from '../ast-transformer.js';
-import type { IEngineConfiguration, IEventActionConfiguration } from '../operations/types.js';
+import type { IEngineConfiguration } from '../operations/types.js';
 import { inputsOf, userOperations } from './operation-inputs.js';
 
 describe('Event Action Transformation (T009)', () => {
@@ -33,7 +33,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     expect(result.name).toBe('handleClick');
   });
@@ -44,7 +44,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
     // where y is one of [8, 9, a, b]
@@ -58,7 +58,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     expect(result.eventName).toBe('data-loaded');
   });
@@ -74,7 +74,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     expect(result.startOperations).toBeDefined();
     expect(Array.isArray(result.startOperations)).toBe(true);
@@ -102,7 +102,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     // Event actions should NOT have endOperations
     expect(result).not.toHaveProperty('endOperations');
@@ -114,7 +114,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     expect(result.eventName).toBe('click');
     expect(result.eventTopic).toBe('navigation');
@@ -126,7 +126,7 @@ describe('Event Action Transformation (T009)', () => {
     const program = document.parseResult.value;
     const eventAction = program.statements[0] as EventActionDefinition;
 
-    const result: IEventActionConfiguration = Effect.runSync(transformEventAction(eventAction));
+    const result = Effect.runSync(transformEventAction(eventAction));
 
     expect(result.eventName).toBe('click');
     expect(result.eventTopic).toBeUndefined();

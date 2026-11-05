@@ -1,0 +1,8 @@
+// Origin `init-globaldata`: a program-level const known only at runtime
+styles "./styles.css"
+
+const items = [$globaldata.first, "b"]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s target "#box" [ addClass("on") ] [ removeClass("on") ]
+}

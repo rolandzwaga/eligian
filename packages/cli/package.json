@@ -51,6 +51,7 @@
     "test": "vitest run --project cli --project cli-timed && pnpm run test:bin",
     "test:coverage:ci": "vitest run --coverage --project cli --project cli-timed && pnpm run test:bin",
     "test:bin": "vitest run --project cli-bin",
+    "test:soak": "vitest run --project cli-soak",
     "test:watch": "vitest"
   },
   "dependencies": {

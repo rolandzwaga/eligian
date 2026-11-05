@@ -1,0 +1,11 @@
+#stage {
+  position: relative;
+}
+
+#box {
+  opacity: 0;
+}
+
+.in {
+  opacity: 1;
+}

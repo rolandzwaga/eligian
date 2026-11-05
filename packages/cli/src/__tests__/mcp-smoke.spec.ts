@@ -22,6 +22,7 @@ import {
   NAME,
   type Parameters,
   type SmokeToolOptions,
+  summarizeArgs,
   type ToolContext,
 } from '../mcp/tools/smoke.js';
 import { requireFreshBundle } from './fresh-bundle.js';
@@ -33,6 +34,7 @@ const MCP_FIXTURES = path.join(HERE, '__fixtures__', 'mcp');
 const ROOT = path.join(MCP_FIXTURES, 'smoke-tool');
 const STUB = path.join(ROOT, 'stub-cli.mjs');
 const DOCS = path.join(MCP_FIXTURES, 'docs-mini');
+const NEVER_REMOVED = path.join(MCP_FIXTURES, 'determinism', 'never-removed');
 
 type Params = typeof Parameters.Type;
 type Result = Effect.Success<ReturnType<typeof handle>>;
@@ -378,6 +380,25 @@ describe('eligian_smoke', () => {
     );
     expect(error._tag).toBe('ToolIoError');
     expect(error.message).toContain('eligian smoke: stub usage error');
+  });
+
+  it('determinism:true reaches the child', async () => {
+    // FR-034 / SC-009(6): the flag goes to the child as `--determinism`; the fixture's range adds
+    // a class its end block never removes, so a straight seek past it differs from linear play
+    const nondeterministic = (result: Result) =>
+      result.problems.filter(p => p.code === 'position-nondeterministic');
+    const params: Params = { paths: ['main.eligian'] };
+    const inFixture: ToolContext = { ...context(), cwd: NEVER_REMOVED };
+    const withFlag = await Effect.runPromise(handle({ ...params, determinism: true }, inFixture));
+    const without = await Effect.runPromise(handle(params, inFixture));
+    expect(nondeterministic(withFlag)).toHaveLength(1);
+    expect(nondeterministic(without)).toEqual([]);
+  }, 120_000);
+
+  it('summarizeArgs records determinism', () => {
+    expect(summarizeArgs({ paths: ['main.eligian'], determinism: true })).toEqual(
+      expect.objectContaining({ determinism: true })
+    );
   });
 
   it('description carries the security note and the paths/timelines advice', () => {

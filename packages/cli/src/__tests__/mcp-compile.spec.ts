@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type EligianMapAction, getCompilerVersion } from '@eligian/language';
+import { type EligianMapAction, getCompilerVersion, locateConfigPath } from '@eligian/language';
 import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { checkPaths } from '../check/check-command.js';
@@ -20,6 +20,7 @@ import { CompilerLockLive } from '../mcp/compiler-lock.js';
 import { withoutIds } from '../mcp/config-fragment.js';
 import { toMcpDiagnostics } from '../mcp/diagnostics.js';
 import type { Overlays } from '../mcp/knowledge/types.js';
+import { ORIGIN_RULES } from '../mcp/origin-rules.js';
 import type { EffectAi } from '../mcp/paths.js';
 import {
   DESCRIPTION,
@@ -27,8 +28,10 @@ import {
   KEYWORDS,
   NAME,
   Parameters,
+  summarizeArgs,
   type ToolContext,
 } from '../mcp/tools/compile.js';
+import { handle as docsHandle } from '../mcp/tools/docs.js';
 import { startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +41,12 @@ const CLEAN_MAIN = path.join(CLEAN, 'main.eligian');
 const ERROR = path.join(FIXTURES, 'error');
 const REJECTED = path.join(FIXTURES, 'compile-rejected');
 const LIBRARY = path.join(FIXTURES, 'library');
+const EXPLAIN = path.join(FIXTURES, 'explain');
+const EXPLAIN_TARGET = path.join(EXPLAIN, 'target');
+const EXPLAIN_CALL = path.join(EXPLAIN, 'call');
+const EXPLAIN_ERRORS = path.join(EXPLAIN, 'errors');
+/** The generated docs the build writes (`generate-knowledge`, run by esbuild.mjs). */
+const DIST_DOCS = path.resolve(HERE, '..', '..', 'dist', 'docs');
 
 const OVERLAYS: Overlays = { byCode: {}, bySource: {} };
 
@@ -404,8 +413,9 @@ describe('eligian_compile', () => {
     expect(error.path).toBe(path.join(CLEAN, 'missing.eligian'));
   });
 
-  it('declares no explain parameter', () => {
+  it('declares the explain parameter (Phase 3)', () => {
     expect(Object.keys(Parameters.fields).sort()).toEqual([
+      'explain',
       'includeMap',
       'path',
       'response_format',
@@ -417,5 +427,205 @@ describe('eligian_compile', () => {
     for (const keyword of KEYWORDS) {
       expect(DESCRIPTION.slice(0, 200).toLowerCase()).toContain(keyword);
     }
+  });
+
+  describe('explain', () => {
+    type Explained = NonNullable<Awaited<ReturnType<typeof compile>>['explain']>;
+    type Entry = NonNullable<Explained['operations']>[number];
+
+    const distinctOrigins = (explained: Explained): string[] =>
+      [...new Set((explained.operations ?? []).map(op => op.origin))].sort();
+
+    /** The value at a `locateConfigPath`-notation path. */
+    const at = (value: unknown, jsonPath: string): unknown => {
+      let current = value;
+      for (const [, key, index] of jsonPath.matchAll(/([^.[\]]+)|\[(\d+)\]/g)) {
+        current =
+          index !== undefined
+            ? (current as unknown[])[Number(index)]
+            : (current as Record<string, unknown>)[key!];
+      }
+      return current;
+    };
+
+    it('US3-1: both target selects have origin target, rules name the docs id', async () => {
+      const result = await compile(EXPLAIN_TARGET, {
+        path: 'main.eligian',
+        select: { timeline: 'Intro' },
+        explain: true,
+      });
+      expect(result.ok).toBe(true);
+      const explained = result.explain!;
+      const selects = explained.operations!.filter(op => op.systemName === 'selectElement');
+      expect(selects).toHaveLength(2);
+      for (const op of selects) expect(op.origin).toBe('target');
+      expect(selects.map(op => op.path)).toEqual([
+        'timelines[0].timelineActions[0].startOperations[0]',
+        'timelines[0].timelineActions[0].endOperations[0]',
+      ]);
+      expect(selects[0]!.location).toMatchObject({ line: 7 });
+      expect(explained.rules.target).toEqual(ORIGIN_RULES.target);
+      expect(explained.rules.target!.docs).toBe(ORIGIN_RULES.target.docs);
+    });
+
+    it('US3-2: the requestAction / startAction pair has origin call', async () => {
+      const result = await compile(EXPLAIN_CALL, {
+        path: 'main.eligian',
+        select: { timeline: 'Intro' },
+        explain: true,
+      });
+      const operations = result.explain!.operations!;
+      expect(operations.map(op => [op.systemName, op.origin])).toEqual([
+        ['requestAction', 'call'],
+        ['startAction', 'call'],
+        ['requestAction', 'call'],
+        ['startAction', 'call'],
+      ]);
+      expect(result.explain!.rules).toEqual({ call: ORIGIN_RULES.call });
+    });
+
+    it('rules list exactly the present origins', async () => {
+      const cases: readonly (readonly [string, Params])[] = [
+        [EXPLAIN_TARGET, { path: 'main.eligian', select: { timeline: 'Intro' } }],
+        [EXPLAIN_CALL, { path: 'main.eligian', select: { action: 'reveal' } }],
+        [CLEAN, { path: 'main.eligian', view: 'full' }],
+        [CLEAN, { path: 'main.eligian', select: { line: 23 } }],
+      ];
+      for (const [cwd, params] of cases) {
+        const explained = (await compile(cwd, { ...params, explain: true })).explain!;
+        expect(Object.keys(explained.rules).sort(), JSON.stringify(params)).toEqual(
+          distinctOrigins(explained)
+        );
+        for (const [origin, rule] of Object.entries(explained.rules)) {
+          expect(rule).toEqual(ORIGIN_RULES[origin as keyof typeof ORIGIN_RULES]);
+        }
+      }
+    });
+
+    it('each docs id resolves through eligian_docs', async () => {
+      if (!fs.existsSync(path.join(DIST_DOCS, 'index.json'))) {
+        throw new Error(`${DIST_DOCS} is missing: run pnpm -C packages/cli build`);
+      }
+      const docs = new Set<string>();
+      for (const cwd of [EXPLAIN_TARGET, EXPLAIN_CALL, CLEAN]) {
+        const result = await compile(cwd, { path: 'main.eligian', view: 'full', explain: true });
+        for (const rule of Object.values(result.explain!.rules)) docs.add(rule.docs);
+      }
+      const ids = [...docs];
+      expect(ids.length).toBeGreaterThan(1);
+      // eligian_docs takes at most 6 ids per call
+      for (let i = 0; i < ids.length; i += 6) {
+        const chunk = ids.slice(i, i + 6);
+        const payload = await Effect.runPromise(
+          docsHandle(
+            { ids: chunk },
+            { ai, cwd: CLEAN, docsRoot: DIST_DOCS, versions, requestId: '1' }
+          )
+        );
+        expect(payload.unknown ?? []).toEqual([]);
+        expect((payload.cards ?? []).map(card => card.id).sort()).toEqual([...chunk].sort());
+      }
+    });
+
+    it('summary: per-origin counts sum to the operation count, no operations list', async () => {
+      const result = await compile(CLEAN, { path: 'main.eligian', view: 'summary', explain: true });
+      const explained = result.explain!;
+      expect(explained).not.toHaveProperty('operations');
+      const total = Object.values(result.summary!.operations).reduce((a, b) => a + b, 0);
+      const counted = Object.values(explained.counts!).reduce((a, b) => a + b, 0);
+      expect(total).toBeGreaterThan(0);
+      expect(counted).toBe(total);
+      expect(Object.keys(explained.rules).sort()).toEqual(Object.keys(explained.counts!).sort());
+      // The fixture has calls, a lifecycle block and an interaction: more than one origin
+      expect(Object.keys(explained.counts!).length).toBeGreaterThan(1);
+    });
+
+    it('full: one entry per emitted operation keyed by path, within maxResultSizeChars', async () => {
+      const result = await compile(CLEAN, {
+        path: 'main.eligian',
+        view: 'full',
+        includeMap: true,
+        explain: true,
+      });
+      const operations: readonly Entry[] = result.explain!.operations!;
+      const total = Object.values(operationCounts(result.config)).reduce((a, b) => a + b, 0);
+      expect(operations).toHaveLength(total);
+      expect(new Set(operations.map(op => op.path)).size).toBe(total);
+      const map = { version: 1 as const, actions: result.map as Record<string, EligianMapAction> };
+      const config = result.config as Parameters<typeof locateConfigPath>[1];
+      for (const op of operations) {
+        const found = at(config, op.path) as { systemName: string } | undefined;
+        expect(found?.systemName, op.path).toBe(op.systemName);
+        if (op.location !== undefined) {
+          expect(locateConfigPath(map, config, op.path), op.path).toEqual(op.location);
+        }
+      }
+      expect(result.explain).not.toHaveProperty('counts');
+      expect(JSON.stringify(result).length).toBeLessThanOrEqual(200_000);
+    });
+
+    it('a program with errors has no explain', async () => {
+      const result = await compile(EXPLAIN_ERRORS, { path: 'main.eligian', explain: true });
+      expect(result.ok).toBe(false);
+      expect(result.diagnostics!.map(d => d.code)).toContain('unknown_operation');
+      expect(result).not.toHaveProperty('explain');
+    });
+
+    it('concise ⊆ detailed with explain', async () => {
+      const summary = await compile(CLEAN, { path: 'main.eligian', explain: true });
+      const summaryDetailed = await compile(CLEAN, {
+        path: 'main.eligian',
+        explain: true,
+        response_format: 'detailed',
+      });
+      expectSuperset(summary, summaryDetailed);
+      expect(summaryDetailed).toHaveProperty('explain');
+
+      const params: Params = {
+        path: 'main.eligian',
+        select: { timeline: 'intro' },
+        explain: true,
+      };
+      const fragment = await compile(CLEAN, params);
+      const fragmentDetailed = await compile(CLEAN, { ...params, response_format: 'detailed' });
+      expectSuperset(fragment, fragmentDetailed);
+      expect(fragmentDetailed.explain!.operations!.length).toBeGreaterThan(0);
+    });
+
+    it('without explain there is no explain key', async () => {
+      const cases: readonly Params[] = [
+        { path: 'main.eligian' },
+        { path: 'main.eligian', view: 'full' },
+        { path: 'main.eligian', select: { timeline: 'intro' } },
+        { path: 'main.eligian', select: { timeline: 'intro' }, explain: false },
+      ];
+      for (const params of cases) {
+        expect(await compile(CLEAN, params), JSON.stringify(params)).not.toHaveProperty('explain');
+      }
+    });
+
+    it('travels the wire', async () => {
+      const server = await startInMemoryServer({ cwd: EXPLAIN_TARGET, docsRoot });
+      try {
+        const response = await server.callTool(NAME, {
+          path: 'main.eligian',
+          select: { timeline: 'Intro' },
+          explain: true,
+        });
+        expect(response.isError).toBe(false);
+        expect(Object.keys((response.payload as any).explain.rules)).toContain('target');
+      } finally {
+        await server.close();
+      }
+    });
+
+    it('summarizeArgs records explain', () => {
+      expect(summarizeArgs({ path: 'main.eligian', explain: true })).toEqual({
+        view: 'summary',
+        explain: true,
+      });
+      expect(summarizeArgs({ path: 'main.eligian', explain: false }).explain).toBe(false);
+      expect(summarizeArgs({ path: 'main.eligian' })).not.toHaveProperty('explain');
+    });
   });
 });

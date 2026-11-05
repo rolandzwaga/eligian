@@ -75,14 +75,22 @@ export async function makeServerLayer(
     versions,
   };
 
-  /** One tool call: telemetry around the handler, defects caught, errors declared (C3, C5). */
+  /**
+   * One tool call: telemetry around the handler, defects caught, errors declared (C3, C5); the
+   * optional `summarizeResult` adds a success's `result` to the telemetry line (Phase 3 C2).
+   */
   const boundary = <A, R>(
     tool: string,
     args: Readonly<Record<string, unknown>>,
-    run: (requestId: string) => Effect.Effect<A, ToolError, R>
+    run: (requestId: string) => Effect.Effect<A, ToolError, R>,
+    summarizeResult?: (value: A) => Readonly<Record<string, unknown>>
   ) =>
-    telemetry.withTelemetry(tool, args, requestId =>
-      run(requestId).pipe(catchDefects, Effect.mapError(failureHeader(versions, tool)))
+    telemetry.withTelemetry(
+      tool,
+      args,
+      requestId =>
+        run(requestId).pipe(catchDefects, Effect.mapError(failureHeader(versions, tool))),
+      summarizeResult
     );
 
   const toolkit = ai.Toolkit.make(
@@ -105,8 +113,11 @@ export async function makeServerLayer(
         operations.handle(params, { ...context, requestId })
       ),
     eligian_check: params =>
-      boundary(check.NAME, check.summarizeArgs(params), requestId =>
-        check.handle(params, { ...context, requestId })
+      boundary(
+        check.NAME,
+        check.summarizeArgs(params),
+        requestId => check.handle(params, { ...context, requestId }),
+        check.summarizeResult
       ),
     eligian_fmt: params =>
       boundary(fmt.NAME, fmt.summarizeArgs(params), requestId =>

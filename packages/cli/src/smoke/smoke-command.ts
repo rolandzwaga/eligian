@@ -1,5 +1,5 @@
 /**
- * `eligian smoke <patterns...> [--strict] [--format pretty|github|json|ndjson]`
+ * `eligian smoke <patterns...> [--strict] [--determinism] [--format pretty|github|json|ndjson]`
  * (audit idea #21): compile each program and play its timelines headlessly
  * (see smoke-runner.ts); exit code 1 when something failed at runtime or did
  * not compile, 2 when no file matched.
@@ -13,7 +13,8 @@
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { timelineNames } from '@eligian/language/mcp';
+import type { Program, SourceLocation } from '@eligian/language';
+import { timelineNamed, timelineNames } from '@eligian/language/mcp';
 import { expandPatterns, isLibrary } from '../check/check-command.js';
 import { displayPath, escapeData, escapeProperty } from '../check/reporters.js';
 import { compileFile } from '../compile-file.js';
@@ -39,6 +40,11 @@ export interface SmokeCommandOptions {
   /** Play only these timelines (source names); an unknown one is a problem (FR-035) */
   readonly timelines?: readonly string[];
   readonly scenario?: Scenario;
+  /**
+   * `--determinism` (FR-033): also compare linear play, a straight seek and a seek back from the
+   * end at every boundary (`position-nondeterministic`)
+   */
+  readonly determinism?: boolean;
   /** ndjson: called with each line as it is produced (without one, the lines are the output) */
   readonly writeLine?: (line: string) => void;
 }
@@ -102,6 +108,20 @@ export async function runSmoke(
   return { output: format(results, options), exitCode: failed ? 1 : 0 };
 }
 
+/** Each timeline's declaration (its 1-based start), by config index: FR-031's fallback location. */
+export function timelineLocations(program: Program): (SourceLocation | undefined)[] {
+  return timelineNames(program).map(name => {
+    const node = timelineNamed(program, name)?.$cstNode;
+    return node
+      ? {
+          line: node.range.start.line + 1,
+          column: node.range.start.character + 1,
+          length: node.length,
+        }
+      : undefined;
+  });
+}
+
 /**
  * Compile one program and play it (spec 058 FR-031). With the `ndjson` format and a
  * `writeLine`, its `timeline`, `problem` and `step` lines are written as they happen.
@@ -115,8 +135,10 @@ export async function smokeFile(file: string, options: SmokeCommandOptions): Pro
       stepTimeoutMs: options.stepTimeoutMs,
       timelines: options.timelines,
       scenario: options.scenario,
+      determinism: options.determinism,
       host,
       names: timelineNames(program),
+      timelineLocations: timelineLocations(program),
       sourceDir: path.dirname(file),
       listener,
     });
@@ -194,9 +216,7 @@ function prettyFile(result: FileResult, cwd: string): string[] {
       p => p.timeline === timeline.name && p.severity === 'error'
     ).length;
     lines.push(
-      timeline.skipped
-        ? `  timeline '${timeline.name}' skipped (${timeline.skipped})`
-        : `  timeline '${timeline.name}': ${timeline.boundaries} position${timeline.boundaries === 1 ? '' : 's'} ${errors > 0 ? `FAIL (${errors})` : 'ok'}`
+      `  timeline '${timeline.name}': ${timeline.boundaries} position${timeline.boundaries === 1 ? '' : 's'} ${errors > 0 ? `FAIL (${errors})` : 'ok'}`
     );
   }
   for (const problem of result.problems) {
@@ -221,13 +241,13 @@ function githubLine(problem: SmokeProblem, file: string, cwd: string): string {
   return `::${problem.severity} ${properties}::${escapeData(`${problem.message}${when}`)}`;
 }
 
-/** The files, the timelines played (not skipped), the errors and the warnings. */
+/** The files, the timelines played, the errors and the warnings. */
 function totals(results: readonly FileResult[]) {
   const count = (severity: SmokeProblem['severity']) =>
     results.reduce((n, r) => n + r.problems.filter(p => p.severity === severity).length, 0);
   return {
     files: results.length,
-    timelines: results.reduce((n, r) => n + r.timelines.filter(t => !t.skipped).length, 0),
+    timelines: results.reduce((n, r) => n + r.timelines.length, 0),
     errors: count('error'),
     warnings: count('warning'),
   };

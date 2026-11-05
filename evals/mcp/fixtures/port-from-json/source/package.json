@@ -1,0 +1,13 @@
+{
+  "name": "port",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "check": "eligian check main.eligian",
+    "build": "eligian main.eligian --bundle --force",
+    "fmt": "eligian fmt --write main.eligian"
+  },
+  "devDependencies": {
+    "eligian": "^1.1.0"
+  }
+}

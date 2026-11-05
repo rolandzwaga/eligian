@@ -536,6 +536,15 @@ describe('AGENTS.md block', () => {
     expect(Buffer.byteLength(block, 'utf8')).toBeLessThanOrEqual(8192);
   });
 
+  // Phase 3 FR-051, SC-013: the block carries the instructions' compile line with explain.
+  it('the block is ≤ 8192 bytes and names explain', () => {
+    expect(block).toBe(agentsMdBlock(index));
+    expect(Buffer.byteLength(block, 'utf8')).toBeLessThanOrEqual(8192);
+    expect(block).toContain(
+      '- `eligian_compile`: once after your first timeline passes check (select it, explain:true), and whenever behaviour surprises you.'
+    );
+  });
+
   it('every non-operation, non-example id with title and path', () => {
     const listed = index.filter(entry => entry.kind !== 'operation' && entry.kind !== 'example');
     expect(listed.length).toBeGreaterThan(0);

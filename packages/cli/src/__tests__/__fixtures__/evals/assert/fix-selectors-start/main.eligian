@@ -1,0 +1,8 @@
+// Start state of a fix-selectors-like case: #panel is defined only by the CSS.
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s target "#panel" [ addClass("on") ] [ removeClass("on") ]
+  at 2s..4s target "#title" [ addClass("on") ] [ removeClass("on") ]
+}

@@ -94,7 +94,7 @@ export {
   releaseWorkspaceDocuments,
   type TrackedParse,
 } from './pipeline/parser.js';
-export { getOrCreateServices } from './pipeline/services.js';
+export { getOrCreateServices, resetServices } from './pipeline/services.js';
 // Compilation pipeline exports
 export {
   type CheckDiagnostic,
@@ -155,6 +155,8 @@ export type {
   TimelineIR,
   TimelineTypes,
 } from './types/index.js';
+// Spec 058 Phase 3 (FR-040): operation provenance
+export { OPERATION_ORIGINS, type OperationOrigin } from './types/operation-origin.js';
 
 /**
  * Compiler version

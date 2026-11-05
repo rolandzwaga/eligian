@@ -1,0 +1,23 @@
+{
+  "steps": [
+    { "seek": 25 },
+    { "snapshot": "at-25" },
+    { "seek": 50 },
+    { "snapshot": "at-50" },
+    { "seek": 75 },
+    { "snapshot": "at-75" },
+    { "seek": 100 },
+    { "snapshot": "at-100" }
+  ],
+  "assertions": [
+    { "after": "at-25", "timeline": "story" },
+    { "after": "at-25", "selector": "#illustration-1", "visible": true },
+    { "after": "at-25", "selector": "#heading", "text": "Where it begins" },
+    { "after": "at-50", "selector": "#illustration-2", "visible": true },
+    { "after": "at-50", "selector": "#heading", "text": "The turning point" },
+    { "after": "at-75", "selector": "#illustration-3", "visible": true },
+    { "after": "at-75", "selector": "#heading", "text": "What it changed" },
+    { "after": "at-100", "selector": "#illustration-4", "visible": true },
+    { "after": "at-100", "selector": "#heading", "text": "Where it goes next" }
+  ]
+}

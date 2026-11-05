@@ -1,0 +1,18 @@
+{
+  "steps": [
+    { "seek": 15 },
+    { "snapshot": "at-15" },
+    { "click": "#restart" },
+    { "snapshot": "restarted" },
+    { "click": "#skip" },
+    { "snapshot": "skipped" }
+  ],
+  "assertions": [
+    { "after": "at-15", "timeline": "intro" },
+    { "after": "at-15", "selector": "#reveal", "visible": true },
+    { "after": "restarted", "position": 0 },
+    { "after": "restarted", "domEquals": { "freshAt": 0 } },
+    { "after": "skipped", "position": 12 },
+    { "after": "skipped", "domEquals": { "linearAt": 12 } }
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 controller: LottieController
 status: constrained
-card: "Plays a lottie-web animation in the selected element. Constrained: install lottie-web in the project (check warns lottie-web-not-installed until it resolves); load the animation with loadJson first (the controller needs the JSON, not a url); serve the JSON file yourself (--bundle and dev do not copy it); smoke cannot play it (lottie-web needs a canvas jsdom lacks)."
+card: "Plays a lottie-web animation in the selected element. Constrained: install lottie-web in the project (check warns lottie-web-not-installed until it resolves); load the animation with loadJson first (the controller needs the JSON, not a url); a local relative url such as ./anim.json travels with --bundle and dev; smoke cannot play it (lottie-web needs a canvas jsdom lacks)."
 ---
 
 ## Call
@@ -17,7 +17,7 @@ layout "./probe-layout.html"
 timeline "Animation" in "#stage" using raf {
   on enter [
     selectElement("#box")
-    loadJson("./animations/intro.json")
+    loadJson("./anim.json")
     addController("LottieController")
   ]
   on leave [
@@ -28,7 +28,7 @@ timeline "Animation" in "#stage" using raf {
 
 ## Idioms
 
-- `addController("LottieController", "./animations/intro[freeze=10,end=21].json")`: the url argument
+- `addController("LottieController", "./anim[freeze=10,end=21].json")`: the url argument
   is read only for its `[freeze=<frame>,end=<frame>]` markers; the animation itself still comes
   from `loadJson`.
 - Eligius loads `lottie-web` with a dynamic `import()` the first time a LottieController
@@ -44,10 +44,13 @@ timeline "Animation" in "#stage" using raf {
   `lottie-web-not-installed` at the call until it does; the fix is the install above, not a
   CLI flag. Without the package the attach fails at runtime with "LottieController requires the
   optional peer dependency 'lottie-web'".
-- `loadJson` fetches at runtime: `compile --bundle` does not copy the JSON file next to the
-  bundle and `eligian dev` serves only its build output, so copy the file beside `index.html`
-  yourself (or inline it as a `data:application/json;base64,…` url).
-- `eligian smoke` cannot play it: under jsdom `lottie-web` fails at import (no canvas), and the
-  engine reports it as the missing peer dependency. Expect a `smoke-engine-error` on the attach;
-  verify Lottie in a browser (`dev`).
+- `loadJson` fetches at runtime. A local, relative url (`./anim.json`) travels with the program:
+  `compile --bundle` copies the file into the bundle and rewrites the url to it, and `eligian dev`
+  serves it. An `http(s):`, `data:` or `/`-rooted url is left as it is and must be reachable
+  where the presentation runs.
+- `eligian smoke` cannot play it (a known limit, not a defect of the program): `lottie-web` fails
+  at import under smoke's jsdom (no canvas), and Eligius reports it as a missing peer dependency
+  ("LottieController requires the optional peer dependency 'lottie-web'") even when the package
+  is installed. Expect a `smoke-engine-error` on the attach (an error: smoke exits 1 for a
+  Lottie program); verify Lottie in a browser (`dev`).
 - Remove it in `on leave` like any controller.

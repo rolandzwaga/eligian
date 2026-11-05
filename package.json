@@ -24,6 +24,7 @@
     "fmt:examples": "node packages/cli/bin/cli.js fmt \"examples/**/*.eligian\" \"!examples/libraries/errors/**\"",
     "check:examples": "node packages/cli/bin/cli.js check \"examples/**/*.eligian\" \"!examples/libraries/errors/**\" \"!examples/libraries/nested/cycle-*.eligian\" \"!examples/demo.eligian\" --max-warnings 0 && node packages/cli/bin/cli.js check examples/demo.eligian --selector-not-in-layout off",
     "smoke:examples": "node packages/cli/bin/cli.js smoke \"examples/**/*.eligian\" \"!examples/libraries/errors/**\" \"!examples/libraries/nested/cycle-*.eligian\"",
+    "evals:mcp": "tsx evals/mcp/run.ts",
     "effect:check": "pnpm effect:check:language && pnpm effect:check:cli",
     "effect:check:language": "effect-tsgo diagnostics --project packages/language/tsconfig.src.json --format text --strict",
     "effect:check:cli": "effect-tsgo diagnostics --project packages/cli/tsconfig.json --format text --strict",

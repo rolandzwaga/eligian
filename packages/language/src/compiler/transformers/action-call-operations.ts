@@ -6,6 +6,7 @@
  */
 import type { SourceLocation } from '../types/common.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
+import type { OperationOrigin } from '../types/operation-origin.js';
 
 /**
  * Build the `requestAction` + (`startAction` | `endAction`) operation pair that
@@ -22,12 +23,14 @@ import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
  * @param actionOperationData - Mapped argument data, or `undefined` for no args
  * @param sourceLocation - Source location to stamp on both operations
  * @param verb - `'startAction'` or `'endAction'`
+ * @param origin - The construct the call came from (spec 058 Phase 3, FR-041)
  */
 export function buildActionCallOperations(
   actionName: string,
   actionOperationData: Record<string, JsonValue> | undefined,
   sourceLocation: SourceLocation,
-  verb: 'startAction' | 'endAction'
+  verb: 'startAction' | 'endAction',
+  origin: OperationOrigin = 'call'
 ): OperationConfigIR[] {
   return [
     {
@@ -35,6 +38,7 @@ export function buildActionCallOperations(
       systemName: 'requestAction',
       operationData: { systemName: actionName },
       sourceLocation,
+      origin,
     },
     {
       id: crypto.randomUUID(),
@@ -46,6 +50,7 @@ export function buildActionCallOperations(
       systemName: verb,
       operationData: { actionOperationData: actionOperationData ?? {} },
       sourceLocation,
+      origin,
     },
   ];
 }

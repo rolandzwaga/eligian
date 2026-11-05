@@ -1,0 +1,19 @@
+// Spec 058 phase 3 (T022, US3-2): a called action's requestAction / startAction pair has the
+// origin `call`.
+layout "./layout.html"
+styles "./styles.css"
+
+action reveal(selector: string) [
+  selectElement(selector)
+  addClass("in")
+]
+
+action conceal(selector: string) [
+  selectElement(selector)
+  removeClass("in")
+]
+
+timeline "Intro" in "#stage" using raf {
+  at 0s..2s reveal("#box")
+  at 2s..3s conceal("#box")
+}

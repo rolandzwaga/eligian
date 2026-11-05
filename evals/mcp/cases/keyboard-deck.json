@@ -3,5 +3,33 @@
   "prompt": "A 12-slide deck navigated with the arrow keys; Home returns to slide 1. Slide numbers shown bottom-right. The entry file is `main.eligian` in the current directory. Every slide is its own timeline, named `slide-1` to `slide-12`, running in the container `#deck`; the deck starts on `slide-1`. ArrowRight goes to the next slide, ArrowLeft to the previous one, Home to `slide-1`; declare the keys with `on key` on each slide timeline, without `in`, so they listen on `#deck`. Use these element ids: `#slide-1` to `#slide-12` (each visible only while its timeline is active) and `#counter` (the slide number, whose text is exactly `<n> / 12`, for example `4 / 12`). An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
   "entry": "main.eligian",
   "model": "claude-sonnet-5-5",
-  "scenario": "keyboard-deck.scenario.json"
+  "scenario": "keyboard-deck.scenario.json",
+  "assertions": [
+    { "kind": "timelines.count", "equals": 12 },
+    {
+      "kind": "timeline.addsController",
+      "controller": "KeyboardController",
+      "names": [
+        "slide-1",
+        "slide-2",
+        "slide-3",
+        "slide-4",
+        "slide-5",
+        "slide-6",
+        "slide-7",
+        "slide-8",
+        "slide-9",
+        "slide-10",
+        "slide-11",
+        "slide-12"
+      ]
+    },
+    { "kind": "controllers.balanced" },
+    { "kind": "interactions.keyboard", "keys": ["ArrowRight", "ArrowLeft", "Home"] },
+    { "kind": "actions.named", "prefix": "__nav__" },
+    { "kind": "controllers.used", "all": ["KeyboardController"] },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
 }

@@ -1,0 +1,24 @@
+{
+  "steps": [
+    { "seek": 2 },
+    { "snapshot": "at-2" },
+    { "seek": 4 },
+    { "snapshot": "at-4" },
+    { "seek": 7 },
+    { "snapshot": "at-7" }
+  ],
+  "assertions": [
+    { "after": "at-2", "timeline": "typewriter" },
+    {
+      "after": "at-2",
+      "selector": "#sentence",
+      "textPrefixOf": "Every great story starts with a single line."
+    },
+    {
+      "after": "at-4",
+      "selector": "#sentence",
+      "text": "Every great story starts with a single line."
+    },
+    { "after": "at-7", "selector": "#counter", "text": "250" }
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "<id>",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div id=\"app\"></div>",
+  "cssFiles": [
+    "./test-styles.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "<id>",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "<id>",
+      "name": "complexEffect",
+      "startOperations": [
+        {
+          "id": "<id>",
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "__eligian_param_selector": "$operationdata.selector"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "<id>",
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "selector": "$operationdata.__eligian_param_selector"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "transitions.slideAndFade"
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {}
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "<id>",
+      "name": "transitions.slideAndFade",
+      "startOperations": [
+        {
+          "id": "<id>",
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "__eligian_param_selector": "$operationdata.selector"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "<id>",
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "selector": "$operationdata.__eligian_param_selector"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "transform": "translateX(-100px)"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "transform": "translateX(0)"
+            },
+            "animationDuration": 500
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "animations.fadeIn"
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {
+              "duration": 500
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "<id>",
+      "name": "animations.fadeIn",
+      "startOperations": [
+        {
+          "id": "<id>",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "<id>",
+          "systemName": "setStyle",
+          "operationData": {
+            "properties": {
+              "opacity": "0"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "animationDuration": "$operationdata.duration"
+            }
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "<id>",
+      "uri": "Nested Import Test",
+      "type": "animation",
+      "duration": 2,
+      "loop": false,
+      "selector": "#app",
+      "timelineActions": [
+        {
+          "id": "<id>",
+          "name": "timeline-action-0-2",
+          "startOperations": [
+            {
+              "id": "<id>",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "complexEffect"
+              }
+            },
+            {
+              "id": "<id>",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#box"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 2
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource"
+      }
+    }
+  }
+}

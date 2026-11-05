@@ -22,6 +22,7 @@ import {
   type Program,
   parseSource,
 } from '@eligian/language';
+import { timelineNames } from '@eligian/language/mcp';
 import { Cause, Effect, Exit, Option } from 'effect';
 
 /**
@@ -340,7 +341,7 @@ export async function compileFile(
   return {
     config,
     json,
-    map: { ...map, source: absoluteInputPath },
+    map: { ...map, source: absoluteInputPath, timelineNames: timelineNames(program) },
     assetCount,
     warnings,
     ...(host ? { host } : {}),

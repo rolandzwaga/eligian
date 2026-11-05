@@ -168,6 +168,7 @@ entry's directory changes: the program, libraries, layout, styles, locales and m
 ```bash
 eligian smoke examples/eligian-tour/tour.eligian
 eligian smoke "examples/**/*.eligian" --strict --format github
+eligian smoke deck/main.eligian --determinism
 ```
 
 Compiles each program and plays its timelines on the real Eligius engine in a headless
@@ -191,9 +192,11 @@ tour.eligian
 - `--timeline <name>` plays only that timeline (repeatable; a name the program does not declare
   is a `smoke-unknown-timeline` error). `--step-timeout-ms <n>` is the longest one engine step
   may take (default 10000); a slower step is a `smoke-step-timeout` error.
-- Library files are skipped (nothing to play), and so are video / audio timelines (jsdom plays
-  no media). jsdom has no layout: scrolling, media playback and observers are no-ops, so what
-  depends on sizes or positions is not checked.
+- Library files are skipped (nothing to play). Video / audio timelines are played on a media
+  clock that stands in for the media element (see Limits below). jsdom has no layout:
+  scrolling and observers are no-ops, so what depends on sizes or positions is not checked.
+- `--determinism` also checks that the DOM at every time depends only on the time, not on how
+  the engine got there (below).
 
 **`--format ndjson`** writes one JSON object per line as the run goes, and nothing else on
 stdout (any other output goes to stderr): a `file` line before each file, then its `timeline`,
@@ -260,12 +263,75 @@ one or more fields:
   (`<step>` is a label or an index, as in `after`). A number and `sameAs` pass within
   `POSITION_TOLERANCE_S`, 0.1 s; `greaterThan` is strict. The engine plays in real time, so put
   a `wait` of at least 300 ms before a `greaterThan`.
+- `domEquals`: `{ "freshAt": <s> }` or `{ "linearAt": <s> }`, with no `selector`. Every layout
+  id at the `after` step must equal the state a fresh engine reaches on the same timeline by a
+  straight seek to `s` (`freshAt`) or by linear play to `s` (`linearAt`), compared as
+  `--determinism` compares (`classes`, `text`, `style`, `visible`). For example
+  `{ "after": "restarted", "domEquals": { "freshAt": 0 } }` after a click on a restart button.
 
 Problems, each with the index of its step (the scenario goes on after them; every one is an
 error, exit 1): `scenario-selector-not-found` (no element for a `click` or `in`, or an
-assertion on an id the layout does not have), `scenario-unknown-timeline`,
-`scenario-media-timeline` (a `navigate` to a video / audio timeline, or a program with only
-media timelines) and `scenario-assertion-failed` (with the `expected` and `actual` values).
+assertion on an id the layout does not have), `scenario-unknown-timeline` and
+`scenario-assertion-failed` (with the `expected` and `actual` values; a `domEquals` reports one
+per differing element and property). Steps on video / audio timelines run on the media clock.
+
+#### Determinism (`--determinism`)
+
+```bash
+eligian smoke main.eligian --determinism
+```
+
+The DOM of a presentation should be a function of the position: whatever the viewer did, the
+page at 5 s should look the same. `--determinism` checks that, after the walk, for every
+played timeline (video / audio included). Three fresh engines each switch to the timeline and
+reach every start and end time by a different path:
+
+- **linear**: seeks to every time in ascending order (what playing does to the DOM);
+- **fresh**: a seek to 0 s, then straight to the time;
+- **end-back**: a seek to the end of the timeline, then back to the time.
+
+The state of every element of the layout HTML that has an id (not only those inside the
+timeline's container) is compared at each time: its classes, its text, its `style` and whether
+it is visible, with the program's CSS. Each difference is a `position-nondeterministic` error
+(exit 1): one per class name for `classes`, one per property otherwise, reported once, at the
+latest time where it shows, with the count of the further times where it recurs. It is located
+at the event of that timeline that selects the element and whose range starts or ends nearest
+before that time:
+
+```
+main.eligian
+  timeline 'main': 4 positions FAIL (1)
+  error  element #box: class 'in' present after linear play to 5s, absent after the fresh and end-back path (recurs at 2 more boundaries)
+         main.eligian:6:3 — 'main' at 5s
+```
+
+Here `at 1s..3s [ selectElement("#box") addClass("in") ] []` adds a class that its end block
+does not remove: an empty end block is the usual cause, and the fix is the inverse operation
+there (`removeClass("in")`). A change made outside the timeline (a click handler, an event
+action) is not a timeline's range and is not flagged. `--determinism` combines with
+`--timeline`, `--scenario`, `--strict` and every format (`json` and `ndjson` carry the code);
+it plays each timeline three more times, so pass `--timeline` for a subset of a long program.
+
+#### Limits
+
+- **Video and audio**: jsdom plays no media, so for the run a media clock stands in for every
+  `<video>` / `<audio>` element. It models positions only: its duration is the compiled
+  timeline's, the position changes only by a seek (the walk, a scenario `seek`) or by real time
+  between `play()` and `pause()` (a scenario `wait`), and it fires the events the engine listens
+  to (`loadedmetadata`, `canplay`, `seeking`, `seeked`, `playing`, `timeupdate`, `ended`). It
+  reads no media file and decodes nothing: a missing or broken file still smokes clean (`eligian
+  check` reports a missing one, `media-file-missing`), and codecs, the real duration, buffering
+  and frames are not checked. There is no autoplay policy either: `play()` always succeeds, so a
+  media timeline that a browser would block until the first user gesture plays here (`eligian
+  check` warns when the entry timeline is such a timeline without a start control,
+  `media-timeline-first-without-start-gesture`). Verify playback in a
+  browser with `eligian dev`.
+- **Lottie**: a program that attaches a `LottieController` does not smoke clean.
+  `lottie-web` fails at import under smoke's jsdom (no canvas), and Eligius reports it as a
+  missing peer dependency ("LottieController requires the optional peer dependency
+  'lottie-web'") even when the package is installed: a `smoke-engine-error` on the attach, so the
+  run exits 1. This is a known limit of smoke, not a defect of the program; verify Lottie
+  in a browser with `eligian dev`.
 
 ### Optimization & Minification
 
@@ -329,9 +395,9 @@ stderr; set `ELIGIAN_MCP_LOG=<file>` to also append those lines to a file.
 | `eligian_docs` | The curated knowledge: the index without arguments, cards by `ids`, full bodies with `detail: true`, a `query` search. Read-only. |
 | `eligian_operations` | Operation lookup: NEEDS / PROVIDES / ERASES (the operation data each operation reads, writes and removes), parameters, the call form. Filters by name, category, `needs`, `provides`; `kind` lists controllers, timeline events, DOM events and keys; `path` adds a program's host operations. Read-only. |
 | `eligian_check` | Every diagnostic of `eligian check` (compiler, Eligius lint, review pass), each with its fix: suggestions, a quick fix, the source excerpt and a docs overlay. Stricter defaults than the CLI: `lint`, `review`, `selectorNotInLayout: 'ids'`, `maxWarnings: 0`. Read-only. |
-| `eligian_compile` | The compiled Eligius JSON of a program, with the Eligian map back to the source. `view`: `summary` (timelines with their source names, durations and action counts, action names, operation counts, controllers, the JSON size), `fragment` (`select` one timeline, one named or event action, or the innermost action around a source `line`; each action with its source location) or `full` (the whole config). `includeMap: true` adds the map entries. A program with errors returns the same error diagnostics as `eligian_check`. Read-only. |
+| `eligian_compile` | The compiled Eligius JSON of a program, with the Eligian map back to the source. `view`: `summary` (timelines with their source names, durations and action counts, action names, operation counts, controllers, the JSON size), `fragment` (`select` one timeline, one named or event action, or the innermost action around a source `line`; each action with its source location) or `full` (the whole config). `includeMap: true` adds the map entries. A program with errors returns the same error diagnostics as `eligian_check`. `explain: true` adds, per returned operation, its JSON `path`, `systemName`, source location and `origin`: the construct that generated it (`source`, `call`, `target`, `with`, `erased-save`, `erased-restore`, `interaction`, `lifecycle`, `sequence`, `stagger`, …), and once per origin present the rule that produced it with the `eligian_docs` id to read; with `view: 'summary'` only the operation counts per origin. Read-only. |
 | `eligian_project` | The inventory of a program, or of every program in a directory: CSS classes and ids, layout ids and classes, the selectors a program may use, locales (languages, keys), host names, asset problems (missing media and import files, media timelines sharing a file, containers missing from the layout), the files, the outline (timelines with their events at resolved times, actions with the role of each parameter, event actions, constants, named imports) and the STORYBOARD.md beats against the compiled timeline actions. Read-only. |
-| `eligian_smoke` | `eligian smoke` with an optional scenario (inline steps, `{ steps, assertions }` or a scenario file) and extra `assertions`: each step's timeline, position and snapshot (concise: only what changed since the previous step), each problem with its source. `strict` is on by default. Runs `eligian smoke --format ndjson` in a child process; after `timeoutMs` (default 45000) the child is stopped and the result holds what was played, `partial: true`. Read-only. |
+| `eligian_smoke` | `eligian smoke` with an optional scenario (inline steps, `{ steps, assertions }` or a scenario file) and extra `assertions`: each step's timeline, position and snapshot (concise: only what changed since the previous step), each problem with its source. `strict` is on by default. Runs `eligian smoke --format ndjson` in a child process; after `timeoutMs` (default 45000) the child is stopped and the result holds what was played, `partial: true`. `determinism: true` adds the `--determinism` check (about three times slower; pass `timelines` for a subset). Read-only. |
 | `eligian_fmt` | Formats like `eligian fmt`: checks by default (a line diff per unformatted file), rewrites with `write: true`. |
 | `eligian_init` | Writes a starter project like `eligian init`, plus the agent files of each `client` (default `claude`; `agents: false` writes none). Existing agent files are merged as by `eligian agents setup`. |
 
@@ -471,7 +537,7 @@ Usage: eligian [compile] [options] <input>
        eligian fmt [--check | --write] [--format text|github] <patterns...>
        eligian dev [--port <n>] [--open] <input>
        eligian smoke [--strict] [--format pretty|github|json|ndjson] [--timeline <name>]...
-                     [--step-timeout-ms <n>] [--scenario <file>] <patterns...>
+                     [--step-timeout-ms <n>] [--scenario <file>] [--determinism] <patterns...>
        eligian init [dir] [--template blank|chapters|video|library] [--title <title>] [--force]
                     [--client <client>]... [--no-agents]
        eligian agents setup [dir] [--client <client>]...

@@ -72,7 +72,32 @@ describe('readStoryboard', () => {
       '| click | #next | navigate | Outro |',
       '| key ArrowRight | | play | Intro |',
     ].join('\n');
-    expect(readStoryboard(text)).toEqual({ beats: [], interactions: 2, ignoredRows: 0 });
+    expect(readStoryboard(text)).toEqual({
+      beats: [],
+      interactions: 2,
+      interactionRows: [
+        { trigger: 'click', target: '#next', verb: 'navigate', timeline: 'Outro' },
+        { trigger: 'key ArrowRight', target: '', verb: 'play', timeline: 'Intro' },
+      ],
+      ignoredRows: 0,
+    });
+  });
+
+  it('returns interaction rows', () => {
+    const text = [
+      INTERACTION_HEADER,
+      INTERACTION_SEPARATOR,
+      '| click #to-problem | Problem | navigate | Hub |',
+      '|  key ArrowRight | slide-2 |navigate| slide-1  |',
+      '| click #answer-b | score("b") | run | Quiz |',
+    ].join('\n');
+    const storyboard = readStoryboard(text);
+    expect(storyboard.interactionRows).toEqual([
+      { trigger: 'click #to-problem', target: 'Problem', verb: 'navigate', timeline: 'Hub' },
+      { trigger: 'key ArrowRight', target: 'slide-2', verb: 'navigate', timeline: 'slide-1' },
+      { trigger: 'click #answer-b', target: 'score("b")', verb: 'run', timeline: 'Quiz' },
+    ]);
+    expect(storyboard.interactions).toBe(3);
   });
 
   it('accepts CRLF', () => {
@@ -125,7 +150,12 @@ describe('readStoryboard', () => {
   });
 
   it('never throws', () => {
-    expect(readStoryboard('')).toEqual({ beats: [], interactions: 0, ignoredRows: 0 });
+    expect(readStoryboard('')).toEqual({
+      beats: [],
+      interactions: 0,
+      interactionRows: [],
+      ignoredRows: 0,
+    });
     expect(() => readStoryboard('|')).not.toThrow();
     expect(() => readStoryboard('||||\n|\n| |')).not.toThrow();
     expect(() => readStoryboard(`${BEAT_HEADER}\n|\n||\n| | | | | | | |`)).not.toThrow();

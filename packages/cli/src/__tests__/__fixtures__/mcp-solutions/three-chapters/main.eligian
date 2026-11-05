@@ -1,0 +1,120 @@
+languages {
+  * "en-US" "English"
+    "nl-NL" "Nederlands"
+}
+
+layout "./layout.html"
+styles "./styles.css"
+locales "./locales.json"
+
+/** Show a view: selects it and adds .is-active */
+action showView(selector: string) [
+  selectElement(selector)
+  addClass("is-active")
+]
+
+/** Hide a view again */
+action hideView(selector: string) [
+  selectElement(selector)
+  removeClass("is-active")
+]
+
+/** Render a localized label into an element */
+action label(selector: string, key: string) [
+  selectElement(selector)
+  addController("LabelController", key)
+]
+
+/** Remove the label controller again */
+action unlabel(selector: string) [
+  selectElement(selector)
+  removeControllerFromElement("LabelController")
+]
+
+/** Switch every label to another language */
+action setLanguage(code: string) [
+  broadcastEvent([code], "language-change")
+]
+
+timeline "Hub" in "#stage" using raf {
+  on enter [
+    showView("#hub")
+    label("#hub-title", "hub.title")
+    on click "#to-problem" navigate "Problem"
+    on click "#to-solution" navigate "Solution"
+    on click "#to-results" navigate "Results"
+    on click "#lang-nl" run setLanguage("nl-NL")
+    on click "#lang-en" run setLanguage("en-US")
+  ]
+  on leave [
+    hideView("#hub")
+    unlabel("#hub-title")
+    selectElement("#to-problem")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#to-solution")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#to-results")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#lang-nl")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#lang-en")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}
+
+timeline "Problem" in "#stage" using raf {
+  on enter [
+    showView("#problem")
+    label("#problem-title", "problem.title")
+    label("#problem-text", "problem.text")
+    on click "#back-problem" navigate "Hub"
+  ]
+  on leave [
+    hideView("#problem")
+    unlabel("#problem-title")
+    unlabel("#problem-text")
+    selectElement("#back-problem")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 0s..8s target "#problem-title" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 1s..8s target "#problem-text" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+}
+
+timeline "Solution" in "#stage" using raf {
+  on enter [
+    showView("#solution")
+    label("#solution-title", "solution.title")
+    label("#solution-text", "solution.text")
+    on click "#back-solution" navigate "Hub"
+  ]
+  on leave [
+    hideView("#solution")
+    unlabel("#solution-title")
+    unlabel("#solution-text")
+    selectElement("#back-solution")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 0s..8s target "#solution-title" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 1s..8s target "#solution-text" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+}
+
+timeline "Results" in "#stage" using raf {
+  on enter [
+    showView("#results")
+    label("#results-title", "results.title")
+    label("#results-text", "results.text")
+    on click "#back-results" navigate "Hub"
+  ]
+  on leave [
+    hideView("#results")
+    unlabel("#results-title")
+    unlabel("#results-text")
+    selectElement("#back-results")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 0s..8s target "#results-title" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 1s..8s target "#results-text" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+}

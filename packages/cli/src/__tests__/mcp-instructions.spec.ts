@@ -1,6 +1,7 @@
 /**
- * Spec 058 (Phase 1 FR-018, FR-026; Phase 2 FR-003, FR-066, I-1; plan D6): the server
- * `instructions` of each phase and the `AGENTS.md` block, built from the same text.
+ * Spec 058 (Phase 1 FR-018, FR-026; Phase 2 FR-003, FR-066, I-1; plan D6; Phase 3 FR-050,
+ * FR-051, I-8, SC-013; plan C4): the server `instructions` of each phase and the `AGENTS.md`
+ * block, built from the same text.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -79,6 +80,37 @@ const rulesOf = (text: string): string[] => {
 
 const occurrences = (text: string, part: string): number => text.split(part).length - 1;
 
+/** The index ids of the real generated docs, for the backtick convention. */
+let docsRoot: string;
+let ids: ReadonlySet<string>;
+
+beforeAll(async () => {
+  docsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-instructions-'));
+  await generateKnowledge({ outDir: docsRoot });
+  const index = JSON.parse(
+    fs.readFileSync(path.join(docsRoot, 'index.json'), 'utf8')
+  ) as IndexEntry[];
+  ids = new Set(index.map(entry => entry.id));
+}, 300_000);
+
+afterAll(() => {
+  fs.rmSync(docsRoot, { recursive: true, force: true });
+});
+
+/** The backticked tokens of `text` that are neither a Phase 2+ tool nor an index id. */
+const unknownTokens = (text: string): string[] => {
+  const tokens = [...text.matchAll(/`([^`]+)`/g)]
+    .map(match => match[1])
+    .filter(token => /^[a-z0-9_/-]+$/.test(token));
+  expect(tokens.length).toBeGreaterThan(0);
+  const allowed = new Set<string>([...PHASE_2_TOOLS, ...ids]);
+  return tokens.filter(token => !allowed.has(token));
+};
+
+/** §3.5's `eligian_compile` line, verbatim (FR-050). */
+const COMPILE_LINE =
+  'once after your first timeline passes check (select it, explain:true), and whenever behaviour surprises you';
+
 describe('mcp instructions', () => {
   it('phase 1 text is within 4096 chars', () => {
     expect(INSTRUCTIONS_PHASE_1.length).toBeGreaterThan(0);
@@ -89,26 +121,6 @@ describe('mcp instructions', () => {
 
 describe('phase 2 instructions', () => {
   const text = INSTRUCTIONS[2];
-  let docsRoot: string;
-  let ids: ReadonlySet<string>;
-
-  beforeAll(async () => {
-    docsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-instructions-'));
-    await generateKnowledge({ outDir: docsRoot });
-    const index = JSON.parse(
-      fs.readFileSync(path.join(docsRoot, 'index.json'), 'utf8')
-    ) as IndexEntry[];
-    ids = new Set(index.map(entry => entry.id));
-  }, 300_000);
-
-  afterAll(() => {
-    fs.rmSync(docsRoot, { recursive: true, force: true });
-  });
-
-  it('MCP_PHASE is 2', () => {
-    expect(MCP_PHASE).toBe(2);
-    expect(INSTRUCTIONS[MCP_PHASE]).toBe(text);
-  });
 
   it('≤ 4096 chars', () => {
     expect(text.length).toBeLessThanOrEqual(4096);
@@ -119,12 +131,7 @@ describe('phase 2 instructions', () => {
   });
 
   it('backticked tokens are tools or ids', () => {
-    const tokens = [...text.matchAll(/`([^`]+)`/g)]
-      .map(match => match[1])
-      .filter(token => /^[a-z0-9_/-]+$/.test(token));
-    expect(tokens.length).toBeGreaterThan(0);
-    const allowed = new Set<string>([...PHASE_2_TOOLS, ...ids]);
-    expect(tokens.filter(token => !allowed.has(token))).toEqual([]);
+    expect(unknownTokens(text)).toEqual([]);
   });
 
   it('names all eight tools', () => {
@@ -135,6 +142,31 @@ describe('phase 2 instructions', () => {
 
   it('has no explain', () => {
     expect(text).not.toContain('explain');
+  });
+});
+
+describe('phase 3 instructions', () => {
+  const text = INSTRUCTIONS[3];
+
+  it('INSTRUCTIONS[3] ≤ 4096, the compile line verbatim, backticked tokens exist', () => {
+    expect(MCP_PHASE).toBe(3);
+    expect(INSTRUCTIONS[MCP_PHASE]).toBe(text);
+    expect(text.length).toBeLessThanOrEqual(4096);
+    expect(text).toContain(`- \`eligian_compile\`: ${COMPILE_LINE}.`);
+    expect(unknownTokens(text)).toEqual([]);
+  });
+
+  it('is the Phase 2 text with the compile line and the determinism smoke step', () => {
+    const expected = EXPECTED_PHASE_2.replace(
+      '(click, key, seek).',
+      '(click, key, seek), then determinism:true.'
+    ).replace(
+      'once after your first timeline passes check (select it), and\n  whenever behaviour surprises you.',
+      `${COMPILE_LINE}.`
+    );
+    expect(expected).toContain(COMPILE_LINE);
+    expect(text).toBe(expected);
+    for (const tool of PHASE_2_TOOLS) expect(text).toContain(`\`${tool}\``);
   });
 });
 
@@ -169,15 +201,15 @@ describe('agentsMdBlock', () => {
     expect(occurrences(block, '<!-- eligian:begin -->')).toBe(1);
     expect(occurrences(block, '<!-- eligian:end -->')).toBe(1);
 
-    // The workflow and the five rules of the Phase 2 instructions.
+    // The workflow and the five rules of the Phase 3 instructions (FR-051).
     for (const tool of PHASE_2_TOOLS) expect(block).toContain(`\`${tool}\``);
-    const rules = rulesOf(INSTRUCTIONS[2]);
+    expect(block).toContain(`- \`eligian_compile\`: ${COMPILE_LINE}.`);
+    const rules = rulesOf(INSTRUCTIONS[3]);
     expect(rules.map(rule => rule.slice(0, 2))).toEqual(['1.', '2.', '3.', '4.', '5.']);
     for (const rule of rules) expect(block).toContain(rule);
     expect(block).toContain(
       'Review STORYBOARD.md against the compiled timelines before declaring done.'
     );
-    expect(block).not.toContain('explain');
 
     // The docs pointer, once.
     expect(occurrences(block, 'node_modules/eligian/dist/docs')).toBe(1);

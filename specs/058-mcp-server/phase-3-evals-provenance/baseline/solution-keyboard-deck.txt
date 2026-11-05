@@ -1,0 +1,70 @@
+# T038 solution keyboard-deck: verified from a scratch copy ($SCRATCH/sol-keyboard-deck), 2026-11-05T19:27:47Z, HEAD b62b762
+# CLI: node <repo>/packages/cli/bin/cli.js; no case fixtures to copy; out/ is created before step 4, as gate step 4 does (gate-steps.ts: "compile does not create it")
+$ eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids
+1 file, 0 errors, 0 warnings
+exit 0
+$ eligian fmt --check "**/*.eligian"
+All 1 file formatted
+exit 0
+$ eligian smoke main.eligian --strict --format json --scenario /f/projects/eligius/eligian/evals/mcp/cases/keyboard-deck.scenario.json --determinism
+[
+  {
+    "file": "main.eligian",
+    "timelines": [
+      {
+        "name": "slide-1",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-2",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-3",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-4",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-5",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-6",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-7",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-8",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-9",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-10",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-11",
+        "boundaries": 2
+      },
+      {
+        "name": "slide-12",
+        "boundaries": 2
+      }
+    ],
+    "problems": []
+  }
+]
+exit 0
+$ eligian compile main.eligian --eligian-map -o out/config.json
+✓ Compiled main.eligian → out/config.json
+✓ Eligian map → out/config.eligian-map.json
+exit 0

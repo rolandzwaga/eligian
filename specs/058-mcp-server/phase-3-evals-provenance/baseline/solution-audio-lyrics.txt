@@ -1,0 +1,33 @@
+# T039 solution audio-lyrics, verified from a scratch copy with the case's fixtures materialised (2026-11-05T19:18:13Z)
+
+$ eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids
+1 file, 0 errors, 0 warnings
+exit 0
+
+$ eligian fmt --check "**/*.eligian"
+All 1 file formatted
+exit 0
+
+$ eligian smoke main.eligian --strict --format json --scenario <repo>/evals/mcp/cases/audio-lyrics.scenario.json --determinism
+[
+  {
+    "file": "main.eligian",
+    "timelines": [
+      {
+        "name": "Start",
+        "boundaries": 1
+      },
+      {
+        "name": "./media/song.mp3",
+        "boundaries": 7
+      }
+    ],
+    "problems": []
+  }
+]
+exit 0
+
+$ eligian compile main.eligian --eligian-map -o out/config.json
+✓ Compiled main.eligian → out/config.json
+✓ Eligian map → out/config.eligian-map.json
+exit 0

@@ -1,0 +1,88 @@
+/* The element the presentation runs in */
+#stage {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+.title {
+  margin: 0;
+  padding: 2rem;
+  font-size: 2.5rem;
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+
+.panels {
+  display: flex;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.panel {
+  flex: 1;
+  padding: 2rem;
+  font-size: 1.5rem;
+  background: #ffffff;
+  opacity: 0;
+  transition: opacity 0.6s, transform 0.6s;
+}
+
+/* The library's classes: lib/animations.eligian adds and removes them */
+.fade-in {
+  opacity: 1;
+}
+
+.fade-out {
+  opacity: 0;
+}
+
+.slide-in {
+  opacity: 1;
+  transform: none;
+}
+
+.from-left {
+  animation: from-left 0.6s ease-out;
+}
+
+.from-right {
+  animation: from-right 0.6s ease-out;
+}
+
+.from-top {
+  animation: from-top 0.6s ease-out;
+}
+
+.from-bottom {
+  animation: from-bottom 0.6s ease-out;
+}
+
+@keyframes from-left {
+  from {
+    transform: translateX(-100vw);
+  }
+}
+
+@keyframes from-right {
+  from {
+    transform: translateX(100vw);
+  }
+}
+
+@keyframes from-top {
+  from {
+    transform: translateY(-100vh);
+  }
+}
+
+@keyframes from-bottom {
+  from {
+    transform: translateY(100vh);
+  }
+}

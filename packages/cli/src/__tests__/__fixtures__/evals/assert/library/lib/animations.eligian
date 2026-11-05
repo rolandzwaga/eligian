@@ -1,0 +1,16 @@
+/** Library fixture of mcp-evals-assert.spec.ts: fadeIn has JSDoc, fadeOut has none. */
+library animations
+
+/**
+ * Fades an element in.
+ * @param selector the element
+ */
+action fadeIn(selector: string) [
+  selectElement(selector)
+  animate({ opacity: 1 }, 300)
+]
+
+action fadeOut(selector: string) [
+  selectElement(selector)
+  animate({ opacity: 0 }, 300)
+]

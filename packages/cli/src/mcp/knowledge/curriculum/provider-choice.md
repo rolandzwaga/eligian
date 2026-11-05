@@ -35,7 +35,7 @@ The answer for anything a user clicks through or watches without a media file. P
 - The media file is the clock: pausing the media pauses the beats, seeking it seeks them. Play, pause and seek with interactions: `on click "#play" toggle`, `on click "#restart" seek 0s`, `on key "space" toggle` (the `video` starter).
 - Eligius creates the element itself with no native controls; there is no `muted`, `poster`, `controls` or `autoplay` option (`not-eligian`).
 - Only files a browser plays directly (MP4, WebM, MP3); keep them in `media/`. A missing file is the warning `media-file-missing`; two media timelines on one file are `media-from-duplicate`.
-- `eligian smoke` cannot play media: media timelines are skipped (listed as "media timelines need a browser"), and a scenario cannot navigate into one (`scenario-media-timeline`). Check media timelines in `eligian dev` or the VS Code preview.
+- `eligian smoke` plays media timelines on a fake media clock (the duration is the timeline's; the file is not read, so a missing file still smokes): the walk, scenario steps and `--determinism` cover them. What the real file does (decoding, buffering, the start gesture) shows only in `eligian dev` or the VS Code preview.
 
 ## A start gesture for media
 

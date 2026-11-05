@@ -1,0 +1,26 @@
+T057 diagnostics overlays batch 6 (20)
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T057
+generate-knowledge: 332 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T057
+exit=0
+
+word count of each body (frontmatter stripped; limit 120):
+sequence-item-duration-not-positive 61 code: sequence-item-duration-not-positive
+stagger-delay-not-positive 59 code: stagger-delay-not-positive
+stagger-duration-not-positive 63 code: stagger-duration-not-positive
+time_constant_misuse 91 code: time_constant_misuse
+time_value_placement 83 code: time_value_placement
+timeline-duration-not-positive 61 code: timeline-duration-not-positive
+timeline-duration-relative 58 code: timeline-duration-relative
+timeline-scroll-duration-required 61 code: timeline-scroll-duration-required
+timeline-scroll-selector-not-scroll 64 code: timeline-scroll-selector-not-scroll
+too_many_parameters 59 code: too_many_parameters
+type-mismatch 70 code: type-mismatch
+unknown_controller 50 code: unknown_controller
+unknown_dom_event 80 code: unknown_dom_event
+unknown_host_function 52 code: unknown_host_function
+unknown_key 66 code: unknown_key
+unknown_label_id 74 code: unknown_label_id
+unknown_navigate_target 54 code: unknown_navigate_target
+unknown_scroll_container 68 code: unknown_scroll_container
+unnecessary_type_annotation 60 code: unnecessary_type_annotation
+validation-exception 80 code: validation-exception

@@ -59,6 +59,10 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      # 200 sequential eligian_check calls: heap growth <= 25 MB, two recycles (spec 058 FR-063)
+      - name: Soak test
+        run: pnpm -C packages/cli run test:soak
+
       # The MCP server (eligian mcp) over stdio, through the MCP Inspector CLI:
       # tools/list must name exactly the eight tools
       - name: MCP inspector gate

@@ -16,7 +16,15 @@ export interface WalkedOperation {
 /** One effect the walker saw; `at` is the index of the top-level operation that led to it. */
 export type WalkEvent =
   | {
-      readonly kind: 'controller-added' | 'controller-removed';
+      readonly kind: 'controller-added';
+      readonly selector: unknown;
+      readonly controller: unknown;
+      /** The `addControllerToElement` operation data, `$operationdata` references resolved */
+      readonly data: OperationData;
+      readonly at: number;
+    }
+  | {
+      readonly kind: 'controller-removed';
       readonly selector: unknown;
       readonly controller: unknown;
       readonly at: number;
@@ -117,7 +125,13 @@ function walk(
         controller = property(own, 'systemName', data);
         break;
       case 'addControllerToElement':
-        state.events.push({ kind: 'controller-added', selector, controller, at: position });
+        state.events.push({
+          kind: 'controller-added',
+          selector,
+          controller,
+          data: resolveOperationData(own, data) as OperationData,
+          at: position,
+        });
         break;
       case 'removeControllerFromElement':
         state.events.push({

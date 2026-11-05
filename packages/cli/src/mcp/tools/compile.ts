@@ -10,13 +10,22 @@
  * error diagnostics `eligian_check` reports for it (same `checkPaths` options, same
  * `toMcpDiagnostics`), still under the lock; a library answers `{ ok: false, library: true }`.
  *
+ * Phase 3 (FR-045–FR-047, I-5; plan C1): `explain: true` adds each returned operation's origin
+ * (read from the Eligian map) and, once per present origin, its rule from `ORIGIN_RULES`; the
+ * summary view gets the per-origin counts instead of the operation list.
+ *
  * `Tool` is `@stability unstable`; the server is built on it (roadmap §2, decision 1: `effect` is
  * pinned exactly).
  */
 // @effect-diagnostics unstableApiUsage:off
 import fs from 'node:fs';
 import path from 'node:path';
-import type { EligianMap, EligianMapAction, IEngineConfiguration } from '@eligian/language';
+import type {
+  EligianMap,
+  EligianMapAction,
+  IEngineConfiguration,
+  OperationOrigin,
+} from '@eligian/language';
 import { timelineNames } from '@eligian/language/mcp';
 import { Effect, Schema } from 'effect';
 import { checkPaths, isLibrary } from '../../check/check-command.js';
@@ -26,6 +35,7 @@ import { type FragmentSelection, fragmentOf } from '../config-fragment.js';
 import { McpDiagnosticSchema, toMcpDiagnostics } from '../diagnostics.js';
 import { type ToolError, ToolFailure, ToolNotFound, toToolError } from '../errors.js';
 import { loadKnowledge } from '../knowledge/load.js';
+import { ORIGIN_RULES, type OriginRule } from '../origin-rules.js';
 import { type EffectAi, projectRoot, resolveInputPath } from '../paths.js';
 
 /** What every tool handler receives from the server (plan C9). */
@@ -49,7 +59,10 @@ export const DESCRIPTION =
   'config, ids kept). `includeMap: true` adds the Eligian map entries of the returned actions ' +
   '(each operation with its source location). A program with errors returns `ok: false` and the ' +
   'same error diagnostics as `eligian_check`; a library file returns `ok: false, library: true`. ' +
-  "`response_format: 'detailed'` adds the config's `cssFiles` and `languages` to the summary.";
+  "`response_format: 'detailed'` adds the config's `cssFiles` and `languages` to the summary. " +
+  '`explain: true` adds, per returned operation, its JSON `path` and `origin` (the construct that ' +
+  'generated it: source, call, target, erased-save, …) and, once per origin, the rule with the ' +
+  '`eligian_docs` id to read; with `summary` only the operation counts per origin.';
 
 export const KEYWORDS: readonly string[] = ['compile', 'json', 'config', 'eligius', 'map'];
 
@@ -64,6 +77,7 @@ export const Parameters = Schema.Struct({
   ),
   view: Schema.optionalKey(Schema.Literals(['summary', 'fragment', 'full'])),
   includeMap: Schema.optionalKey(Schema.Boolean),
+  explain: Schema.optionalKey(Schema.Boolean),
   response_format: Schema.optionalKey(Schema.Literals(['concise', 'detailed'])),
 });
 type CompileParameters = typeof Parameters.Type;
@@ -87,6 +101,21 @@ const Summary = Schema.Struct({
   chars: Schema.Int,
 });
 
+const ExplainedOperation = Schema.Struct({
+  /** locateConfigPath notation: timelines[0].timelineActions[2].startOperations[1] */
+  path: Schema.String,
+  action: Schema.String,
+  systemName: Schema.String,
+  origin: Schema.String,
+  location: Schema.optionalKey(Schema.Unknown),
+});
+
+const Explain = Schema.Struct({
+  operations: Schema.optionalKey(Schema.Array(ExplainedOperation)),
+  counts: Schema.optionalKey(Schema.Record(Schema.String, Schema.Int)),
+  rules: Schema.Record(Schema.String, Schema.Struct({ rule: Schema.String, docs: Schema.String })),
+});
+
 const Language = Schema.Struct({ languageCode: Schema.String, label: Schema.String });
 
 export const Success = Schema.Struct({
@@ -103,6 +132,7 @@ export const Success = Schema.Struct({
   config: Schema.optionalKey(Schema.Unknown),
   map: Schema.optionalKey(Schema.Unknown),
   diagnostics: Schema.optionalKey(Schema.Array(McpDiagnosticSchema)),
+  explain: Schema.optionalKey(Explain),
 });
 type CompileSuccess = typeof Success.Type;
 
@@ -124,6 +154,7 @@ export const summarizeArgs = (params: CompileParameters): Readonly<Record<string
   ...(params.select === undefined ? {} : { select: Object.keys(params.select) }),
   ...(params.includeMap === undefined ? {} : { includeMap: params.includeMap }),
   ...(params.response_format === undefined ? {} : { response_format: params.response_format }),
+  ...(params.explain === undefined ? {} : { explain: params.explain }),
 });
 
 export const makeTool = (ai: EffectAi) =>
@@ -327,6 +358,109 @@ const mapOf = (compiled: CompileResult, selection: FragmentSelection): unknown =
     : { [key[action.kind]]: { [action.name]: action } };
 };
 
+// --- explain -----------------------------------------------------------------
+
+type ExplainedOperationType = typeof ExplainedOperation.Type;
+
+/** An explained operation with the id of the action it is in (for the selection filter). */
+interface Located {
+  readonly actionId: string;
+  readonly operation: ExplainedOperationType;
+}
+
+/** The shape every action of the config shares (an event action has no end operations). */
+interface AnyAction {
+  readonly id: string;
+  readonly name: string;
+  readonly startOperations: readonly Operation[];
+  readonly endOperations?: readonly Operation[];
+}
+
+/**
+ * Every operation of the config in `operationLists` order, with its `locateConfigPath` path and
+ * its origin from the map entry at the same phase and index. The map is built from the same
+ * optimized IR, so the lists line up; a map read back from JSON may lack an origin (`source`).
+ */
+const explainedOperations = (compiled: CompileResult): Located[] => {
+  const { config, map } = compiled;
+  const groups: [string, readonly AnyAction[]][] = [
+    ['initActions', config.initActions ?? []],
+    ['actions', config.actions],
+    ['eventActions', config.eventActions ?? []],
+    ...config.timelines.map((timeline, t): [string, readonly AnyAction[]] => [
+      `timelines[${t}].timelineActions`,
+      timeline.timelineActions,
+    ]),
+  ];
+  return groups.flatMap(([prefix, actions]) =>
+    actions.flatMap((action, a) => {
+      const entry = map.actions[action.id];
+      const phase = (key: 'startOperations' | 'endOperations', ops: readonly Operation[]) =>
+        ops.map((op, i): Located => {
+          const mapped = (key === 'startOperations' ? entry?.start : entry?.end)?.[i];
+          const origin: OperationOrigin = mapped?.origin ?? 'source';
+          return {
+            actionId: action.id,
+            operation: {
+              path: `${prefix}[${a}].${key}[${i}]`,
+              action: action.name,
+              systemName: op.systemName,
+              origin,
+              ...(mapped?.location === undefined ? {} : { location: mapped.location }),
+            },
+          };
+        });
+      return [
+        ...phase('startOperations', action.startOperations),
+        ...phase('endOperations', action.endOperations ?? []),
+      ];
+    })
+  );
+};
+
+/** The action ids `fragmentOf` returns for `selection` (the ids `mapOf` reads). */
+const selectedActionIds = (compiled: CompileResult, selection: FragmentSelection): Set<string> => {
+  const { config } = compiled;
+  if ('timeline' in selection) {
+    return new Set(config.timelines[selection.timeline]?.timelineActions.map(a => a.id) ?? []);
+  }
+  if ('action' in selection) {
+    const action =
+      config.actions.find(candidate => candidate.name === selection.action) ??
+      config.eventActions?.find(candidate => candidate.name === selection.action);
+    return new Set(action === undefined ? [] : [action.id]);
+  }
+  return new Set([selection.mapActionId]);
+};
+
+/** Each present origin once, with its rule (FR-045). */
+const rulesOf = (origins: Iterable<string>): Record<string, OriginRule> =>
+  Object.fromEntries(
+    [...new Set(origins)].map(origin => [origin, ORIGIN_RULES[origin as OperationOrigin]])
+  );
+
+/**
+ * FR-045 / I-5: `summary` → the per-origin counts; `full` → every operation by path; `fragment`
+ * → the operations of the selected actions. Pure.
+ */
+const explainOf = (
+  compiled: CompileResult,
+  view: View,
+  selection?: FragmentSelection
+): typeof Explain.Type => {
+  const all = explainedOperations(compiled);
+  if (view === 'summary') {
+    const counts: Record<string, number> = {};
+    for (const { operation } of all) counts[operation.origin] = (counts[operation.origin] ?? 0) + 1;
+    return { counts, rules: rulesOf(Object.keys(counts)) };
+  }
+  const ids = view === 'fragment' && selection ? selectedActionIds(compiled, selection) : undefined;
+  const operations = all
+    .filter(located => ids === undefined || ids.has(located.actionId))
+    .map(located => located.operation);
+  return { operations, rules: rulesOf(operations.map(op => op.origin)) };
+};
+
 // --- handler -----------------------------------------------------------------
 
 /** compileFile rejected: the program has errors (answered with check's diagnostics). */
@@ -389,6 +523,7 @@ export const handle = (
         view,
         config: asJson(compiled.config),
         ...(params.includeMap === true ? { map: asJson(compiled.map.actions) } : {}),
+        ...(params.explain === true ? { explain: asJson(explainOf(compiled, view)) } : {}),
       };
     }
     if (view === 'summary') {
@@ -407,6 +542,7 @@ export const handle = (
               })),
             }
           : {}),
+        ...(params.explain === true ? { explain: asJson(explainOf(compiled, view)) } : {}),
       };
     }
     const selection = yield* selectionOf(compiled, params.select ?? {}, file, source);
@@ -420,5 +556,6 @@ export const handle = (
       view,
       fragment: asJson(fragment),
       ...(params.includeMap === true ? { map: asJson(mapOf(compiled, selection)) } : {}),
+      ...(params.explain === true ? { explain: asJson(explainOf(compiled, view, selection)) } : {}),
     };
   });

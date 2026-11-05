@@ -1,0 +1,17 @@
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "features" in "#stage" using raf duration 6s {
+  // One range per card, 0.4s apart from 0s: card 1 at 0s, card 6 at 2s
+  stagger 400ms ["#card-1", "#card-2", "#card-3", "#card-4", "#card-5", "#card-6"] at 0s for 4s [
+    selectElement(@@item)
+    addClass("is-visible")
+  ] [
+    selectElement(@@item)
+    removeClass("is-visible")
+  ]
+
+  // From 2s the sixth card is in: the complete list keeps every card visible to the end
+  at 2s..6s target "#cards" [ addClass("is-complete") ] [ removeClass("is-complete") ]
+  at 2s..4s target "#card-3" [ addClass("highlight") ] [ removeClass("highlight") ]
+}

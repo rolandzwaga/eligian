@@ -1,0 +1,37 @@
+// Reference solution, eval case host-module (spec 058 phase 3): an answer click calls the host
+// operation score, which writes the message into #result, then seeks to the result range; the
+// range shows #result for 3 seconds and its end block hides it again (no wait)
+layout "./layout.html"
+styles "./styles.css"
+
+extensions "./host.ts" {
+  operation score(answer: string)
+}
+
+/** Score an answer, then play the result range from its start */
+action answer(letter: string) [
+  selectElement("#result")
+  score(letter)
+  broadcastEvent([1], "timeline-seek-request")
+  broadcastEvent([], "timeline-play-request")
+]
+
+timeline "quiz" in "#stage" using raf {
+  on enter [
+    // The quiz waits at 0 for an answer
+    broadcastEvent([], "timeline-pause-request")
+    on click "#answer-a" run answer("a")
+    on click "#answer-b" run answer("b")
+    on click "#answer-c" run answer("c")
+  ]
+  on leave [
+    selectElement("#answer-a")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#answer-b")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#answer-c")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 1s..4s target "#result" [ addClass("is-shown") ] [ removeClass("is-shown") ]
+}

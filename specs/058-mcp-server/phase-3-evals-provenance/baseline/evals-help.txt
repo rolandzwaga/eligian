@@ -1,0 +1,18 @@
+$ pnpm evals:mcp --help
+$ tsx evals/mcp/run.ts --help
+usage: pnpm evals:mcp [--case <id> ...] [--arm A0|A1|A-none ...] [--runs <n>] [--model <m>]
+                      [--call-budget off|enforce]
+       pnpm evals:mcp --write-budgets <run-id>
+
+  --case <id>                 an eval case (evals/mcp/cases/<id>.json); repeat for several (default: every case)
+  --arm A0|A1|A-none          the arm; repeat for several (default: A1)
+                                A1      the MCP server + the AGENTS.md block
+                                A0      the AGENTS.md block, the docs on disk and the CLI, no server
+                                A-none  no AGENTS.md, no server, the docs removed from the package
+  --runs <n>                  runs per case and arm (default: 1)
+  --model <m>                 sonnet | opus | a pinned model id (default: the case's pinned "model")
+  --call-budget off|enforce   step 6's tool-call budget (default: enforce; off for the first full run)
+  --write-budgets <run-id>    set each case's "budget" from the passing Sonnet A1 runs of that run
+
+Cases run serially. Writes evals/mcp/results/<run-id>/<case>/<arm>-<n>.json and summary.md.
+exit 0

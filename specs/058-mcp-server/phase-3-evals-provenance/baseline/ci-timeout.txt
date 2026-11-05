@@ -1,0 +1,1 @@
+T041 (2026-11-05): mcp-solutions.spec.ts + eval-cases.spec.ts + evals-gate-steps.spec.ts + mcp-evals-assert.spec.ts: 110.91 s locally (Windows; baseline/solutions-windows.txt). No CI run of the branch exists (CI runs on main only); the file alone is under 2 min, far from the 3-minute margin of timeout-minutes: 20. ci.yml: unchanged, 110.91 s measured.

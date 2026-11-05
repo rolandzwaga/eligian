@@ -1,0 +1,7 @@
+// Spec 058 phase 3 (T022, FR-047): a program with errors returns no explain data.
+timeline "Intro" in "#stage" using raf {
+  at 0s..1s [
+    selectElement("#box")
+    noSuchOperation()
+  ]
+}

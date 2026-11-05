@@ -1,0 +1,109 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "<id>",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div id=\"app\">\n  <div id=\"box\"></div>\n</div>\n",
+  "cssFiles": [
+    "./styles.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "<id>",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "<id>",
+      "name": "highlight",
+      "startOperations": [
+        {
+          "id": "<id>",
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "b.mark"
+          }
+        },
+        {
+          "id": "<id>",
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {}
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    {
+      "id": "<id>",
+      "name": "b.mark",
+      "startOperations": [
+        {
+          "id": "<id>",
+          "systemName": "selectElement"
+        },
+        {
+          "id": "<id>",
+          "systemName": "addClass",
+          "operationData": {
+            "className": "loaded-marker"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "<id>",
+      "uri": "main",
+      "type": "animation",
+      "duration": 1,
+      "loop": false,
+      "selector": "#app",
+      "timelineActions": [
+        {
+          "id": "<id>",
+          "name": "timeline-action-0-1",
+          "startOperations": [
+            {
+              "id": "<id>",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlight"
+              }
+            },
+            {
+              "id": "<id>",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#box"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 1
+          }
+        }
+      ]
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource"
+      }
+    }
+  }
+}

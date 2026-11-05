@@ -1,0 +1,12 @@
+// Origins `erased-save` / `erased-restore`: selectElement erases `selector`, used again after
+styles "./styles.css"
+
+action twice(selector) [
+  selectElement(selector)
+  addClass("on")
+  selectElement(selector)
+]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s twice("#box")
+}

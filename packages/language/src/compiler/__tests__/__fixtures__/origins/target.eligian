@@ -1,0 +1,6 @@
+// Origin `target`: the selectElement a `target` prepends to start and end
+styles "./styles.css"
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s target "#box" [ addClass("on") ] [ removeClass("on") ]
+}

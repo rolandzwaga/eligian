@@ -1,0 +1,34 @@
+#stage {
+  margin: 0;
+  padding: 2rem;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+.title {
+  margin: 0 0 1rem;
+  font-size: 2rem;
+}
+
+.answers {
+  display: flex;
+  gap: 1rem;
+}
+
+.answer {
+  padding: 1rem 2rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Hidden until the result range adds .is-shown */
+.result {
+  display: none;
+  margin-top: 2rem;
+  font-size: 1.5rem;
+}
+
+.is-shown {
+  display: block;
+}

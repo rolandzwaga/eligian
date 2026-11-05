@@ -125,9 +125,34 @@ const cliCtx = await esbuild.context({
   plugins,
 });
 
+// The eval assertion library and the gate's step logic (spec 058 FR-083), for the
+// harness under evals/mcp/: built with the CLI in every mode, never packed (`files`
+// does not list dist/evals). main.ts never imports src/mcp/evals/.
+const evalsCtx = await esbuild.context({
+  entryPoints: ['src/mcp/evals/assert.ts'],
+  outfile: 'dist/evals/assert.mjs',
+  bundle: true,
+  target: 'ES2022',
+  format: 'esm',
+  loader: { '.ts': 'ts' },
+  platform: 'node',
+  define: {
+    __ELIGIAN_VERSION__: JSON.stringify(pkg.version),
+    __ELIGIUS_VERSION__: JSON.stringify(eligiusVersion),
+  },
+  external: Object.keys(pkg.dependencies ?? {}).flatMap(name => [name, `${name}/*`]),
+  banner: {
+    js: "import { createRequire as __eligianCreateRequire } from 'node:module';\nconst require = __eligianCreateRequire(import.meta.url);",
+  },
+  sourcemap: !minify,
+  minify,
+  keepNames: minify,
+  plugins,
+});
+
 if (watch) {
-  await cliCtx.watch();
+  await Promise.all([cliCtx.watch(), evalsCtx.watch()]);
 } else {
-  await cliCtx.rebuild();
-  cliCtx.dispose();
+  await Promise.all([cliCtx.rebuild(), evalsCtx.rebuild()]);
+  await Promise.all([cliCtx.dispose(), evalsCtx.dispose()]);
 }

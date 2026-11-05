@@ -1,0 +1,58 @@
+layout "./layout.html"
+styles "./styles.css"
+
+/**
+ * Types the first `end` characters of the sentence into #sentence, with a caret until it is complete
+ * @param end the number of characters to show (0 to 44)
+ */
+action typeTo(end: number) [
+  setOperationData({ textContent: "Every great story starts with a single line." })
+  substringText(0, end)
+  selectElement("#sentence")
+  setElementContent($operationdata.substring)
+  if (end < 44) {
+    addClass("is-typing")
+  } else {
+    removeClass("is-typing")
+  }
+]
+
+/**
+ * Shows step `step` of the count in #counter: step × 25
+ * @param step the step (0 to 10)
+ */
+action countTo(step: number) [
+  calc(step, 25, "*")
+  selectElement("#counter")
+  setElementContent($operationdata.calculationResult)
+]
+
+// Every range writes the state it covers. Ranges are half-open ([start, end)), so the end of the
+// timeline (8s) lies outside all of them: the final state is the layout's own (the full sentence,
+// 250), and every end block restores it.
+timeline "typewriter" in "#stage" using raf {
+  // One character every 4s / 44: 0 characters at 0s, 43 just before 4s
+  stagger 4s / 44 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43] at 0s for 4s / 44 [
+    typeTo(@@item)
+  ] [
+    typeTo(44)
+  ]
+  at 4s..8s [ typeTo(44) ] [ typeTo(44) ]
+
+  // The count: 0 until 4s, then one step of 25 every 300ms, 250 from 7s
+  at 0s..4s [ countTo(0) ] [ countTo(10) ]
+  // A sequence starts where the event before it ends: at 4s
+  sequence {
+    for 300ms [ countTo(0) ] [ countTo(10) ]
+    for 300ms [ countTo(1) ] [ countTo(10) ]
+    for 300ms [ countTo(2) ] [ countTo(10) ]
+    for 300ms [ countTo(3) ] [ countTo(10) ]
+    for 300ms [ countTo(4) ] [ countTo(10) ]
+    for 300ms [ countTo(5) ] [ countTo(10) ]
+    for 300ms [ countTo(6) ] [ countTo(10) ]
+    for 300ms [ countTo(7) ] [ countTo(10) ]
+    for 300ms [ countTo(8) ] [ countTo(10) ]
+    for 300ms [ countTo(9) ] [ countTo(10) ]
+    for 1s [ countTo(10) ] [ countTo(10) ]
+  }
+}

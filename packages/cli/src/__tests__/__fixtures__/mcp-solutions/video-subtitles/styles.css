@@ -1,0 +1,77 @@
+#stage {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+/* One view at a time: a timeline shows its own view on enter */
+.view {
+  display: none;
+}
+
+.is-active {
+  display: block;
+}
+
+.title {
+  margin: 0;
+  padding: 2rem 2rem 1rem;
+  font-size: 2.5rem;
+}
+
+#start {
+  margin: 0 2rem;
+  padding: 0.75rem 2rem;
+  font: inherit;
+  font-size: 1.25rem;
+}
+
+#player {
+  position: relative;
+}
+
+/* Eligius renders a <video class="eligius-video"> into #player; give it a size */
+.eligius-video {
+  display: block;
+  width: 100%;
+  max-height: 80vh;
+}
+
+.captions {
+  position: relative;
+  min-height: 3rem;
+}
+
+/* Hidden until its range adds .is-visible */
+.caption {
+  position: absolute;
+  left: 2rem;
+  margin: 0.5rem 0;
+  padding: 0.5rem 1rem;
+  color: #fff;
+  background: rgb(0 0 0 / 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.caption.is-visible {
+  opacity: 1;
+}
+
+/* The progress bar: a track with the fill inside it */
+.progress {
+  height: 0.5rem;
+  background: #d5d9e4;
+  cursor: pointer;
+}
+
+/* ProgressbarController sets the width of the fill */
+.progress-fill {
+  width: 0;
+  height: 100%;
+  background: #3a6ff7;
+}

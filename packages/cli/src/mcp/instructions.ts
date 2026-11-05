@@ -1,5 +1,6 @@
 /**
- * Spec 058 (Phase 1 FR-018, FR-026; Phase 2 FR-003, FR-066, I-1; plan C8, D6): the server
+ * Spec 058 (Phase 1 FR-018, FR-026; Phase 2 FR-003, FR-066, I-1; plan C8, D6; Phase 3 FR-050,
+ * FR-051, I-8; plan C4): the server
  * `instructions` and the `AGENTS.md` block. Both are built from the same parts (preamble,
  * tool workflow, engine rules), so the block repeats the instructions; the block adds the
  * docs pointer and the docs index.
@@ -10,7 +11,7 @@
 import type { IndexEntry } from './knowledge/types.js';
 
 /** The build-time phase constant: which tools and instructions this server ships. */
-export const MCP_PHASE = 2 as const;
+export const MCP_PHASE = 3 as const;
 
 const PREAMBLE = `Eligian: a DSL compiled to Eligius presentation JSON (timelines of timed actions; an action is a
 chain of operations over one shared operationData bag). No model was trained on Eligian. Do not
@@ -42,6 +43,15 @@ ${CHECK_LINE}
 - \`eligian_compile\`: once after your first timeline passes check (select it), and
   whenever behaviour surprises you.`;
 
+/** §3.5's final workflow verbatim (I-8), plus the determinism step on the smoke line. */
+const WORKFLOW_PHASE_3 = `${WORKFLOW_INTRO}
+${DOCS_LINE}
+- \`eligian_project\`: the ids, classes, locale keys, asset files and host names you may reference.
+  Call before writing selectors; layout + CSS come before timelines.
+${CHECK_LINE}
+- \`eligian_smoke\`: after fmt; pass a scenario for every interaction you wrote (click, key, seek), then determinism:true.
+- \`eligian_compile\`: once after your first timeline passes check (select it, explain:true), and whenever behaviour surprises you.`;
+
 const ENGINE_RULES = `Rules the engine imposes:
 1. A fired block has nothing selected. Timeline, lifecycle and init blocks start with {};
    event actions start with {eventArgs}; listener actions get the controller's data plus
@@ -65,10 +75,21 @@ export const INSTRUCTIONS_PHASE_1: string = `${PREAMBLE}\n\n${WORKFLOW_PHASE_1}\
 /** The Phase 2 server instructions (FR-003): §3.5's final text with I-1. */
 const INSTRUCTIONS_PHASE_2 = `${PREAMBLE}\n\n${WORKFLOW_PHASE_2}\n\n${RULES_PHASE_2}\n`;
 
+/** The Phase 3 server instructions (FR-050): §3.5's final text with `explain:true`. */
+const INSTRUCTIONS_PHASE_3 = `${PREAMBLE}\n\n${WORKFLOW_PHASE_3}\n\n${RULES_PHASE_2}\n`;
+
 /** The instructions per phase; `server.ts` reads `INSTRUCTIONS[MCP_PHASE]`. */
-export const INSTRUCTIONS: Readonly<Record<1 | 2, string>> = {
+export const INSTRUCTIONS: Readonly<Record<1 | 2 | 3, string>> = {
   1: INSTRUCTIONS_PHASE_1,
   2: INSTRUCTIONS_PHASE_2,
+  3: INSTRUCTIONS_PHASE_3,
+};
+
+/** The workflow and rules of each phase, for the AGENTS.md block of `MCP_PHASE`. */
+const BLOCK_PARTS: Readonly<Record<1 | 2 | 3, { workflow: string; rules: string }>> = {
+  1: { workflow: WORKFLOW_PHASE_1, rules: RULES_PHASE_1 },
+  2: { workflow: WORKFLOW_PHASE_2, rules: RULES_PHASE_2 },
+  3: { workflow: WORKFLOW_PHASE_3, rules: RULES_PHASE_2 },
 };
 
 /** The generated directory of each kind whose ids are `<kind>/<name>`. */
@@ -106,7 +127,7 @@ const namesOf = (index: readonly IndexEntry[], kind: string): string => {
 
 /**
  * The AGENTS.md block between <!-- eligian:begin --> and <!-- eligian:end --> (FR-066): the
- * Phase 2 workflow and rules, the docs pointer naming `node_modules/eligian/dist/docs/` once,
+ * workflow and rules of `MCP_PHASE`, the docs pointer naming `node_modules/eligian/dist/docs/` once,
  * then the index: one `- <id>: <title> (<path>)` line per chunk that is neither an operation
  * nor an example, and the operations and examples by name after their path patterns.
  */
@@ -114,15 +135,16 @@ export function agentsMdBlock(index: readonly IndexEntry[]): string {
   const listed = index
     .filter(entry => !BY_NAME.has(entry.kind))
     .map(entry => `- ${entry.id}: ${entry.title} (${chunkFile(entry)})`);
+  const { workflow, rules } = BLOCK_PARTS[MCP_PHASE];
   return `<!-- eligian:begin -->
 
 ## Eligian
 
 ${PREAMBLE}
 
-${WORKFLOW_PHASE_2}
+${workflow}
 
-${RULES_PHASE_2}
+${rules}
 
 ${DOCS_POINTER}
 

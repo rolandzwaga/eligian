@@ -1,0 +1,226 @@
+layout "./layout.html"
+styles "./styles.css"
+
+/** Shows a slide and writes its number into the counter */
+action showSlide(slide: string, number: string) [
+  selectElement(slide)
+  addClass("is-active")
+  selectElement("#counter")
+  setElementContent(number)
+]
+
+/** Hides a slide */
+action hideSlide(slide: string) [
+  selectElement(slide)
+  removeClass("is-active")
+]
+
+timeline "slide-1" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-1", "1 / 12")
+    on key "ArrowRight" navigate "slide-2"
+  ]
+  on leave [
+    hideSlide("#slide-1")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-1" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-2" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-2", "2 / 12")
+    on key "ArrowRight" navigate "slide-3"
+    on key "ArrowLeft" navigate "slide-1"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-2")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-2" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-3" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-3", "3 / 12")
+    on key "ArrowRight" navigate "slide-4"
+    on key "ArrowLeft" navigate "slide-2"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-3")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-3" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-4" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-4", "4 / 12")
+    on key "ArrowRight" navigate "slide-5"
+    on key "ArrowLeft" navigate "slide-3"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-4")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-4" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-5" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-5", "5 / 12")
+    on key "ArrowRight" navigate "slide-6"
+    on key "ArrowLeft" navigate "slide-4"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-5")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-5" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-6" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-6", "6 / 12")
+    on key "ArrowRight" navigate "slide-7"
+    on key "ArrowLeft" navigate "slide-5"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-6")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-6" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-7" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-7", "7 / 12")
+    on key "ArrowRight" navigate "slide-8"
+    on key "ArrowLeft" navigate "slide-6"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-7")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-7" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-8" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-8", "8 / 12")
+    on key "ArrowRight" navigate "slide-9"
+    on key "ArrowLeft" navigate "slide-7"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-8")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-8" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-9" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-9", "9 / 12")
+    on key "ArrowRight" navigate "slide-10"
+    on key "ArrowLeft" navigate "slide-8"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-9")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-9" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-10" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-10", "10 / 12")
+    on key "ArrowRight" navigate "slide-11"
+    on key "ArrowLeft" navigate "slide-9"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-10")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-10" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-11" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-11", "11 / 12")
+    on key "ArrowRight" navigate "slide-12"
+    on key "ArrowLeft" navigate "slide-10"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-11")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-11" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}
+
+timeline "slide-12" in "#deck" using raf {
+  on enter [
+    showSlide("#slide-12", "12 / 12")
+    on key "ArrowLeft" navigate "slide-11"
+    on key "Home" navigate "slide-1"
+  ]
+  on leave [
+    hideSlide("#slide-12")
+    // on enter put one KeyboardController per key on #deck
+    selectElement("#deck")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+  at 0s..1s target "#slide-12" [ addClass("is-entering") ] [ removeClass("is-entering") ]
+}

@@ -8,8 +8,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eligianMapPath, validateOptionCombination } from '../cli-options.js';
+import { compileFile } from '../compile-file.js';
 
 const CLI_PATH = path.join(__dirname, '../../bin/cli.js');
+const RAF_AND_VIDEO = path.join(__dirname, '__fixtures__/mcp/compile/raf-and-video/main.eligian');
 
 describe('--eligian-map (audit idea #14)', () => {
   let dir: string;
@@ -76,5 +78,29 @@ timeline "t" in "#stage" using raf {
     expect(
       validateOptionCombination({ bundle: false, check: false, eligianMap: true })
     ).toBeUndefined();
+  });
+
+  it('the map carries origins and timeline names', async () => {
+    const { map } = await compileFile(RAF_AND_VIDEO);
+    // Source names in config order, not the video timeline's media `from`
+    expect(map.timelineNames).toEqual(['Hub', 'Film']);
+    const starts = Object.values(map.actions).flatMap(action => action.start);
+    expect(starts.length).toBeGreaterThan(0);
+    for (const operation of starts) {
+      expect(operation.origin, operation.systemName).toBeDefined();
+    }
+
+    const output = path.join(dir, 'out', 'config.json');
+    fs.mkdirSync(path.dirname(output));
+    const run = spawnSync(
+      'node',
+      [CLI_PATH, 'compile', RAF_AND_VIDEO, '--eligian-map', '-o', output],
+      { encoding: 'utf-8' }
+    );
+    expect(run.status, run.stderr).toBe(0);
+    const mapText = fs.readFileSync(path.join(dir, 'out', 'config.eligian-map.json'), 'utf-8');
+    expect(mapText).toContain('"origin"');
+    expect(mapText).toContain('"timelineNames"');
+    expect(fs.readFileSync(output, 'utf-8')).not.toContain('"origin"');
   });
 });

@@ -1,0 +1,23 @@
+{
+  "id": "audio-lyrics",
+  "prompt": "Karaoke-style lyrics for `media/song.mp3` (20s): each line highlights when sung, with click-to-seek on each line, behind a Start button. The entry file is `main.eligian` in the current directory; `media/song.mp3` is already there. The presentation starts on a timeline named `Start` that shows the button `#start`; clicking `#start` switches to the audio timeline, named `Song`, which plays `media/song.mp3`. The song has five lines, the elements `#line-1` to `#line-5` (write your own words), sung on `Song` at: `#line-1` from 1s to 4s, `#line-2` from 4s to 8s, `#line-3` from 8s to 12s, `#line-4` from 12s to 16s, `#line-5` from 16s to 19s. A line is highlighted by carrying the class `active`, only while it is sung. Clicking a line seeks `Song` to the start of that line (clicking `#line-3` seeks to 8s).",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "audio-lyrics.scenario.json",
+  "fixtures": [{ "from": "../fixtures/media/song.mp3", "to": "media/song.mp3" }],
+  "assertions": [
+    { "kind": "source.provider", "name": "audio" },
+    {
+      "kind": "timeline",
+      "type": "mediaplayer",
+      "from": "media/song.mp3",
+      "sourceType": "audio/mpeg"
+    },
+    { "kind": "timeline.rangedActions", "type": "mediaplayer", "min": 5 },
+    { "kind": "actions.named", "prefix": "__on__seek__" },
+    { "kind": "timeline", "at": 0, "type": "animation" },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

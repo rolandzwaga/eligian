@@ -1,0 +1,26 @@
+# T037 solution title-card: verified from a scratch copy (/c/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/t037/sol-title-card), the case's fixtures copied in
+# solution: packages/cli/src/__tests__/__fixtures__/mcp-solutions/title-card ; HEAD b62b762350146d38ea78cf2d535c60a515d3ca06
+$ eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids
+1 file, 0 errors, 0 warnings
+exit 0
+$ eligian fmt --check "**/*.eligian"
+All 1 file formatted
+exit 0
+$ eligian smoke main.eligian --strict --format json --scenario /f/projects/eligius/eligian/evals/mcp/cases/title-card.scenario.json --determinism
+[
+  {
+    "file": "main.eligian",
+    "timelines": [
+      {
+        "name": "title",
+        "boundaries": 5
+      }
+    ],
+    "problems": []
+  }
+]
+exit 0
+$ eligian compile main.eligian --eligian-map -o out/config.json
+✓ Compiled main.eligian → out/config.json
+✓ Eligian map → out/config.eligian-map.json
+exit 0

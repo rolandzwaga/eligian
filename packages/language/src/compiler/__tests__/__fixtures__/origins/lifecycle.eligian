@@ -1,0 +1,11 @@
+// Origin `lifecycle`: the operations of an `on enter` block; the interaction inside keeps its origin
+styles "./styles.css"
+
+timeline "t" in "#stage" using raf {
+  on enter [
+    selectElement("#box")
+    addClass("on")
+    on click "#b" play
+  ]
+  at 0s..1s target "#a" [ addClass("on") ] [ removeClass("on") ]
+}

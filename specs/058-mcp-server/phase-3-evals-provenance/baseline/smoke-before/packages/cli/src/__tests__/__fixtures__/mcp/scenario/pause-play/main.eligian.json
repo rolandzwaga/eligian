@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"packages/cli/src/__tests__/__fixtures__/mcp/scenario/pause-play/main.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"main\",\n        \"boundaries\": 2\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

@@ -48,7 +48,13 @@ describe('walkOperations', () => {
       new Map()
     );
     expect(result.events).toEqual([
-      { kind: 'controller-added', selector: '#x', controller: 'KeyboardController', at: 2 },
+      {
+        kind: 'controller-added',
+        selector: '#x',
+        controller: 'KeyboardController',
+        data: {},
+        at: 2,
+      },
       { kind: 'class-added', selector: '#x', className: 'a', at: 3 },
       { kind: 'class-removed', selector: '#x', className: 'b', at: 4 },
       { kind: 'class-toggled', selector: '#x', className: 'c', at: 5 },
@@ -82,10 +88,50 @@ describe('walkOperations', () => {
       actions
     );
     expect(result.events).toEqual([
-      { kind: 'controller-added', selector: '#a', controller: 'ProgressbarController', at: 2 },
+      {
+        kind: 'controller-added',
+        selector: '#a',
+        controller: 'ProgressbarController',
+        data: {},
+        at: 2,
+      },
       { kind: 'class-added', selector: '#b', className: undefined, at: 4 },
       { kind: 'class-removed', selector: '#b', className: 'k', at: 5 },
     ]);
+    expect(result.unresolved).toEqual([]);
+  });
+
+  it('controller-added carries the resolved operation data', () => {
+    const actions = new Map<string, ActionBody>([
+      [
+        'listen',
+        {
+          startOperations: [
+            op('selectElement', { selector: '$operationdata.target' }),
+            op('getControllerInstance', { systemName: 'DOMEventListenerController' }),
+            op('addControllerToElement', {
+              eventName: '$operationdata.event',
+              actions: ['$operationdata.handler'],
+            }),
+          ],
+        },
+      ],
+    ]);
+    const result = walkOperations(
+      [...call('listen', { target: '#go', event: 'click', handler: '__on__play' })],
+      actions
+    );
+    const added = result.events.find(event => event.kind === 'controller-added');
+    expect(added).toEqual({
+      kind: 'controller-added',
+      selector: '#go',
+      controller: 'DOMEventListenerController',
+      data: { eventName: 'click', actions: ['__on__play'] },
+      at: 1,
+    });
+    const data = added?.kind === 'controller-added' ? added.data : undefined;
+    expect(data?.eventName).toBe('click');
+    expect(data?.actions).toEqual(['__on__play']);
     expect(result.unresolved).toEqual([]);
   });
 

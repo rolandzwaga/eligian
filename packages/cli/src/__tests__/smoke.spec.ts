@@ -36,6 +36,8 @@ function baselineSections(file: string): { args: string[]; exitCode: number; std
     });
 }
 
+/** The baseline programs with a mediaplayer timeline (SC-009(4): not byte-identical since FR-037) */
+const MEDIA_PROGRAMS = ['media.eligian'];
 const LAYOUT = '<div id="stage"><div id="a"></div><div id="b"></div></div>\n';
 const STYLES = '#stage {}\n#a {}\n#b {}\n#ghost {}\n.on {}\n';
 const HEADER = 'layout "./layout.html"\nstyles "./styles.css"\n';
@@ -158,13 +160,12 @@ timeline "Shared" in "#stage" using raf {
     ]);
   });
 
-  it('skips libraries and media timelines', async () => {
+  it('skips libraries; a media timeline is walked', async () => {
     const outcome = await smoke(['lib.eligian', 'media.eligian']);
     expect(outcome.exitCode).toBe(0);
     expect(outcome.output).toContain('lib.eligian (library: nothing to play)');
-    expect(outcome.output).toContain(
-      "timeline './intro.mp4' skipped (media timelines need a browser)"
-    );
+    expect(outcome.output).toContain("timeline './intro.mp4': 2 positions ok");
+    expect(outcome.output).not.toContain('skipped');
   });
 
   it('every problem has a SMOKE_CODES code', async () => {
@@ -222,7 +223,12 @@ timeline "Shared" in "#stage" using raf {
 
   it('pretty and github outputs are byte-identical to the baseline', async () => {
     for (const format of ['pretty', 'github'] as const) {
-      const sections = baselineSections(`smoke-${format}-before.txt`);
+      const sections = baselineSections(`smoke-${format}-before.txt`).filter(
+        // Spec 058 phase 3 SC-009(4): byte-identity holds for programs with no mediaplayer
+        // timeline; a media timeline is walked since FR-037 (its output is pinned in
+        // smoke-media.spec.ts)
+        ({ args }) => !args.some(arg => MEDIA_PROGRAMS.includes(arg))
+      );
       expect(sections.length).toBeGreaterThan(0);
       for (const { args, exitCode, stdout } of sections) {
         const outcome = await smoke(

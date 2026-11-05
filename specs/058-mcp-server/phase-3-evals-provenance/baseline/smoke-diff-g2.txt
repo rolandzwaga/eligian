@@ -1,0 +1,30 @@
+same examples/demo.eligian
+same examples/eligian-tour/presentation.eligian
+same examples/eligian-tour/tour.eligian
+same examples/libraries/animations.eligian
+same examples/libraries/nested/a.eligian
+same examples/libraries/nested/b.eligian
+same examples/libraries/nested/c.eligian
+same examples/libraries/nested/chain-test.eligian
+same examples/libraries/utils.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/ancestor-none/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/click-toggle/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/deck/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/headline/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/hidden-attr/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/host-undefined/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/key-controller/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/key-document/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/key-in/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/listener/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/long-text/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/pause-play/main.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/scenario/remove-element/main.eligian
+new packages/cli/src/__tests__/__fixtures__/mcp/scenario/replay-good/main.eligian (no baseline at specs/058-mcp-server/phase-3-evals-provenance/baseline/smoke-before/packages/cli/src/__tests__/__fixtures__/mcp/scenario/replay-good/main.eligian.json)
+new packages/cli/src/__tests__/__fixtures__/mcp/scenario/replay-leftover/main.eligian (no baseline at specs/058-mcp-server/phase-3-evals-provenance/baseline/smoke-before/packages/cli/src/__tests__/__fixtures__/mcp/scenario/replay-leftover/main.eligian.json)
+new packages/cli/src/__tests__/__fixtures__/mcp/scenario/seek-path/main.eligian (no baseline at specs/058-mcp-server/phase-3-evals-provenance/baseline/smoke-before/packages/cli/src/__tests__/__fixtures__/mcp/scenario/seek-path/main.eligian.json)
+new packages/cli/src/__tests__/__fixtures__/mcp/scenario/typewriter/main.eligian (no baseline at specs/058-mcp-server/phase-3-evals-provenance/baseline/smoke-before/packages/cli/src/__tests__/__fixtures__/mcp/scenario/typewriter/main.eligian.json)
+same packages/cli/src/__tests__/__fixtures__/mcp/smoke/slow.eligian
+same packages/cli/src/__tests__/__fixtures__/mcp/smoke/two-timelines.eligian
+28 files, 0 differ
+exit 0

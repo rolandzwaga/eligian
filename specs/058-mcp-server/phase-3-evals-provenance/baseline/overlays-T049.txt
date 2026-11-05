@@ -1,0 +1,22 @@
+T049 batch verify (2026-11-05T20:07:05Z), HEAD b62b762
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T049
+generate-knowledge: 409 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T049
+exit 0
+httpPut: card 60 words, card in generated=yes, compiled fences=1
+invokeObjectMethod: card 47 words, card in generated=yes, compiled fences=1
+isElementInViewport: card 38 words, card in generated=yes, compiled fences=1
+loadFromStorage: card 36 words, card in generated=yes, compiled fences=1
+loadJson: card 53 words, card in generated=yes, compiled fences=1
+mapArray: card 49 words, card in generated=yes, compiled fences=1
+math: card 49 words, card in generated=yes, compiled fences=1
+otherwise: card 52 words, card in generated=yes, compiled fences=1
+removeElement: card 45 words, card in generated=yes, compiled fences=1
+removePropertiesFromOperationData: card 45 words, card in generated=yes, compiled fences=1
+reparentElement: card 46 words, card in generated=yes, compiled fences=1
+replaceString: card 42 words, card in generated=yes, compiled fences=1
+extra: the 12 probes extracted next to the probe assets, $ eligian check *.eligian (incl. Eligius lint):
+$SCRATCH/t049/probes/loadJson.eligian
+  8:5  warning  LottieController needs lottie-web, which is not installed in this project: run "npm install lottie-web" next to the presentation  lottie-web-not-installed
+
+12 files, 0 errors, 1 warning
+(the one warning is the expected lottie-web-not-installed of the LottieController form the loadJson overlay teaches; the overlay states it)

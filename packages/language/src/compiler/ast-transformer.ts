@@ -161,6 +161,7 @@ export const transformAST = (
               column: 1,
               length: 0,
             },
+        origin: 'init-globaldata',
       };
 
       // Wrap operation in proper IEndableActionConfiguration structure

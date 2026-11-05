@@ -28,6 +28,7 @@ import type {
   TLanguageCode,
   TOperationData,
 } from '../types/eligius-ir.js';
+import type { OperationOrigin } from '../types/operation-origin.js';
 import { evaluateTimeExpression } from './time-transformer.js';
 
 /**
@@ -393,7 +394,8 @@ export function generateLayoutTemplate(timelines: TimelineConfigIR[]): string {
 /**
  * T280: Build SourceMap - parallel structure tracking source locations
  *
- * Maps entity IDs to their source locations for error reporting.
+ * Maps entity IDs to their source locations for error reporting, and operation IDs to their
+ * origin (spec 058 FR-042).
  * This allows us to strip sourceLocation from Eligius types while maintaining traceability.
  */
 export function buildSourceMap(
@@ -407,15 +409,18 @@ export function buildSourceMap(
   const operationMap = new Map<string, SourceLocation>();
   const timelineMap = new Map<string, SourceLocation>();
   const timelineActionMap = new Map<string, SourceLocation>();
+  const originMap = new Map<string, OperationOrigin>();
 
   // Map init actions
   for (const action of initActions) {
     actionMap.set(action.id, action.sourceLocation);
     for (const op of action.startOperations) {
       operationMap.set(op.id, op.sourceLocation);
+      originMap.set(op.id, op.origin);
     }
     for (const op of action.endOperations) {
       operationMap.set(op.id, op.sourceLocation);
+      originMap.set(op.id, op.origin);
     }
   }
 
@@ -424,9 +429,11 @@ export function buildSourceMap(
     actionMap.set(action.id, action.sourceLocation);
     for (const op of action.startOperations) {
       operationMap.set(op.id, op.sourceLocation);
+      originMap.set(op.id, op.origin);
     }
     for (const op of action.endOperations) {
       operationMap.set(op.id, op.sourceLocation);
+      originMap.set(op.id, op.origin);
     }
   }
 
@@ -435,6 +442,7 @@ export function buildSourceMap(
     actionMap.set(action.id, action.sourceLocation);
     for (const op of action.startOperations) {
       operationMap.set(op.id, op.sourceLocation);
+      originMap.set(op.id, op.origin);
     }
   }
 
@@ -445,9 +453,11 @@ export function buildSourceMap(
       timelineActionMap.set(timelineAction.id, timelineAction.sourceLocation);
       for (const op of timelineAction.startOperations) {
         operationMap.set(op.id, op.sourceLocation);
+        originMap.set(op.id, op.origin);
       }
       for (const op of timelineAction.endOperations) {
         operationMap.set(op.id, op.sourceLocation);
+        originMap.set(op.id, op.origin);
       }
     }
   }
@@ -458,6 +468,7 @@ export function buildSourceMap(
     operations: operationMap,
     timelines: timelineMap,
     timelineActions: timelineActionMap,
+    origins: originMap,
   };
 }
 
