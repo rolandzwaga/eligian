@@ -1,0 +1,135 @@
+{
+  "actions": {
+    "caption": {
+      "startOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "template": "$operationdata.text"
+            }
+          }
+        },
+        {
+          "systemName": "setElementContent"
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "visible"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "visible"
+          }
+        }
+      ]
+    }
+  },
+  "timelines": {
+    "Dataflow": {
+      "type": "animation",
+      "duration": 4,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-2",
+          "duration": {
+            "start": 0,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "highlight"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "highlight"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-2-4",
+          "duration": {
+            "start": 2,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "caption"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title",
+                  "text": "Hello"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "caption"
+              }
+            },
+            {
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title",
+                  "text": "Hello"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

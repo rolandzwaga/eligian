@@ -86,6 +86,53 @@ export function firstDifference(before: string, after: string): number {
 const annotation = (file: string, line: number, title: string, message: string) =>
   `::error file=${escapeProperty(file)},line=${line},title=${escapeProperty(title)}::${escapeData(message)}`;
 
+export interface FmtFileResult {
+  /** The file, as given (absolute when it comes from `expandPatterns`) */
+  readonly file: string;
+  /** Formatted already (check mode) or now (after a write) */
+  readonly formatted: boolean;
+  /** Set when this call rewrote the file */
+  readonly written?: boolean;
+  /** Check mode, unformatted: `lineDiff(source, formatted)` */
+  readonly lineDiff?: string;
+  /** Check mode, unformatted: the first line that differs (for the GitHub annotation) */
+  readonly firstDifference?: number;
+  /** The first syntax error; the file is left untouched */
+  readonly error?: string;
+}
+
+/**
+ * Checks each file, or formats it with `write`. Files with syntax errors are
+ * reported and never written. A failed write rejects with Node's fs error
+ * (it carries `code` and `path`).
+ */
+export async function fmtFiles(
+  files: readonly string[],
+  options: { readonly write: boolean }
+): Promise<FmtFileResult[]> {
+  const results: FmtFileResult[] = [];
+  for (const file of files) {
+    const source = await fs.readFile(file, 'utf-8');
+    const result = await formatSource(source);
+    if (result.errors.length > 0) {
+      results.push({ file, formatted: false, error: result.errors[0] });
+    } else if (!result.changed) {
+      results.push({ file, formatted: true });
+    } else if (options.write) {
+      await fs.writeFile(file, result.text, 'utf-8');
+      results.push({ file, formatted: true, written: true });
+    } else {
+      results.push({
+        file,
+        formatted: false,
+        lineDiff: lineDiff(source, result.text),
+        firstDifference: firstDifference(source, result.text),
+      });
+    }
+  }
+  return results;
+}
+
 export async function runFmt(
   patterns: readonly string[],
   options: FmtOptions
@@ -97,35 +144,32 @@ export async function runFmt(
   const out: string[] = [];
   let unformatted = 0;
   let failed = 0;
-  for (const file of files) {
-    const name = displayPath(file, options.cwd);
-    const source = await fs.readFile(file, 'utf-8');
-    const result = await formatSource(source);
-    if (result.errors.length > 0) {
+  for (const result of await fmtFiles(files, { write: options.write })) {
+    const name = displayPath(result.file, options.cwd);
+    if (result.error !== undefined) {
       failed++;
       if (options.github) {
-        out.push(annotation(name, 1, 'Syntax error', `Not formatted: ${result.errors[0]}`));
+        out.push(annotation(name, 1, 'Syntax error', `Not formatted: ${result.error}`));
       }
-      out.push(`${name}: not formatted, it has syntax errors (${result.errors[0]})`);
+      out.push(`${name}: not formatted, it has syntax errors (${result.error})`);
       continue;
     }
-    if (!result.changed) continue;
+    if (result.formatted && !result.written) continue;
     unformatted++;
-    if (options.write) {
-      await fs.writeFile(file, result.text, 'utf-8');
+    if (result.written) {
       out.push(`Formatted ${name}`);
     } else {
       if (options.github) {
         out.push(
           annotation(
             name,
-            firstDifference(source, result.text),
+            result.firstDifference ?? 1,
             'Not formatted',
             `Run 'eligian fmt --write ${name}'`
           )
         );
       }
-      out.push(name, lineDiff(source, result.text), '');
+      out.push(name, result.lineDiff ?? '', '');
     }
   }
 

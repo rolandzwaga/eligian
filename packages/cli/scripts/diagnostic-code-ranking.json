@@ -1,0 +1,247 @@
+{
+  "counts": [
+    {
+      "code": "unknown_css_class",
+      "count": 62
+    },
+    {
+      "code": "unknown_css_id_in_selector",
+      "count": 46
+    },
+    {
+      "code": "syntax-error",
+      "count": 33
+    },
+    {
+      "code": "unknown_css_class_in_selector",
+      "count": 25
+    },
+    {
+      "code": "selector_not_in_layout",
+      "count": 19
+    },
+    {
+      "code": "missing-dependency",
+      "count": 13
+    },
+    {
+      "code": "class-never-removed",
+      "count": 8
+    },
+    {
+      "code": "timeline-provider-invalid",
+      "count": 8
+    },
+    {
+      "code": "timeline-empty",
+      "count": 7
+    },
+    {
+      "code": "timeline-required",
+      "count": 7
+    },
+    {
+      "code": "unknown_event_name",
+      "count": 7
+    },
+    {
+      "code": "controller-imbalance",
+      "count": 6
+    },
+    {
+      "code": "timeline-source-required",
+      "count": 4
+    },
+    {
+      "code": "timeline-source-unused",
+      "count": 4
+    },
+    {
+      "code": "unknown_operation",
+      "count": 4
+    },
+    {
+      "code": "unresolved-reference",
+      "count": 4
+    },
+    {
+      "code": "circular_library_import",
+      "count": 3
+    },
+    {
+      "code": "parameter_count",
+      "count": 3
+    },
+    {
+      "code": "constant-cycle",
+      "count": 2
+    },
+    {
+      "code": "eligius-E120",
+      "count": 2
+    },
+    {
+      "code": "import-duplicate-default",
+      "count": 2
+    },
+    {
+      "code": "recursive_action_call",
+      "count": 2
+    },
+    {
+      "code": "unknown-action-in-timeline-event",
+      "count": 2
+    },
+    {
+      "code": "break-outside-loop",
+      "count": 1
+    },
+    {
+      "code": "continue-outside-loop",
+      "count": 1
+    },
+    {
+      "code": "css-import-error",
+      "count": 1
+    },
+    {
+      "code": "eligius-W151",
+      "count": 1
+    },
+    {
+      "code": "event-end-not-after-start",
+      "count": 1
+    },
+    {
+      "code": "event-ends-after-timeline",
+      "count": 1
+    },
+    {
+      "code": "event-start-negative",
+      "count": 1
+    },
+    {
+      "code": "event_action_empty_body",
+      "count": 1
+    },
+    {
+      "code": "event_name_must_be_literal",
+      "count": 1
+    },
+    {
+      "code": "if-condition-not-boolean",
+      "count": 1
+    },
+    {
+      "code": "import_file_not_found",
+      "count": 1
+    },
+    {
+      "code": "invalid_css_file",
+      "count": 1
+    },
+    {
+      "code": "invalid_setdata_target",
+      "count": 1
+    },
+    {
+      "code": "languages-missing-default",
+      "count": 1
+    },
+    {
+      "code": "locales-import-error",
+      "count": 1
+    },
+    {
+      "code": "locales-parse-failed",
+      "count": 1
+    },
+    {
+      "code": "locales-without-languages",
+      "count": 1
+    },
+    {
+      "code": "missing-action-dependency",
+      "count": 1
+    },
+    {
+      "code": "missing_default_marker",
+      "count": 1
+    },
+    {
+      "code": "no_labels_import",
+      "count": 1
+    },
+    {
+      "code": "operation-in-timeline-event",
+      "count": 1
+    },
+    {
+      "code": "scroll_container_not_scrollable",
+      "count": 1
+    },
+    {
+      "code": "timeline-duration-not-positive",
+      "count": 1
+    },
+    {
+      "code": "timeline-duration-relative",
+      "count": 1
+    },
+    {
+      "code": "timeline-scroll-duration-required",
+      "count": 1
+    },
+    {
+      "code": "timeline-scroll-selector-not-scroll",
+      "count": 1
+    },
+    {
+      "code": "type-mismatch",
+      "count": 1
+    },
+    {
+      "code": "unknown_dom_event",
+      "count": 1
+    }
+  ],
+  "caseCodes": [
+    "erased-property-access",
+    "import-duplicate-default",
+    "missing-action-dependency",
+    "selector_not_in_layout",
+    "syntax-error"
+  ],
+  "selection": [
+    "erased-property-access",
+    "import-duplicate-default",
+    "missing-action-dependency",
+    "selector_not_in_layout",
+    "syntax-error",
+    "unknown_css_class",
+    "unknown_css_id_in_selector",
+    "unknown_css_class_in_selector",
+    "missing-dependency",
+    "class-never-removed",
+    "timeline-provider-invalid",
+    "timeline-empty",
+    "timeline-required",
+    "unknown_event_name",
+    "controller-imbalance",
+    "timeline-source-required",
+    "timeline-source-unused",
+    "unknown_operation",
+    "unresolved-reference",
+    "circular_library_import",
+    "parameter_count",
+    "constant-cycle",
+    "eligius-E120",
+    "recursive_action_call",
+    "unknown-action-in-timeline-event",
+    "break-outside-loop",
+    "continue-outside-loop",
+    "css-import-error",
+    "eligius-W151",
+    "event-end-not-after-start"
+  ]
+}

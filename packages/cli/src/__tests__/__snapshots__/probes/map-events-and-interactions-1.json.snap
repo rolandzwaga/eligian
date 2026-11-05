@@ -1,0 +1,264 @@
+{
+  "actions": {
+    "flash": {
+      "startOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "toggleClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "__nav__end_cf93764a": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "End",
+              0
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "__on__toggle": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "timeline-play-toggle-request",
+            "eventArgs": []
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "__nav__deck_11ba33c8__4": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventName": "request-timeline-uri",
+            "eventArgs": [
+              "Deck",
+              4
+            ]
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Deck": {
+      "type": "animation",
+      "duration": 4,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "__nav__end_cf93764a"
+                ]
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "space",
+                "actions": [
+                  "__on__toggle"
+                ]
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "flash"
+                ],
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-0-4",
+          "duration": {
+            "start": 0,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "End": {
+      "type": "animation",
+      "duration": 0,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "KeyboardController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "keys": "ArrowLeft",
+                "actions": [
+                  "__nav__deck_11ba33c8__4"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#stage"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "KeyboardController"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

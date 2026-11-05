@@ -1,0 +1,11 @@
+/* Classes and ids the literate probes of the map-* chunks may use (spec 058 FR-038). */
+#stage {}
+#title {}
+#box {}
+#panel {}
+#next {}
+.view {}
+.item {}
+.visible {}
+.highlight {}
+.active {}

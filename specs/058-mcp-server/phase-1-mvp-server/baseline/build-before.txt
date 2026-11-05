@@ -1,0 +1,15 @@
+HEAD: 448cd8bb6d345eec811c85f6731fe7cd31986f48
+git status --short (before build):
+?? specs/058-mcp-server/phase-1-mvp-server/
+pnpm install: Already up to date (exit 0, no lockfile change)
+pnpm build: exit 0
+last 5 build lines:
+packages/extension build: [22:43:10] Build succeeded
+packages/extension build: [22:43:10] Build succeeded
+packages/extension build: [22:43:10] Build succeeded
+packages/extension build: [22:43:10] Build succeeded
+packages/extension build: Done
+artifacts:
+packages/cli/LICENSE
+packages/cli/dist/cli.mjs
+packages/language/dist/index.cjs

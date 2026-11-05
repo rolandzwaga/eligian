@@ -1,0 +1,7 @@
+method: 100 sequential eligian_check calls through startInMemoryServer on packages/cli/src/__tests__/__fixtures__/mcp/check/class-never-removed/main.eligian; heapUsed after a forced GC before the first call and after the last
+node: v24.7.0
+N: 100
+heapUsed before (MB): 185.06
+heapUsed after (MB): 189.74
+growth per call (MB): 0.047
+(informative) heapUsed after the first call (MB): 186.73; growth per call over calls 2..100 (MB): 0.030

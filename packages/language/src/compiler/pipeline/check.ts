@@ -13,8 +13,9 @@ import * as path from 'node:path';
 import { Effect } from 'effect';
 import type { LangiumDocument } from 'langium';
 import { URI } from 'langium';
-import { DiagnosticSeverity } from 'vscode-languageserver-protocol';
+import { type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-protocol';
 import { isLibrary, isProgram, type Library, type Program } from '../../generated/ast.js';
+import { selectElementFix } from '../../lsp/select-element-fix.js';
 import { type DiagnosticCode, diagnosticCode } from '../../validators/codes.js';
 import type { SelectorNotInLayout } from '../../validators/validation-settings.js';
 import { type CompileError, compile } from '../pipeline.js';
@@ -28,6 +29,25 @@ import { getOrCreateServices } from './services.js';
 
 export type CheckSeverity = 'error' | 'warning' | 'info' | 'hint';
 
+/**
+ * An edit that fixes a diagnostic: replace the range with `newText`. 1-based,
+ * like the diagnostic; start = end is an insertion.
+ */
+export interface QuickFix {
+  readonly line: number;
+  readonly column: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  readonly newText: string;
+}
+
+/** What a diagnostic carries besides its message. */
+export interface CheckDiagnosticData {
+  /** The names a "Did you mean" hint offers */
+  readonly suggestions?: readonly string[];
+  readonly quickFix?: QuickFix;
+}
+
 /** One problem in one file. Lines and columns are 1-based. */
 export interface CheckDiagnostic {
   readonly file: string;
@@ -39,6 +59,8 @@ export interface CheckDiagnostic {
   readonly endColumn: number;
   /** Diagnostic code (e.g. `missing-action-dependency`). */
   readonly code: string;
+  /** Absent when there is nothing, so such a record is the same as before `data` existed. */
+  readonly data?: CheckDiagnosticData;
 }
 
 export interface CheckFileResult {
@@ -224,6 +246,7 @@ async function validateFiles(
         await services.Eligian.validation.DocumentValidator.validateDocument(document);
       const target = results.get(file)!;
       for (const diagnostic of diagnostics) {
+        const data = dataOf(document, diagnostic);
         target.push({
           file,
           severity: SEVERITY[diagnostic.severity ?? DiagnosticSeverity.Error] ?? 'error',
@@ -233,6 +256,7 @@ async function validateFiles(
           endLine: diagnostic.range.end.line + 1,
           endColumn: diagnostic.range.end.character + 1,
           code: codeOf(diagnostic),
+          ...(data && { data }),
         });
       }
       if (isProgram(document.parseResult.value)) programs.add(file);
@@ -244,6 +268,26 @@ async function validateFiles(
     releaseWorkspaceDocuments([...documents.values()].map(d => d.uri));
   }
   return programs;
+}
+
+/** `data.suggestions` (a `string[]`) and the selectElement quick fix; undefined when neither exists. */
+function dataOf(
+  document: LangiumDocument,
+  diagnostic: Diagnostic
+): CheckDiagnosticData | undefined {
+  const raw = (diagnostic.data as { suggestions?: unknown } | undefined)?.suggestions;
+  const suggestions =
+    Array.isArray(raw) && raw.every(s => typeof s === 'string') ? (raw as string[]) : undefined;
+  const fix = selectElementFix(document, diagnostic);
+  const quickFix: QuickFix | undefined = fix && {
+    line: fix.range.start.line + 1,
+    column: fix.range.start.character + 1,
+    endLine: fix.range.end.line + 1,
+    endColumn: fix.range.end.character + 1,
+    newText: fix.newText,
+  };
+  if (!suggestions && !quickFix) return undefined;
+  return { ...(suggestions && { suggestions }), ...(quickFix && { quickFix }) };
 }
 
 /** `code`, else `data.code`; `'uncoded'` (not a registry code) when there is neither. */

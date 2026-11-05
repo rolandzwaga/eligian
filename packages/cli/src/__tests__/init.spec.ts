@@ -37,14 +37,15 @@ describe('eligian init', () => {
     expect(JSON.parse(read('my-talk/package.json')).name).toBe('my-talk');
   });
 
-  it("the starter's package.json depends on this package, in its major version", async () => {
+  it("the starter's package.json depends on this package, in the minor that introduced eligian mcp", async () => {
     const cli = JSON.parse(
       fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'package.json'), 'utf-8')
     ) as { name: string; version: string };
     await runInit('.', { template: 'blank', force: false, cwd });
     const major = cli.version.split('.')[0];
+    // 1.1 introduced `eligian mcp`
     expect(JSON.parse(read('package.json')).devDependencies).toEqual({
-      [cli.name]: `^${major}.0.0`,
+      [cli.name]: `^${major}.1.0`,
     });
   });
 

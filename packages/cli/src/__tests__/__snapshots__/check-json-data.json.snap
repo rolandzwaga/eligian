@@ -1,0 +1,34 @@
+{
+  "files": [
+    {
+      "file": "missing-select.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+          "line": 6,
+          "column": 5,
+          "endLine": 6,
+          "endColumn": 13,
+          "code": "missing-dependency",
+          "data": {
+            "quickFix": {
+              "line": 6,
+              "column": 5,
+              "endLine": 6,
+              "endColumn": 5,
+              "newText": "selectElement(\"\")\n    "
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "hints": 0
+  }
+}

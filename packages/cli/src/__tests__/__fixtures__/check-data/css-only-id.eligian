@@ -1,0 +1,13 @@
+// Imports a layout; '#runtime' is in the CSS but not in the layout HTML
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    selectElement("#runtime")
+    addClass("lit")
+  ] [
+    selectElement("#runtime")
+    removeClass("lit")
+  ]
+}

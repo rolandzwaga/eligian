@@ -92,9 +92,16 @@ eligian check "**/*.eligian" --format github   # GitHub Actions annotations
   `eligius-E120` for `scrollToElement(200, "nowhere")` (not an allowed `block`).
   A finding in an imported library is reported in the library. W111 is left out:
   Eligian checks action parameters at every call. `--no-lint` skips it.
-- **`--selector-not-in-layout <off|ids|all>`:** also warn about selector ids
-  (`ids`), or ids and classes (`all`), that the CSS defines but the layout HTML
-  does not contain (the editor setting `eligian.validation.selectorNotInLayout`).
+- **Review:** each compiled program is also reviewed for what neither the
+  validation nor Eligius' lint can see, with warnings at the source:
+  `controller-imbalance` (a timeline's `on enter` adds controllers that its
+  `on leave` does not remove, or the other way round; the engine does not
+  detach them on a timeline switch) and `class-never-removed` (an `addClass`
+  that nothing in the same timeline removes again). `--no-review` skips it.
+- **`--selector-not-in-layout <off|ids|all>`** (default `ids`): in a program
+  that imports a `layout`, warn about selector ids (`ids`), or ids and classes
+  (`all`), that the CSS defines but the layout HTML does not contain (the editor
+  setting `eligian.validation.selectorNotInLayout`). `off` turns it off.
 
 | Option | Meaning |
 |---|---|
@@ -102,6 +109,8 @@ eligian check "**/*.eligian" --format github   # GitHub Actions annotations
 | `--max-warnings <n>` | Fail when there are more than `n` warnings. |
 | `--warnings-as-errors` | Fail on any warning (same as `--max-warnings 0`). |
 | `--no-lint` | Skip the Eligius lint of the compiled programs. |
+| `--no-review` | Skip the review pass (`controller-imbalance`, `class-never-removed`). |
+| `--selector-not-in-layout off|ids|all` | Selectors in the CSS but not in the layout HTML (default `ids`). |
 
 Exit codes: **0** clean (warnings within the limit), **1** errors or too many
 warnings, **2** nothing matched or an invalid option.
@@ -203,6 +212,105 @@ eligian fmt --write src               # rewrite them
   operators and after keywords and commas, no space inside `( )` or around
   `..`, `5s` not `5 s`, `{ a: 1 }` and `["#a", "#b"]`.
 
+### Use with coding agents (`eligian mcp`)
+
+```bash
+eligian mcp
+```
+
+Starts a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio, so a
+coding agent (Claude Code, Cursor, VS Code Copilot agent mode, Codex) can learn Eligian and
+check what it writes. The client starts the server; you do not run it yourself. Stdout carries
+only protocol messages. Every tool call logs one JSON line (tool, duration, result size) to
+stderr; set `ELIGIAN_MCP_LOG=<file>` to also append those lines to a file.
+
+| Tool | What it does |
+|---|---|
+| `eligian_docs` | The curated knowledge: the index without arguments, cards by `ids`, full bodies with `detail: true`, a `query` search. Read-only. |
+| `eligian_operations` | Operation lookup: NEEDS / PROVIDES / ERASES (the operation data each operation reads, writes and removes), parameters, the call form. Filters by name, category, `needs`, `provides`; `kind` lists controllers, timeline events, DOM events and keys; `path` adds a program's host operations. Read-only. |
+| `eligian_check` | Every diagnostic of `eligian check` (compiler, Eligius lint, review pass), each with its fix: suggestions, a quick fix, the source excerpt and a docs overlay. Stricter defaults than the CLI: `lint`, `review`, `selectorNotInLayout: 'ids'`, `maxWarnings: 0`. Read-only. |
+| `eligian_fmt` | Formats like `eligian fmt`: checks by default (a line diff per unformatted file), rewrites with `write: true`. |
+| `eligian_init` | Writes a starter project like `eligian init`, plus `.mcp.json`, `AGENTS.md` and `CLAUDE.md` for agents (an existing agent file is never touched). |
+
+The docs ship in the package (`node_modules/eligian/dist/docs`), so the server works offline.
+
+**Setup.** Add `eligian` 1.1 or later to the project (`npm install -D eligian`), then register
+the project-local install with your client. A direct `node` launch starts fastest (no `npx`
+download, no shell wrapper). The path must be absolute; on Windows write it with backslashes
+(`"C:\work\my-talk\node_modules\eligian\bin\cli.js"` in JSON).
+
+Claude Code, `.mcp.json` in the project root (or
+`claude mcp add eligian -s project -- node /abs/path/my-talk/node_modules/eligian/bin/cli.js mcp`):
+
+```json
+{
+  "mcpServers": {
+    "eligian": {
+      "command": "node",
+      "args": ["/abs/path/my-talk/node_modules/eligian/bin/cli.js", "mcp"]
+    }
+  }
+}
+```
+
+Cursor, `.cursor/mcp.json`: the same `mcpServers` shape as above.
+
+VS Code (Copilot agent mode), `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "eligian": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/abs/path/my-talk/node_modules/eligian/bin/cli.js", "mcp"]
+    }
+  }
+}
+```
+
+Codex, `.codex/config.toml`:
+
+```toml
+[mcp_servers.eligian]
+command = "node"
+args = ["/abs/path/my-talk/node_modules/eligian/bin/cli.js", "mcp"]
+```
+
+Codex applies a project's own config only to trusted projects **[UNVERIFIED]**: if the server
+does not show up, trust the project or add the table to your user config.
+
+**Without a local install**, `npx` fetches the package: use `npx` as the command and
+`-y eligian@^1.1 mcp` as the arguments, for example
+`claude mcp add eligian -s project -- npx -y eligian@^1.1 mcp`. The first start downloads the
+package, so it is slower. On native Windows:
+
+- Claude Code (tested with 2.1.302) starts both plain `npx -y eligian@^1.1 mcp` and
+  `cmd /c npx -y eligian@^1.1 mcp`.
+- Cursor, VS Code and Codex: use `cmd` as the command and `/c npx -y eligian@^1.1 mcp` as the
+  arguments. `npx` is a `npx.cmd` script on Windows, which a client that launches the command
+  without a shell cannot start; `cmd /c` starts it from any client. Whether these three need the
+  wrapper is **[UNVERIFIED]**. The direct `node` form above needs no wrapper anywhere.
+- Running `claude mcp add … -- cmd /c …` from Git Bash: set `MSYS_NO_PATHCONV=1` first, or
+  Git Bash rewrites `/c` into the path `C:/` and the server fails to start.
+
+**Version.** The `mcp` command exists from 1.1.0. On a 1.0.x install, `eligian mcp` is taken
+as `eligian compile mcp` (compile is the default command) and exits with an I/O error, so the
+client reports a server that failed to start: upgrade to `eligian@^1.1`.
+
+**Security.**
+
+- A host module (`extensions "./host.ts" { … }`) is your own code and runs with your
+  permissions wherever the presentation runs (`eligian dev`, `eligian smoke`, a `--bundle`).
+  Review what an agent writes into it as you would any code it runs.
+- The tools read and write only under the project root: the first root the client announces,
+  else the server's working directory. A path or glob given to a tool that resolves outside it
+  is refused (`not-found`, naming the root), and nothing outside is read.
+- That restriction covers the paths given to the tools only. The files a program imports (CSS,
+  HTML, locales, libraries) are resolved by the compiler under the language's own rules, which
+  allow `../`, so a program inside the root may import a file outside it. `eligian_check` and
+  `eligian check` report the same diagnostics for the same program.
+
 ## Options
 
 ```
@@ -212,6 +320,7 @@ Usage: eligian [compile] [options] <input>
        eligian dev [--port <n>] [--open] <input>
        eligian smoke [--strict] [--format pretty|github|json] <patterns...>
        eligian init [dir] [--template blank|chapters|video|library] [--title <title>] [--force]
+       eligian mcp
 
 Eligian DSL compiler - compile .eligian files to Eligius JSON
 

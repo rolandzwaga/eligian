@@ -25,6 +25,10 @@
     "./eligius-lint": {
       "types": "./out/compiler/eligius-lint.d.ts",
       "default": "./dist/eligius-lint/index.cjs"
+    },
+    "./mcp": {
+      "types": "./out/mcp.d.ts",
+      "default": "./dist/mcp/index.cjs"
     }
   },
   "typesVersions": {

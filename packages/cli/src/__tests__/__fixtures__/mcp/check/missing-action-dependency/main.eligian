@@ -1,0 +1,12 @@
+// The end block calls an action that adds a class with nothing selected:
+// missing-action-dependency on 'selectedElement' at the call
+layout "./layout.html"
+styles "./styles.css"
+
+action highlight() [
+  addClass("lit")
+]
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#box") addClass("lit") ] [ highlight() ]
+}

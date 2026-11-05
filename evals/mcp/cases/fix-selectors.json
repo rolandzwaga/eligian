@@ -1,0 +1,6 @@
+{
+  "id": "fix-selectors",
+  "prompt": "This Eligian project does not pass `eligian check`. Fix it until `eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids` reports no errors and no warnings. Do not delete behaviour: every timeline event, action, operation call, controller and interaction that is there now must still be there, doing the same thing to the same elements, and every element the program selects must exist in the layout.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5"
+}

@@ -1,0 +1,55 @@
+$ node packages/cli/bin/cli.js check evals/mcp/cases/fix-selectors/start/main.eligian --selector-not-in-layout ids --format json
+{
+  "files": [
+    {
+      "file": "evals/mcp/cases/fix-selectors/start/main.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Expected 'enter' or 'leave' here, but found 'click'.",
+          "line": 22,
+          "column": 6,
+          "endLine": 22,
+          "endColumn": 11,
+          "code": "syntax-error"
+        },
+        {
+          "severity": "error",
+          "message": "Duplicate 'styles' import. Only one styles import is allowed per document.",
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 7,
+          "code": "import-duplicate-default"
+        },
+        {
+          "severity": "warning",
+          "message": "'#hero' is not in the layout (layout.html): the selector only matches an element that an operation creates at runtime",
+          "line": 6,
+          "column": 17,
+          "endLine": 6,
+          "endColumn": 24,
+          "code": "selector_not_in_layout"
+        },
+        {
+          "severity": "warning",
+          "message": "'#banner' is not in the layout (layout.html): the selector only matches an element that an operation creates at runtime",
+          "line": 11,
+          "column": 17,
+          "endLine": 11,
+          "endColumn": 26,
+          "code": "selector_not_in_layout"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 2,
+    "warnings": 2,
+    "infos": 0,
+    "hints": 0
+  }
+}
+exit=1
+sorted codes: ["import-duplicate-default","selector_not_in_layout","syntax-error"]

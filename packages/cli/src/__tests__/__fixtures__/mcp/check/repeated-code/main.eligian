@@ -1,0 +1,7 @@
+// Two mistyped className arguments: two unknown_css_class errors
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#box") addClass("lti") ] [ selectElement("#box") removeClass("lti") ]
+}

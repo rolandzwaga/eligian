@@ -44,7 +44,7 @@ export function reportSelectorIssues(
       accept('error', message, {
         node,
         ...(property ? { property } : {}),
-        data: { code: diagnosticCode('unknown_css_class_in_selector') },
+        data: { code: diagnosticCode('unknown_css_class_in_selector'), suggestions },
       });
     }
   }
@@ -57,7 +57,7 @@ export function reportSelectorIssues(
       accept('error', `Unknown CSS ID in selector: '${idName}'.${hint}`, {
         node,
         ...(property ? { property } : {}),
-        data: { code: diagnosticCode('unknown_css_id_in_selector') },
+        data: { code: diagnosticCode('unknown_css_id_in_selector'), suggestions },
       });
     }
   }

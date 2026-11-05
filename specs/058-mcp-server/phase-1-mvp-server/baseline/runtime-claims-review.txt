@@ -1,0 +1,94 @@
+T051 runtime claims review (plan "Curriculum source rules" / "Negative source rules"; FR-039)
+
+Each runtime chunk sentence that says what the Eligius engine does is quoted below with the
+test title it carries. Every title is a CLAIMS literal of
+packages/cli/src/__tests__/mcp-runtime-claims.spec.ts:25-41 and occurs verbatim as
+(probed: "<title>") in examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md.
+Compiler: paragraphs (what the Eligian compiler emits) carry no marker; each was checked by
+compiling a scratch program with node packages/cli/bin/cli.js compile (timeline order,
+timeline-lifecycle {start: 0}, __nav__ broadcastEvent request-timeline-uri [name, 0],
+target -> selectElement in both blocks, requestAction + startAction with actionOperationData)
+and against navigate-operations.ts:14-21 (verbs and requests), :130-132 (timelineUri).
+
+== packages/cli/src/mcp/knowledge/curriculum/runtime-engine-lifecycle.md
+1. claim: `init()` starts no timeline: the first timeline starts on the first position update, which `start()` emits at once (before any animation frame) and which a seek emits without playback, `seek(0)` included. Each marker in parentheses names the test in `mcp-runtime-claims.spec.ts` that runs its sentence on the installed eligius, so an eligius upgrade that changes the behaviour fails that test before this text goes stale.
+   test:  the first timeline starts on the first position update (start or seek), not at init
+2. claim: Both blocks start from an empty operationData: nothing is selected, so each block calls `selectElement` (or uses `with`) before it adds a class, a controller or content.
+   test:  on enter and on leave blocks start from an empty operationData
+3. claim: `switchTimeline` ends the leaving timeline's active actions, so its `on leave` runs: this is where a view hides itself and unwires what its `on enter` wired.
+   test:  switchTimeline ends the leaving timeline's active actions, so its on leave runs
+4. claim: `on leave` does not run when the content ends: the lifecycle action has no end, so whatever `on enter` set up is still in place after the last beat, until something switches away.
+   test:  on leave does not run when the content ends
+5. claim: A switch to the timeline that is already current is a no-op: neither `on leave` nor `on enter` runs, a following `seek(0)` adds neither, and so a self-`navigate` cannot replay a view.
+   test:  a switch to the timeline that is already current is a no-op
+6. claim: A controller attached in `on enter` survives a timeline switch unless `on leave` removes it: a click listener the hub wired still fires inside a chapter. Remove every controller `on enter` added, in `on leave`, with one `removeControllerFromElement("<Name>")` per controller on the same element.
+   test:  a controller attached in on enter survives a timeline switch unless on leave removes it
+7. claim: A timeline action's start block and end block are independent runs, each starting from an empty operationData: a `selectedElement` from the start block is gone in the end block.
+   test:  start and end blocks are independent runs, each starting from an empty operationData
+8. claim: `on enter` and `on leave` start from an empty operationData.
+   test:  on enter and on leave blocks start from an empty operationData
+9. claim: An event action (`on event "<name>" action …`) starts with only `eventArgs`.
+   test:  an event action starts with only eventArgs
+10. claim: A listener action (the action an `on click … run` or `on key … run` calls) starts with the listener's actionOperationData plus `eventTarget`, and `eventKey` for keys; nothing the block that wired the listener had in its operationData reaches it.
+   test:  a listener action starts with the listener's actionOperationData plus eventTarget, and eventKey for keys
+11. claim: A called action gets a copy of the caller's operationData plus its arguments, and nothing flows back: what the callee adds, changes or removes stays with the callee.
+   test:  a called action gets a copy of the caller's operationData plus its arguments, and nothing flows back
+12. claim: A plain action call runs the start operations only, also when the callee is an `endable action`.
+   test:  a plain action call runs the start operations only
+13. claim: Inside one block, an operation that returns `undefined` hands the next operation an empty operationData, so a host operation always returns the operationData it was given.
+   test:  an operation that returns undefined hands the next operation an empty operationData
+14. claim: The working rule that follows: select in every block before you mutate, wire in `on enter`, unwire in `on leave`, and never count on data from another block.
+   test:  start and end blocks are independent runs, each starting from an empty operationData
+(14 marked claims; grep -c "not probed" -> 0)
+
+== packages/cli/src/mcp/knowledge/curriculum/runtime-scheduling.md
+1. claim: A seek ends the active actions that no longer cover the position and starts the inactive ones that do, the ends first.
+   test:  a seek ends the active actions that no longer cover the position and starts the inactive ones that do
+2. claim: A forward jump past a whole range runs neither its start nor its end operations: with ranges at `0s..1s`, `2s..3s` and `4s..6s`, a seek from 0 to 5 ends the first and starts the third, and the second never happens.
+   test:  a forward jump past a range runs neither its start nor its end operations
+3. claim: No timeline starts before the first position update: `start()` emits one at once and a seek emits one without playback, `seek(0)` included, and that update starts the first timeline.
+   test:  the first timeline starts on the first position update (start or seek), not at init
+4. claim: A seek only reconciles the ranges around the old and the new position, and skipped ranges never run, so what is on screen at a position must follow from the ranges that cover that position, not from the history of how the viewer got there. Each marker in parentheses names the test in `mcp-runtime-claims.spec.ts` that runs its sentence on the installed eligius.
+   test:  a forward jump past a range runs neither its start nor its end operations
+5. claim: Give every range an end block that is the exact inverse of its start block (`addClass("is-visible")` / `removeClass("is-visible")`): ending the range is what undoes it when a seek leaves it, and a range with no end block has nothing to run, so its change stays behind.
+   test:  a seek ends the active actions that no longer cover the position and starts the inactive ones that do
+6. claim: Select again in the end block, or use `target`: start and end blocks are independent runs, each starting from an empty operationData, so the end block has no `selectedElement` of its own.
+   test:  start and end blocks are independent runs, each starting from an empty operationData
+7. claim: Cumulative state (a list that grows beat by beat, a counter, a background that changes once) cannot rely on earlier ranges having run, because a forward jump skips them: keep it in a range that covers every position where it shows, or set it up in `on enter`.
+   test:  a forward jump past a range runs neither its start nor its end operations
+8. claim: An `endable action` called from a range's start block does not end with the range, because a plain action call runs the start operations only: undo its changes in the range's own end block (or call a matching action there).
+   test:  a plain action call runs the start operations only
+9. claim: `switchTimeline` ends the leaving timeline's active actions, so its `on leave` runs, and so do the end blocks of its other active ranges.
+   test:  switchTimeline ends the leaving timeline's active actions, so its on leave runs
+10. claim: `on leave` does not run when the content ends: the lifecycle action is open-ended, so a view stays set up after its last beat; its teardown belongs in `on leave`, which a switch runs.
+   test:  on leave does not run when the content ends
+11. claim: A switch to the timeline that is already current is a no-op, and a following `seek(0)` runs neither `on leave` nor `on enter`: a self-`navigate` does not replay a view, so a replay has to undo the view's state itself.
+   test:  a switch to the timeline that is already current is a no-op
+12. claim: A controller attached in `on enter` survives a timeline switch unless `on leave` removes it, so a keyboard shortcut wired by one view keeps firing in the next.
+   test:  a controller attached in on enter survives a timeline switch unless on leave removes it
+13. claim: Every beat is a range whose end block is the inverse of its start block, and both blocks select their element.
+   test:  start and end blocks are independent runs, each starting from an empty operationData
+14. claim: A seek to any position, forward or back, leaves the screen as the ranges covering that position describe it, because only those ranges are active after it.
+   test:  a seek ends the active actions that no longer cover the position and starts the inactive ones that do
+15. claim: Nothing a later beat needs depends on an earlier, possibly skipped, beat having run.
+   test:  a forward jump past a range runs neither its start nor its end operations
+16. claim: Everything `on enter` wires, `on leave` removes.
+   test:  a controller attached in on enter survives a timeline switch unless on leave removes it
+(16 marked claims; grep -c "not probed" -> 0)
+
+== packages/cli/src/mcp/knowledge/curriculum/storyboard.md (kind workflow)
+Not a runtime chunk; its runtime remarks point at runtime-scheduling. Both Eligian code blocks
+were checked clean (eligian check --selector-not-in-layout ids: 0 errors, 0 warnings) in a
+scratch project with a matching layout.html and styles.css; the video example follows the
+video starter (packages/language/src/starters/starters.ts video()).
+
+Negative source rules: no chunk was written from KNOWN_ISSUES.md or examples/demo.eligian.
+Sources used: examples/eligian-tour/ELIGIUS_EXECUTION_MODEL.md (probed sentences only),
+mcp-runtime-claims.spec.ts (the probes), the compiler output of scratch programs,
+compiler/transformers/navigate-operations.ts, compiler/transformers/timeline-transformer.ts
+(transformLifecycle), the starters (starters.ts) and specs/058-mcp-server/roadmap.md §3.3 / §5.
+Not taught: every sentence the model doc marks (not probed, Phase 0), including the roadmap
+§3.3 lifecycle items it has no probe for (init layout replacement, locales order, initActions
+timing, destroy detaching controllers, stop running on leave, same-position end/start order,
+async operations delaying an end, loop restarts). The claim "@@loopLength is the length of
+the collection minus one" is probed but belongs to no Phase 1 runtime chunk and is not used.

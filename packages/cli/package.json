@@ -1,7 +1,7 @@
 {
   "name": "eligian",
   "description": "Compiler and command line for Eligian, a concise DSL for Eligius presentations: check, compile, bundle, play and format .eligian files.",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "license": "MIT",
   "author": "Roland Zwaga",
@@ -29,7 +29,8 @@
   },
   "files": [
     "bin/cli.js",
-    "dist/cli.mjs"
+    "dist/cli.mjs",
+    "dist/docs/**"
   ],
   "exports": {
     "./package.json": "./package.json"
@@ -43,9 +44,12 @@
     "build": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
     "build:prod": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production",
     "prepack": "pnpm run build:prod",
+    "generate:knowledge": "tsx scripts/generate-knowledge.ts --out dist/docs",
+    "rank:diagnostic-codes": "tsx scripts/rank-diagnostic-codes.ts",
     "build:clean": "pnpm run clean && pnpm run build",
-    "test": "vitest run",
-    "test:coverage:ci": "vitest run --coverage",
+    "test": "vitest run --exclude src/__tests__/package-bin.spec.ts && pnpm run test:bin",
+    "test:coverage:ci": "vitest run --coverage --exclude src/__tests__/package-bin.spec.ts && pnpm run test:bin",
+    "test:bin": "vitest run src/__tests__/package-bin.spec.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -60,6 +64,8 @@
   },
   "devDependencies": {
     "@eligian/language": "workspace:*",
-    "@types/jsdom": "30.0.0"
+    "@modelcontextprotocol/inspector": "2.13.0",
+    "@types/jsdom": "30.0.0",
+    "tsx": "4.23.15"
   }
 }

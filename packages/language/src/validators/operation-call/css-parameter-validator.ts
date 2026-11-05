@@ -51,7 +51,7 @@ export class CssParameterValidator extends BaseValidator {
         accept(
           'error',
           `Unknown CSS class: '${arg.value}'.${suggestions.length > 0 ? ` Did you mean: ${suggestions.join(', ')}?` : ''}`,
-          { node: arg, data: { code: diagnosticCode('unknown_css_class') } }
+          { node: arg, data: { code: diagnosticCode('unknown_css_class'), suggestions } }
         );
       }
     });
@@ -137,6 +137,7 @@ export class CssParameterValidator extends BaseValidator {
           node: arg,
           data: {
             code: diagnosticCode('unknown_css_class'),
+            suggestions,
           },
         });
       }

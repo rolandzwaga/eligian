@@ -1,0 +1,8 @@
+// Call A of mcp-concurrency.spec.ts (SC-005): '#runtime' is in the CSS but not in the
+// layout HTML, so a check with selectorNotInLayout 'ids' gives selector_not_in_layout
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [ selectElement("#runtime") addClass("lit") ] [ selectElement("#runtime") removeClass("lit") ]
+}

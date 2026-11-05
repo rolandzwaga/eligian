@@ -3,13 +3,14 @@
  * calls main() (bin/cli.js; dist/cli.mjs only exports main), and the package
  * is self-contained: the workspace packages are bundled into dist/cli.mjs, so
  * it imports only Node built-ins and the declared dependencies, and npm packs
- * exactly the launcher, the bundle, the README and the LICENSE.
+ * exactly the launcher, the bundle, the generated docs (dist/docs), the README
+ * and the LICENSE.
  *
  * The bundle and pack checks run once the CLI was built (CI builds first).
  */
 
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -39,6 +40,12 @@ const eligiusVersion = (
     )
   ) as { version: string }
 ).version;
+
+/** The `initialize` response frame of the spawned `eligian mcp` */
+interface InitializeAnswer {
+  id?: unknown;
+  result?: { protocolVersion: string; serverInfo: { name: string; version: string } };
+}
 
 describe('the eligian npm package', () => {
   test.each(['eligian', 'eligian-cli'])('%s points at the bin/cli.js launcher', name => {
@@ -92,6 +99,16 @@ describe('the eligian npm package', () => {
     expect(result.stdout.trim()).toBe(pkg.version);
   });
 
+  test.skipIf(!built)('help names mcp and the check defaults', () => {
+    const help = execFileSync(process.execPath, [bin, 'check', '--help'], { encoding: 'utf-8' });
+    expect(help).toContain('--no-review');
+    expect(help).toContain('(default: "ids")');
+    const topHelp = execFileSync(process.execPath, [bin, '--help'], { encoding: 'utf-8' });
+    expect(topHelp).toContain(
+      "Run 'eligian <command> --help' (compile, check, fmt, smoke, dev, init, mcp) for its options."
+    );
+  });
+
   test.skipIf(!built)('the bundle carries the injected versions', () => {
     const code = readFileSync(bundlePath, 'utf-8');
     expect(code).not.toContain('__ELIGIAN_VERSION__');
@@ -117,30 +134,28 @@ describe('the eligian npm package', () => {
     'mcp answers initialize in under 3 s',
     { timeout: 20_000 },
     async () => {
-      const child = spawn(process.execPath, [bin, 'mcp']);
+      const child = spawn(process.execPath, [process.env.ELIGIAN_BIN ?? bin, 'mcp']);
       try {
         const start = performance.now();
-        const answered = new Promise<{ id?: unknown; result?: unknown }>(
-          (resolveAnswer, reject) => {
-            let buffered = '';
-            child.stdout.setEncoding('utf-8');
-            child.stdout.on('data', (chunk: string) => {
-              buffered += chunk;
-              const lines = buffered.split('\n');
-              buffered = lines.pop() ?? '';
-              for (const line of lines) {
-                try {
-                  const message = JSON.parse(line) as { id?: unknown; result?: unknown };
-                  if (message.id === 1 && message.result !== undefined) resolveAnswer(message);
-                } catch {
-                  // not a protocol frame
-                }
+        const answered = new Promise<InitializeAnswer>((resolveAnswer, reject) => {
+          let buffered = '';
+          child.stdout.setEncoding('utf-8');
+          child.stdout.on('data', (chunk: string) => {
+            buffered += chunk;
+            const lines = buffered.split('\n');
+            buffered = lines.pop() ?? '';
+            for (const line of lines) {
+              try {
+                const message = JSON.parse(line) as InitializeAnswer;
+                if (message.id === 1 && message.result !== undefined) resolveAnswer(message);
+              } catch {
+                // not a protocol frame
               }
-            });
-            child.on('error', reject);
-            child.on('exit', code => reject(new Error(`mcp exited (${code}) before answering`)));
-          }
-        );
+            }
+          });
+          child.on('error', reject);
+          child.on('exit', code => reject(new Error(`mcp exited (${code}) before answering`)));
+        });
         child.stdin.write(
           `${JSON.stringify({
             jsonrpc: '2.0',
@@ -157,6 +172,8 @@ describe('the eligian npm package', () => {
         const elapsed = performance.now() - start;
         console.info(`mcp initialize answered in ${Math.round(elapsed)} ms`);
         expect(answer.result).toBeDefined();
+        expect(answer.result?.serverInfo.version).toBe(pkg.version);
+        expect(answer.result?.protocolVersion).toBe('2025-06-18');
         expect(elapsed).toBeLessThan(3000);
       } finally {
         child.kill();
@@ -176,11 +193,12 @@ describe('the eligian npm package', () => {
     expect(staticImports).toEqual([]);
     expect(code).toMatch(/\bimport\(\s*["']jsdom["']\s*\)/);
     expect(code).toMatch(/\bimport\(\s*["']esbuild["']\s*\)/);
+    expect(code).toMatch(/\bimport\(\s*["']effect\/ai["']\s*\)/);
   });
 
   // npm starts a process of its own: slow while the other suites run in parallel
   test.skipIf(!built)(
-    'npm packs the launcher, the bundle, the README and the LICENSE',
+    'npm packs the launcher, the bundle, the docs, the README and the LICENSE',
     {
       timeout: 30_000,
     },
@@ -192,13 +210,17 @@ describe('the eligian npm package', () => {
         shell: process.platform === 'win32',
       });
       const [packed] = JSON.parse(output) as Array<{ files: Array<{ path: string }> }>;
-      expect(packed.files.map(file => file.path).sort()).toEqual([
-        'LICENSE',
-        'README.md',
-        'bin/cli.js',
-        'dist/cli.mjs',
-        'package.json',
-      ]);
+      // Every file the knowledge generator wrote (the build runs it), POSIX separators
+      const docsDir = resolve(packageRoot, 'dist', 'docs');
+      const docs = existsSync(docsDir)
+        ? readdirSync(docsDir, { recursive: true, encoding: 'utf-8' })
+            .filter(file => statSync(resolve(docsDir, file)).isFile())
+            .map(file => `dist/docs/${file.split('\\').join('/')}`)
+        : [];
+      expect(docs).toContain('dist/docs/index.json');
+      expect(packed.files.map(file => file.path).sort()).toEqual(
+        ['LICENSE', 'README.md', 'bin/cli.js', 'dist/cli.mjs', 'package.json', ...docs].sort()
+      );
     }
   );
 });

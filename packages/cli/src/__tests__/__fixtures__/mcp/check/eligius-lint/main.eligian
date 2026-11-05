@@ -1,0 +1,10 @@
+// A literal outside the operation's allowed values: Eligian accepts it, Eligius' lint does not
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [
+    selectElement("#box")
+    scrollToElement(200, "nowhere")
+  ]
+}

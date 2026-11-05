@@ -6,7 +6,8 @@
  * (nothing matched, invalid options).
  *
  * With `lint`, every program without errors is also compiled and checked by
- * Eligius' configuration lint (see lint.ts).
+ * Eligius' configuration lint (see lint.ts); with `review`, by the review
+ * pass (see review.ts). `checkPaths` is the check `eligian_check` shares.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -18,8 +19,10 @@ import {
 } from '@eligian/language';
 import { Effect } from 'effect';
 import { glob } from 'tinyglobby';
-import { lintFile } from './lint.js';
+import { compileFile } from '../compile-file.js';
+import { lintCompiled } from './lint.js';
 import { CHECK_FORMATS, type CheckFormat, formatResults, summarize } from './reporters.js';
+import { reviewConfig } from './review.js';
 
 export interface CheckOptions {
   readonly format: CheckFormat;
@@ -33,6 +36,8 @@ export interface CheckOptions {
   readonly selectorNotInLayout?: SelectorNotInLayout;
   /** Also run Eligius' configuration lint over the compiled programs */
   readonly lint?: boolean;
+  /** Also run the review pass (controller balance, classes never removed) over them */
+  readonly review?: boolean;
 }
 
 export interface CheckOutcome {
@@ -108,10 +113,11 @@ export async function runCheck(
     };
   }
 
-  const checked = await Effect.runPromise(
-    checkFiles(files, { selectorNotInLayout: options.selectorNotInLayout })
-  );
-  const results = options.lint ? await withLint(checked) : checked;
+  const results = await checkPaths(files, {
+    selectorNotInLayout: options.selectorNotInLayout,
+    lint: options.lint ?? false,
+    review: options.review ?? false,
+  });
   const summary = summarize(results);
   const output = formatResults(options.format, results, options.cwd, options.version);
 
@@ -129,13 +135,42 @@ export async function runCheck(
   };
 }
 
+/** The checks that need a compiled program. */
+export interface CompiledChecks {
+  /** Eligius' configuration lint (lint.ts) */
+  readonly lint: boolean;
+  /** The review pass (review.ts) */
+  readonly review: boolean;
+}
+
+/** checkFiles + withCompiledChecks: the check `eligian check` and `eligian_check` share. */
+export async function checkPaths(
+  files: readonly string[],
+  options: {
+    readonly selectorNotInLayout?: SelectorNotInLayout;
+    readonly lint: boolean;
+    readonly review: boolean;
+  }
+): Promise<CheckFileResult[]> {
+  const checked = await Effect.runPromise(
+    checkFiles(files, { selectorNotInLayout: options.selectorNotInLayout })
+  );
+  return withCompiledChecks(checked, { lint: options.lint, review: options.review });
+}
+
 /**
- * Add the Eligius lint findings of every program without errors (libraries
- * are linted through the programs that import them). A finding in an
- * imported library goes to that library's result, which is added when the
- * library was not checked itself.
+ * For every program without errors (libraries are checked through the
+ * programs that import them): compile it once and add the Eligius lint
+ * findings and the review warnings. A finding in an imported library goes to
+ * that library's result, which is added when the library was not checked
+ * itself. A program that checks clean but does not compile gets a
+ * `compile-failed` error.
  */
-async function withLint(results: readonly CheckFileResult[]): Promise<CheckFileResult[]> {
+export async function withCompiledChecks(
+  results: readonly CheckFileResult[],
+  checks: CompiledChecks
+): Promise<CheckFileResult[]> {
+  if (!checks.lint && !checks.review) return [...results];
   const extra = new Map<string, CheckDiagnostic[]>();
   const add = (diagnostic: CheckDiagnostic) => {
     // Library locations come from document URIs (a lower-case drive on Windows)
@@ -149,7 +184,12 @@ async function withLint(results: readonly CheckFileResult[]): Promise<CheckFileR
     if (result.diagnostics.some(d => d.severity === 'error')) continue;
     if (isLibrary(await fs.promises.readFile(result.file, 'utf-8'))) continue;
     try {
-      for (const diagnostic of await lintFile(result.file)) add(diagnostic);
+      const compiled = await compileFile(result.file);
+      const found = [
+        ...(checks.lint ? lintCompiled(result.file, compiled) : []),
+        ...(checks.review ? reviewConfig(compiled, result.file) : []),
+      ];
+      for (const diagnostic of found) add(diagnostic);
     } catch (error) {
       add({
         file: result.file,

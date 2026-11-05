@@ -1,0 +1,23 @@
+layout "./layout.html"
+styles "./styles.css"
+styles "./extra.css" // eval:defect
+
+action showHero() [
+  selectElement("#hero")
+  addClass("visible")
+]
+
+action showBanner() [
+  selectElement("#banner")
+  addClass("visible")
+]
+
+timeline "Main" in "#stage" using raf {
+  on enter [
+    selectElement("#stage")
+    addController("ProgressbarController")
+  ]
+  at 0s..3s showHero()
+  at 3s..6s showBanner()
+  on click "#next" play // eval:defect
+}

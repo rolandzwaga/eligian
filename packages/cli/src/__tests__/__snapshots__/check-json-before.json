@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "file": "packages/cli/src/__tests__/__fixtures__/warning-only.eligian",
+      "diagnostics": [
+        {
+          "severity": "warning",
+          "message": "Timeline provider 'raf' does not use a source file. Remove: from \"x.mp4\"",
+          "line": 13,
+          "column": 42,
+          "endLine": 13,
+          "endColumn": 49,
+          "code": "timeline-source-unused"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 0,
+    "warnings": 1,
+    "infos": 0,
+    "hints": 0
+  }
+}

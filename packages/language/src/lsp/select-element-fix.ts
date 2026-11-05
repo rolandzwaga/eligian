@@ -11,7 +11,12 @@
  * `selector`, `target`, `element`), else an empty string to fill in.
  */
 import { type AstNode, AstUtils, CstUtils, type LangiumDocument } from 'langium';
-import { type CodeAction, CodeActionKind, type Diagnostic } from 'vscode-languageserver-protocol';
+import {
+  type CodeAction,
+  CodeActionKind,
+  type Diagnostic,
+  type Range,
+} from 'vscode-languageserver-protocol';
 import {
   isActionDefinition,
   isEndableActionDefinition,
@@ -83,70 +88,79 @@ function targetFor(call: OperationCall): string {
   return isStringLiteral(candidate) ? JSON.stringify(candidate.value) : '""';
 }
 
+/** The edit of the 'Insert selectElement(…)' / 'Add target …' quick fix. */
+export interface SelectElementFix {
+  /** `Insert selectElement(…)` or `Add target …` */
+  readonly title: string;
+  /** LSP, 0-based; an insertion (start = end) */
+  readonly range: Range;
+  readonly newText: string;
+}
+
+/** The edit of the 'Insert selectElement' / 'Add target' quick fix for one diagnostic, if any. */
+export function selectElementFix(
+  document: LangiumDocument,
+  diagnostic: Diagnostic
+): SelectElementFix | undefined {
+  if (
+    !DEPENDENCY_CODES.has(String(diagnostic.code)) ||
+    !diagnostic.message.includes("'selectedElement'")
+  ) {
+    return undefined;
+  }
+  const root = document.parseResult.value.$cstNode;
+  if (!root) return undefined;
+  const offset = document.textDocument.offsetAt(diagnostic.range.start);
+  const leaf = CstUtils.findLeafNodeAtOffset(root, offset);
+  const call = leaf ? AstUtils.getContainerOfType(leaf.astNode, isOperationCall) : undefined;
+  if (!call?.$cstNode) return undefined;
+  const start = call.$cstNode.range.start;
+
+  // `at 0s..1s show("#a")`: no block to insert into, add a target to the event
+  const event = call.$container;
+  if (isTimedEvent(event) && event.action === call) {
+    if (event.target !== undefined) return undefined;
+    const selector = targetFor(call);
+    return {
+      title: `Add target ${selector}`,
+      range: { start, end: start },
+      newText: `target ${selector} `,
+    };
+  }
+
+  const selector = guessSelector(call);
+  const lineText = document.textDocument.getText({
+    start: { line: start.line, character: 0 },
+    end: start,
+  });
+  // On its own line: insert a line above with the same indentation; inline: before it
+  const separator = lineText.trim() === '' ? `\n${lineText}` : ' ';
+  return {
+    title: `Insert selectElement(${selector})`,
+    range: { start, end: start },
+    newText: `selectElement(${selector})${separator}`,
+  };
+}
+
 export function selectElementCodeActions(
   document: LangiumDocument,
   diagnostics: readonly Diagnostic[]
 ): CodeAction[] {
-  const root = document.parseResult.value.$cstNode;
-  if (!root) return [];
-  const actions: CodeAction[] = [];
-  for (const diagnostic of diagnostics) {
-    if (
-      !DEPENDENCY_CODES.has(String(diagnostic.code)) ||
-      !diagnostic.message.includes("'selectedElement'")
-    ) {
-      continue;
-    }
-    const offset = document.textDocument.offsetAt(diagnostic.range.start);
-    const leaf = CstUtils.findLeafNodeAtOffset(root, offset);
-    const call = leaf ? AstUtils.getContainerOfType(leaf.astNode, isOperationCall) : undefined;
-    if (!call?.$cstNode) continue;
-
-    // `at 0s..1s show("#a")`: no block to insert into, add a target to the event
-    const event = call.$container;
-    if (isTimedEvent(event) && event.action === call) {
-      if (event.target !== undefined) continue;
-      const selector = targetFor(call);
-      actions.push({
-        title: `Add target ${selector}`,
+  return diagnostics.flatMap(diagnostic => {
+    const fix = selectElementFix(document, diagnostic);
+    if (!fix) return [];
+    return [
+      {
+        title: fix.title,
         kind: CodeActionKind.QuickFix,
         diagnostics: [diagnostic],
         isPreferred: true,
         edit: {
           changes: {
-            [document.uri.toString()]: [
-              {
-                range: { start: call.$cstNode.range.start, end: call.$cstNode.range.start },
-                newText: `target ${selector} `,
-              },
-            ],
+            [document.uri.toString()]: [{ range: fix.range, newText: fix.newText }],
           },
         },
-      });
-      continue;
-    }
-
-    const selector = guessSelector(call);
-    const start = call.$cstNode.range.start;
-    const lineText = document.textDocument.getText({
-      start: { line: start.line, character: 0 },
-      end: start,
-    });
-    // On its own line: insert a line above with the same indentation; inline: before it
-    const separator = lineText.trim() === '' ? `\n${lineText}` : ' ';
-    actions.push({
-      title: `Insert selectElement(${selector})`,
-      kind: CodeActionKind.QuickFix,
-      diagnostics: [diagnostic],
-      isPreferred: true,
-      edit: {
-        changes: {
-          [document.uri.toString()]: [
-            { range: { start, end: start }, newText: `selectElement(${selector})${separator}` },
-          ],
-        },
       },
-    });
-  }
-  return actions;
+    ];
+  });
 }

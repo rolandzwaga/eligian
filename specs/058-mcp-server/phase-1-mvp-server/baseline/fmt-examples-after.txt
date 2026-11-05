@@ -1,0 +1,7 @@
+$ diff fmt-after.txt baseline/fmt-examples-before.txt
+diff exit 0 (empty diff: fmt:examples output byte-identical to the baseline)
+
+--- fmt-after.txt ---
+$ node packages/cli/bin/cli.js fmt "examples/**/*.eligian" "!examples/libraries/errors/**"
+All 12 files formatted
+exit 0

@@ -6,12 +6,20 @@
  */
 import type { CheckDiagnostic } from '@eligian/language';
 import { type EligiusLintFinding, lintCompiledConfig } from '@eligian/language/eligius-lint';
-import { compileFile } from '../compile-file.js';
+import { type CompileResult, compileFile } from '../compile-file.js';
+
+/** The Eligius lint findings of a compiled program, at their source. */
+export function lintCompiled(
+  file: string,
+  compiled: Pick<CompileResult, 'config' | 'map' | 'host'>
+): CheckDiagnostic[] {
+  const { config, map, host } = compiled;
+  return lintCompiledConfig(config, map, host).map(finding => toDiagnostic(file, finding));
+}
 
 /** The Eligius lint findings of an Eligian program, at their source. */
 export async function lintFile(file: string): Promise<CheckDiagnostic[]> {
-  const { config, map, host } = await compileFile(file);
-  return lintCompiledConfig(config, map, host).map(finding => toDiagnostic(file, finding));
+  return lintCompiled(file, await compileFile(file));
 }
 
 function toDiagnostic(file: string, finding: EligiusLintFinding): CheckDiagnostic {

@@ -1,0 +1,165 @@
+{
+  "actions": {
+    "spotlight": {
+      "startOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ]
+    },
+    "greet": {
+      "startOperations": [
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#title"
+          }
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "template": "$operationdata.text"
+            }
+          }
+        },
+        {
+          "systemName": "setElementContent"
+        },
+        {
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "spotlight"
+          }
+        },
+        {
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {
+              "selector": "#box"
+            }
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "spotlight"
+          }
+        },
+        {
+          "systemName": "endAction",
+          "operationData": {
+            "actionOperationData": {
+              "selector": "#box"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "timelines": {
+    "Calls": {
+      "type": "animation",
+      "duration": 6,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-3",
+          "duration": {
+            "start": 0,
+            "end": 3
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "spotlight"
+              }
+            },
+            {
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-3-6",
+          "duration": {
+            "start": 3,
+            "end": 6
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "greet"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "text": "Welcome"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "greet"
+              }
+            },
+            {
+              "systemName": "endAction",
+              "operationData": {
+                "actionOperationData": {
+                  "text": "Welcome"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

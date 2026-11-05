@@ -1,0 +1,20 @@
+# T015 (FR-014, plan A3): the three MAY sites left without data.suggestions
+# Verified 2026-11-04 against the working tree (HEAD 448cd8b + phase-1 edits).
+# Each builds a Levenshtein "Did you mean" list but reports it only in the message.
+
+packages/language/src/validators/event-action-validator.ts:160-171
+  code unknown_event_name; suggestions = findSimilarClasses(eventName, ..., 2, 3) at :158;
+  message "Unknown event name: '<name>' (Did you mean: a, b?)"; accept(...) with `code`, no `data`.
+
+packages/language/src/validators/import-validator.ts:234-246
+  code import_action_not_found; suggestions = findSimilarClasses(actionName, ...) at :235;
+  message "Action '<name>' does not exist in library '<path>' (Did you mean: a, b?)"; accept(...) with `code`, no `data`.
+
+packages/language/src/type-system-typir/validation/label-id-validation.ts:68-82
+  code unknown_label_id; suggestions = findSimilarClasses(labelId, ..., 2) at :69;
+  the returned error object carries `suggestions`, but the hint names only the first ("Did you mean: '<id>'?").
+
+# The three MUST sites now carry data.suggestions (messages unchanged):
+#   validators/operation-call/operation-existence-validator.ts  (unknown_operation)
+#   validators/operation-call/css-parameter-validator.ts        (unknown_css_class: role branch + checkClassNameParameter)
+#   css/selector-validation.ts reportSelectorIssues             (unknown_css_class_in_selector, unknown_css_id_in_selector)

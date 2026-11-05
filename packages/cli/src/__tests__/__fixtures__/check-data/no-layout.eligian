@@ -1,0 +1,12 @@
+// No layout import: '#runtime' is only checked against the CSS
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    selectElement("#runtime")
+    addClass("lit")
+  ] [
+    selectElement("#runtime")
+    removeClass("lit")
+  ]
+}

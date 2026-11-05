@@ -1,0 +1,14 @@
+layout "./layout.html"
+styles "./styles.css"
+
+endable action light [
+  selectElement("#box")
+  addClass("lit")
+] [
+  selectElement("#box")
+  removeClass("lit")
+]
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s light()
+}

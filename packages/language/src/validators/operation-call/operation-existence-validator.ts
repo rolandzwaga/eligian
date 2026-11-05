@@ -43,6 +43,7 @@ export class OperationExistenceValidator extends BaseValidator {
         node: operation,
         property: 'operationName',
         code: error.code.toLowerCase(),
+        data: { suggestions: error.suggestions },
       });
     }
   }

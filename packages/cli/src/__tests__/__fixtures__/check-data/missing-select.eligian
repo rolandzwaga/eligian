@@ -1,0 +1,8 @@
+// addClass with nothing selected before it: a missing-dependency on 'selectedElement'
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    addClass("lit")
+  ]
+}

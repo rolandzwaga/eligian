@@ -1,0 +1,3 @@
+$ node packages/cli/bin/cli.js fmt "examples/**/*.eligian" "!examples/libraries/errors/**"
+All 12 files formatted
+exit 0

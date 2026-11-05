@@ -5,6 +5,9 @@ export default defineConfig({
     // CLI tests spawn child processes which are slow
     // Increase timeout to prevent failures when running in parallel with other packages
     testTimeout: 30000, // 30 seconds per test
+    // `test` / `test:coverage:ci` exclude package-bin.spec.ts and run it afterwards on its own
+    // (`test:bin`): its startup timings (spec 058 SC-001, SC-020) measure the bundle, not the
+    // load of the parallel test workers.
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

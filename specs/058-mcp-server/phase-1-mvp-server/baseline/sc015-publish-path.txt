@@ -1,0 +1,295 @@
+# T064 — production bundle and the publish path (plan gate 7; SC-014, SC-015)
+# Run 2026-11-05 on Windows 11 (Git Bash), from the repo root. Commands and outputs verbatim.
+
+## Result
+- build:prod exit 0; packages/cli/dist/docs/index.json present (144 docs files generated)
+- pnpm -C packages/cli pack exit 0 -> packages/cli/eligian-1.1.0.tgz (144 entries under package/dist/docs/, incl. index.json)
+- npm install -g of the tarball exit 0 (EBADENGINE warnings only: jsdom 30 wants node >=24.15, host has 24.7.0)
+- eligian --version -> 1.1.0
+- strict check line: 8 files, 0 errors, 0 warnings (exit 0)
+- demo line: 1 file, 0 errors, 4 warnings (exit 0)
+- smoke line: 2 files, 9 timelines played, 0 errors, 0 warnings (exit 0)
+- inspector tools/call eligian_docs (the workflow's checker verbatim): not isError, 104 index entries (pipe exit 0 0)
+- restored: npm uninstall -g eligian (global state was empty before and is empty after), tgz removed, pnpm -C packages/cli build exit 0
+
+## Global state before (npm ls -g eligian)
+$ npm ls -g eligian
+C:\Program Files\nodejs -> .\
+`-- (empty)
+
+exit=1
+
+## Environment
+node v24.7.0, npm 11.10.0, pnpm 12.14.0
+git HEAD 448cd8b on feat/mcp-server-roadmap (working tree has uncommitted phase-1 changes)
+
+## build:prod
+$ pnpm -C packages/cli run build:prod
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production
+generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[01:49:17] Build succeeded
+exit=0
+
+$ ls packages/cli/dist/docs/index.json
+-rw-r--r-- 1 scab 197609 38672 Nov  5 01:49 packages/cli/dist/docs/index.json
+exit=0
+
+## pack
+$ pnpm -C packages/cli pack
+. prepack$ pnpm run build:prod
+. prepack: $ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production
+. prepack: generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+. prepack: [01:49:24] Build succeeded
+. prepack: Done
+package: eligian@1.1.0
+Tarball Contents
+bin/cli.js
+dist/cli.mjs
+dist/docs/agents-block.md
+dist/docs/curriculum/decisions.md
+dist/docs/curriculum/diagnostics/break-outside-loop.md
+dist/docs/curriculum/diagnostics/circular_library_import.md
+dist/docs/curriculum/diagnostics/class-never-removed.md
+dist/docs/curriculum/diagnostics/constant-cycle.md
+dist/docs/curriculum/diagnostics/continue-outside-loop.md
+dist/docs/curriculum/diagnostics/controller-imbalance.md
+dist/docs/curriculum/diagnostics/css-import-error.md
+dist/docs/curriculum/diagnostics/eligius-E120.md
+dist/docs/curriculum/diagnostics/eligius-W151.md
+dist/docs/curriculum/diagnostics/erased-property-access.md
+dist/docs/curriculum/diagnostics/event-end-not-after-start.md
+dist/docs/curriculum/diagnostics/import-duplicate-default.md
+dist/docs/curriculum/diagnostics/missing-action-dependency.md
+dist/docs/curriculum/diagnostics/missing-dependency.md
+dist/docs/curriculum/diagnostics/parameter_count.md
+dist/docs/curriculum/diagnostics/recursive_action_call.md
+dist/docs/curriculum/diagnostics/selector_not_in_layout.md
+dist/docs/curriculum/diagnostics/source-compiler.md
+dist/docs/curriculum/diagnostics/source-eligius-lint.md
+dist/docs/curriculum/diagnostics/source-linker.md
+dist/docs/curriculum/diagnostics/source-parser.md
+dist/docs/curriculum/diagnostics/source-review.md
+dist/docs/curriculum/diagnostics/source-type.md
+dist/docs/curriculum/diagnostics/source-validator.md
+dist/docs/curriculum/diagnostics/syntax-error.md
+dist/docs/curriculum/diagnostics/timeline-empty.md
+dist/docs/curriculum/diagnostics/timeline-provider-invalid.md
+dist/docs/curriculum/diagnostics/timeline-required.md
+dist/docs/curriculum/diagnostics/timeline-source-required.md
+dist/docs/curriculum/diagnostics/timeline-source-unused.md
+dist/docs/curriculum/diagnostics/unknown_css_class_in_selector.md
+dist/docs/curriculum/diagnostics/unknown_css_class.md
+dist/docs/curriculum/diagnostics/unknown_css_id_in_selector.md
+dist/docs/curriculum/diagnostics/unknown_event_name.md
+dist/docs/curriculum/diagnostics/unknown_operation.md
+dist/docs/curriculum/diagnostics/unknown-action-in-timeline-event.md
+dist/docs/curriculum/diagnostics/unresolved-reference.md
+dist/docs/curriculum/map-actions-and-calls.md
+dist/docs/curriculum/map-controllers.md
+dist/docs/curriculum/map-dataflow.md
+dist/docs/curriculum/map-events-and-interactions.md
+dist/docs/curriculum/map-timeline-and-providers.md
+dist/docs/curriculum/not-eligian.md
+dist/docs/curriculum/project-layout.md
+dist/docs/curriculum/runtime-engine-lifecycle.md
+dist/docs/curriculum/runtime-scheduling.md
+dist/docs/curriculum/storyboard.md
+dist/docs/curriculum/what-is-eligian.md
+dist/docs/curriculum/what-is-eligius.md
+dist/docs/generated/config-shape.md
+dist/docs/generated/controllers.md
+dist/docs/generated/dataflow-tables.md
+dist/docs/generated/diagnostics.md
+dist/docs/generated/events.md
+dist/docs/generated/operations-index.md
+dist/docs/generated/operations/addClass.md
+dist/docs/generated/operations/addController.md
+dist/docs/generated/operations/addControllerToElement.md
+dist/docs/generated/operations/addGlobalsToOperation.md
+dist/docs/generated/operations/animate.md
+dist/docs/generated/operations/animateWithClass.md
+dist/docs/generated/operations/announceToScreenReader.md
+dist/docs/generated/operations/breakForEach.md
+dist/docs/generated/operations/broadcastEvent.md
+dist/docs/generated/operations/calc.md
+dist/docs/generated/operations/clearElement.md
+dist/docs/generated/operations/clearOperationData.md
+dist/docs/generated/operations/clearStorage.md
+dist/docs/generated/operations/compareDate.md
+dist/docs/generated/operations/concatenateStrings.md
+dist/docs/generated/operations/continueForEach.md
+dist/docs/generated/operations/createElement.md
+dist/docs/generated/operations/customFunction.md
+dist/docs/generated/operations/endAction.md
+dist/docs/generated/operations/endForEach.md
+dist/docs/generated/operations/endWhen.md
+dist/docs/generated/operations/extendController.md
+dist/docs/generated/operations/filterArray.md
+dist/docs/generated/operations/findInArray.md
+dist/docs/generated/operations/forEach.md
+dist/docs/generated/operations/formatDate.md
+dist/docs/generated/operations/formatText.md
+dist/docs/generated/operations/getAttributesFromElement.md
+dist/docs/generated/operations/getControllerFromElement.md
+dist/docs/generated/operations/getControllerInstance.md
+dist/docs/generated/operations/getCurrentTime.md
+dist/docs/generated/operations/getElementDimensions.md
+dist/docs/generated/operations/getFocusedElement.md
+dist/docs/generated/operations/getFormData.md
+dist/docs/generated/operations/getImport.md
+dist/docs/generated/operations/getQueryParams.md
+dist/docs/generated/operations/getScrollPosition.md
+dist/docs/generated/operations/getTextContent.md
+dist/docs/generated/operations/httpDelete.md
+dist/docs/generated/operations/httpPost.md
+dist/docs/generated/operations/httpPut.md
+dist/docs/generated/operations/invokeObjectMethod.md
+dist/docs/generated/operations/isElementInViewport.md
+dist/docs/generated/operations/loadFromStorage.md
+dist/docs/generated/operations/loadJson.md
+dist/docs/generated/operations/log.md
+dist/docs/generated/operations/mapArray.md
+dist/docs/generated/operations/math.md
+dist/docs/generated/operations/otherwise.md
+dist/docs/generated/operations/removeClass.md
+dist/docs/generated/operations/removeControllerFromElement.md
+dist/docs/generated/operations/removeElement.md
+dist/docs/generated/operations/removePropertiesFromOperationData.md
+dist/docs/generated/operations/reparentElement.md
+dist/docs/generated/operations/replaceString.md
+dist/docs/generated/operations/replaceText.md
+dist/docs/generated/operations/requestAction.md
+dist/docs/generated/operations/saveToStorage.md
+dist/docs/generated/operations/scrollToElement.md
+dist/docs/generated/operations/scrollToPosition.md
+dist/docs/generated/operations/selectElement.md
+dist/docs/generated/operations/setData.md
+dist/docs/generated/operations/setElementAttributes.md
+dist/docs/generated/operations/setElementContent.md
+dist/docs/generated/operations/setFocus.md
+dist/docs/generated/operations/setFormValue.md
+dist/docs/generated/operations/setGlobalData.md
+dist/docs/generated/operations/setOperationData.md
+dist/docs/generated/operations/setStyle.md
+dist/docs/generated/operations/setVariable.md
+dist/docs/generated/operations/sortArray.md
+dist/docs/generated/operations/splitString.md
+dist/docs/generated/operations/startAction.md
+dist/docs/generated/operations/substringText.md
+dist/docs/generated/operations/toggleClass.md
+dist/docs/generated/operations/toggleElement.md
+dist/docs/generated/operations/toggleFormElement.md
+dist/docs/generated/operations/validateForm.md
+dist/docs/generated/operations/wait.md
+dist/docs/generated/operations/when.md
+dist/docs/generated/starters/blank.md
+dist/docs/generated/starters/chapters.md
+dist/docs/generated/starters/library.md
+dist/docs/generated/starters/video.md
+dist/docs/generated/syntax-cheatsheet.md
+dist/docs/index.json
+dist/docs/overlays.json
+LICENSE
+package.json
+README.md
+Tarball Details
+eligian-1.1.0.tgz
+exit=0
+
+$ ls -l packages/cli/eligian-*.tgz
+-rw-r--r-- 1 scab 197609 566144 Nov  5 01:49 packages/cli/eligian-1.1.0.tgz
+
+$ tar -tzf packages/cli/eligian-1.1.0.tgz | grep -c 'package/dist/docs/'
+144
+$ tar -tzf ... | grep 'dist/docs/index.json'
+package/dist/docs/index.json
+
+## Try the package (publish-cli.yml step, verbatim, from the repo root, Git Bash on Windows)
+$ npm install -g ./packages/cli/eligian-*.tgz
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'jsdom@30.1.3',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@asamuzakjp/css-color@7.1.9',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@asamuzakjp/dom-selector@10.0.5',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'w3c-xmlserializer@6.0.0',
+npm warn EBADENGINE   required: { node: '^22.22.2 || ^24.15.0 || >=26.0.0' },
+npm warn EBADENGINE   current: { node: 'v24.7.0', npm: '11.10.0' }
+npm warn EBADENGINE }
+
+added 53 packages in 9s
+exit=0
+
+$ eligian --version
+1.1.0
+exit=0
+
+$ eligian check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0
+8 files, 0 errors, 0 warnings
+exit=0
+
+$ eligian check examples/demo.eligian --selector-not-in-layout off
+examples/demo.eligian
+  224:5  warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  224:5  warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5  warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5  warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+
+1 file, 0 errors, 4 warnings
+exit=0
+
+$ eligian smoke "examples/eligian-tour/*.eligian"
+examples/eligian-tour/presentation.eligian (library: nothing to play)
+examples/eligian-tour/tour.eligian
+  timeline 'Hub': 1 position ok
+  timeline 'Timeline & Time': 9 positions ok
+  timeline 'Actions': 9 positions ok
+  timeline 'Logic': 13 positions ok
+  timeline 'Timeline Power Tools': 19 positions ok
+  timeline 'Files & Imports': 9 positions ok
+  timeline 'Engine Reach': 10 positions ok
+  timeline 'The Editor': 45 positions ok
+  timeline 'The Command Line': 254 positions ok
+2 files, 9 timelines played, 0 errors, 0 warnings
+exit=0
+
+$ npx -y @modelcontextprotocol/inspector@2.13.0 --cli --method tools/call --tool-name eligian_docs --format json eligian mcp | node -e "...(the workflow's verbatim checker)..."
+{"t":"2026-11-05T00:50:33.248Z","tool":"eligian_docs","ms":37,"chars":11667,"ok":true,"args":{}}
+eligian_docs: 104 index entries
+exit=${PIPESTATUS[*]} -> 0 0
+
+## Restore the global state recorded first (eligian was not installed globally)
+$ npm uninstall -g eligian
+
+removed 53 packages in 740ms
+exit=0
+
+$ npm ls -g eligian
+C:\Program Files\nodejs -> .\
+`-- (empty)
+
+exit=1 (same as before: empty)
+
+$ command -v eligian
+exit=1 (not found)
+
+$ rm packages/cli/eligian-*.tgz
+exit=0
+ls: cannot access 'packages/cli/*.tgz': No such file or directory
+
+$ pnpm -C packages/cli build
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly
+generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[01:50:43] Build succeeded
+exit=0
+

@@ -8,14 +8,17 @@ import * as path from 'node:path';
 import type { CheckDiagnostic, CheckFileResult } from '@eligian/language';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  checkPaths,
   expandPatterns,
   parseCheckFormat,
   parseMaxWarnings,
   runCheck,
 } from '../check/check-command.js';
 import { formatGithub, formatJson, formatSarif, summaryLine } from '../check/reporters.js';
+import { REVIEW_CODES } from '../check/review.js';
 
 const CLI = path.resolve(__dirname, '..', '..', 'bin', 'cli.js');
+const REVIEW_FIXTURES = path.join(__dirname, '__fixtures__', 'mcp', 'review');
 
 describe('eligian check', () => {
   let dir: string;
@@ -206,10 +209,12 @@ timeline "t" in ".c" using raf { at 0s..1s a() at 1s..2s [ selectElement("#a") a
       const input = write('cli.eligian', CLEAN);
       write('bad.eligian', TWO_ERRORS);
 
-      const check = spawnSync(process.execPath, [CLI, 'check', '*.eligian', '--format', 'github'], {
-        cwd: dir,
-        encoding: 'utf-8',
-      });
+      // --no-review: CLEAN adds a class it never removes (class-never-removed)
+      const check = spawnSync(
+        process.execPath,
+        [CLI, 'check', '*.eligian', '--format', 'github', '--no-review'],
+        { cwd: dir, encoding: 'utf-8' }
+      );
       expect(check.status).toBe(1);
       expect(check.stdout).toContain('::error file=bad.eligian,line=2');
       expect(check.stdout).toContain('2 files, 2 errors, 0 warnings');
@@ -265,10 +270,13 @@ describe('eligian check --selector-not-in-layout (audit idea #18)', () => {
   const run = (...args: string[]) =>
     spawnSync('node', [CLI, 'check', path.join(dir, 'p.eligian'), ...args], { encoding: 'utf-8' });
 
-  it('is off by default; `ids` warns about an id the layout does not contain', () => {
-    expect(run().stdout).toContain('0 errors, 0 warnings');
+  it('`off` turns it off; `ids` warns about an id the layout does not contain', () => {
+    // --no-review: the program adds classes it never removes (class-never-removed)
+    expect(run('--selector-not-in-layout', 'off', '--no-review').stdout).toContain(
+      '0 errors, 0 warnings'
+    );
 
-    const ids = run('--selector-not-in-layout', 'ids');
+    const ids = run('--selector-not-in-layout', 'ids', '--no-review');
     expect(ids.stdout).toContain("'#runtime' is not in the layout (layout.html)");
     expect(ids.stdout).toContain('selector_not_in_layout');
     expect(ids.stdout).toContain('0 errors, 1 warning');
@@ -279,5 +287,180 @@ describe('eligian check --selector-not-in-layout (audit idea #18)', () => {
     const result = run('--selector-not-in-layout', 'sometimes');
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('must be one of off, ids, all');
+  });
+});
+
+describe('check defaults (1.1.0)', () => {
+  const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+  const CHECK_DATA = path.join(__dirname, '__fixtures__', 'check-data');
+  const built = fs.existsSync(path.resolve(__dirname, '..', '..', 'dist', 'cli.mjs'));
+
+  const check = (args: string[], cwd = CHECK_DATA) =>
+    spawnSync(process.execPath, [CLI, 'check', ...args], { cwd, encoding: 'utf-8' });
+  const codesOf = (stdout: string) =>
+    (
+      JSON.parse(stdout) as { files: Array<{ diagnostics: Array<{ code?: string }> }> }
+    ).files.flatMap(f => f.diagnostics.map(d => d.code));
+  const isReviewCode = (code: string | undefined) =>
+    (REVIEW_CODES as readonly (string | undefined)[]).includes(code);
+
+  it.skipIf(!built)(
+    'a layout program with a CSS-only id warns with no flags',
+    () => {
+      const result = check(['css-only-id.eligian', '--format', 'json']);
+      expect(result.status).toBe(0);
+      expect(codesOf(result.stdout)).toContain('selector_not_in_layout');
+    },
+    60000
+  );
+
+  it.skipIf(!built)(
+    '--selector-not-in-layout off removes it',
+    () => {
+      const result = check([
+        'css-only-id.eligian',
+        '--format',
+        'json',
+        '--selector-not-in-layout',
+        'off',
+      ]);
+      expect(result.status).toBe(0);
+      expect(codesOf(result.stdout)).not.toContain('selector_not_in_layout');
+    },
+    60000
+  );
+
+  it.skipIf(!built)(
+    '--no-review removes the review warnings',
+    () => {
+      const imbalance = path.join(REVIEW_FIXTURES, 'imbalance-with-leave.eligian');
+      const reviewed = check([imbalance, '--format', 'json']);
+      expect(codesOf(reviewed.stdout).filter(isReviewCode)).toEqual(['controller-imbalance']);
+
+      const unreviewed = check([imbalance, '--format', 'json', '--no-review']);
+      expect(unreviewed.status).toBe(0);
+      expect(codesOf(unreviewed.stdout).filter(isReviewCode)).toEqual([]);
+    },
+    60000
+  );
+
+  it.skipIf(!built)(
+    'no layout import, no not-in-layout warning',
+    () => {
+      const result = check(['no-layout.eligian', '--format', 'json']);
+      expect(result.status).toBe(0);
+      expect(codesOf(result.stdout)).not.toContain('selector_not_in_layout');
+    },
+    60000
+  );
+
+  it.skipIf(!built)(
+    'JSON without data is byte-identical to before',
+    () => {
+      const before = fs.readFileSync(
+        path.join(__dirname, '__snapshots__', 'check-json-before.json'),
+        'utf-8'
+      );
+      const result = check(
+        ['packages/cli/src/__tests__/__fixtures__/warning-only.eligian', '--format', 'json'],
+        REPO_ROOT
+      );
+      expect(result.stdout).toBe(`${JSON.stringify(JSON.parse(before), null, 2)}\n`);
+    },
+    60000
+  );
+
+  it.skipIf(!built)(
+    'JSON carries data when present',
+    async () => {
+      const result = check(['missing-select.eligian', '--format', 'json']);
+      expect(result.status).toBe(1);
+      await expect(result.stdout).toMatchFileSnapshot('./__snapshots__/check-json-data.json.snap');
+      const report = JSON.parse(result.stdout) as {
+        files: Array<{ diagnostics: Array<{ code?: string; data?: { quickFix?: unknown } }> }>;
+      };
+      const missing = report.files[0]!.diagnostics.find(d => d.code === 'missing-dependency');
+      expect(missing?.data?.quickFix).toBeDefined();
+    },
+    60000
+  );
+});
+
+describe('withCompiledChecks', () => {
+  const IMBALANCE = path.join(REVIEW_FIXTURES, 'imbalance-with-leave.eligian');
+  const reviewCodes = (results: readonly CheckFileResult[]) =>
+    results
+      .flatMap(r => r.diagnostics)
+      .map(d => d.code)
+      .filter(code => (REVIEW_CODES as readonly (string | undefined)[]).includes(code));
+
+  it('review findings only when review is on', async () => {
+    const reviewed = await checkPaths([IMBALANCE], { lint: true, review: true });
+    expect(reviewCodes(reviewed)).toEqual(['controller-imbalance']);
+    expect(reviewed[0]!.diagnostics.find(d => d.code === 'controller-imbalance')).toMatchObject({
+      file: IMBALANCE,
+      severity: 'warning',
+      line: 5,
+    });
+
+    const unreviewed = await checkPaths([IMBALANCE], { lint: true, review: false });
+    expect(reviewCodes(unreviewed)).toEqual([]);
+  });
+
+  it('lint findings still go to the library result', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-compiled-checks-'));
+    try {
+      const write = (name: string, content: string) => {
+        const file = path.join(dir, name);
+        fs.writeFileSync(file, content);
+        return file;
+      };
+      write('s.css', '#stage {}\n#a {}\n');
+      write(
+        'lib.eligian',
+        'library helpers\naction jump() [\n  selectElement("#a")\n  scrollToElement(200, "nowhere")\n]\n'
+      );
+      const program = write(
+        'uses-lib.eligian',
+        'styles "./s.css"\nimport { jump } from "./lib.eligian"\n' +
+          'timeline "t" in "#stage" using raf {\n  at 0s..1s jump()\n}\n'
+      );
+
+      const results = await checkPaths([program], { lint: true, review: true });
+
+      // Not checked itself: the library still gets its own entry, not the program's lines
+      expect(results.map(r => [path.basename(r.file), r.diagnostics.length])).toEqual([
+        ['uses-lib.eligian', 0],
+        ['lib.eligian', 1],
+      ]);
+      expect(results[1]!.diagnostics).toEqual([
+        expect.objectContaining({ code: 'eligius-E120', line: 4, column: 3 }),
+      ]);
+      expect(results[1]!.diagnostics[0]!.file).toBe(results[1]!.file);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('runCheck reports what checkPaths returns', async () => {
+    const outcome = await runCheck([IMBALANCE], {
+      format: 'json',
+      warningsAsErrors: false,
+      cwd: REVIEW_FIXTURES,
+      version: '0.0.0-test',
+      lint: true,
+      review: true,
+    });
+    const report = JSON.parse(outcome.output) as {
+      files: Array<{ file: string; diagnostics: Array<Record<string, unknown>> }>;
+    };
+    const shared = await checkPaths([IMBALANCE], { lint: true, review: true });
+
+    expect(report.files.map(f => f.diagnostics)).toEqual(
+      shared.map(r => r.diagnostics.map(({ file: _file, ...d }) => d))
+    );
+    expect(report.files.flatMap(f => f.diagnostics).map(d => d.code)).toContain(
+      'controller-imbalance'
+    );
   });
 });

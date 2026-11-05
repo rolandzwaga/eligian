@@ -97,7 +97,7 @@ export const SAVED_RESULT_KEY = '__eligianSavedResult';
  * Kept in sync with the Eligius operations that call resolvePropertyValues /
  * resolveExternalPropertyChain (eligius src/operation).
  */
-const SELF_RESOLVED: Readonly<Record<string, ReadonlySet<string> | '*'>> = {
+export const SELF_RESOLVED: Readonly<Record<string, ReadonlySet<string> | '*'>> = {
   broadcastEvent: new Set(['eventArgs']),
   calc: new Set(['left', 'right', 'operator']),
   createElement: new Set(['elementName', 'attributes', 'text']),

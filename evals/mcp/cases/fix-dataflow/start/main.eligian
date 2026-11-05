@@ -1,0 +1,26 @@
+layout "./layout.html"
+styles "./styles.css"
+
+// Highlights whatever element is selected when it runs
+action highlight() [
+  addClass("highlight")
+]
+
+// Shows an element, then marks it with a class
+action reveal(selector, className) [
+  selectElement(selector)
+  addClass("visible")
+  clearOperationData()
+  addClass(className)
+]
+
+timeline "main" in "#stage" using raf {
+  at 0s..3s [
+    selectElement("#title")
+    addClass("visible")
+  ] [
+    highlight()
+  ]
+
+  at 3s..6s reveal("#subtitle", "highlight")
+}

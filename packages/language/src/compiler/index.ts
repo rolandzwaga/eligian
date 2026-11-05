@@ -86,6 +86,7 @@ export {
   validateParameterCount,
   validateParameterTypes,
 } from './operations/validator.js';
+export type { CheckDiagnosticData, QuickFix } from './pipeline/check.js';
 // Compilation pipeline exports
 export {
   type CheckDiagnostic,

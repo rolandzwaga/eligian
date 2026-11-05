@@ -1,0 +1,7 @@
+// A mistyped operation name: unknown_operation, suggesting addClass
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#box") adClass("lit") ] [ selectElement("#box") removeClass("lit") ]
+}

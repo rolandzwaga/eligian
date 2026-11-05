@@ -282,7 +282,7 @@ export default function main(): void {
     .version(version)
     .addHelpText(
       'after',
-      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init) for its options."
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init, mcp) for its options."
     );
 
   // Check command: every diagnostic of every matched file
@@ -294,10 +294,11 @@ export default function main(): void {
     .option('--max-warnings <n>', 'fail when there are more than <n> warnings')
     .option('--warnings-as-errors', 'fail on any warning (same as --max-warnings 0)', false)
     .option('--no-lint', "skip Eligius' configuration lint of the compiled programs (eligius/lint)")
+    .option('--no-review', 'skip the review pass (controller balance, classes never removed)')
     .option(
       '--selector-not-in-layout <mode>',
-      'warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
-      'off'
+      'in a program that imports a layout, warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
+      'ids'
     )
     .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
       const format = parseCheckFormat(String(cmdOptions.format));
@@ -331,6 +332,7 @@ export default function main(): void {
         maxWarnings,
         warningsAsErrors: cmdOptions.warningsAsErrors === true,
         lint: cmdOptions.lint !== false,
+        review: cmdOptions.review !== false,
         cwd: process.cwd(),
         version,
       });
@@ -451,6 +453,15 @@ export default function main(): void {
       });
       if (outcome.output) console.log(outcome.output);
       process.exit(outcome.exitCode);
+    });
+
+  // MCP command: the Model Context Protocol server over stdio (effect/ai loads only here)
+  program
+    .command('mcp')
+    .description('start the Model Context Protocol server for coding agents (stdio)')
+    .action(async () => {
+      const { runServer } = await import('./mcp/server.js');
+      await runServer({ cwd: process.cwd() });
     });
 
   // Compile command (the default: `eligian <input>` is `eligian compile <input>`)

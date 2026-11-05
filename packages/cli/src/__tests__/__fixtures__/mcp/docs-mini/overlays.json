@@ -1,0 +1,14 @@
+{
+  "byCode": {
+    "missing-dependency": {
+      "docs": "diagnostic/missing-dependency",
+      "fix": "Call the operation that provides the missing property first."
+    }
+  },
+  "bySource": {
+    "validator": {
+      "docs": "diagnostic/source-validator",
+      "fix": "Read the message; the code names the rule."
+    }
+  }
+}

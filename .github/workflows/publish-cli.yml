@@ -87,9 +87,15 @@ jobs:
         run: |
           npm install -g ./packages/cli/eligian-*.tgz
           eligian --version
-          # As pnpm run check:examples: the error examples are left out
-          eligian check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" --max-warnings 0
+          # As pnpm run check:examples: the error examples are left out, the
+          # demo is checked on its own
+          eligian check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0
+          eligian check examples/demo.eligian --selector-not-in-layout off
           eligian smoke "examples/eligian-tour/*.eligian"
+          # The MCP server answers eligian_docs with the docs index (the
+          # inspector through npx: the global install has no devDependencies)
+          npx -y @modelcontextprotocol/inspector@2.13.0 --cli --method tools/call --tool-name eligian_docs --format json eligian mcp \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s).result;const n=r.structuredContent?.index?.length??0;if(r.isError||n<1){console.error('eligian_docs: '+s.slice(0,500));process.exit(1)}console.log('eligian_docs: '+n+' index entries')})"
 
       - name: Publish
         working-directory: packages/cli

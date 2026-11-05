@@ -65,6 +65,8 @@ export interface CompileResult {
   warnings: CompileWarning[];
   /** Idea #24: the program's extensions module (absolute path) and its declared names */
   host?: HostModule;
+  /** The parsed program the configuration was compiled from */
+  readonly program: Program;
 }
 
 /**
@@ -342,5 +344,6 @@ export async function compileFile(
     assetCount,
     warnings,
     ...(host ? { host } : {}),
+    program,
   };
 }

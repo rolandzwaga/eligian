@@ -11,6 +11,7 @@
 //   node esbuild.mjs               development: source maps
 //   node esbuild.mjs --production  npm (prepack): minified, names kept, no source maps
 //   node esbuild.mjs --watch
+import { spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
@@ -33,6 +34,7 @@ const WORKSPACE_SOURCES = {
   '@eligian/language': '../language/src/index.ts',
   '@eligian/language/eligius-lint': '../language/src/compiler/eligius-lint.ts',
   '@eligian/language/errors': '../language/src/errors/index.ts',
+  '@eligian/language/mcp': '../language/src/mcp.ts',
   '@eligian/shared-utils': '../shared-utils/src/index.ts',
 };
 
@@ -77,6 +79,25 @@ const plugins = [
 
 // Nothing stale (an old source map) in a published package
 if (production) rmSync(path.join(here, 'dist'), { recursive: true, force: true });
+
+// The MCP server's knowledge (dist/docs), in every mode: after the rmSync above,
+// so that prepack (build:prod) ships it. A generator failure fails the build.
+const generated = spawnSync(
+  process.execPath,
+  [
+    createRequire(import.meta.url).resolve('tsx/cli'),
+    'scripts/generate-knowledge.ts',
+    '--out',
+    'dist/docs',
+  ],
+  { cwd: here, stdio: 'inherit' }
+);
+if (generated.status !== 0) {
+  console.error(
+    `generate-knowledge failed (${generated.error?.message ?? `exit ${generated.status ?? generated.signal}`})`
+  );
+  process.exit(generated.status || 1);
+}
 
 const cliCtx = await esbuild.context({
   entryPoints: ['src/main.ts'],

@@ -1,0 +1,13 @@
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  on leave [
+    selectElement("#box")
+    removeClass("lit")
+  ]
+  at 0s..2s [
+    selectElement("#box")
+    addClass("lit")
+  ]
+}

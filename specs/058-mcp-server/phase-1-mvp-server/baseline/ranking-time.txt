@@ -1,0 +1,25 @@
+T048 — rank-diagnostic-codes timing (2026-11-05, Windows 11, Node v24.7.0, local)
+
+Command: pnpm -C packages/cli run rank:diagnostic-codes  (run twice)
+
+Corpus: 111 .eligian files (expandPatterns over
+  packages/cli/src/__tests__/__fixtures__/**/*.eligian,
+  packages/language/src/**/__fixtures__/**/*.eligian,
+  examples/**/*.eligian), one checkPaths call per file, sequential,
+  { selectorNotInLayout: 'ids', lint: true, review: true };
+plus the 2 eval start states (fix-dataflow, fix-selectors).
+
+Run 1: rankDiagnosticCodes() 1.9 s (script's own timer); pnpm wall 3.238 s
+Run 2: rankDiagnosticCodes() 2.1 s (script's own timer); pnpm wall 3.394 s
+
+Output: packages/cli/scripts/diagnostic-code-ranking.json
+  run 1 sha256 5639bcff7e464a6e5af83a871298597baa2f1f20efa6e696ed3d8e5617a78990
+  run 2 sha256 5639bcff7e464a6e5af83a871298597baa2f1f20efa6e696ed3d8e5617a78990
+  -> byte-identical (cmp).
+  counts: 51 codes, 301 diagnostics; selection.length = 30.
+  caseCodes = ["erased-property-access","import-duplicate-default",
+               "missing-action-dependency","selector_not_in_layout","syntax-error"]
+            = union of T045's two lists (eval-cases.spec.ts).
+
+Decision: 2 s << 120 s, so T053's `the ranking selection equals the script output`
+runs unconditionally (no describe.runIf(process.env.CI)); keep a generous timeout.
