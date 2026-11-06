@@ -363,13 +363,19 @@ describe('eligian dev build identity', () => {
     }
   );
 
-  it('a CSS-only change keeps the buildId', async () => {
+  // Ruling of 2026-11-06: a CSS-only build rewrites bundle.js with new action ids, so a fresh
+  // page load gets a new buildId; a page still running the old bundle keeps its own (live)
+  it('a CSS-only change serves a new buildId (no reload)', async () => {
     const b1 = await buildIdOf();
     expect(b1).toMatch(UUID);
+    const from = project.events.length;
     const wait = next('css');
     write('styles.css', '#stage {}\n#a {}\n.on { color: blue; }\n');
     await wait();
-    expect(await buildIdOf()).toBe(b1);
+    expect(project.events.slice(from).map(e => e.event)).not.toContain('reload');
+    const b2 = await buildIdOf();
+    expect(b2).toMatch(UUID);
+    expect(b2).not.toBe(b1);
   }, 20000);
 
   it('a program change mints a new buildId', async () => {
@@ -408,10 +414,13 @@ describe('eligian dev build identity', () => {
    * ids, so the page that keeps running across it is modelled by the ids read before it.
    */
   let pageActions: ConfigAction[] = [];
+  /** The buildId of that page (still live after the CSS-only build) */
+  let pageBuildId = '';
 
   it('reports survive a CSS-only build and are located with the kept map', async () => {
     const b1 = (await buildIdOf())!;
     pageActions = await servedActions();
+    pageBuildId = b1;
     const report = addClassError(pageActions, b1, 'kept');
     let from = project.lines.length;
     expect(await post(report)).toBe(204);
@@ -424,7 +433,8 @@ describe('eligian dev build identity', () => {
     write('styles.css', '#stage {}\n#a {}\n.on { color: green; }\n');
     await wait();
     await project.server!.idle();
-    expect(await buildIdOf()).toBe(b1);
+    const b2 = (await buildIdOf())!;
+    expect(b2).not.toBe(b1);
     // The CSS build itself does not touch the file: buildId, entries and updated unchanged
     expect(fileBytes()).toEqual(bytes);
     expect(file()).toMatchObject({ buildId: b1, updated: before.updated, errors: before.errors });
@@ -445,11 +455,22 @@ describe('eligian dev build identity', () => {
       count: 2,
     });
     expect(addClassLines().filter(l => l.includes('kept'))).toHaveLength(1);
+
+    // A page loaded after the CSS build runs the new ids: located with the new build's map, so
+    // the same report merges into the same entry (count 3) and prints nothing new
+    from = project.lines.length;
+    expect(await post(addClassError(await servedActions(), b2, 'kept'))).toBe(204);
+    expect(project.lines.slice(from)).toEqual([]);
+    const merged = file().errors.filter(
+      e => e.kind === 'engine-error' && e.message.endsWith('kept')
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({ line: ADD_CLASS_AT.line, exact: true, count: 3 });
   }, 30000);
 
   it('a reload build resets the file, drops the old buildId and prints a key again', async () => {
     const b1 = (await buildIdOf())!;
-    const oldReport = addClassError(pageActions, b1, 'again');
+    const oldReport = addClassError(pageActions, pageBuildId, 'again');
     expect(await post(oldReport)).toBe(204);
     expect(addClassLines().filter(l => l.includes('again'))).toHaveLength(1);
 

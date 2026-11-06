@@ -61,6 +61,8 @@ const CLIENT_PATH = '/__eligian/client.js';
 const EVENTS_PATH = '/__eligian/events';
 /** The dev client posts its runtime reports here (FR-014) */
 const RUNTIME_PATH = '/__eligian/runtime';
+/** The most builds kept for locating reports between two reloads (CSS-only builds) */
+const MAX_LIVE_BUILDS = 20;
 
 /** The build the browsers run: its identity, and the map and config its reports are located with */
 interface CurrentBuild {
@@ -123,8 +125,15 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
   let building: Promise<void> = Promise.resolve();
   let pending = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  /** The build the browsers run (FR-033): undefined while the last build failed. */
+  /** The build a fresh page load gets (FR-033): undefined while the last build failed. */
   let current: CurrentBuild | undefined;
+  /**
+   * Every build a page may still be running, by buildId: the last reload build plus the CSS-only
+   * builds after it (ruling of 2026-11-06). A CSS-only build rewrites bundle.js with new action
+   * ids, so a page loaded before it keeps the old ids and one loaded after it gets the new ones;
+   * each report is located with the map of its own build. Cleared by a reload build or a failure.
+   */
+  const live = new Map<string, CurrentBuild>();
   /** The last identity minted; served while no build is current. */
   let lastBuildId = randomUUID();
   /** Merge keys of the runtime lines printed for the current build (FR-038). */
@@ -174,12 +183,22 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
     return writes;
   };
 
-  /** A new identity for a build the browsers will load (the first one, or a reload). */
-  const adopt = (result: BundleResult) => {
+  /** Serve a new identity; pages still running the earlier live builds keep theirs. */
+  const serve = (result: BundleResult) => {
     const buildId = randomUUID();
     lastBuildId = buildId;
     current = { buildId, map: result.map, config: result.config };
+    live.set(buildId, current);
+    // Only CSS-only builds accumulate between reloads; keep the most recent ones
+    if (live.size > MAX_LIVE_BUILDS) live.delete(live.keys().next().value as string);
+  };
+
+  /** A new identity for a build the browsers will load (the first one, or a reload). */
+  const adopt = (result: BundleResult) => {
+    live.clear();
+    serve(result);
     printed.clear();
+    const { buildId } = current!;
     // FR-018: reset an existing file only; the directory appears with the first error (P12)
     void enqueue(() => emptyFile(buildId), true);
   };
@@ -214,6 +233,7 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
     if (Exit.isFailure(exit)) {
       // P13: no page runs this build, so runtime reports are dropped until the next success
       current = undefined;
+      live.clear();
       const message = describeFailure(exit.cause);
       lastError = message;
       const buildId = lastBuildId;
@@ -244,6 +264,8 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
       const css = styleOf(await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8'));
       // The bundle always has a <style>; an empty one means the program imports no stylesheet
       if (css !== undefined && css.trim() !== '') {
+        // A fresh page load gets the new bundle and its ids; the file and printed lines stay
+        serve(exit.value);
         log(`${what}rebuilt in ${time}, styles swapped`);
         send('css', { css });
         return;
@@ -346,8 +368,8 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
     const body = await readBody(request, MAX_BODY_BYTES);
     const report = body === undefined ? undefined : parseRuntimeReport(parseJson(body));
     if (report === undefined) return 400;
-    const build = current;
-    if (build === undefined || report.buildId !== build.buildId) return 204;
+    const build = live.get(report.buildId);
+    if (build === undefined) return 204;
     await accept(report, build);
     return 204;
   };
