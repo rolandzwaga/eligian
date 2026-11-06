@@ -26,7 +26,6 @@ import * as fs from 'node:fs/promises';
 import * as nodePath from 'node:path';
 import {
   type EligianMap,
-  type EngineErrorCandidate,
   type EngineErrorInfo,
   type HostModule,
   locateEngineError,
@@ -37,6 +36,7 @@ import type { IEngineConfiguration } from 'eligius';
 import { type HostRegistrations, loadHostModule } from '../dev/host-module.js';
 import { checkDeterminism, type DeterminismEnvironment, pathStates } from './determinism.js';
 import { injectStyles, loadEligius, smokeWindow } from './dom-environment.js';
+import { engineErrorText, inFile, SELECTOR_MISS, selectorLocation } from './engine-error-format.js';
 import { installMediaClock, mediaDurations } from './media-clock.js';
 import { checkDomEquals, runScenario, type Scenario, type ScenarioStepResult } from './scenario.js';
 
@@ -243,9 +243,7 @@ export async function smokeConfig(
         report({
           code: 'smoke-engine-error',
           severity: 'error',
-          message:
-            errorMessage(info, located?.operation?.systemName, located?.via) +
-            alsoAt(located?.alternatives ?? [], map),
+          message: engineErrorText(info, located, map),
           // A raf timeline's uri is its name
           ...(timelineUri !== undefined ? { timeline: timelineUri } : {}),
           location: inFile(located?.location, map),
@@ -392,42 +390,6 @@ export function boundaries(timeline: TimelineConfig): number[] {
   return [...times].sort((a, b) => a - b);
 }
 
-function errorMessage(
-  error: { message: string; cause?: unknown; phase?: string; operationSystemName?: string },
-  operation: string | undefined,
-  via: readonly string[] | undefined
-): string {
-  const cause = error.cause instanceof Error ? error.cause.message : String(error.cause ?? '');
-  const op = operation ?? error.operationSystemName;
-  const where = `${error.phase ?? 'start'} operation${op ? ` ${op}` : ''}`;
-  const path = via && via.length > 0 ? ` (in ${via.join(' → ')})` : '';
-  return `${where}${path}: ${cause || error.message}`;
-}
-
-/**
- * The other operations that match the report: Eligius names only the
- * innermost operation (name and index), which can repeat in the call chain.
- */
-function alsoAt(alternatives: readonly EngineErrorCandidate[], map: EligianMap): string {
-  const places = alternatives.flatMap(alternative => {
-    const at = inFile(alternative.operation.location, map);
-    if (!at) return [];
-    const path = alternative.via.length > 0 ? ` (in ${alternative.via.join(' → ')})` : '';
-    return [`${nodePath.basename(at.file)}:${at.line}:${at.column}${path}`];
-  });
-  return places.length > 0 ? ` [or at ${places.join(', ')}]` : '';
-}
-
-/** A location with its file (the compiled file when the map does not name one). */
-export function inFile(
-  location: SourceLocation | undefined,
-  map: EligianMap
-): (SourceLocation & { file: string }) | undefined {
-  if (!location) return undefined;
-  const file = location.file ?? map.source;
-  return file ? { ...location, file } : undefined;
-}
-
 /**
  * Collect `console.error`, unhandled rejections and (strict) `selectElement`
  * misses while the presentation runs, and mute its `console.log` output;
@@ -452,7 +414,7 @@ function captureRuntime(
   };
   console.warn = (...args: unknown[]) => {
     const text = args.map(describe).join(' ');
-    const miss = /^selector '(.+)' wasn't found!$/.exec(text);
+    const miss = SELECTOR_MISS.exec(text);
     if (miss) {
       if (strict) {
         report({
@@ -483,30 +445,6 @@ function captureRuntime(
 function describe(value: unknown): string {
   if (value instanceof Error) return value.message;
   return typeof value === 'string' ? value : JSON.stringify(value);
-}
-
-/** The source of the first `selectElement` with this literal selector. */
-function selectorLocation(
-  config: IEngineConfiguration,
-  map: EligianMap,
-  selector: string
-): SourceLocation | undefined {
-  type Ops = readonly { systemName: string; operationData?: Record<string, unknown> }[];
-  const actions: { id: string; startOperations: Ops; endOperations?: Ops }[] = [
-    ...(config.actions as never[]),
-    ...(config.initActions as never[]),
-    ...config.timelines.flatMap(t => t.timelineActions as never[]),
-  ];
-  for (const action of actions) {
-    for (const phase of ['start', 'end'] as const) {
-      const ops = phase === 'start' ? action.startOperations : (action.endOperations ?? []);
-      const index = ops.findIndex(
-        op => op.systemName === 'selectElement' && op.operationData?.selector === selector
-      );
-      if (index >= 0) return map.actions[action.id]?.[phase][index]?.location;
-    }
-  }
-  return undefined;
 }
 
 /** The source of the first call of an operation (a host operation's name is its systemName). */

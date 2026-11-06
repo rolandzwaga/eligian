@@ -46,7 +46,8 @@ const headingsOf = (body: string): string[] => {
   return headings;
 };
 
-const read = (docsRoot: string) => {
+/** The failure, text reader and JSON parser over one resolved docs directory. */
+const readers = (docsRoot: string) => {
   const failure = (cause: unknown): ToolInternal =>
     new ToolInternal({
       message: `cannot read the Eligian docs in ${docsRoot}: ${toToolError('read')(cause).message}`,
@@ -61,11 +62,26 @@ const read = (docsRoot: string) => {
       Effect.flatMap(text => Effect.try({ try: (): unknown => JSON.parse(text), catch: failure }))
     );
 
+  return { failure, readText, parseJson };
+};
+
+/** `index.json` under the resolved `docsRoot`, checked to be an array (shared by `read` and `loadIndex`). */
+const readIndex = (docsRoot: string): Effect.Effect<IndexEntry[], ToolInternal> => {
+  const { failure, parseJson } = readers(docsRoot);
+  return parseJson('index.json').pipe(
+    Effect.flatMap(index =>
+      Array.isArray(index)
+        ? Effect.succeed(index as IndexEntry[])
+        : Effect.fail(failure(new Error('index.json is not an array')))
+    )
+  );
+};
+
+const read = (docsRoot: string) => {
+  const { failure, readText, parseJson } = readers(docsRoot);
+
   return Effect.gen(function* () {
-    const index = yield* parseJson('index.json');
-    if (!Array.isArray(index)) {
-      return yield* failure(new Error('index.json is not an array'));
-    }
+    const index = yield* readIndex(docsRoot);
     const parsed = (yield* parseJson('overlays.json')) as Overlays;
     const overlays: Required<Overlays> = { operations: {}, controllers: {}, ...parsed };
     const files = yield* Effect.tryPromise({
@@ -83,7 +99,7 @@ const read = (docsRoot: string) => {
     }
 
     const knowledge: Knowledge = {
-      index: index as IndexEntry[],
+      index,
       body: id => bodies.get(id),
       headings: id => headings.get(id) ?? [],
       overlays,
@@ -102,3 +118,9 @@ export const loadKnowledge = (docsRoot: URL | string): Effect.Effect<Knowledge, 
       Effect.tap(knowledge => Effect.sync(() => cache.set(directory, knowledge)))
     );
   });
+
+/** `index.json` only (no bodies, no overlays, not cached); `ToolInternal` naming `docsRoot` on any failure. */
+export const loadIndex = (
+  docsRoot: URL | string
+): Effect.Effect<readonly IndexEntry[], ToolInternal> =>
+  Effect.suspend(() => readIndex(toDirectory(docsRoot)));

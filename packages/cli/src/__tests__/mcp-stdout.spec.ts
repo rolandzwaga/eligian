@@ -220,6 +220,23 @@ describe('stdout carries only protocol frames (server runs)', () => {
         server.notify('notifications/initialized');
         const tools = await server.request('tools/list');
         expect(tools.error).toBeUndefined();
+
+        // Phase 4 SC-013: the resource and prompt methods answer in frames too
+        const resources = await server.request('resources/list');
+        expect(resources.error).toBeUndefined();
+        expect(JSON.stringify(resources.result)).toContain('eligian://docs/storyboard');
+        const storyboard = await server.request('resources/read', {
+          uri: 'eligian://docs/storyboard',
+        });
+        expect(storyboard.error).toBeUndefined();
+        const missing = await server.request('resources/read', { uri: 'eligian://docs/nope' });
+        expect(missing.error).toBeDefined();
+        const prompt = await server.request('prompts/get', {
+          name: 'new-presentation',
+          arguments: { idea: 'x' },
+        });
+        expect(prompt.error).toBeUndefined();
+
         const check = await server.request('tools/call', {
           name: 'eligian_check',
           arguments: { paths: [NOISE_PROJECT] },

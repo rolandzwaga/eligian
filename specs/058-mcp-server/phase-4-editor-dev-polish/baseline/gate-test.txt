@@ -1,0 +1,329 @@
+$ pnpm -r test
+Scope: all 5 workspace projects
+packages/shared-utils test$ vitest run
+packages/shared-utils test: 
+packages/shared-utils test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/shared-utils
+packages/shared-utils test: 
+packages/shared-utils test: (node:47472) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+packages/shared-utils test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/shared-utils test: 
+packages/shared-utils test:  Test Files  7 passed (7)
+packages/shared-utils test:       Tests  105 passed (105)
+packages/shared-utils test:    Start at  03:15:21
+packages/shared-utils test:    Duration  896ms (tests 57%, transform 25%, import 15%, worker 3%)
+packages/shared-utils test: 
+packages/shared-utils test: Done
+packages/language test$ vitest run --reporter=dot --hideSkippedTests
+packages/language test: The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+packages/language test: 
+packages/language test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/language
+packages/language test: 
+packages/language test: stderr | src/__tests__/on-demand-library-loading.spec.ts > On-demand loading of imported libraries (IDE) > the language server update path loads, builds and validates the libraries
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/nested.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/nested.eligian).
+packages/language test: 
+packages/language test: stderr | src/__tests__/on-demand-library-loading.spec.ts > On-demand loading of imported libraries (IDE) > the language server update path loads, builds and validates the libraries
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/nested.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: 
+packages/language test: ······································································································································································································································································································stdout | src/__tests__/operation-validation.spec.ts > Operation Validation > Imported action validation > should validate multiple imported actions
+packages/language test: Found 1 errors:
+packages/language test:   - Asset file not found: ./test.css. Check that the file path is correct and the file exists (code: css-import-error)
+packages/language test: 
+packages/language test: ·························································stdout | src/__tests__/operation-validation.spec.ts > Operation Validation > Imported action validation > should validate mix of imported actions and builtin operations
+packages/language test: Found 1 errors:
+packages/language test:   - Asset file not found: ./test.css. Check that the file path is correct and the file exists (code: css-import-error)
+packages/language test: 
+packages/language test: stderr | src/__tests__/library-imports/imported-action-parameter-validation.spec.ts > Imported Action Parameter Validation (Feature 032 Fix) > should reject aliased imported action with wrong argument count
+packages/language test: === T010 ALL DIAGNOSTICS ===
+packages/language test:   [ERROR] Action 'customFadeIn' expects 2 argument(s) but got 1. Expected: selector, duration
+packages/language test: 
+packages/language test: ··············································································································································································································································································································································································································································································································································································································································································································································································stdout | src/compiler/__tests__/eligian-map.spec.ts > Eligian map (audit idea #14) > an error the real engine reports maps to the failing operation's source line
+packages/language test: logValue before
+packages/language test: 
+packages/language test: ·························································································stdout | src/__tests__/lsp-navigation.spec.ts > Custom Action Reference Provider - LSP Integration > Performance Requirements > SC-001: Navigation completes in < 1 second for 100 actions
+packages/language test: Navigation with 100 actions took: 114.36ms
+packages/language test: 
+packages/language test: ·································································································································································································································································································································································································································-·············································································································································································································································································································································································································································································································································································-·············································································································································································································································································································································································································································································································································································································································--·---·--····-··························································································································································································································································································································································································································································································································································································································································-------------···
+packages/language test: 
+packages/language test:  Test Files  257 passed | 1 skipped (258)
+packages/language test:       Tests  3428 passed | 23 skipped (3451)
+packages/language test:    Start at  03:15:22
+packages/language test:    Duration  29.14s (import 73%, tests 14%, transform 8%, environment 4%)
+packages/language test: 
+packages/language test:     Isolate  258 workers spawned · ~486ms startup each (spawn + environment, per file)
+packages/language test:              at least ~3.56s faster with isolate: false — reuses workers across files instead of one per file
+packages/language test: 
+packages/language test: Done
+packages/cli test$ vitest run --project cli --project cli-timed && pnpm run test:bin
+packages/extension test$ vitest run
+packages/extension test: 
+packages/extension test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/extension
+packages/extension test: 
+packages/cli test: 
+packages/cli test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+packages/cli test: 
+packages/cli test: {"t":"2026-11-06T02:16:00.442Z","tool":"eligian_check","ms":575,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:01.028Z","tool":"eligian_check","ms":497,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:01.530Z","tool":"eligian_fmt","ms":159,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:01.696Z","tool":"eligian_check","ms":164,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:01.016Z","tool":"eligian_check","ms":939,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:01.726Z","tool":"eligian_check","ms":304,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:01.727Z","tool":"eligian_fmt","ms":321,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:02.055Z","tool":"eligian_check","ms":135,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:01.968Z","tool":"eligian_project","ms":278,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:02.079Z","tool":"eligian_check","ms":262,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/extension test: Could not parse CSS stylesheet
+packages/cli test: {"t":"2026-11-06T02:16:02.080Z","tool":"eligian_fmt","ms":320,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:02.253Z","tool":"eligian_check","ms":356,"chars":1930,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:02.405Z","tool":"eligian_check","ms":485,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:02.470Z","tool":"eligian_check","ms":862,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:02.470Z","tool":"eligian_fmt","ms":975,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:02.613Z","tool":"eligian_project","ms":1025,"chars":1879,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:03.329Z","tool":"eligian_compile","ms":447,"chars":9359,"ok":true,"args":{"view":"full","includeMap":true}}
+packages/cli test: {"t":"2026-11-06T02:16:03.449Z","tool":"eligian_check","ms":602,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:03.517Z","tool":"eligian_check","ms":789,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:03.518Z","tool":"eligian_fmt","ms":890,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:03.790Z","tool":"eligian_compile","ms":665,"chars":4202,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true}}
+packages/cli test: {"t":"2026-11-06T02:16:03.819Z","tool":"eligian_check","ms":722,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:04.412Z","tool":"eligian_check","ms":226,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:04.546Z","tool":"eligian_project","ms":240,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:04.429Z","tool":"eligian_check","ms":362,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:04.430Z","tool":"eligian_fmt","ms":407,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:04.841Z","tool":"eligian_check","ms":73,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:04.793Z","tool":"eligian_check","ms":147,"chars":1759,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:04.856Z","tool":"eligian_check","ms":207,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:04.857Z","tool":"eligian_fmt","ms":215,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:04.945Z","tool":"eligian_project","ms":197,"chars":1871,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:05.084Z","tool":"eligian_check","ms":117,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.106Z","tool":"eligian_check","ms":185,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.107Z","tool":"eligian_fmt","ms":198,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:05.189Z","tool":"eligian_project","ms":134,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:05.309Z","tool":"eligian_check","ms":70,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.327Z","tool":"eligian_check","ms":56,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.328Z","tool":"eligian_check","ms":125,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.329Z","tool":"eligian_fmt","ms":140,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:05.387Z","tool":"eligian_project","ms":136,"chars":1874,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:05.472Z","tool":"eligian_check","ms":84,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.567Z","tool":"eligian_check","ms":92,"chars":2179,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.493Z","tool":"eligian_check","ms":199,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.493Z","tool":"eligian_fmt","ms":235,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:05.716Z","tool":"eligian_check","ms":119,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.731Z","tool":"eligian_check","ms":111,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.750Z","tool":"eligian_check","ms":153,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.750Z","tool":"eligian_fmt","ms":168,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:05.922Z","tool":"eligian_check","ms":79,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.838Z","tool":"eligian_check","ms":209,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.944Z","tool":"eligian_check","ms":114,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.944Z","tool":"eligian_fmt","ms":141,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:06.089Z","tool":"eligian_check","ms":90,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.051Z","tool":"eligian_compile","ms":198,"chars":604,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T02:16:06.108Z","tool":"eligian_check","ms":187,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.109Z","tool":"eligian_fmt","ms":211,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:06.325Z","tool":"eligian_check","ms":110,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.342Z","tool":"eligian_check","ms":194,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.252Z","tool":"eligian_project","ms":287,"chars":1895,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:06.343Z","tool":"eligian_fmt","ms":207,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:06.557Z","tool":"eligian_check","ms":102,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.544Z","tool":"eligian_compile","ms":119,"chars":814,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T02:16:06.573Z","tool":"eligian_check","ms":169,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.574Z","tool":"eligian_fmt","ms":178,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:06.756Z","tool":"eligian_check","ms":67,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.665Z","tool":"eligian_project","ms":185,"chars":2021,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:06.775Z","tool":"eligian_check","ms":123,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.775Z","tool":"eligian_fmt","ms":160,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:06.939Z","tool":"eligian_check","ms":75,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.898Z","tool":"eligian_check","ms":128,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:06.957Z","tool":"eligian_check","ms":126,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.029Z","tool":"eligian_project","ms":66,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:06.958Z","tool":"eligian_fmt","ms":141,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:07.103Z","tool":"eligian_check","ms":77,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.098Z","tool":"eligian_check","ms":120,"chars":1930,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.121Z","tool":"eligian_check","ms":117,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.122Z","tool":"eligian_fmt","ms":142,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:07.220Z","tool":"eligian_project","ms":107,"chars":1879,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:07.267Z","tool":"eligian_check","ms":65,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.282Z","tool":"eligian_check","ms":138,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.283Z","tool":"eligian_fmt","ms":203,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:07.533Z","tool":"eligian_check","ms":174,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.410Z","tool":"eligian_check","ms":313,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.573Z","tool":"eligian_check","ms":196,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.574Z","tool":"eligian_fmt","ms":211,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:07.726Z","tool":"eligian_project","ms":62,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:07.799Z","tool":"eligian_check","ms":140,"chars":1759,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.789Z","tool":"eligian_check","ms":180,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.807Z","tool":"eligian_check","ms":200,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:07.807Z","tool":"eligian_fmt","ms":203,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:07.941Z","tool":"eligian_project","ms":127,"chars":1871,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.066Z","tool":"eligian_check","ms":88,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.158Z","tool":"eligian_compile","ms":60,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.221Z","tool":"eligian_project","ms":123,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.103Z","tool":"eligian_project","ms":250,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.356Z","tool":"eligian_check","ms":38,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.347Z","tool":"eligian_check","ms":60,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.363Z","tool":"eligian_compile","ms":75,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.363Z","tool":"eligian_project","ms":113,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.480Z","tool":"eligian_check","ms":61,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.398Z","tool":"eligian_project","ms":213,"chars":1874,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.495Z","tool":"eligian_compile","ms":131,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.496Z","tool":"eligian_project","ms":177,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.614Z","tool":"eligian_check","ms":67,"chars":2179,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.676Z","tool":"eligian_check","ms":51,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.697Z","tool":"eligian_compile","ms":68,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.697Z","tool":"eligian_project","ms":98,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.723Z","tool":"eligian_check","ms":129,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.810Z","tool":"eligian_check","ms":87,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.828Z","tool":"eligian_compile","ms":99,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.862Z","tool":"eligian_check","ms":80,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:08.829Z","tool":"eligian_project","ms":184,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.016Z","tool":"eligian_check","ms":37,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.035Z","tool":"eligian_compile","ms":78,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.035Z","tool":"eligian_project","ms":100,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.138Z","tool":"eligian_check","ms":46,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.157Z","tool":"eligian_compile","ms":63,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.157Z","tool":"eligian_project","ms":86,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:08.946Z","tool":"eligian_check","ms":314,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.246Z","tool":"eligian_check","ms":51,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.265Z","tool":"eligian_compile","ms":68,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.266Z","tool":"eligian_project","ms":87,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.269Z","tool":"eligian_compile","ms":99,"chars":604,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T02:16:09.357Z","tool":"eligian_check","ms":101,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.371Z","tool":"eligian_project","ms":109,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.371Z","tool":"eligian_compile","ms":150,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.524Z","tool":"eligian_check","ms":56,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.539Z","tool":"eligian_compile","ms":79,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.626Z","tool":"eligian_check","ms":4,"chars":293,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T02:16:09.370Z","tool":"eligian_project","ms":272,"chars":1895,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.539Z","tool":"eligian_project","ms":149,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.697Z","tool":"eligian_check","ms":63,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.763Z","tool":"eligian_check","ms":0,"chars":628,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T02:16:09.798Z","tool":"eligian_check","ms":8,"chars":1144,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_operation":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.715Z","tool":"eligian_compile","ms":93,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.715Z","tool":"eligian_project","ms":123,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.844Z","tool":"eligian_check","ms":45,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.645Z","tool":"eligian_check","ms":254,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.866Z","tool":"eligian_compile","ms":65,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.866Z","tool":"eligian_project","ms":104,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.974Z","tool":"eligian_check","ms":39,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:09.987Z","tool":"eligian_compile","ms":49,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:09.902Z","tool":"eligian_compile","ms":158,"chars":814,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T02:16:09.987Z","tool":"eligian_project","ms":73,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.063Z","tool":"eligian_check","ms":44,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.081Z","tool":"eligian_project","ms":53,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.081Z","tool":"eligian_compile","ms":85,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.062Z","tool":"eligian_project","ms":123,"chars":2021,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.169Z","tool":"eligian_check","ms":35,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.184Z","tool":"eligian_compile","ms":39,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.184Z","tool":"eligian_project","ms":64,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.253Z","tool":"eligian_check","ms":53,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.273Z","tool":"eligian_compile","ms":73,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.274Z","tool":"eligian_project","ms":91,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.369Z","tool":"eligian_check","ms":47,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.385Z","tool":"eligian_compile","ms":66,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.385Z","tool":"eligian_project","ms":87,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.476Z","tool":"eligian_check","ms":42,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.496Z","tool":"eligian_compile","ms":40,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.496Z","tool":"eligian_project","ms":66,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.566Z","tool":"eligian_check","ms":46,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.583Z","tool":"eligian_compile","ms":65,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.583Z","tool":"eligian_project","ms":93,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.680Z","tool":"eligian_check","ms":83,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.697Z","tool":"eligian_compile","ms":92,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.697Z","tool":"eligian_project","ms":114,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.815Z","tool":"eligian_check","ms":41,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.831Z","tool":"eligian_compile","ms":61,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.831Z","tool":"eligian_project","ms":92,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:10.962Z","tool":"eligian_check","ms":250,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:10.962Z","tool":"eligian_fmt","ms":283,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:16:10.963Z","tool":"eligian_operations","ms":479,"chars":535,"ok":true,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T02:16:11.506Z","tool":"eligian_check","ms":108,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:11.617Z","tool":"eligian_compile","ms":92,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:11.712Z","tool":"eligian_project","ms":77,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:11.793Z","tool":"eligian_check","ms":216,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:12.011Z","tool":"eligian_compile","ms":73,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:12.086Z","tool":"eligian_project","ms":105,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:12.234Z","tool":"eligian_check","ms":124,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:12.367Z","tool":"eligian_compile","ms":45,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:12.557Z","tool":"eligian_check","ms":11,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:12.571Z","tool":"eligian_check","ms":293,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:12.572Z","tool":"eligian_compile","ms":536,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T02:16:13.259Z","tool":"eligian_check","ms":8,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:13.451Z","tool":"eligian_check","ms":339,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T02:16:13.453Z","tool":"eligian_check","ms":374,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:05.796Z","tool":"eligian_operations","ms":9830,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T02:16:15.749Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T02:16:15.761Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T02:16:15.765Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T02:16:06.889Z","tool":"eligian_docs","ms":8968,"chars":9896,"ok":true,"args":{}}
+packages/cli test: {"t":"2026-11-06T02:16:15.897Z","tool":"eligian_check","ms":1,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T02:16:15.928Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T02:16:15.896Z","tool":"eligian_check","ms":129,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T02:16:16.034Z","tool":"eligian_check","ms":53,"chars":2098,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"timeline-required":1,"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:16.145Z","tool":"eligian_fmt","ms":204,"chars":291,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-docs-empty-NkIGAI; resources disabled
+packages/cli test: {"t":"2026-11-06T02:16:16.515Z","tool":"eligian_docs","ms":8,"chars":495,"ok":false,"args":{}}
+packages/cli test: {"t":"2026-11-06T02:16:16.406Z","tool":"eligian_init","ms":409,"chars":1230,"ok":true,"args":{"directory":"project","template":"blank","force":false,"agents":true,"client":["claude"]}}
+packages/cli test: {"t":"2026-11-06T02:16:16.870Z","tool":"eligian_compile","ms":73,"chars":1853,"ok":true,"args":{"view":"summary"}}
+packages/cli test: {"t":"2026-11-06T02:16:17.004Z","tool":"eligian_project","ms":50,"chars":847,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: smoke: stub stderr one
+packages/cli test: smoke: stub stderr two
+packages/cli test: smoke: this line is not json
+packages/cli test: {"t":"2026-11-06T02:16:17.112Z","tool":"eligian_smoke","ms":283,"chars":341,"ok":true,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:17.360Z","tool":"eligian_compile","ms":66,"chars":2004,"ok":true,"args":{"view":"fragment","select":["timeline"],"explain":true}}
+packages/cli test: {"t":"2026-11-06T02:16:17.456Z","tool":"eligian_compile","ms":2,"chars":424,"ok":false,"args":{"view":"summary"}}
+packages/cli test: {"t":"2026-11-06T02:16:17.515Z","tool":"eligian_project","ms":14,"chars":257,"ok":false,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T02:16:17.581Z","tool":"eligian_smoke","ms":2,"chars":255,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/extension test: 
+packages/extension test:  Test Files  65 passed (65)
+packages/extension test:       Tests  792 passed (792)
+packages/extension test:    Start at  03:15:52
+packages/extension test:    Duration  25.45s (environment 83%, import 10%, tests 4%, transform 2%, worker 1%, setup 1%)
+packages/extension test: 
+packages/extension test: Environment  jsdom was created 65 times · 513.73s total, 83% of tracked time
+packages/extension test:              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+packages/extension test:              learn more: https://vitest.dev/guide/improving-performance#test-environments
+packages/extension test: 
+packages/extension test: Done
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-init-EZ1c0m; resources disabled
+packages/cli test: {"t":"2026-11-06T02:16:20.482Z","tool":"eligian_init","ms":25,"chars":389,"ok":false,"args":{"directory":"C:\\Users\\scab\\AppData\\Local\\Temp\\eligian-mcp-init-EZ1c0m\\file.txt\\sub","template":"blank","force":false,"agents":true,"client":["claude"]}}
+packages/cli test: {"t":"2026-11-06T02:16:20.897Z","tool":"eligian_operations","ms":3,"chars":493,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-fmt-68vtT8; resources disabled
+packages/cli test: {"t":"2026-11-06T02:16:20.968Z","tool":"eligian_operations","ms":0,"chars":569,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T02:16:21.040Z","tool":"eligian_fmt","ms":22,"chars":413,"ok":false,"args":{"paths":1,"write":true}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-resources-DyPzsd; resources disabled
+packages/cli test: Not implemented: navigation to another Document
+packages/cli test: {"t":"2026-11-06T02:16:26.389Z","tool":"eligian_check","ms":15,"chars":163,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T02:16:28.895Z","tool":"eligian_check","ms":10,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:28.931Z","tool":"eligian_check","ms":0,"chars":589,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T02:16:28.933Z","tool":"eligian_operations","ms":0,"chars":594,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T02:16:28.959Z","tool":"eligian_check","ms":5,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:29.005Z","tool":"eligian_docs","ms":1,"chars":9896,"ok":true,"args":{}}
+packages/cli test: {"t":"2026-11-06T02:16:29.009Z","tool":"eligian_operations","ms":97,"chars":769,"ok":true,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T02:16:29.108Z","tool":"eligian_check","ms":5,"chars":1396,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T02:16:29.114Z","tool":"eligian_fmt","ms":43,"chars":339,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T02:18:26.215Z","tool":"eligian_smoke","ms":8,"chars":0,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/cli test: 
+packages/cli test:  Test Files  70 passed | 1 skipped (71)
+packages/cli test:       Tests  1389 passed | 32 skipped (1421)
+packages/cli test:    Start at  03:15:52
+packages/cli test:    Duration  169.03s (tests 77%, import 21%, transform 1%)
+packages/cli test: 
+packages/cli test: $ vitest run --project cli-bin
+packages/cli test: 
+packages/cli test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+packages/cli test: 
+packages/cli test: (node:61044) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+packages/cli test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/cli test: 
+packages/cli test:  Test Files  1 passed (1)
+packages/cli test:       Tests  14 passed (14)
+packages/cli test:    Start at  03:18:42
+packages/cli test:    Duration  7.43s (tests 95%, import 5%)
+packages/cli test: 
+packages/cli test: Done
+exit 0

@@ -1,0 +1,5 @@
+Schema portability: 0 errors, 4 warnings across 1 tool. Re-run with --strict for details.
+tools/list: eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke
+exit 0
+resources/list: 140 resources
+exit 0

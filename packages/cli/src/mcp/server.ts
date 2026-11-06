@@ -12,12 +12,15 @@
  */
 // @effect-diagnostics unstableApiUsage:off
 import { getCompilerVersion } from '@eligian/language';
-import { Array as Arr, Cause, Effect, Exit, Layer, type Stdio } from 'effect';
+import { Array as Arr, Cause, Effect, Exit, Layer, Result, type Stdio } from 'effect';
 import type { McpProtocol } from 'effect/ai';
 import { type CompilerLock, CompilerLockLive } from './compiler-lock.js';
 import { catchDefects, type ToolError, toToolFailure } from './errors.js';
 import { INSTRUCTIONS, MCP_PHASE } from './instructions.js';
+import { loadIndex } from './knowledge/load.js';
 import type { EffectAi } from './paths.js';
+import { newPresentationPrompt } from './prompts.js';
+import { docsResources } from './resources.js';
 import { layerNodeStdio, redirectConsoleToStderr, stderrLoggerLayer } from './stdio.js';
 import { makeTelemetry } from './telemetry.js';
 import * as check from './tools/check.js';
@@ -74,6 +77,16 @@ export async function makeServerLayer(
     docsRoot: options.docsRoot ?? new URL('./docs/', import.meta.url),
     versions,
   };
+
+  // Phase 4 C4, P18: the index is read before any layer is built, so the registrations below do
+  // no I/O and an early `initialize` already sees the resources. No docs: no resources (FR-023).
+  const index = await Effect.runPromise(Effect.result(loadIndex(context.docsRoot)));
+  if (Result.isFailure(index)) {
+    process.stderr.write(
+      `eligian mcp: no docs at ${index.failure.path ?? String(context.docsRoot)}; resources disabled\n`
+    );
+  }
+  const entries = Result.isSuccess(index) ? index.success : [];
 
   /**
    * One tool call: telemetry around the handler, defects caught, errors declared (C3, C5); the
@@ -150,7 +163,11 @@ export async function makeServerLayer(
     // the one lock instance of this server
     Layer.provide(options.lock ?? CompilerLockLive)
   );
-  return tools.pipe(
+  return Layer.mergeAll(
+    tools,
+    docsResources(ai, context.docsRoot, entries),
+    newPresentationPrompt(ai)
+  ).pipe(
     Layer.provide(
       ai.McpServer.layerStdio({
         name: 'eligian',

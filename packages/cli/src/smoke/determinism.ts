@@ -20,8 +20,9 @@
 import type { EligianMap, SourceLocation } from '@eligian/language';
 import type { IEligiusEngine, IEngineConfiguration, ITimelineConfiguration } from 'eligius';
 import { injectStyles } from './dom-environment.js';
+import { inFile } from './engine-error-format.js';
 import { elementSnapshot } from './scenario.js';
-import { boundaries, inFile, type SmokeProblem } from './smoke-runner.js';
+import { boundaries, type SmokeProblem } from './smoke-runner.js';
 import { touchedSelectors } from './touched-selectors.js';
 
 export type PathKind = 'linear' | 'fresh' | 'end-back';

@@ -135,6 +135,19 @@ const shorthand = (names: readonly string[]) =>
   names.length === 0 ? '{}' : `{ ${names.join(', ')} }`;
 
 /**
+ * FR-015: lets `eligian dev` subscribe to engine errors before position 0; written
+ * in esbuild's printed form so the unminified bundle contains it verbatim (plan P4).
+ * The generated lines inside `init`, between `createEngine` and `engine.init()`.
+ */
+export const DEV_HOOK_SNIPPET = [
+  '    const eligianDevHooks = window.__eligianDevHooks;',
+  '    if (Array.isArray(eligianDevHooks)) {',
+  '      for (const eligianDevHook of eligianDevHooks) eligianDevHook(engine);',
+  '    }',
+  '',
+].join('\n');
+
+/**
  * Generate the entry point JavaScript content
  *
  * Creates a self-contained entry point that:
@@ -237,6 +250,7 @@ export function generateEntryPoint(
   lines.push('  return Promise.resolve().then(() => {');
   lines.push('    const factory = new EngineFactory(createBundleImporter(), window);');
   lines.push('    const { engine } = factory.createEngine(CONFIG);');
+  lines.push(DEV_HOOK_SNIPPET.slice(0, -1));
   lines.push('    return engine.init().then(() => engine.start()).then(() => engine);');
   lines.push('  });');
   lines.push('}');

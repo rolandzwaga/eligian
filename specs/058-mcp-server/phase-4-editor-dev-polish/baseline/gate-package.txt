@@ -1,0 +1,91 @@
+# T045 gate-package — 2026-11-06T03:24:40+01:00 — HEAD aa9fa5591115f750a930f7ecdf1ff3f3b21da0c7
+## 1. tools/list (ci.yml MCP inspector gate)
+Schema portability: 0 errors, 4 warnings across 1 tool. Re-run with --strict for details.
+tools/list: eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke
+exit 0
+## 2. resources/list (ci.yml MCP inspector gate)
+resources/list: 140 resources
+exit 0
+## 3. pnpm -C packages/extension run package
+$ vsce package --no-dependencies
+Executing prepublish script 'npm run vscode:prepublish'...
+
+> eligian@1.0.0 vscode:prepublish
+> pnpm run build:prod
+
+$ pnpm run build:prepare && node esbuild.mjs --production
+$ shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json && shx cp -f ../../LICENSE ./LICENSE && shx cp -f ../../CHANGELOG.md ./CHANGELOG.md
+[03:24:44] Build succeeded
+[03:24:44] Build succeeded
+[03:24:45] Build succeeded
+[03:24:45] Build succeeded
+ INFO  Files included in the VSIX:
+eligian-1.0.0.vsix
+├─ [Content_Types].xml 
+├─ extension.vsixmanifest 
+└─ extension/
+   ├─ LICENSE.txt [1.04 KB]
+   ├─ changelog.md [25.53 KB]
+   ├─ language-configuration.json [0.65 KB]
+   ├─ package.json [10.83 KB]
+   ├─ readme.md [17.53 KB]
+   ├─ out/
+   │  ├─ esbuild.wasm [13.33 MB]
+   │  ├─ extension/
+   │  │  ├─ main.cjs [2.32 MB]
+   │  │  └─ preview/
+   │  │     └─ host-bundler-worker.cjs [74.67 KB]
+   │  ├─ language/
+   │  │  └─ main.cjs [2.34 MB]
+   │  └─ media/
+   │     ├─ locale-editor.js [22.87 KB]
+   │     ├─ preview.js [591.34 KB]
+   │     └─ timeline-view.js [3.36 KB]
+   ├─ resources/
+   │  ├─ icon.png [3.87 KB]
+   │  └─ timeline.svg [0.25 KB]
+   ├─ snippets/
+   │  └─ eligian.json [1.6 KB]
+   ├─ src/
+   │  └─ extension/
+   │     ├─ locale-editor/
+   │     │  └─ templates/ (1 file) [18.54 KB]
+   │     └─ preview/
+   │        └─ templates/ (2 files) [10.21 KB]
+   └─ syntaxes/
+      └─ eligian.tmLanguage.json [6.38 KB]
+
+ DONE  Packaged: F:\projects\eligius\eligian\packages\extension\eligian-1.0.0.vsix (21 files, 5.09 MB)
+exit 0
+## 4. build-output.spec.ts
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/extension
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  03:24:46
+   Duration  1.12s (environment 59%, import 31%, tests 9%, transform 1%, worker 1%)
+
+exit 0
+## 5. ls -la packages/extension/*.vsix
+-rw-r--r-- 1 scab 197609 5336637 Nov  6 03:24 packages/extension/eligian-1.0.0.vsix
+exit 0
+## 6. git status --short packages/extension (vsix entries) / check-ignore
+new .vsix entries in git status: 0
+.gitignore:12:*.vsix	packages/extension/eligian-1.0.0.vsix
+## 4b. build-output.spec.ts, verbose reporter (shows the .vsix case ran, not skipped)
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/extension
+
+ ✓ src/extension/__tests__/build-output.spec.ts > build output > tsc emits outside every folder esbuild writes to 2ms
+ ✓ src/extension/__tests__/build-output.spec.ts > build output > the webview scripts are bundles, not ES modules 2ms
+ ✓ src/extension/__tests__/build-output.spec.ts > build output > the manifest meets the Marketplace rules: an unscoped name, a PNG icon of 128 px or more 1ms
+ ✓ src/extension/__tests__/build-output.spec.ts > build output > the .vsix carries the runtime files and nothing else 93ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  03:24:56
+   Duration  1.13s (environment 60%, import 29%, tests 10%, transform 1%, worker 1%)
+
+exit 0

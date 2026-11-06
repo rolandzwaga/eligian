@@ -96,5 +96,11 @@ describe('build output', () => {
         (file.startsWith('src/') && !/\/templates\/[\w-]+\.html$/.test(file))
     );
     expect(unexpected).toEqual([]);
+    // No eligian CLI: the MCP server runs the workspace's own install (FR-032)
+    expect(
+      files.filter(file =>
+        /(^|\/)node_modules\/eligian\/|(^|\/)cli\.mjs$|(^|\/)bin\/cli\.js$/.test(file)
+      )
+    ).toEqual([]);
   });
 });

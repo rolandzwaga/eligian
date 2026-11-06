@@ -13,16 +13,31 @@
  * - Media files are served with Range support, so video can seek.
  */
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, type FSWatcher, watch } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { type EligianMap, locateEngineError } from '@eligian/language';
 import { Cause, Effect, Exit, Option } from 'effect';
-import { BundleCompileError, createBundle } from '../bundler/index.js';
+import type { IEngineConfiguration } from 'eligius';
+import { BundleCompileError, type BundleResult, createBundle } from '../bundler/index.js';
 import { AssetError, CompilationError, ParseError } from '../compile-file.js';
+import { engineErrorText, inFile, selectorLocation } from '../smoke/engine-error-format.js';
 import { DEV_CLIENT_SCRIPT } from './client-runtime.js';
+import {
+  addError,
+  type DevError,
+  type DevErrorsFile,
+  ensureEligianDir,
+  MAX_BODY_BYTES,
+  mergeKey,
+  type PageErrorReport,
+  parseRuntimeReport,
+  type RuntimeReport,
+  writeDevErrors,
+} from './runtime-reports.js';
 
 export interface DevServerOptions {
   /** First port to try (the next ones are tried when it is taken) */
@@ -44,6 +59,25 @@ export interface DevServer {
 
 const CLIENT_PATH = '/__eligian/client.js';
 const EVENTS_PATH = '/__eligian/events';
+/** The dev client posts its runtime reports here (FR-014) */
+const RUNTIME_PATH = '/__eligian/runtime';
+
+/** The build the browsers run: its identity, and the map and config its reports are located with */
+interface CurrentBuild {
+  readonly buildId: string;
+  readonly map: EligianMap;
+  readonly config: IEngineConfiguration;
+}
+
+type NewDevError = Omit<DevError, 'count' | 'first' | 'last'>;
+
+/** The terminal prefixes of the page kinds (FR-017, FR-040) */
+const PAGE_PREFIX: Record<PageErrorReport['kind'], string> = {
+  'console-error': 'console error: ',
+  'console-warn': 'console warning: ',
+  'window-error': 'page error: ',
+  'unhandled-rejection': 'unhandled rejection: ',
+};
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -74,7 +108,7 @@ const MIME: Record<string, string> = {
 };
 
 /** Directories whose changes never affect the presentation. */
-const IGNORED = /(^|[\\/])(node_modules|\.git|[^\\/]+\.bundle)([\\/]|$)|~$|\.swp$/;
+const IGNORED = /(^|[\\/])(node_modules|\.git|\.eligian|[^\\/]+\.bundle)([\\/]|$)|~$|\.swp$/;
 
 export async function startDevServer(entry: string, options: DevServerOptions): Promise<DevServer> {
   const log = options.log ?? (() => {});
@@ -89,6 +123,79 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
   let building: Promise<void> = Promise.resolve();
   let pending = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  /** The build the browsers run (FR-033): undefined while the last build failed. */
+  let current: CurrentBuild | undefined;
+  /** The last identity minted; served while no build is current. */
+  let lastBuildId = randomUUID();
+  /** Merge keys of the runtime lines printed for the current build (FR-038). */
+  const printed = new Set<string>();
+  /** What `.eligian/dev-errors.json` holds (FR-018); undefined until written. */
+  let devErrors: DevErrorsFile | undefined;
+  const devErrorsPath = path.join(root, '.eligian', 'dev-errors.json');
+  /** The write queue (FR-018); opened once the server listens, so the file has its url. */
+  let openWrites: () => void = () => {};
+  let writes = new Promise<void>(resolve => {
+    openWrites = resolve;
+  });
+
+  const emptyFile = (buildId: string): DevErrorsFile => ({
+    version: 1,
+    entry: input,
+    url,
+    buildId,
+    updated: new Date().toISOString(),
+    errors: [],
+  });
+
+  /**
+   * Queue a read-merge-write of dev-errors.json: each update sees the previous one's result, and
+   * no two writes overlap. With `onlyIfExists`, a missing file stays missing (P12).
+   */
+  const enqueue = (
+    update: (file: DevErrorsFile | undefined) => DevErrorsFile,
+    onlyIfExists = false
+  ): Promise<void> => {
+    writes = writes
+      .then(async () => {
+        if (onlyIfExists && !existsSync(devErrorsPath)) {
+          devErrors = undefined;
+          return;
+        }
+        const dir = await ensureEligianDir(root);
+        const next = update(devErrors);
+        await writeDevErrors(dir, next);
+        devErrors = next;
+      })
+      .catch(error =>
+        log(
+          `cannot write .eligian/dev-errors.json: ${error instanceof Error ? error.message : error}`
+        )
+      );
+    return writes;
+  };
+
+  /** A new identity for a build the browsers will load (the first one, or a reload). */
+  const adopt = (result: BundleResult) => {
+    const buildId = randomUUID();
+    lastBuildId = buildId;
+    current = { buildId, map: result.map, config: result.config };
+    printed.clear();
+    // FR-018: reset an existing file only; the directory appears with the first error (P12)
+    void enqueue(() => emptyFile(buildId), true);
+  };
+
+  /** Print a report's line (first occurrence per build, FR-038) and merge it into the file. */
+  const accept = (report: RuntimeReport, build: CurrentBuild): Promise<void> => {
+    const { line, error } = describeReport(report, build, root);
+    const key = mergeKey(error);
+    if (!printed.has(key)) {
+      printed.add(key);
+      log(line);
+    }
+    return enqueue(file =>
+      addError(file ?? emptyFile(build.buildId), error, new Date().toISOString())
+    );
+  };
 
   const send = (event: string, data: unknown = {}) => {
     for (const client of clients)
@@ -105,7 +212,22 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
     const what =
       changed.length > 0 ? `${changed.map(f => path.relative(root, f)).join(', ')} changed → ` : '';
     if (Exit.isFailure(exit)) {
-      lastError = describeFailure(exit.cause);
+      // P13: no page runs this build, so runtime reports are dropped until the next success
+      current = undefined;
+      const message = describeFailure(exit.cause);
+      lastError = message;
+      const buildId = lastBuildId;
+      void enqueue(() => {
+        const now = new Date().toISOString();
+        const buildError: DevError = {
+          kind: 'build-error',
+          message,
+          count: 1,
+          first: now,
+          last: now,
+        };
+        return { ...emptyFile(buildId), updated: now, errors: [buildError] };
+      });
       log(`${what}build failed (${time}):\n${indent(lastError)}`);
       send('build-error', { message: lastError });
       return;
@@ -113,13 +235,15 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
     const recovered = lastError !== undefined;
     lastError = undefined;
     if (first) {
+      adopt(exit.value);
       log(`built in ${time}`);
       return;
     }
     const cssOnly = !recovered && changed.length > 0 && changed.every(f => f.endsWith('.css'));
     if (cssOnly) {
       const css = styleOf(await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8'));
-      if (css !== undefined) {
+      // The bundle always has a <style>; an empty one means the program imports no stylesheet
+      if (css !== undefined && css.trim() !== '') {
         log(`${what}rebuilt in ${time}, styles swapped`);
         send('css', { css });
         return;
@@ -128,6 +252,7 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
     log(
       `${what}rebuilt in ${time}, reloading ${clients.size} page${clients.size === 1 ? '' : 's'}`
     );
+    adopt(exit.value);
     send('reload');
   };
 
@@ -182,6 +307,10 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
       request.on('close', () => clients.delete(response));
       return;
     }
+    if (url.pathname === RUNTIME_PATH) {
+      response.writeHead(await runtimeStatus(request)).end();
+      return;
+    }
     if (url.pathname === CLIENT_PATH) {
       response.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
       response.end(DEV_CLIENT_SCRIPT);
@@ -200,14 +329,32 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
           () => '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>'
         );
       response.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' });
-      response.end(withClient(html));
+      response.end(withClient(html, current?.buildId ?? lastBuildId));
       return;
     }
     await serveFile(file, request, response);
   };
 
+  /**
+   * `POST /__eligian/runtime` (FR-014): 403 for a foreign origin, 400 for anything malformed,
+   * 204 for a report of another build (dropped) and, once written (P17), for an accepted one.
+   */
+  const runtimeStatus = async (request: http.IncomingMessage): Promise<number> => {
+    const origin = request.headers.origin;
+    if (origin !== undefined && origin !== `http://localhost:${port}`) return 403;
+    if (request.method !== 'POST') return 400;
+    const body = await readBody(request, MAX_BODY_BYTES);
+    const report = body === undefined ? undefined : parseRuntimeReport(parseJson(body));
+    if (report === undefined) return 400;
+    const build = current;
+    if (build === undefined || report.buildId !== build.buildId) return 204;
+    await accept(report, build);
+    return 204;
+  };
+
   const port = await listen(server, options.port);
   const url = `http://localhost:${port}/`;
+  openWrites();
   const keepAlive = setInterval(() => {
     for (const client of clients) client.write(': keep-alive\n\n');
   }, 15000);
@@ -219,6 +366,7 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
       // A change may still be waiting for the debounce
       while (timer && pending.size > 0) await new Promise(r => setTimeout(r, 20));
       await building;
+      await writes;
     },
     close: async () => {
       clearInterval(keepAlive);
@@ -228,13 +376,15 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
       clients.clear();
       await new Promise<void>(resolve => server.close(() => resolve()));
       await building;
+      await writes;
     },
   };
 }
 
-/** The bundle's index.html with the dev client before </body>. */
-export function withClient(html: string): string {
-  const tag = `<script src="${CLIENT_PATH}"></script>`;
+/** The bundle's index.html with the dev client before </body>, carrying the build's id when given. */
+export function withClient(html: string, buildId?: string): string {
+  const id = buildId === undefined ? '' : ` data-build-id="${buildId}"`;
+  const tag = `<script src="${CLIENT_PATH}"${id}></script>`;
   return html.includes('</body>') ? html.replace('</body>', `  ${tag}\n</body>`) : `${html}${tag}`;
 }
 
@@ -267,6 +417,114 @@ export function describeFailure(cause: Cause.Cause<unknown>): string {
       .join('\n');
   }
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * A runtime report's terminal line and dev-errors.json entry (FR-017, FR-040): engine errors in
+ * smoke's words, located with the build's map; selector misses at their `selectElement`; the
+ * page kinds with their prefix and no location. The line has paths relative to `root`, the
+ * entry absolute ones.
+ */
+function describeReport(
+  report: RuntimeReport,
+  build: CurrentBuild,
+  root: string
+): { line: string; error: NewDevError } {
+  const at = (location: { file: string; line: number; column: number } | undefined) =>
+    location ? ` at ${path.relative(root, location.file)}:${location.line}:${location.column}` : '';
+  if (report.kind === 'engine-error') {
+    const located = locateEngineError(build.map, {
+      actionId: report.actionId,
+      phase: report.phase,
+      operationSystemName: report.operationSystemName,
+      operationIndex: report.operationIndex,
+      operationPath: report.operationPath,
+    });
+    const location = inFile(located?.location, build.map);
+    const message = engineErrorText(
+      {
+        message: report.message,
+        phase: report.phase,
+        operationSystemName: report.operationSystemName,
+      },
+      located,
+      build.map
+    );
+    const timeline =
+      report.timelineUri !== undefined && report.position !== undefined
+        ? ` (timeline ${report.timelineUri} at ${report.position}s)`
+        : '';
+    const alternatives = located?.alternatives.flatMap(alternative => {
+      const where = inFile(alternative.operation.location, build.map);
+      return where
+        ? [{ file: where.file, line: where.line, column: where.column, via: alternative.via }]
+        : [];
+    });
+    return {
+      line: `runtime error: ${message}${location ? at(location) : ' (no source location)'}${timeline}`,
+      error: {
+        kind: 'engine-error',
+        message,
+        file: location?.file,
+        line: location?.line,
+        column: location?.column,
+        timeline: report.timelineUri,
+        position: report.position,
+        action: located?.action.name ?? report.actionName,
+        operation: located?.operation?.systemName ?? report.operationSystemName,
+        via: located?.via,
+        exact: located?.exact,
+        alternatives: alternatives && alternatives.length > 0 ? alternatives : undefined,
+      },
+    };
+  }
+  if (report.kind === 'selector-miss') {
+    const location = inFile(selectorLocation(build.config, build.map, report.selector), build.map);
+    const message = `selectElement("${report.selector}") matched no element`;
+    return {
+      line: `${message}${at(location)}`,
+      error: {
+        kind: 'selector-miss',
+        message,
+        file: location?.file,
+        line: location?.line,
+        column: location?.column,
+      },
+    };
+  }
+  return {
+    line: `${PAGE_PREFIX[report.kind]}${report.message}`,
+    error: { kind: report.kind, message: report.message },
+  };
+}
+
+/** A request body as text, or undefined once it passes `limit` bytes (the rest is discarded). */
+function readBody(request: http.IncomingMessage, limit: number): Promise<string | undefined> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const onData = (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > limit) {
+        request.off('data', onData);
+        request.resume();
+        resolve(undefined);
+        return;
+      }
+      chunks.push(chunk);
+    };
+    request.on('data', onData);
+    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    request.on('error', reject);
+  });
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
 }
 
 async function serveFile(

@@ -10,7 +10,7 @@
     },
     {
       "code": "class-never-removed",
-      "count": 36
+      "count": 37
     },
     {
       "code": "syntax-error",
@@ -101,6 +101,10 @@
       "count": 2
     },
     {
+      "code": "host-operation-in-block-without-select",
+      "count": 2
+    },
+    {
       "code": "import-duplicate-default",
       "count": 2
     },
@@ -158,10 +162,6 @@
     },
     {
       "code": "event_name_must_be_literal",
-      "count": 1
-    },
-    {
-      "code": "host-operation-in-block-without-select",
       "count": 1
     },
     {
@@ -285,7 +285,7 @@
     "parameter_count",
     "constant-cycle",
     "eligius-E120",
-    "media-from-duplicate",
-    "recursive_action_call"
+    "host-operation-in-block-without-select",
+    "media-from-duplicate"
   ]
 }

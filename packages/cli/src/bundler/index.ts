@@ -410,6 +410,6 @@ export function createBundle(
       inlineOverheadPercent: overheadResult.inlineOverheadPercent,
     };
 
-    return { outputDir, files, stats };
+    return { outputDir, files, stats, map: compileResult.map, config: compileResult.config };
   });
 }

@@ -19,6 +19,8 @@ const h = vi.hoisted(() => ({
   onNotification: vi.fn(),
   watchers: [] as string[],
   eligiusLint: vi.fn(),
+  registerEligianMcpServer: vi.fn(),
+  mcpDisposable: { dispose() {} },
 }));
 
 const disposable = () => ({ dispose: vi.fn() });
@@ -141,6 +143,12 @@ vi.mock('../eligius-lint-diagnostics.js', () => ({
     return disposable();
   },
 }));
+vi.mock('../mcp/server-definition-provider.js', () => ({
+  registerEligianMcpServer: vi.fn((context: unknown) => {
+    h.registerEligianMcpServer(context);
+    return h.mcpDisposable;
+  }),
+}));
 vi.mock('../label-entry-creator.js', () => ({ createLabelEntry: vi.fn() }));
 vi.mock('../label-file-creator.js', () => ({ createLabelsFile: vi.fn() }));
 vi.mock('../locale-editor/LocaleEditorProvider.js', () => ({ LocaleEditorProvider: class {} }));
@@ -183,6 +191,7 @@ describe('activate', () => {
     h.clientStop.mockResolvedValue(undefined);
     h.onNotification.mockReset();
     h.eligiusLint.mockReset();
+    h.registerEligianMcpServer.mockReset();
   });
 
   it('registers every feature, including the client-dependent ones, when the client starts', async () => {
@@ -214,6 +223,17 @@ describe('activate', () => {
     for (const id of INDEPENDENT_COMMANDS) {
       expect(h.commandIds).toContain(id);
     }
+  });
+
+  it('registers the MCP provider even when the language server fails', async () => {
+    h.clientStart.mockRejectedValue(new Error('Cannot find module out/language/main.cjs'));
+    const context = makeContext();
+
+    await activate(context);
+
+    expect(h.registerEligianMcpServer).toHaveBeenCalledTimes(1);
+    expect(h.registerEligianMcpServer).toHaveBeenCalledWith(context);
+    expect(context.subscriptions).toContain(h.mcpDisposable);
   });
 
   it('stops the half-started client and tells the user', async () => {

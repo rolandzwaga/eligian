@@ -1,0 +1,9 @@
+wrote examples/demo.eligian
+wrote examples/eligian-tour/tour.eligian
+wrote examples/libraries/nested/chain-test.eligian
+3 files, written
+DEV_HOOK_SNIPPET: not exported, nothing removed
+same examples/demo.eligian
+same examples/eligian-tour/tour.eligian
+same examples/libraries/nested/chain-test.eligian
+3 files, 0 differ

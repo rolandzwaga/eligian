@@ -64,11 +64,13 @@ jobs:
         run: pnpm -C packages/cli run test:soak
 
       # The MCP server (eligian mcp) over stdio, through the MCP Inspector CLI:
-      # tools/list must name exactly the eight tools
+      # tools/list must name exactly the eight tools; resources/list must list the docs
       - name: MCP inspector gate
         run: |
           pnpm -C packages/cli exec mcp-inspector --cli --method tools/list --format json node bin/cli.js mcp \
             | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const names=JSON.parse(s).result.tools.map(t=>t.name).sort().join(' ');const want='eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke';if(names!==want){console.error('tools/list: '+names+' (want: '+want+')');process.exit(1)}console.log('tools/list: '+names)})"
+          pnpm -C packages/cli exec mcp-inspector --cli --method resources/list --format json node bin/cli.js mcp \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const uris=JSON.parse(s).result.resources.map(r=>r.uri);if(!uris.includes('eligian://docs/storyboard')){console.error('resources/list lacks eligian://docs/storyboard ('+uris.length+' resources)');process.exit(1)}console.log('resources/list: '+uris.length+' resources')})"
 
       - name: Type check
         run: pnpm run typecheck

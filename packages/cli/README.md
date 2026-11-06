@@ -163,6 +163,62 @@ entry's directory changes: the program, libraries, layout, styles, locales and m
   default browser. Media is served with Range requests, so video can seek.
 - Only files under the entry's directory are watched.
 
+**Runtime errors.** The page reports what goes wrong while it plays, and `dev` prints one line per
+problem in its terminal:
+
+- `runtime error: <message> at <file>:<line>:<column>`: an engine error (an operation that
+  failed), in the words of `eligian smoke` and located through the build's Eligian map at the
+  operation in your source; `(timeline <uri> at <n>s)` follows when the page knows it, and
+  `(no source location)` replaces the location when the map has none.
+- `selectElement("<selector>") matched no element at <file>:<line>:<column>`: a selector miss,
+  at the `selectElement` that used it.
+- `console error: <message>` and `console warning: <message>`: the page's `console.error` and
+  `console.warn` calls (they still reach the browser console).
+- `page error: <message>` and `unhandled rejection: <message>`: an uncaught error and an
+  unhandled promise rejection.
+
+A problem (the same kind, message and location) is printed once per build; its repeats are only
+counted. A page forwards at most 50 reports per load, and reports from a page that still runs an
+older build are ignored.
+
+**`.eligian/dev-errors.json`.** The same problems are written to `.eligian/dev-errors.json` next
+to the entry, so a coding agent can read them after loading the page:
+
+```json
+{
+  "version": 1,
+  "entry": "/abs/path/my-talk/main.eligian",
+  "url": "http://localhost:5180/",
+  "buildId": "…",
+  "updated": "2026-11-05T12:04:41.120Z",
+  "errors": [
+    {
+      "kind": "selector-miss",
+      "message": "selectElement(\"#title\") matched no element",
+      "count": 3,
+      "first": "2026-11-05T12:04:40.912Z",
+      "last": "2026-11-05T12:04:41.120Z",
+      "file": "/abs/path/my-talk/main.eligian",
+      "line": 12,
+      "column": 5
+    }
+  ]
+}
+```
+
+- `kind` is one of the seven kinds `engine-error`, `console-error`, `console-warn`,
+  `selector-miss`, `window-error`, `unhandled-rejection` and `build-error` (a failed build,
+  with the same message as the terminal).
+- `count` is how often the problem occurred, `first` and `last` when. The location fields
+  (`file`, `line`, `column`) hold an absolute path and 1-based positions; an engine error also
+  has `timeline`, `position`, `action`, `operation`, `via`, `exact` and `alternatives` when
+  known.
+- At most 100 entries; beyond that the oldest go first.
+- A build that reloads the page (and the first build) resets the list; a CSS-only build, which
+  swaps the styles in place, keeps it. The file only appears with the first problem.
+- When `dev` creates the `.eligian` directory it writes `.eligian/.gitignore` (`*`) into it, so
+  the directory ignores itself; your own `.gitignore` files are not touched.
+
 ### Play Every Timeline (`eligian smoke`)
 
 ```bash
@@ -425,7 +481,7 @@ for every client:
 |---|---|
 | `claude` | `.mcp.json`, `CLAUDE.md` (the line `@AGENTS.md`) |
 | `cursor` | `.cursor/mcp.json`, `.cursor/rules/eligian.mdc` |
-| `vscode` | `.vscode/mcp.json`, `.github/copilot-instructions.md` (the marked block) |
+| `vscode` | `.vscode/mcp.json` (the manual alternative to the extension's registration, below), `.github/copilot-instructions.md` (the marked block) |
 | `codex` | `.codex/config.toml` |
 
 - The entry runs `node` with the absolute path of `node_modules/eligian/bin/cli.js` when that
@@ -470,7 +526,11 @@ written anyway, from the same block.
 
 Cursor, `.cursor/mcp.json`: the same `mcpServers` shape as above.
 
-VS Code (Copilot agent mode), `.vscode/mcp.json`:
+VS Code (Copilot agent mode): the Eligian VS Code extension registers the server
+automatically for every workspace folder that has `eligian` 1.1 or later in its own
+`node_modules`, so no file is needed (it asks to install the package when it is missing). A
+`.vscode/mcp.json` is the manual alternative, written by `eligian agents setup --client vscode`;
+when it names an Eligian server, the extension registers none of its own for that folder:
 
 ```json
 {
@@ -528,6 +588,24 @@ client reports a server that failed to start: upgrade to `eligian@^1.1`.
   HTML, locales, libraries) are resolved by the compiler under the language's own rules, which
   allow `../`, so a program inside the root may import a file outside it. `eligian_check` and
   `eligian check` report the same diagnostics for the same program.
+
+#### Resources and the prompt
+
+Every docs chunk is also an MCP resource, `eligian://docs/<id>` (`text/markdown`: the chunk's
+title and body, with its card as the description; the ids are those of `eligian_docs`). A client
+that supports resources lets you attach one to a message by @-mention, for example
+`@eligian:eligian://docs/storyboard` in Claude Code.
+
+The prompt `new-presentation` takes one argument, `idea`, and lays out the whole workflow: read
+the storyboard, decisions and project-layout docs, write `STORYBOARD.md`, `eligian_init`,
+`eligian_project`, the layout and CSS, then the timelines with `eligian_operations` lookups,
+`eligian_check` to 0 errors and 0 warnings, `eligian_compile` with `explain`, `eligian_fmt`,
+`eligian_smoke` with a scenario per interaction and `determinism`, `eligian dev` (reading
+`.eligian/dev-errors.json`), and a last comparison with the storyboard. In Claude Code:
+
+```text
+/mcp__eligian__new-presentation "a two-minute intro to tides, with a chapter menu"
+```
 
 ## Options
 

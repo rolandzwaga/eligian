@@ -1,0 +1,23 @@
+$ node packages/cli/bin/cli.js smoke "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian"
+examples/demo.eligian
+  timeline 'Eligian Demo': 28 positions ok
+examples/eligian-tour/presentation.eligian (library: nothing to play)
+examples/eligian-tour/tour.eligian
+  timeline 'Hub': 1 position ok
+  timeline 'Timeline & Time': 9 positions ok
+  timeline 'Actions': 9 positions ok
+  timeline 'Logic': 13 positions ok
+  timeline 'Timeline Power Tools': 19 positions ok
+  timeline 'Files & Imports': 9 positions ok
+  timeline 'Engine Reach': 10 positions ok
+  timeline 'The Editor': 45 positions ok
+  timeline 'The Command Line': 254 positions ok
+examples/libraries/animations.eligian (library: nothing to play)
+examples/libraries/nested/a.eligian (library: nothing to play)
+examples/libraries/nested/b.eligian (library: nothing to play)
+examples/libraries/nested/c.eligian (library: nothing to play)
+examples/libraries/nested/chain-test.eligian
+  timeline 'Nested Import Test': 2 positions ok
+examples/libraries/utils.eligian (library: nothing to play)
+9 files, 11 timelines played, 0 errors, 0 warnings
+exit 0

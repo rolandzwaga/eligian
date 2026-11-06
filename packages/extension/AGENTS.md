@@ -11,6 +11,7 @@ VS Code extension: LSP client + webview preview, plus on-the-fly compile, CSS/HT
   - Watchers/hot-reload: `base-watcher-manager.ts`, `css-watcher.ts`, `css-loader.ts`, `html-watcher.ts`, `labels-watcher.ts`, `debounce-util.ts`.
   - Webview/preview: `preview/` (`PreviewManager`, `PreviewPanel`, `CompilationService`, `EligiusEngineService`, `FileWatcher`, `MediaResolver`, `templates/`), `webview-css-injector.ts`, `webview-uri-converter.ts`, `decorations/` (block-label decorations).
   - Locales/labels: `locale-editor/` (custom editor provider, file watcher, usage tracker, validation, serializer, `templates/`), `locale-link-provider.ts`, `label-entry-creator.ts`, `label-file-creator.ts`.
+  - Coding agents: `mcp/` — `server-definition-provider.ts` (registers the `eligian mcp` server: the `lm` provider, or Cursor's `registerServer`; watchers; the install prompt), `install-state.ts` (pure: the `eligian` ≥ 1.1 version gate, user-server detection, package manager, install command). Specs `mcp-provider.spec.ts`, `mcp-install-state.spec.ts`.
 - Tests: `extension/__tests__/`, `extension/locale-editor/__tests__/`, `language/__tests__/` (`*.spec.ts`) — there is no `src/__tests__/`.
 
 ## Gotchas

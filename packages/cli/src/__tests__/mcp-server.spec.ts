@@ -130,6 +130,23 @@ describe('the MCP server', () => {
       ]);
       expect([...TOOL_NAMES].sort()).toEqual(tools.map(tool => tool.name).sort());
     });
+
+    it('tools/list matches the Phase 3 snapshot', async () => {
+      const server = await start();
+      await server.request('initialize', initializeParams('2025-11-25'));
+      await server.notify('notifications/initialized');
+      const response = await server.request('tools/list');
+
+      await expect(
+        `${JSON.stringify((response.result as { tools: unknown[] }).tools, null, 2)}\n`
+      ).toMatchFileSnapshot('__snapshots__/tools-list-phase3.json.snap');
+    });
+
+    it('INSTRUCTIONS[MCP_PHASE] matches the Phase 3 snapshot', async () => {
+      await expect(INSTRUCTIONS[MCP_PHASE]).toMatchFileSnapshot(
+        '__snapshots__/instructions-phase3.txt.snap'
+      );
+    });
   });
 
   describe('annotations', () => {

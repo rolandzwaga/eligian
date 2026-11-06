@@ -92,6 +92,8 @@ engine.pause();
 
 In VS Code, *Eligian: Preview Timeline* plays the presentation beside the editor; an engine error becomes an `eligius-runtime` diagnostic on the operation that failed.
 
+`dev` also reports the page's runtime errors back: each one prints in the `dev` terminal with its source location and is written to `.eligian/dev-errors.json` in the project (engine errors, console errors and warnings, selector misses, page errors; a repeat only raises its `count`). After loading the page, read that file: no file, or an empty `errors` list, means the run was clean; otherwise fix the located source and reload.
+
 ## Before declaring done
 
 Compare `STORYBOARD.md` with `eligian_project`'s `storyboard` section (beat rows per timeline against the compiled ranges), and with `eligian_compile` (`select: { timeline: "<name>" }`) when a beat does not behave as planned.

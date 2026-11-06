@@ -267,6 +267,9 @@ importers:
       lottie-web:
         specifier: 5.13.0
         version: 5.13.0
+      semver:
+        specifier: 7.8.5
+        version: 7.8.5
       vscode-languageclient:
         specifier: 9.0.1
         version: 9.0.1
@@ -277,6 +280,9 @@ importers:
       '@types/jquery':
         specifier: 4.0.1
         version: 4.0.1
+      '@types/semver':
+        specifier: 7.8.0
+        version: 7.8.0
       '@types/vscode':
         specifier: 1.140.0
         version: 1.140.0
@@ -1442,6 +1448,9 @@ packages:
 
   '@types/node@26.6.5':
     resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
@@ -4197,6 +4206,8 @@ snapshots:
   '@types/node@26.6.5':
     dependencies:
       undici-types: 8.9.0
+
+  '@types/semver@7.8.0': {}
 
   '@types/tough-cookie@4.0.5': {}
 
