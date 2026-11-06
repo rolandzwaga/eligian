@@ -3,9 +3,9 @@
  * default 100) sequential `eligian_check` calls through the in-process server
  * (`startInMemoryServer`) on one fixture, reads `process.memoryUsage().heapUsed` after a
  * forced GC before the first call and after the last, and prints N, both readings, the growth
- * per call in MB and the number of compiler-service recycles (every 100 sections, phase 3
- * FR-061; the 200-call mode is the soak's, FR-063). The docs the tool reads are generated into
- * a temp dir first (deleted at the end).
+ * per call in MB and the number of compiler-service recycles (every `RECYCLE_AFTER` sections,
+ * phase 3 FR-061; the 2 × N-call mode is the soak's, FR-063). The docs the tool reads are
+ * generated into a temp dir first (deleted at the end).
  *
  * Run: `node --expose-gc --import tsx packages/cli/scripts/measure-heap.ts [--calls <n>]`
  * (stdout is the report; the server's telemetry lines go to stderr).
@@ -15,6 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startInMemoryServer } from '../src/__tests__/mcp-test-client.js';
+import { heapAfterGc } from '../src/__tests__/mcp-tool-mix.js';
 import { compilerLockLayer } from '../src/mcp/compiler-lock.js';
 import { generateKnowledge } from './generate-knowledge.js';
 
@@ -57,13 +58,6 @@ if (gc === undefined) {
   process.exit(1);
 }
 
-/** `heapUsed` in MB after a forced GC. */
-const heapAfterGc = (): number => {
-  gc();
-  gc();
-  return process.memoryUsage().heapUsed / MB;
-};
-
 const docsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-heap-docs-'));
 try {
   await generateKnowledge({ outDir: docsRoot });
@@ -78,16 +72,16 @@ try {
     }),
   });
   try {
-    const before = heapAfterGc();
+    const before = heapAfterGc(gc) / MB;
     let afterFirst = before;
     for (let call = 1; call <= N; call++) {
       const { isError, payload } = await server.callTool('eligian_check', {
         paths: ['main.eligian'],
       });
       if (isError) throw new Error(`call ${call} failed: ${JSON.stringify(payload)}`);
-      if (call === 1) afterFirst = heapAfterGc();
+      if (call === 1) afterFirst = heapAfterGc(gc) / MB;
     }
-    const after = heapAfterGc();
+    const after = heapAfterGc(gc) / MB;
     const perCall = (after - before) / N;
     const perCallAfterFirst = (after - afterFirst) / (N - 1);
     process.stdout.write(

@@ -27,14 +27,23 @@ export interface CompilerLockHooks {
 }
 
 export interface CompilerLockOptions {
-  /** Recycle after every N completed sections (default 100, roadmap §2) */
+  /** Recycle after every N completed sections (default {@link RECYCLE_AFTER}, roadmap §2) */
   readonly recycleAfter?: number;
   /** Default: {@link recycleCompilerServices} */
   readonly recycle?: () => void;
 }
 
-/** Completed sections between two recycles, by default (roadmap §2). */
-const RECYCLE_AFTER = 100;
+/**
+ * Completed sections between two recycles, by default (roadmap §2), set from the measurement in
+ * `specs/058-mcp-server/phase-5-hardening-reach/baseline/recycle-measurements.txt` (500 mixed
+ * calls on the tour per N). FR-023 rule: the largest N of {25, 50, 100, 200} whose heap growth is
+ * at most 25 MB and whose median post and median trig latency ratios are at most 3, else the
+ * candidate with the lowest growth. Growth is measured from after the warm-up round (one call
+ * per tool; the ruling of 2026-11-06). The rule picks N = 200: growth 24.52 MB, median post 1.03,
+ * median trig 0.91 (25: 13.97, 50: 12.95, 100: 12.69 MB; never: 37.68 MB). The margin to 25 MB is
+ * thin; N = 100 (12.69 MB) is the fallback if the soak ceiling is ever hit.
+ */
+export const RECYCLE_AFTER = 200;
 
 /**
  * Releases every document of the shared compiler workspace, then drops the services, so that
@@ -110,7 +119,7 @@ export const makeCompilerLock = (
     });
   });
 
-/** The production lock: no hooks, a recycle every 100 sections. */
+/** The production lock: no hooks, a recycle every {@link RECYCLE_AFTER} sections. */
 export const CompilerLockLive: Layer.Layer<CompilerLock> = Layer.effect(
   CompilerLock,
   makeCompilerLock()

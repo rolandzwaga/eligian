@@ -1465,4 +1465,5 @@ export function evaluateAssertions(
 
 export * from './gate-steps.js';
 export * from './harness.js';
+export * from './promotion-evidence.js';
 export * from './transcript.js';

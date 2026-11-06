@@ -1,0 +1,18 @@
+# T001 build-before (2026-11-06)
+HEAD: 2068f13e6862c601487f4e85a617eca36e42c683
+git status --short:
+?? specs/058-mcp-server/phase-5-hardening-reach/
+pnpm install --frozen-lockfile: exit 0
+pnpm build: exit 0
+last 5 build lines:
+packages/extension build: Done
+packages/cli build: generate-knowledge: 419 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+packages/cli build: [11:13:51] Build succeeded
+packages/cli build: [11:13:51] Build succeeded
+packages/cli build: Done
+dist files:
+packages/cli/dist/cli.mjs
+packages/cli/dist/docs/index.json
+packages/cli/dist/evals/assert.mjs
+packages/language/dist/index.cjs
+packages/language/dist/mcp/index.cjs

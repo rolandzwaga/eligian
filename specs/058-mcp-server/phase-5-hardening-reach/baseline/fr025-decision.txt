@@ -1,0 +1,15 @@
+# FR-025 decision (spec 058 phase 5, T021 / SC-016 / plan D4)
+source: specs/058-mcp-server/phase-5-hardening-reach/baseline/recycle-measurements.txt (date: 2026-11-06T10:59:48.901Z, node v24.7.0, win32)
+
+fmt-only run (500 × eligian_fmt write: false, recycle every 100 sections):
+- heapUsed after 100 calls: 195.88 MB
+- heapUsed after 200 calls: 196.26 MB
+- heapUsed after 300 calls: 195.65 MB
+- heapUsed after 400 calls: 195.81 MB
+- heapUsed after 500 calls: 193.41 MB
+fmt metric: -0.617 MB per 100 calls ((heap after the last 100 − heap after the first 100) ÷ (calls ÷ 100 − 1))
+
+verdict (FR-025): ≤ 1 MB per 100: no change
+
+decision: T021 is conditional and its condition does not trigger. No resetFormatServices is added;
+format-source.ts, index.ts, compiler-lock.ts and their specs are unchanged.

@@ -9,8 +9,8 @@
  * `client()` is `effect/ai`'s `McpClient` over a hand-built in-memory `Transport` (protocol
  * 2025-11-25); `McpClient` has no in-memory transport of its own (spec Difference 18).
  *
- * `spawnServer` starts `bin/cli.js mcp` as a child process and speaks newline-delimited
- * JSON-RPC to it, with the line-buffered parser of `package-bin.spec.ts`.
+ * `spawnServer` starts `bin/cli.js mcp` (or `bin/cli.js <options.args>`) as a child process and
+ * speaks newline-delimited JSON-RPC to it, with the line-buffered parser of `package-bin.spec.ts`.
  */
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 import path from 'node:path';
@@ -262,12 +262,18 @@ export const BIN =
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'bin', 'cli.js');
 
 export function spawnServer(
-  options: { env?: NodeJS.ProcessEnv; preload?: string; cwd?: string } = {}
+  options: {
+    env?: NodeJS.ProcessEnv;
+    preload?: string;
+    cwd?: string;
+    /** The arguments after the launcher (default ['mcp']): server.json's packageArguments (FR-012) */
+    args?: readonly string[];
+  } = {}
 ): SpawnedServer {
   const args = [
     ...(options.preload === undefined ? [] : ['--import', pathToFileURL(options.preload).href]),
     BIN,
-    'mcp',
+    ...(options.args ?? ['mcp']),
   ];
   const child = spawn(process.execPath, args, {
     cwd: options.cwd,

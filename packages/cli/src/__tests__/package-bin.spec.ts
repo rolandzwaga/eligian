@@ -24,6 +24,7 @@ const pkg = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf-8
   bin: Record<string, string>;
   files: string[];
   dependencies: Record<string, string>;
+  mcpName?: string;
 };
 const bundlePath = resolve(packageRoot, 'dist', 'cli.mjs');
 const built = existsSync(bundlePath) && existsSync(resolve(packageRoot, 'LICENSE'));
@@ -228,8 +229,8 @@ describe('the eligian npm package', () => {
             .map(file => `dist/docs/${file.split('\\').join('/')}`)
         : [];
       expect(docs).toContain('dist/docs/index.json');
-      const packedPaths = packedFiles();
-      expect(packedPaths).toEqual(
+      const files = packedFiles();
+      expect(files).toEqual(
         ['LICENSE', 'README.md', 'bin/cli.js', 'dist/cli.mjs', 'package.json', ...docs].sort()
       );
       // FR-096: the sources' docs are among them: every hand-written chunk and overlay
@@ -256,9 +257,17 @@ describe('the eligian npm package', () => {
       expect(curriculum.length).toBeGreaterThan(0);
       expect(examples.length).toBeGreaterThan(0);
       const missing = [...curriculum, ...examples, 'dist/docs/overlays.json'].filter(
-        file => !packedPaths.includes(file)
+        file => !files.includes(file)
       );
       expect(missing).toEqual([]);
+      // FR-010 / FR-011: the registry metadata stays in the repo, the plugins never ship,
+      // and the packed package.json carries the registry name
+      expect(files).not.toContain('server.json');
+      expect(
+        files.filter(f => /^(plugins|\.claude-plugin|\.cursor-plugin|\.agents)\//.test(f))
+      ).toEqual([]);
+      expect(files).toContain('package.json');
+      expect(pkg.mcpName).toBe('io.github.rolandzwaga/eligian');
     }
   );
 
@@ -287,6 +296,20 @@ describe('the eligian npm package', () => {
       ]) {
         expect(typeof evals[name], name).toBe('function');
       }
+    }
+  );
+
+  // Spec 058 Phase 5 (A0-1 / DV3): the evidence script imports the promotion evidence from the bundle
+  test.skipIf(!built)(
+    'the eval bundle exports promotionEvidence and renderPromotionEvidence',
+    { timeout: 30_000 },
+    async () => {
+      const evals = (await import(
+        /* @vite-ignore */ pathToFileURL(evalsBundlePath).href
+      )) as Record<string, unknown>;
+      expect(typeof evals.promotionEvidence).toBe('function');
+      expect(typeof evals.renderPromotionEvidence).toBe('function');
+      expect(evals.REVIEW_CODES).toHaveLength(9);
     }
   );
 });

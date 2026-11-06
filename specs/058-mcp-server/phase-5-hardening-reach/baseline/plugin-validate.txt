@@ -1,0 +1,20 @@
+$ claude --version
+2.1.302 (Claude Code)
+exit 0
+
+$ claude plugin validate plugins/claude/eligian --strict
+Validating plugin manifest: F:\projects\eligius\eligian\plugins\claude\eligian\.claude-plugin\plugin.json
+
+✔ Validation passed
+exit 0
+
+$ claude plugin validate . --strict
+Validating marketplace manifest: F:\projects\eligius\eligian\.claude-plugin\marketplace.json
+
+ℹ Advice (does not change the verdict):
+
+  ❯ F:\projects\eligius\eligian\README.md: This README has no line that installs "eligian" from a marketplace. Add the install line, which works in one step on Claude Code 2.1.275 or later.
+      /plugin install eligian --marketplace rolandzwaga/eligian
+
+✔ Validation passed
+exit 0

@@ -1,0 +1,10 @@
+$ tsx evals/mcp/promotion-evidence.ts
+promotion-evidence: 16 runs scanned, 0 records → specs\058-mcp-server\phase-5-hardening-reach\baseline\promotion-evidence.md
+exit 0
+$ tsx evals/mcp/promotion-evidence.ts -- --runs does-not-exist --out C:/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/x.md
+does-not-exist: no records
+promotion-evidence: nothing written
+[ELIFECYCLE] Command failed with exit code 1.
+exit 1
+# determinism: a second plain run (exit 0) left the file byte-identical
+a5cf3edfa14f75ac159f0fdba000c3003036e96a84efadc961d69cd4f78b33d3 *specs/058-mcp-server/phase-5-hardening-reach/baseline/promotion-evidence.md

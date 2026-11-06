@@ -21,6 +21,7 @@ import {
   CompilerLockPassThrough,
   compilerLockLayer,
   makeCompilerLock,
+  RECYCLE_AFTER,
 } from '../mcp/compiler-lock.js';
 
 interface LockEvent {
@@ -295,6 +296,17 @@ action greet() [
 `;
 
 describe('recycling', () => {
+  it('the default lock recycles after RECYCLE_AFTER sections', async () => {
+    let count = 0;
+    const lock = Effect.runSync(makeCompilerLock({}, { recycle: () => count++ }));
+    for (let i = 1; i < RECYCLE_AFTER; i++) {
+      await Effect.runPromise(lock.run(String(i), Effect.void));
+    }
+    expect(count).toBe(0);
+    await Effect.runPromise(lock.run(String(RECYCLE_AFTER), Effect.void));
+    expect(count).toBe(1);
+  });
+
   it('onRecycle after sections 3 and 6, never during one', async () => {
     const log: string[] = [];
     const lock = Effect.runSync(

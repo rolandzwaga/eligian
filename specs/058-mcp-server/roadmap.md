@@ -453,6 +453,8 @@ Touches: `packages\extension\package.json` (`contributes.mcpServerDefinitionProv
 
 ### Phase 5 — Hardening and reach (4 days, can trail)
 
+**Status: 🟡 BUILT, EXIT OPEN (2026-11-06): the MCP registry entry and publish steps, the Claude Code plugin, recycling tuned from a warm-start measurement (`RECYCLE_AFTER` = 200) and the promotion evidence table pass on Windows; the check promotions (Group 10) wait on Phase 3's full eval runs (FR-001b), and the registry publish, the eval re-run and the plugin install are user-run (T044–T046)** — see `specs8-mcp-serverphase-5-hardening-reachcompliance.md`
+
 - Promote review checks that the evals proved to DSL validators where an IDE squiggle is worth it (each its own mini-spec; `runtime-state-pitfalls.md` moves them from "caught by check" to "caught in the editor").
 - MCP registry entry; optional Claude Code plugin (`.claude-plugin\`) and Codex/Cursor equivalents; server process recycling tuned from the soak test.
 - Exit: `check:examples` green; registry entry visible; evals re-run without regression.

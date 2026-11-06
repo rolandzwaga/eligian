@@ -569,6 +569,30 @@ package, so it is slower. On native Windows:
 - Running `claude mcp add … -- cmd /c …` from Git Bash: set `MSYS_NO_PATHCONV=1` first, or
   Git Bash rewrites `/c` into the path `C:/` and the server fails to start.
 
+**From the MCP registry.** The server is listed in the
+[MCP registry](https://registry.modelcontextprotocol.io) as `io.github.rolandzwaga/eligian`. A
+client that installs from the registry launches it as `npx -y eligian@<version> mcp`, with the
+`eligian` npm package of that version. The first `npx` start downloads the package, so it is
+slower than later starts.
+
+**Claude Code plugin.** The repository is also a Claude Code plugin marketplace with one plugin,
+`eligian`, which registers the server for every project:
+
+```text
+/plugin marketplace add rolandzwaga/eligian
+/plugin install eligian@eligian
+```
+
+- The plugin starts the server as `npx -y eligian@^1.1 mcp`: the newest 1.x on npm, which may
+  differ from the `eligian` version a project has installed.
+- A project `.mcp.json` whose `eligian` server has the same `npx` command counts as the same
+  server: Claude Code starts it once, from the project's definition.
+- A project `.mcp.json` with the `node` form (`node …/node_modules/eligian/bin/cli.js mcp`) is a
+  different command, so both servers load and every tool appears twice. Toggle the plugin's
+  server off in `/mcp` for that project, or do not install the plugin.
+- `eligian init` and `eligian agents setup` remain the per-project route: they register the
+  project's own install, so the agent checks with the compiler the project builds with.
+
 **Version.** The `mcp` command exists from 1.1.0. On a 1.0.x install, `eligian mcp` is taken
 as `eligian compile mcp` (compile is the default command) and exits with an I/O error, so the
 client reports a server that failed to start: upgrade to `eligian@^1.1`.

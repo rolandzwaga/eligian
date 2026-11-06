@@ -1,0 +1,12 @@
+{
+  "name": "eligian",
+  "owner": { "name": "Roland Zwaga" },
+  "description": "The Eligian MCP server for Claude Code: write Eligius presentations in the Eligian DSL",
+  "plugins": [
+    {
+      "name": "eligian",
+      "source": "./plugins/claude/eligian",
+      "description": "Adds the eligian MCP server (npx -y eligian@^1.1 mcp): docs, operations, check, fmt, compile, project, init, smoke"
+    }
+  ]
+}
