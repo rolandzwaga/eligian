@@ -170,8 +170,8 @@ importers:
   .:
     dependencies:
       effect:
-        specifier: 4.0.7
-        version: 4.0.7
+        specifier: 4.1.2
+        version: 4.1.2
       eligius:
         specifier: 4.2.0
         version: 4.2.0(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)
@@ -222,8 +222,8 @@ importers:
         specifier: 15.0.0
         version: 15.0.0
       effect:
-        specifier: 4.0.7
-        version: 4.0.7
+        specifier: 4.1.2
+        version: 4.1.2
       eligius:
         specifier: 4.2.0
         version: 4.2.0(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0)
@@ -1782,8 +1782,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.7:
-    resolution: {integrity: sha512-47CiUzNAmeLr40pDT9vKMxxtB8o3bdpZEKU4IUM3fVxsK2GYzPsV7fQoZP0I41A308BZd71nMxqJ0KRh3s9u2g==}
+  effect@4.1.2:
+    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
 
   eligius@4.2.0:
     resolution: {integrity: sha512-69FRo+DrUUcyFIVt3kkIj4rMalngXPOOjbEhiyeXUqH1QuYVaNVI7jRyHMXOj1oJ2UGLp7qnPvRuqf+kBd6G3Q==}
@@ -4133,7 +4133,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.7: {}
+  effect@4.1.2: {}
 
   eligius@4.2.0(@types/jquery@4.0.1)(jquery@4.0.0)(lottie-web@5.13.0):
     dependencies:
