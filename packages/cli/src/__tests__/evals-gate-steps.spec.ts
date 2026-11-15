@@ -1,6 +1,6 @@
 /**
  * Spec 058 Phase 3 (FR-014, FR-022; Edge cases "Missing files"; plan D2): the gate steps 1–5 and
- * the fixture materialising shared by `evals/mcp/gate.ts` and `mcp-solutions.spec.ts`. Imported
+ * the fixture materialising shared by `evals/mcp/gate.ts` and `mcp-solutions-*.spec.ts`. Imported
  * through `assert.ts`, the entry of the eval bundle, so its re-exports are covered too.
  *
  * The `runGateSteps` cases spawn `packages/cli/bin/cli.js`, the bundle: a fresh build first.

@@ -16,10 +16,11 @@ const TIMED = ['src/__tests__/mcp-smoke.spec.ts'];
 const BIN = ['src/__tests__/package-bin.spec.ts'];
 
 /**
- * `mcp-soak.spec.ts` (spec 058 FR-063, SC-016): reads the heap after a forced GC, so its workers
- * get `--expose-gc`. Only `test:soak` runs it (it fails without `globalThis.gc`, never skips).
+ * `mcp-soak-{check,mixed}.spec.ts` (spec 058 FR-063, SC-016): read the heap after a forced GC, so
+ * their workers get `--expose-gc`. Two files, so the two halves run in parallel workers. Only
+ * `test:soak` runs them (they fail without `globalThis.gc`, never skip).
  */
-const SOAK = ['src/__tests__/mcp-soak.spec.ts'];
+const SOAK = ['src/__tests__/mcp-soak-check.spec.ts', 'src/__tests__/mcp-soak-mixed.spec.ts'];
 
 export default defineConfig({
   test: {

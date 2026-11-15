@@ -2,7 +2,7 @@
  * Spec 058 Phase 3 (FR-014, FR-022; plan D2): the gate steps 1–5 of roadmap §6.1 over a produced
  * project, and the fixture materialising that precedes them. Shared by `evals/mcp/gate.ts` (through
  * the build output `dist/evals/assert.mjs`, with the installed tarball's CLI) and
- * `mcp-solutions.spec.ts` (through the source, with the repo's `bin/cli.js`).
+ * `mcp-solutions-*.spec.ts` (through the source, with the repo's `bin/cli.js`).
  *
  * Every step runs and its failures are collected, so a step-1 failure does not hide a step-3 one.
  * Failures are data: a missing file is a named failure, never a throw. Plain synchronous

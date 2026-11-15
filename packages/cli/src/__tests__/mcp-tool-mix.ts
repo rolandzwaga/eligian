@@ -68,7 +68,7 @@ const MAX_GCS = 10;
  * ten). Two were not enough under CPU load: the mixed soak read 30.37 MB growth after two GCs
  * and 7.8 MB after a third, called right after with no event-loop turn in between, so nothing
  * held that memory; the second GC's reading still counted it (V8's incremental marking and
- * concurrent sweeping lag behind on a loaded machine). Spec 058 phase 5, Group 7 gate. Moved here from `mcp-soak.spec.ts`; `measure-heap.ts` (MB) and
+ * concurrent sweeping lag behind on a loaded machine). Spec 058 phase 5, Group 7 gate. Moved here from the soak spec; `measure-heap.ts` (MB) and
  * `measure-recycle.ts` call it too, dividing by MB themselves.
  */
 export function heapAfterGc(gc: () => void): number {

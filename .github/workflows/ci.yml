@@ -22,17 +22,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The jobs run in parallel, each on its own runner (4 vCPUs): one runner ran everything in a row
+# in ~13.5 min, the soak test (~5 min) and the cli tests (~5 min) the bulk of it. Every job
+# installs and builds on its own (cached install ~4 s, build ~9 s): cheaper than passing dist/
+# around as an artifact. Step names are unique across jobs except the shared Checkout / Build:
+# .claude/hooks/guard-ci-gates.cjs runs these steps before a commit, by name.
 jobs:
-  build-and-test:
-    name: Build and Test
+  gates:
+    name: Lint, types, examples, MCP
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    permissions:
-      # Required to checkout the code
-      contents: read
-      # Required to put a comment into the pull-request
-      pull-requests: write
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -41,27 +40,14 @@ jobs:
           # Don't leave the GITHUB_TOKEN in .git/config; this job never pushes.
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup pnpm, Node.js and dependencies
+        uses: ./.github/actions/setup
 
       - name: Lint and format check (Biome ci)
         run: pnpm run ci
 
       - name: Build
         run: pnpm run build
-
-      # 200 sequential eligian_check calls: heap growth <= 25 MB, two recycles (spec 058 FR-063)
-      - name: Soak test
-        run: pnpm -C packages/cli run test:soak
 
       # The MCP server (eligian mcp) over stdio, through the MCP Inspector CLI:
       # tools/list must name exactly the eight tools; resources/list must list the docs
@@ -104,20 +90,10 @@ jobs:
       - name: Play examples (eligian smoke)
         run: pnpm run smoke:examples --format github
 
-      - name: Run tests with coverage
-        run: pnpm run test:coverage:ci
-
-      - name: Report Coverage
-        # Run even if tests fail to see coverage of failing tests
-        if: always()
-        uses: davelosert/vitest-coverage-report-action@74c2d9210b4fc44c84d8213f61d7ec99837b7aa0 # v2.13.2
-        with:
-          # Show coverage only for changed files to reduce noise
-          file-coverage-mode: changes
-          name: 'Coverage Report'
-          json-summary-path: 'packages/language/coverage/coverage-summary.json'
-          json-final-path: 'packages/language/coverage/coverage-final.json'
-          vite-config-path: 'packages/language/vitest.config.ts'
+      # package-bin.spec.ts times the bundle's startup (spec 058 SC-001, SC-020): it runs on its
+      # own, never next to the other test workers (no coverage; it spawns the bundle)
+      - name: CLI bin tests (startup timings)
+        run: pnpm -C packages/cli run test:bin
 
       # The MCP server as a user gets it: the packed tarball installed with npm,
       # its dependencies from the registry; then the initialize test on it.
@@ -134,3 +110,153 @@ jobs:
           pnpm -C packages/cli exec mcp-inspector --cli --method tools/list --format json node "$PKG_DIR/node_modules/eligian/bin/cli.js" mcp \
             | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const names=JSON.parse(s).result.tools.map(t=>t.name).sort().join(' ');const want='eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke';if(names!==want){console.error('tools/list: '+names+' (want: '+want+')');process.exit(1)}console.log('tools/list: '+names)})"
           ELIGIAN_BIN="$PKG_DIR/node_modules/eligian/bin/cli.js" pnpm -C packages/cli exec vitest run src/__tests__/package-bin.spec.ts -t "mcp answers initialize"
+
+  soak:
+    name: MCP soak test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm, Node.js and dependencies
+        uses: ./.github/actions/setup
+
+      - name: Build
+        run: pnpm run build
+
+      # 2 × 200 sequential calls per file (eligian_check; the mixed tools on the tour), the two
+      # files in parallel workers: heap growth <= 25 MB, two recycles (spec 058 FR-063, FR-024)
+      - name: Soak test
+        run: pnpm -C packages/cli run test:soak
+
+  cli-tests:
+    name: CLI tests (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      # Every shard runs to the end: one failing shard must not hide the others' failures
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm, Node.js and dependencies
+        uses: ./.github/actions/setup
+
+      - name: Build
+        run: pnpm run build
+
+      # One third of the cli and cli-timed files (vitest --shard, by file); the coverage goes into
+      # a blob report (packages/cli/.vitest/blob/) that cli-coverage merges. The thresholds are
+      # off here (a third of the coverage) and checked on the merge
+      - name: CLI tests with coverage (shard)
+        run: >-
+          pnpm -C packages/cli exec vitest run --coverage --project cli --project cli-timed
+          --shard=${{ matrix.shard }}/3 --reporter=blob --reporter=dot
+          --coverage.thresholds.lines=0 --coverage.thresholds.functions=0
+          --coverage.thresholds.branches=0 --coverage.thresholds.statements=0
+
+      - name: Upload the shard's blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cli-blob-${{ matrix.shard }}
+          path: packages/cli/.vitest/blob/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  cli-coverage:
+    name: CLI coverage (merged)
+    needs: cli-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm, Node.js and dependencies
+        uses: ./.github/actions/setup
+
+      - name: Download the shards' blob reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: cli-blob-*
+          path: packages/cli/.vitest/blob
+          merge-multiple: true
+
+      # The three shards' results and coverage as one run: the coverage thresholds of
+      # packages/cli/vitest.config.ts apply to the whole
+      - name: CLI coverage thresholds (merged shards)
+        run: pnpm -C packages/cli exec vitest run --merge-reports --coverage
+
+  language-tests:
+    name: Language tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      # Report Coverage comments on the pull request
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm, Node.js and dependencies
+        uses: ./.github/actions/setup
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Language tests with coverage
+        run: pnpm -C packages/language run test:coverage:ci
+
+      - name: Report Coverage
+        # Run even if tests fail to see coverage of failing tests
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@74c2d9210b4fc44c84d8213f61d7ec99837b7aa0 # v2.13.2
+        with:
+          # Show coverage only for changed files to reduce noise
+          file-coverage-mode: changes
+          name: 'Coverage Report'
+          json-summary-path: 'packages/language/coverage/coverage-summary.json'
+          json-final-path: 'packages/language/coverage/coverage-final.json'
+          vite-config-path: 'packages/language/vitest.config.ts'
+
+  extension-tests:
+    name: Extension and shared-utils tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm, Node.js and dependencies
+        uses: ./.github/actions/setup
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Extension and shared-utils tests
+        run: |
+          pnpm -C packages/extension run test:coverage:ci
+          pnpm -C packages/shared-utils run test:coverage:ci

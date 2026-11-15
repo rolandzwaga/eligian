@@ -14,7 +14,7 @@ Claude Code-specific guidance. **Shared, tool-agnostic rules live in [AGENTS.md]
 
 ## Hooks (`.claude/hooks/`, wired in `.claude/settings.json`)
 
-- `guard-ci-gates.cjs` (PreToolUse, Bash | PowerShell): before `git commit`, runs the steps of `.github/workflows/ci.yml` (read from the file, not copied) on the working tree and blocks on the first failure. Skips commits that touch only `specs/`, root-level Markdown or `.claude/`. The soak test and the packed-tarball step are skipped, and the coverage step is replaced by `vitest related` on the changed files, so a code commit takes about 1.5 min. A new `ci.yml` step blocks every commit until it gets a policy in `STEP_POLICY`. Test it: `echo '{"tool_input":{"command":"git commit -m x"}}' | node .claude/hooks/guard-ci-gates.cjs`.
+- `guard-ci-gates.cjs` (PreToolUse, Bash | PowerShell): before `git commit`, runs the steps of `.github/workflows/ci.yml` (read from the file, not copied) on the working tree and blocks on the first failure. Skips commits that touch only `specs/`, root-level Markdown or `.claude/`. Steps shared by the CI jobs (Build) run once. The soak test, the bin timings, the shard merge and the packed-tarball step are skipped, and the test steps are replaced by one `vitest related` on the changed files, so a code commit takes about 1.5 min. A new `ci.yml` step blocks every commit until it gets a policy in `STEP_POLICY`. Test it: `echo '{"tool_input":{"command":"git commit -m x"}}' | node .claude/hooks/guard-ci-gates.cjs`.
 - `block-powershell-syntax.cjs`: Bash only, no PowerShell here-strings.
 
 ## MCP
