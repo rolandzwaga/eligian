@@ -40,6 +40,8 @@ check-*.mjs
 /packages/cli/coverage
 /packages/language/coverage
 /packages/shared-utils/coverage
+# vitest 5 cache and --shard blob reports (CI merges those: ci.yml cli-tests / cli-coverage)
+.vitest/
 /TODO.txt
 /nul
 /examples/nul

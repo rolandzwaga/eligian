@@ -27,14 +27,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
- * One entry per `run:` step of ci.yml, by its `name:`.
+ * One entry per `run:` step of ci.yml, by its `name:` (the jobs' shared steps, e.g. Build, are
+ * one entry and run once).
  * - 'run': run the step's script as written.
- * - 'tests': replaced by `vitest related --run` on the changed files of each package (the full
- *   `test:coverage:ci` takes ~8 min; CI still runs it).
+ * - 'tests': replaced by `vitest related --run` on the changed files of each package, once for all
+ *   the 'tests' steps (the full suites take ~8 min in a row; CI still runs them).
  * - { skip: reason }: not run here.
  */
 const STEP_POLICY = {
-  'Install dependencies': { skip: 'environment setup (pnpm install --frozen-lockfile)' },
   'Lint and format check (Biome ci)': 'run',
   Build: 'run',
   'Soak test': { skip: '~5 min; run `pnpm -C packages/cli run test:soak` when touching src/mcp' },
@@ -45,7 +45,11 @@ const STEP_POLICY = {
   'Check examples (eligian check)': 'run',
   'Format examples (eligian fmt --check)': 'run',
   'Play examples (eligian smoke)': 'run',
-  'Run tests with coverage': 'tests',
+  'CLI bin tests (startup timings)': { skip: '~15 s of startup timings; CI runs it' },
+  'CLI tests with coverage (shard)': 'tests',
+  'CLI coverage thresholds (merged shards)': { skip: "merges the CI shards' blob reports" },
+  'Language tests with coverage': 'tests',
+  'Extension and shared-utils tests': 'tests',
   'MCP on the packed tarball': { skip: 'packs (rebuilds dist) and installs from the registry; CI only' },
 };
 
@@ -250,8 +254,12 @@ function readStdin() {
   if (code.length === 0) process.exit(0);
 
   const plan = [];
+  const planned = new Set();
   for (const step of steps) {
     const policy = STEP_POLICY[step.name];
+    const key = policy === 'tests' ? 'tests' : `${step.name}\n${step.script}`;
+    if (planned.has(key)) continue;
+    planned.add(key);
     if (policy === 'run') plan.push(step);
     else if (policy === 'tests') plan.push(...relatedTestScripts(root, code));
   }
