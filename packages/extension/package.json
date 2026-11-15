@@ -30,7 +30,7 @@
     "animation"
   ],
   "engines": {
-    "vscode": "^1.140.0"
+    "vscode": "^1.145.0"
   },
   "categories": [
     "Programming Languages"
