@@ -38,7 +38,10 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "In an untrusted workspace the preview does not run host modules (extensions imports): their operations do nothing."
+      "description": "In an untrusted workspace the preview does not run host modules (extensions imports): their operations do nothing. The Eligian MCP server for Copilot agent mode is not registered (it runs the workspace's own node_modules/eligian).",
+      "restrictedConfigurations": [
+        "eligian.mcp.command"
+      ]
     }
   },
   "contributes": {
@@ -140,6 +143,18 @@
           "type": "boolean",
           "default": true,
           "description": "Show the inferred duration on a timeline header that has no explicit `duration`."
+        },
+        "eligian.mcp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Register the Eligian MCP server (the `eligian_*` tools) for Copilot agent mode when this folder has `eligian` 1.1 or later installed. Turn off to use your own `.vscode/mcp.json` or no server."
+        },
+        "eligian.mcp.command": {
+          "type": "string",
+          "default": "node",
+          "scope": "machine-overridable",
+          "markdownDescription": "The program that runs `<folder>/node_modules/eligian/bin/cli.js mcp`, for example an absolute path to node.exe when `node` is not on the editor's PATH. Empty means `node`."
         }
       }
     },
@@ -267,10 +282,19 @@
           "contextualTitle": "Eligian Timeline"
         }
       ]
-    }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "eligian.mcp",
+        "label": "Eligian"
+      }
+    ]
   },
   "activationEvents": [
-    "onLanguage:eligian"
+    "onLanguage:eligian",
+    "onMcpCollection:eligian.mcp",
+    "workspaceContains:node_modules/eligian/package.json",
+    "workspaceContains:**/*.eligian"
   ],
   "main": "./out/extension/main.cjs",
   "scripts": {
@@ -292,11 +316,13 @@
     "@eligian/shared-utils": "workspace:*",
     "jquery": "4.0.0",
     "lottie-web": "5.13.0",
+    "semver": "7.8.5",
     "vscode-languageclient": "9.0.1",
     "vscode-languageserver": "9.0.1"
   },
   "devDependencies": {
     "@types/jquery": "4.0.1",
+    "@types/semver": "7.8.0",
     "@types/vscode": "1.140.0",
     "@vitest/ui": "5.0.5",
     "@vscode/vsce": "4.1.0",

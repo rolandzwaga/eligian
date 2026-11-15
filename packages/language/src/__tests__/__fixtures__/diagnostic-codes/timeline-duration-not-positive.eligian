@@ -1,0 +1,6 @@
+// timeline-validator.ts: a timeline duration of 0
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf duration 0s {
+  at 0s..1s show()
+}

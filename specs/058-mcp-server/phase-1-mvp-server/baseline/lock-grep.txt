@@ -1,0 +1,6 @@
+$ grep -nE "count|reset" packages/cli/src/mcp/compiler-lock.ts
+exit 1 (1 = no match: no call counter, no service reset; FR-053, SC-026)
+
+# T065 re-run (2026-11-05T00:52Z), with baseline/heap.txt (SC-026)
+$ grep -nE "count|reset" packages/cli/src/mcp/compiler-lock.ts
+exit 1 (1 = no match: no call counter, no service reset; FR-053, SC-026)

@@ -1,0 +1,43 @@
+command: pnpm -C packages/language exec vitest run src/__tests__/diagnostic-codes.spec.ts
+task: T010 (expected red before Groups 6-8)
+
+× src/__tests__/diagnostic-codes.spec.ts > every checked diagnostic carries a registry code > fixture corpora and examples: no uncoded, no unregistered code
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-provider-invalid.eligian → timeline-provider-invalid
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-source-required.eligian → timeline-source-required
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-scroll-duration-required.eligian → timeline-scroll-duration-required
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-scroll-selector-not-scroll.eligian → timeline-scroll-selector-not-scroll
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-duration-relative.eligian → timeline-duration-relative
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-duration-not-positive.eligian → timeline-duration-not-positive
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > event-ends-after-timeline.eligian → event-ends-after-timeline
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > break-outside-loop.eligian → break-outside-loop
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > continue-outside-loop.eligian → continue-outside-loop
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > operation-in-timeline-event.eligian → operation-in-timeline-event
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > unknown-action-in-timeline-event.eligian → unknown-action-in-timeline-event
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > css-import-error.eligian → css-import-error
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > locales-without-languages.eligian → locales-without-languages
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > locales-parse-failed.eligian → locales-parse-failed
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-required.eligian → timeline-required
+✓ src/__tests__/diagnostic-codes.spec.ts > coded fixtures > label-id-without-locales.eligian → no_labels_import
+✓ src/__tests__/diagnostic-codes.spec.ts > coded fixtures > set-data-target.eligian → invalid_setdata_target
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > constant-cycle.eligian → constant-cycle
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > if-condition-not-boolean.eligian → if-condition-not-boolean
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > event-start-negative.eligian → event-start-negative
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > import-duplicate-default.eligian → import-duplicate-default
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > languages-missing-default.eligian → languages-missing-default
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > timeline-empty.eligian → timeline-empty
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > type-mismatch.eligian → type-mismatch
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > unresolved-reference.eligian → unresolved-reference
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > lexer-error.eligian → syntax-error
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > parser-error.eligian → syntax-error
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > a nonexistent path → file-unreadable
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > video without from → exactly one diagnostic
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > raf with from → exactly one warning, timeline-source-unused
+× src/__tests__/diagnostic-codes.spec.ts > coded fixtures > no Typir prefix in any set-(c) message
+
+ Test Files  1 failed (1)
+      Tests  30 failed | 2 passed | 1 todo (33)
+
+notes:
+- passing already (expected): the two data-variable cases, label-parameter-validator.ts:206 (no_labels_import) and set-data-validator.ts:52 (invalid_setdata_target), which carry their code in data.code today.
+- todo: asset-import-validator.ts:131 (plan R8). Every asset error carries its import's path (compiler-integration.ts:101, asset-validation-service.ts), so no fixture reaches the program-level branch; T012 covers it with a unit test.
+- deviation: the constant Typir rule file is covered by constant-cycle.eligian (constant-validation.ts:75, code constant-cycle), not constant-reserved-name. Every RESERVED_KEYWORDS entry (typir-types.ts:26) is a reserved grammar keyword that the Identifier rule (eligian.langium:1000) does not accept, so `const if = 5` is a parse error ("'if' is a keyword, so it cannot be used as a name here", data.code parsing-error) and constant-validation.ts:62 is unreachable from source. SC-001(c) asks for at least one case per Typir rule file, which constant-cycle satisfies.

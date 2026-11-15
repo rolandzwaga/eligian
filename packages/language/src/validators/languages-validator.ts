@@ -2,6 +2,7 @@ import type { ValidationAcceptor } from 'langium';
 import { isValidLanguageCode } from '../eligian-validator.js';
 import type { LanguagesBlock } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 
 /**
  * Validations for the languages declaration block (Feature 037).
@@ -35,14 +36,14 @@ export class LanguagesValidator extends BaseValidator {
         'Multiple languages require exactly one * marker to indicate the default language',
         {
           node: block,
-          code: 'missing_default_marker',
+          code: diagnosticCode('missing_default_marker'),
         }
       );
     } else if (defaultMarkerCount > 1) {
       // T024: Multiple * markers error
       accept('error', 'Only one language can be marked as default with the * marker', {
         node: block,
-        code: 'multiple_default_markers',
+        code: diagnosticCode('multiple_default_markers'),
       });
     }
   }
@@ -64,7 +65,7 @@ export class LanguagesValidator extends BaseValidator {
           {
             node: entry,
             property: 'code',
-            code: 'invalid_language_code_format',
+            code: diagnosticCode('invalid_language_code_format'),
           }
         );
       }
@@ -84,7 +85,7 @@ export class LanguagesValidator extends BaseValidator {
         accept('error', `Duplicate language code: '${entry.code}'`, {
           node: entry,
           property: 'code',
-          code: 'duplicate_language_code',
+          code: diagnosticCode('duplicate_language_code'),
         });
       } else {
         seen.add(entry.code);
@@ -99,7 +100,7 @@ export class LanguagesValidator extends BaseValidator {
     if (block.entries.length === 0) {
       accept('error', 'Languages block cannot be empty. Declare at least one language.', {
         node: block,
-        code: 'empty_languages_block',
+        code: diagnosticCode('empty_languages_block'),
       });
     }
   }

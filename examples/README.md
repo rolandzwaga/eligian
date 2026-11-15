@@ -25,7 +25,10 @@ with every string copied from the real tools.
 ## Files
 
 ### Main Demo
-- **[demo.eligian](demo.eligian)** - Complete presentation showcasing ALL language features:
+- **[demo.eligian](demo.eligian)** - feature inventory, not idiom: a presentation that exercises
+  every language feature, not a model of how to write one. It is excluded from the MCP example
+  corpus and the evals, and it does not pass `check --selector-not-in-layout ids --max-warnings 0`
+  (13 warnings); it passes `check:examples`, `smoke:examples` and `fmt:examples`. Features covered:
   - Asset imports (CSS, HTML, libraries)
   - Constants (all Eligius types: string, number, boolean, array, object)
   - Custom actions with JSDoc documentation

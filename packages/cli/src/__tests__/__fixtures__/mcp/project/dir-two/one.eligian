@@ -1,0 +1,7 @@
+// eligian_project (SC-005): the first of two programs in a directory.
+layout "./layout.html"
+import { pulse } from "./shared.eligian"
+
+timeline "one" in "#stage" using raf {
+  at 0s..1s pulse("#stage")
+}

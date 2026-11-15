@@ -1,0 +1,4 @@
+action fadeBox(sel) [
+  selectElement(sel)
+  addClass("visible")
+]

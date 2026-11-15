@@ -10,10 +10,94 @@
  *   replaced in place; the presentation keeps running.
  * - `build-error` (`{ message }`): the build failed; an overlay shows why
  *   until the next successful build (`ok`).
+ *
+ * Runtime reports, posted to `/__eligian/runtime` with the page's `buildId`
+ * (the `data-build-id` of the client's script tag; spec 058 phase 4, FR-016 /
+ * FR-039), at most 50 per page load and then one notice:
+ * - `engine-error`: an engine `error` event, through a `window.__eligianDevHooks`
+ *   hook the bundle runs before `engine.init()`; printed here once, because
+ *   subscribing stops Eligius' own logging of it.
+ * - `console-error` / `console-warn`: every `console.error` / `console.warn`
+ *   call (still passed through); Eligius' selector warning as `selector-miss`.
+ * - `window-error` / `unhandled-rejection`: `window` `error` and
+ *   `unhandledrejection` events.
  */
+import { SELECTOR_MISS } from '../smoke/engine-error-format.js';
+
 export const DEV_CLIENT_SCRIPT = `(() => {
   const KEY = 'eligian-dev-playhead';
   const OVERLAY = 'eligian-dev-overlay';
+
+  // Runtime reports to the dev server
+  const BUILD = ((document.currentScript || document.querySelector('script[data-build-id]')) || {}).dataset?.buildId || '';
+  const RUNTIME = '/__eligian/runtime';
+  const MAX_REPORTS = 50;
+  const SELECTOR_MISS = /${SELECTOR_MISS.source}/;
+  let reports = 0;
+  let posting = false;
+
+  function describe(value) {
+    if (value instanceof Error) return value.message;
+    return typeof value === 'string' ? value : String(value);
+  }
+
+  function post(report) {
+    if (posting || reports > MAX_REPORTS) return;
+    posting = true;
+    try {
+      reports++;
+      const sent = reports > MAX_REPORTS
+        ? { kind: 'console-error', message: 'eligian dev: more errors not forwarded' }
+        : report;
+      const body = JSON.stringify({ ...sent, buildId: BUILD });
+      if (typeof navigator.sendBeacon === 'function') navigator.sendBeacon(RUNTIME, body);
+      else fetch(RUNTIME, { method: 'POST', body, keepalive: true }).catch(() => {});
+    } catch {
+      // a failing poster never throws into the page, and never reports itself
+    } finally {
+      posting = false;
+    }
+  }
+
+  const original = { error: console.error, warn: console.warn };
+  console.error = (...args) => {
+    post({ kind: 'console-error', message: args.map(describe).join(' ') });
+    return original.error.apply(console, args);
+  };
+  console.warn = (...args) => {
+    const message = args.map(describe).join(' ');
+    const miss = SELECTOR_MISS.exec(message);
+    post(miss ? { kind: 'selector-miss', message, selector: miss[1] } : { kind: 'console-warn', message });
+    return original.warn.apply(console, args);
+  };
+  window.addEventListener('error', event => post({
+    kind: 'window-error',
+    message: event.message || describe(event.error),
+    source: event.filename,
+    line: event.lineno,
+    column: event.colno,
+  }));
+  window.addEventListener('unhandledrejection', event => post({
+    kind: 'unhandled-rejection',
+    message: describe(event.reason),
+  }));
+  (window.__eligianDevHooks = window.__eligianDevHooks || []).push(engine => engine.on('error', error => {
+    // Subscribing stops Eligius' own logging, so the error is printed here (not posted again)
+    original.error.call(console, '[eligian dev] ' + error.message, error.cause);
+    const cause = error.cause;
+    post({
+      kind: 'engine-error',
+      message: (cause instanceof Error ? cause.message : String(cause ?? '')) || error.message,
+      actionId: error.actionId,
+      actionName: error.actionName,
+      phase: error.phase,
+      operationSystemName: error.operationSystemName,
+      operationIndex: error.operationIndex,
+      operationPath: error.operationPath,
+      timelineUri: engine.currentTimelineUri,
+      position: engine.position,
+    });
+  }));
 
   function showError(message) {
     let overlay = document.getElementById(OVERLAY);

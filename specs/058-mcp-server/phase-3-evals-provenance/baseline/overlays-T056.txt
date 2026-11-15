@@ -1,0 +1,35 @@
+T056 diagnostics overlays batch 5 (21)
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T056
+generate-knowledge: operation-getFocusedElement: probe 1 does not compile: Parse Error: Expected 'enter' or 'leave' here, but found 'key'.
+  at 15:6
+exit 1
+
+The failure is in T048's in-progress operation overlays (batch 3, a parallel task), not in this batch.
+Re-run through the same generateKnowledge() with curriculumDir = a scratch copy of the curriculum minus the
+six T048 overlays whose probes fail (getFocusedElement getFormData getQueryParams getScrollPosition httpDelete httpPost):
+$ pnpm -C packages/cli exec tsx $SCRATCH/gen-T056.mts $SCRATCH/cur-T056 $SCRATCH/docs-T056b
+generate-knowledge: 388 files in $SCRATCH/docs-T056b
+exit 0
+
+body word counts (wc -w after frontmatter; limit 120), and present in generated curriculum/diagnostics:
+106 ok generated locales-parse-failed
+86 ok generated locales-without-languages
+111 ok generated media-import-error
+55 ok generated missing_default_marker
+87 ok generated missing_dependency
+103 ok generated missing_labels_file
+69 ok generated missing_required_parameter
+57 ok generated multiple_default_markers
+93 ok generated no_labels_import
+74 ok generated operation-in-timeline-event
+88 ok generated parameter_type
+65 ok generated private_only_in_libraries
+93 ok generated property_chain_in_time_expression
+64 ok generated reserved_keyword_parameter
+61 ok generated run_not_an_action
+85 ok generated run_runtime_argument
+86 ok generated runtime_concat_context
+82 ok generated runtime_concat_operand
+80 ok generated runtime_negation_outside_condition
+81 ok generated runtime_operator_operand
+90 ok generated scroll_container_not_scrollable

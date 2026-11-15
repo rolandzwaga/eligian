@@ -1,0 +1,10 @@
+// entry-timeline-without-enter: two timelines, the first has no on enter
+layout "./layout.html"
+
+timeline "Hub" in "#hub" using raf {
+  at 0s..1s [ log("tick") ] [ ]
+}
+
+timeline "Chapter" in "#chapter" using raf {
+  at 0s..1s [ log("tick") ] [ ]
+}

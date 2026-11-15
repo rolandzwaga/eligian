@@ -1,0 +1,11 @@
+#stage {}
+#hub {}
+#start {}
+#player {}
+#play {}
+#pause {}
+#caption-1 {}
+#caption-2 {}
+.hidden {
+  display: none;
+}

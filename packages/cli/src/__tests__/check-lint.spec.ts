@@ -7,6 +7,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type CheckOptions, runCheck } from '../check/check-command.js';
+import { lintCompiled, lintFile } from '../check/lint.js';
+import { compileFile } from '../compile-file.js';
 
 const STYLES = 'styles "./s.css"\n';
 
@@ -147,6 +149,18 @@ timeline "t" in "#stage" using raf {
     const { outcome, files } = await diagnostics(['params.eligian', 'host.eligian']);
     expect(files.flatMap(f => f.diagnostics)).toEqual([]);
     expect(outcome.exitCode).toBe(0);
+  });
+
+  it('compileFile returns the parsed program', async () => {
+    const compiled = await compileFile(path.join(cwd, 'enum.eligian'));
+    expect(compiled.program.$type).toBe('Program');
+  });
+
+  it('lintCompiled equals lintFile', async () => {
+    const file = path.join(cwd, 'enum.eligian');
+    const viaCompiled = lintCompiled(file, await compileFile(file));
+    expect(viaCompiled).toHaveLength(1);
+    expect(viaCompiled).toEqual(await lintFile(file));
   });
 
   it('without lint, only Eligian diagnostics', async () => {

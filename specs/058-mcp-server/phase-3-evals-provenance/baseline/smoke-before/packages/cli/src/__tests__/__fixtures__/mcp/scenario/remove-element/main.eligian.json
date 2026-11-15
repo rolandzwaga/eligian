@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"packages/cli/src/__tests__/__fixtures__/mcp/scenario/remove-element/main.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"main\",\n        \"boundaries\": 3\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

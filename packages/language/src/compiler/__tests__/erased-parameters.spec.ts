@@ -90,4 +90,38 @@ timeline "t" in "#s" using raf { at 0s..1s repeat("#a") }`);
       'selectElement',
     ]);
   });
+
+  test('a bare clearOperationData keeps the parameters the block still needs', async () => {
+    const result = await actions(`
+action reveal(selector, className) [
+  selectElement(selector)
+  addClass("visible")
+  clearOperationData()
+  selectElement(selector)
+  addClass(className)
+]
+action done(selector) [ selectElement(selector) clearOperationData() ]
+action listed(selector) [ selectElement(selector) clearOperationData(["selectedElement"]) selectElement(selector) ]
+timeline "t" in "#s" using raf { at 0s..1s reveal("#a", "on") }`);
+    // The clear becomes a replace-all that keeps only the needed parameters; no save / restore
+    const clear = result.reveal.start[result.reveal.start.length - 3];
+    expect(clear).toEqual([
+      'setOperationData',
+      {
+        properties: { selector: '$operationdata.selector', className: '$operationdata.className' },
+        override: true,
+      },
+    ]);
+    expect(result.reveal.start.map(o => o[0]).filter(n => n === 'clearOperationData')).toEqual([]);
+    // Nothing needs the parameters afterwards: the clear stays
+    expect(result.done.start.map(o => o[0])).toEqual(['selectElement', 'clearOperationData']);
+    // A literal list clears only those names: the ordinary save / restore applies
+    expect(result.listed.start.map(o => o[0])).toEqual([
+      'setOperationData',
+      'selectElement',
+      'setOperationData',
+      'clearOperationData',
+      'selectElement',
+    ]);
+  });
 });

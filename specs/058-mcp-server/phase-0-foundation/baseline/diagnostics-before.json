@@ -1,0 +1,1784 @@
+[
+  {
+    "file": "examples/libraries/errors/broken-import.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 4,
+    "column": 20,
+    "endLine": 4,
+    "endColumn": 26
+  },
+  {
+    "file": "examples/libraries/errors/broken-import.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'box'.",
+    "line": 5,
+    "column": 21,
+    "endLine": 5,
+    "endColumn": 27
+  },
+  {
+    "file": "examples/libraries/errors/broken.eligian",
+    "severity": "error",
+    "message": "Expected ']' here, but found 'action'.",
+    "line": 9,
+    "column": 1,
+    "endLine": 9,
+    "endColumn": 7
+  },
+  {
+    "file": "examples/libraries/errors/broken.eligian",
+    "severity": "error",
+    "message": "Expected ']' here, but found the end of the file.",
+    "line": 9,
+    "column": 23,
+    "endLine": 9,
+    "endColumn": 23
+  },
+  {
+    "file": "examples/libraries/errors/missing-import.eligian",
+    "severity": "error",
+    "message": "Could not resolve reference to ActionDefinition named 'fadeIn'.",
+    "line": 2,
+    "column": 10,
+    "endLine": 2,
+    "endColumn": 16
+  },
+  {
+    "file": "examples/libraries/errors/missing-import.eligian",
+    "severity": "error",
+    "message": "Library file not found: './nonexistent.eligian'",
+    "line": 2,
+    "column": 24,
+    "endLine": 2,
+    "endColumn": 47
+  },
+  {
+    "file": "examples/libraries/errors/missing-import.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 4,
+    "column": 20,
+    "endLine": 4,
+    "endColumn": 26
+  },
+  {
+    "file": "examples/libraries/errors/missing-import.eligian",
+    "severity": "error",
+    "message": "Unknown action: fadeIn. Define this action before using it in timeline events.",
+    "line": 5,
+    "column": 13,
+    "endLine": 5,
+    "endColumn": 19
+  },
+  {
+    "file": "examples/libraries/errors/missing-import.eligian",
+    "severity": "error",
+    "message": "Unknown operation: \"fadeIn\". Available operations: addClass, addController, addControllerToElement, addGlobalsToOperation, animate, ...",
+    "line": 5,
+    "column": 13,
+    "endLine": 5,
+    "endColumn": 19
+  },
+  {
+    "file": "examples/libraries/nested/cycle-a.eligian",
+    "severity": "error",
+    "message": "Circular library import: cycle-a.eligian → cycle-b.eligian → cycle-a.eligian. Remove one of the imports to break the cycle",
+    "line": 4,
+    "column": 25,
+    "endLine": 4,
+    "endColumn": 44
+  },
+  {
+    "file": "examples/libraries/nested/cycle-a.eligian",
+    "severity": "error",
+    "message": "Recursive action call detected: 'actionB' creates an infinite loop\n  Call chain: actionA → actionB → actionA",
+    "line": 8,
+    "column": 3,
+    "endLine": 8,
+    "endColumn": 10
+  },
+  {
+    "file": "examples/libraries/nested/cycle-b.eligian",
+    "severity": "error",
+    "message": "Circular library import: cycle-b.eligian → cycle-a.eligian → cycle-b.eligian. Remove one of the imports to break the cycle",
+    "line": 4,
+    "column": 25,
+    "endLine": 4,
+    "endColumn": 44
+  },
+  {
+    "file": "examples/libraries/nested/cycle-b.eligian",
+    "severity": "error",
+    "message": "Recursive action call detected: 'actionA' creates an infinite loop\n  Call chain: actionB → actionA → actionB",
+    "line": 8,
+    "column": 3,
+    "endLine": 8,
+    "endColumn": 10
+  },
+  {
+    "file": "examples/libraries/nested/cycle-test.eligian",
+    "severity": "error",
+    "message": "Imported library './cycle-a.eligian' has a circular import: cycle-a.eligian → cycle-b.eligian → cycle-a.eligian. Remove one of the imports to break the cycle",
+    "line": 4,
+    "column": 25,
+    "endLine": 4,
+    "endColumn": 44
+  },
+  {
+    "file": "examples/libraries/nested/cycle-test.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 6,
+    "column": 40,
+    "endLine": 6,
+    "endColumn": 46
+  },
+  {
+    "file": "examples/libraries/nested/cycle-test.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'box'.",
+    "line": 7,
+    "column": 21,
+    "endLine": 7,
+    "endColumn": 27
+  },
+  {
+    "file": "packages/cli/src/__tests__/__fixtures__/invalid-operation.eligian",
+    "severity": "error",
+    "message": "Unknown operation: \"fakeOperation\". Available operations: addClass, addController, addControllerToElement, addGlobalsToOperation, animate, ...",
+    "line": 6,
+    "column": 3,
+    "endLine": 6,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/cli/src/__tests__/__fixtures__/invalid-syntax.eligian",
+    "severity": "error",
+    "message": "A timeline declaration is required. Add: timeline \"<name>\" using <provider> { ... }",
+    "line": 2,
+    "column": 1,
+    "endLine": 6,
+    "endColumn": 2
+  },
+  {
+    "file": "packages/cli/src/__tests__/__fixtures__/invalid-syntax.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'foo'.",
+    "line": 3,
+    "column": 17,
+    "endLine": 3,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/cli/src/__tests__/__fixtures__/invalid-syntax.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'foo'.",
+    "line": 5,
+    "column": 15,
+    "endLine": 5,
+    "endColumn": 20
+  },
+  {
+    "file": "packages/cli/src/__tests__/__fixtures__/warning-only.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline \"test\" in \"#app\" using raf from \"x.mp4\" {\n  at 0s..5s showElement()\n}', this warning is found: Timeline provider 'raf' does not use a source file. Remove: from \"x.mp4\"",
+    "line": 13,
+    "column": 42,
+    "endLine": 13,
+    "endColumn": 49
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'test-container'",
+    "line": 4,
+    "column": 20,
+    "endLine": 4,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'title'.",
+    "line": 6,
+    "column": 19,
+    "endLine": 6,
+    "endColumn": 27
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 7,
+    "column": 14,
+    "endLine": 7,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 9,
+    "column": 5,
+    "endLine": 9,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 9,
+    "column": 17,
+    "endLine": 9,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'subtitle'.",
+    "line": 13,
+    "column": 19,
+    "endLine": 13,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 14,
+    "column": 14,
+    "endLine": 14,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 16,
+    "column": 5,
+    "endLine": 16,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/duplicate-event-ids.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 16,
+    "column": 17,
+    "endLine": 16,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Invalid timeline provider 'undefined'. Must be one of: video, audio, raf, scroll, custom",
+    "line": 5,
+    "column": 1,
+    "endLine": 12,
+    "endColumn": 2
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'test-container'",
+    "line": 5,
+    "column": 20,
+    "endLine": 5,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Expected 'video', 'audio', 'raf', 'scroll' or 'custom' here, but found 'websocket'.",
+    "line": 5,
+    "column": 44,
+    "endLine": 5,
+    "endColumn": 53
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline \"test\" in \".test-container\" using websocket from \"ws://localhost:8080\" {\n  at 0s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\n  ] [\n    removeClass(\"visible\")\n  ]\n}', this warning is found: Timeline provider 'undefined' does not use a source file. Remove: from \"ws://localhost:8080\"",
+    "line": 5,
+    "column": 59,
+    "endLine": 5,
+    "endColumn": 80
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element'.",
+    "line": 7,
+    "column": 19,
+    "endLine": 7,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 8,
+    "column": 14,
+    "endLine": 8,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 10,
+    "column": 5,
+    "endLine": 10,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-provider.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 10,
+    "column": 17,
+    "endLine": 10,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'test-container'",
+    "line": 4,
+    "column": 20,
+    "endLine": 4,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+    "severity": "error",
+    "message": "While validating the AstNode 'at 10s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\n  ] [\n    removeClass(\"visible\")\n  ]', this error is found: Timeline event end time (5s) must be greater than start time (10s)",
+    "line": 6,
+    "column": 6,
+    "endLine": 6,
+    "endColumn": 13
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element'.",
+    "line": 7,
+    "column": 19,
+    "endLine": 7,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 8,
+    "column": 14,
+    "endLine": 8,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 10,
+    "column": 5,
+    "endLine": 10,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/invalid-time-range.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 10,
+    "column": 17,
+    "endLine": 10,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'test-container'",
+    "line": 5,
+    "column": 20,
+    "endLine": 5,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "Timeline provider 'video' requires a source file. Add: from \"<file path>\"",
+    "line": 5,
+    "column": 44,
+    "endLine": 5,
+    "endColumn": 49
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "While validating the AstNode 'timeline \"test\" in \".test-container\" using video {\n  at 0s..5s [\n    selectElement(\"#element\")\n    addClass(\"visible\")\n  ] [\n    removeClass(\"visible\")\n  ]\n}', this error is found: Timeline provider 'video' requires a source file. Add: from \"<file path>\"",
+    "line": 5,
+    "column": 44,
+    "endLine": 5,
+    "endColumn": 49
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element'.",
+    "line": 7,
+    "column": 19,
+    "endLine": 7,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 8,
+    "column": 14,
+    "endLine": 8,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 10,
+    "column": 5,
+    "endLine": 10,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-source.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 10,
+    "column": 17,
+    "endLine": 10,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-target.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'test-container'",
+    "line": 4,
+    "column": 20,
+    "endLine": 4,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-target.eligian",
+    "severity": "error",
+    "message": "Operation \"selectElement\" expects 1-2 parameter(s), but got 0. Expected: selectElement(selector, [useSelectedElementAsRoot])",
+    "line": 7,
+    "column": 5,
+    "endLine": 7,
+    "endColumn": 20
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-target.eligian",
+    "severity": "error",
+    "message": "Operation \"addClass\" expects 1 parameter(s), but got 0. Expected: addClass(className)",
+    "line": 8,
+    "column": 5,
+    "endLine": 8,
+    "endColumn": 15
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-target.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 10,
+    "column": 5,
+    "endLine": 10,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-target.eligian",
+    "severity": "error",
+    "message": "Operation \"removeClass\" expects 1 parameter(s), but got 0. Expected: removeClass(className)",
+    "line": 10,
+    "column": 5,
+    "endLine": 10,
+    "endColumn": 18
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-timeline.eligian",
+    "severity": "error",
+    "message": "A timeline declaration is required. Add: timeline \"<name>\" using <provider> { ... }",
+    "line": 3,
+    "column": 1,
+    "endLine": 8,
+    "endColumn": 2
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'title'.",
+    "line": 4,
+    "column": 17,
+    "endLine": 4,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 5,
+    "column": 12,
+    "endLine": 5,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/missing-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 7,
+    "column": 15,
+    "endLine": 7,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'video-container'",
+    "line": 4,
+    "column": 21,
+    "endLine": 4,
+    "endColumn": 39
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element'.",
+    "line": 6,
+    "column": 19,
+    "endLine": 6,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 7,
+    "column": 14,
+    "endLine": 7,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 9,
+    "column": 5,
+    "endLine": 9,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 9,
+    "column": 17,
+    "endLine": 9,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'audio-container'",
+    "line": 14,
+    "column": 22,
+    "endLine": 14,
+    "endColumn": 40
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element'.",
+    "line": 16,
+    "column": 19,
+    "endLine": 16,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 17,
+    "column": 14,
+    "endLine": 17,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 19,
+    "column": 5,
+    "endLine": 19,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/multiple-timelines.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 19,
+    "column": 17,
+    "endLine": 19,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'test-container'",
+    "line": 4,
+    "column": 20,
+    "endLine": 4,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Expected a time (such as 2s, +1s, @beat or intro.end) here, but found '-'.",
+    "line": 6,
+    "column": 6,
+    "endLine": 6,
+    "endColumn": 7
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element1'.",
+    "line": 7,
+    "column": 19,
+    "endLine": 7,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 8,
+    "column": 14,
+    "endLine": 8,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 10,
+    "column": 5,
+    "endLine": 10,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 10,
+    "column": 17,
+    "endLine": 10,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Expected a time (such as 2s, +1s, @beat or intro.end) here, but found '-'.",
+    "line": 14,
+    "column": 10,
+    "endLine": 14,
+    "endColumn": 11
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element2'.",
+    "line": 15,
+    "column": 19,
+    "endLine": 15,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 16,
+    "column": 14,
+    "endLine": 16,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 18,
+    "column": 5,
+    "endLine": 18,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 18,
+    "column": 17,
+    "endLine": 18,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Expected a time (such as 2s, +1s, @beat or intro.end) here, but found '-'.",
+    "line": 22,
+    "column": 6,
+    "endLine": 22,
+    "endColumn": 7
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Expected a time (such as 2s, +1s, @beat or intro.end) here, but found '-'.",
+    "line": 22,
+    "column": 12,
+    "endLine": 22,
+    "endColumn": 13
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'element3'.",
+    "line": 23,
+    "column": 19,
+    "endLine": 23,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 24,
+    "column": 14,
+    "endLine": 24,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Property 'selectedElement' is not available - ensure it is created by a previous operation (for example with selectElement)",
+    "line": 26,
+    "column": 5,
+    "endLine": 26,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/negative-times.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 26,
+    "column": 17,
+    "endLine": 26,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'title'.",
+    "line": 5,
+    "column": 17,
+    "endLine": 5,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 6,
+    "column": 12,
+    "endLine": 6,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 8,
+    "column": 15,
+    "endLine": 8,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Invalid timeline provider 'undefined'. Must be one of: video, audio, raf, scroll, custom",
+    "line": 12,
+    "column": 1,
+    "endLine": 12,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline \"test\"', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
+    "line": 12,
+    "column": 1,
+    "endLine": 12,
+    "endColumn": 16
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Expected 'in' here, but found 'using'.",
+    "line": 12,
+    "column": 17,
+    "endLine": 12,
+    "endColumn": 22
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Invalid timeline provider 'undefined'. Must be one of: video, audio, raf, scroll, custom",
+    "line": 20,
+    "column": 1,
+    "endLine": 20,
+    "endColumn": 17
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline \"test2\"', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
+    "line": 20,
+    "column": 1,
+    "endLine": 20,
+    "endColumn": 17
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Expected 'in' here, but found 'using'.",
+    "line": 20,
+    "column": 18,
+    "endLine": 20,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Invalid timeline provider 'undefined'. Must be one of: video, audio, raf, scroll, custom",
+    "line": 26,
+    "column": 1,
+    "endLine": 26,
+    "endColumn": 17
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline \"test3\"', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
+    "line": 26,
+    "column": 1,
+    "endLine": 26,
+    "endColumn": 17
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/invalid/syntax-errors.eligian",
+    "severity": "error",
+    "message": "Expected 'in' here, but found 'using'.",
+    "line": 26,
+    "column": 18,
+    "endLine": 26,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'target'.",
+    "line": 5,
+    "column": 17,
+    "endLine": 5,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'target'.",
+    "line": 13,
+    "column": 17,
+    "endLine": 13,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'highlight'.",
+    "line": 21,
+    "column": 17,
+    "endLine": 21,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'active'.",
+    "line": 22,
+    "column": 12,
+    "endLine": 22,
+    "endColumn": 20
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'main-container'",
+    "line": 25,
+    "column": 20,
+    "endLine": 25,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Expected an action or operation call, or a [ … ] block here, but found '{'.",
+    "line": 26,
+    "column": 13,
+    "endLine": 26,
+    "endColumn": 14
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/action-definition.eligian",
+    "severity": "error",
+    "message": "Expected the end of the file here, but found 'at'.",
+    "line": 30,
+    "column": 3,
+    "endLine": 30,
+    "endColumn": 5
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'card'.",
+    "line": 5,
+    "column": 17,
+    "endLine": 5,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 6,
+    "column": 12,
+    "endLine": 6,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 10,
+    "column": 15,
+    "endLine": 10,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'main-title'.",
+    "line": 14,
+    "column": 17,
+    "endLine": 14,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 15,
+    "column": 12,
+    "endLine": 15,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'subtitle'.",
+    "line": 16,
+    "column": 17,
+    "endLine": 16,
+    "endColumn": 28
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 17,
+    "column": 12,
+    "endLine": 17,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 19,
+    "column": 15,
+    "endLine": 19,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'card1'.",
+    "line": 23,
+    "column": 17,
+    "endLine": 23,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 24,
+    "column": 12,
+    "endLine": 24,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'card2'.",
+    "line": 26,
+    "column": 17,
+    "endLine": 26,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 27,
+    "column": 12,
+    "endLine": 27,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'card3'.",
+    "line": 29,
+    "column": 17,
+    "endLine": 29,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 30,
+    "column": 12,
+    "endLine": 30,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'card1'.",
+    "line": 32,
+    "column": 17,
+    "endLine": 32,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 33,
+    "column": 15,
+    "endLine": 33,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'card2'.",
+    "line": 34,
+    "column": 17,
+    "endLine": 34,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 35,
+    "column": 15,
+    "endLine": 35,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'card3'.",
+    "line": 36,
+    "column": 17,
+    "endLine": 36,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 37,
+    "column": 15,
+    "endLine": 37,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'presentation-container'",
+    "line": 40,
+    "column": 28,
+    "endLine": 40,
+    "endColumn": 53
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Expected an action or operation call, or a [ … ] block here, but found '{'.",
+    "line": 41,
+    "column": 13,
+    "endLine": 41,
+    "endColumn": 14
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/presentation.eligian",
+    "severity": "error",
+    "message": "Expected the end of the file here, but found 'at'.",
+    "line": 45,
+    "column": 3,
+    "endLine": 45,
+    "endColumn": 5
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'title'.",
+    "line": 3,
+    "column": 17,
+    "endLine": 3,
+    "endColumn": 25
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 4,
+    "column": 12,
+    "endLine": 4,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 6,
+    "column": 15,
+    "endLine": 6,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'subtitle'.",
+    "line": 10,
+    "column": 17,
+    "endLine": 10,
+    "endColumn": 28
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 11,
+    "column": 12,
+    "endLine": 11,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 13,
+    "column": 15,
+    "endLine": 13,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'presentation'",
+    "line": 16,
+    "column": 20,
+    "endLine": 16,
+    "endColumn": 35
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Expected an action or operation call, or a [ … ] block here, but found '{'.",
+    "line": 17,
+    "column": 13,
+    "endLine": 17,
+    "endColumn": 14
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/simple-timeline.eligian",
+    "severity": "error",
+    "message": "Expected the end of the file here, but found 'at'.",
+    "line": 21,
+    "column": 3,
+    "endLine": 21,
+    "endColumn": 5
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'chapter1-title'.",
+    "line": 5,
+    "column": 17,
+    "endLine": 5,
+    "endColumn": 34
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 6,
+    "column": 12,
+    "endLine": 6,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 8,
+    "column": 15,
+    "endLine": 8,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'chapter2-title'.",
+    "line": 12,
+    "column": 17,
+    "endLine": 12,
+    "endColumn": 34
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 13,
+    "column": 12,
+    "endLine": 13,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 15,
+    "column": 15,
+    "endLine": 15,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'chapter3-title'.",
+    "line": 19,
+    "column": 17,
+    "endLine": 19,
+    "endColumn": 34
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 20,
+    "column": 12,
+    "endLine": 20,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'diagram'.",
+    "line": 21,
+    "column": 17,
+    "endLine": 21,
+    "endColumn": 27
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'slide-in'.",
+    "line": 22,
+    "column": 12,
+    "endLine": 22,
+    "endColumn": 22
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'visible'.",
+    "line": 24,
+    "column": 15,
+    "endLine": 24,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in timeline container selector: 'video-container'",
+    "line": 27,
+    "column": 23,
+    "endLine": 27,
+    "endColumn": 41
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Expected an action or operation call, or a [ … ] block here, but found '{'.",
+    "line": 28,
+    "column": 14,
+    "endLine": 28,
+    "endColumn": 15
+  },
+  {
+    "file": "packages/language/src/__tests__/__fixtures__/valid/video-annotation.eligian",
+    "severity": "error",
+    "message": "Expected the end of the file here, but found 'at'.",
+    "line": 32,
+    "column": 3,
+    "endLine": 32,
+    "endColumn": 5
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "Invalid timeline provider 'undefined'. Must be one of: video, audio, raf, scroll, custom",
+    "line": 2,
+    "column": 1,
+    "endLine": 2,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
+    "line": 2,
+    "column": 1,
+    "endLine": 2,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "Expected a string here, but found 'video'.",
+    "line": 2,
+    "column": 10,
+    "endLine": 2,
+    "endColumn": 15
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "unexpected character: ->#<- at offset: 117, skipped 1 characters.",
+    "line": 5,
+    "column": 8,
+    "endLine": 5,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "unexpected character: ->#<- at offset: 148, skipped 1 characters.",
+    "line": 6,
+    "column": 8,
+    "endLine": 6,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "unexpected character: ->#<- at offset: 217, skipped 1 characters.",
+    "line": 10,
+    "column": 8,
+    "endLine": 10,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "Event action body must contain at least one operation",
+    "line": 11,
+    "column": 26,
+    "endLine": 11,
+    "endColumn": 28
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "Event name must be a string literal, e.g. on event \"timeline-complete\"",
+    "line": 11,
+    "column": 26,
+    "endLine": 11,
+    "endColumn": 28
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "unexpected character: ->#<- at offset: 254, skipped 1 characters.",
+    "line": 11,
+    "column": 29,
+    "endLine": 11,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "Expected 'event' here, but found 'diagram'.",
+    "line": 11,
+    "column": 30,
+    "endLine": 11,
+    "endColumn": 37
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/complex.eligian",
+    "severity": "error",
+    "message": "unexpected character: ->#<- at offset: 299, skipped 1 characters.",
+    "line": 15,
+    "column": 8,
+    "endLine": 15,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'app'.",
+    "line": 9,
+    "column": 17,
+    "endLine": 9,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'click'",
+    "line": 13,
+    "column": 10,
+    "endLine": 13,
+    "endColumn": 17
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'active'.",
+    "line": 15,
+    "column": 12,
+    "endLine": 15,
+    "endColumn": 20
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'click'",
+    "line": 19,
+    "column": 10,
+    "endLine": 19,
+    "endColumn": 17
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'submitted'.",
+    "line": 21,
+    "column": 12,
+    "endLine": 21,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 25,
+    "column": 20,
+    "endLine": 25,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'app'.",
+    "line": 6,
+    "column": 17,
+    "endLine": 6,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'user-login'",
+    "line": 10,
+    "column": 10,
+    "endLine": 10,
+    "endColumn": 22
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'user-panel'.",
+    "line": 11,
+    "column": 17,
+    "endLine": 11,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'logged-in'.",
+    "line": 12,
+    "column": 12,
+    "endLine": 12,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'user-logout'",
+    "line": 17,
+    "column": 10,
+    "endLine": 17,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'user-panel'.",
+    "line": 18,
+    "column": 17,
+    "endLine": 18,
+    "endColumn": 30
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'logged-in'.",
+    "line": 19,
+    "column": 15,
+    "endLine": 19,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'data-sync'",
+    "line": 24,
+    "column": 10,
+    "endLine": 24,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'sync-indicator'.",
+    "line": 25,
+    "column": 17,
+    "endLine": 25,
+    "endColumn": 34
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'syncing'.",
+    "line": 26,
+    "column": 12,
+    "endLine": 26,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 30,
+    "column": 20,
+    "endLine": 30,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'app'.",
+    "line": 6,
+    "column": 17,
+    "endLine": 6,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'user-updated'",
+    "line": 10,
+    "column": 10,
+    "endLine": 10,
+    "endColumn": 24
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'user-id'.",
+    "line": 11,
+    "column": 17,
+    "endLine": 11,
+    "endColumn": 27
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'user-name'.",
+    "line": 13,
+    "column": 17,
+    "endLine": 13,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'user-role'.",
+    "line": 15,
+    "column": 17,
+    "endLine": 15,
+    "endColumn": 29
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 20,
+    "column": 20,
+    "endLine": 20,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/simple-event-action.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'app'.",
+    "line": 6,
+    "column": 17,
+    "endLine": 6,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/simple-event-action.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'lang-display'.",
+    "line": 11,
+    "column": 17,
+    "endLine": 11,
+    "endColumn": 32
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/simple-event-action.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 16,
+    "column": 20,
+    "endLine": 16,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/zero-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in selector: 'app'.",
+    "line": 6,
+    "column": 17,
+    "endLine": 6,
+    "endColumn": 23
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/zero-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown event name: 'app-ready'",
+    "line": 10,
+    "column": 10,
+    "endLine": 10,
+    "endColumn": 21
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/zero-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class in selector: 'app-container'.",
+    "line": 11,
+    "column": 17,
+    "endLine": 11,
+    "endColumn": 33
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/zero-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS class: 'ready'.",
+    "line": 12,
+    "column": 12,
+    "endLine": 12,
+    "endColumn": 19
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/zero-parameters.eligian",
+    "severity": "error",
+    "message": "Unknown CSS ID in timeline container selector: 'app'",
+    "line": 16,
+    "column": 20,
+    "endLine": 16,
+    "endColumn": 26
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/simple.eligian",
+    "severity": "error",
+    "message": "Invalid timeline provider 'undefined'. Must be one of: video, audio, raf, scroll, custom",
+    "line": 2,
+    "column": 1,
+    "endLine": 2,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/simple.eligian",
+    "severity": "warning",
+    "message": "While validating the AstNode 'timeline', this warning is found: Timeline has no events. Add at least one event inside the timeline block.",
+    "line": 2,
+    "column": 1,
+    "endLine": 2,
+    "endColumn": 9
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/simple.eligian",
+    "severity": "error",
+    "message": "Expected a string here, but found 'raf'.",
+    "line": 2,
+    "column": 10,
+    "endLine": 2,
+    "endColumn": 13
+  },
+  {
+    "file": "packages/language/src/compiler/__tests__/__fixtures__/simple.eligian",
+    "severity": "error",
+    "message": "unexpected character: ->#<- at offset: 89, skipped 1 characters.",
+    "line": 5,
+    "column": 8,
+    "endLine": 5,
+    "endColumn": 9
+  }
+]

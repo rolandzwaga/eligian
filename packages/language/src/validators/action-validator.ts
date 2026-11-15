@@ -14,6 +14,7 @@ import type {
   TimelineLifecycle,
 } from '../generated/ast.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 import { reportControlFlowPairing } from './control-flow-pairing.js';
 import { RESERVED_KEYWORDS } from './validation-constants.js';
 
@@ -40,7 +41,7 @@ export class ActionValidator extends BaseValidator {
         {
           node: action,
           property: 'name',
-          code: 'action_name_builtin_conflict',
+          code: diagnosticCode('action_name_builtin_conflict'),
         }
       );
     }
@@ -68,7 +69,7 @@ export class ActionValidator extends BaseValidator {
         accept('error', `Parameter name '${param.name}' is a reserved keyword and cannot be used`, {
           node: param,
           property: 'name',
-          code: 'reserved_keyword_parameter',
+          code: diagnosticCode('reserved_keyword_parameter'),
         });
       }
     }
@@ -125,7 +126,7 @@ export class ActionValidator extends BaseValidator {
         {
           node: firstHop,
           property: 'operationName',
-          code: 'recursive_action_call',
+          code: diagnosticCode('recursive_action_call'),
         }
       );
     }
@@ -338,7 +339,7 @@ export class ActionValidator extends BaseValidator {
         {
           node: action,
           property: 'visibility',
-          code: 'private_only_in_libraries',
+          code: diagnosticCode('private_only_in_libraries'),
         }
       );
     }
@@ -354,6 +355,7 @@ export class ActionValidator extends BaseValidator {
     if (!this.isInsideForLoop(stmt)) {
       accept('error', "'break' can only be used inside a loop", {
         node: stmt,
+        code: diagnosticCode('break-outside-loop'),
       });
     }
   }
@@ -368,6 +370,7 @@ export class ActionValidator extends BaseValidator {
     if (!this.isInsideForLoop(stmt)) {
       accept('error', "'continue' can only be used inside a loop", {
         node: stmt,
+        code: diagnosticCode('continue-outside-loop'),
       });
     }
   }

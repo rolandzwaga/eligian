@@ -1,0 +1,50 @@
+  ...navigation.ts |   84.61 |    81.25 |     100 |   84.61 | 71,84             
+  dom-events.ts    |   83.33 |      100 |      80 |   83.33 | 67                
+  key-names.ts     |    92.3 |       75 |     100 |     100 | 106,118-123       
+  ...am-helpers.ts |      75 |      100 |      75 |   81.81 | 115,144           
+  string-utils.ts  |   97.43 |    97.36 |     100 |   97.29 | 73                
+  ...-constants.ts |   87.14 |    72.13 |     100 |      90 | 45,55,73-74,85,89 
+  ...-lifecycle.ts |      92 |       80 |     100 |   95.45 | 29                
+ src/validators    |   92.69 |    86.96 |   94.53 |   94.95 |                   
+  ...-validator.ts |   98.71 |    94.73 |     100 |   98.68 | 69                
+  ...-validator.ts |   85.71 |       75 |   83.33 |    92.3 | 35                
+  ...ow-pairing.ts |     100 |    83.33 |     100 |     100 | 23                
+  ...-validator.ts |   97.59 |    92.06 |     100 |    97.4 | 78,186            
+  ...-validator.ts |   91.93 |    89.74 |   93.75 |   95.19 | 236,308-311,340   
+  ...-validator.ts |   94.87 |    88.88 |     100 |     100 | 40,58,115,120     
+  ...-validator.ts |   83.33 |    83.33 |     100 |   83.33 | 42                
+  ...-validator.ts |   93.49 |    82.97 |     100 |   93.22 | ...95,208,390,396 
+  ...-validator.ts |   85.18 |    66.66 |     100 |   85.18 | 58-64,93          
+  ...-validator.ts |   91.56 |    84.05 |     100 |     100 | ...61,179,182-184 
+  ...-validator.ts |   90.05 |    87.79 |    87.5 |   92.25 | ...77,284,335,449 
+  ...ion-errors.ts |   88.88 |      100 |    87.5 |   88.88 | 83                
+  ...n-settings.ts |      60 |       50 |   55.55 |      70 | 44-50             
+ ...operation-call |   87.26 |     82.4 |     100 |   90.49 |                   
+  ...-validator.ts |   94.79 |    91.42 |     100 |    98.7 | 160               
+  ...-validator.ts |    73.5 |     64.1 |     100 |   77.14 | ...34-338,341-368 
+  ...-validator.ts |   89.47 |    85.71 |     100 |     100 | 26-32             
+  ...-validator.ts |   94.87 |    93.54 |     100 |   94.87 | 72,173            
+  ...-validator.ts |     100 |     91.3 |     100 |     100 | 47,51             
+  ...-validator.ts |   94.11 |    94.11 |     100 |     100 | 34                
+ ...dators/program |   93.64 |    83.65 |     100 |   98.14 |                   
+  ...-validator.ts |   88.29 |    74.57 |     100 |   96.47 | 92,98,211         
+  ...-validator.ts |     100 |    96.15 |     100 |     100 | 70                
+  ...-validator.ts |     100 |    94.11 |     100 |     100 | 26                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 91.29% ( 7801/8545 )
+Branches     : 82.78% ( 5078/6134 )
+Functions    : 93.87% ( 1503/1601 )
+Lines        : 92.56% ( 7312/7899 )
+================================================================================
+
+--- summary (appended; the tail above is 'tail -40' of the run) ---
+HEAD b62b762350146d38ea78cf2d535c60a515d3ca06 (+ uncommitted phase-3 G1-G4 work)
+exit 0
+ Test Files  257 passed | 1 skipped (258)
+      Tests  3428 passed | 23 skipped (3451)
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+All files          |   91.29 |    82.78 |   93.87 |   92.56 |                   
+Thresholds: lines 79.8 / functions 80 / branches 69.9 / statements 79 -> all met
+Before (coverage-language-before.txt): 91.26 / 82.73 / 93.8 / 92.55 (stmts/branch/funcs/lines) -> no regression

@@ -1,0 +1,107 @@
+{
+  "actions": {
+    "showSnippet": {
+      "startOperations": [
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#panel"
+          }
+        },
+        {
+          "systemName": "setElementContent",
+          "operationData": {
+            "template": "<div id=\"stage\">\n  <h1 id=\"title\" class=\"item\"></h1>\n  <div id=\"panel\" class=\"view\">\n    <div id=\"box\" class=\"item\"></div>\n  </div>\n  <button id=\"next\">Next</button>\n</div>\n"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Assets": {
+      "type": "animation",
+      "duration": 3,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "click",
+                "actions": [
+                  "showSnippet"
+                ]
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#next"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-0-3",
+          "duration": {
+            "start": 0,
+            "end": 3
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

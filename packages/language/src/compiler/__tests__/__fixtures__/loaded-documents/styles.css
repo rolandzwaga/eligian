@@ -1,0 +1,11 @@
+#app {
+  width: 100%;
+}
+
+#box {
+  width: 100px;
+}
+
+.loaded-marker {
+  outline: 1px solid red;
+}

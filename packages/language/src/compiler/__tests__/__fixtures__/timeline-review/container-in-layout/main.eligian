@@ -1,0 +1,6 @@
+// The container class is in the layout
+layout "./layout.html"
+
+timeline "Main"
+  in ".ghostc" using raf {
+}

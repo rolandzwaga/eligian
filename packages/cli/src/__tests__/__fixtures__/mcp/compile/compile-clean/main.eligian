@@ -1,0 +1,8 @@
+// The clean twin of compile-rejected/ (spec 058 phase 2, SC-004(4), T015 ruling):
+// the same layout and library import, no locales, so compileFile succeeds.
+layout "./layout.html"
+import { fade } from "./lib/anim.eligian"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s fade("#title")
+}

@@ -1,0 +1,9 @@
+// eligian_smoke: one runtime problem (boom selects an undefined selector)
+layout "../layout.html"
+
+action boom() [ selectElement($globaldata.nothing) log("boom") ]
+
+timeline "A" in "#stage" using raf {
+  at 0s..1s [ log("A") ] []
+  at 1s..2s boom()
+}

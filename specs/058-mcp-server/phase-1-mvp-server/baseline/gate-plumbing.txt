@@ -1,0 +1,18 @@
+# T012 plumbing proof (2026-11-04T22:10Z); eligian 1.0.1 packed with 'pnpm -C packages/cli pack', npm-installed into a scratchpad dir, evals/mcp/cases/fix-dataflow/start copied in.
+
+$ pnpm exec tsx evals/mcp/run.ts --help
+usage: tsx evals/mcp/run.ts --case <id> [--case <id> ...] --arm A1 [--model <m>]
+
+  --case <id>    an eval case (evals/mcp/cases/<id>.json); repeat for several
+  --arm A1       the arm: A1 (MCP server + AGENTS.md block) is the only arm in Phase 1
+  --model <m>    the claude model (default: the case's pinned "model")
+
+Packs packages/cli once, then per case: a temp project with the tarball installed (npm), the
+case's start files, .mcp.json (node <tmp>/node_modules/eligian/bin/cli.js mcp), AGENTS.md
+from the package's dist/docs/agents-block.md, a claude -p run, the gate (gate.ts).
+Writes evals/mcp/results/<run-id>/<case>.json. Exit 0 when every case passes.
+exit 0
+
+$ pnpm exec tsx evals/mcp/gate.ts <scratchpad>/gate-plumbing --case fix-dataflow
+{"pass":false,"failures":["step 1 (check): exit 1; codes: erased-property-access, missing-action-dependency","step 3 (smoke --strict): exit 1;         \"message\": \"does not compile: Validation failed\" |       } |     ] |   } | ]","step 4 (compile): exit 1;   13 |   clearOperationData() | > 14 |   addClass(className) |          ^^^^^^^^ |   15 | ] |   16 |","case fix-dataflow: not checked, out/config.json was not compiled"]}
+exit 1

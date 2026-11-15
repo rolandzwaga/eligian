@@ -1,0 +1,9 @@
+HEAD: b62b762350146d38ea78cf2d535c60a515d3ca06
+pnpm install --frozen-lockfile: exit 0
+pnpm build: exit 0
+last 5 build lines:
+packages/extension build: [17:51:21] Build succeeded
+packages/extension build: Done
+packages/cli build: generate-knowledge: 224 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+packages/cli build: [17:51:22] Build succeeded
+packages/cli build: Done

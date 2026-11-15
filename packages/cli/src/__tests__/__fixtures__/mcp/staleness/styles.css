@@ -1,0 +1,15 @@
+#stage {
+  position: relative;
+}
+
+#later {
+  color: red;
+}
+
+.frame {
+  display: block;
+}
+
+.lit {
+  color: gold;
+}

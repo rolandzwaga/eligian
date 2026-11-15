@@ -1,0 +1,14 @@
+// Origin `sequence`: an action call item of a sequence
+styles "./styles.css"
+
+action show(sel) [
+  selectElement(sel)
+  addClass("on")
+]
+
+timeline "t" in "#stage" using raf {
+  sequence {
+    show("#a") for 1s
+    show("#b") for 1s
+  }
+}

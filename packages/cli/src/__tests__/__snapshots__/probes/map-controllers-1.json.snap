@@ -1,0 +1,106 @@
+{
+  "actions": {
+    "spotlight": {
+      "startOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "removeClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ]
+    }
+  },
+  "timelines": {
+    "Hover": {
+      "type": "animation",
+      "duration": 0,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "mouseenter",
+                "actions": [
+                  "spotlight"
+                ],
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            },
+            {
+              "systemName": "getControllerInstance",
+              "operationData": {
+                "systemName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "addControllerToElement",
+              "operationData": {
+                "eventName": "mouseleave",
+                "actions": [
+                  "end:spotlight"
+                ],
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            },
+            {
+              "systemName": "removeControllerFromElement",
+              "operationData": {
+                "controllerName": "DOMEventListenerController"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

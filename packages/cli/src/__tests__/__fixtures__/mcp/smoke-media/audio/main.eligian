@@ -1,0 +1,23 @@
+// Smoke media clock (spec 058 phase 3, FR-037): a raf hub whose #start navigates to the audio
+// timeline, captions as ranges, #play / #pause on the audio; no media file is committed (FR-038)
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "hub" in "#hub" using raf {
+  on enter [ on click "#start" navigate "song" ]
+  on leave [ with "#start" { removeControllerFromElement("DOMEventListenerController") } ]
+  at 0s..5s [ log("hub") ] []
+}
+
+timeline "song" in "#player" using audio from "./media/song.mp3" {
+  on enter [
+    on click "#play" play
+    on click "#pause" pause
+  ]
+  on leave [
+    with "#play" { removeControllerFromElement("DOMEventListenerController") }
+    with "#pause" { removeControllerFromElement("DOMEventListenerController") }
+  ]
+  at 0s..10s [ selectElement("#caption-1") removeClass("hidden") ] [ selectElement("#caption-1") addClass("hidden") ]
+  at 10s..20s [ selectElement("#caption-2") removeClass("hidden") ] [ selectElement("#caption-2") addClass("hidden") ]
+}

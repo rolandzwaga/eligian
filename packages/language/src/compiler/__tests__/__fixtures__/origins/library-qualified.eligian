@@ -1,0 +1,8 @@
+// Origin `library-qualified`: a library action calling a private helper of its library
+styles "./styles.css"
+
+import { reveal } from "./lib/helpers.eligian"
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s reveal("#a")
+}

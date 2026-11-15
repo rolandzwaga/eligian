@@ -1,0 +1,6 @@
+// Scenario visible: #note carries the hidden attribute
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 0s..30s [ log("playing") ] []
+}

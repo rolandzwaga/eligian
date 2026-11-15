@@ -1,0 +1,26 @@
+# T053 batch verify
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out /c/Users/scab/AppData/Local/Temp/claude/6adf1a082b4b5525/36f8780e-961a-4331-8c14-5cdda6313511/scratchpad/docs-T053
+generate-knowledge: 301 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T053
+exit: 0
+# wc -w of each new diagnostics body (after frontmatter)
+duplicate_extensions_import 62 ok
+duplicate_host_declaration 58 ok
+duplicate_host_parameter 57 ok
+duplicate_language_code 47 ok
+duplicate_lifecycle_block 59 ok
+duplicate_parameter 54 ok
+eligius-E001 80 ok
+eligius-E101 83 ok
+eligius-E111 74 ok
+eligius-E130 64 ok
+eligius-E131 60 ok
+eligius-E140 53 ok
+eligius-E141 44 ok
+eligius-E160 51 ok
+eligius-E310 61 ok
+eligius-W110 74 ok
+eligius-W150 57 ok
+eligius-W160 53 ok
+empty_event_name 53 ok
+empty_languages_block 54 ok
+end_block_runtime_const 85 ok

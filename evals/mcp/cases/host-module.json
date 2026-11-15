@@ -1,0 +1,26 @@
+{
+  "id": "host-module",
+  "prompt": "A quiz slide: three answer buttons; clicking one calls a host function `score(answer)` from `host.ts` and shows a result panel for 3 seconds. The entry file is `main.eligian` in the current directory, with one timeline named `quiz`; `host.ts` is a file you write next to it. Use these element ids: `#answer-a`, `#answer-b` and `#answer-c` (the answer buttons; clicking one passes its letter, `a`, `b` or `c`, to `score`) and `#result` (the result panel). `score` decides the message: `Correct! 10 points` for `b`, `Wrong answer. 0 points` for `a` and `c`. `#result` is hidden until an answer is clicked; then it is visible with that message as its text for 3 seconds, and hidden again after that. An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "host-module.scenario.json",
+  "assertions": [
+    {
+      "kind": "source.extensions",
+      "module": "./host.ts",
+      "operations": [{ "name": "score", "params": "answer: string" }]
+    },
+    { "kind": "files.exist", "paths": ["host.ts"] },
+    {
+      "kind": "interactions.listener",
+      "controller": "DOMEventListenerController",
+      "event": "click",
+      "runs": true
+    },
+    { "kind": "timeline.rangeTouches", "selector": "#result" },
+    { "kind": "interactions.noWait", "triggers": ["#answer-a", "#answer-b", "#answer-c"] },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

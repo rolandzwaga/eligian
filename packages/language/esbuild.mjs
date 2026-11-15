@@ -77,7 +77,23 @@ const ctxLint = await esbuild.context({
   plugins,
 });
 
-const contexts = [ctxCjs, ctxErrors, ctxLint];
+// The entry of the Eligian MCP server (spec 058): the language-server data and
+// helpers it reads beyond the package root.
+const ctxMcp = await esbuild.context({
+  entryPoints: ['src/mcp.ts'],
+  outfile: 'dist/mcp/index.cjs',
+  bundle: true,
+  target: 'ES2017',
+  format: 'cjs',
+  loader: { '.ts': 'ts', '.json': 'json' },
+  external: ['vscode'],
+  platform: 'node',
+  sourcemap: !minify,
+  minify,
+  plugins,
+});
+
+const contexts = [ctxCjs, ctxErrors, ctxLint, ctxMcp];
 if (watch) {
   await Promise.all(contexts.map(ctx => ctx.watch()));
 } else {

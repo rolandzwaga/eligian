@@ -1,0 +1,7 @@
+// Only a warning: the raf provider ignores a source
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf from "x.mp4" {
+  at 0s..2s [ selectElement("#box") addClass("lit") ] [ selectElement("#box") removeClass("lit") ]
+}

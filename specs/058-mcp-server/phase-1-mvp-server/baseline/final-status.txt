@@ -1,0 +1,354 @@
+# T068 final diff review — 2026-11-05T01:00:47Z
+# branch: feat/mcp-server-roadmap   HEAD: 448cd8b
+
+## Checks
+- Tracked changes under **/generated/ or *.generated.ts: 0
+- Changes (tracked or untracked) under examples/: 0
+- packages/cli/KNOWN_ISSUES.md changed: 0
+- spike.ts anywhere (outside node_modules, incl. ignored): 0
+- *.tgz anywhere (outside node_modules, incl. ignored): 0
+- Untracked paths matching /generated/ (new files, not edits of Langium output):
+    ?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/controllers.md
+    ?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/operations-index.md
+    ?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/operations/addClass.md
+    ?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/operations/selectElement.md
+  These are the planned docs-mini test fixture (tasks.md:293, the knowledge-doc generator's
+  layout in small, read by mcp-search.spec.ts and mcp-stdout.spec.ts); no Langium-generated
+  file (packages/language/src/generated/, *.generated.ts) is modified.
+
+## git status --short --untracked-files=all
+ M .github/workflows/ci.yml
+ M .github/workflows/publish-cli.yml
+ M AGENTS.md
+ M CHANGELOG.md
+ M package.json
+ M packages/cli/AGENTS.md
+ M packages/cli/README.md
+ M packages/cli/esbuild.mjs
+ M packages/cli/package.json
+ M packages/cli/src/__tests__/check-command.spec.ts
+ M packages/cli/src/__tests__/check-lint.spec.ts
+ M packages/cli/src/__tests__/cli.spec.ts
+ M packages/cli/src/__tests__/init.spec.ts
+ M packages/cli/src/__tests__/package-bin.spec.ts
+ M packages/cli/src/check/check-command.ts
+ M packages/cli/src/check/lint.ts
+ M packages/cli/src/compile-file.ts
+ M packages/cli/src/fmt.ts
+ M packages/cli/src/main.ts
+ M packages/language/esbuild.mjs
+ M packages/language/package.json
+ M packages/language/src/compiler/__tests__/check-files.spec.ts
+ M packages/language/src/compiler/__tests__/tour-controllers.spec.ts
+ M packages/language/src/compiler/index.ts
+ M packages/language/src/compiler/pipeline/check.ts
+ M packages/language/src/compiler/transformers/runtime-values.ts
+ M packages/language/src/css/selector-validation.ts
+ M packages/language/src/lsp/select-element-fix.ts
+ M packages/language/src/starters/starters.ts
+ M packages/language/src/utils/timeline-lifecycle.ts
+ M packages/language/src/validators/operation-call/css-parameter-validator.ts
+ M packages/language/src/validators/operation-call/operation-existence-validator.ts
+ M pnpm-lock.yaml
+ M pnpm-workspace.yaml
+ M specs/058-mcp-server/roadmap.md
+?? evals/mcp/cases/fix-dataflow.json
+?? evals/mcp/cases/fix-dataflow/start/layout.html
+?? evals/mcp/cases/fix-dataflow/start/main.eligian
+?? evals/mcp/cases/fix-dataflow/start/styles.css
+?? evals/mcp/cases/fix-selectors.json
+?? evals/mcp/cases/fix-selectors/start/extra.css
+?? evals/mcp/cases/fix-selectors/start/layout.html
+?? evals/mcp/cases/fix-selectors/start/main.eligian
+?? evals/mcp/cases/fix-selectors/start/styles.css
+?? evals/mcp/gate.ts
+?? evals/mcp/results/.gitkeep
+?? evals/mcp/results/2026-11-05T00-57-39-731Z/fix-dataflow.json
+?? evals/mcp/results/2026-11-05T00-58-35-707Z/fix-selectors.json
+?? evals/mcp/run.ts
+?? packages/cli/scripts/diagnostic-code-ranking.json
+?? packages/cli/scripts/generate-knowledge.ts
+?? packages/cli/scripts/measure-heap.ts
+?? packages/cli/scripts/rank-diagnostic-codes.ts
+?? packages/cli/src/__tests__/__fixtures__/check-data/css-only-id.eligian
+?? packages/cli/src/__tests__/__fixtures__/check-data/layout.html
+?? packages/cli/src/__tests__/__fixtures__/check-data/missing-select.eligian
+?? packages/cli/src/__tests__/__fixtures__/check-data/no-layout.eligian
+?? packages/cli/src/__tests__/__fixtures__/check-data/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/class-never-removed/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/class-never-removed/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/class-never-removed/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/controller-imbalance/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/controller-imbalance/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/controller-imbalance/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-compiler.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-eligius-lint.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-linker.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-parser.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-review.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-type.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/source-validator.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/curriculum/diagnostics/unknown_css_class.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/eligius-lint/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/eligius-lint/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/eligius-lint/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/missing-action-dependency/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/missing-action-dependency/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/missing-action-dependency/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/missing-dependency/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/missing-dependency/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/missing-dependency/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/repeated-code/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/repeated-code/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/repeated-code/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-class-in-selector/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-class-in-selector/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-class-in-selector/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-class/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-class/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-class/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-id-in-selector/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-id-in-selector/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-css-id-in-selector/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-dom-event/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-dom-event/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-dom-event/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-operation/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-operation/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/unknown-operation/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/warnings-only/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/warnings-only/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/check/warnings-only/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/a-layout/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/a-layout/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/a-layout/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/b-plain/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/b-plain/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/b-plain/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/c-fmt/unformatted.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/d-other/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/d-other/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/concurrency/d-other/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/crash.mjs
+?? packages/cli/src/__tests__/__fixtures__/mcp/curriculum-probe/broken/map-broken.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/curriculum-probe/map-test.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/curriculum/diagnostics/missing-dependency.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/curriculum/map-dataflow.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/curriculum/what-is-eligian.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/controllers.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/operations-index.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/operations/addClass.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/generated/operations/selectElement.md
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/index.json
+?? packages/cli/src/__tests__/__fixtures__/mcp/docs-mini/overlays.json
+?? packages/cli/src/__tests__/__fixtures__/mcp/fmt/formatted.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/fmt/syntax-error.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/fmt/unformatted.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/host/host.ts
+?? packages/cli/src/__tests__/__fixtures__/mcp/host/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/missing-overlays.json
+?? packages/cli/src/__tests__/__fixtures__/mcp/noise-project/effects.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/noise-project/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/noise-project/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/noise-project/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/noise.mjs
+?? packages/cli/src/__tests__/__fixtures__/mcp/outside/inner/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/outside/inner/main.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/outside/shared.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/enter-paired-with-leave.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/enter-without-leave-removal.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/imbalance-with-leave.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/imbalance-without-leave.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/layout.html
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/literal-never-removed.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/non-literal-selector.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/parameterised-views.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/removal-without-add.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/removed-end-block.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/removed-endable-action.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/removed-later-range.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/removed-on-leave.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/styles.css
+?? packages/cli/src/__tests__/__fixtures__/mcp/review/toggled-later.eligian
+?? packages/cli/src/__tests__/__fixtures__/mcp/roots-client.mjs
+?? packages/cli/src/__tests__/__snapshots__/check-json-before.json
+?? packages/cli/src/__tests__/__snapshots__/check-json-data.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-actions-and-calls-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-controllers-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-dataflow-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-events-and-interactions-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-test-1.json.snap
+?? packages/cli/src/__tests__/__snapshots__/probes/map-timeline-and-providers-1.json.snap
+?? packages/cli/src/__tests__/dataflow-tables.spec.ts
+?? packages/cli/src/__tests__/eval-cases.spec.ts
+?? packages/cli/src/__tests__/fmt-files.spec.ts
+?? packages/cli/src/__tests__/mcp-check.spec.ts
+?? packages/cli/src/__tests__/mcp-compiler-lock.spec.ts
+?? packages/cli/src/__tests__/mcp-concurrency.spec.ts
+?? packages/cli/src/__tests__/mcp-diagnostics.spec.ts
+?? packages/cli/src/__tests__/mcp-docs.spec.ts
+?? packages/cli/src/__tests__/mcp-errors.spec.ts
+?? packages/cli/src/__tests__/mcp-fmt.spec.ts
+?? packages/cli/src/__tests__/mcp-init.spec.ts
+?? packages/cli/src/__tests__/mcp-instructions.spec.ts
+?? packages/cli/src/__tests__/mcp-knowledge.spec.ts
+?? packages/cli/src/__tests__/mcp-operations.spec.ts
+?? packages/cli/src/__tests__/mcp-paths.spec.ts
+?? packages/cli/src/__tests__/mcp-render.spec.ts
+?? packages/cli/src/__tests__/mcp-search.spec.ts
+?? packages/cli/src/__tests__/mcp-server.spec.ts
+?? packages/cli/src/__tests__/mcp-stdout.spec.ts
+?? packages/cli/src/__tests__/mcp-telemetry.spec.ts
+?? packages/cli/src/__tests__/mcp-test-client.ts
+?? packages/cli/src/__tests__/review.spec.ts
+?? packages/cli/src/check/review.ts
+?? packages/cli/src/mcp/compiler-lock.ts
+?? packages/cli/src/mcp/diagnostics.ts
+?? packages/cli/src/mcp/errors.ts
+?? packages/cli/src/mcp/instructions.ts
+?? packages/cli/src/mcp/knowledge/curriculum/decisions.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/.gitkeep
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/break-outside-loop.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/circular_library_import.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/class-never-removed.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/constant-cycle.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/continue-outside-loop.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/controller-imbalance.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/css-import-error.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/eligius-E120.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/eligius-W151.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/erased-property-access.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/event-end-not-after-start.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/import-duplicate-default.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/missing-action-dependency.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/missing-dependency.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/parameter_count.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/recursive_action_call.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/selector_not_in_layout.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-compiler.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-eligius-lint.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-linker.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-parser.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-review.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-type.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/source-validator.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/syntax-error.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/timeline-empty.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/timeline-provider-invalid.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/timeline-required.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/timeline-source-required.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/timeline-source-unused.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown-action-in-timeline-event.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown_css_class.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown_css_class_in_selector.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown_css_id_in_selector.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown_event_name.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unknown_operation.md
+?? packages/cli/src/mcp/knowledge/curriculum/diagnostics/unresolved-reference.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-actions-and-calls.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-controllers.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-dataflow.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-events-and-interactions.md
+?? packages/cli/src/mcp/knowledge/curriculum/map-timeline-and-providers.md
+?? packages/cli/src/mcp/knowledge/curriculum/not-eligian.md
+?? packages/cli/src/mcp/knowledge/curriculum/probe-assets/probe-layout.html
+?? packages/cli/src/mcp/knowledge/curriculum/probe-assets/probe.css
+?? packages/cli/src/mcp/knowledge/curriculum/project-layout.md
+?? packages/cli/src/mcp/knowledge/curriculum/runtime-engine-lifecycle.md
+?? packages/cli/src/mcp/knowledge/curriculum/runtime-scheduling.md
+?? packages/cli/src/mcp/knowledge/curriculum/storyboard.md
+?? packages/cli/src/mcp/knowledge/curriculum/what-is-eligian.md
+?? packages/cli/src/mcp/knowledge/curriculum/what-is-eligius.md
+?? packages/cli/src/mcp/knowledge/lint-rules.ts
+?? packages/cli/src/mcp/knowledge/load.ts
+?? packages/cli/src/mcp/knowledge/render.ts
+?? packages/cli/src/mcp/knowledge/search.ts
+?? packages/cli/src/mcp/knowledge/types.ts
+?? packages/cli/src/mcp/paths.ts
+?? packages/cli/src/mcp/server.ts
+?? packages/cli/src/mcp/stdio.ts
+?? packages/cli/src/mcp/telemetry.ts
+?? packages/cli/src/mcp/tools/check.ts
+?? packages/cli/src/mcp/tools/docs.ts
+?? packages/cli/src/mcp/tools/fmt.ts
+?? packages/cli/src/mcp/tools/init.ts
+?? packages/cli/src/mcp/tools/operations.ts
+?? packages/language/src/__tests__/__snapshots__/did-you-mean-messages.json.snap
+?? packages/language/src/__tests__/did-you-mean-data.spec.ts
+?? packages/language/src/__tests__/mcp-entry.spec.ts
+?? packages/language/src/compiler/__tests__/controller-balance.spec.ts
+?? packages/language/src/compiler/controller-balance.ts
+?? packages/language/src/lsp/__tests__/select-element-fix.spec.ts
+?? packages/language/src/mcp.ts
+?? packages/language/src/utils/__tests__/timeline-lifecycle.spec.ts
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/build-before.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/case13-start.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/case14-start.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/check-json-before-exit.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/ci-steps-local.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/concurrency-runs.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/coverage-cli-before.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/coverage-language-before.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/did-you-mean-before.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/docs-in-build.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/evals.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/examples-review-before-default.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/final-status.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/fmt-examples-after.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/fmt-examples-before.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/gate-plumbing.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/gates-after.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/handshakes.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/heap.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/inspector-help.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/inspector-version.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/lock-grep.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/may-sites.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/ranking-time.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/roadmap-edits.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/runtime-claims-review.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/sc005-negative-control.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/sc015-publish-path.txt
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/spike.md
+?? specs/058-mcp-server/phase-1-mvp-server/baseline/static-import-grep.txt
+?? specs/058-mcp-server/phase-1-mvp-server/plan.md
+?? specs/058-mcp-server/phase-1-mvp-server/spec.md
+?? specs/058-mcp-server/phase-1-mvp-server/tasks.md
+
+## git diff --stat
+ .github/workflows/ci.yml                           |  30 +-
+ .github/workflows/publish-cli.yml                  |  10 +-
+ AGENTS.md                                          |   4 +-
+ CHANGELOG.md                                       |   7 +
+ package.json                                       |   2 +-
+ packages/cli/AGENTS.md                             |   5 +
+ packages/cli/README.md                             | 115 +++-
+ packages/cli/esbuild.mjs                           |  21 +
+ packages/cli/package.json                          |  11 +-
+ packages/cli/src/__tests__/check-command.spec.ts   | 197 +++++-
+ packages/cli/src/__tests__/check-lint.spec.ts      |  14 +
+ packages/cli/src/__tests__/cli.spec.ts             |   4 +-
+ packages/cli/src/__tests__/init.spec.ts            |   5 +-
+ packages/cli/src/__tests__/package-bin.spec.ts     |  84 ++-
+ packages/cli/src/check/check-command.ts            |  64 +-
+ packages/cli/src/check/lint.ts                     |  14 +-
+ packages/cli/src/compile-file.ts                   |   3 +
+ packages/cli/src/fmt.ts                            |  68 +-
+ packages/cli/src/main.ts                           |  17 +-
+ packages/language/esbuild.mjs                      |  18 +-
+ packages/language/package.json                     |   4 +
+ .../src/compiler/__tests__/check-files.spec.ts     |  73 +++
+ .../compiler/__tests__/tour-controllers.spec.ts    | 140 +---
+ packages/language/src/compiler/index.ts            |   1 +
+ packages/language/src/compiler/pipeline/check.ts   |  46 +-
+ .../src/compiler/transformers/runtime-values.ts    |   2 +-
+ packages/language/src/css/selector-validation.ts   |   4 +-
+ packages/language/src/lsp/select-element-fix.ts    | 124 ++--
+ packages/language/src/starters/starters.ts         |  55 +-
+ packages/language/src/utils/timeline-lifecycle.ts  |  49 +-
+ .../operation-call/css-parameter-validator.ts      |   3 +-
+ .../operation-existence-validator.ts               |   1 +
+ pnpm-lock.yaml                                     | 721 ++++++++++++++++++++-
+ pnpm-workspace.yaml                                |   4 +
+ specs/058-mcp-server/roadmap.md                    |   6 +-
+ 35 files changed, 1642 insertions(+), 284 deletions(-)

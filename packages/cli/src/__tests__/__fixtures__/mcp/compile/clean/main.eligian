@@ -1,0 +1,43 @@
+// eligian_compile fixture (spec 058 phase 2, SC-004): two timelines, one with
+// on enter / on leave, a named action, an event action, an addController and a
+// click listener (its action lies inside the lifecycle action: the innermost line case).
+layout "./layout.html"
+styles "./styles.css"
+import { fade } from "./lib/anim.eligian"
+
+/** Lights an element up */
+action highlight(selector: string) [
+  selectElement(selector)
+  addClass("lit")
+]
+
+on event "timeline-complete" action celebrate() [
+  selectElement("#title")
+  addClass("done")
+]
+
+timeline "intro" in "#stage" using raf {
+  on enter [
+    selectElement("#bar")
+    addController("ProgressbarController")
+    on click "#box" pause
+  ]
+  on leave [
+    selectElement("#bar")
+    removeControllerFromElement("ProgressbarController")
+    selectElement("#box")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+  at 0s..2s fade("#title")
+  at 2s..4s highlight("#box")
+}
+
+timeline "outro" in "#stage" using raf {
+  at 0s..3s [
+    selectElement("#box")
+    addClass("lit")
+  ] [
+    selectElement("#box")
+    removeClass("lit")
+  ]
+}

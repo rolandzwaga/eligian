@@ -47,6 +47,7 @@ describe('Type Checker', () => {
         operations: new Map(),
         timelines: new Map([[timelineId, { line: 1, column: 1, length: 10 }]]),
         timelineActions: new Map(),
+        origins: new Map(),
       },
       metadata: {
         dslVersion: '1.0.0',

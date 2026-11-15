@@ -58,14 +58,21 @@ describe('shipped example programs compile', () => {
     );
   });
 
-  test.each(programs.map(p => [p.relative, p] as const))('%s', async (_name, example) => {
-    const result = await Effect.runPromise(
-      Effect.result(compile(example.source, { sourceUri: example.file }))
-    );
-    if (result._tag === 'Failure') {
-      const formatted = formatError(result.failure, example.source, example.file);
-      throw new Error(`${example.relative} failed to compile:\n${formatted.message}`);
-    }
-    expect(result.success.timelines.length).toBeGreaterThan(0);
-  });
+  // The tour (1,400 lines) compiles in ~2.5 s alone and over 5 s under the full suite's load
+  // (058 Phase 2 T053 ruling 2026-11-05): an explicit timeout instead of vitest's 5 s default
+  const TOUR_TIMEOUT = 30_000;
+  test.each(programs.map(p => [p.relative, p] as const))(
+    '%s',
+    async (_name, example) => {
+      const result = await Effect.runPromise(
+        Effect.result(compile(example.source, { sourceUri: example.file }))
+      );
+      if (result._tag === 'Failure') {
+        const formatted = formatError(result.failure, example.source, example.file);
+        throw new Error(`${example.relative} failed to compile:\n${formatted.message}`);
+      }
+      expect(result.success.timelines.length).toBeGreaterThan(0);
+    },
+    TOUR_TIMEOUT
+  );
 });

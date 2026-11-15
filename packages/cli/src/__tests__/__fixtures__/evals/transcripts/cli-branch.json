@@ -1,0 +1,243 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "cwd": "C:\\Users\\agent\\eligian-eval-case",
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10",
+    "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"],
+    "model": "claude-sonnet-5-5"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0022",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_e1",
+          "name": "Bash",
+          "input": {
+            "command": "npx eligian check main.eligian",
+            "description": "Check the starter"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_e1",
+          "type": "tool_result",
+          "content": "main.eligian: no problems"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0023",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_e2",
+          "name": "Read",
+          "input": {
+            "file_path": "C:\\Users\\agent\\eligian-eval-case\\node_modules\\eligian\\dist\\docs\\generated\\operations-index.md"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_e2",
+          "type": "tool_result",
+          "content": "# Operations index\n\n| operation | category |\n|---|---|\n| addClass | dom |\n| animate | dom |\n"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0024",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_e3",
+          "name": "Edit",
+          "input": {
+            "file_path": "main.eligian",
+            "old_string": "animate",
+            "new_string": "fadeInto"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_e3",
+          "type": "tool_result",
+          "content": "The file main.eligian has been updated."
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0025",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_e4",
+          "name": "Bash",
+          "input": {
+            "command": "node node_modules/eligian/bin/cli.js check main.eligian"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_e4",
+          "type": "tool_result",
+          "content": "main.eligian\n  2:14  error  Unknown operation: 'fadeInto'  unknown_operation\n\n1 error"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0026",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_e5",
+          "name": "Edit",
+          "input": {
+            "file_path": "main.eligian",
+            "old_string": "fadeInto",
+            "new_string": "animate"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_e5",
+          "type": "tool_result",
+          "content": "The file main.eligian has been updated."
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0027",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_e6",
+          "name": "Bash",
+          "input": {
+            "command": "\"node_modules/.bin/eligian\" check main.eligian"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_e6",
+          "type": "tool_result",
+          "content": "main.eligian: no problems"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 7,
+    "result": "Done.",
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10",
+    "usage": {
+      "input_tokens": 12,
+      "output_tokens": 840
+    }
+  }
+]

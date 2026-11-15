@@ -1,0 +1,4 @@
+// No layout import: the engine generates the container
+timeline "Main"
+  in ".ghostc" using raf {
+}

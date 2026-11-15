@@ -1,0 +1,30 @@
+T052 diagnostics overlays batch 1 (21)
+git HEAD: b62b762350146d38ea78cf2d535c60a515d3ca06
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T052
+generate-knowledge: 339 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T052
+exit: 0
+
+code | body words (wc -w, after frontmatter) | in overlays.json byCode
+ABSOLUTE_PATH | 68 | code: ABSOLUTE_PATH | diagnostic/ABSOLUTE_PATH
+AMBIGUOUS_EXTENSION | 41 | code: AMBIGUOUS_EXTENSION | diagnostic/AMBIGUOUS_EXTENSION
+DUPLICATE_DEFAULT_IMPORT | 55 | code: DUPLICATE_DEFAULT_IMPORT | diagnostic/DUPLICATE_DEFAULT_IMPORT
+DUPLICATE_IMPORT_NAME | 41 | code: DUPLICATE_IMPORT_NAME | diagnostic/DUPLICATE_IMPORT_NAME
+INVALID_PATH_FORMAT | 56 | code: INVALID_PATH_FORMAT | diagnostic/INVALID_PATH_FORMAT
+OPERATION_NAME_CONFLICT | 41 | code: OPERATION_NAME_CONFLICT | diagnostic/OPERATION_NAME_CONFLICT
+RESERVED_KEYWORD | 59 | code: RESERVED_KEYWORD | diagnostic/RESERVED_KEYWORD
+UNKNOWN_EXTENSION | 56 | code: UNKNOWN_EXTENSION | diagnostic/UNKNOWN_EXTENSION
+action_name_builtin_conflict | 70 | code: action_name_builtin_conflict | diagnostic/action_name_builtin_conflict
+asset-type-conflict | 47 | code: asset-type-conflict | diagnostic/asset-type-conflict
+compile-emit-error | 57 | code: compile-emit-error | diagnostic/compile-emit-error
+compile-failed | 90 | code: compile-failed | diagnostic/compile-failed
+compile-parse-error | 73 | code: compile-parse-error | diagnostic/compile-parse-error
+compile-transform-error | 85 | code: compile-transform-error | diagnostic/compile-transform-error
+compile-type-error | 72 | code: compile-type-error | diagnostic/compile-type-error
+compile-validation-error | 61 | code: compile-validation-error | diagnostic/compile-validation-error
+constant-reserved-name | 57 | code: constant-reserved-name | diagnostic/constant-reserved-name
+control_flow | 94 | code: control_flow | diagnostic/control_flow
+css-parse-error | 56 | code: css-parse-error | diagnostic/css-parse-error
+duplicate_event_handler | 62 | code: duplicate_event_handler | diagnostic/duplicate_event_handler
+duplicate_event_label | 60 | code: duplicate_event_label | diagnostic/duplicate_event_label
+
+RESULT: all 21 bodies <= 120 words, frontmatter matches, present in overlays.json

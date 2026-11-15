@@ -50,6 +50,7 @@ import { getSourceLocation } from './transformers/source-location.js';
 import { typeCheck } from './type-checker.js';
 import type { SourceLocation } from './types/common.js';
 import type { EligiusIR } from './types/eligius-ir.js';
+import { ELIGIAN_VERSION, ELIGIUS_VERSION } from './version.js';
 
 export {
   type CheckDiagnostic,
@@ -369,8 +370,8 @@ export const compileToIR = (
  * Returns compiler version and supported Eligius versions.
  */
 export const getCompilerVersion = (): { compiler: string; eligius: string } => ({
-  compiler: '0.0.1',
-  eligius: '1.1.4',
+  compiler: ELIGIAN_VERSION,
+  eligius: ELIGIUS_VERSION,
 });
 
 /**

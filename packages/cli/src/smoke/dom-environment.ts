@@ -5,37 +5,56 @@
  * first loaded, so the window is created once and each file gets a fresh
  * body).
  */
-import { JSDOM, VirtualConsole } from 'jsdom';
+import type { JSDOM } from 'jsdom';
 
 type Eligius = typeof import('eligius');
 
-let dom: JSDOM | undefined;
+let dom: Promise<JSDOM> | undefined;
 let eligius: Promise<Eligius> | undefined;
 
 /** Messages jsdom reports (scripts it cannot run, APIs it does not implement). */
 export const jsdomMessages: string[] = [];
 
-/** The shared window, created (and made global) on first use. */
-export function smokeWindow(): Window & typeof globalThis {
-  if (!dom) {
+/** The shared window, created (and made global) on first use; jsdom is imported then. */
+export async function smokeWindow(): Promise<Window & typeof globalThis> {
+  dom ??= import('jsdom').then(({ JSDOM, VirtualConsole }) => {
     const virtualConsole = new VirtualConsole();
     virtualConsole.on('jsdomError', error => jsdomMessages.push(error.message));
-    dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+    const created = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
       pretendToBeVisual: true,
       url: 'http://localhost/',
       virtualConsole,
     });
-    stubMissingBrowserApis(dom.window as unknown as Window & typeof globalThis);
-    installGlobals(dom.window as unknown as Window & typeof globalThis);
-  }
-  return dom.window as unknown as Window & typeof globalThis;
+    stubMissingBrowserApis(created.window as unknown as Window & typeof globalThis);
+    installGlobals(created.window as unknown as Window & typeof globalThis);
+    return created;
+  });
+  return (await dom).window as unknown as Window & typeof globalThis;
 }
 
 /** Eligius, imported once the window exists. */
-export function loadEligius(): Promise<Eligius> {
-  smokeWindow();
+export async function loadEligius(): Promise<Eligius> {
+  await smokeWindow();
   eligius ??= import('eligius');
   return eligius;
+}
+
+/**
+ * Add CSS texts to the document as `<style data-eligian-smoke>` elements in `head`, so that
+ * `getComputedStyle` sees them (spec 058 FR-034 item 2); returns the function that removes them.
+ */
+export function injectStyles(window: Window, cssTexts: readonly string[]): () => void {
+  const { document } = window;
+  const styles = cssTexts.map(text => {
+    const style = document.createElement('style');
+    style.setAttribute('data-eligian-smoke', '');
+    style.textContent = text;
+    document.head.appendChild(style);
+    return style;
+  });
+  return () => {
+    for (const style of styles) style.remove();
+  };
 }
 
 /**
@@ -105,4 +124,9 @@ function installGlobals(window: Window & typeof globalThis): void {
         : (value as (...args: never) => unknown).bind(window);
     }
   }
+  // jsdom stamps animation frames with the window's clock, while Eligius' raf position source
+  // (a started engine: scenarios, FR-034) compares them with the global `performance.now()`,
+  // Node's, whose origin differs: frames get the global clock's time
+  target.requestAnimationFrame = (callback: FrameRequestCallback) =>
+    window.requestAnimationFrame(() => callback(performance.now()));
 }

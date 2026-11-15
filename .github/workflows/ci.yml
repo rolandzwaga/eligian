@@ -59,6 +59,19 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      # 200 sequential eligian_check calls: heap growth <= 25 MB, two recycles (spec 058 FR-063)
+      - name: Soak test
+        run: pnpm -C packages/cli run test:soak
+
+      # The MCP server (eligian mcp) over stdio, through the MCP Inspector CLI:
+      # tools/list must name exactly the eight tools; resources/list must list the docs
+      - name: MCP inspector gate
+        run: |
+          pnpm -C packages/cli exec mcp-inspector --cli --method tools/list --format json node bin/cli.js mcp \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const names=JSON.parse(s).result.tools.map(t=>t.name).sort().join(' ');const want='eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke';if(names!==want){console.error('tools/list: '+names+' (want: '+want+')');process.exit(1)}console.log('tools/list: '+names)})"
+          pnpm -C packages/cli exec mcp-inspector --cli --method resources/list --format json node bin/cli.js mcp \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const uris=JSON.parse(s).result.resources.map(r=>r.uri);if(!uris.includes('eligian://docs/storyboard')){console.error('resources/list lacks eligian://docs/storyboard ('+uris.length+' resources)');process.exit(1)}console.log('resources/list: '+uris.length+' resources')})"
+
       - name: Type check
         run: pnpm run typecheck
 
@@ -74,9 +87,12 @@ jobs:
         run: pnpm run effect:check
 
       # Every example must check cleanly (examples that demonstrate errors are
-      # excluded in the script); problems show as pull-request annotations
+      # excluded); problems show as pull-request annotations. The demo is
+      # checked on its own, without --max-warnings (the check:examples script)
       - name: Check examples (eligian check)
-        run: pnpm run check:examples --format github
+        run: |
+          node packages/cli/bin/cli.js check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0 --format github
+          node packages/cli/bin/cli.js check examples/demo.eligian --selector-not-in-layout off --format github
 
       # Every example must be formatted (eligian fmt, the editor's Format
       # Document rules); unformatted files show as pull-request annotations
@@ -102,3 +118,19 @@ jobs:
           json-summary-path: 'packages/language/coverage/coverage-summary.json'
           json-final-path: 'packages/language/coverage/coverage-final.json'
           vite-config-path: 'packages/language/vitest.config.ts'
+
+      # The MCP server as a user gets it: the packed tarball installed with npm,
+      # its dependencies from the registry; then the initialize test on it.
+      # Last in the job: pack runs prepack (build:prod), which deletes and
+      # rebuilds packages/cli/dist
+      - name: MCP on the packed tarball
+        env:
+          PKG_DIR: ${{ runner.temp }}/eligian-pkg
+        run: |
+          pnpm -C packages/cli pack
+          tgz=$(ls "$PWD"/packages/cli/eligian-*.tgz)
+          mkdir -p "$PKG_DIR"
+          (cd "$PKG_DIR" && npm init -y > /dev/null && npm install "$tgz")
+          pnpm -C packages/cli exec mcp-inspector --cli --method tools/list --format json node "$PKG_DIR/node_modules/eligian/bin/cli.js" mcp \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const names=JSON.parse(s).result.tools.map(t=>t.name).sort().join(' ');const want='eligian_check eligian_compile eligian_docs eligian_fmt eligian_init eligian_operations eligian_project eligian_smoke';if(names!==want){console.error('tools/list: '+names+' (want: '+want+')');process.exit(1)}console.log('tools/list: '+names)})"
+          ELIGIAN_BIN="$PKG_DIR/node_modules/eligian/bin/cli.js" pnpm -C packages/cli exec vitest run src/__tests__/package-bin.spec.ts -t "mcp answers initialize"

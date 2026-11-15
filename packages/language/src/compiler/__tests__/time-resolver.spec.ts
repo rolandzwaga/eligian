@@ -79,7 +79,9 @@ describe('resolveTimelineTimes matches the compiler', () => {
         expect(resolvedSpans(timeline)).toEqual(compiled);
         expect(resolveTimelineTimes(timeline).duration).toBe(ir.config.timelines[index].duration);
       });
-    }
+    },
+    // the tour compiles in over 5 s under the full suite's load (058 Phase 2 T053 ruling)
+    30_000
   );
 
   test('a runtime time leaves that event and relative ones after it unresolved', async () => {

@@ -1,0 +1,69 @@
+T067 eval cases (SC-017; FR-050, FR-051), arm A1, model sonnet, eligian 1.1.0 (packed tarball), eligius 4.2.0
+HEAD 448cd8bb6d345eec811c85f6731fe7cd31986f48, treeClean: false (the phase's uncommitted work; recorded by the harness)
+Run once each, no re-run (a re-run needs a change):
+  pnpm exec tsx evals/mcp/run.ts --case fix-dataflow --arm A1   -> exit 1
+  pnpm exec tsx evals/mcp/run.ts --case fix-selectors --arm A1  -> exit 1
+
+| case          | result JSON                                                  | pass  | rounds | check tool / CLI | tool calls | tokens-from-tools (chars) | wall ms | agent turns | cost USD |
+|---------------|--------------------------------------------------------------|-------|--------|------------------|------------|---------------------------|---------|-------------|----------|
+| fix-dataflow  | evals/mcp/results/2026-11-05T00-57-39-731Z/fix-dataflow.json | false | 1      | 2 / 0            | 6          | 3113                      | 13438   | 7           | 0.2138   |
+| fix-selectors | evals/mcp/results/2026-11-05T00-58-35-707Z/fix-selectors.json| false | 3      | 4 / 0            | 16         | 19775                     | 26087   | 17          | 0.1831   |
+
+Gate failures (verbatim from the result JSONs):
+  fix-dataflow:  "step 3 (smoke --strict): exit 1;         } |       } |     ] |   } | ]"
+  fix-selectors: "step 5 (budget): 3 self-correction rounds (4 eligian_check + 0 CLI checks - 1) > 2"
+
+Tool call sequences:
+  fix-dataflow:  eligian_check, Read, Edit, Edit, Edit, eligian_check
+  fix-selectors: eligian_check, Glob, Read x4, eligian_docs, Edit x4, eligian_check, Bash, eligian_check, Write, eligian_check
+
+SC-017 status: NOT MET (both result JSONs exist; both pass: false).
+
+## Defects found
+
+### fix-dataflow: compiler gap (check is clean, the runtime fails)
+The agent's final program passes `eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids`
+(re-run in the eval dir: "1 file, 0 errors, 0 warnings", exit 0), but `eligian smoke main.eligian --strict` fails:
+  error  start operation selectElement (in reveal): selectElement: selector is either empty or not defined.
+         main.eligian:15:3 — 'main' at 3s
+The agent's `reveal`:
+  action reveal(selector, className) [
+    selectElement(selector)
+    addClass("visible")
+    clearOperationData()
+    selectElement(selector)   // added by the agent
+    addClass(className)
+  ]
+Cause: `clearOperationData()` (no property list) wipes the action's parameters (`selector`, `className`) and the
+`__eligian_param_*` saves from the operation data. The compiled `reveal` (out/config.json) is:
+  setOperationData {__eligian_param_selector}, selectElement, setOperationData {selector <- save},
+  setOperationData {__eligian_param_className}, addClass, setOperationData {className <- save},
+  clearOperationData, selectElement, addClass
+so nothing restores them after the clear. Neither side models it:
+  - the dataflow validator: `clearOperationData` -> `state.clearAll(operation)` (packages/language/src/dataflow/operation-dataflow.ts:750-753)
+    removes only tracked properties (operation-data-tracker.ts:148-151); action parameters are not among them, so a
+    parameter read after the clear gets no `erased-property-access` (the start state reports it only for 'selectedElement', 14:3);
+  - `preserveErasedParameters` (packages/language/src/compiler/transformers/erased-parameters.ts) saves/restores only
+    parameters named like an `@erased` property (`erasedBy`), not the ones `clearOperationData` removes.
+The start state already carries the latent runtime error (`addClass(className)` after the clear), which the check never
+reports, so the agent cannot find it with `eligian_check` alone. Classification: compiler gap. A re-run needs a fix
+(flag parameter use after `clearOperationData`, or preserve parameters across it), not a curriculum change.
+
+### fix-selectors: tool ergonomics (budget overrun by one round)
+Diagnostics per eligian_check call:
+  1: syntax-error 22, import-duplicate-default 3, selector_not_in_layout 6 and 11 (2 errors, 2 warnings)
+  2: controller-imbalance 16, class-never-removed 21 and 22 (0 errors, 3 warnings)
+  3: identical to 2 (no change in between)
+  4: ok (0 / 0)
+Two causes, either one alone keeps the run inside the budget of 2:
+  a) Round 2 exists because the review warnings (controller-imbalance, class-never-removed) do not appear while the
+     program has errors, by design: `withCompiledChecks` skips every file with an error
+     (packages/cli/src/check/check-command.ts:183, `if (result.diagnostics.some(d => d.severity === 'error')) continue;`);
+     call 1 showed none of them though ProgressbarController's imbalance and both addClass calls
+     are in the start state. The agent fixed what it was shown, then met three new warnings.
+  b) Round 3 was wasted: the agent tried to rewrite main.eligian with a Bash heredoc, which Claude Code refused
+     ("Contains brace with quote character (expansion obfuscation)"; ALLOWED_TOOLS in evals/mcp/run.ts allows only
+     `Bash(node *)` and `Bash(npx eligian*)`), then ran eligian_check on the unchanged file before switching to Write.
+The final program is correct and complete (check 0/0 via the CLI command of the prompt, exit 0; the agent applied the
+controller-imbalance quickFix verbatim and made the actions endable to remove the classes).
+Classification: tool ergonomics (review deferred behind errors; the eval's Bash allowlist). No compiler or curriculum gap seen.

@@ -1,0 +1,50 @@
+// Reference solution, eval case audio-lyrics (spec 058 phase 3): a raf start view whose #start
+// switches to the audio timeline; one range per sung line, click a line to seek to its start
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Start" in "#stage" using raf {
+  on enter [
+    selectElement("#intro")
+    addClass("is-active")
+    on click "#start" navigate "Song"
+  ]
+  on leave [
+    selectElement("#intro")
+    removeClass("is-active")
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}
+
+timeline "Song" in "#player" using audio from "./media/song.mp3" {
+  on enter [
+    selectElement("#lyrics")
+    addClass("is-active")
+    on click "#line-1" seek 1s
+    on click "#line-2" seek 4s
+    on click "#line-3" seek 8s
+    on click "#line-4" seek 12s
+    on click "#line-5" seek 16s
+  ]
+  on leave [
+    selectElement("#lyrics")
+    removeClass("is-active")
+    selectElement("#line-1")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#line-2")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#line-3")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#line-4")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#line-5")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 1s..4s target "#line-1" [ addClass("active") ] [ removeClass("active") ]
+  at 4s..8s target "#line-2" [ addClass("active") ] [ removeClass("active") ]
+  at 8s..12s target "#line-3" [ addClass("active") ] [ removeClass("active") ]
+  at 12s..16s target "#line-4" [ addClass("active") ] [ removeClass("active") ]
+  at 16s..19s target "#line-5" [ addClass("active") ] [ removeClass("active") ]
+}

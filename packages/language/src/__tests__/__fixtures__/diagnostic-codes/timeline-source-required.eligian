@@ -1,0 +1,6 @@
+// timeline-validator.ts: an audio timeline without a source file
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using audio {
+  at 0s..1s show()
+}

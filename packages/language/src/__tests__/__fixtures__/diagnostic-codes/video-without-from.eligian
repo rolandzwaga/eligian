@@ -1,0 +1,6 @@
+// A video timeline without a source file: exactly one diagnostic (FR-004a)
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using video {
+  at 0s..1s show()
+}

@@ -1,0 +1,39 @@
+$ node packages/cli/bin/cli.js check evals/mcp/cases/fix-dataflow/start/main.eligian --selector-not-in-layout ids --format json
+{
+  "files": [
+    {
+      "file": "evals/mcp/cases/fix-dataflow/start/main.eligian",
+      "diagnostics": [
+        {
+          "severity": "error",
+          "message": "Property 'selectedElement' is not available - it was erased by operation 'clearOperationData'",
+          "line": 14,
+          "column": 3,
+          "endLine": 14,
+          "endColumn": 11,
+          "code": "erased-property-access"
+        },
+        {
+          "severity": "error",
+          "message": "Action 'highlight' requires 'selectedElement' (used by addClass in 'highlight'), which is not available here - ensure it is created before calling 'highlight' (for example with selectElement)",
+          "line": 22,
+          "column": 5,
+          "endLine": 22,
+          "endColumn": 14,
+          "code": "missing-action-dependency"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "errors": 2,
+    "warnings": 0,
+    "infos": 0,
+    "hints": 0
+  }
+}
+exit code: 1
+
+sorted set of codes:
+["erased-property-access","missing-action-dependency"]

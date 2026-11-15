@@ -1,0 +1,26 @@
+# T038 solution scrollytelling: verified from a scratch copy ($SCRATCH/sol-scrollytelling), 2026-11-05T19:27:43Z, HEAD b62b762
+# CLI: node <repo>/packages/cli/bin/cli.js; no case fixtures to copy; out/ is created before step 4, as gate step 4 does (gate-steps.ts: "compile does not create it")
+$ eligian check main.eligian --max-warnings 0 --selector-not-in-layout ids
+1 file, 0 errors, 0 warnings
+exit 0
+$ eligian fmt --check "**/*.eligian"
+All 1 file formatted
+exit 0
+$ eligian smoke main.eligian --strict --format json --scenario /f/projects/eligius/eligian/evals/mcp/cases/scrollytelling.scenario.json --determinism
+[
+  {
+    "file": "main.eligian",
+    "timelines": [
+      {
+        "name": "story",
+        "boundaries": 6
+      }
+    ],
+    "problems": []
+  }
+]
+exit 0
+$ eligian compile main.eligian --eligian-map -o out/config.json
+✓ Compiled main.eligian → out/config.json
+✓ Eligian map → out/config.eligian-map.json
+exit 0

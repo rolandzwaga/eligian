@@ -1,0 +1,16 @@
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+stderr | src/__tests__/mcp-soak.spec.ts > MCP soak (FR-063, SC-016) > 2 × N checks stay under 25 MB and recycle twice
+mcp-soak: 400 eligian_check calls; heapUsed before 298.43 MB, after 308.43 MB, growth 10.00 MB; recycles at [200,400]
+
+stderr | src/__tests__/mcp-soak.spec.ts > MCP soak (FR-063, SC-016) > 2 × N mixed tool calls on the tour stay under 25 MB, sections = calls, recycles = ⌊sections / N⌋
+mcp-soak mixed: 400 calls; growth 6.70 MB; sections 400; recycles at [200,400]; wall 187.9 s
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:35:07
+   Duration  192.24s (tests 99%)
+
+exit 0

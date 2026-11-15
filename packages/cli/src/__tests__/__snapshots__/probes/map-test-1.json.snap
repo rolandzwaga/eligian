@@ -1,0 +1,63 @@
+{
+  "actions": {
+    "highlight": {
+      "startOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "highlight"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "main": {
+      "type": "animation",
+      "duration": 2,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-2",
+          "duration": {
+            "start": 0,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "highlight"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "highlight"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

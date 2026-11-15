@@ -1,0 +1,11 @@
+// The library of library-qualified.eligian: `mark` is private, so it is emitted as `helpers.mark`
+library helpers
+
+private action mark(sel) [
+  selectElement(sel)
+  addClass("on")
+]
+
+action reveal(sel) [
+  mark(sel)
+]

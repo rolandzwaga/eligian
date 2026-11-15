@@ -1,0 +1,141 @@
+{
+  "actions": {},
+  "timelines": {
+    "Part 1": {
+      "type": "animation",
+      "duration": 5,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#panel"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#panel"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-0-4",
+          "duration": {
+            "start": 0,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#title"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-4-5",
+          "duration": {
+            "start": 4,
+            "end": 5
+          },
+          "startOperations": [
+            {
+              "systemName": "broadcastEvent",
+              "operationData": {
+                "eventArgs": [
+                  "Part 2",
+                  0
+                ],
+                "eventName": "request-timeline-uri"
+              }
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    },
+    "Part 2": {
+      "type": "animation",
+      "duration": 3,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-3",
+          "duration": {
+            "start": 0,
+            "end": 3
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

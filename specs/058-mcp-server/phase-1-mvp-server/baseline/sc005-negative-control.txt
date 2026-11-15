@@ -1,0 +1,39 @@
+# T044 / SC-005 negative control (CompilerLockPassThrough), recorded by hand
+#
+# The committed-test variant, `it('without the lock results differ')` in
+# packages/cli/src/__tests__/mcp-concurrency.spec.ts (20 iterations of check A 'ids', check B 'off'
+# and fmt C at once, on one in-process server with CompilerLockPassThrough, >= 1 mismatch expected),
+# was run 10 consecutive times on 2026-11-05:
+#   pnpm -C packages/cli exec vitest run src/__tests__/mcp-concurrency.spec.ts -t "without the lock"
+# All 10 runs failed with: AssertionError: expected 0 to be greater than or equal to 1
+# (Tests 1 failed | 5 skipped (6)), i.e. 0 mismatches in every run. Per tasks.md T044 the `it` was
+# removed and the control was run once by hand; output below. The overlap metric
+# (`calls wait on the lock`) stays in the spec and passes.
+#
+# Manual run: the same fixtures (copied to a temp dir, the project root), the same minimal docs
+# root, the same three calls, through startInMemoryServer({ lock: CompilerLockPassThrough }):
+#   pnpm -C packages/cli exec tsx <scratchpad>/sc005-control.mts   (stderr telemetry lines dropped)
+# '=' = deep-equal to the sequential baseline (header removed), 'DIFF' = mismatch.
+
+baselines: A [selector_not_in_layout,selector_not_in_layout] B [-] C formatted=false
+iteration  1: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  2: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  3: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  4: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  5: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  6: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  7: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  8: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration  9: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 10: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 11: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 12: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 13: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 14: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 15: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 16: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 17: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 18: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 19: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+iteration 20: A = B = C =  (A [selector_not_in_layout,selector_not_in_layout] B [-])
+pass-through lock, 20 iterations, 444 ms: mismatches = 0

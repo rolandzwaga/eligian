@@ -1,0 +1,7 @@
+// A mistyped id in a selector: unknown_css_id_in_selector, suggesting box
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#bxo") addClass("lit") ] [ selectElement("#box") removeClass("lit") ]
+}

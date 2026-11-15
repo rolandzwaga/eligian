@@ -19,12 +19,18 @@
 import type { IEngineConfiguration, IOperationConfiguration, TOperationData } from 'eligius';
 import type { SourceLocation } from './types/common.js';
 import type { EligiusIR } from './types/eligius-ir.js';
+import type { OperationOrigin } from './types/operation-origin.js';
 
 export interface EligianMapOperation {
   readonly systemName: string;
   readonly location?: SourceLocation;
   /** For requestAction: the name of the requested action */
   readonly calls?: string;
+  /**
+   * Spec 058 Phase 3 (FR-042): the construct that generated the operation. Optional because
+   * maps are also read back from JSON files.
+   */
+  readonly origin?: OperationOrigin;
 }
 
 export type EligianMapActionKind = 'init' | 'action' | 'event' | 'timeline';
@@ -47,6 +53,8 @@ export interface EligianMap {
   readonly source?: string;
   /** By action id (the ids in the compiled configuration) */
   readonly actions: Readonly<Record<string, EligianMapAction>>;
+  /** Spec 058 Phase 3 (P5): the program's timeline names (set by the CLI) */
+  readonly timelineNames?: readonly string[];
 }
 
 /** Build the map for a compiled (optimized) IR. */
@@ -58,6 +66,7 @@ export function buildEligianMap(ir: EligiusIR): EligianMap {
       (op): EligianMapOperation => ({
         systemName: op.systemName,
         location: sourceMap.operations.get(op.id),
+        origin: sourceMap.origins.get(op.id),
         ...(op.systemName === 'requestAction' &&
         typeof (op.operationData as { systemName?: unknown } | undefined)?.systemName === 'string'
           ? { calls: (op.operationData as { systemName: string }).systemName }

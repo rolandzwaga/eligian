@@ -1,0 +1,15 @@
+#stage {
+  position: relative;
+}
+
+#hero {
+  opacity: 0;
+}
+
+#banner {
+  opacity: 0;
+}
+
+.visible {
+  opacity: 1;
+}

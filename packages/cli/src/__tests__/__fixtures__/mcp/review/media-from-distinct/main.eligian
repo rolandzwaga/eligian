@@ -1,0 +1,23 @@
+// media-from-duplicate negative: each video timeline plays its own file
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Intro" in "#player" using video from "./media/intro.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+  on leave [
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}
+
+timeline "Outro" in "#player" using video from "./media/outro.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+  on leave [
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}

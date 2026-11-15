@@ -1,0 +1,30 @@
+# T009 / SC-005: local mcp-publisher validate of packages/cli/server.json (2026-11-06)
+# mcp-publisher v1.8.7 windows_amd64, from
+#   https://github.com/modelcontextprotocol/registry/releases/download/v1.8.7/mcp-publisher_windows_amd64.tar.gz
+#   https://github.com/modelcontextprotocol/registry/releases/download/v1.8.7/registry_1.8.7_checksums.txt
+# Checksum line (grep anchored to ' mcp-publisher_windows_amd64.tar.gz$': the unanchored grep also
+# matches the .sbom.json line, whose file is not downloaded, and sha256sum -c then exits 1):
+$ grep ' mcp-publisher_windows_amd64.tar.gz$' registry_1.8.7_checksums.txt | sha256sum -c -
+cdb42bfe6a5e1cba7526e007ac13f13261ed35224386fee8a34ed2c2e8e778d4  mcp-publisher_windows_amd64.tar.gz
+mcp-publisher_windows_amd64.tar.gz: OK
+exit 0
+
+$ mcp-publisher.exe validate   (cwd packages/cli, after pnpm check: no fixes applied)
+Validating against https://registry.modelcontextprotocol.io...
+✅ server.json is valid
+exit 0
+
+# Mutation proof of T008's guard: "server.json" added to packages/cli/package.json files ->
+# pnpm -C packages/cli run test:bin red (1 failed | 13 passed). First on the exact packed-list
+# toEqual ("+ server.json"); with that toEqual temporarily disabled as well, red on
+# AssertionError: expected [ 'LICENSE', 'README.md', …(423) ] to not include 'server.json'
+# (package-bin.spec.ts expect(files).not.toContain('server.json')). Both edits reverted; test:bin 14 passed.
+mutation red, reverted
+
+# T011 / P3: re-check of the linux_amd64 checksum written in publish-cli.yml (2026-11-06)
+$ curl --fail -sSL -o registry_1.8.7_checksums.txt https://github.com/modelcontextprotocol/registry/releases/download/v1.8.7/registry_1.8.7_checksums.txt
+curl exit 0
+$ grep mcp-publisher_linux_amd64.tar.gz registry_1.8.7_checksums.txt
+00b21004149a4ce66f0782508ae4a2bce67d1bea395a8da0bd8028159fb59579  mcp-publisher_linux_amd64.tar.gz
+1a626f17b56da81c347c790a38164b72957d700d9307d414ccb02c21d160e9f4  mcp-publisher_linux_amd64.tar.gz.sbom.json
+# The archive line equals the plan's (P3) and the literal in the Install mcp-publisher step.

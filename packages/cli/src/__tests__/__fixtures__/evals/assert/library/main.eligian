@@ -1,0 +1,6 @@
+layout "./layout.html"
+import { fadeIn, fadeOut } from "./lib/animations.eligian"
+
+timeline "Main" in "#stage" using raf {
+  at 0s..2s [ fadeIn("#card") ] [ fadeOut("#card") ]
+}

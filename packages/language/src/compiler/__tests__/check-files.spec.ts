@@ -6,9 +6,20 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Effect } from 'effect';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, test } from 'vitest';
+import { createTestContext } from '../../__tests__/test-helpers.js';
+import {
+  createEmitError,
+  createParseError,
+  createTransformError,
+  createTypeError,
+  createValidationError,
+} from '../../errors/index.js';
+import { selectElementFix } from '../../lsp/select-element-fix.js';
+import { isDiagnosticCode } from '../../validators/codes.js';
+import { compileErrorCode } from '../pipeline/check.js';
 import { getOrCreateServices } from '../pipeline/services.js';
-import { checkFiles } from '../pipeline.js';
+import { type CompileError, checkFiles } from '../pipeline.js';
 
 describe('checkFiles', () => {
   let dir: string;
@@ -96,6 +107,7 @@ timeline "t" in ".c" using raf { at 0s..1s highlight() }
     expect(brokenResult.diagnostics.some(d => d.severity === 'error')).toBe(true);
     expect(missingResult.diagnostics).toHaveLength(1);
     expect(missingResult.diagnostics[0].message).toMatch(/^Cannot read file: /);
+    expect(missingResult.diagnostics[0].code).toBe('file-unreadable');
   });
 
   test('leaves no documents behind in the shared compiler workspace', async () => {
@@ -106,5 +118,120 @@ timeline "t" in ".c" using raf { at 0s..1s highlight() }
     await check(file);
 
     expect(documents.all.count()).toBe(before);
+  });
+
+  it('copies data.suggestions', async () => {
+    const file = write(
+      'interaction.eligian',
+      `styles "./s.css"
+timeline "t" in ".c" using raf {
+  on enter [ on clik "#a" play ]
+  at 0s..1s [ selectElement("#a") addClass("on") ] []
+}
+`
+    );
+
+    const [result] = await check(file);
+
+    const diagnostic = result.diagnostics.find(d => d.code === 'unknown_dom_event');
+    expect(diagnostic).toBeDefined();
+    const suggestions = diagnostic!.data?.suggestions;
+    expect(Array.isArray(suggestions)).toBe(true);
+    expect(suggestions!.length).toBeGreaterThan(0);
+    expect(suggestions!.every(s => typeof s === 'string')).toBe(true);
+    expect(suggestions).toContain('click');
+  });
+
+  it('adds a 1-based quickFix', async () => {
+    const source = `styles "./s.css"
+timeline "t" in ".c" using raf {
+  at 0s..1s [ ] [
+    addClass("on")
+  ]
+}
+`;
+    const file = write('missing-select.eligian', source);
+
+    const [result] = await check(file);
+
+    const diagnostic = result.diagnostics.find(d => d.code === 'missing-dependency');
+    expect(diagnostic).toBeDefined();
+    const quickFix = diagnostic!.data?.quickFix;
+    expect(quickFix).toBeDefined();
+    expect(quickFix!.line).toBe(quickFix!.endLine);
+    expect(quickFix!.column).toBe(quickFix!.endColumn);
+    expect(quickFix!.line).toBeGreaterThanOrEqual(1);
+    expect(quickFix!.column).toBeGreaterThanOrEqual(1);
+    expect(quickFix!.newText).toContain('selectElement(');
+
+    // The same edit as the IDE quick fix, shifted from 0-based to 1-based
+    const { document, diagnostics } = await createTestContext().parseAndValidate(source);
+    const fix = selectElementFix(document, diagnostics.find(d => d.code === 'missing-dependency')!);
+    expect(fix).toBeDefined();
+    expect(quickFix).toEqual({
+      line: fix!.range.start.line + 1,
+      column: fix!.range.start.character + 1,
+      endLine: fix!.range.end.line + 1,
+      endColumn: fix!.range.end.character + 1,
+      newText: fix!.newText,
+    });
+  });
+
+  it('no data key when there is nothing', async () => {
+    const file = write(
+      'warned.eligian',
+      `styles "./s.css"
+timeline "t" in ".c" using raf {}
+`
+    );
+
+    const [result] = await check(file);
+
+    expect(result.diagnostics).toHaveLength(1);
+    expect('data' in result.diagnostics[0]).toBe(false);
+  });
+});
+
+describe('compileErrorCode', () => {
+  const location = { line: 1, column: 1, length: 0 };
+  const TAGS: readonly (readonly [CompileError['_tag'], CompileError, string])[] = [
+    ['ParseError', createParseError({ message: 'm', location }), 'compile-parse-error'],
+    [
+      'ValidationError',
+      createValidationError({ kind: 'SemanticValidation', message: 'm', location }),
+      'compile-validation-error',
+    ],
+    [
+      'TypeError',
+      createTypeError({ message: 'm', location, expected: 'string', actual: 'number' }),
+      'compile-type-error',
+    ],
+    [
+      'TransformError',
+      createTransformError({ kind: 'InvalidEvent', message: 'm', location }),
+      'compile-transform-error',
+    ],
+    ['EmitError', createEmitError({ message: 'm' }), 'compile-emit-error'],
+  ];
+
+  it.each(TAGS)('%s → its code', (_tag, error, code) => {
+    expect(error._tag).toBe(_tag);
+    expect(compileErrorCode(error)).toBe(code);
+    expect(isDiagnosticCode(compileErrorCode(error))).toBe(true);
+  });
+
+  it('5 distinct codes', () => {
+    expect(new Set(TAGS.map(([, error]) => compileErrorCode(error))).size).toBe(5);
+  });
+
+  it('kind does not change the code', () => {
+    const validation = (['UndefinedReference', 'DuplicateDefinition'] as const).map(kind =>
+      compileErrorCode(createValidationError({ kind, message: 'm', location }))
+    );
+    const transform = (['UnknownNode', 'InvalidImport'] as const).map(kind =>
+      compileErrorCode(createTransformError({ kind, message: 'm', location }))
+    );
+    expect(validation).toEqual(['compile-validation-error', 'compile-validation-error']);
+    expect(transform).toEqual(['compile-transform-error', 'compile-transform-error']);
   });
 });

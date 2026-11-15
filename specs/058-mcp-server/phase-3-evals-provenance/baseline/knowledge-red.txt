@@ -1,0 +1,258 @@
+$ pnpm -C packages/cli exec vitest run src/__tests__/mcp-knowledge.spec.ts -t "every operation has an overlay|no code lacks an overlay"
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ❯ |cli| src/__tests__/mcp-knowledge.spec.ts (38 tests | 2 failed | 36 skipped) 433ms
+   ❯ overlays (6)
+     × no code lacks an overlay 9ms
+   ❯ phase 2 knowledge (6)
+     × every operation has an overlay 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > no code lacks an overlay
+AssertionError: codes without curriculum/diagnostics/<code>.md: expected [ 'ABSOLUTE_PATH', …(124) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "ABSOLUTE_PATH",
++   "AMBIGUOUS_EXTENSION",
++   "DUPLICATE_DEFAULT_IMPORT",
++   "DUPLICATE_IMPORT_NAME",
++   "INVALID_PATH_FORMAT",
++   "OPERATION_NAME_CONFLICT",
++   "RESERVED_KEYWORD",
++   "UNKNOWN_EXTENSION",
++   "action_name_builtin_conflict",
++   "asset-type-conflict",
++   "compile-emit-error",
++   "compile-failed",
++   "compile-parse-error",
++   "compile-transform-error",
++   "compile-type-error",
++   "compile-validation-error",
++   "constant-reserved-name",
++   "control_flow",
++   "css-parse-error",
++   "duplicate_event_handler",
++   "duplicate_event_label",
++   "duplicate_extensions_import",
++   "duplicate_host_declaration",
++   "duplicate_host_parameter",
++   "duplicate_language_code",
++   "duplicate_lifecycle_block",
++   "duplicate_parameter",
++   "eligius-E001",
++   "eligius-E101",
++   "eligius-E111",
++   "eligius-E130",
++   "eligius-E131",
++   "eligius-E140",
++   "eligius-E141",
++   "eligius-E160",
++   "eligius-E310",
++   "eligius-W110",
++   "eligius-W150",
++   "eligius-W160",
++   "empty_event_name",
++   "empty_languages_block",
++   "end_block_runtime_const",
++   "event-duration-not-positive",
++   "event-duration-relative",
++   "event-ends-after-timeline",
++   "event-start-negative",
++   "event_action_empty_body",
++   "event_action_name_builtin_conflict",
++   "event_action_name_conflict",
++   "event_argument_count_mismatch",
++   "event_label_not_before",
++   "event_label_time_unknown",
++   "event_name_must_be_literal",
++   "event_name_too_long",
++   "event_topic_empty",
++   "event_type_mismatch",
++   "extensions_path_not_relative",
++   "extensions_path_type",
++   "file-unreadable",
++   "for-collection-not-array",
++   "for-empty-body",
++   "host_controller_builtin",
++   "host_operation_builtin",
++   "html-import-error",
++   "if-condition-not-boolean",
++   "if-empty-then",
++   "import_action_not_found",
++   "import_file_not_found",
++   "import_name_collision",
++   "import_private_action",
++   "invalid_constant_expression",
++   "invalid_controller_name_type",
++   "invalid_css_file",
++   "invalid_css_selector",
++   "invalid_css_selector_syntax",
++   "invalid_event_edge",
++   "invalid_language_code_format",
++   "invalid_parameter_count",
++   "invalid_setdata_target",
++   "invalid_time_constant",
++   "languages-duplicate-code",
++   "languages-missing-default",
++   "languages-multiple-defaults",
++   "library_invalid_content",
++   "locales-parse-failed",
++   "locales-without-languages",
++   "media-import-error",
++   "missing_default_marker",
++   "missing_dependency",
++   "missing_labels_file",
++   "missing_required_parameter",
++   "multiple_default_markers",
++   "no_labels_import",
++   "operation-in-timeline-event",
++   "parameter_type",
++   "private_only_in_libraries",
++   "property_chain_in_time_expression",
++   "reserved_keyword_parameter",
++   "run_not_an_action",
++   "run_runtime_argument",
++   "runtime_concat_context",
++   "runtime_concat_operand",
++   "runtime_negation_outside_condition",
++   "runtime_operator_operand",
++   "scroll_container_not_scrollable",
++   "sequence-item-duration-not-positive",
++   "stagger-delay-not-positive",
++   "stagger-duration-not-positive",
++   "time_constant_misuse",
++   "time_value_placement",
++   "timeline-duration-not-positive",
++   "timeline-duration-relative",
++   "timeline-scroll-duration-required",
++   "timeline-scroll-selector-not-scroll",
++   "too_many_parameters",
++   "type-mismatch",
++   "unknown_controller",
++   "unknown_dom_event",
++   "unknown_host_function",
++   "unknown_key",
++   "unknown_label_id",
++   "unknown_navigate_target",
++   "unknown_scroll_container",
++   "unnecessary_type_annotation",
++   "validation-exception",
++ ]
+
+ ❯ src/__tests__/mcp-knowledge.spec.ts:716:71
+    714|         overlays.get(code) !== `${code}.md` || !fs.existsSync(path.joi…
+    715|     );
+    716|     expect(missing, 'codes without curriculum/diagnostics/<code>.md').…
+       |                                                                       ^
+    717|     expect(allowlist(), 'missing-overlays.json').toEqual([]);
+    718|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > every operation has an overlay
+AssertionError: operations without curriculum/operations/<name>.md: expected [ 'addControllerToElement', …(66) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "addControllerToElement",
++   "addGlobalsToOperation",
++   "animateWithClass",
++   "announceToScreenReader",
++   "breakForEach",
++   "calc",
++   "clearElement",
++   "clearOperationData",
++   "clearStorage",
++   "compareDate",
++   "concatenateStrings",
++   "continueForEach",
++   "createElement",
++   "customFunction",
++   "endAction",
++   "endForEach",
++   "endWhen",
++   "extendController",
++   "filterArray",
++   "findInArray",
++   "forEach",
++   "formatDate",
++   "formatText",
++   "getAttributesFromElement",
++   "getControllerFromElement",
++   "getControllerInstance",
++   "getCurrentTime",
++   "getElementDimensions",
++   "getFocusedElement",
++   "getFormData",
++   "getImport",
++   "getQueryParams",
++   "getScrollPosition",
++   "getTextContent",
++   "httpDelete",
++   "httpPost",
++   "httpPut",
++   "invokeObjectMethod",
++   "isElementInViewport",
++   "loadFromStorage",
++   "loadJson",
++   "mapArray",
++   "math",
++   "otherwise",
++   "removeElement",
++   "removePropertiesFromOperationData",
++   "reparentElement",
++   "replaceString",
++   "replaceText",
++   "requestAction",
++   "saveToStorage",
++   "scrollToPosition",
++   "setData",
++   "setElementAttributes",
++   "setFocus",
++   "setFormValue",
++   "setGlobalData",
++   "setOperationData",
++   "setVariable",
++   "sortArray",
++   "splitString",
++   "startAction",
++   "substringText",
++   "toggleElement",
++   "toggleFormElement",
++   "validateForm",
++   "when",
++ ]
+
+ ❯ src/__tests__/mcp-knowledge.spec.ts:1133:7
+    1131|       expected.filter(name => !names.includes(name)),
+    1132|       'operations without curriculum/operations/<name>.md'
+    1133|     ).toEqual([]);
+       |       ^
+    1134|     expect(names.filter(name => !registry.includes(name))).toEqual(['a…
+    1135|     expect(names).toEqual(expected);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 36 skipped (38)
+   Start at  20:59:17
+   Duration  1.70s (import 62%, tests 27%, transform 10%)
+
+exit: 1
+
+$ pnpm -C packages/cli exec vitest run src/__tests__/mcp-knowledge.spec.ts (summary: every other test passes)
+     × no code lacks an overlay 9ms
+     × every operation has an overlay 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 36 passed (38)

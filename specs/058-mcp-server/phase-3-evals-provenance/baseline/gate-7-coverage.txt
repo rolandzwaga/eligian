@@ -1,0 +1,58 @@
+# pnpm run test:coverage:ci — coverage summaries extracted from the full log (columns: % Stmts | % Branch | % Funcs | % Lines)
+language: File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+language: -------------------|---------|----------|---------|---------|-------------------
+language: All files          |   91.31 |    82.86 |   93.87 |   92.58 |                   
+cli:      File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+cli:      -------------------|---------|----------|---------|---------|-------------------
+cli:      All files          |   89.12 |     78.5 |   91.84 |   90.02 |                   
+ Test Files  7 passed (7)
+      Tests  105 passed (105)
+ Test Files  257 passed | 1 skipped (258)
+      Tests  3428 passed | 23 skipped (3451)
+ Test Files  65 passed | 1 skipped (66)
+      Tests  1296 passed | 32 skipped (1328)
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+ Test Files  63 passed (63)
+      Tests  628 passed (628)
+# --- tail -40 ---
+  scenario.ts      |   94.09 |     86.9 |     100 |   96.37 | ...43,446,456,460 
+  smoke-command.ts |   91.66 |    76.27 |   86.66 |   91.78 | ...04-105,132,155 
+  smoke-runner.ts  |   89.09 |    70.17 |   84.12 |   90.57 | ...07,517,543-544 
+  ...-selectors.ts |   96.55 |    82.14 |     100 |     100 | 52-61,65-66       
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 89.12% ( 4433/4974 )
+Branches     : 78.5% ( 2517/3206 )
+Functions    : 91.84% ( 1273/1386 )
+Lines        : 90.02% ( 3970/4410 )
+================================================================================
+$ vitest run --project cli-bin
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+(node:31928) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  21:46:21
+   Duration  9.16s (tests 95%, import 5%)
+
+$ vitest run
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/extension
+
+Could not parse CSS stylesheet
+
+ Test Files  63 passed (63)
+      Tests  628 passed (628)
+   Start at  21:46:30
+   Duration  11.61s (environment 80%, import 12%, transform 4%, tests 3%, worker 1%)
+
+Environment  jsdom was created 63 times · 232.65s total, 80% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+EXIT=0

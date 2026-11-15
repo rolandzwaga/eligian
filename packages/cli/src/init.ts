@@ -6,10 +6,15 @@
  * presentation that checks without errors, its layout, styles, locales, a
  * package.json with check / build / fmt scripts and a README. Existing files
  * are never overwritten without `--force`.
+ *
+ * Spec 058 Phase 2 (FR-064, Q7; plan E2): after the starter, the agent files of
+ * each client are merged in through `setupAgents`, always in the `node` form
+ * (`<dir>/node_modules/eligian/bin/cli.js`: the starter depends on `eligian`).
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { findStarter, STARTER_ENTRY, STARTERS, starterFiles } from '@eligian/language';
+import { type AgentClient, type AgentFileResult, setupAgents } from './agents.js';
 
 export interface InitOptions {
   readonly template: string;
@@ -17,11 +22,17 @@ export interface InitOptions {
   readonly title?: string;
   readonly force: boolean;
   readonly cwd: string;
+  /** The clients whose agent files are written (default `['claude']`; `[]` is `--no-agents`) */
+  readonly agents?: readonly AgentClient[];
+  /** The generated docs (`agents-block.md`); default: `docs/` next to the bundle */
+  readonly docsRoot?: URL | string;
 }
 
 export interface InitOutcome {
   readonly output: string;
   readonly exitCode: number;
+  /** Every agent file with its status, when the starter was written */
+  readonly agentFiles?: readonly AgentFileResult[];
 }
 
 /** "my-talk" → "My Talk" */
@@ -67,9 +78,21 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     await fs.writeFile(full, content, 'utf-8');
   }
 
+  const agentFiles = await setupAgents(target, options.agents ?? ['claude'], {
+    command: {
+      form: 'node',
+      cliPath: path.join(target, 'node_modules', 'eligian', 'bin', 'cli.js'),
+    },
+    docsRoot: options.docsRoot ?? new URL('./docs/', import.meta.url),
+  });
+
   const inPlace = path.resolve(options.cwd) === target;
   const lines = [
     `Created ${displayDir(directory)} (${starter.label} starter): ${Object.keys(files).join(', ')}`,
+    ...agentFiles.map(
+      ({ file, status, message }) =>
+        `Agent file ${file}: ${status}${message === undefined ? '' : ` (${message})`}`
+    ),
     ...starter.notes.map(note => `Note: ${note}`),
     '',
     'Next:',
@@ -77,7 +100,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     `  eligian check ${STARTER_ENTRY}`,
     '  open the folder in VS Code and run "Eligian: Preview Timeline" (Ctrl+K V)',
   ];
-  return { output: lines.join('\n'), exitCode: 0 };
+  return { output: lines.join('\n'), exitCode: 0, agentFiles };
 }
 
 async function exists(file: string): Promise<boolean> {

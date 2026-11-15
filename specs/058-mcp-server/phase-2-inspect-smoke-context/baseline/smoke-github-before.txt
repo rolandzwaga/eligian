@@ -1,0 +1,18 @@
+### clean.eligian (exit 0)
+1 file, 2 timelines played, 0 errors, 0 warnings
+### broken.eligian (exit 1)
+::error file=broken.eligian,line=3,col=17,title=eligian smoke::start operation selectElement (in boom): selectElement: selector is either empty or not defined. ('Broken' at 1s)
+1 file, 1 timeline played, 1 error, 0 warnings
+### shared.eligian (exit 1)
+::error file=shared.eligian,line=3,col=17,title=eligian smoke::start operation selectElement (in boom): selectElement: selector is either empty or not defined. ('Shared' at 0s)
+1 file, 1 timeline played, 1 error, 0 warnings
+### lib.eligian media.eligian (exit 0)
+2 files, 0 timelines played, 0 errors, 0 warnings
+### broken.eligian --strict (exit 1)
+::error file=broken.eligian,line=5,col=54,title=eligian smoke::selectElement("#ghost") matched no element ('Broken' at 1s)
+::error file=broken.eligian,line=3,col=17,title=eligian smoke::start operation selectElement (in boom): selectElement: selector is either empty or not defined. ('Broken' at 1s)
+1 file, 1 timeline played, 2 errors, 0 warnings
+### lib.eligian (exit 0)
+1 file, 0 timelines played, 0 errors, 0 warnings
+### media.eligian (exit 0)
+1 file, 0 timelines played, 0 errors, 0 warnings

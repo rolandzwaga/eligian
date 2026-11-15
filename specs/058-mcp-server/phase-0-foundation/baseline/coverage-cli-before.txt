@@ -1,0 +1,74 @@
+$ vitest run --coverage
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+      Coverage enabled with v8
+
+Not implemented: navigation to another Document
+(node:29316) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Sourcemap for "F:/projects/eligius/eligian/packages/language/dist/eligius-lint/index.cjs" points to missing source files
+
+ Test Files  25 passed | 1 skipped (26)
+      Tests  338 passed | 18 skipped (356)
+   Start at  19:13:38
+   Duration  27.27s (tests 63%, import 18%, transform 17%, environment 1%, worker 1%)
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   76.65 |    64.52 |   77.61 |   77.11 |                   
+ src               |   46.68 |    47.63 |   53.84 |   45.88 |                   
+  compile-file.ts  |   65.51 |    44.73 |   58.33 |   65.45 | ...56,296,317-321 
+  fmt.ts           |   98.76 |    96.55 |     100 |   98.63 | 95                
+  init.ts          |     100 |    94.44 |     100 |     100 | 34                
+  main.ts          |       0 |        0 |       0 |       0 | 35-540            
+  output-path.ts   |     100 |    83.33 |     100 |     100 | 32                
+ src/bundler       |   89.13 |     78.3 |   84.55 |   89.04 |                   
+  ...-collector.ts |   87.71 |    82.71 |   82.35 |   87.64 | ...64,603,624-664 
+  css-processor.ts |   97.56 |      100 |   88.88 |   97.56 | 159               
+  ...-generator.ts |   86.66 |    71.11 |     100 |   86.48 | ...09-215,222,229 
+  index.ts         |   89.68 |    73.21 |   76.19 |   89.34 | ...42,361,370,382 
+  ...me-bundler.ts |   94.77 |     80.3 |   90.47 |   95.23 | ...90,335,342,346 
+  types.ts         |   65.95 |    33.33 |   77.77 |   65.95 | ...59,356,375-384 
+  url-utils.ts     |   96.96 |       90 |     100 |   96.96 | 67                
+ src/check         |   78.78 |    73.49 |   91.11 |      80 |                   
+  check-command.ts |   93.22 |    88.63 |   89.47 |   97.87 | 154               
+  lint.ts          |     100 |       60 |     100 |     100 | 19-20,24-28       
+  reporters.ts     |   63.63 |    55.17 |    91.3 |   63.15 | 65-69,82-108      
+ src/dev           |   79.78 |    54.12 |   78.04 |   82.24 |                   
+  dev-server.ts    |    77.9 |    53.27 |   76.31 |   80.51 | ...22-324,341-346 
+ src/smoke         |   85.77 |    64.06 |   72.85 |   87.56 |                   
+  ...nvironment.ts |   88.09 |      100 |   30.76 |   94.73 | 68-75             
+  smoke-command.ts |    80.7 |    51.21 |    82.6 |   77.08 | ...09,118,127-128 
+  smoke-runner.ts  |    87.3 |    62.31 |   82.35 |   89.71 | ...32,247,250,285 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 76.65% ( 1182/1542 )
+Branches     : 64.52% ( 562/871 )
+Functions    : 77.61% ( 267/344 )
+Lines        : 77.11% ( 1105/1433 )
+================================================================================
+
+=============================== T008 thresholds ================================
+packages/cli/vitest.config.ts coverage.thresholds (T007 "All files", floored to one decimal):
+  lines 77.1 / functions 77.6 / branches 64.5 / statements 76.6
+
+Scratch check: packages/cli/src/__scratch_untested.ts (30 lines, 4 exported never-imported
+functions) added, `pnpm -C packages/cli test:coverage:ci` re-run -> exit 1:
+  Statements   : 75.86% ( 1182/1558 )
+  Branches     : 63.93% ( 562/879 )
+  Functions    : 76.72% ( 267/348 )
+  Lines        : 76.31% ( 1105/1448 )
+  ERROR: Coverage for lines (76.31%) does not meet global threshold (77.1%)
+  ERROR: Coverage for functions (76.72%) does not meet global threshold (77.6%)
+  ERROR: Coverage for statements (75.86%) does not meet global threshold (76.6%)
+  ERROR: Coverage for branches (63.93%) does not meet global threshold (64.5%)
+
+Scratch file deleted (`test -e packages/cli/src/__scratch_untested.ts` -> false), re-run -> exit 0
+(25 files passed | 1 skipped; 338 tests passed | 18 skipped):
+  Statements   : 76.65% ( 1182/1542 )
+  Branches     : 64.52% ( 562/871 )
+  Functions    : 77.61% ( 267/344 )
+  Lines        : 77.11% ( 1105/1433 )

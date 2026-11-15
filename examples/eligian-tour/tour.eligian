@@ -31,19 +31,24 @@ layout "./layout.html"
 styles "./tour.css"
 locales "./locales.json"
 
+// @mcp-example library-import Import actions from a library file
 import { revealBlock, spotlight, clearSpots, callout, narrate, demo, revealCard, showView, hideView, enterChapter, replayChapter, leaveChapter } from "./presentation.eligian"
+// @mcp-end
 
 // Chapter 05's own subjects: a named asset import (placed by cfPlaceHint in
 // beat 4) and the host module (declared here; Engine Reach calls stampTime).
 import hint from "./hint.html"
+// @mcp-example extensions-declaration Declare a host module with extensions
 extensions "./host.js" {
   operation stampTime(selector: string)
   function shout
 }
+// @mcp-end
 
 // Chapter 03 helpers: the executed code mirrors the taught snippets.
 // House rule: const lives in actions (or at program level), not in timeline
 // blocks, so the loop and the conditional live here.
+// @mcp-example if-else if / else if / else on a runtime parameter
 action ch3Badge(count) [
   // count is a runtime parameter, so this emits a real when / otherwise / endWhen
   selectElement("#c3-badge")
@@ -58,7 +63,9 @@ action ch3Badge(count) [
     removeClass("muted")
   }
 ]
+// @mcp-end
 
+// @mcp-example for-loop A for loop over a const array
 action ch3RevealBullets() [
   const points = ["#c3-b1", "#c3-b2", "#c3-b3"]   // folded into forEach's collection
   for (p in @points) {
@@ -66,7 +73,9 @@ action ch3RevealBullets() [
     addClass("in")
   }
 ]
+// @mcp-end
 
+// @mcp-example break-continue break and continue in a for loop
 action ch3LoopControl() [
   const numbers = [0, 3, 7, 12]
   for (n in @numbers) {
@@ -75,6 +84,7 @@ action ch3LoopControl() [
     with "#c3-n-" + @@n { addClass("lit") }      // runtime concat: "#c3-n-3", "#c3-n-7"
   }
 ]
+// @mcp-end
 
 // Chapter 05 helper: writes the named HTML import into its panel; @hint is
 // the content of hint.html, inlined at compile time.
@@ -83,6 +93,7 @@ action cfPlaceHint() [
   setElementContent(@hint)
 ]
 
+// @mcp-example eventbus-round-trip broadcastEvent and an on event action
 // Engine Reach helpers — a REAL eventbus round-trip, wired live by the chapter's
 // on enter (`on click "#c5-fx-ping" run ch5BroadcastPing()`): the click runs
 // ch5BroadcastPing, which broadcasts "tour-ping"; the `on event` handler below
@@ -101,12 +112,15 @@ on event "tour-ping" action ch5OnPing(target) [
   selectElement(target)
   addClass("in")
 ]
+// @mcp-end
 
+// @mcp-example host-operation-call Call a host operation like a built-in
 // A host operation (declared in the extensions block, exported by host.js),
 // called like a built-in: writes the current time into the chip.
 action ch5Stamp() [
   stampTime("#c5-fx-clock")
 ]
+// @mcp-end
 
 // The language buttons: the engine listens for language-change and sets the
 // locale; every LabelController re-renders.
@@ -149,6 +163,7 @@ action hubUnwire() [
 // Hub — the landing menu. Click a card (or press its number) to jump into a
 // chapter. The title and tagline are LabelControllers over locales.json.
 // ===========================================================================
+// @mcp-example hub-navigation A hub timeline: click and key navigation
 timeline "Hub" in "#stage" using raf {
   on enter [
     showView("#hub")
@@ -178,6 +193,7 @@ timeline "Hub" in "#stage" using raf {
     hubUnwire()
   ]
 }
+// @mcp-end
 
 // ===========================================================================
 // Chapter 01 — Timeline & Time (#ch1). Eight beats on the raf clock, written with the
@@ -185,13 +201,16 @@ timeline "Hub" in "#stage" using raf {
 // labelled `at` events (open.end, providers.end, …), a relative start (+0s),
 // and one `target` beat with an end block.
 // ===========================================================================
+// @mcp-example time-constants Program-level time constants
 const beat = 6s // Chapter 1's basic beat (a time constant)
 const long = @beat + 2s // 8s
+// @mcp-end
 
 timeline "Timeline & Time" in "#stage" using raf {
 
   // setup: show this chapter + narration + progress on enter; wire back, Esc,
   // space and r. On leave: hide, reset the view, unwire.
+  // @mcp-example chapter-lifecycle An on enter / on leave pair with key bindings
   on enter [
     enterChapter("#ch1")
     on click "#c1-to-hub" navigate "Hub"
@@ -202,7 +221,9 @@ timeline "Timeline & Time" in "#stage" using raf {
   on leave [
     leaveChapter("#ch1", "#c1-to-hub")
   ]
+  // @mcp-end
 
+  // @mcp-example labelled-events Labelled at events chained with label.end
   // Beat 1 — open on the canvas (0–6 s)
   at 0s for @beat as open [
     narrate("An Eligian presentation is one or more timelines. Here's the one you're watching.")
@@ -221,6 +242,7 @@ timeline "Timeline & Time" in "#stage" using raf {
     callout("#cl-provider", "raf = animation clock · video / audio drive from media · scroll = the scroll position · custom")
     demo("#fx-providers")
   ]
+  // @mcp-end
 
   // Beat 3 — make something happen over a range (12–20 s)
   at providers.end for @long as ranges [
@@ -262,6 +284,7 @@ timeline "Timeline & Time" in "#stage" using raf {
     demo("#c1-fx-labels")
   ]
 
+  // @mcp-example target-end-block A target event with an end block
   // Beat 7 — target (43–50 s): REAL — the box lights at the start, and the end
   // block (also headed by the target's selectElement) unlights it
   at constants.end for 7s as targets target "#c1-target-box" [
@@ -275,6 +298,7 @@ timeline "Timeline & Time" in "#stage" using raf {
   ] [
     removeClass("lit")
   ]
+  // @mcp-end
 
   // Beat 8 — recap: this timeline's own header and lifecycle blocks (50–58 s)
   at targets.end for @long as recap [
@@ -575,10 +599,13 @@ timeline "Timeline Power Tools" in "#stage" using raf {
     ]
   }
 
+  // @mcp-example stagger-action Stagger an action across selectors
   // REAL stagger 1 (beat 4): the cards reveal from editBeat.end = 22 s, 200ms
   // apart (22 s, 22.2 s, 22.4 s), 1.5 s each
   stagger 200ms ["#c4-card-1", "#c4-card-2", "#c4-card-3"] at editBeat.end with revealCard() for 1.5s
+  // @mcp-end
 
+  // @mcp-example stagger-inline An inline stagger with start and end blocks
   // REAL stagger 2 (beat 6): the inline form with an end block, anchored on the
   // beat; every block starts empty, so each selects its item first. The chips
   // light at 41 s, 41.15 s, 41.3 s and go out 2 s later.
@@ -589,6 +616,7 @@ timeline "Timeline Power Tools" in "#stage" using raf {
     selectElement(@@item)
     removeClass("lit")
   ]
+  // @mcp-end
 }
 
 // ===========================================================================
@@ -706,6 +734,7 @@ timeline "Engine Reach" in "#stage" using raf {
   // space and r, the ping button, the two language buttons and the greeting's
   // LabelController. On leave: back to en-US, unwire the chapter's own
   // controllers, then hide, reset the view and unwire the skeleton.
+  // @mcp-example interaction-run Click interactions that run actions, unwired on leave
   on enter [
     enterChapter("#ch5")
     on click "#c5-to-hub" navigate "Hub"
@@ -726,6 +755,7 @@ timeline "Engine Reach" in "#stage" using raf {
     with "#c5-fx-label-text" { removeControllerFromElement("LabelController") }
     leaveChapter("#ch5", "#c5-to-hub")
   ]
+  // @mcp-end
 
   sequence each [ clearSpots() ] {
     // Beat 1 — five doors past the clock (0–7 s)

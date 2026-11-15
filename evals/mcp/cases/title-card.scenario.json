@@ -1,0 +1,29 @@
+{
+  "steps": [
+    { "seek": 2 },
+    { "snapshot": "at-2" },
+    { "seek": 4 },
+    { "snapshot": "at-4" },
+    { "seek": 9 },
+    { "snapshot": "at-9" },
+    { "seek": 5 },
+    { "click": "#pause" },
+    { "snapshot": "paused" },
+    { "wait": 300 },
+    { "snapshot": "still-paused" },
+    { "click": "#play" },
+    { "wait": 300 },
+    { "snapshot": "playing" }
+  ],
+  "assertions": [
+    { "after": "at-2", "selector": "#headline", "hasClass": "in" },
+    { "after": "at-2", "selector": "#headline", "visible": true },
+    { "after": "at-2", "selector": "#subtitle", "visible": false },
+    { "after": "at-4", "selector": "#subtitle", "visible": true },
+    { "after": "at-9", "selector": "#headline", "notHasClass": "in" },
+    { "after": "at-9", "selector": "#headline", "visible": false },
+    { "after": "at-9", "selector": "#subtitle", "visible": false },
+    { "after": "still-paused", "position": { "sameAs": "paused" } },
+    { "after": "playing", "position": { "greaterThan": "still-paused" } }
+  ]
+}

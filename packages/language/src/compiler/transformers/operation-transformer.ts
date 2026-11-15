@@ -150,6 +150,7 @@ export const transformOperationCall = (
       systemName: operationName,
       operationData: Object.keys(operationData).length > 0 ? operationData : undefined,
       sourceLocation: getSourceLocation(opCall),
+      origin: 'source',
     };
   });
 
@@ -269,6 +270,7 @@ const transformStatement = (
             systemName: 'getControllerInstance',
             operationData: { systemName: controllerName },
             sourceLocation: getSourceLocation(stmt),
+            origin: 'source',
           });
 
           // 2. addControllerToElement
@@ -277,6 +279,7 @@ const transformStatement = (
             systemName: 'addControllerToElement',
             operationData: parameterData,
             sourceLocation: getSourceLocation(stmt),
+            origin: 'source',
           });
 
           return operations;
@@ -328,12 +331,14 @@ const transformStatement = (
           const isEndableAction = actionDef.$type === 'EndableActionDefinition';
           const actionOperation = isEndOperation && isEndableAction ? 'endAction' : 'startAction';
 
+          // Library helpers are emitted under library-qualified names
+          const systemName = scope.actionSystemNames?.get(operationName);
           return buildActionCallOperations(
-            // Library helpers are emitted under library-qualified names
-            scope.actionSystemNames?.get(operationName) ?? operationName,
+            systemName ?? operationName,
             actionOperationData,
             getSourceLocation(stmt),
-            actionOperation
+            actionOperation,
+            systemName !== undefined && systemName !== operationName ? 'library-qualified' : 'call'
           );
         }
 
@@ -376,6 +381,7 @@ const transformStatement = (
             systemName: 'selectElement',
             operationData: { selector },
             sourceLocation: getSourceLocation(stmt),
+            origin: 'with',
           },
         ]);
         const body: OperationConfigIR[] = [];
@@ -532,6 +538,7 @@ export const transformIfStatement = (
         expression,
       },
       sourceLocation: getSourceLocation(stmt),
+      origin: 'source',
     });
 
     // 2. Transform then operations (recursively handle nested control flow)
@@ -558,6 +565,7 @@ export const transformIfStatement = (
         systemName: 'otherwise',
         operationData: {},
         sourceLocation: getSourceLocation(stmt),
+        origin: 'source',
       });
 
       // Create a new scope for the else block (separate from then block)
@@ -583,6 +591,7 @@ export const transformIfStatement = (
       systemName: 'endWhen',
       operationData: {},
       sourceLocation: getSourceLocation(stmt),
+      origin: 'source',
     });
 
     return operations;
@@ -627,6 +636,7 @@ export const transformForStatement = (
         itemName: stmt.itemName,
       },
       sourceLocation: getSourceLocation(stmt),
+      origin: 'source',
     });
 
     // 2. Transform loop body (recursively handle nested control flow)
@@ -656,6 +666,7 @@ export const transformForStatement = (
       systemName: 'endForEach',
       operationData: {},
       sourceLocation: getSourceLocation(stmt),
+      origin: 'source',
     });
 
     return operations;
@@ -680,6 +691,7 @@ export const transformBreakStatement = (
       systemName: 'breakForEach',
       operationData: {},
       sourceLocation: getSourceLocation(stmt),
+      origin: 'loop-control',
     },
   ]);
 
@@ -702,6 +714,7 @@ export const transformContinueStatement = (
       systemName: 'continueForEach',
       operationData: {},
       sourceLocation: getSourceLocation(stmt),
+      origin: 'loop-control',
     },
   ]);
 
@@ -762,6 +775,7 @@ export const transformVariableDeclaration = (
         value,
       },
       sourceLocation: getSourceLocation(stmt),
+      origin: 'source',
     };
 
     return [operation];

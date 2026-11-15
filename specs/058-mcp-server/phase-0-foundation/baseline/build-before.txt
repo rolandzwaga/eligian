@@ -1,0 +1,13 @@
+HEAD: 1e2e750771bf058d633b8660d04a55537527df4c
+pnpm install: exit 0 (Already up to date, no lockfile change)
+pnpm build: exit 0
+--- last 5 lines of pnpm build ---
+packages/extension build: [19:08:30] Build succeeded
+packages/extension build: [19:08:30] Build succeeded
+packages/extension build: [19:08:30] Build succeeded
+packages/extension build: [19:08:30] Build succeeded
+packages/extension build: Done
+--- artifacts ---
+packages/cli/LICENSE
+packages/cli/dist/cli.mjs
+packages/language/dist/index.cjs

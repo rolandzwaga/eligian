@@ -1,0 +1,11 @@
+#stage {
+  position: relative;
+}
+
+#title {
+  opacity: 0;
+}
+
+.visible {
+  opacity: 1;
+}

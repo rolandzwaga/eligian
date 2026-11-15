@@ -1,0 +1,14 @@
+[eligian dev] built in <n>ms
+[eligian dev] styles.css changed → rebuilt in <n>ms, styles swapped
+[eligian dev] main.eligian changed → rebuilt in <n>ms, reloading 1 page
+[eligian dev] main.eligian changed → build failed (<n>ms):
+  Parse Error: 'loop' is a keyword, so it cannot be used as a name here. Choose another name.
+    at 6:8
+  
+    4 |   at 0s..1s [ selectElement("#a") addClass("on") ] [ selectElement("#a") removeClass("on") ]
+    5 | }
+  > 6 | action loop() [ ]
+               ^^^^
+    7 |
+[eligian dev] main.eligian changed → rebuilt in <n>ms, reloading 1 page
+[eligian dev on the lottie probe] built in <n>ms

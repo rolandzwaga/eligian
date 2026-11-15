@@ -1,0 +1,7 @@
+// The library of the SC-002 noise run (mcp-stdout.spec.ts)
+library effects
+
+action highlight(selector: string) [
+  selectElement(selector)
+  setStyle({ opacity: "1" })
+]

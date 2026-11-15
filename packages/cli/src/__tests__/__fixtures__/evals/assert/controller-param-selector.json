@@ -1,0 +1,60 @@
+{
+  "id": "regression",
+  "actions": [
+    {
+      "id": "a-unclick",
+      "name": "unclick",
+      "startOperations": [
+        { "id": "o1", "systemName": "selectElement" },
+        {
+          "id": "o2",
+          "systemName": "removeControllerFromElement",
+          "operationData": { "controllerName": "DOMEventListenerController" }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "timelines": [
+    {
+      "id": "t1",
+      "uri": "Problem",
+      "type": "animation",
+      "duration": 4,
+      "loop": false,
+      "selector": "#stage",
+      "timelineActions": [
+        {
+          "id": "lc",
+          "name": "timeline-lifecycle",
+          "duration": { "start": 0 },
+          "startOperations": [
+            { "id": "o3", "systemName": "selectElement", "operationData": { "selector": "#next" } },
+            {
+              "id": "o4",
+              "systemName": "getControllerInstance",
+              "operationData": { "systemName": "DOMEventListenerController" }
+            },
+            {
+              "id": "o5",
+              "systemName": "addControllerToElement",
+              "operationData": { "eventName": "click", "actions": ["__on__play"] }
+            }
+          ],
+          "endOperations": [
+            {
+              "id": "o6",
+              "systemName": "requestAction",
+              "operationData": { "systemName": "unclick" }
+            },
+            {
+              "id": "o7",
+              "systemName": "startAction",
+              "operationData": { "actionOperationData": { "selector": "#next" } }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

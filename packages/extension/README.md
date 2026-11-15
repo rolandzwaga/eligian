@@ -303,14 +303,34 @@ When you compile, the extension:
 4. Opens the JSON in a split view
 5. Shows any errors in the Output panel
 
+## Coding agents (MCP)
+
+The extension registers the Eligian MCP server (the `eligian_*` tools: docs, operations, check, fmt, init, compile, project, smoke) for Copilot agent mode automatically. You do not need a `.vscode/mcp.json` file; the server appears in **MCP: List Servers** as **Eligian**.
+
+**Requirement.** The server is the `eligian` CLI package, version 1.1 or later, installed in the folder's own `node_modules` (`<folder>/node_modules/eligian/bin/cli.js`). The extension runs that copy, so the tools match the version your project builds with. When a folder has an older `eligian`, or has `.eligian` files but no `eligian` package, a notification asks to install it, with **Install** and **Don't Ask Again**. It is shown at most once per window, and **Don't Ask Again** turns it off for that workspace. Once the install finishes, the server appears without a reload.
+
+**What Install runs.** **Install** opens a terminal in the folder and runs one command. The package manager is the one of the nearest lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock` / `bun.lockb`, `package-lock.json`) or `packageManager` field in a `package.json`, found by walking up from the folder; with neither, npm. The command is `<pm> add -D eligian@^1.1` (for npm: `npm install --save-dev eligian@^1.1`). When the folder's `package.json` already declares an `eligian` range that admits 1.1, it is the plain `<pm> install` instead. If a lockfile still pins `eligian` 1.0.x under such a range, the plain install keeps 1.0.x; run `<pm> add -D eligian@^1.1` yourself.
+
+**Settings.** `eligian.mcp.enabled` (default `true`) turns the registration off for a folder, for example when you use your own server or none. `eligian.mcp.command` (default `node`) is the program that runs `cli.js mcp`; set it to an absolute path of `node` when `node` is not on the editor's PATH.
+
+**Trust.** Nothing is registered, and no install prompt is shown, in an untrusted workspace, because the server runs code from the workspace's `node_modules`. `eligian.mcp.command` is a restricted setting there: a value from the workspace's own settings is not used until you trust the workspace.
+
+**Your own server wins.** When you configured an Eligian server yourself, the extension registers nothing for that folder: a server under the key `eligian`, or a stdio server that runs an Eligian `cli.js` (`…/eligian/bin/cli.js mcp`) or `npx eligian mcp`, in the folder's `.vscode/mcp.json`, in the folder's `mcp` settings, or in the workspace-level `mcp` configuration (which covers every folder). The user-profile `mcp.json` is not read, so a server you added there runs beside the extension's.
+
+**Multi-root workspaces.** Each workspace folder that qualifies gets its own server, named `Eligian (<folder>)`, started in that folder. Only the folder's own `node_modules` counts: for an `eligian` installed in a sub-folder, open that sub-folder as a workspace folder or add it to `.vscode/mcp.json`.
+
+**Cursor.** In Cursor the extension registers the same server through Cursor's own MCP extension API instead. Cursor gives a registered server no working directory, so the server works from absolute paths and the MCP roots the client sends rather than from the folder it was started in.
+
 ## Configuration
 
-Currently no configuration options. Extension works out of the box.
+The extension works out of the box. The MCP registration (see [Coding agents (MCP)](#coding-agents-mcp)) has two settings:
 
-Future configuration possibilities:
-- Compiler optimization settings
-- Output format preferences
-- Custom operation definitions
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `eligian.mcp.enabled` | `true` | Register the Eligian MCP server for Copilot agent mode in folders that have `eligian` 1.1 or later installed. Turn off to use your own `.vscode/mcp.json` or no server. |
+| `eligian.mcp.command` | `node` | The program that runs `<folder>/node_modules/eligian/bin/cli.js mcp`, for example an absolute path to `node.exe`. Empty means `node`. Restricted in an untrusted workspace. |
+
+The other `eligian.*` settings (validation, CodeLens, inlay hints, preview) are listed under **Settings → Extensions → Eligian**.
 
 ## Troubleshooting
 
@@ -325,6 +345,11 @@ Future configuration possibilities:
 - Check the Output panel → "Eligian Compiler" for detailed error messages
 - Verify your syntax matches the Eligian grammar
 - Ensure all operations are valid Eligius operations
+
+### Eligian MCP Server Not Starting
+
+- `node` is not on the editor's PATH (common when the editor is started from a desktop shortcut, or `node` comes from a version manager): set `eligian.mcp.command` to the absolute path of `node`.
+- No **Eligian** server in **MCP: List Servers**: the folder needs `eligian` 1.1 or later in its own `node_modules`, a trusted workspace, `eligian.mcp.enabled` on, and no Eligian server of your own in `.vscode/mcp.json` or the `mcp` settings.
 
 ### Language Server Issues
 

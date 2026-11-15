@@ -1,0 +1,27 @@
+T055 diagnostics overlays batch 4 (21)
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T055
+generate-knowledge: 315 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T055
+exit 0
+
+body word counts (wc -w after frontmatter; limit 120), and present in generated curriculum/diagnostics:
+85 ok generated html-import-error
+72 ok generated if-condition-not-boolean
+47 ok generated if-empty-then
+59 ok generated import_action_not_found
+78 ok generated import_file_not_found
+55 ok generated import_name_collision
+49 ok generated import_private_action
+67 ok generated invalid_constant_expression
+51 ok generated invalid_controller_name_type
+61 ok generated invalid_css_file
+62 ok generated invalid_css_selector
+55 ok generated invalid_css_selector_syntax
+47 ok generated invalid_event_edge
+57 ok generated invalid_language_code_format
+64 ok generated invalid_parameter_count
+58 ok generated invalid_setdata_target
+70 ok generated invalid_time_constant
+44 ok generated languages-duplicate-code
+43 ok generated languages-missing-default
+45 ok generated languages-multiple-defaults
+66 ok generated library_invalid_content

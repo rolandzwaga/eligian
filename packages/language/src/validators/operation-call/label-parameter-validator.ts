@@ -18,6 +18,7 @@ import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { resolveImportRelativePath } from '../../utils/path-utils.js';
 import { getImports } from '../../utils/program-helpers.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 
 /**
  * Validates `addController` calls and label-ID parameters of operation calls
@@ -71,7 +72,7 @@ export class LabelParameterValidator extends BaseValidator {
         "First argument of 'addController' must be a controller name (string literal)",
         {
           node: firstArg,
-          data: { code: 'invalid_controller_name_type' },
+          data: { code: diagnosticCode('invalid_controller_name_type') },
         }
       );
       return;
@@ -83,7 +84,7 @@ export class LabelParameterValidator extends BaseValidator {
     if (!isKnownController(controllerName, operation)) {
       accept('error', `Unknown controller: '${controllerName}'.`, {
         node: firstArg,
-        data: { code: 'unknown_controller' },
+        data: { code: diagnosticCode('unknown_controller') },
       });
       return;
     }
@@ -108,7 +109,7 @@ export class LabelParameterValidator extends BaseValidator {
         {
           node: operation,
           property: 'args',
-          data: { code: 'missing_required_parameter' },
+          data: { code: diagnosticCode('missing_required_parameter') },
         }
       );
       return;
@@ -122,7 +123,7 @@ export class LabelParameterValidator extends BaseValidator {
         {
           node: operation,
           property: 'args',
-          data: { code: 'too_many_parameters' },
+          data: { code: diagnosticCode('too_many_parameters') },
         }
       );
       return;

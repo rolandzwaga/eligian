@@ -1,0 +1,6 @@
+// Origin `interaction`: a DOM listener and its synthetic broadcast action
+styles "./styles.css"
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s [ on click "#b" play ] []
+}

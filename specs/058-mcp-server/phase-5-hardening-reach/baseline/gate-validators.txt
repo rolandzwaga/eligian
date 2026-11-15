@@ -1,0 +1,32 @@
+# T031 / SC-005 / SC-007: external validators, final (2026-11-06T13:24Z), HEAD 2068f13 + working tree
+# mcp-publisher v1.8.7 windows_amd64 from the T009 scratchpad download; checksum re-verified:
+$ grep ' mcp-publisher_windows_amd64.tar.gz$' registry_1.8.7_checksums.txt | sha256sum -c -
+cdb42bfe6a5e1cba7526e007ac13f13261ed35224386fee8a34ed2c2e8e778d4  mcp-publisher_windows_amd64.tar.gz
+mcp-publisher_windows_amd64.tar.gz: OK
+exit 0
+
+$ $SCRATCH/mcp-publisher/mcp-publisher.exe validate   (cwd packages/cli)
+Validating against https://registry.modelcontextprotocol.io...
+✅ server.json is valid
+exit 0
+
+$ claude --version
+2.1.302 (Claude Code)
+exit 0
+
+$ claude plugin validate plugins/claude/eligian --strict
+Validating plugin manifest: F:\projects\eligius\eligian\plugins\claude\eligian\.claude-plugin\plugin.json
+
+✔ Validation passed
+exit 0
+
+$ claude plugin validate . --strict
+Validating marketplace manifest: F:\projects\eligius\eligian\.claude-plugin\marketplace.json
+
+ℹ Advice (does not change the verdict):
+
+  ❯ F:\projects\eligius\eligian\README.md: This README has no line that installs "eligian" from a marketplace. Add the install line, which works in one step on Claude Code 2.1.275 or later.
+      /plugin install eligian --marketplace rolandzwaga/eligian
+
+✔ Validation passed
+exit 0

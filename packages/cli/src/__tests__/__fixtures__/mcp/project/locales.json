@@ -1,0 +1,15 @@
+{
+  "en-US": {
+    "nav": {
+      "home": "Home",
+      "about": "About"
+    },
+    "greeting": "Hello"
+  },
+  "nl-NL": {
+    "nav": {
+      "home": "Start"
+    },
+    "greeting": "Hallo"
+  }
+}

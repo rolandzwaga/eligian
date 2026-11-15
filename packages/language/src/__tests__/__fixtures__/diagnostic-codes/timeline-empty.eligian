@@ -1,0 +1,4 @@
+// timeline-validation.ts (Typir): a timeline without events
+styles "./styles.css"
+timeline "t" in "#app" using raf {
+}

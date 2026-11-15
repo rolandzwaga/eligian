@@ -1,0 +1,11 @@
+// media-from-duplicate: two video timelines play the same file
+timeline "Intro" in "#player" using video
+  from "./media/clip.mp4" {
+  on enter [
+    on click "#start" toggle
+  ]
+}
+
+timeline "Outro" in "#player" using video
+  from "./media/clip.mp4" {
+}

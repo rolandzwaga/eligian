@@ -1,0 +1,138 @@
+T058 eval cases (SC-016; FR-090, FR-091), arm A1, eligian 1.1.0 (packed tarball), eligius 4.2.0
+HEAD a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f, treeClean: false (the phase's uncommitted work; recorded by the harness)
+claude CLI 2.1.302 (the user's subscription). Run once each, no re-run (a re-run needs a change):
+
+Pinned model (no --model; every case pins "claude-sonnet-5-5"), 2026-11-05 13:00-13:10 +01:00:
+  pnpm exec tsx evals/mcp/run.ts --case title-card --arm A1       -> exit 0
+  pnpm exec tsx evals/mcp/run.ts --case three-chapters --arm A1   -> exit 1
+  pnpm exec tsx evals/mcp/run.ts --case staggered-list --arm A1   -> exit 1
+  pnpm exec tsx evals/mcp/run.ts --case keyboard-deck --arm A1    -> exit 0
+  pnpm exec tsx evals/mcp/run.ts --case library-reuse --arm A1    -> exit 0
+Opus-class (non-gating, decision 9), 2026-11-05 13:10-13:19 +01:00:
+  pnpm exec tsx evals/mcp/run.ts --case <id> --arm A1 --model claude-opus-5-5   (the same five ids, same order)
+  -> exit 0, 1, 1, 0, 0
+
+| model             | case           | result JSON                                                    | pass  | rounds | check tool / CLI | tool calls | tokens-from-tools (chars) | wall ms | agent turns | cost USD |
+|-------------------|----------------|----------------------------------------------------------------|-------|--------|------------------|------------|---------------------------|---------|-------------|----------|
+| claude-sonnet-5-5 | title-card     | evals/mcp/results/2026-11-05T12-00-58-987Z/title-card.json     | true  | 1      | 2 / 0            | 12         | 46985                     | 61201   | 13          | 0.3776   |
+| claude-sonnet-5-5 | three-chapters | evals/mcp/results/2026-11-05T12-02-49-582Z/three-chapters.json | false | 3      | 4 / 0            | 19         | 91440                     | 116764  | 20          | 0.4714   |
+| claude-sonnet-5-5 | staggered-list | evals/mcp/results/2026-11-05T12-05-38-348Z/staggered-list.json | false | 1      | 2 / 0            | 13         | 41889                     | 50314   | 14          | 0.2526   |
+| claude-sonnet-5-5 | keyboard-deck  | evals/mcp/results/2026-11-05T12-07-17-660Z/keyboard-deck.json  | true  | 0      | 1 / 0            | 11         | 76913                     | 46396   | 12          | 0.3461   |
+| claude-sonnet-5-5 | library-reuse  | evals/mcp/results/2026-11-05T12-08-42-136Z/library-reuse.json  | true  | 1      | 2 / 0            | 16         | 57509                     | 60044   | 18          | 0.3327   |
+| claude-opus-5-5   | title-card     | evals/mcp/results/2026-11-05T12-10-20-808Z/title-card.json     | true  | 0      | 1 / 0            | 15         | 74576                     | 70090   | 16          | 0.9074   |
+| claude-opus-5-5   | three-chapters | evals/mcp/results/2026-11-05T12-12-03-398Z/three-chapters.json | false | 0      | 1 / 0            | 15         | 81435                     | 98656   | 16          | 0.7976   |
+| claude-opus-5-5   | staggered-list | evals/mcp/results/2026-11-05T12-14-12-496Z/staggered-list.json | false | 1      | 2 / 0            | 14         | 59435                     | 55926   | 15          | 0.5857   |
+| claude-opus-5-5   | keyboard-deck  | evals/mcp/results/2026-11-05T12-15-38-409Z/keyboard-deck.json  | true  | 1      | 2 / 0            | 19         | 73362                     | 88932   | 20          | 0.8541   |
+| claude-opus-5-5   | library-reuse  | evals/mcp/results/2026-11-05T12-17-35-622Z/library-reuse.json  | true  | 0      | 1 / 0            | 18         | 76825                     | 88994   | 19          | 0.8248   |
+
+Gate failures (verbatim from the result JSONs):
+  sonnet three-chapters:
+    "step 3 (smoke --strict): exit 1; error: assertion after \"back\" on #to-problem: controllers expected [\"DOMEventListenerController\"], got [\"LabelController\",\"DOMEventListenerController\"] | error: assertion after \"back-again\" on #to-problem: controllers expected [\"DOMEventListenerController\"], got [\"LabelController\",\"DOMEventListenerController\"]"
+    "step 5 (budget): 3 self-correction rounds (4 eligian_check + 0 CLI checks - 1) > 2"
+    "step 5 (budget): tokens-from-tools 91440 chars > 80000"
+  sonnet staggered-list:
+    "case staggered-list: 0 stagger blocks, expected 1"
+    "case staggered-list: no timeline has 6 stagger actions 0.4 s apart (stagger starts: [])"
+  opus three-chapters:
+    the same step 3 message as sonnet, and "step 5 (budget): tokens-from-tools 81435 chars > 80000"
+  opus staggered-list:
+    the same two case messages as sonnet
+
+Tool call sequences (mcp__eligian__ prefix dropped):
+  sonnet title-card:     eligian_docs, ToolSearch, Glob, Bash, Bash, eligian_check, Write x3, eligian_check, eligian_fmt, eligian_smoke
+  sonnet three-chapters: eligian_docs, ToolSearch, Glob, eligian_docs, eligian_init, Write, Write, Bash, Write, eligian_check, Bash, eligian_check, Bash, eligian_check, Write, eligian_check, eligian_fmt, eligian_smoke, Write
+  sonnet staggered-list: eligian_docs, Glob, Bash, eligian_docs, Bash, eligian_check, Write x3, eligian_check, ToolSearch, eligian_fmt, eligian_smoke
+  sonnet keyboard-deck:  eligian_docs, ToolSearch, Glob, Bash, eligian_docs, Bash, Write, Bash, eligian_check, eligian_fmt, eligian_smoke
+  sonnet library-reuse:  eligian_docs, Glob, Bash, Skill, eligian_docs, Bash, eligian_check, Write x5, eligian_check, ToolSearch, eligian_fmt, eligian_smoke
+  opus title-card:       eligian_docs, Bash, ToolSearch, eligian_docs, eligian_init, eligian_docs, Read, Write x4, eligian_check, eligian_compile, eligian_fmt, eligian_smoke
+  opus three-chapters:   eligian_docs, Bash, eligian_docs, eligian_operations, eligian_docs, Write x5, eligian_check, ToolSearch, eligian_fmt, eligian_compile, eligian_smoke
+  opus staggered-list:   Bash, eligian_docs, ToolSearch, eligian_docs, Write x4, eligian_check, Edit, eligian_check, eligian_project, eligian_fmt, eligian_smoke
+  opus keyboard-deck:    eligian_docs, Glob, PowerShell, eligian_docs, eligian_operations, Read, eligian_docs, Write x4, PowerShell, eligian_check, Write, eligian_check, ToolSearch, eligian_fmt, eligian_smoke, eligian_smoke
+  opus library-reuse:    Glob, eligian_docs, PowerShell, eligian_docs, eligian_operations, eligian_docs, Read, eligian_docs, Write x5, eligian_check, ToolSearch, eligian_compile, eligian_fmt, eligian_smoke
+
+SC-016 status: NOT MET. On the pinned model 3 of 5 pass (title-card, keyboard-deck, library-reuse);
+three-chapters and staggered-list fail. The Opus-class run fails the same two cases for the same reasons,
+so neither failure is a gap in model capability.
+
+## Defects found
+
+### three-chapters (both models): case defect in the scenario, step 3
+The scenario (evals/mcp/cases/three-chapters.scenario.json:23 and :27) asserts the exact controller list
+["DOMEventListenerController"] on #to-problem after the return to the hub. Both agents localized the hub
+button labels as well (sonnet: `label("#to-problem", "hub.problem")`, an action that adds LabelController;
+opus: `with "#to-problem" { addController("LabelController", "hub.problem") }`). The prompt does not
+forbid that, so #to-problem legitimately carries ["LabelController", "DOMEventListenerController"]. The programs
+are otherwise right: check 0/0, fmt clean, their own smoke scenarios ok, and the gate's case checks
+(4 timelines, a __nav__* action, languages, LabelController, on enter / on leave) report nothing.
+None of the three categories fits: it is an over-strict case assertion (the intent is the listener balance:
+DOMEventListenerController present once, none on #back-problem). A re-run needs a case change
+(assert that DOMEventListenerController is contained, or say in the prompt that the hub buttons are not localized).
+
+### three-chapters (sonnet): compiler gap, the 3 rounds (step 5 rounds)
+Round 1 called a helper `action unclick(selector: string) [ selectElement(selector)
+removeControllerFromElement("DOMEventListenerController") ]` from on leave. `controller-imbalance` reported
+a false positive in all four timelines, e.g.
+  "Timeline \"Hub\": on leave does not remove controllers that on enter adds: DOMEventListenerController on \"#lang-en\", ...;
+   on leave removes controllers that on enter does not add: DOMEventListenerController on \"undefined\", ..."
+Reproduced on the agent's first main.eligian (extracted from claude-transcript.json) with the repo CLI
+(`node packages/cli/bin/cli.js check main.eligian`: "1 file, 0 errors, 4 warnings").
+Cause: in the compiled action the `selectElement` has operationData null (the parameter reaches it implicitly,
+by name, through the operation data), and the walker sets the selection only from the operation's own `selector`:
+packages/language/src/compiler/controller-balance.ts:101-103
+  case 'selectElement':
+    selector = resolveOperationData(own.selector, data);
+so every selection made through a parameter named `selector` is "undefined". The same bug hides real
+imbalances: the agent's `label` / `unlabel` helpers balance only because both sides are "undefined LabelController".
+Fix direction: fall back to `data.selector` when `own.selector` is absent. The agent then spent rounds 2-3 on
+shell edits that the harness refused (python not installed; sed needing approval) before it rewrote the file
+with the removals inlined.
+
+### three-chapters (both models): tool ergonomics, step 5 tokens-from-tools
+91,440 (sonnet) and 81,435 (opus) chars against 80,000. The largest returns in the sonnet run: the first
+eligian_docs call (storyboard, decisions, project-layout, syntax-cheatsheet, operations-index, detail: 43,288 chars),
+the agent's own eligian_smoke scenario (19,024 chars) and 3 identical 4,617-char check results (the false
+positive above). Passing cases sit close to the budget too (sonnet keyboard-deck 76,913, opus library-reuse 76,825,
+opus title-card 74,576): the docs bodies dominate. Fixing the false positive removes about 9k chars from the sonnet
+run; the opus run needs leaner docs or smoke results.
+
+### staggered-list (both models): curriculum gap
+Both agents fetched the stagger chunks (example/stagger-action, example/stagger-inline) and wrote six plain
+ranges instead (`at 0s..6s target "#card-1" [ addClass("is-visible") ] [ removeClass("is-visible") ]` ...
+`at 2s..6s target "#card-6" ...`), which is check 0/0, fmt clean and passes the case's scenario. The prompt says
+every card stays visible once it has appeared, i.e. items of unequal length (0..6, 0.4..6, ..., 2..6); both taught
+stagger forms are items of one fixed length whose end block undoes the start (`for 1.5s`;
+`for 2s [ ... ] [ ... removeClass("lit") ]`). The stagger form that fits the prompt, a start block only plus the
+removal in on leave, is not taught, and without the on leave it fails the gate's check step: probed with the repo CLI,
+`stagger 400ms [the 6 cards] at 0s for 4s [ selectElement(@@item) addClass("is-visible") ]` gives 6
+`class-never-removed` warnings ("remove it in the end block, a later range or on leave"), exit 1 under
+--max-warnings 0. A re-run needs a curriculum change (an example of a "reveal and stay" stagger whose classes
+are removed in on leave) or a prompt that names `stagger`.
+
+
+## Re-run after the SC-016 rulings (main loop, 2026-11-05)
+
+Changes before the re-run: evals/mcp/cases/three-chapters.json says the buttons keep fixed English text (only
+#hub-title and the chapter text are localized); the generated syntax-cheatsheet gained "Timeline constructs by
+intent" (at, stagger, sequence, on enter / leave, on click / key, with) and its card names them; the no-argument
+docs index no longer lists the operations (FR-077 ruling, ~8,900 chars).
+
+$ pnpm exec tsx evals/mcp/run.ts --case three-chapters --case staggered-list --arm A1
+run: three-chapters PASS -> evals/mcp/results/2026-11-05T14-32-26-077Z/three-chapters.json
+  pass: true, model: claude-sonnet-5-5, rounds: 1, tool calls: 15, tokens-from-tools: 61,411 chars, wall: 61.9 s
+run: staggered-list PASS -> evals/mcp/results/2026-11-05T14-32-26-077Z/staggered-list.json
+  pass: true, model: claude-sonnet-5-5, rounds: 1, tool calls: 13, tokens-from-tools: 39,663 chars, wall: 71.8 s
+exit 0
+
+With title-card, keyboard-deck and library-reuse (pass, 2026-11-05T12-0x runs) every pinned-Sonnet case passes:
+SC-016's exit criterion holds.
+
+$ pnpm exec tsx evals/mcp/run.ts --case three-chapters --case staggered-list --arm A1 --model claude-opus-5-5
+run: three-chapters FAIL -> evals/mcp/results/2026-11-05T14-35-51-863Z/three-chapters.json
+  pass: false, rounds: 0, tool calls: 20, tokens-from-tools: 105,496 chars, wall: 106.1 s
+  failures: step 5 (budget): tokens-from-tools 105496 chars > 80000   (the scenario, check, fmt, smoke and
+  compile steps pass; Opus reads more docs bodies than the budget allows)
+run: staggered-list FAIL -> evals/mcp/results/2026-11-05T14-35-51-863Z/staggered-list.json
+  pass: false, rounds: 0, tool calls: 14, tokens-from-tools: 47,644 chars, wall: 62.6 s
+  failures: 0 stagger blocks, expected 1; no timeline has 6 stagger actions 0.4 s apart   (the scenario passes
+  with six at events; Opus still prefers them)
+exit 1 (non-gating: decision 9, one Opus-class run per phase exit, recorded)

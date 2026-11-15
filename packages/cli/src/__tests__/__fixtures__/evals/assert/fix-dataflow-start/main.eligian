@@ -1,0 +1,16 @@
+// Start state of a fix-dataflow-like case: highlight() runs with nothing selected.
+layout "./layout.html"
+styles "./styles.css"
+
+// Highlights whatever element is selected when it runs
+action highlight() [
+  addClass("highlight")
+]
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#stage")
+  ]
+  at 0s..3s [ selectElement("#title") ] [ highlight() ]
+  at 3s..6s target "#subtitle" [ addClass("highlight") ] [ removeClass("highlight") ]
+}

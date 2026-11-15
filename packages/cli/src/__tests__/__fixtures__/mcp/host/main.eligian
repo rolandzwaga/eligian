@@ -1,0 +1,10 @@
+// The host fixture of mcp-operations.spec.ts (spec 058, SC-010): a program whose
+// extensions import declares one host operation and one host function (FR-022).
+extensions "./host.ts" {
+  operation score(answer: string)
+  function formatScore
+}
+
+timeline "quiz" in "#stage" using raf {
+  at 0s..1s [ score("42") ] []
+}

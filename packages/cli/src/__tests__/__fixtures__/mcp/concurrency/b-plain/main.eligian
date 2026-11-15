@@ -1,0 +1,9 @@
+// Call B of mcp-concurrency.spec.ts (SC-005), checked with selectorNotInLayout 'off'.
+// '#ghost' is CSS-only too, so a check that runs under call A's 'ids' setting (no lock)
+// reports a selector_not_in_layout warning that the sequential baseline does not have
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "other" in "#scene" using raf {
+  at 0s..3s [ selectElement("#ghost") addClass("shown") ] [ selectElement("#ghost") removeClass("shown") ]
+}

@@ -1,0 +1,13 @@
+// Scenario key / navigate: two slides, ArrowRight goes to the second
+layout "./layout.html"
+
+timeline "slide1" in "#stage" using raf {
+  on enter [
+    on key "ArrowRight" navigate "slide2"
+  ]
+  at 0s..30s [ log("slide 1") ] []
+}
+
+timeline "slide2" in "#stage" using raf {
+  at 0s..30s [ log("slide 2") ] []
+}

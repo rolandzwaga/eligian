@@ -1,0 +1,19 @@
+// eligian_smoke timeout: a quick timeline, then one whose walk takes about 12 s
+layout "../layout.html"
+
+timeline "quick" in "#stage" using raf {
+  at 0s..1s [ log("quick") ] []
+}
+
+timeline "slow" in "#stage" using raf {
+  at 0s..1s [ wait(1200) ] []
+  at 1s..2s [ wait(1200) ] []
+  at 2s..3s [ wait(1200) ] []
+  at 3s..4s [ wait(1200) ] []
+  at 4s..5s [ wait(1200) ] []
+  at 5s..6s [ wait(1200) ] []
+  at 6s..7s [ wait(1200) ] []
+  at 7s..8s [ wait(1200) ] []
+  at 8s..9s [ wait(1200) ] []
+  at 9s..10s [ wait(1200) ] []
+}

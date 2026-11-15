@@ -1,4 +1,4 @@
-import type { HostModule } from '@eligian/language';
+import type { EligianMap, HostModule } from '@eligian/language';
 /**
  * Standalone Bundle Compilation Types
  *
@@ -156,6 +156,16 @@ export interface BundleResult {
    * Asset statistics
    */
   stats: BundleStats;
+
+  /**
+   * The Eligian map of the compile that was bundled (dev locates runtime errors with it)
+   */
+  readonly map: EligianMap;
+
+  /**
+   * The compiled config, before asset rewriting
+   */
+  readonly config: IEngineConfiguration;
 }
 
 /**

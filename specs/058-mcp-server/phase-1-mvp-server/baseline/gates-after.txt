@@ -1,0 +1,164 @@
+# T059 — build, type and lint gates (plan gates 1-2; SC-023)
+# run: 2026-11-05T00:42:59Z on branch feat/mcp-server-roadmap @ 448cd8b
+
+## pnpm build — exit 0
+      1 packages/cli build: Done
+      1 packages/cli build: [01:42:42] Build succeeded
+      1 packages/cli build: generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+      1 packages/extension build: Done
+      4 packages/extension build: [01:42:41] Build succeeded
+      1 packages/language build: Done
+      4 packages/language build: [01:42:39] Build succeeded
+      1 packages/shared-utils build: Done
+
+## pnpm typecheck — exit 0
+$ tsc -b tsconfig.build.json
+
+## pnpm run typecheck:tests — exit 0
+$ tsc -p packages/language/tsconfig.test.json && tsc -p packages/cli/tsconfig.test.json && tsc -p packages/extension/tsconfig.test.json && tsc -p packages/shared-utils/tsconfig.test.json
+
+## pnpm check — exit 0 (0 errors / 0 warnings; git status unchanged)
+$ biome check --write .
+Checked 772 files in 307ms. No fixes applied.
+
+## pnpm run ci — exit 0 (--error-on-warnings)
+$ biome ci --error-on-warnings .
+Checked 772 files in 202ms. No fixes applied.
+
+# T060 — Effect gates (plan gate 3)
+# run: 2026-11-05T00:43:18Z on branch feat/mcp-server-roadmap @ 448cd8b
+
+## pnpm effect:check:language — exit 0
+$ effect-tsgo diagnostics --project packages/language/tsconfig.src.json --format text --strict
+Checked 256 files out of 256 files. 
+0 errors, 0 warnings and 0 messages.
+
+## pnpm effect:check:cli — exit 0
+$ effect-tsgo diagnostics --project packages/cli/tsconfig.json --format text --strict
+Checked 298 files out of 298 files. 
+0 errors, 0 warnings and 0 messages.
+
+# T061 — tests (plan gate 4; SC-001, SC-002, SC-021)
+# run: 2026-11-05T00:43:29Z on branch feat/mcp-server-roadmap @ 448cd8b
+
+## pnpm test — exit 1 (RED)
+packages/shared-utils test:  Test Files  7 passed (7)
+packages/shared-utils test:       Tests  105 passed (105)
+packages/language test:  Test Files  251 passed | 1 skipped (252)
+packages/language test:       Tests  3334 passed | 23 skipped (3357)
+packages/extension test:  Test Files  63 passed (63)
+packages/extension test:       Tests  628 passed (628)
+packages/cli test:  Test Files  1 failed | 47 passed | 1 skipped (49)
+packages/cli test:       Tests  1 failed | 686 passed | 18 skipped (705)
+
+Failure (cli):
+ FAIL  src/__tests__/mcp-knowledge.spec.ts > overlays > the ranking selection equals the script output
+AssertionError: expected [ 'erased-property-access', …(29) ] to deeply equal [ 'erased-property-access', …(29) ]
+
+- Expected
++ Received
+
+@@ -20,13 +20,13 @@
+    "unresolved-reference",
+    "circular_library_import",
+    "parameter_count",
+    "constant-cycle",
+    "eligius-E120",
+-   "file-unreadable",
+    "recursive_action_call",
+    "unknown-action-in-timeline-event",
+    "break-outside-loop",
+    "continue-outside-loop",
+    "css-import-error",
+    "eligius-W151",
++   "event-end-not-after-start",
+  ]
+
+ ❯ src/__tests__/mcp-knowledge.spec.ts:621:33
+
+In isolation: pnpm -C packages/cli exec vitest run src/__tests__/mcp-knowledge.spec.ts -> 24 passed (24).
+Cause: cli-library.spec.ts and cli-library-errors.spec.ts create and rm -rf
+  packages/cli/src/__tests__/__fixtures__/library-tests/ and .../library-error-tests/
+  (beforeEach mkdir / afterEach rm) inside the ranking corpus glob
+  packages/cli/src/__tests__/__fixtures__/**/*.eligian (scripts/rank-diagnostic-codes.ts CORPUS).
+  Run in parallel, expandPatterns lists their transient main.eligian files and checkPaths
+  then reports file-unreadable (>= 2 hits), which displaces event-end-not-after-start (count 1)
+  from the 30th selection slot. The ranking test is order/timing dependent under pnpm test.
+
+## pnpm -C packages/cli exec vitest run src/__tests__/package-bin.spec.ts src/__tests__/mcp-stdout.spec.ts src/__tests__/mcp-paths.spec.ts src/__tests__/review.spec.ts src/__tests__/check-command.spec.ts — exit 0
+ Test Files  5 passed (5)
+      Tests  74 passed (74)
+(0 skipped)
+
+## grep -l "skipIf(!built" packages/cli/src/__tests__/*.ts
+packages/cli/src/__tests__/check-command.spec.ts
+packages/cli/src/__tests__/mcp-paths.spec.ts
+packages/cli/src/__tests__/mcp-stdout.spec.ts
+packages/cli/src/__tests__/package-bin.spec.ts
+packages/cli/src/__tests__/review.spec.ts
+-> all 5 are in the vitest command above.
+
+## T062 Coverage gate (plan gate 5; SC-018)
+
+### pnpm -C packages/language test:coverage:ci — exit 0
+thresholds (packages/language/vitest.config.ts): lines 79.8 / functions 80 / branches 69.9 / statements 79
+ Test Files  251 passed | 1 skipped (252)
+      Tests  3334 passed | 23 skipped (3357)
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+All files          |   91.15 |    82.53 |   93.82 |   92.43 |                   
+=============================== Coverage summary ===============================
+Statements   : 91.15% ( 7689/8435 )
+Branches     : 82.53% ( 5004/6063 )
+Functions    : 93.82% ( 1473/1570 )
+Lines        : 92.43% ( 7213/7803 )
+================================================================================
+baseline (T005, coverage-language-before.txt): Stmts 90.99 / Branch 82.34 / Funcs 93.74 / Lines 92.27
+
+### pnpm -C packages/cli test:coverage:ci — exit 0
+thresholds (packages/cli/vitest.config.ts): lines 77.1 / functions 77.6 / branches 64.5 / statements 76.6
+ Test Files  48 passed | 1 skipped (49)
+      Tests  687 passed | 18 skipped (705)
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+All files          |   83.02 |     72.6 |   85.71 |   83.07 |                   
+=============================== Coverage summary ===============================
+Statements   : 83.02% ( 1912/2303 )
+Branches     : 72.6% ( 962/1325 )
+Functions    : 85.71% ( 528/616 )
+Lines        : 83.07% ( 1743/2098 )
+================================================================================
+baseline (T005, coverage-cli-before.txt): Stmts 76.99 / Branch 64.59 / Funcs 77.9 / Lines 77.48
+note: a first cli run made in parallel with the language run failed 2 wall-clock tests in
+  package-bin.spec.ts ('--version starts in under 3 s (median of 5)', 'mcp answers initialize in
+  under 3 s') under CPU contention; the cli run above was made alone and passed 687/687 (18 skipped).
+
+Result: all 'All files' rows meet the thresholds in both packages; no tests added, no threshold changed.
+
+## T063 Example gates (plan gate 6; SC-007, SC-023, SC-025)
+
+### pnpm run check:examples — exit 0
+$ node packages/cli/bin/cli.js check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0 && node packages/cli/bin/cli.js check examples/demo.eligian --selector-not-in-layout off
+8 files, 0 errors, 0 warnings
+examples/demo.eligian
+  224:5  warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  224:5  warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5  warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5  warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+1 file, 0 errors, 4 warnings
+strict line: '8 files, 0 errors, 0 warnings' (--max-warnings 0); demo.eligian run (no --max-warnings, as in the script) 0 errors
+
+### pnpm run fmt:examples — exit 0
+$ node packages/cli/bin/cli.js fmt "examples/**/*.eligian" "!examples/libraries/errors/**"
+All 12 files formatted
+exit 0
+diff against baseline/fmt-examples-before.txt: identical (diff exit 0)
+
+### pnpm run smoke:examples — exit 0
+  timeline 'Nested Import Test': 2 positions ok
+examples/libraries/utils.eligian (library: nothing to play)
+9 files, 11 timelines played, 0 errors, 0 warnings
+(full per-timeline listing elided; last line is the summary)
+
+### git diff --stat -- examples/  (and git status --porcelain -- examples/)
+(empty)
+
+Result: check, fmt and smoke exit 0; fmt output identical to baseline; examples/ unchanged.

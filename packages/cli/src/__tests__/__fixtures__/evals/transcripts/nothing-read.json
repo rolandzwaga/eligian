@@ -1,0 +1,129 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "cwd": "C:\\Users\\agent\\eligian-eval-case",
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10",
+    "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"],
+    "model": "claude-sonnet-5-5"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0019",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_d1",
+          "name": "Write",
+          "input": {
+            "file_path": "main.eligian",
+            "content": "timeline \"Intro\" in \"#stage\" using raf {\n  at 0s..2s animate(\"#title\")\n}\n"
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_d1",
+          "type": "tool_result",
+          "content": "File created successfully at: main.eligian"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0020",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_d2",
+          "name": "mcp__eligian__eligian_check",
+          "input": {
+            "paths": ["main.eligian"]
+          }
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_d2",
+          "type": "tool_result",
+          "content": "{\"header\":\"eligian 1.1.0 · eligius 4.2.0 · eligian_check\",\"ok\":true,\"files\":[{\"file\":\"main.eligian\",\"errors\":0,\"warnings\":0}],\"diagnostics\":[]}"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "model": "claude-sonnet-5-5",
+      "id": "msg_0021",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_d3",
+          "name": "mcp__eligian__eligian_operations",
+          "input": {}
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_d3",
+          "type": "tool_result",
+          "content": "{\"header\":\"eligian 1.1.0 · eligius 4.2.0 · eligian_operations\",\"operations\":[{\"name\":\"addClass\",\"card\":\"Adds a class to the selected element.\"},{\"name\":\"selectElement\",\"card\":\"Selects an element by CSS selector.\"}]}"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10"
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 4,
+    "result": "Done.",
+    "session_id": "5f0c6b1e-2d7a-4c3e-9a41-0b8e6f2d9c10",
+    "usage": {
+      "input_tokens": 12,
+      "output_tokens": 840
+    }
+  }
+]

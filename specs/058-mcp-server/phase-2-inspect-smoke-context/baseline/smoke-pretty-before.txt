@@ -1,0 +1,37 @@
+### clean.eligian (exit 0)
+clean.eligian
+  timeline 'Clean': 3 positions ok
+  timeline 'Second': 2 positions ok
+1 file, 2 timelines played, 0 errors, 0 warnings
+### broken.eligian (exit 1)
+broken.eligian
+  timeline 'Broken': 3 positions FAIL (1)
+  error  start operation selectElement (in boom): selectElement: selector is either empty or not defined.
+         broken.eligian:3:17 — 'Broken' at 1s
+1 file, 1 timeline played, 1 error, 0 warnings
+### shared.eligian (exit 1)
+shared.eligian
+  timeline 'Shared': 2 positions FAIL (1)
+  error  start operation selectElement (in boom): selectElement: selector is either empty or not defined.
+         shared.eligian:3:17 — 'Shared' at 0s
+1 file, 1 timeline played, 1 error, 0 warnings
+### lib.eligian media.eligian (exit 0)
+lib.eligian (library: nothing to play)
+media.eligian
+  timeline './intro.mp4' skipped (media timelines need a browser)
+2 files, 0 timelines played, 0 errors, 0 warnings
+### broken.eligian --strict (exit 1)
+broken.eligian
+  timeline 'Broken': 3 positions FAIL (2)
+  error  selectElement("#ghost") matched no element
+         broken.eligian:5:54 — 'Broken' at 1s
+  error  start operation selectElement (in boom): selectElement: selector is either empty or not defined.
+         broken.eligian:3:17 — 'Broken' at 1s
+1 file, 1 timeline played, 2 errors, 0 warnings
+### lib.eligian (exit 0)
+lib.eligian (library: nothing to play)
+1 file, 0 timelines played, 0 errors, 0 warnings
+### media.eligian (exit 0)
+media.eligian
+  timeline './intro.mp4' skipped (media timelines need a browser)
+1 file, 0 timelines played, 0 errors, 0 warnings

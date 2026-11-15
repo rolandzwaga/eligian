@@ -1,0 +1,14 @@
+// host-operation-returned-non-object: a host operation that returns undefined, called twice in one event
+layout "./layout.html"
+
+extensions "./host.ts" {
+  operation bad()
+}
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [
+    selectElement("#box")
+    bad()
+    bad()
+  ] []
+}

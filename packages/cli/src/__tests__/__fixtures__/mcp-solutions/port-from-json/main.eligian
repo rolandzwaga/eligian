@@ -1,0 +1,125 @@
+// Reference solution, eval case port-from-json (spec 058 phase 3): source-config.json rewritten
+// as Eligian. Its layoutTemplate is layout.html, its locales are locales.json, its actions keep
+// their names and operations, and every timeline keeps its uri, duration and ranges.
+languages {
+  * "en-US" "English"
+    "nl-NL" "Nederlands"
+}
+
+layout "./layout.html"
+styles "./styles.css"
+locales "./locales.json"
+
+/** Show a view: selects it and adds .is-active */
+action showView(selector: string) [
+  selectElement(selector)
+  addClass("is-active")
+]
+
+/** Hide a view again */
+action hideView(selector: string) [
+  selectElement(selector)
+  removeClass("is-active")
+]
+
+/** Show a beat: selects it and adds .is-visible */
+action reveal(selector: string) [
+  selectElement(selector)
+  addClass("is-visible")
+]
+
+/** Hide a beat again */
+action conceal(selector: string) [
+  selectElement(selector)
+  removeClass("is-visible")
+]
+
+// The hub has no timed events: it waits for a click on a card
+timeline "Hub" in "#stage" using raf {
+  on enter [
+    showView("#hub")
+    selectElement("#hub-title")
+    addController("LabelController", "hub.title")
+    on click "#card-1" navigate "Chapter 1"
+    on click "#card-2" navigate "Chapter 2"
+    on click "#card-3" navigate "Timeline & Time"
+  ]
+  on leave [
+    hideView("#hub")
+    selectElement("#card-1")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#card-2")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#card-3")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#hub-title")
+    removeControllerFromElement("LabelController")
+  ]
+}
+
+timeline "Chapter 1" in "#stage" using raf {
+  on enter [
+    showView("#chapter-1")
+    on click "#back-1" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "ArrowRight" seek 4s
+  ]
+  on leave [
+    hideView("#chapter-1")
+    selectElement("#back-1")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#stage")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+
+  at 0s..4s [ reveal("#c1-beat-1") ] [ conceal("#c1-beat-1") ]
+  at 4s..8s [ reveal("#c1-beat-2") ] [ conceal("#c1-beat-2") ]
+}
+
+timeline "Chapter 2" in "#stage" using raf {
+  on enter [
+    showView("#chapter-2")
+    on click "#back-2" navigate "Hub"
+    on key "Escape" navigate "Hub"
+  ]
+  on leave [
+    hideView("#chapter-2")
+    selectElement("#back-2")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#stage")
+    removeControllerFromElement("KeyboardController")
+  ]
+
+  at 0s..4s [ reveal("#c2-beat-1") ] [ conceal("#c2-beat-1") ]
+}
+
+timeline "Timeline & Time" in "#stage" using raf {
+  on enter [
+    showView("#chapter-3")
+    selectElement("#c3-title")
+    addController("LabelController", "tour.title")
+    selectElement("#c3-intro")
+    addController("LabelController", "tour.intro")
+    on click "#back-3" navigate "Hub"
+    on key "Escape" navigate "Hub"
+    on key "space" toggle
+  ]
+  on leave [
+    hideView("#chapter-3")
+    selectElement("#c3-title")
+    removeControllerFromElement("LabelController")
+    selectElement("#c3-intro")
+    removeControllerFromElement("LabelController")
+    selectElement("#back-3")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#stage")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
+
+  at 0s..3s [ reveal("#c3-beat-1") ] [ conceal("#c3-beat-1") ]
+  at 3s..6s [ reveal("#c3-beat-2") ] [ conceal("#c3-beat-2") ]
+  at 6s..10s target "#c3-box" [ addClass("is-lit") ] [ removeClass("is-lit") ]
+  at 10s..13s [ reveal("#c3-beat-3") ] [ conceal("#c3-beat-3") ]
+}

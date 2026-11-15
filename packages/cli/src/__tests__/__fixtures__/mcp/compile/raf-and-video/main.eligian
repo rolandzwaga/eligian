@@ -1,0 +1,12 @@
+// Spec 058 phase 3 (T021, FR-042): a raf timeline then a video timeline; the map carries
+// each operation's origin and the source timeline names.
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Hub" in "#stage" using raf {
+  at 0s..2s target "#title" [ addClass("visible") ] [ removeClass("visible") ]
+}
+
+timeline "Film" in "#stage" using video from "./media/intro.mp4" {
+  at 0s..5s [ selectElement("#title") addClass("visible") ] [ selectElement("#title") removeClass("visible") ]
+}

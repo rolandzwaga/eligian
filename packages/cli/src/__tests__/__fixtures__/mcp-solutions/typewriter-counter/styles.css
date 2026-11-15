@@ -1,0 +1,36 @@
+/* The element the presentation runs in */
+#stage {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 4rem;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+.sentence {
+  min-height: 2.5rem;
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 2rem;
+}
+
+/* A blinking caret while the sentence is still being typed */
+.is-typing::after {
+  content: "|";
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.counter {
+  margin: 2rem 0 0;
+  font-size: 4rem;
+  font-variant-numeric: tabular-nums;
+}

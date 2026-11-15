@@ -1,0 +1,6 @@
+// Scenario snapshot text: #long holds 300 characters, the snapshot keeps 200
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 0s..30s [ log("playing") ] []
+}

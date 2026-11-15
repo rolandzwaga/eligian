@@ -1,0 +1,6 @@
+// timeline-validator.ts: a scroll timeline without a duration
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using scroll {
+  at 0s..1s show()
+}

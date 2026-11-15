@@ -1,0 +1,15 @@
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#box")
+    addClass("lit")
+  ]
+  on leave [
+    selectElement("#box")
+    removeClass("lit")
+    selectElement("#bar")
+    removeControllerFromElement("ProgressbarController")
+  ]
+}

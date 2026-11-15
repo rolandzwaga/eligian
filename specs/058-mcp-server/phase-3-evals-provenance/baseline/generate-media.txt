@@ -1,0 +1,16 @@
+$ pnpm exec tsx evals/mcp/generate-media.ts
+F:\projects\eligius\eligian\evals\mcp\fixtures\media\intro.mp4 1034 bytes
+F:\projects\eligius\eligian\evals\mcp\fixtures\media\song.mp3 79664 bytes
+
+$ pnpm exec tsx evals/mcp/generate-media.ts --out $SCRATCH/media && cmp ... intro.mp4 && cmp ... song.mp3
+byte-identical (cmp exit 0 for both)
+
+$ ls -l evals/mcp/fixtures/media
+-rw-r--r-- 1 scab 197609  1034 Nov  5 20:10 intro.mp4
+-rw-r--r-- 1 scab 197609 79664 Nov  5 20:10 song.mp3
+
+$ sha256sum evals/mcp/fixtures/media/*
+ff7f97e5f4df4fb7e6bbfea96afd0c81f91e54ffc57b37459b044e9c04a8c5f9 *evals/mcp/fixtures/media/intro.mp4
+6529dbaa297b8147eab529b6c9fed5911c20723171eefea5ebde87b35647cdba *evals/mcp/fixtures/media/song.mp3
+
+quick check (node -e): mp4 mvhd duration / timescale = 30000 / 1000 = 30 s; mp3 766 frames x 1152 / 44100 = 20.0098 s; both < 500 KB (1034 and 79664 bytes)

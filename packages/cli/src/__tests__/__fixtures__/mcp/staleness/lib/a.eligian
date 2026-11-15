@@ -1,0 +1,7 @@
+// Version 0 of the library: `pulse` has one parameter, main.eligian calls it with two.
+library a
+
+action pulse(target) [
+  selectElement(target)
+  addClass("lit")
+]

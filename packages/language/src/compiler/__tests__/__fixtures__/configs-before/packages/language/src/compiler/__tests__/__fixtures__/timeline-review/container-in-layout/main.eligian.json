@@ -1,0 +1,39 @@
+{
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "<id>",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div class=\"ghostc\"></div>\n",
+  "cssFiles": [],
+  "availableLanguages": [
+    {
+      "id": "<id>",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "initActions": [],
+  "actions": [],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "<id>",
+      "uri": "Main",
+      "type": "animation",
+      "duration": 0,
+      "loop": false,
+      "selector": ".ghostc",
+      "timelineActions": []
+    }
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource"
+      }
+    }
+  }
+}

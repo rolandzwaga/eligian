@@ -1,0 +1,24 @@
+T050 overlay verification (2026-11-05T20:06:08Z)
+Generator: the repo-wide curriculum currently fails on another batch's probe (T048):
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T050
+generate-knowledge: operation-getFocusedElement: probe 1 does not compile: Parse Error: Expected 'enter' or 'leave' here, but found 'key'.
+  at 15:6
+So the batch was verified with generateKnowledge({ outDir: $SCRATCH/docs-T050, curriculumDir: <copy of curriculum without the other batches' untracked overlays> }):
+generate-knowledge: 235 files (exit 0)
+
+OK   replaceText            card 43 words, card in chunk: true, probes 1, compiled fences 1
+OK   requestAction          card 58 words, card in chunk: true, probes 1, compiled fences 1
+OK   saveToStorage          card 40 words, card in chunk: true, probes 1, compiled fences 1
+OK   scrollToPosition       card 41 words, card in chunk: true, probes 1, compiled fences 1
+OK   setData                card 52 words, card in chunk: true, probes 1, compiled fences 1
+OK   setElementAttributes   card 43 words, card in chunk: true, probes 1, compiled fences 1
+OK   setFocus               card 42 words, card in chunk: true, probes 1, compiled fences 1
+OK   setFormValue           card 44 words, card in chunk: true, probes 1, compiled fences 1
+OK   setGlobalData          card 50 words, card in chunk: true, probes 1, compiled fences 1
+OK   setOperationData       card 49 words, card in chunk: true, probes 1, compiled fences 1
+OK   setVariable            card 57 words, card in chunk: true, probes 1, compiled fences 1
+OK   sortArray              card 48 words, card in chunk: true, probes 1, compiled fences 1
+all 12 OK
+
+$ eligian check on the 12 probes (next to copies of probe-assets):
+12 files, 0 errors, 0 warnings

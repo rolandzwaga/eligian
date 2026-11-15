@@ -1,0 +1,119 @@
+{
+  "actions": {},
+  "timelines": {
+    "Count": {
+      "type": "animation",
+      "duration": 2,
+      "timelineActions": [
+        {
+          "name": "stagger-inline-0-0-0.5",
+          "duration": {
+            "start": 0,
+            "end": 0.5
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "setOperationData",
+              "operationData": {
+                "properties": {
+                  "template": "1"
+                }
+              }
+            },
+            {
+              "systemName": "setElementContent"
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "stagger-inline-1-0.5-1",
+          "duration": {
+            "start": 0.5,
+            "end": 1
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "setOperationData",
+              "operationData": {
+                "properties": {
+                  "template": "2"
+                }
+              }
+            },
+            {
+              "systemName": "setElementContent"
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "stagger-inline-2-1-1.5",
+          "duration": {
+            "start": 1,
+            "end": 1.5
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "setOperationData",
+              "operationData": {
+                "properties": {
+                  "template": "3"
+                }
+              }
+            },
+            {
+              "systemName": "setElementContent"
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "stagger-inline-3-1.5-2",
+          "duration": {
+            "start": 1.5,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "setOperationData",
+              "operationData": {
+                "properties": {
+                  "template": "4"
+                }
+              }
+            },
+            {
+              "systemName": "setElementContent"
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    }
+  }
+}

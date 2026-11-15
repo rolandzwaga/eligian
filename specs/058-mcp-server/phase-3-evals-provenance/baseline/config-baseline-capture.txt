@@ -1,0 +1,44 @@
+wrote examples/demo.eligian.json
+wrote examples/eligian-tour/tour.eligian.json
+wrote examples/libraries/nested/chain-test.eligian.json
+wrote packages/language/src/compiler/__tests__/__fixtures__/loaded-documents/main.eligian.json
+wrote packages/language/src/compiler/__tests__/__fixtures__/timeline-review/container-in-layout/main.eligian.json
+wrote packages/language/src/compiler/__tests__/__fixtures__/timeline-review/single-timeline/main.eligian.json
+skipped examples/eligian-tour/presentation.eligian
+skipped examples/libraries/animations.eligian
+skipped examples/libraries/errors/broken-import.eligian
+skipped examples/libraries/errors/broken.eligian
+skipped examples/libraries/errors/missing-import.eligian
+skipped examples/libraries/nested/a.eligian
+skipped examples/libraries/nested/b.eligian
+skipped examples/libraries/nested/c.eligian
+skipped examples/libraries/nested/cycle-a.eligian
+skipped examples/libraries/nested/cycle-b.eligian
+skipped examples/libraries/nested/cycle-test.eligian
+skipped examples/libraries/utils.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/complex.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/event-action-with-topics.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-event-actions.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/multiple-parameters.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/simple-event-action.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/event-actions/valid/zero-parameters.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/loaded-documents/lib/a.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/loaded-documents/lib/b.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/simple.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/container-no-layout/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/container-not-in-layout/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/entry-with-enter/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/entry-without-enter/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/media-file-missing/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/media-from-distinct/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/media-from-duplicate/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/media-present/main.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/single-timeline/a.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/single-timeline/b.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/single-timeline/c.eligian
+skipped packages/language/src/compiler/__tests__/__fixtures__/timeline-review/start-gesture-missing/main.eligian
+6 written, 33 skipped
+HEAD b62b762350146d38ea78cf2d535c60a515d3ca06
+json files written: 6
+skipped.txt lines: 33
+rerun of --write: byte-identical (diff -r empty); every skip reproduces in its own process (library file, parse error, missing import, cycle, or unknown CSS id/class)

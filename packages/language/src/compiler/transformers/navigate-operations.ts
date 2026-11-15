@@ -292,12 +292,14 @@ export function buildInteractionOperations(
       systemName: 'selectElement',
       operationData: { selector: listener.selector },
       sourceLocation,
+      origin: 'interaction',
     },
     {
       id: crypto.randomUUID(),
       systemName: 'getControllerInstance',
       operationData: { systemName: listener.controller },
       sourceLocation,
+      origin: 'interaction',
     },
     {
       id: crypto.randomUUID(),
@@ -310,6 +312,7 @@ export function buildInteractionOperations(
           : {}),
       },
       sourceLocation,
+      origin: 'interaction',
     },
   ];
 }
@@ -336,6 +339,7 @@ export function buildNavTargetAction(
         systemName: 'broadcastEvent',
         operationData: { eventName: REQUEST_TIMELINE_URI, eventArgs: [uri, position] },
         sourceLocation,
+        origin: 'interaction',
       },
     ],
     endOperations: [],
@@ -365,6 +369,7 @@ export function buildPlaybackAction(
           eventArgs: verb === 'seek' ? [position] : [],
         },
         sourceLocation,
+        origin: 'interaction',
       },
     ],
     endOperations: [],

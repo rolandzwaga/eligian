@@ -1,0 +1,11 @@
+// eligian_project (SC-005, the T006 compile-rejected shape): locales.json is JSON but not a
+// locales file, so check reports locales-import-error and compileFile rejects; the storyboard
+// then has timelineActions null and the outline duration null.
+languages { * "en-US" "English" }
+layout "./layout.html"
+locales "./locales.json"
+import { fade } from "./lib/anim.eligian"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s fade("#title")
+}

@@ -1,0 +1,17 @@
+{
+  "id": "title-card",
+  "prompt": "Make a 10-second title card presentation: a headline fades in at 1s, a subtitle slides up under it at 3s, both fade out at 8s. Play/pause buttons. The entry file is `main.eligian` in the current directory, with one timeline named `title`. Use these element ids: `#headline` (carries the class `in` from 1s to 8s, and is hidden outside that range), `#subtitle` (visible from 3s to 8s, hidden before and after), `#play` and `#pause` (the buttons). An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "title-card.scenario.json",
+  "assertions": [
+    { "kind": "timelines.count", "equals": 1 },
+    { "kind": "timeline", "at": 0, "type": "animation", "duration": 10 },
+    { "kind": "actions.named", "names": ["__on__play", "__on__pause"] },
+    { "kind": "layout.hasId", "ids": ["headline", "subtitle"] },
+    { "kind": "css.definesStateClasses", "classes": ["in"] },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

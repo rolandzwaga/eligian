@@ -1,0 +1,74 @@
+{
+  "arm": "A1",
+  "runId": "2026-11-05T01-51-01-963Z",
+  "head": "fa5dbfacc9e779831e1ddc62b1e7aad2daf30dab",
+  "treeClean": true,
+  "case": "fix-selectors",
+  "model": "claude-sonnet-5-5",
+  "projectDir": "C:\\Users\\scab\\AppData\\Local\\Temp\\eligian-eval-fix-selectors-pr1AWZ",
+  "pass": true,
+  "failures": [],
+  "rounds": 2,
+  "checkToolCalls": 3,
+  "checkBashCalls": 0,
+  "toolCallCount": 14,
+  "toolCallSequence": [
+    "mcp__eligian__eligian_check",
+    "Glob",
+    "Read",
+    "Read",
+    "Read",
+    "Read",
+    "mcp__eligian__eligian_docs",
+    "mcp__eligian__eligian_docs",
+    "mcp__eligian__eligian_docs",
+    "Write",
+    "Write",
+    "mcp__eligian__eligian_check",
+    "Edit",
+    "mcp__eligian__eligian_check"
+  ],
+  "tokensFromTools": 35265,
+  "wallMs": 26094,
+  "agent": {
+    "exitCode": 0,
+    "isError": false,
+    "numTurns": 15,
+    "durationMs": 24552,
+    "totalCostUsd": 0.2098684,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 34695,
+      "cache_read_input_tokens": 464301,
+      "output_tokens": 2432,
+      "output_tokens_details": {
+        "thinking_tokens": 182
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 34695,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 475,
+          "cache_read_input_tokens": 63099,
+          "cache_creation_input_tokens": 783,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 783
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    }
+  }
+}

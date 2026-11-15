@@ -1,0 +1,19 @@
+layout "./layout.html"
+
+endable action greet [
+  selectElement("#go")
+] [
+  selectElement("#go")
+]
+
+timeline "Main" in "#stage" using raf {
+  on enter [
+    selectElement("#go")
+    addController("DOMEventListenerController", "click", ["nope", "end:greet2"])
+    notAnOperation()
+  ]
+  on leave [
+    selectElement("#go")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}

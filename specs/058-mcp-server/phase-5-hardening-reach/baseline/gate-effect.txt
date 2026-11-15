@@ -1,0 +1,8 @@
+$ pnpm effect:check:language && pnpm effect:check:cli
+$ effect-tsgo diagnostics --project packages/language/tsconfig.src.json --format text --strict
+Checked 259 files out of 259 files. 
+0 errors, 0 warnings and 0 messages.
+$ effect-tsgo diagnostics --project packages/cli/tsconfig.json --format text --strict
+Checked 321 files out of 321 files. 
+0 errors, 0 warnings and 0 messages.
+exit 0

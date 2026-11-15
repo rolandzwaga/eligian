@@ -1,0 +1,22 @@
+// Scenario textPrefixOf: the text of #sentence grows word by word over 4 s
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 1s..2s [
+    selectElement("#sentence")
+    setElementContent("The")
+  ] []
+  at 2s..3s [
+    selectElement("#sentence")
+    setElementContent("The quick")
+  ] []
+  at 3s..4s [
+    selectElement("#sentence")
+    setElementContent("The quick brown")
+  ] []
+  at 4s..30s [
+    selectElement("#sentence")
+    setElementContent("The quick brown fox")
+  ] []
+}

@@ -1,0 +1,24 @@
+layout "./layout.html"
+styles "./styles.css"
+
+/** Writes the heading text */
+action setHeading(text: string) [
+  selectElement("#heading")
+  setElementContent(text)
+]
+
+// Ranges are half-open ([start, end)), so no range covers the very end of the article (100s).
+// The end state is therefore the layout's own: every illustration visible and the last heading.
+// The ranges cover what comes before it, and each end block restores that end state.
+timeline "story" in "#stage" using scroll "#article" duration 100s {
+  // The illustrations: each one is hidden until the reader scrolls to it
+  at 0s..15s target "#illustration-1" [ addClass("is-ahead") ] [ removeClass("is-ahead") ]
+  at 0s..40s target "#illustration-2" [ addClass("is-ahead") ] [ removeClass("is-ahead") ]
+  at 0s..65s target "#illustration-3" [ addClass("is-ahead") ] [ removeClass("is-ahead") ]
+  at 0s..90s target "#illustration-4" [ addClass("is-ahead") ] [ removeClass("is-ahead") ]
+
+  // The heading: one range per earlier text; from 90s on it reads the layout's "Where it goes next"
+  at 0s..40s [ setHeading("Where it begins") ] [ setHeading("Where it goes next") ]
+  at 40s..65s [ setHeading("The turning point") ] [ setHeading("Where it goes next") ]
+  at 65s..90s [ setHeading("What it changed") ] [ setHeading("Where it goes next") ]
+}

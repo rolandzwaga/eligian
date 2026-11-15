@@ -14,6 +14,7 @@ import {
 } from '../generated/ast.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 
 /** File types esbuild bundles as the host module. */
 const MODULE_EXTENSIONS = /\.(m?[jt]s|[jt]sx)$/i;
@@ -30,7 +31,7 @@ export class ExtensionsValidator extends BaseValidator {
     for (const extra of imports.slice(1)) {
       accept('error', 'A program has one extensions import; declare everything in the first one', {
         node: extra,
-        data: { code: 'duplicate_extensions_import' },
+        data: { code: diagnosticCode('duplicate_extensions_import') },
       });
     }
   }
@@ -41,13 +42,13 @@ export class ExtensionsValidator extends BaseValidator {
         accept('error', `The extensions module path must be relative ("./${node.path}")`, {
           node,
           property: 'path',
-          data: { code: 'extensions_path_not_relative' },
+          data: { code: diagnosticCode('extensions_path_not_relative') },
         });
       } else if (!MODULE_EXTENSIONS.test(node.path)) {
         accept('error', 'The extensions module must be a .js, .mjs, .ts, .mts, .jsx or .tsx file', {
           node,
           property: 'path',
-          data: { code: 'extensions_path_type' },
+          data: { code: diagnosticCode('extensions_path_type') },
         });
       }
     }
@@ -65,7 +66,7 @@ export class ExtensionsValidator extends BaseValidator {
         accept('error', `Duplicate host ${kind} '${declaration.name}'`, {
           node: declaration,
           property: 'name',
-          data: { code: 'duplicate_host_declaration' },
+          data: { code: diagnosticCode('duplicate_host_declaration') },
         });
       }
       seen.set(key, kind);
@@ -73,14 +74,22 @@ export class ExtensionsValidator extends BaseValidator {
         accept(
           'error',
           `'${declaration.name}' is an Eligius operation: a host operation needs another name`,
-          { node: declaration, property: 'name', data: { code: 'host_operation_builtin' } }
+          {
+            node: declaration,
+            property: 'name',
+            data: { code: diagnosticCode('host_operation_builtin') },
+          }
         );
       }
       if (kind === 'controller' && getController(declaration.name)) {
         accept(
           'error',
           `'${declaration.name}' is an Eligius controller: a host controller needs another name`,
-          { node: declaration, property: 'name', data: { code: 'host_controller_builtin' } }
+          {
+            node: declaration,
+            property: 'name',
+            data: { code: diagnosticCode('host_controller_builtin') },
+          }
         );
       }
       if (!isHostFunction(declaration)) {
@@ -90,7 +99,7 @@ export class ExtensionsValidator extends BaseValidator {
             accept('error', `Duplicate parameter '${parameter.name}'`, {
               node: parameter,
               property: 'name',
-              data: { code: 'duplicate_host_parameter' },
+              data: { code: diagnosticCode('duplicate_host_parameter') },
             });
           }
           names.add(parameter.name);
@@ -111,7 +120,7 @@ export class ExtensionsValidator extends BaseValidator {
       functions.length > 0
         ? `Unknown function '${name.value}': the extensions import declares ${functions.map(f => `'${f}'`).join(', ')}`
         : `Unknown function '${name.value}': declare it in an extensions import (extensions "./host.ts" { function ${name.value} })`,
-      { node: name, data: { code: 'unknown_host_function' } }
+      { node: name, data: { code: diagnosticCode('unknown_host_function') } }
     );
   }
 }

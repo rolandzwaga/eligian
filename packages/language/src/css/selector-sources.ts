@@ -12,6 +12,7 @@ import {
   readLayoutHtml,
   scanLayoutElements,
 } from '../html/layout-elements.js';
+import { diagnosticCode } from '../validators/codes.js';
 import { parseSelector } from './selector-parser.js';
 
 export interface SelectorNames {
@@ -89,7 +90,11 @@ export function reportNotInLayout(
     accept(
       'warning',
       `'${name}' is not in the layout (${layoutFile}): the selector only matches an element that an operation creates at runtime`,
-      { node, ...(property ? { property: property as never } : {}), code: 'selector_not_in_layout' }
+      {
+        node,
+        ...(property ? { property: property as never } : {}),
+        code: diagnosticCode('selector_not_in_layout'),
+      }
     );
   for (const id of ids) {
     if (!layout.ids.has(id) && cssRegistry.getIDsForDocument(documentUri).has(id)) report(`#${id}`);

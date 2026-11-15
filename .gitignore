@@ -35,7 +35,9 @@ test-*.mjs
 check-*.js
 check-*.mjs
 *.log
+!**/__fixtures__/**/*.log
 .DS_Store
+/packages/cli/coverage
 /packages/language/coverage
 /packages/shared-utils/coverage
 /TODO.txt
@@ -51,3 +53,6 @@ packages/extension/LICENSE
 packages/extension/CHANGELOG.md
 packages/cli/LICENSE
 packages/cli/*.tgz
+
+# Claude Code workflows are source (the *.js rule above is for build output)
+!/.claude/workflows/*.js

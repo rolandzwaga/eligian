@@ -1,0 +1,12 @@
+// lottie-web-not-installed: a LottieController where lottie-web is not installed
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    selectElement("#anim")
+    addController("LottieController", "./anim.json")
+  ] [
+    selectElement("#anim")
+    removeControllerFromElement("LottieController")
+  ]
+}

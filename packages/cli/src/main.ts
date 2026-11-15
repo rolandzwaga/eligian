@@ -7,12 +7,11 @@
  */
 
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import * as url from 'node:url';
-import { parseSelectorNotInLayout, STARTERS } from '@eligian/language';
+import { getCompilerVersion, parseSelectorNotInLayout, STARTERS } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Cause, Effect, Exit, Option } from 'effect';
+import { AGENT_CLIENTS, parseAgentClients, printConfig, runAgentsSetup } from './agents.js';
 import { BundleCompileError, BundleError, createBundle } from './bundler/index.js';
 import { DEFAULT_INLINE_THRESHOLD } from './bundler/types.js';
 import { parseCheckFormat, parseMaxWarnings, runCheck } from './check/check-command.js';
@@ -32,29 +31,47 @@ import { runInit } from './init.js';
 import { deriveDefaultOutputPath, isSamePath } from './output-path.js';
 import { parseSmokeFormat, runSmoke, SMOKE_FORMATS } from './smoke/smoke-command.js';
 
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
-const packagePath = path.resolve(__dirname, '..', 'package.json');
-
-/**
- * Read the CLI version from package.json. Falls back to '0.0.0' if the file is
- * missing or unreadable so a packaging issue cannot crash the CLI at startup.
- */
-async function readPackageVersion(): Promise<string> {
-  try {
-    const packageContent = await fs.readFile(packagePath, 'utf-8');
-    return JSON.parse(packageContent).version ?? '0.0.0';
-  } catch {
-    return '0.0.0';
-  }
-}
-
-const packageVersion = await readPackageVersion();
+/** The package version, injected by the CLI build (esbuild `define`) */
+const version = getCompilerVersion().compiler;
 
 /**
  * Exit codes
  */
 const EXIT_COMPILE_ERROR = 1;
 const EXIT_IO_ERROR = 3;
+
+/** A repeatable option's accumulator: no commander default, so an absent option is undefined */
+const collect = (value: string, previous: string[] = []): string[] => [...previous, value];
+
+/** `--client <client>` (spec 058 plan E3): repeatable, not variadic, so `[dir]` stays positional */
+const CLIENT_FLAGS = '--client <client>';
+const CLIENT_HELP = `agent client: ${AGENT_CLIENTS.join(', ')} (repeatable; default claude)`;
+
+/**
+ * `smoke --scenario <file>` (spec 058 FR-034): the parsed scenario. A file that cannot be read,
+ * is not JSON or breaks the scenario rules is a usage error: a message on stderr, exit 2.
+ */
+async function readScenarioFile(file: string) {
+  const { parseScenario } = await import('./smoke/scenario.js');
+  const refuse = (reason: string): never => {
+    console.error(`Error: --scenario ${file}: ${reason}`);
+    process.exit(2);
+  };
+  let text: string;
+  try {
+    text = await fs.readFile(file, 'utf-8');
+  } catch (error) {
+    return refuse(`cannot read the file (${error instanceof Error ? error.message : error})`);
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (error) {
+    return refuse(`not JSON (${error instanceof Error ? error.message : error})`);
+  }
+  const parsed = parseScenario(json);
+  return parsed.ok ? parsed.scenario : refuse(parsed.message);
+}
 
 /**
  * CLI-specific options (extends library options)
@@ -296,10 +313,10 @@ export default function main(): void {
   program
     .name('eligian')
     .description('Eligian DSL compiler - compile .eligian files to Eligius JSON')
-    .version(packageVersion)
+    .version(version)
     .addHelpText(
       'after',
-      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init) for its options."
+      "\n`eligian <input>` is short for `eligian compile <input>`.\nRun 'eligian <command> --help' (compile, check, fmt, smoke, dev, init, mcp) for its options."
     );
 
   // Check command: every diagnostic of every matched file
@@ -311,10 +328,11 @@ export default function main(): void {
     .option('--max-warnings <n>', 'fail when there are more than <n> warnings')
     .option('--warnings-as-errors', 'fail on any warning (same as --max-warnings 0)', false)
     .option('--no-lint', "skip Eligius' configuration lint of the compiled programs (eligius/lint)")
+    .option('--no-review', 'skip the review pass')
     .option(
       '--selector-not-in-layout <mode>',
-      'warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
-      'off'
+      'in a program that imports a layout, warn about selector ids (ids) or ids and classes (all) that are in the CSS but not in the layout HTML: off, ids, all',
+      'ids'
     )
     .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
       const format = parseCheckFormat(String(cmdOptions.format));
@@ -348,8 +366,9 @@ export default function main(): void {
         maxWarnings,
         warningsAsErrors: cmdOptions.warningsAsErrors === true,
         lint: cmdOptions.lint !== false,
+        review: cmdOptions.review !== false,
         cwd: process.cwd(),
-        version: packageVersion,
+        version,
       });
       if (outcome.output) console.log(outcome.output);
       if (outcome.error) console.error(chalk.red(outcome.error));
@@ -392,8 +411,24 @@ export default function main(): void {
       'play every timeline of .eligian programs headlessly (jsdom) and report runtime failures'
     )
     .argument('<patterns...>', 'files, directories or globs (e.g. "examples/**/*.eligian")')
-    .option('--format <format>', `output format: ${SMOKE_FORMATS.join(', ')}`, 'pretty')
+    .option(
+      '--format <format>',
+      `output format: ${SMOKE_FORMATS.join(', ')} (ndjson: one JSON object per line, as the run goes)`,
+      'pretty'
+    )
     .option('--strict', 'also fail on selectElement selectors that match no element', false)
+    // Repeatable, not variadic: `<name...>` would swallow the patterns after it
+    .option('--timeline <name>', 'play only this timeline (repeatable)', collect)
+    .option('--step-timeout-ms <n>', 'longest a single engine step may take (default 10000)')
+    .option(
+      '--scenario <file>',
+      'after the walk, replay this scenario ({ "steps": [...], "assertions"?: [...] } JSON) on a fresh engine; one program file only'
+    )
+    .option(
+      '--determinism',
+      'also compare the DOM at every boundary reached by linear play, a straight seek and a seek back from the end (position-nondeterministic)',
+      false
+    )
     .action(async (patterns: string[], cmdOptions: Record<string, unknown>) => {
       const format = parseSmokeFormat(String(cmdOptions.format));
       if (!format) {
@@ -402,13 +437,39 @@ export default function main(): void {
         );
         process.exit(2);
       }
+      const scenario =
+        cmdOptions.scenario === undefined
+          ? undefined
+          : await readScenarioFile(String(cmdOptions.scenario));
+      let stepTimeoutMs: number | undefined;
+      if (cmdOptions.stepTimeoutMs !== undefined) {
+        stepTimeoutMs = Number(cmdOptions.stepTimeoutMs);
+        if (!Number.isInteger(stepTimeoutMs) || stepTimeoutMs <= 0) {
+          console.error(
+            `Error: --step-timeout-ms must be a positive integer (got "${cmdOptions.stepTimeoutMs}")`
+          );
+          process.exit(2);
+        }
+      }
+      // ndjson (spec 058 P14): stdout carries only the lines; any other output goes to stderr
+      const out =
+        format === 'ndjson'
+          ? (await import('./mcp/stdio.js')).redirectConsoleToStderr()
+          : undefined;
       const outcome = await runSmoke(patterns, {
         format,
         strict: cmdOptions.strict === true,
         cwd: process.cwd(),
+        timelines: cmdOptions.timeline as string[] | undefined,
+        stepTimeoutMs,
+        scenario,
+        determinism: cmdOptions.determinism === true,
+        ...(out ? { writeLine: (line: string) => void out.write(`${line}\n`) } : {}),
       });
       if (outcome.exitCode === 2) console.error(chalk.red(outcome.output));
-      else console.log(outcome.output);
+      else if (!out) console.log(outcome.output);
+      // A pipe write is asynchronous (Windows): process.exit would drop the queued lines
+      await out?.flush();
       process.exit(outcome.exitCode);
     });
 
@@ -424,15 +485,40 @@ export default function main(): void {
     )
     .option('--title <title>', 'presentation title (default: from the directory name)')
     .option('--force', 'overwrite existing files', false)
+    .option(CLIENT_FLAGS, CLIENT_HELP, collect)
+    .option('--no-agents', 'write no agent files (.mcp.json, AGENTS.md, ...)')
     .action(async (dir: string, cmdOptions: Record<string, unknown>) => {
+      const parsed = parseAgentClients(cmdOptions.client as string[] | undefined);
+      if ('error' in parsed) {
+        console.error(chalk.red(parsed.error));
+        process.exit(2);
+      }
       const outcome = await runInit(dir, {
         template: String(cmdOptions.template),
         title: cmdOptions.title as string | undefined,
         force: cmdOptions.force === true,
         cwd: process.cwd(),
+        agents: cmdOptions.agents === false ? [] : parsed.clients,
       });
       if (outcome.exitCode === 0) console.log(outcome.output);
       else console.error(chalk.red(outcome.output));
+      process.exit(outcome.exitCode);
+    });
+
+  // Agents command (spec 058 FR-062): the MCP server entry and agent instructions of a project
+  program
+    .command('agents')
+    .description('set up coding agents for an Eligian project')
+    .command('setup')
+    .description('write or merge the eligian MCP server entry and the AGENTS.md block per client')
+    .argument('[dir]', 'project directory', '.')
+    .option(CLIENT_FLAGS, CLIENT_HELP, collect)
+    .action(async (dir: string, cmdOptions: Record<string, unknown>) => {
+      const outcome = await runAgentsSetup(dir, cmdOptions.client as string[] | undefined, {
+        cwd: process.cwd(),
+      });
+      if (outcome.exitCode === 2) console.error(chalk.red(outcome.output));
+      else console.log(outcome.output);
       process.exit(outcome.exitCode);
     });
 
@@ -468,6 +554,29 @@ export default function main(): void {
       });
       if (outcome.output) console.log(outcome.output);
       process.exit(outcome.exitCode);
+    });
+
+  // MCP command: the Model Context Protocol server over stdio (effect/ai loads only here)
+  program
+    .command('mcp')
+    .description('start the Model Context Protocol server for coding agents (stdio)')
+    .option(
+      '--print-config <client>',
+      `print the server entry for ${AGENT_CLIENTS.join(', ')} and exit (starts no server)`
+    )
+    .action(async (cmdOptions: Record<string, unknown>) => {
+      if (cmdOptions.printConfig !== undefined) {
+        const parsed = parseAgentClients([String(cmdOptions.printConfig)]);
+        if ('error' in parsed) {
+          console.error(chalk.red(parsed.error));
+          process.exit(2);
+        }
+        // stdout is the config alone (FR-063): return before the server module loads
+        console.log(printConfig(parsed.clients[0], process.cwd()));
+        return;
+      }
+      const { runServer } = await import('./mcp/server.js');
+      await runServer({ cwd: process.cwd() });
     });
 
   // Compile command (the default: `eligian <input>` is `eligian compile <input>`)

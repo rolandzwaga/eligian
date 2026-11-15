@@ -7,6 +7,10 @@ packages:
 allowBuilds:
   esbuild: true
   '@vscode/vsce-sign': false
+  # The MCP inspector's postinstall (scripts/install-clients.mjs) exits early when the
+  # package is installed under node_modules; the published tarball has no client
+  # packages for it to install. It is a CLI devDependency (spec 058, Phase 1 FR-048).
+  '@modelcontextprotocol/inspector': false
 
 # Workspace settings migrated from .npmrc — pnpm 11 reads these from
 # pnpm-workspace.yaml (camelCase), no longer from .npmrc.

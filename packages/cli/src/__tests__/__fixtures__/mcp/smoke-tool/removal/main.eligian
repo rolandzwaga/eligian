@@ -1,0 +1,9 @@
+// eligian_smoke concise steps: #gone is removed at 1s, #keep and #box never change
+layout "../layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 1s..30s [
+    selectElement("#gone")
+    removeElement()
+  ] []
+}

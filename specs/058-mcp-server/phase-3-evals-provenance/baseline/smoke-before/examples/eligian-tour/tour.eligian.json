@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"examples/eligian-tour/tour.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"Hub\",\n        \"boundaries\": 1\n      },\n      {\n        \"name\": \"Timeline & Time\",\n        \"boundaries\": 9\n      },\n      {\n        \"name\": \"Actions\",\n        \"boundaries\": 9\n      },\n      {\n        \"name\": \"Logic\",\n        \"boundaries\": 13\n      },\n      {\n        \"name\": \"Timeline Power Tools\",\n        \"boundaries\": 19\n      },\n      {\n        \"name\": \"Files & Imports\",\n        \"boundaries\": 9\n      },\n      {\n        \"name\": \"Engine Reach\",\n        \"boundaries\": 10\n      },\n      {\n        \"name\": \"The Editor\",\n        \"boundaries\": 45\n      },\n      {\n        \"name\": \"The Command Line\",\n        \"boundaries\": 254\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

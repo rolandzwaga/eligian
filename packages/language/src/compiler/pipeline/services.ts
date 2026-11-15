@@ -50,6 +50,11 @@ export function getOrCreateServices() {
   return sharedServices;
 }
 
+/** Drop the shared services: the next getOrCreateServices() builds (and, under Vitest, seeds) a fresh set. */
+export function resetServices(): void {
+  sharedServices = undefined;
+}
+
 /**
  * Seed the shared CSS registry with the class/ID names referenced by test
  * fixtures so they don't trip CSS-class validation. Test-only — gated behind

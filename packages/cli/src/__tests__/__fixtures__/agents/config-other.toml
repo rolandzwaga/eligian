@@ -1,0 +1,16 @@
+# Codex project config with another server and an old eligian table.
+model = "o4-mini"
+
+[mcp_servers.other]
+command = "other-server"
+args = ["--port", "4000"]
+
+[mcp_servers.eligian]
+command = "npx"
+args = ["-y", "eligian@^1.0", "mcp"]
+
+[mcp_servers.eligian.env]
+ELIGIAN_MCP_LOG = "/var/log/eligian.log"
+
+[profiles.fast]
+model = "o4-mini"

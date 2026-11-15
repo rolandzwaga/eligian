@@ -1,0 +1,16 @@
+{
+  "id": "replay-safe",
+  "prompt": "A 20s intro that can be replayed from a Restart button at any time, and jumped to its 'reveal' at 12s from a Skip button. The entry file is `main.eligian` in the current directory, with one timeline named `intro` that runs 20 seconds. Use these element ids: `#title` (visible from 1s to 11s), `#tagline` (visible from 5s to 11s), `#reveal` (the reveal, visible from 12s to 20s; the event that shows it is labelled `reveal`), each hidden outside its range, and the buttons `#restart` and `#skip`. Clicking `#restart`, at any moment, returns the intro to position 0 with the page exactly as it is when the intro first starts. Clicking `#skip` jumps to the reveal (12s) with the page exactly as if the intro had played from the start to 12s. An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "replay-safe.scenario.json",
+  "assertions": [
+    { "kind": "source.label", "name": "reveal" },
+    { "kind": "source.labelSeek", "label": "reveal", "anchor": "start" },
+    { "kind": "interactions.seekTo", "position": 12 },
+    { "kind": "replay.resetThenSeek", "trigger": "#restart" },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

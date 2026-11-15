@@ -1,0 +1,17 @@
+# T005 Effect diagnostics of the test projects, before (2026-11-04T18:08Z, git 1e2e750)
+
+## $ pnpm exec effect-tsgo diagnostics --project packages/language/tsconfig.test.json --format text --strict
+Checked 492 files out of 492 files. 
+0 errors, 0 warnings and 0 messages.
+exit: 0
+
+## $ pnpm exec effect-tsgo diagnostics --project packages/cli/tsconfig.test.json --format text --strict
+F:/projects/eligius/eligian/packages/cli/src/__tests__/cli-low-fixes.spec.ts(256,28): warning effect(globalErrorInEffectFailure): Global 'Error' loses type safety as untagged errors merge together in the Effect failure channel. Consider using a tagged error and optionally wrapping the original in a 'cause' property.
+Checked 301 files out of 301 files. 
+0 errors, 1 warnings and 0 messages.
+exit: 1
+
+## Verdict (plan gate 6a)
+- language test project: 0 errors, 0 warnings (expected 0/0) -- matches.
+- cli test project: exactly one warning, globalErrorInEffectFailure at packages/cli/src/__tests__/cli-low-fixes.spec.ts:256 -- matches.
+- Allowed pre-existing set: { cli: globalErrorInEffectFailure @ cli-low-fixes.spec.ts:256:28 }. Nothing else.

@@ -1,0 +1,42 @@
+{
+  "steps": [
+    { "snapshot": "start" },
+    { "key": "ArrowRight" },
+    { "key": "ArrowRight" },
+    { "key": "ArrowRight" },
+    { "snapshot": "at-4" },
+    { "key": "ArrowLeft" },
+    { "snapshot": "at-3" },
+    { "key": "Home" },
+    { "snapshot": "at-1" }
+  ],
+  "assertions": [
+    { "after": "start", "timeline": "slide-1" },
+    { "after": "start", "selector": "#slide-1", "visible": true },
+    { "after": "start", "selector": "#counter", "text": "1 / 12" },
+    { "after": "at-4", "timeline": "slide-4" },
+    { "after": "at-4", "selector": "#slide-1", "visible": false },
+    { "after": "at-4", "selector": "#slide-2", "visible": false },
+    { "after": "at-4", "selector": "#slide-3", "visible": false },
+    { "after": "at-4", "selector": "#slide-4", "visible": true },
+    { "after": "at-4", "selector": "#slide-5", "visible": false },
+    { "after": "at-4", "selector": "#slide-6", "visible": false },
+    { "after": "at-4", "selector": "#slide-7", "visible": false },
+    { "after": "at-4", "selector": "#slide-8", "visible": false },
+    { "after": "at-4", "selector": "#slide-9", "visible": false },
+    { "after": "at-4", "selector": "#slide-10", "visible": false },
+    { "after": "at-4", "selector": "#slide-11", "visible": false },
+    { "after": "at-4", "selector": "#slide-12", "visible": false },
+    { "after": "at-4", "selector": "#counter", "text": "4 / 12" },
+    { "after": "at-4", "selector": "#deck", "controllers": ["KeyboardController", "KeyboardController", "KeyboardController"] },
+    { "after": "at-3", "timeline": "slide-3" },
+    { "after": "at-3", "selector": "#slide-3", "visible": true },
+    { "after": "at-3", "selector": "#slide-4", "visible": false },
+    { "after": "at-3", "selector": "#counter", "text": "3 / 12" },
+    { "after": "at-3", "selector": "#deck", "controllers": ["KeyboardController", "KeyboardController", "KeyboardController"] },
+    { "after": "at-1", "timeline": "slide-1" },
+    { "after": "at-1", "selector": "#slide-1", "visible": true },
+    { "after": "at-1", "selector": "#slide-3", "visible": false },
+    { "after": "at-1", "selector": "#counter", "text": "1 / 12" }
+  ]
+}

@@ -1,0 +1,11 @@
+// Origin `param-binding`: a parameter forwarded to an operation that does not resolve chains
+styles "./styles.css"
+
+action show(label) [
+  selectElement("#box")
+  setElementContent(label)
+]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s show("hello")
+}

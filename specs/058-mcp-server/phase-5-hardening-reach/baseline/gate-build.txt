@@ -1,0 +1,43 @@
+### pnpm build
+$ pnpm -r build
+packages/shared-utils build$ tsc
+packages/shared-utils build: Done
+packages/language build$ pnpm run generate && node esbuild.mjs && tsc -p tsconfig.src.json --emitDeclarationOnly
+packages/language build: $ pnpm run generate:metadata && pnpm run generate:registry && pnpm run generate:html-metadata && pnpm run langium:generate
+packages/language build: $ tsx src/completion/generate-metadata.ts
+packages/language build: $ tsx src/compiler/operations/generate-registry.ts
+packages/language build: $ tsx ../../scripts/generate-html-metadata.ts
+packages/language build: Generating HTML element metadata...
+packages/language build: Generated F:\projects\eligius\eligian\packages\language\src\completion\html-elements.generated.ts
+packages/language build:   - 111 elements
+packages/language build:   - 30 common attributes
+packages/language build:   - 859 element-specific attributes
+packages/language build: $ langium generate
+packages/language build: Reading config from F:\projects\eligius\eligian\packages\language\langium-config.json
+packages/language build: Writing generated files to F:\projects\eligius\eligian\packages\language\src\generated
+packages/language build: [13:58:00] Langium generator finished successfully in 202ms
+packages/language build: [13:58:00] Build succeeded
+packages/language build: [13:58:00] Build succeeded
+packages/language build: [13:58:00] Build succeeded
+packages/language build: [13:58:00] Build succeeded
+packages/language build: Done
+packages/cli build$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly
+packages/extension build$ pnpm run build:prepare && node esbuild.mjs
+packages/extension build: $ shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/eligian.tmLanguage.json ./syntaxes/eligian.tmLanguage.json && shx cp -f ../../LICENSE ./LICENSE && shx cp -f ../../CHANGELOG.md ./CHANGELOG.md
+packages/extension build: [13:58:02] Build succeeded
+packages/extension build: [13:58:02] Build succeeded
+packages/extension build: [13:58:02] Build succeeded
+packages/extension build: [13:58:02] Build succeeded
+packages/extension build: Done
+packages/cli build: generate-knowledge: 419 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+packages/cli build: [13:58:03] Build succeeded
+packages/cli build: [13:58:03] Build succeeded
+packages/cli build: Done
+exit 0
+### pnpm typecheck
+$ tsc -b tsconfig.build.json
+exit 0
+### pnpm run ci
+$ biome ci --error-on-warnings .
+[0m[36mChecked 883 files in 288[0m[0m[2m[36mms[0m[0m[36m.[0m[0m[36m No fixes applied.[0m
+exit 0

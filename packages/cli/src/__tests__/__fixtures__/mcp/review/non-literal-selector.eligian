@@ -1,0 +1,30 @@
+layout "./layout.html"
+styles "./styles.css"
+
+action resetView(view: string) [
+  with view + " .item" { removeClass("in") }
+]
+
+action reveal(target: string) [
+  selectElement(target)
+  addClass("lit")
+]
+
+timeline "concatenated" in "#stage" using raf {
+  on enter [
+    selectElement("#stage")
+  ]
+  on leave [
+    resetView("#panel")
+  ]
+  at 0s..2s [
+    selectElement("#box")
+    addClass("in")
+  ]
+}
+
+timeline "unresolved" in "#stage" using raf {
+  at 0s..2s [
+    reveal($operationdata.target)
+  ]
+}

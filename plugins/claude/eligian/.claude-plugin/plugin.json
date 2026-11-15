@@ -1,0 +1,11 @@
+{
+  "name": "eligian",
+  "displayName": "Eligian",
+  "version": "1.1.0",
+  "description": "The Eligian MCP server: write Eligius presentations in the Eligian DSL with docs, checks and smoke tests",
+  "author": { "name": "Roland Zwaga" },
+  "homepage": "https://github.com/rolandzwaga/eligian/tree/main/packages/cli#readme",
+  "repository": "https://github.com/rolandzwaga/eligian",
+  "license": "MIT",
+  "keywords": ["eligian", "eligius", "dsl", "presentation", "mcp"]
+}

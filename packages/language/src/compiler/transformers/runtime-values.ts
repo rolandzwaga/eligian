@@ -39,6 +39,7 @@ import {
 } from '../../generated/ast.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import type { JsonValue, OperationConfigIR } from '../types/eligius-ir.js';
+import type { OperationOrigin } from '../types/operation-origin.js';
 import type { ScopeContext } from './scope.js';
 
 /** One runtime concatenation found while transforming a statement. */
@@ -97,7 +98,7 @@ export const SAVED_RESULT_KEY = '__eligianSavedResult';
  * Kept in sync with the Eligius operations that call resolvePropertyValues /
  * resolveExternalPropertyChain (eligius src/operation).
  */
-const SELF_RESOLVED: Readonly<Record<string, ReadonlySet<string> | '*'>> = {
+export const SELF_RESOLVED: Readonly<Record<string, ReadonlySet<string> | '*'>> = {
   broadcastEvent: new Set(['eventArgs']),
   calc: new Set(['left', 'right', 'operator']),
   createElement: new Set(['elementName', 'attributes', 'text']),
@@ -237,35 +238,45 @@ function lowerOperation(
   }
 
   const sourceLocation = op.sourceLocation;
-  const helper = (systemName: string, operationData: Record<string, JsonValue>) =>
-    ({
-      id: crypto.randomUUID(),
-      systemName,
-      operationData,
-      sourceLocation,
-    }) as OperationConfigIR;
-  const setOperationData = (properties: Record<string, JsonValue>) =>
-    helper('setOperationData', { properties });
+  const helper = (
+    systemName: string,
+    operationData: Record<string, JsonValue>,
+    origin: OperationOrigin
+  ): OperationConfigIR => ({
+    id: crypto.randomUUID(),
+    systemName,
+    operationData,
+    sourceLocation,
+    origin,
+  });
+  const setOperationData = (properties: Record<string, JsonValue>, origin: OperationOrigin) =>
+    helper('setOperationData', { properties }, origin);
 
   const before: OperationConfigIR[] = [];
   const cleanup: string[] = [];
 
   if (concatIndices.length > 0) {
     if (options.preserveResult) {
-      before.push(setOperationData({ [SAVED_RESULT_KEY]: '$operationdata.result' }));
+      before.push(
+        setOperationData({ [SAVED_RESULT_KEY]: '$operationdata.result' }, 'saved-result')
+      );
       cleanup.push(SAVED_RESULT_KEY);
     }
     for (const index of concatIndices) {
       const concat = collector.concats[index];
-      before.push(setOperationData({ strings: [...concat.parts] }));
-      before.push(helper('concatenateStrings', {}));
+      before.push(setOperationData({ strings: [...concat.parts] }, 'concat'));
+      before.push(helper('concatenateStrings', {}, 'concat'));
       if (!single) {
-        before.push(setOperationData({ [concatTempKey(index)]: '$operationdata.result' }));
+        before.push(
+          setOperationData({ [concatTempKey(index)]: '$operationdata.result' }, 'concat')
+        );
         cleanup.push(concatTempKey(index));
       }
     }
     if (options.preserveResult) {
-      before.push(setOperationData({ result: `$operationdata.${SAVED_RESULT_KEY}` }));
+      before.push(
+        setOperationData({ result: `$operationdata.${SAVED_RESULT_KEY}` }, 'saved-result')
+      );
     } else if (!single) {
       // `result` was only ever written by the concatenations
       cleanup.push('result');
@@ -273,17 +284,17 @@ function lowerOperation(
   }
 
   if (Object.keys(materialized).length > 0) {
-    before.push(setOperationData(materialized));
+    before.push(setOperationData(materialized, 'param-binding'));
   }
 
   const lowered: OperationConfigIR = {
     ...op,
     operationData: Object.keys(remaining).length > 0 ? remaining : undefined,
-  } as OperationConfigIR;
+  };
 
   const after =
     cleanup.length > 0
-      ? [helper('removePropertiesFromOperationData', { propertyNames: cleanup })]
+      ? [helper('removePropertiesFromOperationData', { propertyNames: cleanup }, 'concat')]
       : [];
 
   return [...before, lowered, ...after];

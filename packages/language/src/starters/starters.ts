@@ -48,7 +48,9 @@ export const STARTERS: readonly Starter[] = [
     name: 'video',
     label: 'Video',
     description: 'A timeline driven by a video, with captions and play / pause buttons',
-    notes: ['Add your video as media/intro.mp4 (or change the path in main.eligian).'],
+    notes: [
+      'Add your video as media/intro.mp4 (or change the path in main.eligian); until then `eligian check` reports `media-file-missing`.',
+    ],
   },
   {
     name: 'library',
@@ -115,7 +117,7 @@ function packageJson(name: string): string {
       },
       devDependencies: {
         // The npm package of the `eligian` command (packages/cli; init.spec checks the range)
-        eligian: '^1.0.0',
+        eligian: '^1.1.0',
       },
     },
     null,
@@ -235,6 +237,15 @@ timeline "${title}" in "#stage" using raf {
     on click "#play" toggle
     on click "#restart" seek 0s
   ]
+  // Runs once when the timeline is left: removes what on enter added
+  on leave [
+    selectElement("#play")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#restart")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#title")
+    removeControllerFromElement("LabelController")
+  ]
 
   // Each beat is shown from its start to its end
   at 1s..6s [ reveal("#beat-1") ] [ conceal("#beat-1") ]
@@ -297,7 +308,16 @@ timeline "Hub" in "#stage" using raf {
     on click "#card-1" navigate "Chapter 1"
     on click "#card-2" navigate "Chapter 2"
   ]
-  on leave [ hideView("#hub") ]
+  // on leave removes every controller on enter added
+  on leave [
+    hideView("#hub")
+    selectElement("#card-1")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#card-2")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#hub-title")
+    removeControllerFromElement("LabelController")
+  ]
 }
 
 timeline "Chapter 1" in "#stage" using raf {
@@ -308,7 +328,15 @@ timeline "Chapter 1" in "#stage" using raf {
     // The right arrow skips to the second beat (a label of this timeline)
     on key "ArrowRight" seek second.start
   ]
-  on leave [ hideView("#chapter-1") ]
+  on leave [
+    hideView("#chapter-1")
+    selectElement("#back-1")
+    removeControllerFromElement("DOMEventListenerController")
+    // One KeyboardController per on key, on the timeline's container
+    selectElement("#stage")
+    removeControllerFromElement("KeyboardController")
+    removeControllerFromElement("KeyboardController")
+  ]
 
   at 0s for 4s as first [ reveal("#c1-beat-1") ] [ conceal("#c1-beat-1") ]
   at first.end for 4s as second [ reveal("#c1-beat-2") ] [ conceal("#c1-beat-2") ]
@@ -320,7 +348,13 @@ timeline "Chapter 2" in "#stage" using raf {
     on click "#back-2" navigate "Hub"
     on key "Escape" navigate "Hub"
   ]
-  on leave [ hideView("#chapter-2") ]
+  on leave [
+    hideView("#chapter-2")
+    selectElement("#back-2")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#stage")
+    removeControllerFromElement("KeyboardController")
+  ]
 
   at 0s for 4s [ reveal("#c2-beat-1") ] [ conceal("#c2-beat-1") ]
 }
@@ -401,6 +435,15 @@ timeline "${title}" in "#player" using video from "./media/intro.mp4" {
     on click "#restart" seek 0s
     on key "space" toggle
   ]
+  // Runs once when the timeline is left: removes what on enter added
+  on leave [
+    selectElement("#play")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#restart")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#player")
+    removeControllerFromElement("KeyboardController")
+  ]
 
   at 1s..4s [ caption("captions.first") ] [ clearCaption() ]
   at 5s..8s [ caption("captions.second") ] [ clearCaption() ]
@@ -455,6 +498,12 @@ timeline "${title}" in "#stage" using raf {
     selectElement("#title")
     addController("LabelController", "title")
     on click "#play" toggle
+  ]
+  on leave [
+    selectElement("#play")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#title")
+    removeControllerFromElement("LabelController")
   ]
 
   at 1s..5s [ reveal("#beat-1") ] [ conceal("#beat-1") ]

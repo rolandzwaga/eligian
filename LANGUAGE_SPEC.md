@@ -970,7 +970,7 @@ action fadeIn(selector: string, duration: number) [
 
 Endable actions have separate start and end operation sequences:
 
-```eligian
+```bnf
 endable action <name> [
   <start-operations>*
 ] [
@@ -984,18 +984,112 @@ endable action <name>(<parameters>) [
 ]
 ```
 
-**Example**:
+The end block is a run of its own: it does not get the element that the start block selected (`ELIGIUS_EXECUTION_MODEL.md`, probed: "start and end blocks are independent runs, each starting from an empty operationData"). An end block that changes an element selects it first. `check` rejects an end block that uses `selectedElement` without selecting (`missing-action-dependency` at the call).
+
+**Example** (compiled next to the `layout.html` and `styles.css` of §11.2):
 
 ```eligian
-endable action showThenHide [
-  selectElement(".overlay")
-  addClass("visible")
+styles "./styles.css"
+layout "./layout.html"
+
+endable action highlight [
+  selectElement("#title")
+  addClass("on")
 ] [
-  removeClass("visible")
+  selectElement("#title")
+  removeClass("on")
 ]
+
+timeline "main" in "#app" using raf {
+  at 0s..2s highlight()
+}
 ```
 
-**Compilation**: Start operations execute at event start time, end operations at event end time.
+**Compilation**: the start block becomes the action's `startOperations`, the end block its `endOperations`. `eligian compile`, ids replaced as in §11.2. JSON path: `actions[0]`.
+
+```json
+{
+  "id": "<id>",
+  "name": "highlight",
+  "startOperations": [
+    {
+      "id": "<id>",
+      "systemName": "selectElement",
+      "operationData": {
+        "selector": "#title"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "addClass",
+      "operationData": {
+        "className": "on"
+      }
+    }
+  ],
+  "endOperations": [
+    {
+      "id": "<id>",
+      "systemName": "selectElement",
+      "operationData": {
+        "selector": "#title"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "removeClass",
+      "operationData": {
+        "className": "on"
+      }
+    }
+  ]
+}
+```
+
+The timeline event runs `requestAction` + `startAction` at its start and `requestAction` + `endAction` at its end. JSON path: `timelines[0].timelineActions[0]`.
+
+```json
+{
+  "id": "<id>",
+  "name": "timeline-action-0-2",
+  "startOperations": [
+    {
+      "id": "<id>",
+      "systemName": "requestAction",
+      "operationData": {
+        "systemName": "highlight"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "startAction",
+      "operationData": {
+        "actionOperationData": {}
+      }
+    }
+  ],
+  "endOperations": [
+    {
+      "id": "<id>",
+      "systemName": "requestAction",
+      "operationData": {
+        "systemName": "highlight"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "endAction",
+      "operationData": {
+        "actionOperationData": {}
+      }
+    }
+  ],
+  "duration": {
+    "start": 0,
+    "end": 2
+  }
+}
+```
 
 ### 4.3 Visibility Modifiers (Feature 023 - Library Files)
 
@@ -1611,49 +1705,70 @@ on event "request-label-collections" action HandleLabelCollections(labelIds: arr
 
 ### 5.9 Compilation Model
 
-Event actions compile to `IEventActionConfiguration` objects in the Eligius JSON:
+Event actions compile to `IEventActionConfiguration` objects in `eventActions` of the Eligius JSON.
 
-**Input** (Eligian):
+**Input** (Eligian, compiled next to the `layout.html` and `styles.css` of §11.2):
+
 ```eligian
+styles "./styles.css"
+layout "./layout.html"
+
 on event "language-change" topic "settings" action HandleLanguageChange(languageCode: string) [
-  selectElement("#language-display")
+  selectElement("#title")
   setElementContent(languageCode)
 ]
+
+timeline "main" in "#app" using raf {
+  at 0s..2s [
+    selectElement("#title")
+    addClass("on")
+  ] [
+    selectElement("#title")
+    removeClass("on")
+  ]
+}
 ```
 
-**Output** (Eligius JSON):
+**Output**: `eligian compile`, ids replaced as in §11.2. JSON path: `eventActions[0]`.
+
 ```json
 {
-  "eventActions": [
+  "id": "<id>",
+  "name": "HandleLanguageChange",
+  "eventName": "language-change",
+  "eventTopic": "settings",
+  "startOperations": [
     {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "HandleLanguageChange",
-      "eventName": "language-change",
-      "eventTopic": "settings",
-      "operations": [
-        {
-          "systemName": "selectElement",
-          "parameters": [
-            "$operationdata.languageCode"
-          ]
-        },
-        {
-          "systemName": "setElementContent",
-          "parameters": [
-            "$operationdata.languageCode"
-          ]
+      "id": "<id>",
+      "systemName": "selectElement",
+      "operationData": {
+        "selector": "#title"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "setOperationData",
+      "operationData": {
+        "properties": {
+          "template": "$operationData.eventArgs.0"
         }
-      ]
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "setElementContent"
     }
   ]
 }
 ```
 
 **Key Compilation Details**:
-- Each event action gets a unique UUID v4 identifier
-- Parameters map to `$operationdata.<paramName>` references
-- Optional `eventTopic` field is only present if topic clause was specified
-- Operations are compiled identically to regular action operations
+- `id` is a random UUID, new on every compile
+- The operations are the event action's `startOperations`; there is no `endOperations` key
+- `eventTopic` is only present when the topic clause is written
+- A parameter is read by its position in the event's arguments: `languageCode`, the first parameter, compiles to `$operationData.eventArgs.0`. Here the `setOperationData` before `setElementContent` sets its `template` to that value
+- An event action starts with only `eventArgs` in its operationData (`ELIGIUS_EXECUTION_MODEL.md`, probed: "an event action starts with only eventArgs"), so it selects its own elements, as above
+- Otherwise the operations are compiled like those of a regular action
 
 ### 5.10 Event Name Validation (Feature 029)
 
@@ -2404,50 +2519,95 @@ setStyle({color: "red", fontSize: "16px"})
 
 ### 8.1.1 Controller Operations (Feature 035)
 
-The `addController()` operation provides a specialized syntax for adding Eligius controllers to selected elements:
+The `addController()` operation attaches an Eligius controller to the selected element:
 
-```eligian
-addController("<controllerName>", <parameters>?)
+```bnf
+addController("<controllerName>", <parameter1>?, <parameter2>?, ...)
 ```
 
 **Parameters**:
-- `controllerName` (string, required) - Name of the controller class (e.g., `"LabelController"`, `"NavigationController"`)
-- `parameters` (object, optional) - Controller-specific configuration (varies by controller)
+- `controllerName` (string literal, required): one of the controllers below, or a controller declared in an `extensions` block (§3.2.5)
+- the controller's parameters, **positional**, in the order of the table below. Each argument is stored under the parameter's name in the `addControllerToElement` operationData
 
-**Available Controllers**:
-- `LabelController` - Multi-language label rendering
-- `NavigationController` - Page navigation with history
-- `VideoController` - Video playback controls
-- `AudioController` - Audio playback controls
-- And more...
+`check` reports an unknown controller name (`unknown_controller`), a missing required parameter (`missing_required_parameter`) and more arguments than the controller has parameters (`too_many_parameters`).
 
-**Examples**:
+**Available Controllers**: exactly the controllers of the installed `eligius` (`ctrlmetadata`, generated into `packages/language/src/completion/metadata/controllers.generated.ts`):
+
+| Controller | Positional parameters (* = required) | Needs | Status |
+|------------|--------------------------------------|-------|--------|
+| `DOMEventListenerController` | `eventName`* (event name), `actions` (array), `actionOperationData` (object) | `selectedElement` | Also generated by `on <event> "<selector>" <verb>` (§6.1, "Interactions") |
+| `KeyboardController` | `keys`* (string), `actions` (array), `actionOperationData` (object), `scope` (`"document"` or `"element"`) | `selectedElement` | Also generated by `on key "<keys>" <verb>` (§6.1, "Interactions") |
+| `LabelController` | `translationKey`* (string), `attributeName` (string) | `selectedElement` | A literal `translationKey` is checked against the `locales` import |
+| `LottieController` | `url` (url) | | **Constrained**: `lottie-web` is an optional peer dependency of `eligius`, loaded with a dynamic `import()` the first time a LottieController attaches. Of the Eligian packages only the VS Code extension depends on `lottie-web` (`packages/extension/package.json`); the CLI does not |
+| `MutationObserverController` | `observeAttributes`, `observeChildList`, `observeCharacterData`, `observeSubtree`, `attributeOldValue`, `characterDataOldValue` (booleans), `attributeFilter` (array) | `selectedElement` | |
+| `NavigationController` | `json`* (object) | `selectedElement` | |
+| `ProgressbarController` | none | `selectedElement`, `textElement` | |
+| `RoutingController` | `json`* (object) | | **Do-not-use**: its metadata says "This is a work in progress, do not use this yet please" |
+| `SubtitlesController` | `language` (language code), `subtitleData` (array) | `selectedElement` | |
+
+**Example** (compiled next to the `layout.html` and `styles.css` of §11.2): a click on `#title` runs the action `highlight`.
 
 ```eligian
-// LabelController with label ID
-selectElement("#title")
-addController("LabelController", "welcome.title")
+styles "./styles.css"
+layout "./layout.html"
 
-// NavigationController with page configuration
-selectElement("#nav")
-addController("NavigationController", {
-  pages: ["home", "about", "contact"],
-  defaultPage: "home"
-})
+action highlight [
+  selectElement("#title")
+  addClass("on")
+]
 
-// VideoController (no parameters)
-selectElement("#player")
-addController("VideoController")
+action setup [
+  selectElement("#title")
+  addController("DOMEventListenerController", "click", ["highlight"])
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..2s setup()
+}
 ```
 
-**Compilation**: Expands to `getControllerInstance()` + `addControllerToElement()` operations.
+**Compilation**: `addController` expands to `getControllerInstance` (the controller's name) + `addControllerToElement` (the positional arguments under their parameter names). `eligian compile`, ids replaced as in §11.2. JSON path: `actions[1]`.
+
+```json
+{
+  "id": "<id>",
+  "name": "setup",
+  "startOperations": [
+    {
+      "id": "<id>",
+      "systemName": "selectElement",
+      "operationData": {
+        "selector": "#title"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "getControllerInstance",
+      "operationData": {
+        "systemName": "DOMEventListenerController"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "addControllerToElement",
+      "operationData": {
+        "eventName": "click",
+        "actions": [
+          "highlight"
+        ]
+      }
+    }
+  ],
+  "endOperations": []
+}
+```
 
 **IDE Support**:
 - **Controller name autocomplete**: Type `addController(` and press Ctrl+Space to see all available controllers
   - Dual completion modes:
     - `addController(` → Ctrl+Space → Inserts `"LabelController"` (with quotes)
     - `addController("Lab` → Filters to matching controllers
-- **Label ID autocomplete**: For `LabelController`, the second parameter suggests imported label IDs
+- **Label ID autocomplete**: For `LabelController`, the second argument suggests imported label IDs
 - **Hover documentation**: Hover over controller names to see parameters and descriptions
 
 ### 8.2 Variable Declarations
@@ -2746,11 +2906,28 @@ action fadeIn(selector: string, duration: number) [
 
 ### 11.2 Output Format
 
-Eligian compiles to Eligius JSON configuration:
+Eligian compiles to an Eligius JSON configuration. The JSON blocks of §11.2–§11.4 are real `eligian compile` output for the snippet above them. Every `id` in the output is a random UUID, new on every compile, so the blocks show `"<id>"` instead: every `id` value is replaced, and so is any other string equal to one of them.
+
+The snippets of §11.2–§11.4 are compiled next to this `layout.html`:
+
+```html
+<div id="app">
+  <h1 id="title">Title</h1>
+</div>
+```
+
+and this `styles.css`:
+
+```css
+.on { font-weight: bold; }
+```
 
 **Input** (Eligian):
 
 ```eligian
+styles "./styles.css"
+layout "./layout.html"
+
 action fadeIn(selector: string) [
   selectElement(selector)
   animate({opacity: 1}, 1000)
@@ -2761,51 +2938,273 @@ timeline "main" in "#app" using raf {
 }
 ```
 
-**Output** (Eligius JSON):
+**Output**: `eligian compile`, ids replaced. JSON path: `$` (the whole document).
 
 ```json
 {
-  "actions": {
-    "fadeIn": {
-      "operations": [
+  "$schema": "https://rolandzwaga.github.io/eligius/jsonschema/eligius-configuration.json",
+  "id": "<id>",
+  "engine": {
+    "systemName": "EligiusEngine"
+  },
+  "containerSelector": "#eligius-container",
+  "language": "en-US",
+  "layoutTemplate": "<div id=\"app\">\n  <h1 id=\"title\">Title</h1>\n</div>\n",
+  "cssFiles": [
+    "./styles.css"
+  ],
+  "availableLanguages": [
+    {
+      "id": "<id>",
+      "languageCode": "en-US",
+      "label": "English"
+    }
+  ],
+  "initActions": [],
+  "actions": [
+    {
+      "id": "<id>",
+      "name": "fadeIn",
+      "startOperations": [
         {
-          "type": "selectElement",
-          "parameters": [] // at runtime the selector argument will be set by the calling site
+          "id": "<id>",
+          "systemName": "selectElement"
         },
         {
-          "type": "animate",
-          "parameters": [{"opacity": 1}, 1000]
+          "id": "<id>",
+          "systemName": "animate",
+          "operationData": {
+            "animationProperties": {
+              "opacity": 1
+            },
+            "animationDuration": 1000
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  ],
+  "eventActions": [],
+  "timelines": [
+    {
+      "id": "<id>",
+      "uri": "main",
+      "type": "animation",
+      "duration": 2,
+      "loop": false,
+      "selector": "#app",
+      "timelineActions": [
+        {
+          "id": "<id>",
+          "name": "timeline-action-0-2",
+          "startOperations": [
+            {
+              "id": "<id>",
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "fadeIn"
+              }
+            },
+            {
+              "id": "<id>",
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ],
+          "endOperations": [],
+          "duration": {
+            "start": 0,
+            "end": 2
+          }
         }
       ]
     }
-  },
-  "timeline": {
-    "name": "main",
-    "container": "#app",
-    "provider": "raf",
-    "events": [
-      {
-        "start": 0,
-        "end": 2000,
-        "action": "fadeIn",
-        "parameters": {"selector": "#title"}
+  ],
+  "timelineProviderSettings": {
+    "animation": {
+      "positionSource": {
+        "systemName": "RafPositionSource"
       }
-    ]
+    }
   }
 }
 ```
 
+- **Actions** are in `actions[]`: `{ id, name, startOperations, endOperations }`. Every operation is `{ id, systemName, operationData }`; `operationData` is left out when the operation has none.
+- **Arguments become `operationData` properties**, named after the operation's parameters (`animate({opacity: 1}, 1000)` → `animationProperties`, `animationDuration`). An argument that forwards the action's parameter of the same name is left out, because `startAction` already puts that parameter in the operation data: `selectElement(selector)` emits a bare `selectElement` (`compiler/transformers/operation-transformer.ts:132-145`). A parameter with another name stays: in `action fadeIn(sel: string)`, `selectElement(sel)` emits `"operationData": { "selector": "$operationdata.sel" }`.
+- **Timelines** are in `timelines[]`. Each `at` event is a `timelineActions[]` entry whose `duration` is `{ start, end }` in **seconds**; the timeline's own `duration` is in seconds too. Operation arguments keep their own units: `animationDuration` is in milliseconds. `using raf` gives `"type": "animation"` and the `RafPositionSource` under `timelineProviderSettings`.
+- **An action call** in an event is a pair of operations: `requestAction` (the action's name in `systemName`), then `startAction` with the arguments in `actionOperationData`, keyed by parameter name.
+- Without a `languages` block the configuration gets `"language": "en-US"` and one `availableLanguages` entry (English).
+
 ### 11.3 Syntactic Sugar Transformations
 
-| Eligian Syntax | Compiles To |
-|----------------|-------------|
-| `if (cond) { ops }` | `when(cond)`, ops, `endWhen()` |
-| `if (cond) { a } else { b }` | `when(cond)`, a, `otherwise()`, b, `endWhen()` |
-| `for (item in list) { ops }` | `forEach(list)`, ops, `endForEach()` |
-| `break` | `breakForEach()` |
-| `continue` | `continueForEach()` |
-| `@@currentItem` | `"$scope.currentItem"` (string) |
-| `@varName` | `"$scope.variables.varName"` (string) |
+Each row is one action of the probe below; the third column is that action's compiled `startOperations`, written `systemName(operationData)` with the ids left out (`()` when the operation has no `operationData` or an empty one).
+
+| Eligian | Probe action | Emitted `startOperations` |
+|---------|--------------|---------------------------|
+| `if (mode == "a") { log("a") }` | `ifThen` | `when({"expression":"$operationdata.mode == 'a'"})`, `log({"logValue":"a"})`, `endWhen()` |
+| `if (mode == "a") { log("a") } else { log("other") }` | `ifElse` | `when({"expression":"$operationdata.mode == 'a'"})`, `log({"logValue":"a"})`, `otherwise()`, `log({"logValue":"other"})`, `endWhen()` |
+| `for (item in items) { log("tick") }` | `eachItem` | `forEach({"collection":"$operationdata.items","itemName":"item"})`, `log({"logValue":"tick"})`, `endForEach()` |
+| `for (item in items) { if (@@currentItem == "stop") { break } }` | `breakLoop` | `forEach({"collection":"$operationdata.items","itemName":"item"})`, `when({"expression":"$scope.currentItem == 'stop'"})`, `breakForEach()`, `endWhen()`, `endForEach()` |
+| `for (item in items) { if (@@loopIndex == 0) { continue } }` | `continueLoop` | `forEach({"collection":"$operationdata.items","itemName":"item"})`, `when({"expression":"$scope.loopIndex == 0"})`, `continueForEach()`, `endWhen()`, `endForEach()` |
+| `for (item in items) { log(@@currentItem) }` | `currentItem` | `forEach({"collection":"$operationdata.items","itemName":"item"})`, `setOperationData({"properties":{"logValue":"$scope.currentItem"}})`, `log()`, `endForEach()` |
+| `const chosen = mode` `log(@chosen)` | `variable` | `setOperationData({"properties":{"value":"$operationdata.mode"}})`, `setVariable({"name":"chosen"})`, `setOperationData({"properties":{"logValue":"$scope.variables.chosen"}})`, `log()` |
+| `const greeting = "hello"` `log(@greeting)` | `folded` | `log({"logValue":"hello"})` |
+| `ifThen("b")` | `callsIfThen` | `requestAction({"systemName":"ifThen"})`, `startAction({"actionOperationData":{"mode":"b"}})` |
+
+The probe:
+
+```eligian
+styles "./styles.css"
+layout "./layout.html"
+
+action ifThen(mode: string) [
+  if (mode == "a") {
+    log("a")
+  }
+]
+
+action ifElse(mode: string) [
+  if (mode == "a") {
+    log("a")
+  } else {
+    log("other")
+  }
+]
+
+action eachItem(items: array) [
+  for (item in items) {
+    log("tick")
+  }
+]
+
+action breakLoop(items: array) [
+  for (item in items) {
+    if (@@currentItem == "stop") {
+      break
+    }
+  }
+]
+
+action continueLoop(items: array) [
+  for (item in items) {
+    if (@@loopIndex == 0) {
+      continue
+    }
+  }
+]
+
+action currentItem(items: array) [
+  for (item in items) {
+    log(@@currentItem)
+  }
+]
+
+action variable(mode: string) [
+  const chosen = mode
+  log(@chosen)
+]
+
+action folded() [
+  const greeting = "hello"
+  log(@greeting)
+]
+
+action callsIfThen() [
+  ifThen("b")
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..1s callsIfThen()
+}
+```
+
+- Conditions and loop collections are strings that Eligius resolves at runtime: a parameter becomes `$operationdata.<name>`, `@@name` becomes `$scope.<name>` (the loop variable, `@@item` in `for (item in …)`, becomes `$scope.currentItem`), and string literals are single-quoted (`"a"` → `'a'`).
+- `log`, like most operations, does not resolve property chains in its arguments. An argument that holds one is moved into a `setOperationData` just before the operation, which resolves it (`compiler/transformers/runtime-values.ts:1-31`); see `currentItem` and `variable`.
+- A `const` with a non-literal value becomes `setVariable` (the value arrives through `setOperationData` as `value`) and is read back as `$scope.variables.<name>`. A `const` with a literal value is folded into its uses and emits nothing (`folded`); so is a program-level `const` with a literal value.
+- `break` and `continue` are only valid inside a `for` loop.
+
+### 11.4 Erased parameters
+
+Some Eligius operations remove properties from the operation data after they ran (`erased` in the operation metadata): `selectElement` removes `selector`. An action's parameters live in the operation data under their own names, so when an operation erases a property named like a parameter, that parameter is gone for the rest of the block.
+
+When the block still uses the parameter after such a statement (later in the same start or end block, or anywhere in a `for` loop around the statement, which runs again), the compiler saves the parameter to `__eligian_param_<name>` with a `setOperationData` before the statement's operations, and copies it back with a second `setOperationData` after them (`compiler/transformers/erased-parameters.ts`: `preserveErasedParameters`, `usedAgain`). The start and end blocks each begin with fresh operation data, so a use in the other block does not count. A statement after which the parameter is not used again is not wrapped.
+
+**Input** (Eligian):
+
+```eligian
+styles "./styles.css"
+layout "./layout.html"
+
+action flash(selector: string) [
+  selectElement(selector)
+  addClass("on")
+  selectElement(selector)
+  removeClass("on")
+]
+
+timeline "main" in "#app" using raf {
+  at 0s..1s flash("#title")
+}
+```
+
+**Output**: `eligian compile`, ids replaced. JSON path: `actions[0]`.
+
+```json
+{
+  "id": "<id>",
+  "name": "flash",
+  "startOperations": [
+    {
+      "id": "<id>",
+      "systemName": "setOperationData",
+      "operationData": {
+        "properties": {
+          "__eligian_param_selector": "$operationdata.selector"
+        }
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "selectElement"
+    },
+    {
+      "id": "<id>",
+      "systemName": "setOperationData",
+      "operationData": {
+        "properties": {
+          "selector": "$operationdata.__eligian_param_selector"
+        }
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "addClass",
+      "operationData": {
+        "className": "on"
+      }
+    },
+    {
+      "id": "<id>",
+      "systemName": "selectElement"
+    },
+    {
+      "id": "<id>",
+      "systemName": "removeClass",
+      "operationData": {
+        "className": "on"
+      }
+    }
+  ],
+  "endOperations": []
+}
+```
+
+The first `selectElement(selector)` is wrapped, because the second one reads `selector` again; the second is not, because nothing after it does.
 
 ---
 
@@ -2815,17 +3214,41 @@ The Eligian DSL provides comprehensive CSS support with real-time validation, ho
 
 ### 12.1 CSS File Imports
 
-Import CSS files using the `styles` keyword:
+Import a CSS file with the `styles` keyword. A document has **one** `styles` import: a second one is an error (`import-duplicate-default`, from the Typir rule in `type-system-typir/validation/import-validation.ts`):
+
+```text
+Duplicate 'styles' import. Only one styles import is allowed per document.
+```
+
+More stylesheets are loaded with named CSS imports (§3.2.2). `cssFiles` lists the `styles` file, then the named CSS import. Compiled next to the `layout.html` and `styles.css` of §11.2, plus a `theme.css`:
 
 ```eligian
 styles "./styles.css"
-styles "./theme.css"
-styles "./animations.css"
+layout "./layout.html"
+import theme from "./theme.css"
+
+timeline "main" in "#app" using raf {
+  at 0s..2s [
+    selectElement("#title")
+    addClass("on")
+  ] [
+    selectElement("#title")
+    removeClass("on")
+  ]
+}
+```
+
+`eligian compile`. JSON path: `cssFiles`.
+
+```json
+[
+  "./styles.css",
+  "./theme.css"
+]
 ```
 
 **Key Features**:
-- Multiple CSS files can be imported (loaded in order)
-- **Path Resolution**: CSS file paths are resolved **relative to the `.eligian` source file's directory**, not the workspace root
+- **Path Resolution**: CSS file paths are resolved **relative to the `.eligian` source file's directory**, not the workspace root. A file that does not exist there is an error (`css-import-error`)
 - CSS files are parsed using PostCSS for class/ID extraction
 - Imported CSS is automatically loaded into VS Code preview with hot-reload
 
@@ -2835,15 +3258,25 @@ Project Structure:
   workspace-root/
     examples/
       demo.eligian         ← Source file
-      demo-styles.css      ← CSS file
+      layout.html
     styles/
-      global.css
+      global.css           ← CSS file
 ```
 
 ```eligian
 // In examples/demo.eligian:
-styles "./demo-styles.css"      // ✅ Resolved to: workspace-root/examples/demo-styles.css
 styles "../styles/global.css"   // ✅ Resolved to: workspace-root/styles/global.css
+layout "./layout.html"
+
+timeline "main" in "#app" using raf {
+  at 0s..2s [
+    selectElement("#title")
+    addClass("on")
+  ] [
+    selectElement("#title")
+    removeClass("on")
+  ]
+}
 ```
 
 **Important**: CSS paths are always relative to the source file's location, ensuring consistent behavior regardless of where VS Code is opened or how the compiler is invoked.

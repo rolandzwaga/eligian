@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"examples/libraries/nested/b.eligian\",\n    \"library\": true,\n    \"timelines\": [],\n    \"problems\": []\n  }\n]\n"
+}

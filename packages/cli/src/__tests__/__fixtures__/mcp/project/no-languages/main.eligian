@@ -1,0 +1,7 @@
+// eligian_project (SC-005): a program without a languages block, so locales.languages is []
+// (not the en-US fallback of extractLanguageCodes).
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#stage") ] []
+}

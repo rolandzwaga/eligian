@@ -1,0 +1,13 @@
+// The dev-runtime-error fixture (spec 058 phase 4, SC-004 / SC-009): the enter
+// block calls a host operation that throws, so the engine reports a runtime error.
+layout "./layout.html"
+styles "./styles.css"
+
+extensions "./host.ts" {
+  operation boom()
+}
+
+timeline "Intro" in "#stage" using raf {
+  on enter [ boom() ]
+  at 0s..1s [ selectElement("#a") addClass("on") ] [ selectElement("#a") removeClass("on") ]
+}

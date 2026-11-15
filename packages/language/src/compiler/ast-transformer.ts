@@ -45,6 +45,7 @@ import {
   createDefaultConfiguration,
   generateLayoutTemplate,
   generateTimelineProviderSettings,
+  stripEventActionSourceLocation,
   stripSourceLocation,
   transformLanguagesBlock,
 } from './transformers/config-builder.js';
@@ -63,6 +64,7 @@ import { buildTimelineConfig } from './transformers/timeline-transformer.js';
 import type {
   EligiusIR,
   EndableActionIR,
+  EventActionIR,
   IEndableActionConfiguration,
   IEngineConfiguration,
   IEventActionConfiguration,
@@ -73,6 +75,7 @@ import type {
   TimelineConfigIR,
   TTimelineProviderSettings,
 } from './types/eligius-ir.js';
+import { ELIGIAN_VERSION } from './version.js';
 
 // Re-exported for backward compatibility: these were defined in this module
 // before the W2 decomposition and are imported from here by tests and callers.
@@ -158,6 +161,7 @@ export const transformAST = (
               column: 1,
               length: 0,
             },
+        origin: 'init-globaldata',
       };
 
       // Wrap operation in proper IEndableActionConfiguration structure
@@ -229,7 +233,7 @@ export const transformAST = (
     // T011: Extract and transform event action definitions (Feature 028 - User Story 1)
     // Event actions call actions from the program's scope (local + imported).
     const eventActionNodes = getEventActions(program);
-    const eventActions: IEventActionConfiguration[] = [];
+    const eventActions: EventActionIR[] = [];
     for (const eventActionDef of eventActionNodes) {
       const eventAction = yield* transformEventAction(
         eventActionDef,
@@ -265,7 +269,9 @@ export const transformAST = (
     // Convert IR types to Eligius types (strip sourceLocation)
     const eligiusInitActions: IEndableActionConfiguration[] = initActions.map(stripSourceLocation);
     const eligiusActions: IEndableActionConfiguration[] = actions.map(stripSourceLocation);
-    const eligiusEventActions: IEventActionConfiguration[] = eventActions; // T011: Use transformed event actions
+    const eligiusEventActions: IEventActionConfiguration[] = eventActions.map(
+      stripEventActionSourceLocation
+    );
     const eligiusTimelines: ITimelineConfiguration[] = timelines.map(
       convertTimelineConfigToEligius
     );
@@ -275,7 +281,7 @@ export const transformAST = (
       getSourceLocation(program),
       initActions,
       actions,
-      [],
+      eventActions,
       timelines
     );
 
@@ -322,7 +328,7 @@ export const transformAST = (
       ...(host ? { host } : {}),
       metadata: {
         dslVersion: '1.0.0',
-        compilerVersion: '0.0.1',
+        compilerVersion: ELIGIAN_VERSION,
         compiledAt: new Date().toISOString(),
         sourceFile: undefined,
       },

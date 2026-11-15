@@ -1,0 +1,18 @@
+# T028 (FR-030, SC-012) — 2026-11-04
+$ grep -n -A6 '\[demo.eligian\]' examples/README.md
+28:- **[demo.eligian](demo.eligian)** - feature inventory, not idiom: a presentation that exercises
+29-  every language feature, not a model of how to write one. It is excluded from the MCP example
+30-  corpus and the evals, and it does not pass `check --selector-not-in-layout ids --max-warnings 0`
+31-  (13 warnings); it passes `check:examples`, `smoke:examples` and `fmt:examples`. Features covered:
+32-  - Asset imports (CSS, HTML, libraries)
+33-  - Constants (all Eligius types: string, number, boolean, array, object)
+34-  - Custom actions with JSDoc documentation
+
+$ git diff --stat examples/demo.eligian
+(empty)
+
+$ node packages/cli/bin/cli.js check examples/demo.eligian --selector-not-in-layout ids --max-warnings 0
+
+1 file, 0 errors, 13 warnings
+Too many warnings: 13 (maximum 0)
+exit: 1

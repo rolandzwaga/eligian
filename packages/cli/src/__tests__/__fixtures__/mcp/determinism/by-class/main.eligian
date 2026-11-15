@@ -1,0 +1,11 @@
+// Determinism: the range adds class "in" to #box through its class selector, and nothing removes it
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 1s..3s [
+    selectElement(".marker")
+    addClass("in")
+  ] []
+  at 0s..5s [ log("playing") ] []
+}

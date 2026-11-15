@@ -1,0 +1,19 @@
+T047 operation overlays, batch 2 — 2026-11-05T20:08:50Z, HEAD b62b762350146d38ea78cf2d535c60a515d3ca06
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T047
+generate-knowledge: 416 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T047
+exit 0
+$ per-name check: generated/operations/<name>.md contains the card and a compiled fence; card words
+ok   createElement: card 50 words, in chunk true, probe fences 1, compiled fences 1
+ok   customFunction: card 51 words, in chunk true, probe fences 1, compiled fences 1
+ok   endAction: card 55 words, in chunk true, probe fences 1, compiled fences 1
+ok   endForEach: card 49 words, in chunk true, probe fences 1, compiled fences 1
+ok   endWhen: card 48 words, in chunk true, probe fences 1, compiled fences 1
+ok   extendController: card 42 words, in chunk true, probe fences 1, compiled fences 1
+ok   filterArray: card 47 words, in chunk true, probe fences 1, compiled fences 1
+ok   findInArray: card 50 words, in chunk true, probe fences 1, compiled fences 1
+ok   forEach: card 50 words, in chunk true, probe fences 1, compiled fences 1
+ok   formatDate: card 43 words, in chunk true, probe fences 1, compiled fences 1
+ok   formatText: card 35 words, in chunk true, probe fences 1, compiled fences 1
+ok   getAttributesFromElement: card 39 words, in chunk true, probe fences 1, compiled fences 1
+12/12 ok
+exit 0

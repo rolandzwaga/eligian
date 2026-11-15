@@ -1,0 +1,22 @@
+# T054 — static-import and no-Effect.promise rules over packages/cli/src/mcp (FR-003; plan C3)
+# Run: 2026-11-05T00:33:59Z in f:/projects/eligius/eligian (Git Bash)
+
+$ grep -rnE "from ['\"]effect/ai['\"]" packages/cli/src/mcp | grep -v "import type"
+<no output>
+-> lines: 0
+
+$ grep -rn "Effect.promise" packages/cli/src/mcp
+<no output>
+-> lines: 0
+
+# Context (not part of the rule): every effect/ai reference under src/mcp
+$ grep -rn "effect/ai" packages/cli/src/mcp
+packages/cli/src/mcp/knowledge/render.ts:4: * and the docs generator, which runs under tsx: no Effect, no `effect/ai`.
+packages/cli/src/mcp/paths.ts:19:/** The `effect/ai` module; files under `src/mcp/` take it as a parameter (lazy import, FR-003). */
+packages/cli/src/mcp/paths.ts:20:export type EffectAi = typeof import('effect/ai');
+packages/cli/src/mcp/server.ts:4: * `effect/ai` is loaded here only, with a dynamic `import('effect/ai')` at server start (FR-003);
+packages/cli/src/mcp/server.ts:16:import type { McpProtocol } from 'effect/ai';
+packages/cli/src/mcp/server.ts:63:  const ai = await import('effect/ai');
+packages/cli/src/mcp/tools/init.ts:7: * `effect/ai`'s `Tool` is `@stability unstable` (roadmap §2, decision 1: `effect` is pinned exactly).
+
+# Result: both rule greps empty; no hit to fix. The only runtime load is the dynamic import('effect/ai') in server.ts; the other references are type-only (import type / typeof import) or comments.

@@ -1,0 +1,8 @@
+// set-data-validator.ts: a setData key without the '$' target prefix
+styles "./styles.css"
+action show [
+  setData({ "operationdata.name": "x" })
+]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

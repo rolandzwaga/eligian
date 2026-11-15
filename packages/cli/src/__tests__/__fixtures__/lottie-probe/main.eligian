@@ -1,0 +1,14 @@
+styles "./styles.css"
+layout "./layout.html"
+
+timeline "Animation" in "#stage" using raf {
+  on enter [
+    selectElement("#box")
+    loadJson("./anim.json")
+    addController("LottieController")
+  ]
+  on leave [
+    with "#box" { removeControllerFromElement("LottieController") }
+  ]
+  at 0s..2s [ selectElement("#box") addClass("on") ] [ selectElement("#box") removeClass("on") ]
+}

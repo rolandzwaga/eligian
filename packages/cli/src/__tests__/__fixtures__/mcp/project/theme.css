@@ -1,0 +1,7 @@
+.visible {
+  opacity: 1;
+}
+
+#banner {
+  display: block;
+}

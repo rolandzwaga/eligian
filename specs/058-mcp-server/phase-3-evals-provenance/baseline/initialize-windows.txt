@@ -1,0 +1,11 @@
+$ pnpm -C packages/cli run test:bin --reporter=default   (Windows, local; the initialize timing line and the summary)
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s
+mcp initialize answered in 589 ms
+     ✓ mcp answers initialize in under 3 s 598ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  21:52:08
+   Duration  9.28s (tests 95%, import 5%)
+
+exit 0

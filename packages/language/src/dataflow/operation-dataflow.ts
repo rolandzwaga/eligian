@@ -61,6 +61,7 @@ import {
 } from '../generated/ast.js';
 import { OperationDataTracker } from '../operation-data-tracker.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
+import { diagnosticCode } from '../validators/codes.js';
 
 export type ActionPhase = 'start' | 'end';
 
@@ -104,7 +105,7 @@ const DOM_EVENT_CONTROLLER = 'DOMEventListenerController';
  * listener and (Eligius 3.1) the KeyboardController.
  */
 const KEYBOARD_CONTROLLER = 'KeyboardController';
-const ACTION_CONTROLLERS: ReadonlySet<string> = new Set([
+export const ACTION_CONTROLLERS: ReadonlySet<string> = new Set([
   DOM_EVENT_CONTROLLER,
   KEYBOARD_CONTROLLER,
 ]);
@@ -395,7 +396,7 @@ export class OperationDataflow {
     for (const requirement of this.contractOf({ action: callee, phase }).values()) {
       if (state.hasProperty(requirement.property)) continue;
       this.unmet(requirement.property, call, state, ctx, {
-        code: 'missing-action-dependency',
+        code: diagnosticCode('missing-action-dependency'),
         requirement,
         message: `Action '${callee.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available here - ensure it is created before calling '${callee.name}'${providerHint(requirement.property)}`,
       });
@@ -442,7 +443,7 @@ export class OperationDataflow {
         if (state.hasProperty(requirement.property)) continue;
         report({
           node: element,
-          code: 'missing-action-dependency',
+          code: diagnosticCode('missing-action-dependency'),
           message: `Action '${name}' requires '${requirement.property}' (${usedBy(requirement)}), which ${controller.value} does not provide: it starts its actions with only eventTarget, eventKey and actionOperationData${providerHint(requirement.property)}`,
         });
       }
@@ -473,7 +474,7 @@ export class OperationDataflow {
       if (state.hasProperty(requirement.property)) continue;
       report({
         node: call,
-        code: 'missing-action-dependency',
+        code: diagnosticCode('missing-action-dependency'),
         message: `Action '${action.name}' requires '${requirement.property}' (${usedBy(requirement)}), which is not available when the event runs it: ${controller} starts it with only eventTarget, eventKey and its arguments${providerHint(requirement.property)}`,
       });
     }
@@ -503,7 +504,7 @@ export class OperationDataflow {
   ): void {
     for (const property of state.missingDependencies(operation)) {
       this.unmet(property, node, state, ctx, {
-        code: 'missing-dependency',
+        code: diagnosticCode('missing-dependency'),
         requirement: { property, operation, action: ctx.owner },
         message: `Property '${property}' is not available - ensure it is created by a previous operation${providerHint(property)}`,
       });
@@ -528,7 +529,7 @@ export class OperationDataflow {
       ctx.report?.({
         node,
         property: isOperationCall(node) ? 'operationName' : undefined,
-        code: 'erased-property-access',
+        code: diagnosticCode('erased-property-access'),
         message: `Property '${property}' is not available - it was erased by operation '${erasure.operation}'`,
       });
       return;

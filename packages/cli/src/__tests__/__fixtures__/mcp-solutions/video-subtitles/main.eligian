@@ -1,0 +1,48 @@
+layout "./layout.html"
+styles "./styles.css"
+
+/** Show a view: selects it and adds .is-active */
+action showView(selector: string) [
+  selectElement(selector)
+  addClass("is-active")
+]
+
+/** Hide a view again */
+action hideView(selector: string) [
+  selectElement(selector)
+  removeClass("is-active")
+]
+
+// The entry view: a raf timeline, so the click on #start is the play gesture the video needs
+timeline "Start" in "#stage" using raf {
+  on enter [
+    showView("#start-view")
+    on click "#start" navigate "Video"
+  ]
+  on leave [
+    hideView("#start-view")
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}
+
+// The video's playback position drives the captions
+timeline "Video" in "#player" using video from "./media/intro.mp4" duration 30s {
+  on enter [
+    showView("#video-view")
+    // The controller sets the width of the fill inside the #progress bar; a click on the bar seeks
+    selectElement("#progress .progress-fill")
+    addController("ProgressbarController")
+  ]
+  on leave [
+    hideView("#video-view")
+    selectElement("#progress .progress-fill")
+    removeControllerFromElement("ProgressbarController")
+  ]
+
+  at 2s..7s target "#caption-1" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 8s..13s target "#caption-2" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 14s..19s target "#caption-3" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 20s..25s target "#caption-4" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 26s..29s target "#caption-5" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+}

@@ -283,13 +283,56 @@ function mapHolderRefs(holder: unknown, map: (ref: string) => string, direct: bo
 }
 
 /**
+ * True when a `loadJson` url is a local, relative file a bundle can carry:
+ * not `http:`, `https:`, `data:`, `blob:`, `//` or `/`-rooted.
+ */
+function isLocalRelativeUrl(ref: unknown): ref is string {
+  return isLocalRef(ref) && !ref.startsWith('/') && !ref.startsWith('blob:');
+}
+
+interface OperationLike {
+  systemName: string;
+  operationData?: object;
+}
+
+/**
+ * Map the `operationData.url` of each `loadJson` operation in one list: a file
+ * the runtime fetches (the `http*` operations address endpoints, not files).
+ */
+function mapOperationUrls<T extends OperationLike>(
+  operations: readonly T[],
+  map: (ref: string) => string
+): T[] {
+  return operations.map(operation => {
+    const url = (operation.operationData as { url?: unknown } | undefined)?.url;
+    return operation.systemName === 'loadJson' && isLocalRelativeUrl(url)
+      ? { ...operation, operationData: { ...operation.operationData, url: map(url) } }
+      : operation;
+  });
+}
+
+/** Map the `loadJson` urls of an action's start and end operation lists. */
+function mapActionUrls<
+  T extends { startOperations: OperationLike[]; endOperations?: OperationLike[] },
+>(action: T, map: (ref: string) => string): T {
+  return {
+    ...action,
+    startOperations: mapOperationUrls(action.startOperations, map),
+    ...(action.endOperations ? { endOperations: mapOperationUrls(action.endOperations, map) } : {}),
+  };
+}
+
+/**
  * Apply `map` to every local media reference in an Eligius configuration and
  * return the resulting (copied) configuration.
  *
  * Covered: `timelineProviderSettings.*.src/path`,
  * `timelineProviderSettings.*.positionSource.sources[].src` and per-timeline
- * `timelines[].positionSource.sources[].src`. `timeline.uri` is deliberately
- * NOT touched: it is an identifier, not a file the runtime fetches.
+ * `timelines[].positionSource.sources[].src`, and the local, relative
+ * `operationData.url` of every `loadJson` operation in the start and end lists
+ * of `initActions`, `actions`, `eventActions` and `timelines[].timelineActions`.
+ * `timeline.uri` is deliberately NOT touched: it is an identifier, not a file
+ * the runtime fetches.
  */
 export function mapConfigAssetRefs(
   config: IEngineConfiguration,
@@ -307,9 +350,22 @@ export function mapConfigAssetRefs(
   }
 
   if (config.timelines) {
-    result.timelines = config.timelines.map(
-      timeline => mapHolderRefs(timeline, map, false) as (typeof config.timelines)[number]
-    );
+    result.timelines = config.timelines.map(timeline => {
+      const mapped = mapHolderRefs(timeline, map, false) as (typeof config.timelines)[number];
+      return timeline.timelineActions
+        ? { ...mapped, timelineActions: timeline.timelineActions.map(a => mapActionUrls(a, map)) }
+        : mapped;
+    });
+  }
+
+  if (config.initActions) {
+    result.initActions = config.initActions.map(action => mapActionUrls(action, map));
+  }
+  if (config.actions) {
+    result.actions = config.actions.map(action => mapActionUrls(action, map));
+  }
+  if (config.eventActions) {
+    result.eventActions = config.eventActions.map(action => mapActionUrls(action, map));
   }
 
   return result;

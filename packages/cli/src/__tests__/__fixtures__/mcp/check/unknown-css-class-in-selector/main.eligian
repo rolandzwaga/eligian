@@ -1,0 +1,7 @@
+// A mistyped class in a selector: unknown_css_class_in_selector, suggesting item
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement(".itme") addClass("lit") ] [ selectElement(".item") removeClass("lit") ]
+}

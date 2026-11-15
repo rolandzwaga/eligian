@@ -1,0 +1,32 @@
+{
+  "en-US": {
+    "hub": { "title": "Our product story" },
+    "problem": {
+      "title": "The problem",
+      "text": "Presentations are hard to keep in sync with their content."
+    },
+    "solution": {
+      "title": "The solution",
+      "text": "Write the presentation as code and let the compiler check it."
+    },
+    "results": {
+      "title": "The results",
+      "text": "Fewer broken slides, and every change reviewed like code."
+    }
+  },
+  "nl-NL": {
+    "hub": { "title": "Ons productverhaal" },
+    "problem": {
+      "title": "Het probleem",
+      "text": "Presentaties lopen moeilijk gelijk met hun inhoud."
+    },
+    "solution": {
+      "title": "De oplossing",
+      "text": "Schrijf de presentatie als code en laat de compiler haar controleren."
+    },
+    "results": {
+      "title": "De resultaten",
+      "text": "Minder kapotte slides, en elke wijziging beoordeeld als code."
+    }
+  }
+}

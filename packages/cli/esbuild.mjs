@@ -11,7 +11,9 @@
 //   node esbuild.mjs               development: source maps
 //   node esbuild.mjs --production  npm (prepack): minified, names kept, no source maps
 //   node esbuild.mjs --watch
+import { spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
@@ -22,12 +24,17 @@ const minify = production || process.argv.includes('--minify');
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(here, 'package.json'), 'utf-8'));
+// The installed eligius, for getCompilerVersion(); a resolution failure fails the build
+const eligiusVersion = JSON.parse(
+  readFileSync(createRequire(import.meta.url).resolve('eligius/package.json'), 'utf-8')
+).version;
 
 /** The workspace packages, by import specifier: their TypeScript entry points */
 const WORKSPACE_SOURCES = {
   '@eligian/language': '../language/src/index.ts',
   '@eligian/language/eligius-lint': '../language/src/compiler/eligius-lint.ts',
   '@eligian/language/errors': '../language/src/errors/index.ts',
+  '@eligian/language/mcp': '../language/src/mcp.ts',
   '@eligian/shared-utils': '../shared-utils/src/index.ts',
 };
 
@@ -73,6 +80,25 @@ const plugins = [
 // Nothing stale (an old source map) in a published package
 if (production) rmSync(path.join(here, 'dist'), { recursive: true, force: true });
 
+// The MCP server's knowledge (dist/docs), in every mode: after the rmSync above,
+// so that prepack (build:prod) ships it. A generator failure fails the build.
+const generated = spawnSync(
+  process.execPath,
+  [
+    createRequire(import.meta.url).resolve('tsx/cli'),
+    'scripts/generate-knowledge.ts',
+    '--out',
+    'dist/docs',
+  ],
+  { cwd: here, stdio: 'inherit' }
+);
+if (generated.status !== 0) {
+  console.error(
+    `generate-knowledge failed (${generated.error?.message ?? `exit ${generated.status ?? generated.signal}`})`
+  );
+  process.exit(generated.status || 1);
+}
+
 const cliCtx = await esbuild.context({
   entryPoints: ['src/main.ts'],
   outfile: 'dist/cli.mjs',
@@ -81,6 +107,11 @@ const cliCtx = await esbuild.context({
   format: 'esm', // ESM format required for top-level await and import.meta
   loader: { '.ts': 'ts' },
   platform: 'node',
+  // The versions read by @eligian/language's compiler/version.ts
+  define: {
+    __ELIGIAN_VERSION__: JSON.stringify(pkg.version),
+    __ELIGIUS_VERSION__: JSON.stringify(eligiusVersion),
+  },
   // This package's dependencies and their subpaths (eligius/lint, ...)
   external: Object.keys(pkg.dependencies ?? {}).flatMap(name => [name, `${name}/*`]),
   // Bundled CommonJS dependencies may call require() for Node built-ins
@@ -94,9 +125,34 @@ const cliCtx = await esbuild.context({
   plugins,
 });
 
+// The eval assertion library and the gate's step logic (spec 058 FR-083), for the
+// harness under evals/mcp/: built with the CLI in every mode, never packed (`files`
+// does not list dist/evals). main.ts never imports src/mcp/evals/.
+const evalsCtx = await esbuild.context({
+  entryPoints: ['src/mcp/evals/assert.ts'],
+  outfile: 'dist/evals/assert.mjs',
+  bundle: true,
+  target: 'ES2022',
+  format: 'esm',
+  loader: { '.ts': 'ts' },
+  platform: 'node',
+  define: {
+    __ELIGIAN_VERSION__: JSON.stringify(pkg.version),
+    __ELIGIUS_VERSION__: JSON.stringify(eligiusVersion),
+  },
+  external: Object.keys(pkg.dependencies ?? {}).flatMap(name => [name, `${name}/*`]),
+  banner: {
+    js: "import { createRequire as __eligianCreateRequire } from 'node:module';\nconst require = __eligianCreateRequire(import.meta.url);",
+  },
+  sourcemap: !minify,
+  minify,
+  keepNames: minify,
+  plugins,
+});
+
 if (watch) {
-  await cliCtx.watch();
+  await Promise.all([cliCtx.watch(), evalsCtx.watch()]);
 } else {
-  await cliCtx.rebuild();
-  cliCtx.dispose();
+  await Promise.all([cliCtx.rebuild(), evalsCtx.rebuild()]);
+  await Promise.all([cliCtx.dispose(), evalsCtx.dispose()]);
 }

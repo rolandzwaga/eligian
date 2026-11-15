@@ -1,0 +1,14 @@
+// media-file-missing through compileFile: the video file does not exist
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Clip" in "#player" using video
+  from "./media/missing.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+  on leave [
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}

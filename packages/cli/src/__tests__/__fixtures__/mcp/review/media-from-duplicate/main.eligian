@@ -1,0 +1,23 @@
+// media-from-duplicate through checkPaths: two video timelines play the same file
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Intro" in "#player" using video from "./media/clip.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+  on leave [
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}
+
+timeline "Outro" in "#player" using video from "./media/clip.mp4" {
+  on enter [
+    on click "#start" play
+  ]
+  on leave [
+    selectElement("#start")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+}

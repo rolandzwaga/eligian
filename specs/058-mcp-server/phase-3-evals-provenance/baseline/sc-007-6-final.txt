@@ -1,0 +1,2 @@
+$ grep -n "function controllerBalance\|function walk\|function check[A-Z]" evals/mcp/gate.ts
+(grep exit 1: no match)

@@ -1,0 +1,18 @@
+T048 batch verify (2026-11-05T20:06:21Z), HEAD b62b762
+$ pnpm -C packages/cli exec tsx scripts/generate-knowledge.ts --out $SCRATCH/docs-T048
+generate-knowledge: 404 files in C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\docs-T048
+exit 0
+getControllerFromElement: card 45 words, card in generated=yes, compiled fences=1
+getControllerInstance: card 37 words, card in generated=yes, compiled fences=1
+getCurrentTime: card 32 words, card in generated=yes, compiled fences=1
+getElementDimensions: card 44 words, card in generated=yes, compiled fences=1
+getFocusedElement: card 38 words, card in generated=yes, compiled fences=1
+getFormData: card 49 words, card in generated=yes, compiled fences=1
+getImport: card 47 words, card in generated=yes, compiled fences=1
+getQueryParams: card 37 words, card in generated=yes, compiled fences=1
+getScrollPosition: card 23 words, card in generated=yes, compiled fences=1
+getTextContent: card 35 words, card in generated=yes, compiled fences=1
+httpDelete: card 46 words, card in generated=yes, compiled fences=1
+httpPost: card 56 words, card in generated=yes, compiled fences=1
+extra: the 12 probes extracted next to the probe assets, $ eligian check *.eligian (incl. Eligius lint):
+12 files, 0 errors, 0 warnings

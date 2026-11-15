@@ -1,0 +1,11 @@
+// control-flow-validation.ts (Typir): an if condition that is not boolean
+styles "./styles.css"
+action show [
+  selectElement("#app")
+  if ("yes") {
+    addClass("on")
+  }
+]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

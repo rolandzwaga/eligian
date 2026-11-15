@@ -4,6 +4,7 @@ import type { OperationCall, TimedEvent } from '../../generated/ast.js';
 import { formatValidationMessage } from '../../utils/error-builder.js';
 import { getOperationCallName } from '../../utils/operation-call-utils.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 import { findCallableActionByName } from './action-resolution.js';
 
 /**
@@ -42,6 +43,7 @@ export class OperationExistenceValidator extends BaseValidator {
         node: operation,
         property: 'operationName',
         code: error.code.toLowerCase(),
+        data: { suggestions: error.suggestions },
       });
     }
   }
@@ -83,6 +85,7 @@ export class OperationExistenceValidator extends BaseValidator {
         {
           node: call,
           property: 'operationName',
+          code: diagnosticCode('operation-in-timeline-event'),
         }
       );
       return;
@@ -95,6 +98,7 @@ export class OperationExistenceValidator extends BaseValidator {
       {
         node: call,
         property: 'operationName',
+        code: diagnosticCode('unknown-action-in-timeline-event'),
       }
     );
   }

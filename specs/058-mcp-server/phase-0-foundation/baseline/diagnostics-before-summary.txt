@@ -1,0 +1,7 @@
+command: pnpm exec tsx specs/058-mcp-server/phase-0-foundation/baseline/snapshot-diagnostics.ts before
+tree: 1e2e750 (no source change)
+files checked: 39 (SC-001 set (a) 24 = 13 + 7 + 4, set (b) 15)
+files with diagnostics: 29
+diagnostics: 198
+by severity: error 191, warning 7
+determinism: two consecutive runs byte-identical (git diff --no-index empty, cmp identical)

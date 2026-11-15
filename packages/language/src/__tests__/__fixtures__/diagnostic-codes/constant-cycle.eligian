@@ -1,0 +1,8 @@
+// constant-validation.ts (Typir): a constant that refers to itself
+styles "./styles.css"
+const a = @b
+const b = @a
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

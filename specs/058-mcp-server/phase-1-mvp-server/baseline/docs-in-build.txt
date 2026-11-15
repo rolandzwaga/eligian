@@ -1,0 +1,42 @@
+$ pnpm -C packages/cli build && ls packages/cli/dist/docs/index.json
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly
+generate-knowledge: 94 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[00:31:39] Build succeeded
+packages/cli/dist/docs/index.json
+exit: 0
+
+$ pnpm -C packages/cli run build:prod && ls packages/cli/dist/docs/index.json
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production
+generate-knowledge: 94 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[00:31:44] Build succeeded
+packages/cli/dist/docs/index.json
+exit: 0
+$ ls packages/cli/dist
+cli.mjs
+docs
+
+$ pnpm -C packages/cli exec vitest run src/__tests__/package-bin.spec.ts  (after build:prod)
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 0ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 5ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 341ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > help names mcp and the check defaults 345ms
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5)
+--version startup (ms): 335 333 348 337 360 median 337
+
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 4ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5) 2041ms
+ ↓ src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild or effect/ai 7ms
+ ✓ src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the docs, the README and the LICENSE 961ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed | 1 skipped (12)
+   Start at  00:31:55
+   Duration  4.16s (tests 91%, import 8%)
+

@@ -20,6 +20,7 @@ import type {
   TimeExpression,
 } from '../../generated/ast.js';
 import { RELATIVE_DURATION_MESSAGE } from '../../utils/time-units.js';
+import { diagnosticCode } from '../../validators/codes.js';
 import type { EligianSpecifics } from '../eligian-specifics.js';
 import {
   containsRelativeTime,
@@ -69,6 +70,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
           message: `Timeline event start time cannot be negative (got ${start}s)`,
           languageNode: node,
           languageProperty: 'timeRange',
+          code: diagnosticCode('event-start-negative'),
         });
       }
 
@@ -80,6 +82,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
             message: RELATIVE_DURATION_MESSAGE,
             languageNode: node,
             languageProperty: 'timeRange',
+            code: diagnosticCode('event-duration-relative'),
           });
         } else if (duration !== undefined && duration <= 0) {
           accept({
@@ -87,6 +90,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
             message: `Timeline event duration must be greater than 0 (got ${duration}s)`,
             languageNode: node,
             languageProperty: 'timeRange',
+            code: diagnosticCode('event-duration-not-positive'),
           });
         }
         return;
@@ -103,6 +107,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
           message: `Timeline event end time (${endText}) must be greater than start time (${startText})`,
           languageNode: node,
           languageProperty: 'timeRange',
+          code: diagnosticCode('event-end-not-after-start'),
         });
       }
     },
@@ -134,6 +139,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
             message: `Sequence item duration must be positive (got ${duration}s)`,
             languageNode: item,
             languageProperty: 'duration',
+            code: diagnosticCode('sequence-item-duration-not-positive'),
           });
         }
       }
@@ -164,6 +170,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
           message: `Stagger delay must be greater than 0 (got ${delay}s)`,
           languageNode: node,
           languageProperty: 'delay',
+          code: diagnosticCode('stagger-delay-not-positive'),
         });
       }
 
@@ -174,6 +181,7 @@ export function registerEventValidation(typir: TypirLangiumServices<EligianSpeci
           message: `Stagger duration must be positive (got ${duration}s)`,
           languageNode: node,
           languageProperty: 'duration',
+          code: diagnosticCode('stagger-duration-not-positive'),
         });
       }
     },

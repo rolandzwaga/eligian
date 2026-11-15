@@ -1,0 +1,5 @@
+// The eligian_fmt call of mcp-concurrency.spec.ts (SC-005): not formatted
+action fadeBox(sel) [
+selectElement( sel )
+addClass("visible")
+]

@@ -1,0 +1,9 @@
+// action-validator.ts: break outside a for loop
+styles "./styles.css"
+action show [
+  selectElement("#app")
+  break
+]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

@@ -1,0 +1,55 @@
+  review.ts        |   95.95 |    83.95 |   94.11 |   96.51 | 130-131,155       
+ src/dev           |   79.89 |    54.12 |   78.04 |   82.35 |                   
+  dev-server.ts    |    77.9 |    53.27 |   76.31 |   80.51 | ...22-324,341-346 
+ src/mcp           |   95.75 |    91.76 |   96.77 |   95.23 |                   
+  paths.ts         |   97.56 |    94.44 |   95.45 |   97.22 | 117               
+  server.ts        |   82.35 |       50 |   94.44 |   81.81 | 138-145           
+  stdio.ts         |   95.65 |      100 |    92.3 |   94.73 | 62                
+  telemetry.ts     |   96.42 |       90 |     100 |   96.15 | 44                
+ src/mcp/knowledge |   97.72 |    89.38 |     100 |   98.62 |                   
+  load.ts          |   98.38 |     90.9 |     100 |   98.11 | 66                
+  render.ts        |   94.33 |    87.03 |     100 |   97.67 | 111               
+  search.ts        |     100 |    91.89 |     100 |     100 | 86,98,102         
+ src/mcp/tools     |   92.42 |    84.47 |   90.58 |   93.16 |                   
+  docs.ts          |      98 |     91.3 |     100 |     100 | 96-98,154         
+  init.ts          |     100 |    95.23 |     100 |     100 | 116               
+  operations.ts    |   83.62 |    71.42 |   78.37 |   83.33 | ...35-236,263-270 
+ src/smoke         |   85.84 |    63.49 |   73.23 |   87.62 |                   
+  ...nvironment.ts |   88.37 |      100 |   35.71 |   94.87 | 69-76             
+  smoke-command.ts |    80.7 |    51.21 |    82.6 |   77.08 | ...09,118,127-128 
+  smoke-runner.ts  |    87.3 |    62.31 |   82.35 |   89.71 | ...32,247,250,285 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 83.06% ( 1918/2309 )
+Branches     : 72.61% ( 965/1329 )
+Functions    : 85.76% ( 530/618 )
+Lines        : 83.11% ( 1747/2102 )
+================================================================================
+$ vitest run src/__tests__/package-bin.spec.ts
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+(node:40088) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  08:36:42
+   Duration  9.97s (tests 93%, import 7%)
+
+
+--- appended by T004 (the tail ends in the test:bin run; these lines are from the same run) ---
+exit 0
+ Test Files  47 passed | 1 skipped (48)
+      Tests  678 passed | 18 skipped (696)
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   83.06 |    72.61 |   85.76 |   83.11 |                   
+Statements   : 83.06% ( 1918/2309 )
+Branches     : 72.61% ( 965/1329 )
+Functions    : 85.76% ( 530/618 )
+Lines        : 83.11% ( 1747/2102 )
+thresholds (vitest.config.ts:17-22): lines 77.1 / functions 77.6 / branches 64.5 / statements 76.6 -> all met
+note: a first run at 08:34 failed mcp-knowledge.spec.ts 'the ranking selection equals the script output' because T006's in-progress untracked fixture packages/cli/src/__tests__/__fixtures__/mcp/compile/asset-rejected/ was in the ranking corpus (packages/cli/src/__tests__/__fixtures__/**/*.eligian, scripts/rank-diagnostic-codes.ts:39); this run is after T006 removed it (git status clean under packages/).

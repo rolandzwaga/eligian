@@ -1,0 +1,6 @@
+library only
+
+/** Selects an element */
+action pick(selector: string) [
+  selectElement(selector)
+]

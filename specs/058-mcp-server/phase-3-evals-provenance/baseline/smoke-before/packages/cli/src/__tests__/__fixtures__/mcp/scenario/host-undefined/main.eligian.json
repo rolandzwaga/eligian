@@ -1,0 +1,4 @@
+{
+  "exit": 1,
+  "stdout": "[\n  {\n    \"file\": \"packages/cli/src/__tests__/__fixtures__/mcp/scenario/host-undefined/main.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"main\",\n        \"boundaries\": 2\n      }\n    ],\n    \"problems\": [\n      {\n        \"timeline\": \"main\",\n        \"time\": 0,\n        \"code\": \"host-operation-returned-non-object\",\n        \"severity\": \"error\",\n        \"message\": \"host operation bad returned no object: return the operation data, or the next operation gets an empty one\",\n        \"location\": {\n          \"file\": \"F:\\\\projects\\\\eligius\\\\eligian\\\\packages\\\\cli\\\\src\\\\__tests__\\\\__fixtures__\\\\mcp\\\\scenario\\\\host-undefined\\\\main.eligian\",\n          \"line\": 11,\n          \"column\": 5,\n          \"length\": 5\n        }\n      }\n    ]\n  }\n]\n"
+}

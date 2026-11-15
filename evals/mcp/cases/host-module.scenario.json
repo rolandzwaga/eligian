@@ -1,0 +1,16 @@
+{
+  "steps": [
+    { "snapshot": "start" },
+    { "click": "#answer-b" },
+    { "snapshot": "answered" },
+    { "wait": 3500 },
+    { "snapshot": "after-3.5s" }
+  ],
+  "assertions": [
+    { "after": "start", "timeline": "quiz" },
+    { "after": "start", "selector": "#result", "visible": false },
+    { "after": "answered", "selector": "#result", "visible": true },
+    { "after": "answered", "selector": "#result", "text": "Correct! 10 points" },
+    { "after": "after-3.5s", "selector": "#result", "visible": false }
+  ]
+}

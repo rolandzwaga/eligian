@@ -1,0 +1,11 @@
+// One timeline without on enter (the shape of examples/libraries/nested/chain-test.eligian)
+layout "./layout.html"
+
+action highlight(selector: string) [
+  selectElement(selector)
+  setStyle({ opacity: "1" })
+]
+
+timeline "Nested Import Test" in "#hub" using raf {
+  at 0s..2s highlight("#chapter")
+}

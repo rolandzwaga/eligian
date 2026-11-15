@@ -1,0 +1,10 @@
+// eligian_smoke: a clean program with two timelines
+layout "../layout.html"
+
+timeline "B1" in "#stage" using raf {
+  at 0s..1s [ log("B1") ] []
+}
+
+timeline "B2" in "#stage" using raf {
+  at 0s..2s [ log("B2") ] []
+}

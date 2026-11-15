@@ -1,0 +1,35 @@
+/**
+ * Animation library: class-based entrances and exits. The transitions themselves live in the
+ * presentation's CSS, on the classes these actions add.
+ */
+library animations
+
+/**
+ * Fades an element in: adds the class fade-in
+ * @param selector the element to fade in
+ */
+action fadeIn(selector: string) [
+  selectElement(selector)
+  addClass("fade-in")
+]
+
+/**
+ * Fades an element out: removes the class fade-in and adds the class fade-out
+ * @param selector the element to fade out
+ */
+action fadeOut(selector: string) [
+  selectElement(selector)
+  removeClass("fade-in")
+  addClass("fade-out")
+]
+
+/**
+ * Slides an element in: adds the class slide-in and the class of its direction
+ * @param selector the element to slide in
+ * @param direction where it comes from: from-left, from-right, from-top or from-bottom
+ */
+action slideIn(selector: string, direction: string) [
+  selectElement(selector)
+  addClass("slide-in")
+  addClass(direction)
+]

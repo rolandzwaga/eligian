@@ -1,0 +1,71 @@
+{
+  "arm": "A1",
+  "runId": "2026-11-05T12-07-17-660Z",
+  "head": "a7bceb8ff6fe39abc69ebeee7bbf94f900f77b0f",
+  "treeClean": false,
+  "case": "keyboard-deck",
+  "model": "claude-sonnet-5-5",
+  "projectDir": "C:\\Users\\scab\\AppData\\Local\\Temp\\eligian-eval-keyboard-deck-2O4arK",
+  "pass": true,
+  "failures": [],
+  "rounds": 0,
+  "checkToolCalls": 1,
+  "checkBashCalls": 0,
+  "toolCallCount": 11,
+  "toolCallSequence": [
+    "mcp__eligian__eligian_docs",
+    "ToolSearch",
+    "Glob",
+    "Bash",
+    "mcp__eligian__eligian_docs",
+    "Bash",
+    "Write",
+    "Bash",
+    "mcp__eligian__eligian_check",
+    "mcp__eligian__eligian_fmt",
+    "mcp__eligian__eligian_smoke"
+  ],
+  "tokensFromTools": 76913,
+  "wallMs": 46396,
+  "agent": {
+    "exitCode": 0,
+    "isError": false,
+    "numTurns": 12,
+    "durationMs": 43049,
+    "totalCostUsd": 0.3460743,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 61531,
+      "cache_read_input_tokens": 487097,
+      "output_tokens": 5105,
+      "output_tokens_details": {
+        "thinking_tokens": 641
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 61531,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 575,
+          "cache_read_input_tokens": 86615,
+          "cache_creation_input_tokens": 4120,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 4120
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    }
+  }
+}

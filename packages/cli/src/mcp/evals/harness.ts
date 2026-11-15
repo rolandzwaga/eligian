@@ -1,0 +1,439 @@
+/**
+ * Spec 058 Phase 3 (FR-001, FR-003–FR-009, FR-023; plan D4): the eval harness's arguments, the
+ * arm setup of an installed project, the step-6 budget, the majority verdict, the budgets written
+ * after the first full run, the summary and the result-record schema.
+ *
+ * Plain synchronous TypeScript (plan D): no Effect services. `evals/mcp/run.ts` and `gate.ts`
+ * reach it through the build output `dist/evals/assert.mjs` (FR-083).
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { Schema } from 'effect';
+import { ASSERTION_KINDS, type AssertionResult } from './assert.js';
+import type { Arm, RunMetrics } from './transcript.js';
+
+export type { Arm } from './transcript.js';
+
+const ARMS: readonly Arm[] = ['A1', 'A0', 'A-none'];
+
+/** I-6: the aliases of --model */
+export const MODELS: Readonly<Record<'sonnet' | 'opus', string>> = {
+  sonnet: 'claude-sonnet-5-5',
+  opus: 'claude-opus-5-5',
+};
+
+/** §6.2: the cases a summary counts passes out of */
+const CASE_COUNT = 14;
+
+// ---------------------------------------------------------------------------------------------
+// Arguments (FR-001, FR-008, FR-023)
+
+export interface HarnessArgs {
+  readonly cases: readonly string[];
+  readonly arms: readonly Arm[];
+  readonly runs: number;
+  readonly model?: string;
+  readonly callBudget: 'off' | 'enforce';
+  readonly writeBudgets?: string;
+}
+
+export const HARNESS_USAGE = `usage: pnpm evals:mcp [--case <id> ...] [--arm A0|A1|A-none ...] [--runs <n>] [--model <m>]
+                      [--call-budget off|enforce]
+       pnpm evals:mcp --write-budgets <run-id>
+
+  --case <id>                 an eval case (evals/mcp/cases/<id>.json); repeat for several (default: every case)
+  --arm A0|A1|A-none          the arm; repeat for several (default: A1)
+                                A1      the MCP server + the AGENTS.md block
+                                A0      the AGENTS.md block, the docs on disk and the CLI, no server
+                                A-none  no AGENTS.md, no server, the docs removed from the package
+  --runs <n>                  runs per case and arm (default: 1)
+  --model <m>                 sonnet | opus | a pinned model id (default: the case's pinned "model")
+  --call-budget off|enforce   step 6's tool-call budget (default: enforce; off for the first full run)
+  --write-budgets <run-id>    set each case's "budget" from the passing Sonnet A1 runs of that run
+
+Cases run serially. Writes evals/mcp/results/<run-id>/<case>/<arm>-<n>.json and summary.md.`;
+
+const isArm = (value: string): value is Arm => (ARMS as readonly string[]).includes(value);
+
+export function parseHarnessArgs(
+  argv: readonly string[],
+  knownCases: readonly string[]
+): HarnessArgs | 'help' | string {
+  const cases: string[] = [];
+  const arms: Arm[] = [];
+  let runs = 1;
+  let model: string | undefined;
+  let callBudget: 'off' | 'enforce' = 'enforce';
+  let writeBudgets: string | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === '--help' || arg === '-h') return 'help';
+    if (
+      arg !== '--case' &&
+      arg !== '--arm' &&
+      arg !== '--runs' &&
+      arg !== '--model' &&
+      arg !== '--call-budget' &&
+      arg !== '--write-budgets'
+    ) {
+      return `unknown argument: ${arg}`;
+    }
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith('--')) return `${arg} needs a value`;
+    i++;
+    if (arg === '--case') {
+      if (!knownCases.includes(value)) {
+        return `no eval case '${value}' (known: ${knownCases.join(', ')})`;
+      }
+      if (!cases.includes(value)) cases.push(value);
+    } else if (arg === '--arm') {
+      if (!isArm(value)) return `--arm takes A0, A1 or A-none (got ${value})`;
+      if (!arms.includes(value)) arms.push(value);
+    } else if (arg === '--runs') {
+      if (!/^\d+$/.test(value) || Number(value) < 1) {
+        return `--runs takes a positive integer (got ${value})`;
+      }
+      runs = Number(value);
+    } else if (arg === '--model') {
+      model = value === 'sonnet' || value === 'opus' ? MODELS[value] : value;
+    } else if (arg === '--call-budget') {
+      if (value !== 'off' && value !== 'enforce') {
+        return `--call-budget takes off or enforce (got ${value})`;
+      }
+      callBudget = value;
+    } else {
+      writeBudgets = value;
+    }
+  }
+  return {
+    cases: cases.length > 0 ? cases : [...knownCases],
+    arms: arms.length > 0 ? arms : ['A1'],
+    runs,
+    ...(model === undefined ? {} : { model }),
+    callBudget,
+    ...(writeBudgets === undefined ? {} : { writeBudgets }),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Arms (FR-003, SC-006(3))
+
+export interface ArmSetup {
+  /** The file passed as --mcp-config */
+  readonly mcpConfig: string;
+  readonly allowedTools: string;
+}
+
+/** FR-050 step 4 (Phase 1 `run.ts`); the server is named `eligian` in .mcp.json. */
+const ALLOWED_TOOLS_A1 = 'mcp__eligian__*,Bash(node *),Bash(npx eligian*)';
+/** FR-003: A0 and A-none drop `mcp__eligian__*`. */
+const ALLOWED_TOOLS_NO_SERVER = 'Bash(node *),Bash(npx eligian*)';
+
+const writeJson = (file: string, value: unknown): void =>
+  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+
+const isInside = (dir: string, file: string): boolean => {
+  const relative = path.relative(path.resolve(dir), path.resolve(file));
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+};
+
+/**
+ * SC-006(3): prepares an installed project for its arm, so it is called after `npm install`. The
+ * function does every file operation itself, and the runner only passes the returned values to
+ * `claude -p`.
+ * A1: writes <dir>/.mcp.json and <dir>/AGENTS.md. A0: writes <dir>/AGENTS.md, and the
+ * empty-server config in `scratch`. A-none: writes the empty-server config in `scratch`, and
+ * deletes <dir>/node_modules/eligian/dist/docs.
+ * `scratch` is outside `dir`, so no arm except A1 has a .mcp.json in the project.
+ */
+export function prepareArmProject(
+  arm: Arm,
+  project: {
+    readonly dir: string;
+    readonly cli: string;
+    readonly mcpLog: string;
+    readonly scratch: string;
+  }
+): ArmSetup {
+  const { dir, cli, mcpLog, scratch } = project;
+  if (isInside(dir, scratch)) {
+    throw new Error(`the scratch dir must be outside the project: ${scratch} is in ${dir}`);
+  }
+  const docs = path.join(dir, 'node_modules', 'eligian', 'dist', 'docs');
+  const copyAgentsBlock = () => {
+    const block = path.join(docs, 'agents-block.md');
+    if (!fs.existsSync(block)) throw new Error(`the package has no ${block}`);
+    fs.copyFileSync(block, path.join(dir, 'AGENTS.md'));
+  };
+
+  if (arm === 'A1') {
+    const mcpConfig = path.join(dir, '.mcp.json');
+    writeJson(mcpConfig, {
+      mcpServers: {
+        eligian: { command: 'node', args: [cli, 'mcp'], env: { ELIGIAN_MCP_LOG: mcpLog } },
+      },
+    });
+    copyAgentsBlock();
+    return { mcpConfig, allowedTools: ALLOWED_TOOLS_A1 };
+  }
+
+  fs.mkdirSync(scratch, { recursive: true });
+  const mcpConfig = path.join(scratch, 'mcp-empty.json');
+  writeJson(mcpConfig, { mcpServers: {} });
+  if (arm === 'A0') copyAgentsBlock();
+  else fs.rmSync(docs, { recursive: true, force: true });
+  return { mcpConfig, allowedTools: ALLOWED_TOOLS_NO_SERVER };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Budget (FR-008, FR-023)
+
+export interface Budget {
+  readonly toolCalls: number;
+  readonly fromRun: string;
+  readonly model: string;
+}
+
+/** §6.1 step 6 (Phase 1 `gate.ts` BUDGET); `channelChars` replaces `toolChars` (FR-008). */
+const LIMITS = { rounds: 2, wallMs: 15 * 60 * 1000, channelChars: 80_000 } as const;
+
+/** Step 6: one budget for every arm (FR-008); the tool-call check only under `enforce`. */
+export function budgetFailures(
+  metrics: RunMetrics,
+  budget: Budget | undefined,
+  mode: 'off' | 'enforce'
+): readonly string[] {
+  const failures: string[] = [];
+  if (metrics.rounds > LIMITS.rounds) {
+    failures.push(
+      `rounds ${metrics.rounds} > ${LIMITS.rounds} (${metrics.checkToolCalls} eligian_check + ${metrics.checkBashCalls} CLI checks - 1)`
+    );
+  }
+  if (metrics.wallMs !== undefined && metrics.wallMs > LIMITS.wallMs) {
+    failures.push(`wall clock ${metrics.wallMs} ms > ${LIMITS.wallMs} ms`);
+  }
+  if (metrics.channelChars > LIMITS.channelChars) {
+    failures.push(`channelChars ${metrics.channelChars} > ${LIMITS.channelChars}`);
+  }
+  if (mode === 'enforce') {
+    if (budget === undefined) {
+      failures.push('no tool-call budget');
+    } else {
+      const limit = Math.floor(1.5 * budget.toolCalls);
+      if (metrics.toolCalls > limit) failures.push(`tool calls ${metrics.toolCalls} > ${limit}`);
+    }
+  }
+  return failures;
+}
+
+/**
+ * FR-023, I-9: the median tool-call count of the passing, non-aborted, pinned-Sonnet A1 runs
+ * (the lower middle value for an even count); undefined when there are none.
+ */
+export function medianBudget(runs: readonly RunRecord[], fromRun: string): Budget | undefined {
+  const counts = runs
+    .filter(run => run.arm === 'A1' && run.pass && !run.aborted && run.model === MODELS.sonnet)
+    .map(run => run.metrics.toolCalls)
+    .sort((a, b) => a - b);
+  if (counts.length === 0) return undefined;
+  return {
+    toolCalls: counts[Math.floor((counts.length - 1) / 2)]!,
+    fromRun,
+    model: MODELS.sonnet,
+  };
+}
+
+/**
+ * FR-023, `--write-budgets <run-id>`: for each case file `<casesDir>/<id>.json`, sets
+ * `budget = medianBudget(records of that case, runId)` when it is defined. Returns the files it
+ * changed.
+ */
+export function writeBudgets(
+  records: readonly RunRecord[],
+  casesDir: string,
+  runId: string
+): readonly string[] {
+  const changed: string[] = [];
+  const caseIds = [...new Set(records.map(run => run.case))];
+  for (const id of caseIds) {
+    const file = path.join(casesDir, `${id}.json`);
+    const budget = medianBudget(
+      records.filter(run => run.case === id),
+      runId
+    );
+    if (budget === undefined || !fs.existsSync(file)) continue;
+    const before = fs.readFileSync(file, 'utf8');
+    // An existing key keeps its position; a new one is appended last.
+    const parsed = JSON.parse(before) as Record<string, unknown>;
+    const after = `${JSON.stringify({ ...parsed, budget }, null, 2)}\n`;
+    if (after === before) continue;
+    fs.writeFileSync(file, after);
+    changed.push(file);
+  }
+  return changed;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Verdict and summary (FR-006)
+
+/** FR-006: a strict majority of the non-aborted runs; aborted runs are not in the denominator. */
+export function caseVerdict(runs: readonly RunRecord[]): {
+  pass: boolean;
+  passed: number;
+  denominator: number;
+} {
+  const counted = runs.filter(run => !run.aborted);
+  const passed = counted.filter(run => run.pass).length;
+  return { pass: passed > counted.length / 2, passed, denominator: counted.length };
+}
+
+const mean = (values: readonly number[]): string =>
+  values.length === 0
+    ? 'n/a'
+    : (values.reduce((total, n) => total + n, 0) / values.length).toFixed(1);
+
+const fraction = (count: number, of: number): string =>
+  `${count} of ${of} (${of === 0 ? 'n/a' : `${Math.round((100 * count) / of)}%`})`;
+
+const means = (runs: readonly RunRecord[]): string =>
+  `rounds ${mean(runs.map(r => r.metrics.rounds))}, ` +
+  `tool calls ${mean(runs.map(r => r.metrics.toolCalls))}, ` +
+  `transcriptToolChars ${mean(runs.map(r => r.metrics.transcriptToolChars))}`;
+
+function armSection(arm: Arm, records: readonly RunRecord[]): string[] {
+  const runs = records.filter(run => !run.aborted);
+  const passing = runs.filter(run => run.pass);
+  const hit = runs.filter(run => run.metrics.hitUnknown);
+  const taught = (list: readonly RunRecord[]) =>
+    list.filter(run => run.metrics.operationsBeforeFirstUnknown).length;
+  const scores = runs.flatMap(run => (run.rubric === null ? [] : [run.rubric.score]));
+  const caseIds = [...new Set(records.map(run => run.case))];
+  const verdicts = caseIds.map(id => ({
+    id,
+    ...caseVerdict(records.filter(run => run.case === id)),
+  }));
+  return [
+    `## ${arm}`,
+    '',
+    `- runs: ${records.length}, aborted ${records.length - runs.length}`,
+    `- cases passed: ${verdicts.filter(v => v.pass).length} of ${CASE_COUNT}`,
+    `- means over all runs (aborted excluded, n = ${runs.length}): ${means(runs)}`,
+    `- means over passing runs (n = ${passing.length}): ${means(passing)}`,
+    `- means of toolChars ${mean(runs.map(r => r.metrics.toolChars))}, ` +
+      `channelChars ${mean(runs.map(r => r.metrics.channelChars))}`,
+    `- operationsBeforeFirstUnknown: ${fraction(taught(runs), runs.length)}; ` +
+      `over the hitUnknown runs: ${fraction(taught(hit), hit.length)}`,
+    `- fmtCalled: ${fraction(runs.filter(r => r.metrics.fmtCalled).length, runs.length)}`,
+    `- explainCalled: ${fraction(runs.filter(r => r.metrics.explainCalled).length, runs.length)}`,
+    `- rubric mean: ${mean(scores)} (${scores.length} scored)`,
+    '',
+    '| case | passed | verdict |',
+    '| --- | --- | --- |',
+    ...verdicts.map(
+      v => `| ${v.id} | ${v.passed} of ${v.denominator} | ${v.pass ? 'pass' : 'fail'} |`
+    ),
+    '',
+  ];
+}
+
+/** FR-006: `results/<run-id>/summary.md`, one section per arm present (A1, A0, A-none). */
+export function renderSummary(records: readonly RunRecord[]): string {
+  const runIds = [...new Set(records.map(run => run.runId))];
+  const lines = ['# Eval summary', '', `Runs: ${runIds.join(', ') || 'none'}`, ''];
+  for (const arm of ARMS) {
+    const ofArm = records.filter(run => run.arm === arm);
+    if (ofArm.length > 0) lines.push(...armSection(arm, ofArm));
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------------------------
+// The result record (FR-005, SC-006(4))
+
+/** FR-005: one result JSON, results/<run-id>/<case>/<arm>-<n>.json. Every field is required; a not-applicable one is null, never absent. */
+export interface RunRecord {
+  readonly runId: string;
+  readonly case: string;
+  readonly arm: Arm;
+  readonly n: number;
+  /** The resolved model id and the CLI version of the tarball (SC-006(4)) */
+  readonly model: string;
+  readonly cliVersion: string;
+  /** No `result` event in the transcript (Edge cases) */
+  readonly aborted: boolean;
+  readonly pass: boolean;
+  /** FR-005: the failures of each gate step 1–6; [] for a step that passed or was skipped */
+  readonly steps: readonly {
+    readonly step: 1 | 2 | 3 | 4 | 5 | 6;
+    readonly failures: readonly string[];
+  }[];
+  /** FR-005: the tool-call sequence, tool names in call order (toolCalls(events)); its length is metrics.toolCalls */
+  readonly toolSequence: readonly string[];
+  /** FR-005 / FR-007: rounds, tool calls, transcriptToolChars, toolChars, channelChars and the FR-007 metrics */
+  readonly metrics: RunMetrics;
+  /** FR-005: the final `result` event's usage (input and output tokens, other keys kept); null when the run has none */
+  readonly usage: {
+    readonly input_tokens: number;
+    readonly output_tokens: number;
+    readonly [key: string]: unknown;
+  } | null;
+  /** FR-005: the wall time */
+  readonly wallMs: number;
+  /** FR-005: the detail of each assertion; [] when step 4 did not compile */
+  readonly assertions: readonly AssertionResult[];
+  /** FR-009: null when the judge did not run (A-none, or a failed judge call) */
+  readonly rubric: { readonly score: number; readonly model: string } | null;
+}
+
+const RunMetricsSchema = Schema.Struct({
+  rounds: Schema.Finite,
+  checkToolCalls: Schema.Finite,
+  checkBashCalls: Schema.Finite,
+  toolCalls: Schema.Finite,
+  transcriptToolChars: Schema.Finite,
+  toolChars: Schema.Finite,
+  channelChars: Schema.Finite,
+  operationsBeforeFirstUnknown: Schema.Boolean,
+  hitUnknown: Schema.Boolean,
+  explainCalled: Schema.Boolean,
+  fmtCalled: Schema.Boolean,
+  wallMs: Schema.optionalKey(Schema.Finite),
+});
+
+/**
+ * Decodes a RunRecord; every key above is required (SC-006(4)), and only usage and rubric may be
+ * null. The assertion kinds are read lazily: `assert.ts` re-exports this module (T031).
+ */
+export const RunRecordSchema: Schema.Codec<RunRecord> = Schema.Struct({
+  runId: Schema.String,
+  case: Schema.String,
+  arm: Schema.Literals(ARMS),
+  n: Schema.Finite,
+  model: Schema.String,
+  cliVersion: Schema.String,
+  aborted: Schema.Boolean,
+  pass: Schema.Boolean,
+  steps: Schema.Array(
+    Schema.Struct({
+      step: Schema.Literals([1, 2, 3, 4, 5, 6]),
+      failures: Schema.Array(Schema.String),
+    })
+  ),
+  toolSequence: Schema.Array(Schema.String),
+  metrics: RunMetricsSchema,
+  usage: Schema.NullOr(
+    Schema.StructWithRest(
+      Schema.Struct({ input_tokens: Schema.Finite, output_tokens: Schema.Finite }),
+      [Schema.Record(Schema.String, Schema.Unknown)]
+    )
+  ),
+  wallMs: Schema.Finite,
+  assertions: Schema.Array(
+    Schema.Struct({
+      kind: Schema.suspend(() => Schema.Literals(ASSERTION_KINDS)),
+      pass: Schema.Boolean,
+      detail: Schema.String,
+    })
+  ),
+  rubric: Schema.NullOr(Schema.Struct({ score: Schema.Finite, model: Schema.String })),
+});

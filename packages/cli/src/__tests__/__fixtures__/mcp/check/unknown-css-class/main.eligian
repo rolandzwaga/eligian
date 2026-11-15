@@ -1,0 +1,7 @@
+// A mistyped className argument: unknown_css_class, suggesting lit
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#box") addClass("lti") ] [ selectElement("#box") removeClass("lit") ]
+}

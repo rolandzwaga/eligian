@@ -2,6 +2,7 @@ import type { ValidationAcceptor } from 'langium';
 import type { Program } from '../../generated/ast.js';
 import { getTimelines } from '../../utils/program-helpers.js';
 import { BaseValidator } from '../base-validator.js';
+import { diagnosticCode } from '../codes.js';
 
 /**
  * Program structural validations (timeline presence).
@@ -23,6 +24,7 @@ export class ProgramStructureValidator extends BaseValidator {
         {
           node: program,
           property: 'statements',
+          code: diagnosticCode('timeline-required'),
         }
       );
     }

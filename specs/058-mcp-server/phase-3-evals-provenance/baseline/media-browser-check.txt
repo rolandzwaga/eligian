@@ -1,0 +1,122 @@
+# FR-026 / SC-008 / T071: the eval media played in a browser through eligian dev (2026-11-05, Windows 11, headless Chrome over CDP)
+# Setup: the video-subtitles and audio-lyrics solutions (packages/cli/src/__tests__/__fixtures__/mcp-solutions/<id>) copied to a temp dir with evals/mcp/fixtures/media/* in media/;
+#   node packages/cli/bin/cli.js dev main.eligian --port 5291 (video-subtitles) / --port 5292 (audio-lyrics); click #start; read the media element.
+# The scripts: play-check.mjs, audio-check.mjs, variant-check.mjs (scratch, not committed).
+
+## 1. video-subtitles (intro.mp4) and the file alone: the video ends at once (currentTime 30 within 2.5 s, ended, play() interrupted)
+{
+ "browser": "Chrome/157.0.8103.39",
+ "results": [
+  {
+   "url": "http://localhost:5291/",
+   "afterClick": {
+    "tag": "VIDEO",
+    "src": "http://localhost:5291/assets/intro.mp4",
+    "readyState": 4,
+    "duration": 30,
+    "currentTime": 30,
+    "paused": true,
+    "error": null,
+    "videoWidth": 16,
+    "videoHeight": 16
+   },
+   "later": {
+    "tag": "VIDEO",
+    "src": "http://localhost:5291/assets/intro.mp4",
+    "readyState": 4,
+    "duration": 30,
+    "currentTime": 30,
+    "paused": true,
+    "error": null,
+    "videoWidth": 16,
+    "videoHeight": 16
+   },
+   "direct": {
+    "duration": 30,
+    "currentTime": 30,
+    "paused": true,
+    "readyState": 4,
+    "videoWidth": 16,
+    "videoHeight": 16
+   },
+   "logs": [
+    "[EngineEventbusAdapter] engine.switchTimeline() failed AbortError: The play() request was interrupted by end of playback. https://goo.gl/LdLk22"
+   ]
+  }
+ ]
+}
+
+## 2. audio-lyrics (song.mp3): plays in real time and drives the lyric ranges (Eligius renders a <video> for audio)
+{
+ "browser": "Chrome/157.0.8103.39",
+ "samples": [
+  {
+   "ms": 2505,
+   "active": "1 media:VIDEO@2.29 playing"
+  },
+  {
+   "ms": 5506,
+   "active": "2 media:VIDEO@5.29 playing"
+  },
+  {
+   "ms": 9004,
+   "active": "3 media:VIDEO@8.79 playing"
+  }
+ ],
+ "logs": []
+}
+
+## 3. Cause: a single sample. The committed intro.mp4 and the same file with N samples of 30/N s, all pointing at the one embedded frame
+{
+ "browser": "Chrome/157.0.8103.39",
+ "out": {
+  "committed.mp4": {
+   "duration": 30,
+   "samples": [
+    30,
+    30,
+    30
+   ],
+   "ended": true,
+   "paused": true,
+   "w": 16
+  },
+  "variant-1.mp4": {
+   "duration": 30,
+   "samples": [
+    30,
+    30,
+    30
+   ],
+   "ended": true,
+   "paused": true,
+   "w": 16
+  },
+  "variant-2.mp4": {
+   "duration": 30,
+   "samples": [
+    0.51,
+    2.02,
+    5.03
+   ],
+   "ended": false,
+   "paused": false,
+   "w": 16
+  },
+  "variant-30.mp4": {
+   "duration": 30,
+   "samples": [
+    0.51,
+    2.02,
+    5.03
+   ],
+   "ended": false,
+   "paused": false,
+   "w": 16
+  }
+ }
+}
+
+## 4. After the fix (main loop, 2026-11-05): generator writes 30 samples of 1 s over the one frame; regenerated intro.mp4 (1146 bytes) vs the old one, same headless Chrome check
+before.mp4 (one 30 s sample): samples [30, 30, 30], ended true, paused true
+after.mp4  (30 samples of 1 s): samples [0.5, 2.02, 5.02], ended false, paused false, videoWidth 16, Chrome/157.0.8103.39

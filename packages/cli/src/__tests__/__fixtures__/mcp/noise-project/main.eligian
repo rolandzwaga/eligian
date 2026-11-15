@@ -1,0 +1,20 @@
+// SC-002 noise run (mcp-stdout.spec.ts): a layout, CSS, a library import, an Eligius lint
+// finding (scrollToElement's position) and a controller added in on enter and never removed
+layout "./layout.html"
+styles "./styles.css"
+
+import { highlight } from "./effects.eligian"
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    selectElement("#bar")
+    addController("ProgressbarController")
+  ]
+  at 0s..1s [
+    selectElement("#box")
+    scrollToElement(200, "nowhere")
+  ]
+  at 1s..2s [
+    highlight("#box")
+  ]
+}

@@ -1,0 +1,100 @@
+T058 — missing-overlays.json = [] (FR-056, SC-005)
+HEAD: b62b762350146d38ea78cf2d535c60a515d3ca06
+missing-overlays.json: []
+
+$ pnpm -C packages/cli build
+generate-knowledge: 416 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[21:19:14] Build succeeded
+[21:19:14] Build succeeded
+exit 0
+
+$ pnpm -C packages/cli exec vitest run src/__tests__/mcp-knowledge.spec.ts src/__tests__/mcp-docs.spec.ts src/__tests__/mcp-diagnostics.spec.ts src/__tests__/mcp-operations.spec.ts --reporter=verbose
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > sourceOf > registry codes use DIAGNOSTIC_CODES 2ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > sourceOf > CLI-layer codes 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > sourceOf > sourceOf maps every SMOKE_CODES code to smoke 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > sourceOf > unknown codes fall back to validator 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > excerptOf > CRLF safe, at most 3 lines 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > fix only on the first diagnostic of a code 1ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > generic overlay of the source when the code has none 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > suggestions and quickFix lifted from data 1ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > absolute file, excerpt present 1ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > reads each file once and keeps file order 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > an unreadable file gets an empty excerpt 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > toMcpDiagnostics > a relative file is made absolute 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > smokeToMcpDiagnostics > smokeToMcpDiagnostics anchors a location-less problem at 1:1 of its file 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > smokeToMcpDiagnostics > carries timeline, time, step, expected, actual 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > smokeToMcpDiagnostics > keeps problem order across files and uses the overlays 0ms
+ ✓ |cli| src/__tests__/mcp-diagnostics.spec.ts > smokeToMcpDiagnostics > the schema decodes the new fields 3ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > names: two cards and one unknown 17ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > kind controller: 9 with statuses 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > cards include the overlay 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > kind event: 46 2ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > kind dom-event and key: non-empty 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > needs selectedElement equals findOperationsWithDependency 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > no argument: categories 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > 30 names: 25 cards, 5 in notReturned 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > path: the host operation card 96ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > path: a host function card (FR-022) 4ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > path leaves the workspace as it was 4ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations > missing path is ToolNotFound naming it 1ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations on the wire > missing path is kind not-found, path absolute 43ms
+ ✓ |cli| src/__tests__/mcp-operations.spec.ts > eligian_operations on the wire > a path outside the root is kind not-found 10ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > no arguments: the index 6ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > example entries are listed with id and title only 11ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > ids: cards 1ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > detail: bodies, overflow in notReturned 1ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > diagnostics returned whole with detail 0ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > query: at most 8 hits, operations-index among them 30ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > unknown ids get the 3 closest 15ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > header first 26ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > eligian_docs on the wire > 7 ids are refused by the schema (2025-06-18) 42ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > eligian_docs on the wire > 7 ids are refused by the schema (2025-11-25) 9ms
+ ✓ |cli| src/__tests__/mcp-docs.spec.ts > eligian_docs > eligian_docs on the wire > a missing docsRoot is kind internal naming it 10ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > names every registry operation 6ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > names the 9 controllers 1ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > names the 46 timeline events 1ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > names every grammar keyword 3ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > names the 4 starters 1ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > names every top-level config property 1ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > two runs are byte-identical 71ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > a stale file is removed 523ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > cards ≤ 120 words; generated chunks ≤ 6000 words 32ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > every chunk ends with its see line 36ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > index.json is sorted by id with words counted 40ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > diagnostics.md has one code · source · overlay id line per code and no overlay text 4ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > the curated lint rules are lint.mjs literals minus W111 1ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > generated docs > using custom compiles silently as animation 22ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > literate probes > splices the compiled fragment 48ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > literate probes > a broken probe fails with chunk id and index 5ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > curriculum > ships the FR-039 chunks 3ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > curriculum > runtime chunks teach only probed claims 5ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > curriculum > curriculum bodies are 300–1500 words 3ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > probes > every map-* and presentation-patterns probe matches its snapshot 13ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > no code lacks an overlay 12ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > the review overlays exist and are not allowlisted 7ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > new codes have overlays 9ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > the ranking selection equals the script output 3557ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > the operation ranking equals a fresh run and every selected operation is counted 89ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > overlays > the selection contains the case 13 and 14 start codes and has overlays 6ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 generator > generator fails on an unclosed marker 38ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 generator > generator fails on a duplicate example id 28ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 generator > one example file per marker 73ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 generator > probes run in presentation-patterns and in operation/controller overlays 62ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 generator > the diagnostics catalogue lists SMOKE_CODES (smoke), the nine REVIEW_CODES (review) and unknown-listener-action 1ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > the 16 chunks exist and meet the limits 5ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > 9 controller overlays: status, card ≤ 120 words, compiling probe 2ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > every operation has an overlay 18ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > overlay bodies and cards ≤ 120 words 11ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > index ≤ 12000 chars 168ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > phase 2 knowledge > see: example ids exist 0ms
+ ✓ |cli| src/__tests__/mcp-knowledge.spec.ts > origin rules > ORIGIN_RULES covers OPERATION_ORIGINS; docs ids exist; rules ≤ 300 chars 1ms
+
+ Test Files  4 passed (4)
+      Tests  79 passed (79)
+   Start at  21:19:38
+   Duration  8.50s (tests 59%, import 33%, transform 8%)
+
+exit 0

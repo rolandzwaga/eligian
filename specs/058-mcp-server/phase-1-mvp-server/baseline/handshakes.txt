@@ -1,0 +1,212 @@
+# T066 — handshakes and the inspector (plan gate 8; SC-003 inspector half, SC-016)
+# Run 2026-11-05 on Windows 11 Pro 10.0.26200, from Git Bash. Commands and outputs verbatim.
+# SCRATCH = C:\Users\scab\AppData\Local\Temp\claude\6adf1a082b4b5525\36f8780e-961a-4331-8c14-5cdda6313511\scratchpad\t066
+
+## Result
+- Inspector tools/list (repo bin): exit 0, exactly 5 tools (eligian_docs, eligian_operations,
+  eligian_check, eligian_fmt, eligian_init); _meta {"anthropic/alwaysLoad":true} on exactly the
+  three upfront tools; readOnlyHint true on the three; destructiveHint false + idempotentHint true
+  on eligian_fmt and eligian_init (FR-016). (destructiveHint true on the read-only three is the
+  MCP default when no Destructive annotation is set; the MCP spec ignores destructiveHint when
+  readOnlyHint is true.)
+- Windows, Claude Code 2.1.302, node form (`node <repo>\packages\cli\bin\cli.js mcp`): Connected.
+- Windows, Claude Code 2.1.302, npx form against the installed 1.1.0 tarball:
+  plain `npx -y eligian@^1.1 mcp`: Connected (from Git Bash and from cmd.exe);
+  `cmd /c npx -y eligian@^1.1 mcp`: Connected.
+  => Claude Code needs no `cmd /c` wrapper; both forms work.
+- Mechanism (a client that spawns without a shell, Node child_process.spawn, shell: false):
+  `npx` -> ENOENT, `npx.cmd` -> EINVAL (Node refuses .cmd without a shell); `cmd /c npx ...` ->
+  initialize ok; `npx` with shell: true -> initialize ok; `node <abs>\cli.js mcp` -> initialize ok.
+  => `cmd /c npx` (or the direct `node` form) is the form that works whatever the client's
+  spawn strategy; plain `npx` works only in a client that resolves .cmd shims (Claude Code does).
+- Cursor, VS Code (Copilot agent mode), Codex: not run (Cursor and Codex are not installed; the
+  VS Code MCP handshake is UI-only). Their npx form stays [UNVERIFIED] in the README; the README
+  recommends `cmd /c npx` on native Windows for them, which the spawn test shows works without a shell.
+- Linux: not done (no host). The local WSL (Node 18) is not a valid host and was not used.
+  The Linux evidence is the PR's ubuntu-latest CI run (steps "MCP inspector gate" and
+  "MCP on the packed tarball"), which does not exist yet on this branch (CI runs on PRs to main).
+- Test registrations removed afterwards (`claude mcp get eligian` -> "No MCP server named").
+- The tarball was packed into SCRATCH (not packages/cli), and `pnpm -C packages/cli build` was
+  re-run afterwards to restore the dev build that `pack`'s prepack (build:prod) replaced.
+
+## Environment
+$ node --version; npm --version; claude --version; pnpm -C packages/cli exec mcp-inspector --version; git rev-parse --short HEAD
+v24.7.0
+11.10.0
+2.1.302 (Claude Code)
+2.13.0
+448cd8b (working tree has uncommitted phase-1 changes)
+
+## Inspector tools/list against the repo bin
+$ pnpm -C packages/cli exec mcp-inspector --cli --method tools/list --format json node bin/cli.js mcp > SCRATCH/toolslist.json 2> SCRATCH/toolslist.err
+exit=0   (stderr: 0 bytes)
+
+$ node -e "<print name, _meta, annotations, description length per tool; count>" SCRATCH/toolslist.json
+eligian_docs {"anthropic/alwaysLoad":true} {"readOnlyHint":true,"destructiveHint":true,"idempotentHint":false,"openWorldHint":true} desc=505
+eligian_operations {"anthropic/alwaysLoad":true} {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":false,"openWorldHint":true} desc=697
+eligian_check {"anthropic/alwaysLoad":true} {"readOnlyHint":true,"destructiveHint":true,"idempotentHint":false,"openWorldHint":true} desc=690
+eligian_fmt null {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":true} desc=632
+eligian_init null {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":true} desc=446
+count=5
+
+$ cat SCRATCH/toolslist.json
+{"result":{"tools":[{"name":"eligian_docs","description":"Eligian docs: the curated knowledge for writing Eligian (.eligian) and Eligius presentations. No arguments: the index (one card per chunk; operations by id and title only). ids (at most 6): their cards; with detail: true their full bodies, up to 6,000 words per response, the rest listed in notReturned. query: the 8 best matching chunks with their cards. Unknown ids come back with the closest known ids. Read `syntax-cheatsheet` and `operations-index` before writing Eligian; never write it from memory.","inputSchema":{"type":"object","properties":{"ids":{"type":"array","items":{"type":"string"},"maxItems":6},"detail":{"type":"boolean"},"query":{"type":"string"}},"additionalProperties":true},"outputSchema":{"type":"object","properties":{"header":{"type":"string"},"index":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"kind":{"type":"string"},"use_cases":{"type":"array","items":{"type":"string"}},"words":{"type":"number"},"see":{"type":"array","items":{"type":"string"}},"card":{"type":"string"}},"required":["id","title"],"additionalProperties":true}},"cards":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"card":{"type":"string"}},"required":["id","title","card"],"additionalProperties":true}},"bodies":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"body":{"type":"string"}},"required":["id","title","body"],"additionalProperties":true}},"hits":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"heading":{"type":"string"},"card":{"type":"string"}},"required":["id","title","card"],"additionalProperties":true}},"notReturned":{"type":"array","items":{"type":"string"}},"unknown":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"closest":{"type":"array","items":{"type":"string"}}},"required":["id","closest"],"additionalProperties":true}}},"required":["header"],"additionalProperties":true},"annotations":{"readOnlyHint":true,"destructiveHint":true,"idempotentHint":false,"openWorldHint":true},"_meta":{"anthropic/alwaysLoad":true}},{"name":"eligian_operations","description":"Look up Eligian operations BEFORE calling one you have not used yet: each card starts with NEEDS / PROVIDES / ERASES (the operationData an operation reads, writes and removes), then its parameters, the call form and the description. `names` batches lookups; an unknown name comes back with suggestions. Filters `query` (name contains), `category`, `needs` and `provides` intersect. `kind` lists the other names: `controller` (with status), `event` (timeline events), `dom-event`, `key`. `path` (an .eligian file) adds the host operations and controllers its `extensions` import declares. No argument: the operation names by category. At most 25 cards per call; the rest are named in `notReturned`.","inputSchema":{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"}},"query":{"type":"string"},"category":{"type":"string"},"needs":{"type":"string"},"provides":{"type":"string"},"kind":{"type":"string","enum":["operation","controller","event","dom-event","key"]},"path":{"type":"string"}},"additionalProperties":true},"outputSchema":{"type":"object","properties":{"header":{"type":"string"},"cards":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"kind":{"type":"string"},"text":{"type":"string"}},"required":["name","kind","text"],"additionalProperties":true}},"unknown":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"suggestions":{"type":"array","items":{"type":"string"}}},"required":["name","suggestions"],"additionalProperties":true}},"entries":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"}},"required":["name","description"],"additionalProperties":true}},"categories":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}}},"notReturned":{"type":"array","items":{"type":"string"}},"see":{"type":"string"}},"required":["header","cards","unknown"],"additionalProperties":true},"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":false,"openWorldHint":true},"_meta":{"anthropic/alwaysLoad":true}},{"name":"eligian_check","description":"Check Eligian (.eligian) files: every diagnostic of the compiler, Eligius lint and the review pass (controllers never removed, classes never removed). Run it after EVERY edit until it reports 0 errors and 0 warnings (`ok: true`). Each diagnostic carries its fix: `suggestions`, a `quickFix` (replace the 1-based range with `newText`), the source `excerpt`, and the cause + fix text of its `docs` overlay (inlined once per code). `paths` takes files, directories and globs under the project root. The defaults are stricter than the CLI `eligian check`: `lint: true`, `review: true`, `selectorNotInLayout: 'ids'` (an id in the CSS but not in the layout HTML is reported) and `maxWarnings: 0`.","inputSchema":{"type":"object","properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1},"selectorNotInLayout":{"type":"string","enum":["off","ids","all"]},"lint":{"type":"boolean"},"review":{"type":"boolean"},"maxWarnings":{"type":"integer","minimum":0,"maximum":9007199254740991}},"required":["paths"],"additionalProperties":true},"outputSchema":{"type":"object","properties":{"header":{"type":"string"},"ok":{"type":"boolean"},"root":{"type":"string"},"files":{"type":"array","items":{"type":"object","properties":{"file":{"type":"string"},"errors":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"warnings":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991}},"required":["file","errors","warnings"],"additionalProperties":true}},"diagnostics":{"type":"array","items":{"type":"object","properties":{"source":{"type":"string","enum":["parser","validator","type","linker","compiler","eligius-lint","review","fmt"]},"severity":{"type":"string","enum":["error","warning","info","hint"]},"code":{"type":"string"},"message":{"type":"string"},"file":{"type":"string"},"line":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"column":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"endLine":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"endColumn":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"excerpt":{"type":"string"},"suggestions":{"type":"array","items":{"type":"string"}},"quickFix":{"type":"object","properties":{"line":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"column":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"endLine":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"endColumn":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"newText":{"type":"string"}},"required":["line","column","endLine","endColumn","newText"],"additionalProperties":true},"docs":{"type":"string"},"fix":{"type":"string"}},"required":["source","severity","code","message","file","line","column","excerpt"],"additionalProperties":true}},"summary":{"type":"string"}},"required":["header","ok","root","files","diagnostics","summary"],"additionalProperties":true},"annotations":{"readOnlyHint":true,"destructiveHint":true,"idempotentHint":false,"openWorldHint":true},"_meta":{"anthropic/alwaysLoad":true}},{"name":"eligian_fmt","description":"Format Eligian (.eligian) files with the rules of the editor and `eligian fmt`. By default this only checks: each file reports `formatted` and, when it is not, a `lineDiff` of the lines that would change; nothing is written. With `write: true` the unformatted files are rewritten in place and `written` lists their absolute paths (files already formatted are left alone and not listed). A file with syntax errors gets `error` and is never written: fix it first (`eligian_check` names the problem). `paths` takes files, directories and globs under the project root; formatting changes whitespace only, so running it twice is a no-op.","inputSchema":{"type":"object","properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1},"write":{"type":"boolean"}},"required":["paths"],"additionalProperties":true},"outputSchema":{"type":"object","properties":{"header":{"type":"string"},"files":{"type":"array","items":{"type":"object","properties":{"file":{"type":"string"},"formatted":{"type":"boolean"},"lineDiff":{"type":"string"},"error":{"type":"string"}},"required":["file","formatted"],"additionalProperties":true}},"written":{"type":"array","items":{"type":"string"}}},"required":["header","files","written"],"additionalProperties":true},"annotations":{"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":true}},{"name":"eligian_init","description":"Scaffold a new Eligian presentation project from a starter template (blank, chapters, video, library) in a directory: main.eligian, layout, CSS, locales, package.json, plus .mcp.json, AGENTS.md and CLAUDE.md for agents. Existing starter files are refused unless force: true; an existing agent file is never touched and is reported as skipped with the content it would get. The reply lists the files written and the next steps (npm install first).","inputSchema":{"type":"object","properties":{"directory":{"type":"string"},"template":{"type":"string","enum":["blank","chapters","video","library"]},"title":{"type":"string"},"force":{"type":"boolean"},"agents":{"type":"boolean"}},"required":["directory","template"],"additionalProperties":true},"outputSchema":{"type":"object","properties":{"header":{"type":"string"},"directory":{"type":"string"},"template":{"type":"string"},"written":{"type":"array","items":{"type":"string"}},"skipped":{"type":"array","items":{"type":"object","properties":{"file":{"type":"string"},"reason":{"type":"string"},"content":{"type":"string"}},"required":["file","reason","content"],"additionalProperties":true}},"nextSteps":{"type":"array","items":{"type":"string"}}},"required":["header","directory","template","written","skipped","nextSteps"],"additionalProperties":true},"annotations":{"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":true}}]}}
+
+
+## Windows: Claude Code, node form (cwd SCRATCH\node-form)
+$ claude mcp add eligian -- node 'F:\projects\eligius\eligian\packages\cli\bin\cli.js' mcp
+Added stdio MCP server eligian with command: node F:\projects\eligius\eligian\packages\cli\bin\cli.js mcp to local config
+File modified: C:\Users\scab\.claude.json [project: SCRATCH\node-form]
+exit=0
+$ claude mcp list
+Checking MCP server health…
+
+claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected
+claude.ai Google Calendar: https://calendarmcp.googleapis.com/mcp/v1 - ✔ Connected
+claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
+claude.ai Gmail: https://gmailmcp.googleapis.com/mcp/v1 - ✔ Connected
+context7: https://mcp.context7.com/mcp (HTTP) - ✔ Connected
+eligian: node F:\projects\eligius\eligian\packages\cli\bin\cli.js mcp - ✔ Connected
+exit=0
+$ claude mcp get eligian
+eligian:
+  Scope: Local config (private to you in this project)
+  Status: ✔ Connected
+  Type: stdio
+  Command: node
+  Args: F:\projects\eligius\eligian\packages\cli\bin\cli.js mcp
+  Environment:
+
+To remove this server, run: claude mcp remove eligian -s local
+exit=0
+$ claude mcp remove eligian -s local
+Removed MCP server eligian from local config
+File modified: C:\Users\scab\.claude.json [project: SCRATCH\node-form]
+exit=0
+
+## The installed tarball (cwd repo root, then SCRATCH\npx-form)
+$ pnpm -C packages/cli pack --pack-destination SCRATCH
+. prepack$ pnpm run build:prod
+. prepack: $ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production
+. prepack: generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+. prepack: [01:53:51] Build succeeded
+. prepack: Done
+package: eligian@1.1.0
+(Tarball Contents: bin/cli.js, dist/cli.mjs, dist/docs/** (144 files), LICENSE, package.json, README.md)
+SCRATCH\eligian-1.1.0.tgz
+exit=0
+$ pnpm -C packages/cli build        # restores the dev build that prepack (build:prod) replaced
+$ shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly
+generate-knowledge: 144 files in F:\projects\eligius\eligian\packages\cli\dist\docs
+[01:53:56] Build succeeded
+exit=0
+$ ls packages/cli/*.tgz
+ls: cannot access 'packages/cli/*.tgz': No such file or directory
+
+$ cd SCRATCH/npx-form && npm init -y && npm install SCRATCH/eligian-1.1.0.tgz
+13 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+exit=0
+$ npm ls eligian
+npx-form@1.0.0 SCRATCH\npx-form
+`-- eligian@1.1.0
+$ npx -y eligian@^1.1 --version
+1.1.0
+exit=0
+# eligian 1.1.0 is not on the npm registry yet; npx resolves the spec against the project's
+# installed 1.1.0, which is the installed-tarball test SC-016 asks for.
+
+## Windows: Claude Code, plain npx form (cwd SCRATCH\npx-form)
+$ claude mcp add eligian -- npx -y 'eligian@^1.1' mcp
+Added stdio MCP server eligian with command: npx -y eligian@^1.1 mcp to local config
+File modified: C:\Users\scab\.claude.json [project: SCRATCH\npx-form]
+exit=0
+$ claude mcp list
+Checking MCP server health…
+
+claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected
+claude.ai Google Calendar: https://calendarmcp.googleapis.com/mcp/v1 - ✔ Connected
+claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
+claude.ai Gmail: https://gmailmcp.googleapis.com/mcp/v1 - ✔ Connected
+context7: https://mcp.context7.com/mcp (HTTP) - ✔ Connected
+eligian: npx -y eligian@^1.1 mcp - ✔ Connected
+exit=0
+$ claude mcp get eligian
+eligian:
+  Scope: Local config (private to you in this project)
+  Status: ✔ Connected
+  Type: stdio
+  Command: npx
+  Args: -y eligian@^1.1 mcp
+  Environment:
+
+To remove this server, run: claude mcp remove eligian -s local
+exit=0
+$ cmd //c "claude mcp list" | grep -i eligian        # the same check started from cmd.exe
+eligian: npx -y eligian@^1.1 mcp - ✔ Connected
+$ claude mcp remove eligian -s local
+Removed MCP server eligian from local config
+File modified: C:\Users\scab\.claude.json [project: SCRATCH\npx-form]
+exit=0
+
+## Windows: Claude Code, cmd /c npx form (cwd SCRATCH\npx-form)
+# First attempt is void: Git Bash's MSYS path conversion rewrote "/c" to "C:/" before Claude Code saw it.
+$ claude mcp add eligian -- cmd /c npx -y 'eligian@^1.1' mcp
+Added stdio MCP server eligian with command: cmd C:/ npx -y eligian@^1.1 mcp to local config
+exit=0
+$ claude mcp list | grep -i "eligian\|health"
+Checking MCP server health…
+eligian: cmd C:/ npx -y eligian@^1.1 mcp - ✘ Failed to connect — MCP server "eligian" connection timed out after 30000ms
+$ claude mcp remove eligian -s local
+Removed MCP server eligian from local config
+exit=0
+# Re-run with the conversion off (the stored arguments are now exactly "/c npx -y eligian@^1.1 mcp"):
+$ MSYS_NO_PATHCONV=1 claude mcp add eligian -- cmd /c npx -y 'eligian@^1.1' mcp
+Added stdio MCP server eligian with command: cmd /c npx -y eligian@^1.1 mcp to local config
+File modified: C:\Users\scab\.claude.json [project: SCRATCH\npx-form]
+exit=0
+$ claude mcp get eligian | grep -i "status\|command\|args"
+  Status: ✔ Connected
+  Command: cmd
+  Args: /c npx -y eligian@^1.1 mcp
+$ claude mcp list | grep -i eligian
+eligian: cmd /c npx -y eligian@^1.1 mcp - ✔ Connected
+exit=0
+$ claude mcp remove eligian -s local
+Removed MCP server eligian from local config
+File modified: C:\Users\scab\.claude.json [project: SCRATCH\npx-form]
+exit=0
+$ claude mcp get eligian
+No MCP server named "eligian". Configured servers: claude.ai Claude Docs, claude.ai Gmail, claude.ai Google Calendar, claude.ai Google Drive, context7
+
+## Mechanism: raw initialize over child_process.spawn (how a client without a shell launches)
+# SCRATCH\spawn-init.mjs <cwd> <shell|noshell> <command> <args...>: spawns, writes one initialize
+# request (protocolVersion 2025-06-18), prints the first answer line's protocolVersion / serverInfo.
+$ export MSYS_NO_PATHCONV=1; P=SCRATCH/npx-form
+$ node spawn-init.mjs $P noshell npx -y 'eligian@^1.1' mcp
+npx -y eligian@^1.1 mcp (shell: false) -> error ENOENT spawn npx ENOENT
+$ node spawn-init.mjs $P noshell npx.cmd -y 'eligian@^1.1' mcp
+npx.cmd -y eligian@^1.1 mcp (shell: false) -> spawn threw EINVAL spawn EINVAL
+$ node spawn-init.mjs $P noshell cmd /c npx -y 'eligian@^1.1' mcp
+cmd /c npx -y eligian@^1.1 mcp (shell: false) -> initialize ok: protocolVersion 2025-06-18, serverInfo {"name":"eligian","version":"1.1.0"}
+$ node spawn-init.mjs $P shell npx -y 'eligian@^1.1' mcp
+(node:36836) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+npx -y eligian@^1.1 mcp (shell: true) -> initialize ok: protocolVersion 2025-06-18, serverInfo {"name":"eligian","version":"1.1.0"}
+$ node spawn-init.mjs $P noshell node 'SCRATCH\npx-form\node_modules\eligian\bin\cli.js' mcp
+node SCRATCH\npx-form\node_modules\eligian\bin\cli.js mcp (shell: false) -> initialize ok: protocolVersion 2025-06-18, serverInfo {"name":"eligian","version":"1.1.0"}
+
+## Other clients
+$ which code cursor codex
+which: no cursor in (...)
+which: no codex in (...)
+/c/Users/scab/AppData/Local/Programs/Microsoft VS Code/bin/code
+# Cursor and Codex are not installed; VS Code starts MCP servers from its UI (not scriptable here).
+# Not run. README: their npx form on native Windows stays [UNVERIFIED]; "cmd /c npx" is recommended
+# for them because it needs no .cmd shim resolution by the client (see the mechanism section).
+
+## Linux
+not done (no host). WSL (Node 18) not used. Evidence = the PR's ubuntu-latest CI run
+(.github/workflows/ci.yml steps "MCP inspector gate" and "MCP on the packed tarball"), once the PR exists.

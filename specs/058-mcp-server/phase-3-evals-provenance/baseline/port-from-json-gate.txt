@@ -1,0 +1,34 @@
+$ node <repo>/packages/cli/bin/cli.js check main.eligian --max-warnings 0 --selector-not-in-layout ids
+1 file, 0 errors, 0 warnings
+exit 0
+
+$ node <repo>/packages/cli/bin/cli.js fmt --check "**/*.eligian"
+All 1 file formatted
+exit 0
+
+$ node <repo>/packages/cli/bin/cli.js smoke main.eligian --strict --format json --scenario ../../../cases/port-from-json.scenario.json --determinism
+[
+  {
+    "file": "main.eligian",
+    "timelines": [
+      {
+        "name": "Hub",
+        "boundaries": 1
+      },
+      {
+        "name": "Chapter 1",
+        "boundaries": 3
+      },
+      {
+        "name": "Chapter 2",
+        "boundaries": 2
+      },
+      {
+        "name": "Timeline & Time",
+        "boundaries": 5
+      }
+    ],
+    "problems": []
+  }
+]
+exit 0

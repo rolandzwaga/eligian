@@ -1,0 +1,3 @@
+$ biome ci --error-on-warnings .
+[0m[36mChecked 859 files in 272[0m[0m[2m[36mms[0m[0m[36m.[0m[0m[36m No fixes applied.[0m
+EXIT=0

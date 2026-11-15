@@ -1,0 +1,8 @@
+// A mistyped DOM event in an interaction: unknown_dom_event, suggesting click
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  on enter [ on clik "#box" play ]
+  at 0s..1s [ selectElement("#box") addClass("lit") ] [ selectElement("#box") removeClass("lit") ]
+}

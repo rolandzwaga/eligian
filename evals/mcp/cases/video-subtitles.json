@@ -1,0 +1,29 @@
+{
+  "id": "video-subtitles",
+  "prompt": "Subtitle track over the video `media/intro.mp4` (30s): five captions at given times, with a progress bar. The presentation starts from a Start button. The entry file is `main.eligian` in the current directory; `media/intro.mp4` is already there. The presentation starts on a timeline named `Start` that shows the button `#start`; clicking `#start` switches to the video timeline, named `Video`, which plays `media/intro.mp4`. The captions are the elements `#caption-1` to `#caption-5`, each visible only within its time range on `Video` and hidden outside it: `#caption-1` from 2s to 7s, `#caption-2` from 8s to 13s, `#caption-3` from 14s to 19s, `#caption-4` from 20s to 25s, `#caption-5` from 26s to 29s. The progress bar is the element `#progress`. An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "video-subtitles.scenario.json",
+  "fixtures": [{ "from": "../fixtures/media/intro.mp4", "to": "media/intro.mp4" }],
+  "assertions": [
+    { "kind": "timelines.count", "type": "mediaplayer", "equals": 1 },
+    {
+      "kind": "timeline",
+      "type": "mediaplayer",
+      "positionSource": "VideoPositionSource",
+      "from": "media/intro.mp4"
+    },
+    { "kind": "timeline.rangedActions", "type": "mediaplayer", "min": 5 },
+    { "kind": "controllers.used", "anyOf": ["ProgressbarController", "SubtitlesController"] },
+    {
+      "kind": "css.hasRule",
+      "selector": ".eligius-video",
+      "anyProperty": ["width", "height", "max-width", "max-height", "inline-size", "block-size"]
+    },
+    { "kind": "timeline", "at": 0, "type": "animation" },
+    { "kind": "check.codesAbsent", "codes": ["media-timeline-first-without-start-gesture"] },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

@@ -1,0 +1,391 @@
+$ pnpm -r test
+Scope: all 5 workspace projects
+packages/shared-utils test$ vitest run
+packages/shared-utils test: 
+packages/shared-utils test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/shared-utils
+packages/shared-utils test: 
+packages/shared-utils test: (node:61272) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+packages/shared-utils test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/shared-utils test: 
+packages/shared-utils test:  Test Files  7 passed (7)
+packages/shared-utils test:       Tests  105 passed (105)
+packages/shared-utils test:    Start at  13:58:17
+packages/shared-utils test:    Duration  861ms (tests 79%, import 12%, transform 6%, worker 3%)
+packages/shared-utils test: 
+packages/shared-utils test: Done
+packages/language test$ vitest run --reporter=dot --hideSkippedTests
+packages/language test: The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+packages/language test: 
+packages/language test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/language
+packages/language test: 
+packages/language test: stderr | src/__tests__/on-demand-library-loading.spec.ts > On-demand loading of imported libraries (IDE) > the language server update path loads, builds and validates the libraries
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/nested.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/nested.eligian).
+packages/language test: 
+packages/language test: stderr | src/__tests__/on-demand-library-loading.spec.ts > On-demand loading of imported libraries (IDE) > the language server update path loads, builds and validates the libraries
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/nested.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: Attempted reference resolution before document reached ComputedScopes state (file:///outside/shared/lib.eligian).
+packages/language test: 
+packages/language test: ··············································································································································································································stdout | src/__tests__/operation-validation.spec.ts > Operation Validation > Imported action validation > should validate multiple imported actions
+packages/language test: Found 1 errors:
+packages/language test:   - Asset file not found: ./test.css. Check that the file path is correct and the file exists (code: css-import-error)
+packages/language test: 
+packages/language test: ·································································································stdout | src/__tests__/operation-validation.spec.ts > Operation Validation > Imported action validation > should validate mix of imported actions and builtin operations
+packages/language test: Found 1 errors:
+packages/language test:   - Asset file not found: ./test.css. Check that the file path is correct and the file exists (code: css-import-error)
+packages/language test: 
+packages/language test: ······································································································································································································································································································································································································································································································································································································································stdout | src/__tests__/lsp-navigation.spec.ts > Custom Action Reference Provider - LSP Integration > Performance Requirements > SC-001: Navigation completes in < 1 second for 100 actions
+packages/language test: Navigation with 100 actions took: 103.15ms
+packages/language test: 
+packages/language test: stderr | src/__tests__/library-imports/imported-action-parameter-validation.spec.ts > Imported Action Parameter Validation (Feature 032 Fix) > should reject aliased imported action with wrong argument count
+packages/language test: === T010 ALL DIAGNOSTICS ===
+packages/language test:   [ERROR] Action 'customFadeIn' expects 2 argument(s) but got 1. Expected: selector, duration
+packages/language test: 
+packages/language test: ······················································································································································································································································································································································································································································································································································································································································stdout | src/compiler/__tests__/eligian-map.spec.ts > Eligian map (audit idea #14) > an error the real engine reports maps to the failing operation's source line
+packages/language test: logValue before
+packages/language test: 
+packages/language test: ················································································································································································································································································································································································-········································································-···················································································································································································································································································································································································································································································································································································································································································································································································································································································--·---·--····-···························································································································································································································································································································································································································································································································································································-------------·············
+packages/language test: 
+packages/language test:  Test Files  257 passed | 1 skipped (258)
+packages/language test:       Tests  3428 passed | 23 skipped (3451)
+packages/language test:    Start at  13:58:18
+packages/language test:    Duration  28.76s (import 77%, tests 15%, transform 4%, environment 4%)
+packages/language test: 
+packages/language test:     Isolate  258 workers spawned · ~499ms startup each (spawn + environment, per file)
+packages/language test:              at least ~3.65s faster with isolate: false — reuses workers across files instead of one per file
+packages/language test: 
+packages/language test: Done
+packages/cli test$ vitest run --project cli --project cli-timed && pnpm run test:bin
+packages/extension test$ vitest run
+packages/cli test: 
+packages/cli test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+packages/cli test: 
+packages/extension test: 
+packages/extension test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/extension
+packages/extension test: 
+packages/extension test: Could not parse CSS stylesheet
+packages/cli test: {"t":"2026-11-06T12:58:59.187Z","tool":"eligian_compile","ms":86,"chars":9359,"ok":true,"args":{"view":"full","includeMap":true}}
+packages/cli test: {"t":"2026-11-06T12:58:59.288Z","tool":"eligian_compile","ms":292,"chars":4202,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true}}
+packages/cli test: {"t":"2026-11-06T12:58:58.017Z","tool":"eligian_check","ms":1818,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:58:59.849Z","tool":"eligian_check","ms":937,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:00.790Z","tool":"eligian_fmt","ms":368,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:01.174Z","tool":"eligian_check","ms":95,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:01.200Z","tool":"eligian_check","ms":381,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:01.201Z","tool":"eligian_fmt","ms":475,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:01.682Z","tool":"eligian_check","ms":335,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:01.705Z","tool":"eligian_check","ms":388,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:01.705Z","tool":"eligian_fmt","ms":495,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:02.205Z","tool":"eligian_check","ms":153,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:02.224Z","tool":"eligian_check","ms":530,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:02.226Z","tool":"eligian_fmt","ms":587,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:02.817Z","tool":"eligian_check","ms":250,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:02.839Z","tool":"eligian_check","ms":447,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:02.839Z","tool":"eligian_fmt","ms":491,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:03.334Z","tool":"eligian_check","ms":110,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:03.356Z","tool":"eligian_check","ms":232,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:03.356Z","tool":"eligian_fmt","ms":292,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:03.653Z","tool":"eligian_check","ms":382,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:03.683Z","tool":"eligian_check","ms":633,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:03.684Z","tool":"eligian_fmt","ms":718,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:04.407Z","tool":"eligian_check","ms":181,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:04.430Z","tool":"eligian_check","ms":376,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:04.430Z","tool":"eligian_fmt","ms":422,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:04.856Z","tool":"eligian_check","ms":358,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:04.880Z","tool":"eligian_check","ms":383,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:04.880Z","tool":"eligian_fmt","ms":404,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:05.314Z","tool":"eligian_check","ms":158,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:05.333Z","tool":"eligian_check","ms":256,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:05.334Z","tool":"eligian_fmt","ms":271,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:05.608Z","tool":"eligian_check","ms":207,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:05.664Z","tool":"eligian_check","ms":249,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:05.664Z","tool":"eligian_fmt","ms":282,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:05.950Z","tool":"eligian_check","ms":83,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:05.967Z","tool":"eligian_check","ms":181,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:05.968Z","tool":"eligian_fmt","ms":209,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:06.181Z","tool":"eligian_check","ms":114,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.202Z","tool":"eligian_check","ms":191,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.203Z","tool":"eligian_fmt","ms":212,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:06.419Z","tool":"eligian_check","ms":76,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.441Z","tool":"eligian_check","ms":190,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.441Z","tool":"eligian_fmt","ms":222,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:06.667Z","tool":"eligian_check","ms":108,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.685Z","tool":"eligian_check","ms":185,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.689Z","tool":"eligian_fmt","ms":194,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:06.887Z","tool":"eligian_check","ms":83,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.915Z","tool":"eligian_check","ms":106,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:06.915Z","tool":"eligian_fmt","ms":120,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:07.040Z","tool":"eligian_check","ms":61,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.059Z","tool":"eligian_check","ms":97,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.060Z","tool":"eligian_fmt","ms":104,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:07.168Z","tool":"eligian_check","ms":41,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.188Z","tool":"eligian_check","ms":77,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.189Z","tool":"eligian_fmt","ms":85,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:07.277Z","tool":"eligian_check","ms":61,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.294Z","tool":"eligian_check","ms":122,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.294Z","tool":"eligian_fmt","ms":127,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:07.425Z","tool":"eligian_check","ms":60,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.440Z","tool":"eligian_check","ms":100,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.441Z","tool":"eligian_fmt","ms":103,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:07.547Z","tool":"eligian_check","ms":56,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.565Z","tool":"eligian_check","ms":85,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.566Z","tool":"eligian_fmt","ms":104,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:07.718Z","tool":"eligian_check","ms":111,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:07.833Z","tool":"eligian_compile","ms":46,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:07.882Z","tool":"eligian_project","ms":158,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.044Z","tool":"eligian_check","ms":54,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:08.062Z","tool":"eligian_compile","ms":67,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.063Z","tool":"eligian_project","ms":100,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.168Z","tool":"eligian_check","ms":76,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:08.200Z","tool":"eligian_compile","ms":142,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.201Z","tool":"eligian_project","ms":164,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.368Z","tool":"eligian_check","ms":71,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:08.385Z","tool":"eligian_project","ms":124,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.384Z","tool":"eligian_compile","ms":253,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.642Z","tool":"eligian_check","ms":176,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:08.659Z","tool":"eligian_compile","ms":276,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.659Z","tool":"eligian_project","ms":311,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:08.974Z","tool":"eligian_check","ms":74,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.004Z","tool":"eligian_project","ms":90,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.004Z","tool":"eligian_compile","ms":132,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.141Z","tool":"eligian_check","ms":97,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.157Z","tool":"eligian_compile","ms":131,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.158Z","tool":"eligian_project","ms":205,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.367Z","tool":"eligian_check","ms":94,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.382Z","tool":"eligian_compile","ms":109,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.382Z","tool":"eligian_project","ms":131,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.517Z","tool":"eligian_check","ms":78,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.532Z","tool":"eligian_compile","ms":103,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.532Z","tool":"eligian_project","ms":132,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.785Z","tool":"eligian_check","ms":4,"chars":293,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T12:59:09.668Z","tool":"eligian_check","ms":130,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.687Z","tool":"eligian_compile","ms":145,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.687Z","tool":"eligian_project","ms":175,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.888Z","tool":"eligian_check","ms":1,"chars":628,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T12:59:09.865Z","tool":"eligian_check","ms":83,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.983Z","tool":"eligian_check","ms":11,"chars":1144,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_operation":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:09.895Z","tool":"eligian_compile","ms":122,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:09.895Z","tool":"eligian_project","ms":153,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.052Z","tool":"eligian_check","ms":51,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.070Z","tool":"eligian_project","ms":93,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.070Z","tool":"eligian_compile","ms":124,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.197Z","tool":"eligian_check","ms":64,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.212Z","tool":"eligian_compile","ms":90,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.212Z","tool":"eligian_project","ms":111,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.327Z","tool":"eligian_check","ms":58,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.363Z","tool":"eligian_compile","ms":52,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.363Z","tool":"eligian_project","ms":80,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.447Z","tool":"eligian_check","ms":54,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.467Z","tool":"eligian_project","ms":78,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.466Z","tool":"eligian_compile","ms":113,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.583Z","tool":"eligian_check","ms":84,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.601Z","tool":"eligian_compile","ms":93,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.601Z","tool":"eligian_project","ms":143,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.747Z","tool":"eligian_check","ms":73,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.765Z","tool":"eligian_compile","ms":104,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.765Z","tool":"eligian_project","ms":146,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.915Z","tool":"eligian_check","ms":49,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:10.932Z","tool":"eligian_compile","ms":87,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:10.932Z","tool":"eligian_project","ms":175,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:11.111Z","tool":"eligian_check","ms":87,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:11.127Z","tool":"eligian_compile","ms":270,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:11.127Z","tool":"eligian_project","ms":382,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:11.513Z","tool":"eligian_check","ms":154,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:11.530Z","tool":"eligian_compile","ms":259,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:11.530Z","tool":"eligian_project","ms":322,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:11.871Z","tool":"eligian_check","ms":197,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:11.891Z","tool":"eligian_compile","ms":296,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:11.891Z","tool":"eligian_project","ms":406,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:12.408Z","tool":"eligian_check","ms":369,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:12.408Z","tool":"eligian_fmt","ms":398,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:12.409Z","tool":"eligian_operations","ms":607,"chars":535,"ok":true,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T12:59:13.095Z","tool":"eligian_check","ms":90,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:13.188Z","tool":"eligian_compile","ms":60,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:13.251Z","tool":"eligian_project","ms":98,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:13.352Z","tool":"eligian_check","ms":212,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:13.567Z","tool":"eligian_compile","ms":62,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:13.632Z","tool":"eligian_project","ms":38,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:13.697Z","tool":"eligian_check","ms":126,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:13.833Z","tool":"eligian_compile","ms":24,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:13.896Z","tool":"eligian_check","ms":11,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:13.910Z","tool":"eligian_check","ms":111,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: {"t":"2026-11-06T12:59:13.911Z","tool":"eligian_compile","ms":216,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+packages/cli test: {"t":"2026-11-06T12:59:14.177Z","tool":"eligian_check","ms":7,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:14.229Z","tool":"eligian_check","ms":69,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T12:59:14.232Z","tool":"eligian_check","ms":82,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/extension test: 
+packages/extension test:  Test Files  65 passed (65)
+packages/extension test:       Tests  792 passed (792)
+packages/extension test:    Start at  13:58:47
+packages/extension test:    Duration  27.21s (environment 78%, import 10%, tests 5%, transform 5%, setup 1%, worker 1%)
+packages/extension test: 
+packages/extension test: Environment  jsdom was created 65 times · 510.52s total, 78% of tracked time
+packages/extension test:              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+packages/extension test:              learn more: https://vitest.dev/guide/improving-performance#test-environments
+packages/extension test: 
+packages/extension test: Done
+packages/cli test: {"t":"2026-11-06T12:59:06.454Z","tool":"eligian_operations","ms":9208,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T12:59:15.764Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T12:59:15.769Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T12:59:15.773Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T12:59:16.373Z","tool":"eligian_check","ms":1,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T12:59:16.371Z","tool":"eligian_check","ms":94,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-init-5xxuQS; resources disabled
+packages/cli test: {"t":"2026-11-06T12:59:16.672Z","tool":"eligian_init","ms":36,"chars":389,"ok":false,"args":{"directory":"C:\\Users\\scab\\AppData\\Local\\Temp\\eligian-mcp-init-5xxuQS\\file.txt\\sub","template":"blank","force":false,"agents":true,"client":["claude"]}}
+packages/cli test: {"t":"2026-11-06T12:59:16.843Z","tool":"eligian_compile","ms":42,"chars":2004,"ok":true,"args":{"view":"fragment","select":["timeline"],"explain":true}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-docs-empty-jnuLyt; resources disabled
+packages/cli test: {"t":"2026-11-06T12:59:17.000Z","tool":"eligian_docs","ms":7,"chars":495,"ok":false,"args":{}}
+packages/cli test: {"t":"2026-11-06T12:59:07.334Z","tool":"eligian_docs","ms":9858,"chars":9896,"ok":true,"args":{}}
+packages/cli test: {"t":"2026-11-06T12:59:17.274Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+packages/cli test: {"t":"2026-11-06T12:59:17.330Z","tool":"eligian_check","ms":25,"chars":2098,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"timeline-required":1,"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:17.421Z","tool":"eligian_fmt","ms":166,"chars":291,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T12:59:17.640Z","tool":"eligian_init","ms":64,"chars":1230,"ok":true,"args":{"directory":"project","template":"blank","force":false,"agents":true,"client":["claude"]}}
+packages/cli test: {"t":"2026-11-06T12:59:17.752Z","tool":"eligian_compile","ms":31,"chars":1853,"ok":true,"args":{"view":"summary"}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-fmt-yjkoU0; resources disabled
+packages/cli test: {"t":"2026-11-06T12:59:17.836Z","tool":"eligian_project","ms":83,"chars":847,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:17.996Z","tool":"eligian_fmt","ms":33,"chars":413,"ok":false,"args":{"paths":1,"write":true}}
+packages/cli test: smoke: stub stderr one
+packages/cli test: smoke: stub stderr two
+packages/cli test: smoke: this line is not json
+packages/cli test: {"t":"2026-11-06T12:59:17.982Z","tool":"eligian_smoke","ms":257,"chars":341,"ok":true,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:18.292Z","tool":"eligian_compile","ms":1,"chars":424,"ok":false,"args":{"view":"summary"}}
+packages/cli test: {"t":"2026-11-06T12:59:18.358Z","tool":"eligian_project","ms":15,"chars":257,"ok":false,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:18.427Z","tool":"eligian_smoke","ms":5,"chars":255,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:20.104Z","tool":"eligian_check","ms":562,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:20.691Z","tool":"eligian_project","ms":158,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:20.858Z","tool":"eligian_check","ms":81,"chars":1930,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:20.943Z","tool":"eligian_project","ms":107,"chars":1879,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:21.104Z","tool":"eligian_check","ms":110,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:21.218Z","tool":"eligian_project","ms":91,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:21.323Z","tool":"eligian_check","ms":73,"chars":1759,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: Not implemented: navigation to another Document
+packages/cli test: {"t":"2026-11-06T12:59:21.400Z","tool":"eligian_project","ms":157,"chars":1871,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:21.611Z","tool":"eligian_project","ms":196,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:21.812Z","tool":"eligian_check","ms":33,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:21.853Z","tool":"eligian_project","ms":79,"chars":1874,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:21.935Z","tool":"eligian_check","ms":27,"chars":2179,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:22.006Z","tool":"eligian_operations","ms":3,"chars":493,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T12:59:22.003Z","tool":"eligian_check","ms":38,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:22.057Z","tool":"eligian_operations","ms":1,"chars":569,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T12:59:22.045Z","tool":"eligian_check","ms":189,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-resources-r6kZdK; resources disabled
+packages/cli test: {"t":"2026-11-06T12:59:22.239Z","tool":"eligian_compile","ms":60,"chars":604,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T12:59:22.302Z","tool":"eligian_project","ms":76,"chars":1895,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:22.382Z","tool":"eligian_compile","ms":98,"chars":814,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T12:59:22.482Z","tool":"eligian_project","ms":96,"chars":2021,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:22.609Z","tool":"eligian_check","ms":48,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:22.660Z","tool":"eligian_project","ms":39,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:22.703Z","tool":"eligian_check","ms":114,"chars":1930,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:22.820Z","tool":"eligian_project","ms":47,"chars":1879,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:22.903Z","tool":"eligian_check","ms":131,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.037Z","tool":"eligian_project","ms":47,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:23.088Z","tool":"eligian_check","ms":101,"chars":1759,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.192Z","tool":"eligian_project","ms":54,"chars":1871,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:23.277Z","tool":"eligian_project","ms":124,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:23.404Z","tool":"eligian_check","ms":28,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.437Z","tool":"eligian_project","ms":122,"chars":1874,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:23.562Z","tool":"eligian_check","ms":27,"chars":2179,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.626Z","tool":"eligian_check","ms":111,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.740Z","tool":"eligian_check","ms":25,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.768Z","tool":"eligian_check","ms":181,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:23.951Z","tool":"eligian_compile","ms":43,"chars":604,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T12:59:23.996Z","tool":"eligian_project","ms":128,"chars":1895,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:24.126Z","tool":"eligian_check","ms":91,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+packages/cli test: {"t":"2026-11-06T12:59:24.220Z","tool":"eligian_compile","ms":120,"chars":814,"ok":true,"args":{"view":"fragment","select":["action"]}}
+packages/cli test: {"t":"2026-11-06T12:59:24.342Z","tool":"eligian_project","ms":58,"chars":2021,"ok":true,"args":{"response_format":"concise"}}
+packages/cli test: {"t":"2026-11-06T12:59:28.500Z","tool":"eligian_check","ms":13,"chars":163,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T12:59:28.757Z","tool":"eligian_check","ms":9,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:28.782Z","tool":"eligian_check","ms":1,"chars":589,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+packages/cli test: {"t":"2026-11-06T12:59:28.784Z","tool":"eligian_operations","ms":1,"chars":594,"ok":false,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T12:59:28.806Z","tool":"eligian_check","ms":4,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:28.848Z","tool":"eligian_docs","ms":0,"chars":9896,"ok":true,"args":{}}
+packages/cli test: {"t":"2026-11-06T12:59:28.851Z","tool":"eligian_operations","ms":86,"chars":769,"ok":true,"args":{"names":1,"path":true}}
+packages/cli test: {"t":"2026-11-06T12:59:28.939Z","tool":"eligian_check","ms":6,"chars":1396,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+packages/cli test: {"t":"2026-11-06T12:59:28.946Z","tool":"eligian_fmt","ms":48,"chars":339,"ok":true,"args":{"paths":1,"write":false}}
+packages/cli test: {"t":"2026-11-06T13:01:27.722Z","tool":"eligian_smoke","ms":6,"chars":0,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+packages/cli test: 
+packages/cli test:  Test Files  74 passed | 1 skipped (75)
+packages/cli test:       Tests  1427 passed | 32 skipped (1459)
+packages/cli test:    Start at  13:58:47
+packages/cli test:    Duration  175.30s (tests 73%, import 23%, transform 4%)
+packages/cli test: 
+packages/cli test: $ vitest run --project cli-bin
+packages/cli test: 
+packages/cli test:  RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+packages/cli test: 
+packages/cli test: (node:21084) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+packages/cli test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/cli test: 
+packages/cli test:  Test Files  1 passed (1)
+packages/cli test:       Tests  15 passed (15)
+packages/cli test:    Start at  14:01:43
+packages/cli test:    Duration  19.05s (tests 98%, import 2%)
+packages/cli test: 
+packages/cli test: Done
+exit 0
+
+=== T026 supplementary evidence (the pnpm test run above is the gate; its default reporter prints no file names) ===
+--- packages/cli: vitest run --project cli --reporter=verbose on the four new specs (same files the cli project ran above) ---
+ ✓ |cli| src/__tests__/plugins.spec.ts > the Claude Code plugin (FR-016, FR-019, SC-008) > starts the server as serverEntry(claude, npx) on Windows and POSIX 2ms
+ ✓ |cli| src/__tests__/plugins.spec.ts > the Claude Code plugin (FR-016, FR-019, SC-008) > carries the CLI version 0ms
+ ✓ |cli| src/__tests__/plugins.spec.ts > the Claude Code plugin (FR-016, FR-019, SC-008) > holds exactly plugin.json and .mcp.json 0ms
+ ✓ |cli| src/__tests__/plugins.spec.ts > the Claude Code plugin (FR-016, FR-019, SC-008) > has the marketplace keys and a ./ source that resolves 2ms
+ ✓ |cli| src/__tests__/plugins.spec.ts > the Claude Code plugin (FR-016, FR-019, SC-008) > ships no Cursor or Codex plugin 1ms
+ ✓ |cli| src/__tests__/plugins.spec.ts > the Claude Code plugin (FR-016, FR-019, SC-008) > the README names the per-project route and the plugin install 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > counts a record once per code however often it is reported 2ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > counts a round for each reporting check line followed by another check line 1ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > ignores lines of other tools and lines without result.codes 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > says no data and rule not applied when nothing is pinned 1ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > isFullRun needs an A1 record for every case id 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > counts only pinned full runs: a partial pinned run next to a full one is rejected and adds no codes 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > ignores an unpinned full run (the SC-003 re-run) 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > lists a counted A1 record without a log as no data 1ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > marks (a) and (b) as lower bounds when a counted check line is truncated 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > promotes on (a) >= 2 or (b) >= 1 1ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > never promotes lottie-web-not-installed 0ms
+ ✓ |cli| src/__tests__/mcp-promotion-evidence.spec.ts > promotion evidence (FR-001) > renders all 9 REVIEW_CODES with columns (a)-(d), the scanned and pinned runs 1ms
+ ✓ |cli| src/__tests__/mcp-tool-mix.spec.ts > the FR-022 tool mix > is check, project, compile summary, fmt without write, operations with path 2ms
+ ✓ |cli| src/__tests__/mcp-tool-mix.spec.ts > the FR-022 tool mix > rotates by one tool after each recycle 0ms
+ ✓ |cli| src/__tests__/mcp-tool-mix.spec.ts > the FR-022 tool mix > copyProject copies without dist and storyboards 9ms
+ ✓ |cli| src/__tests__/mcp-tool-mix.spec.ts > the FR-022 tool mix > heapAfterGc calls gc three times when the heap is already settled 0ms
+ ✓ |cli| src/__tests__/mcp-tool-mix.spec.ts > the FR-022 tool mix > heapAfterGc keeps collecting while a GC still frees at least 1 MB 1ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > server.json (FR-011, FR-012, SC-004) > names the server as package.json mcpName 1ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > server.json (FR-011, FR-012, SC-004) > carries the package version three times 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > server.json (FR-011, FR-012, SC-004) > points at the eligian npm package with the stdio transport 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > server.json (FR-011, FR-012, SC-004) > launches with exactly the positional argument mcp 1ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > server.json (FR-011, FR-012, SC-004) > has a description of at most 100 characters 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > packageArguments start the server (FR-012, SC-004) > packageArguments start the server: initialize answers with serverInfo.name eligian 545ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > packageArguments start the server (FR-012, SC-004) > negative control: no arguments runs compile, which exits before any frame 397ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > orders the publish job steps 1ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > pins mcp-publisher by tag and checks its sha256 before extracting 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > publishes to the registry after npm with a bounded retry and no continue-on-error 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > uses no secrets 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > keeps the release job behind the publish job 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > registry_only skips npm publish and the release, never the registry steps 0ms
+ ✓ |cli| src/__tests__/mcp-registry.spec.ts > publish-cli.yml (FR-013, SC-006) > Try the package checks the installed mcpName before Publish (P21) 0ms
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+exit 0
+--- packages/cli: vitest run --project cli-bin --reporter=verbose (package-bin.spec.ts; the test:bin step above: 15 passed, 0 skipped) ---
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 1ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 20ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 362ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > help names mcp and the check defaults 730ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 12ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5) 2238ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s 490ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild, effect/ai or the eligius engine 25ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the docs, the README and the LICENSE 1417ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > dist/evals/assert.mjs exists after a build and is not packed 1361ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the eval bundle loads and exports evaluateAssertions, runGateSteps, computeMetrics, parseHarnessArgs 350ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the eval bundle exports promotionEvidence and renderPromotionEvidence 22ms
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+exit 0

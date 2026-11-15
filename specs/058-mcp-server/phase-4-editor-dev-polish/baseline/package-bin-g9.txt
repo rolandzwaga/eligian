@@ -1,0 +1,32 @@
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > eligian points at the bin/cli.js launcher 1ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > eligian-cli points at the bin/cli.js launcher 0ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > launcher is published and actually invokes main() 1ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > depends on no workspace package (they are bundled in) 0ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle imports only Node built-ins and the dependencies 17ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > --version prints the package version 342ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > help names mcp and the check defaults 695ms
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5)
+--version startup (ms): 326 381 355 338 353 median 353
+
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the bundle carries the injected versions 10ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > --version starts in under 3 s (median of 5) 2104ms
+stdout | src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s
+mcp initialize answered in 450 ms
+
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > mcp answers initialize in under 3 s 458ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > no static import of jsdom, esbuild, effect/ai or the eligius engine 21ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > npm packs the launcher, the bundle, the docs, the README and the LICENSE 1382ms
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > dist/evals/assert.mjs exists after a build and is not packed 1294ms
+(node:8816) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ |cli-bin| src/__tests__/package-bin.spec.ts > the eligian npm package > the eval bundle loads and exports evaluateAssertions, runGateSteps, computeMetrics, parseHarnessArgs 346ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  02:41:03
+   Duration  7.14s (tests 95%, import 5%)
+
+exit 0

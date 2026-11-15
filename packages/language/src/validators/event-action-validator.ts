@@ -5,6 +5,7 @@ import { type EventActionDefinition, isOperationCall, isStringLiteral } from '..
 import { eligiusTypeToDslAnnotation } from '../utils/event-arg-types.js';
 import { getOperationCallName } from '../utils/operation-call-utils.js';
 import { BaseValidator } from './base-validator.js';
+import { diagnosticCode } from './codes.js';
 import { RESERVED_KEYWORDS } from './validation-constants.js';
 
 /**
@@ -30,7 +31,7 @@ export class EventActionValidator extends BaseValidator {
         {
           node: eventAction,
           property: 'eventName',
-          code: 'event_name_too_long',
+          code: diagnosticCode('event_name_too_long'),
         }
       );
     }
@@ -43,7 +44,7 @@ export class EventActionValidator extends BaseValidator {
         {
           node: eventAction,
           property: 'eventTopic',
-          code: 'event_topic_empty',
+          code: diagnosticCode('event_topic_empty'),
         }
       );
     }
@@ -53,7 +54,7 @@ export class EventActionValidator extends BaseValidator {
       accept('error', 'Event action body must contain at least one operation', {
         node: eventAction,
         property: 'operations',
-        code: 'event_action_empty_body',
+        code: diagnosticCode('event_action_empty_body'),
       });
     }
   }
@@ -77,7 +78,7 @@ export class EventActionValidator extends BaseValidator {
         accept('error', `Parameter name '${param.name}' is a reserved keyword and cannot be used`, {
           node: param,
           property: 'name',
-          code: 'reserved_keyword_parameter',
+          code: diagnosticCode('reserved_keyword_parameter'),
         });
       }
     }
@@ -89,7 +90,7 @@ export class EventActionValidator extends BaseValidator {
         accept('error', `Duplicate parameter name '${param.name}'`, {
           node: param,
           property: 'name',
-          code: 'duplicate_parameter',
+          code: diagnosticCode('duplicate_parameter'),
         });
       }
       seenParams.add(param.name);
@@ -119,7 +120,7 @@ export class EventActionValidator extends BaseValidator {
       accept('error', 'Event name must be a string literal, e.g. on event "timeline-complete"', {
         node: eventAction,
         property: 'eventName',
-        code: 'event_name_must_be_literal',
+        code: diagnosticCode('event_name_must_be_literal'),
       });
       return;
     }
@@ -129,7 +130,7 @@ export class EventActionValidator extends BaseValidator {
       accept('error', 'Event name cannot be empty', {
         node: eventAction,
         property: 'eventName',
-        code: 'empty_event_name',
+        code: diagnosticCode('empty_event_name'),
       });
       return;
     }
@@ -167,7 +168,7 @@ export class EventActionValidator extends BaseValidator {
     accept('error', message, {
       node: eventAction,
       property: 'eventName',
-      code: 'unknown_event_name',
+      code: diagnosticCode('unknown_event_name'),
     });
   }
 
@@ -236,7 +237,7 @@ export class EventActionValidator extends BaseValidator {
     accept('warning', message, {
       node: eventAction,
       property: 'parameters',
-      code: 'event_argument_count_mismatch',
+      code: diagnosticCode('event_argument_count_mismatch'),
     });
   }
 
@@ -286,7 +287,7 @@ export class EventActionValidator extends BaseValidator {
           {
             node: param,
             property: 'type',
-            code: 'unnecessary_type_annotation',
+            code: diagnosticCode('unnecessary_type_annotation'),
           }
         );
         continue;
@@ -303,7 +304,7 @@ export class EventActionValidator extends BaseValidator {
           {
             node: param,
             property: 'type',
-            code: 'event_type_mismatch',
+            code: diagnosticCode('event_type_mismatch'),
           }
         );
       } else if (param.type !== expected) {
@@ -313,7 +314,7 @@ export class EventActionValidator extends BaseValidator {
           {
             node: param,
             property: 'type',
-            code: 'event_type_mismatch',
+            code: diagnosticCode('event_type_mismatch'),
           }
         );
       }

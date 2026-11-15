@@ -1,0 +1,5 @@
+styles "./a.css"
+
+timeline "main" in "#stage" using video {
+  at 0s..1s [ ] [ ]
+}

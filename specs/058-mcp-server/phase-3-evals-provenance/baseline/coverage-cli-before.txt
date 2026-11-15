@@ -1,0 +1,49 @@
+  paths.ts         |   97.56 |    94.44 |   95.45 |   97.22 | 117               
+  server.ts        |      85 |       50 |   95.83 |   84.61 | 162-169           
+  stdio.ts         |   84.61 |      100 |      75 |   86.36 | 49-50,74          
+  telemetry.ts     |   96.42 |       90 |     100 |   96.15 | 44                
+ src/mcp/knowledge |   97.71 |    89.56 |     100 |   98.61 |                   
+  load.ts          |   98.41 |     90.9 |     100 |   98.14 | 67                
+  render.ts        |   94.11 |     87.5 |     100 |   97.56 | 112               
+  search.ts        |     100 |    91.89 |     100 |     100 | 86,98,102         
+ src/mcp/tools     |   93.95 |     80.2 |   93.27 |   95.32 |                   
+  compile.ts       |   95.27 |    74.52 |   95.45 |   96.85 | 297-302,319,415   
+  docs.ts          |   98.11 |     91.3 |     100 |     100 | 101-103,178       
+  init.ts          |     100 |    94.44 |     100 |     100 | 137               
+  operations.ts    |   83.76 |    71.42 |   78.37 |   83.67 | ...40-241,268-275 
+  project.ts       |   96.44 |    82.35 |   96.29 |   98.03 | 522-525,531       
+  smoke.ts         |    93.1 |    78.15 |   93.33 |   94.96 | ...56,337-338,432 
+ src/smoke         |   91.34 |    80.62 |      84 |   92.81 |                   
+  ...nvironment.ts |   91.07 |      100 |   52.63 |      96 | 87-94             
+  scenario.ts      |   94.92 |    87.76 |     100 |   95.97 | ...35,438,448,452 
+  smoke-command.ts |   91.76 |    77.04 |   87.09 |   91.78 | ...99-100,126,149 
+  smoke-runner.ts  |    87.8 |    70.19 |   81.35 |    89.2 | ...53,463,489-490 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 86.29% ( 3017/3496 )
+Branches     : 76.51% ( 1626/2125 )
+Functions    : 88.61% ( 841/949 )
+Lines        : 86.54% ( 2720/3143 )
+================================================================================
+$ vitest run --project cli-bin
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+(node:31292) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  18:10:55
+   Duration  5.72s (tests 93%, import 7%)
+
+
+--- summary (appended; the tail above is 'tail -40' of the run) ---
+HEAD b62b762350146d38ea78cf2d535c60a515d3ca06
+exit 0
+ Test Files  57 passed | 1 skipped (58)
+      Tests  912 passed | 18 skipped (930)
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   86.29 |    76.51 |   88.61 |   86.54 |                   

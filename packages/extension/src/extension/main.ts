@@ -25,6 +25,7 @@ import { createLabelsFile } from './label-file-creator.js';
 import { LabelsWatcherManager } from './labels-watcher.js';
 import { LocaleEditorProvider } from './locale-editor/LocaleEditorProvider.js';
 import { LocaleLinkProvider } from './locale-link-provider.js';
+import { registerEligianMcpServer } from './mcp/server-definition-provider.js';
 import { PreviewManager } from './preview/PreviewManager.js';
 import { PreviewPanel } from './preview/PreviewPanel.js';
 import { TIMELINE_VIEW_ID, TimelineViewProvider } from './timeline-view/TimelineViewProvider.js';
@@ -124,6 +125,9 @@ function registerClientIndependentFeatures(context: vscode.ExtensionContext): vo
 
   // Idea #12: "Eligian: New Presentation…" (starters shared with `eligian init`)
   context.subscriptions.push(registerNewPresentationCommand());
+
+  // Spec 058 phase 4: register the Eligian MCP server for Copilot agent mode (and Cursor)
+  context.subscriptions.push(registerEligianMcpServer(context));
 
   // T018: Register "Edit Labels" context menu command (Feature 036 - User Story 1)
   context.subscriptions.push(registerOpenLocaleEditorCommand());

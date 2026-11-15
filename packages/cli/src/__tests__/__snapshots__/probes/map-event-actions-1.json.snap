@@ -1,0 +1,155 @@
+{
+  "actions": {
+    "announce": {
+      "startOperations": [
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventArgs": [
+              "$operationdata.selector"
+            ],
+            "eventName": "item-shown"
+          }
+        },
+        {
+          "systemName": "broadcastEvent",
+          "operationData": {
+            "eventArgs": [
+              "$operationdata.selector"
+            ],
+            "eventName": "item-shown",
+            "eventTopic": "log"
+          }
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Intro": {
+      "type": "animation",
+      "duration": 5,
+      "timelineActions": [
+        {
+          "name": "timeline-lifecycle",
+          "duration": {
+            "start": 0
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#panel"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#panel"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        },
+        {
+          "name": "timeline-action-0-4",
+          "duration": {
+            "start": 0,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "announce"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#title"
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "timeline-action-4-5",
+          "duration": {
+            "start": 4,
+            "end": 5
+          },
+          "startOperations": [
+            {
+              "systemName": "broadcastEvent",
+              "operationData": {
+                "eventArgs": [
+                  "Outro",
+                  0
+                ],
+                "eventName": "request-timeline-uri"
+              }
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    },
+    "Outro": {
+      "type": "animation",
+      "duration": 3,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-3",
+          "duration": {
+            "start": 0,
+            "end": 3
+          },
+          "startOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "addClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ],
+          "endOperations": [
+            {
+              "systemName": "selectElement",
+              "operationData": {
+                "selector": "#box"
+              }
+            },
+            {
+              "systemName": "removeClass",
+              "operationData": {
+                "className": "visible"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

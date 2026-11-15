@@ -1,0 +1,38 @@
+# Runtime claims mutation checks (T024, SC-022). Not committed: each mutation was applied to
+# packages/cli/src/__tests__/mcp-runtime-claims.spec.ts, run, and reverted (file restored
+# byte-identical: git diff --no-index against the saved copy is empty).
+# Command per mutation: pnpm -C packages/cli exec vitest run src/__tests__/mcp-runtime-claims.spec.ts -t "<claim title fragment>"
+# Each mutated test FAILS, which shows the probe can fail.
+
+=== Mutation 1 (claim 14): switchTimeline(engine.currentTimelineUri) replaced by switchTimeline('B', 0) then switchTimeline('A', 0)
+-      await engine.switchTimeline(engine.currentTimelineUri);
++      await engine.switchTimeline('B', 0);
++      await settle();
++      await engine.switchTimeline('A', 0);
+     × a switch to the timeline that is already current is a no-op 750ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'A-leave', 'A-end', 'B-enter', …(5) ] to not include 'A-leave'
+    473|       expect(labels()).not.toContain('A-leave');
+    474|       expect(labels()).not.toContain('A-enter');
+      Tests  1 failed | 15 skipped (16)
+
+=== Mutation 2a (claim 15): the post-start() expectation reversed (toContain -> not.toContain)
+-          expect(labels()).toContain('A-enter');
++          expect(labels()).not.toContain('A-enter');
+     × the first timeline starts on the first position update (start or seek), not at init 712ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'A-enter', 'A-start' ] to not include 'A-enter'
+    493|           expect(labels()).not.toContain('A-enter');
+    494|           expect(engine.position).toBe(0);
+      Tests  1 failed | 15 skipped (16)
+
+=== Mutation 2b (claim 15): the post-init() expectation reversed (not.toContain -> toContain)
+-        expect(labels()).not.toContain('A-enter');
++        expect(labels()).toContain('A-enter');
+     × the first timeline starts on the first position update (start or seek), not at init 702ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [] to include 'A-enter'
+    487|         expect(labels()).toContain('A-enter');
+      Tests  1 failed | 15 skipped (16)
+
+After restoring: pnpm -C packages/cli exec vitest run src/__tests__/mcp-runtime-claims.spec.ts -> Tests 1 failed | 15 passed (16) (the failure is the document test, red until T025).

@@ -9,7 +9,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Effect } from 'effect';
-import * as esbuild from 'esbuild';
 import { type AssetManifest, CSSProcessError } from './types.js';
 import { isDataUri, isExternalUrl, isFragmentOnlyUrl, resolveCssUrlFile } from './url-utils.js';
 
@@ -31,6 +30,7 @@ interface CSSProcessOptions {
  * @returns Minified CSS string
  */
 export async function minifyCSS(css: string): Promise<string> {
+  const esbuild = await import('esbuild');
   const result = await esbuild.transform(css, {
     loader: 'css',
     minify: true,

@@ -1,0 +1,55 @@
+// Fixture of mcp-evals-assert.spec.ts: listeners, calls and ranges, compiled with compileFile.
+layout "./layout.html"
+styles "./styles.css"
+
+action show(sel: string) [
+  selectElement(sel)
+  addClass("visible")
+]
+
+action resetView() [
+  selectElement("#box")
+  removeClass("visible")
+]
+
+action replay() [
+  resetView()
+  broadcastEvent([0], "timeline-seek-request")
+]
+
+action markResult() [
+  selectElement("#result")
+  addClass("visible")
+]
+
+action hideLater() [
+  wait(500)
+  selectElement("#result")
+  removeClass("visible")
+]
+
+action answerB() [
+  hideLater()
+]
+
+timeline "Intro" in "#stage" using raf {
+  on enter [
+    on click "#next" navigate "Details" at 2s
+    on click "#restart" run replay()
+    on click "#skip" seek reveal.start
+    on click "#answer-a" run markResult()
+    on click "#answer-b" run answerB()
+    on key "ArrowRight" navigate "Details"
+    on click "#play" toggle
+  ]
+  on leave [
+    selectElement("#next")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+  at 1s..2s [ show("#box") ] [ resetView() ]
+  at 3s..5s as reveal target "#result" [ addClass("visible") ] [ removeClass("visible") ]
+}
+
+timeline "Details" in "#stage" using raf {
+  at 0s..4s target "#intro" [ addClass("visible") ] [ removeClass("visible") ]
+}

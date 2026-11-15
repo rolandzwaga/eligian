@@ -1,0 +1,45 @@
+layout "./layout.html"
+styles "./styles.css"
+
+// The tour's pattern: the parameter is named like selectElement's own property
+action showView(selector: string) [
+  selectElement(selector)
+  addClass("is-active")
+]
+
+action hideView(selector: string) [
+  selectElement(selector)
+  removeClass("is-active")
+]
+
+action enterView(view: string) [
+  showView(view)
+]
+
+action leaveView(view: string) [
+  hideView(view)
+]
+
+// A parameter with its own name: the walker substitutes the call's argument
+action mark(target: string) [
+  selectElement(target)
+  addClass("lit")
+]
+
+action unmark(target: string) [
+  selectElement(target)
+  removeClass("lit")
+]
+
+timeline "main" in "#stage" using raf {
+  on enter [
+    enterView("#panel")
+    showView("#other")
+    mark("#box")
+  ]
+  on leave [
+    leaveView("#panel")
+    hideView("#other")
+    unmark("#box")
+  ]
+}

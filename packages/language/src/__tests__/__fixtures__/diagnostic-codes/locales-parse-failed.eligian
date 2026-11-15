@@ -1,0 +1,10 @@
+// asset-import-validator.ts: a locales file that is not valid JSON
+languages {
+  * "en-US" "English"
+}
+styles "./styles.css"
+locales "./bad-locales.json"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

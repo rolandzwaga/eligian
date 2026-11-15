@@ -13,10 +13,13 @@ import * as path from 'node:path';
 import { Effect } from 'effect';
 import type { LangiumDocument } from 'langium';
 import { URI } from 'langium';
-import { DiagnosticSeverity } from 'vscode-languageserver-protocol';
+import { type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-protocol';
+import type { EligianServices } from '../../eligian-module.js';
 import { isLibrary, isProgram, type Library, type Program } from '../../generated/ast.js';
+import { selectElementFix } from '../../lsp/select-element-fix.js';
+import { type DiagnosticCode, diagnosticCode } from '../../validators/codes.js';
 import type { SelectorNotInLayout } from '../../validators/validation-settings.js';
-import { compile } from '../pipeline.js';
+import { type CompileError, compile } from '../pipeline.js';
 import {
   extractLibraryImports,
   extractLibraryImportsFromLibrary,
@@ -27,6 +30,25 @@ import { getOrCreateServices } from './services.js';
 
 export type CheckSeverity = 'error' | 'warning' | 'info' | 'hint';
 
+/**
+ * An edit that fixes a diagnostic: replace the range with `newText`. 1-based,
+ * like the diagnostic; start = end is an insertion.
+ */
+export interface QuickFix {
+  readonly line: number;
+  readonly column: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  readonly newText: string;
+}
+
+/** What a diagnostic carries besides its message. */
+export interface CheckDiagnosticData {
+  /** The names a "Did you mean" hint offers */
+  readonly suggestions?: readonly string[];
+  readonly quickFix?: QuickFix;
+}
+
 /** One problem in one file. Lines and columns are 1-based. */
 export interface CheckDiagnostic {
   readonly file: string;
@@ -36,8 +58,10 @@ export interface CheckDiagnostic {
   readonly column: number;
   readonly endLine: number;
   readonly endColumn: number;
-  /** Diagnostic code (e.g. `missing-action-dependency`), when the validator sets one. */
-  readonly code?: string;
+  /** Diagnostic code (e.g. `missing-action-dependency`). */
+  readonly code: string;
+  /** Absent when there is nothing, so such a record is the same as before `data` existed. */
+  readonly data?: CheckDiagnosticData;
 }
 
 export interface CheckFileResult {
@@ -87,7 +111,6 @@ export const checkFiles = (
       if (!validated.has(file) || diagnostics.some(d => d.severity === 'error')) continue;
       const failure = await Effect.runPromise(
         Effect.flip(compile(readFileSync(file, 'utf-8'), { sourceUri: file })).pipe(
-          Effect.map(error => error as { message: string; location?: CompileLocation }),
           Effect.orElseSucceed(() => undefined)
         )
       );
@@ -104,9 +127,22 @@ interface CompileLocation {
   readonly length?: number;
 }
 
+const COMPILE_ERROR_CODES: Record<CompileError['_tag'], DiagnosticCode> = {
+  ParseError: 'compile-parse-error',
+  ValidationError: 'compile-validation-error',
+  TypeError: 'compile-type-error',
+  TransformError: 'compile-transform-error',
+  EmitError: 'compile-emit-error',
+};
+
+/** One registry code per compile-error `_tag`; `kind` is ignored. */
+export function compileErrorCode(error: Pick<CompileError, '_tag'>): DiagnosticCode {
+  return COMPILE_ERROR_CODES[error._tag];
+}
+
 function compileDiagnostic(
   file: string,
-  error: { message: string; location?: CompileLocation }
+  error: Pick<CompileError, '_tag' | 'message'> & { readonly location?: CompileLocation }
 ): CheckDiagnostic {
   const location = error.location ?? {};
   // A location in an imported library is reported on line 1 of the checked file
@@ -122,23 +158,36 @@ function compileDiagnostic(
     column,
     endLine: line,
     endColumn: column + (inThisFile && location.length ? location.length : 0),
+    code: compileErrorCode(error),
   };
 }
 
+/** The documents {@link withLoadedDocuments} loaded, while its callback runs. */
+export interface LoadedDocuments {
+  /** The shared compiler services: the singleton checkFiles and compileFile use */
+  readonly services: EligianServices;
+  /** The files and every library they import (transitively), by URI string */
+  readonly documents: ReadonlyMap<string, LangiumDocument>;
+  /** The document of one of `files`, by absolute path */
+  readonly documentOf: (file: string) => LangiumDocument | undefined;
+}
+
 /**
- * Load, link and validate the files plus every library they import, recording
- * the diagnostics of `files`. Returns the programs that were validated (library
- * files are validated but not compiled).
+ * Load `files` and their libraries into the shared workspace, link them, load their CSS
+ * imports into the CSS registry, run `use`, then clear the CSS registrations and release
+ * every loaded document (also when `use` throws). No validation is run.
+ *
+ * A file that cannot be read is skipped and reported through `onUnreadable`.
  */
-async function validateFiles(
+export async function withLoadedDocuments<T>(
   files: readonly string[],
-  results: Map<string, CheckDiagnostic[]>
-): Promise<Set<string>> {
+  use: (loaded: LoadedDocuments) => Promise<T> | T,
+  onUnreadable?: (file: string, error: unknown) => void
+): Promise<T> {
   const services = getOrCreateServices();
   const { LangiumDocumentFactory, LangiumDocuments, DocumentBuilder } = services.shared.workspace;
   const cssRegistry = services.Eligian.css.CSSRegistry;
   const documents = new Map<string, LangiumDocument>();
-  const programs = new Set<string>();
 
   const addDocument = (fsPath: string): LangiumDocument | undefined => {
     const uri = URI.file(fsPath);
@@ -149,15 +198,7 @@ async function validateFiles(
     try {
       content = readFileSync(fsPath, 'utf-8');
     } catch (error) {
-      results.get(fsPath)?.push({
-        file: fsPath,
-        severity: 'error',
-        message: `Cannot read file: ${error instanceof Error ? error.message : String(error)}`,
-        line: 1,
-        column: 1,
-        endLine: 1,
-        endColumn: 1,
-      });
+      onUnreadable?.(fsPath, error);
       return undefined;
     }
     const document = LangiumDocumentFactory.fromString(content, uri);
@@ -202,36 +243,93 @@ async function validateFiles(
       if (isProgram(document.parseResult.value)) loadCssImports(document, cssRegistry);
     }
 
-    for (const file of files) {
-      const document = documents.get(URI.file(file).toString());
-      if (!document) continue;
-      const diagnostics =
-        await services.Eligian.validation.DocumentValidator.validateDocument(document);
-      const target = results.get(file)!;
-      for (const diagnostic of diagnostics) {
-        target.push({
-          file,
-          severity: SEVERITY[diagnostic.severity ?? DiagnosticSeverity.Error] ?? 'error',
-          message: diagnostic.message,
-          line: diagnostic.range.start.line + 1,
-          column: diagnostic.range.start.character + 1,
-          endLine: diagnostic.range.end.line + 1,
-          endColumn: diagnostic.range.end.character + 1,
-          code: diagnosticCode(diagnostic),
-        });
-      }
-      if (isProgram(document.parseResult.value)) programs.add(file);
-    }
+    return await use({
+      services: services.Eligian,
+      documents,
+      documentOf: file => documents.get(URI.file(file).toString()),
+    });
   } finally {
     for (const document of documents.values()) {
       cssRegistry.clearDocument(document.uri.toString());
     }
     releaseWorkspaceDocuments([...documents.values()].map(d => d.uri));
   }
-  return programs;
 }
 
-function diagnosticCode(diagnostic: { code?: unknown; data?: unknown }): string | undefined {
+/**
+ * Load, link and validate the files plus every library they import, recording
+ * the diagnostics of `files`. Returns the programs that were validated (library
+ * files are validated but not compiled).
+ */
+function validateFiles(
+  files: readonly string[],
+  results: Map<string, CheckDiagnostic[]>
+): Promise<Set<string>> {
+  return withLoadedDocuments(
+    files,
+    async loaded => {
+      const programs = new Set<string>();
+      for (const file of files) {
+        const document = loaded.documentOf(file);
+        if (!document) continue;
+        const diagnostics =
+          await loaded.services.validation.DocumentValidator.validateDocument(document);
+        const target = results.get(file)!;
+        for (const diagnostic of diagnostics) {
+          const data = dataOf(document, diagnostic);
+          target.push({
+            file,
+            severity: SEVERITY[diagnostic.severity ?? DiagnosticSeverity.Error] ?? 'error',
+            message: diagnostic.message,
+            line: diagnostic.range.start.line + 1,
+            column: diagnostic.range.start.character + 1,
+            endLine: diagnostic.range.end.line + 1,
+            endColumn: diagnostic.range.end.character + 1,
+            code: codeOf(diagnostic),
+            ...(data && { data }),
+          });
+        }
+        if (isProgram(document.parseResult.value)) programs.add(file);
+      }
+      return programs;
+    },
+    (file, error) => {
+      results.get(file)?.push({
+        file,
+        severity: 'error',
+        message: `Cannot read file: ${error instanceof Error ? error.message : String(error)}`,
+        line: 1,
+        column: 1,
+        endLine: 1,
+        endColumn: 1,
+        code: diagnosticCode('file-unreadable'),
+      });
+    }
+  );
+}
+
+/** `data.suggestions` (a `string[]`) and the selectElement quick fix; undefined when neither exists. */
+function dataOf(
+  document: LangiumDocument,
+  diagnostic: Diagnostic
+): CheckDiagnosticData | undefined {
+  const raw = (diagnostic.data as { suggestions?: unknown } | undefined)?.suggestions;
+  const suggestions =
+    Array.isArray(raw) && raw.every(s => typeof s === 'string') ? (raw as string[]) : undefined;
+  const fix = selectElementFix(document, diagnostic);
+  const quickFix: QuickFix | undefined = fix && {
+    line: fix.range.start.line + 1,
+    column: fix.range.start.character + 1,
+    endLine: fix.range.end.line + 1,
+    endColumn: fix.range.end.character + 1,
+    newText: fix.newText,
+  };
+  if (!suggestions && !quickFix) return undefined;
+  return { ...(suggestions && { suggestions }), ...(quickFix && { quickFix }) };
+}
+
+/** `code`, else `data.code`; `'uncoded'` (not a registry code) when there is neither. */
+function codeOf(diagnostic: { code?: unknown; data?: unknown }): string {
   const code = diagnostic.code ?? (diagnostic.data as { code?: unknown } | undefined)?.code;
-  return typeof code === 'string' || typeof code === 'number' ? String(code) : undefined;
+  return typeof code === 'string' || typeof code === 'number' ? String(code) : 'uncoded';
 }

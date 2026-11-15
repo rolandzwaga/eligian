@@ -1,0 +1,6 @@
+// Without a layout import the engine generates the containers: nothing to report
+styles "./styles.css"
+
+timeline "Main" in "#ghost" using raf {
+  at 0s..1s [ log("tick") ] [ ]
+}

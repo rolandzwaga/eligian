@@ -1,0 +1,3 @@
+// structure-validator.ts: a program without a timeline
+styles "./styles.css"
+action show [ selectElement("#app") ]

@@ -1,0 +1,34 @@
+layout "./layout.html"
+styles "./styles.css"
+
+action showHero() [
+  selectElement("#hero")
+  addClass("visible")
+]
+
+action showBanner() [
+  selectElement("#banner")
+  addClass("visible")
+]
+
+timeline "Main" in "#stage" using raf {
+  on enter [
+    selectElement("#stage")
+    addController("ProgressbarController")
+    on click "#next" play
+  ]
+  on leave [
+    selectElement("#stage")
+    removeControllerFromElement("ProgressbarController")
+    selectElement("#next")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+  at 0s..3s [ showHero() ] [
+    selectElement("#hero")
+    removeClass("visible")
+  ]
+  at 3s..6s [ showBanner() ] [
+    selectElement("#banner")
+    removeClass("visible")
+  ]
+}

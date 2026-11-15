@@ -7,6 +7,8 @@
  * @packageDocumentation
  */
 
+import { ELIGIAN_VERSION } from './version.js';
+
 // Effect services and layers
 export {
   type CompileOptions,
@@ -84,6 +86,15 @@ export {
   validateParameterCount,
   validateParameterTypes,
 } from './operations/validator.js';
+export type { CheckDiagnosticData, QuickFix } from './pipeline/check.js';
+// Spec 058 phase 2 (A1): workspace helpers on the root singleton (`eligian_project`)
+export { type LoadedDocuments, withLoadedDocuments } from './pipeline/check.js';
+export {
+  parseSourceTracked,
+  releaseWorkspaceDocuments,
+  type TrackedParse,
+} from './pipeline/parser.js';
+export { getOrCreateServices, resetServices } from './pipeline/services.js';
 // Compilation pipeline exports
 export {
   type CheckDiagnostic,
@@ -144,11 +155,13 @@ export type {
   TimelineIR,
   TimelineTypes,
 } from './types/index.js';
+// Spec 058 Phase 3 (FR-040): operation provenance
+export { OPERATION_ORIGINS, type OperationOrigin } from './types/operation-origin.js';
 
 /**
  * Compiler version
  */
-export const VERSION = '0.0.1';
+export const VERSION: string = ELIGIAN_VERSION;
 
 // Idea #24: host operations, controllers and functions (extensions import)
 export {

@@ -269,13 +269,17 @@ const transformLifecycle = (
       );
     }
 
+    // Spec 058 Phase 3 (P3): the blocks' own operations are `lifecycle`; operations with a
+    // more specific origin (an interaction, a call, a `with`, ...) keep theirs
+    const retag = (op: OperationConfigIR): OperationConfigIR =>
+      op.origin === 'source' ? { ...op, origin: 'lifecycle' } : op;
     return {
       id: crypto.randomUUID(),
       name: 'timeline-lifecycle',
       duration: { start: 0, end: -1 },
       lifecycle: true as const,
-      startOperations,
-      endOperations,
+      startOperations: startOperations.map(retag),
+      endOperations: endOperations.map(retag),
       sourceLocation: getSourceLocation(first),
     };
   });
@@ -416,14 +420,26 @@ const sequenceCallOperations = (
       start: lowerNodeOperations(
         actionCall,
         concats,
-        buildActionCallOperations(actionName, actionOperationData, itemLocation, 'startAction')
+        buildActionCallOperations(
+          actionName,
+          actionOperationData,
+          itemLocation,
+          'startAction',
+          'sequence'
+        )
       ),
       // End operations: only for endable actions
       end: isEndableAction
         ? lowerNodeOperations(
             actionCall,
             concats,
-            buildActionCallOperations(actionName, actionOperationData, itemLocation, 'endAction')
+            buildActionCallOperations(
+              actionName,
+              actionOperationData,
+              itemLocation,
+              'endAction',
+              'sequence'
+            )
           )
         : [],
       name: actionName,
@@ -539,7 +555,13 @@ const transformStaggerBlock = (
         const startOperations: OperationConfigIR[] = lowerNodeOperations(
           actionCall,
           concats,
-          buildActionCallOperations(actionName, actionOperationData, staggerLocation, 'startAction')
+          buildActionCallOperations(
+            actionName,
+            actionOperationData,
+            staggerLocation,
+            'startAction',
+            'stagger'
+          )
         );
 
         // End operations: Only generate for endable actions
@@ -551,7 +573,8 @@ const transformStaggerBlock = (
                 actionName,
                 actionOperationData,
                 staggerLocation,
-                'endAction'
+                'endAction',
+                'stagger'
               )
             )
           : [];
@@ -903,6 +926,7 @@ const transformTimedEvent = (
         systemName: 'selectElement',
         operationData: { selector: event.target! },
         sourceLocation: getSourceLocation(event),
+        origin: 'target',
       });
       startOperations.unshift(select());
       if (endOperations.length > 0) endOperations.unshift(select());

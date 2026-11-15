@@ -1,0 +1,55 @@
+T036 — the inline gate.ts case checks (evals/mcp/gate.ts:369-686) mapped to the declarative
+assertions now in evals/mcp/cases/<id>.json. One line per check expression -> its assertion.
+
+[x] checkFixDataflow (gate.ts:369-431) -> fix-dataflow.json
+  - start action holding addClass is gone ('is gone')            -> dataflow.callsPreserved / dataflow.selectedBeforeAddClass (both via withStartActions, assert.ts:1421)
+  - every start-body call still compiled (multiset, sourceCall)    -> dataflow.callsPreserved
+  - each addClass has selectElement / __eligian_param_ save before it, or a selecting caller -> dataflow.selectedBeforeAddClass
+  - timeline actions after >= start state's count                 -> beats.min {n:'start'}
+
+[x] checkFixSelectors (gate.ts:433-479) -> fix-selectors.json
+  - every CSS-only id of the start state is in the layout         -> layout.gainedCssOnlyIds
+  - per timeline added == removed controllers                    -> controllers.balanced
+  - per timeline no unresolved actions                           -> controllers.balanced
+  - check reports no controller-imbalance                        -> check.codesAbsent {codes:['controller-imbalance']}
+  - (FR-013, not inline) no events deleted                       -> beats.min {n:'start'}
+
+[x] checkTitleCard (gate.ts:521-565) -> title-card.json
+  - timelines.length === 1                                       -> timelines.count {equals:1}
+  - every timeline type === 'animation'                          -> timeline {at:0, type:'animation', duration:10} (+ count 1)
+  - every timeline duration === 10                               -> timeline {at:0, type:'animation', duration:10}
+  - actions '__on__play', '__on__pause' exist                    -> actions.named {names:['__on__play','__on__pause']}
+  - layout has ids headline, subtitle                            -> layout.hasId {ids:['headline','subtitle']}
+  - CSS defines 'in' + every literal addClass/toggleClass class   -> css.definesStateClasses {classes:['in']}
+
+[x] checkThreeChapters (gate.ts:568-599) -> three-chapters.json
+  - timelines.length >= 4                                        -> timelines.count {min:4}
+  - some action name starts with '__nav__'                       -> actions.named {prefix:'__nav__'}
+  - languages has en-US and nl-NL                                -> locales.languages {codes:['en-US','nl-NL']}
+  - a LabelController is added (literal or via a call)           -> controllers.used {all:['LabelController']}
+  - timelines Problem/Solution/Results exist                     -> timelines.lifecycle {names:['Problem','Solution','Results'], enter:true, leave:true}
+  - each has a non-empty on enter                                -> timelines.lifecycle {… enter:true}
+  - each has a non-empty on leave                                -> timelines.lifecycle {… leave:true}
+  - (§6.2 item, not inline)                                      -> controllers.balanced
+
+[x] checkStaggeredList (gate.ts:602-624) -> staggered-list.json
+  - exactly 1 `stagger` block in the source                      -> source.blocks {keyword:'stagger', equals:1}
+  - a timeline has 6 stagger-* actions 0.4 s apart               -> stagger.spaced {count:6, gap:0.4}
+  - layout has card-1 … card-6                                   -> layout.hasId {ids:['card-1',…,'card-6']}
+  - (§6.2 item, not inline)                                      -> check.codesAbsent {codes:['class-never-removed']}
+
+[x] checkKeyboardDeck (gate.ts:627-654) -> keyboard-deck.json
+  - timelines.length === 12                                      -> timelines.count {equals:12}
+  - timelines slide-1 … slide-12 exist                           -> timeline.addsController {controller:'KeyboardController', names:['slide-1',…,'slide-12']}
+  - each adds a KeyboardController (on enter)                    -> timeline.addsController {…}
+  - each removes what it adds (on leave)                         -> controllers.balanced
+  - (§6.2 items, not inline)                                     -> interactions.keyboard {keys:['ArrowRight','ArrowLeft','Home']}; actions.named {prefix:'__nav__'}; controllers.used {all:['KeyboardController']}
+
+[x] checkLibraryReuse (gate.ts:657-684) -> library-reuse.json
+  - a `library` .eligian file under lib/                         -> library.file {dir:'lib'}
+  - fadeIn/fadeOut/slideIn imported from lib/                    -> library.imports {dir:'lib', names:['fadeIn','fadeOut','slideIn']}
+  - fadeIn/fadeOut/slideIn requested (requestAction)             -> actions.called {names:['fadeIn','fadeOut','slideIn']}
+  - (§6.2 items, not inline)                                     -> library.jsdoc {dir:'lib', names:[…]}; library.checksClean {dir:'lib'}
+
+Generic §6.1 step 4 on cases 1, 2, 3, 6, 8: storyboard.exists, storyboard.beatsCovered, beats.min {n:'storyboard'}.
+Cases 13, 14: no scenario, start/ kept, no budget.

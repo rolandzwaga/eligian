@@ -27,6 +27,7 @@ import type {
 } from 'eligius';
 import type { HostModule } from '../operations/host-operations.js';
 import type { JsonValue, SourceLocation } from './common.js';
+import type { OperationOrigin } from './operation-origin.js';
 
 // Re-export for external use
 // Re-export Eligius types for convenience
@@ -78,6 +79,7 @@ export type SourceMap = {
   readonly operations: ReadonlyMap<string, SourceLocation>; // operation.id → location
   readonly timelines: ReadonlyMap<string, SourceLocation>; // timeline.id → location
   readonly timelineActions: ReadonlyMap<string, SourceLocation>; // timelineAction.id → location
+  readonly origins: ReadonlyMap<string, OperationOrigin>; // operation.id → origin (spec 058 FR-042)
 };
 
 /**
@@ -190,9 +192,13 @@ export type EventActionIR = {
 /**
  * T278: OperationConfigIR extends Eligius IOperationConfiguration with sourceLocation
  * Eligius type doesn't include sourceLocation (needed for error reporting)
+ *
+ * Spec 058 Phase 3 (FR-040): `origin` names the construct that generated the operation.
+ * Required, so every construction site sets it; neither field reaches the emitted config.
  */
 export type OperationConfigIR = IOperationConfiguration<TOperationData> & {
   readonly sourceLocation: SourceLocation;
+  readonly origin: OperationOrigin;
 };
 
 /**

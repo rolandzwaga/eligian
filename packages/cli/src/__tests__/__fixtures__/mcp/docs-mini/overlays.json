@@ -1,0 +1,33 @@
+{
+  "byCode": {
+    "missing-dependency": {
+      "docs": "diagnostic/missing-dependency",
+      "fix": "Call the operation that provides the missing property first."
+    }
+  },
+  "bySource": {
+    "validator": {
+      "docs": "diagnostic/source-validator",
+      "fix": "Read the message; the code names the rule."
+    }
+  },
+  "operations": {
+    "addClass": {
+      "card": "Overlay: select the element first; pair every addClass with a removeClass in the end block."
+    }
+  },
+  "controllers": {
+    "RoutingController": {
+      "status": "do-not-use",
+      "card": "Overlay: a work in progress in Eligius; use navigate interactions instead."
+    },
+    "LottieController": {
+      "status": "constrained",
+      "card": "Overlay: install lottie-web in the project before using it."
+    },
+    "LabelController": {
+      "status": "recommended",
+      "card": "Overlay: the label id must exist in the locales file."
+    }
+  }
+}

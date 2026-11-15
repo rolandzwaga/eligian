@@ -1,0 +1,12 @@
+// The entry timeline has an on enter block
+layout "./layout.html"
+
+timeline "Hub" in "#hub" using raf {
+  on enter [
+    log("hub")
+  ]
+}
+
+timeline "Chapter" in "#chapter" using raf {
+  at 0s..1s [ log("tick") ] [ ]
+}

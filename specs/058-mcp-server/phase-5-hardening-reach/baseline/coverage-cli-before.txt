@@ -1,0 +1,320 @@
+$ vitest run --coverage --project cli --project cli-timed && pnpm run test:bin
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+      Coverage enabled with v8
+
+{"t":"2026-11-06T10:15:33.682Z","tool":"eligian_check","ms":611,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:33.776Z","tool":"eligian_check","ms":666,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:34.308Z","tool":"eligian_project","ms":163,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:34.479Z","tool":"eligian_check","ms":94,"chars":1930,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:34.455Z","tool":"eligian_check","ms":170,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:34.577Z","tool":"eligian_project","ms":125,"chars":1879,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:34.628Z","tool":"eligian_fmt","ms":177,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:34.746Z","tool":"eligian_compile","ms":111,"chars":9359,"ok":true,"args":{"view":"full","includeMap":true}}
+{"t":"2026-11-06T10:15:34.765Z","tool":"eligian_check","ms":154,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:34.853Z","tool":"eligian_check","ms":94,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:34.873Z","tool":"eligian_compile","ms":89,"chars":4202,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true}}
+{"t":"2026-11-06T10:15:34.892Z","tool":"eligian_check","ms":129,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:34.893Z","tool":"eligian_fmt","ms":148,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:34.923Z","tool":"eligian_project","ms":122,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:35.052Z","tool":"eligian_check","ms":61,"chars":1759,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:35.046Z","tool":"eligian_check","ms":105,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:35.073Z","tool":"eligian_check","ms":168,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:35.116Z","tool":"eligian_project","ms":136,"chars":1871,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:35.073Z","tool":"eligian_fmt","ms":199,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:35.278Z","tool":"eligian_check","ms":58,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:35.301Z","tool":"eligian_check","ms":104,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:35.302Z","tool":"eligian_fmt","ms":113,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:35.304Z","tool":"eligian_project","ms":128,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:35.436Z","tool":"eligian_check","ms":61,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:35.420Z","tool":"eligian_check","ms":84,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:35.443Z","tool":"eligian_check","ms":149,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:35.444Z","tool":"eligian_fmt","ms":180,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:35.501Z","tool":"eligian_project","ms":194,"chars":1874,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:35.629Z","tool":"eligian_check","ms":122,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:35.697Z","tool":"eligian_check","ms":57,"chars":2179,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:35.669Z","tool":"eligian_check","ms":134,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:35.669Z","tool":"eligian_fmt","ms":148,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:35.800Z","tool":"eligian_check","ms":84,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:35.822Z","tool":"eligian_check","ms":141,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:35.850Z","tool":"eligian_check","ms":204,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:35.852Z","tool":"eligian_fmt","ms":235,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:36.091Z","tool":"eligian_check","ms":79,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:36.111Z","tool":"eligian_check","ms":136,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.111Z","tool":"eligian_fmt","ms":144,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:35.888Z","tool":"eligian_check","ms":432,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.260Z","tool":"eligian_check","ms":64,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:36.282Z","tool":"eligian_check","ms":99,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.283Z","tool":"eligian_fmt","ms":114,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:36.323Z","tool":"eligian_compile","ms":128,"chars":604,"ok":true,"args":{"view":"fragment","select":["action"]}}
+{"t":"2026-11-06T10:15:36.401Z","tool":"eligian_check","ms":76,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:36.430Z","tool":"eligian_check","ms":114,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.431Z","tool":"eligian_fmt","ms":135,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:36.455Z","tool":"eligian_project","ms":182,"chars":1895,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:36.572Z","tool":"eligian_check","ms":85,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:36.596Z","tool":"eligian_check","ms":121,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.597Z","tool":"eligian_fmt","ms":127,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:36.734Z","tool":"eligian_check","ms":53,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:36.642Z","tool":"eligian_compile","ms":257,"chars":814,"ok":true,"args":{"view":"fragment","select":["action"]}}
+{"t":"2026-11-06T10:15:36.754Z","tool":"eligian_check","ms":171,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.754Z","tool":"eligian_fmt","ms":188,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:36.946Z","tool":"eligian_check","ms":121,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:36.902Z","tool":"eligian_project","ms":237,"chars":2021,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:36.975Z","tool":"eligian_check","ms":234,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:36.976Z","tool":"eligian_fmt","ms":258,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:37.241Z","tool":"eligian_check","ms":78,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:37.212Z","tool":"eligian_check","ms":109,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:37.263Z","tool":"eligian_check","ms":156,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:37.325Z","tool":"eligian_project","ms":102,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:37.263Z","tool":"eligian_fmt","ms":181,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:37.453Z","tool":"eligian_check","ms":113,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:37.431Z","tool":"eligian_check","ms":215,"chars":1930,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:37.474Z","tool":"eligian_check","ms":243,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:37.474Z","tool":"eligian_fmt","ms":254,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:37.649Z","tool":"eligian_project","ms":110,"chars":1879,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:37.732Z","tool":"eligian_check","ms":102,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:37.756Z","tool":"eligian_check","ms":168,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:37.757Z","tool":"eligian_fmt","ms":175,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:37.813Z","tool":"eligian_check","ms":193,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:37.946Z","tool":"eligian_check","ms":63,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.047Z","tool":"eligian_check","ms":2,"chars":293,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+{"t":"2026-11-06T10:15:37.968Z","tool":"eligian_check","ms":97,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:37.969Z","tool":"eligian_fmt","ms":108,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:38.009Z","tool":"eligian_project","ms":81,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:38.126Z","tool":"eligian_check","ms":0,"chars":628,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+{"t":"2026-11-06T10:15:38.082Z","tool":"eligian_check","ms":56,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.179Z","tool":"eligian_check","ms":10,"chars":1144,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_operation":1}}}
+{"t":"2026-11-06T10:15:38.103Z","tool":"eligian_check","ms":108,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:38.104Z","tool":"eligian_fmt","ms":114,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:38.094Z","tool":"eligian_check","ms":149,"chars":1759,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:38.222Z","tool":"eligian_check","ms":62,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.246Z","tool":"eligian_project","ms":82,"chars":1871,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:38.250Z","tool":"eligian_check","ms":105,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:38.251Z","tool":"eligian_fmt","ms":112,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:38.368Z","tool":"eligian_check","ms":63,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.388Z","tool":"eligian_check","ms":111,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:38.388Z","tool":"eligian_fmt","ms":121,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:38.519Z","tool":"eligian_check","ms":90,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.368Z","tool":"eligian_project","ms":252,"chars":1863,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:38.623Z","tool":"eligian_check","ms":60,"chars":2539,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"unknown_label_id":1,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:38.538Z","tool":"eligian_check","ms":158,"chars":470,"ok":true,"args":{"paths":1,"selectorNotInLayout":"off","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:38.539Z","tool":"eligian_fmt","ms":164,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:38.762Z","tool":"eligian_check","ms":49,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.686Z","tool":"eligian_project","ms":164,"chars":1874,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:38.814Z","tool":"eligian_compile","ms":38,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:38.853Z","tool":"eligian_check","ms":34,"chars":2179,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":2,"selector_not_in_layout":2,"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:38.855Z","tool":"eligian_project","ms":77,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:38.937Z","tool":"eligian_check","ms":62,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.959Z","tool":"eligian_compile","ms":103,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:38.926Z","tool":"eligian_check","ms":151,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:38.959Z","tool":"eligian_project","ms":131,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.081Z","tool":"eligian_check","ms":63,"chars":789,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"invalid_parameter_count":1}}}
+{"t":"2026-11-06T10:15:39.095Z","tool":"eligian_check","ms":59,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.117Z","tool":"eligian_compile","ms":76,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.117Z","tool":"eligian_project","ms":103,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.225Z","tool":"eligian_check","ms":53,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.249Z","tool":"eligian_compile","ms":69,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.249Z","tool":"eligian_project","ms":122,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.377Z","tool":"eligian_check","ms":62,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.148Z","tool":"eligian_check","ms":315,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:39.396Z","tool":"eligian_compile","ms":74,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.396Z","tool":"eligian_project","ms":100,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.501Z","tool":"eligian_check","ms":50,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.465Z","tool":"eligian_compile","ms":88,"chars":604,"ok":true,"args":{"view":"fragment","select":["action"]}}
+{"t":"2026-11-06T10:15:39.524Z","tool":"eligian_project","ms":51,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.524Z","tool":"eligian_compile","ms":90,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.620Z","tool":"eligian_check","ms":57,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.645Z","tool":"eligian_project","ms":60,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.645Z","tool":"eligian_compile","ms":112,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.555Z","tool":"eligian_project","ms":235,"chars":1895,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:39.762Z","tool":"eligian_check","ms":56,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.786Z","tool":"eligian_compile","ms":60,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.786Z","tool":"eligian_project","ms":83,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.875Z","tool":"eligian_check","ms":76,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:39.793Z","tool":"eligian_check","ms":186,"chars":446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{}}}
+{"t":"2026-11-06T10:15:39.893Z","tool":"eligian_compile","ms":98,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.894Z","tool":"eligian_project","ms":133,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.031Z","tool":"eligian_check","ms":75,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:40.049Z","tool":"eligian_compile","ms":100,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.049Z","tool":"eligian_project","ms":146,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:39.987Z","tool":"eligian_compile","ms":267,"chars":814,"ok":true,"args":{"view":"fragment","select":["action"]}}
+{"t":"2026-11-06T10:15:40.205Z","tool":"eligian_check","ms":55,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:40.224Z","tool":"eligian_compile","ms":101,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.224Z","tool":"eligian_project","ms":145,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.257Z","tool":"eligian_project","ms":227,"chars":2021,"ok":true,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:40.374Z","tool":"eligian_check","ms":129,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:40.403Z","tool":"eligian_compile","ms":153,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.403Z","tool":"eligian_project","ms":197,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.606Z","tool":"eligian_check","ms":75,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:40.634Z","tool":"eligian_compile","ms":88,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.634Z","tool":"eligian_project","ms":146,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.784Z","tool":"eligian_check","ms":78,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:40.802Z","tool":"eligian_compile","ms":129,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.803Z","tool":"eligian_project","ms":174,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:40.982Z","tool":"eligian_check","ms":93,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:41.010Z","tool":"eligian_compile","ms":123,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.010Z","tool":"eligian_project","ms":157,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.180Z","tool":"eligian_check","ms":86,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:41.203Z","tool":"eligian_project","ms":106,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.203Z","tool":"eligian_compile","ms":169,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.376Z","tool":"eligian_check","ms":86,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:41.400Z","tool":"eligian_project","ms":92,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.400Z","tool":"eligian_compile","ms":124,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.532Z","tool":"eligian_check","ms":67,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:41.560Z","tool":"eligian_compile","ms":67,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.560Z","tool":"eligian_project","ms":97,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:37.871Z","tool":"eligian_operations","ms":3831,"chars":668,"ok":true,"args":{"names":1}}
+{"t":"2026-11-06T10:15:41.662Z","tool":"eligian_check","ms":67,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:41.685Z","tool":"eligian_compile","ms":82,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.685Z","tool":"eligian_project","ms":127,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.824Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+{"t":"2026-11-06T10:15:41.829Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+{"t":"2026-11-06T10:15:41.846Z","tool":"eligian_operations","ms":0,"chars":668,"ok":true,"args":{"names":1}}
+{"t":"2026-11-06T10:15:41.818Z","tool":"eligian_check","ms":87,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:41.843Z","tool":"eligian_project","ms":101,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.843Z","tool":"eligian_compile","ms":143,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+{"t":"2026-11-06T10:15:41.991Z","tool":"eligian_check","ms":57,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:42.013Z","tool":"eligian_project","ms":67,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:42.013Z","tool":"eligian_compile","ms":98,"chars":552,"ok":true,"args":{"view":"summary","response_format":"detailed"}}
+eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-init-gbjCaJ; resources disabled
+eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-docs-empty-poFaEr; resources disabled
+{"t":"2026-11-06T10:15:42.263Z","tool":"eligian_docs","ms":2,"chars":495,"ok":false,"args":{}}
+{"t":"2026-11-06T10:15:42.308Z","tool":"eligian_init","ms":11,"chars":389,"ok":false,"args":{"directory":"C:\\Users\\scab\\AppData\\Local\\Temp\\eligian-mcp-init-gbjCaJ\\file.txt\\sub","template":"blank","force":false,"agents":true,"client":["claude"]}}
+{"t":"2026-11-06T10:15:42.325Z","tool":"eligian_compile","ms":33,"chars":2004,"ok":true,"args":{"view":"fragment","select":["timeline"],"explain":true}}
+{"t":"2026-11-06T10:15:42.168Z","tool":"eligian_check","ms":327,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:42.169Z","tool":"eligian_fmt","ms":345,"chars":483,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:42.169Z","tool":"eligian_operations","ms":565,"chars":535,"ok":true,"args":{"names":1,"path":true}}
+{"t":"2026-11-06T10:15:42.802Z","tool":"eligian_check","ms":68,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:42.874Z","tool":"eligian_compile","ms":51,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:42.928Z","tool":"eligian_project","ms":67,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:43.001Z","tool":"eligian_check","ms":238,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:38.848Z","tool":"eligian_docs","ms":4416,"chars":9896,"ok":true,"args":{}}
+{"t":"2026-11-06T10:15:43.242Z","tool":"eligian_compile","ms":79,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:43.352Z","tool":"eligian_operations","ms":1,"chars":668,"ok":true,"args":{"names":1}}
+{"t":"2026-11-06T10:15:43.324Z","tool":"eligian_project","ms":63,"chars":1845,"ok":true,"args":{"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:43.430Z","tool":"eligian_check","ms":31,"chars":2098,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"timeline-required":1,"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:43.434Z","tool":"eligian_check","ms":131,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:43.576Z","tool":"eligian_compile","ms":25,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:43.643Z","tool":"eligian_check","ms":12,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:43.534Z","tool":"eligian_fmt","ms":177,"chars":291,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:15:43.658Z","tool":"eligian_check","ms":86,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+{"t":"2026-11-06T10:15:43.659Z","tool":"eligian_compile","ms":224,"chars":1369,"ok":true,"args":{"view":"fragment","select":["timeline"],"includeMap":true,"response_format":"detailed"}}
+{"t":"2026-11-06T10:15:43.924Z","tool":"eligian_check","ms":12,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:43.792Z","tool":"eligian_init","ms":361,"chars":1230,"ok":true,"args":{"directory":"project","template":"blank","force":false,"agents":true,"client":["claude"]}}
+{"t":"2026-11-06T10:15:44.020Z","tool":"eligian_check","ms":145,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+{"t":"2026-11-06T10:15:44.022Z","tool":"eligian_check","ms":156,"chars":886,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:44.228Z","tool":"eligian_compile","ms":56,"chars":1853,"ok":true,"args":{"view":"summary"}}
+{"t":"2026-11-06T10:15:44.345Z","tool":"eligian_project","ms":56,"chars":847,"ok":true,"args":{"response_format":"concise"}}
+smoke: stub stderr one
+smoke: stub stderr two
+smoke: this line is not json
+{"t":"2026-11-06T10:15:44.491Z","tool":"eligian_smoke","ms":175,"chars":341,"ok":true,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+{"t":"2026-11-06T10:15:44.716Z","tool":"eligian_compile","ms":1,"chars":424,"ok":false,"args":{"view":"summary"}}
+{"t":"2026-11-06T10:15:44.787Z","tool":"eligian_project","ms":22,"chars":257,"ok":false,"args":{"response_format":"concise"}}
+{"t":"2026-11-06T10:15:44.877Z","tool":"eligian_smoke","ms":4,"chars":255,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+{"t":"2026-11-06T10:15:46.230Z","tool":"eligian_check","ms":1,"chars":0,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+{"t":"2026-11-06T10:15:46.228Z","tool":"eligian_check","ms":93,"chars":1446,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"selector_not_in_layout":2}}}
+eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-mcp-fmt-lCerMO; resources disabled
+{"t":"2026-11-06T10:15:47.880Z","tool":"eligian_fmt","ms":34,"chars":413,"ok":false,"args":{"paths":1,"write":true}}
+{"t":"2026-11-06T10:15:48.338Z","tool":"eligian_operations","ms":4,"chars":493,"ok":false,"args":{"names":1,"path":true}}
+{"t":"2026-11-06T10:15:48.431Z","tool":"eligian_operations","ms":0,"chars":569,"ok":false,"args":{"names":1,"path":true}}
+Not implemented: navigation to another Document
+eligian mcp: no docs at C:\Users\scab\AppData\Local\Temp\eligian-resources-HM6lpx; resources disabled
+{"t":"2026-11-06T10:15:53.311Z","tool":"eligian_check","ms":14,"chars":163,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+{"t":"2026-11-06T10:15:55.905Z","tool":"eligian_check","ms":12,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:55.945Z","tool":"eligian_check","ms":1,"chars":589,"ok":false,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0}}
+{"t":"2026-11-06T10:15:55.948Z","tool":"eligian_operations","ms":0,"chars":594,"ok":false,"args":{"names":1,"path":true}}
+{"t":"2026-11-06T10:15:55.980Z","tool":"eligian_check","ms":5,"chars":1428,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:56.029Z","tool":"eligian_docs","ms":1,"chars":9896,"ok":true,"args":{}}
+{"t":"2026-11-06T10:15:56.032Z","tool":"eligian_operations","ms":89,"chars":769,"ok":true,"args":{"names":1,"path":true}}
+{"t":"2026-11-06T10:15:56.123Z","tool":"eligian_check","ms":6,"chars":1396,"ok":true,"args":{"paths":1,"selectorNotInLayout":"ids","lint":true,"review":true,"maxWarnings":0},"result":{"codes":{"unknown_css_class":1}}}
+{"t":"2026-11-06T10:15:56.131Z","tool":"eligian_fmt","ms":65,"chars":339,"ok":true,"args":{"paths":1,"write":false}}
+{"t":"2026-11-06T10:17:50.329Z","tool":"eligian_smoke","ms":7,"chars":0,"ok":false,"args":{"paths":1,"strict":true,"timeoutMs":45000,"response_format":"concise"}}
+
+ Test Files  70 passed | 1 skipped (71)
+      Tests  1389 passed | 32 skipped (1421)
+   Start at  11:15:27
+   Duration  159.94s (tests 74%, import 22%, transform 3%)
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    89.5 |    79.16 |   91.78 |   90.45 |                   
+ src               |   58.48 |    58.29 |    70.1 |   57.22 |                   
+  agents.ts        |   98.68 |    90.67 |     100 |   99.23 | 259               
+  compile-file.ts  |   65.51 |    44.73 |   58.33 |   65.45 | ...59,299,320-324 
+  fmt.ts           |    98.9 |    94.28 |     100 |   98.79 | 142               
+  init.ts          |     100 |     87.5 |     100 |     100 | 45,86-94          
+  main.ts          |       0 |        0 |       0 |       0 | 35-649            
+  output-path.ts   |     100 |    83.33 |     100 |     100 | 32                
+ src/bundler       |   90.06 |    81.19 |   85.41 |   89.95 |                   
+  ...-collector.ts |   88.77 |    83.67 |   85.71 |   88.52 | ...20,659,680-720 
+  css-processor.ts |   97.61 |      100 |   88.88 |   97.61 | 159               
+  ...-generator.ts |   86.66 |    71.11 |     100 |   86.48 | ...09-215,222,229 
+  index.ts         |   89.68 |    73.21 |   76.19 |   89.34 | ...42,361,370,382 
+  ...me-bundler.ts |   94.85 |     80.3 |   90.47 |   95.31 | ...04,349,356,360 
+  types.ts         |   74.46 |    77.77 |   77.77 |   74.46 | ...66,386,389,392 
+  url-utils.ts     |   96.96 |       90 |     100 |   96.96 | 67                
+ src/check         |   89.67 |     83.9 |   96.19 |    89.4 |                   
+  check-command.ts |    98.5 |    96.61 |     100 |   98.14 | 194               
+  lint.ts          |     100 |       60 |     100 |     100 | 27-28,32-36       
+  reporters.ts     |   63.63 |    58.62 |    91.3 |   63.15 | 65-69,82-108      
+  review.ts        |   97.14 |    85.98 |   96.36 |   97.45 | 163-164,188       
+ src/dev           |   87.02 |     71.8 |   80.51 |   89.42 |                   
+  dev-server.ts    |   86.26 |    67.68 |   79.66 |   87.98 | ...02-604,621-626 
+  ...me-reports.ts |   86.95 |    81.96 |      80 |    92.1 | 235-240,256       
+ src/mcp           |   96.96 |     93.6 |   96.17 |   96.81 |                   
+  compiler-lock.ts |     100 |    91.66 |     100 |     100 | 70                
+  ...g-fragment.ts |     100 |    94.73 |     100 |     100 | 45-76             
+  paths.ts         |   97.56 |    94.44 |   95.45 |   97.22 | 117               
+  resources.ts     |     100 |    83.33 |     100 |     100 | 30                
+  server.ts        |   86.36 |    61.11 |   95.83 |   86.04 | 190-197           
+  stdio.ts         |   84.61 |      100 |      75 |   86.36 | 49-50,74          
+  telemetry.ts     |   96.29 |    93.93 |     100 |   95.83 | 52,109            
+ src/mcp/evals     |   95.45 |    81.41 |    99.1 |   98.32 |                   
+  assert.ts        |   94.64 |    79.08 |   99.17 |   98.34 | ...1455,1460-1461 
+  gate-steps.ts    |      92 |    69.01 |   94.11 |   94.11 | 107,160,182,193   
+  harness.ts       |   99.37 |    95.14 |     100 |     100 | 88,91,165,309,342 
+  transcript.ts    |   97.29 |    88.88 |     100 |   98.91 | 206               
+ src/mcp/knowledge |   98.36 |    89.56 |     100 |   99.33 |                   
+  load.ts          |     100 |     90.9 |     100 |     100 | 31,73             
+  render.ts        |   94.11 |     87.5 |     100 |   97.56 | 112               
+  search.ts        |     100 |    91.89 |     100 |     100 | 86,98,102         
+ src/mcp/tools     |   94.19 |    80.67 |   93.33 |   95.47 |                   
+  compile.ts       |   95.78 |    76.71 |      95 |   96.96 | ...33,350,430,551 
+  docs.ts          |   98.11 |     91.3 |     100 |     100 | 101-103,178       
+  init.ts          |     100 |    94.44 |     100 |     100 | 137               
+  operations.ts    |   83.76 |    71.42 |   78.37 |   83.67 | ...40-241,268-275 
+  project.ts       |   96.44 |    82.35 |   96.29 |   98.03 | 522-525,531       
+  smoke.ts         |    93.1 |    78.86 |   93.33 |   94.96 | ...59,340-341,436 
+ src/smoke         |   93.34 |    81.83 |   88.88 |   95.57 |                   
+  determinism.ts   |   92.96 |    71.18 |   92.85 |   96.15 | 76-78,123-124     
+  ...nvironment.ts |   91.07 |      100 |   52.63 |      96 | 87-94             
+  ...ror-format.ts |   96.42 |    84.21 |     100 |     100 | 38,50-51,64-81    
+  media-clock.ts   |   96.55 |    86.36 |     100 |   99.03 | 146               
+  scenario.ts      |   94.09 |     86.9 |     100 |   96.37 | ...43,446,456,460 
+  smoke-command.ts |   91.95 |     75.4 |    87.5 |    92.1 | ...05-106,148,171 
+  smoke-runner.ts  |   91.19 |    76.31 |   83.92 |   92.21 | ...32,457,483-484 
+  ...-selectors.ts |   96.55 |    82.14 |     100 |     100 | 52-61,65-66       
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 89.5% ( 4664/5211 )
+Branches     : 79.16% ( 2644/3340 )
+Functions    : 91.78% ( 1319/1437 )
+Lines        : 90.45% ( 4179/4620 )
+================================================================================
+$ vitest run --project cli-bin
+
+ RUN  v5.0.5 F:/projects/eligius/eligian/packages/cli
+
+(node:18796) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  11:18:08
+   Duration  7.48s (tests 95%, import 5%)
+
+exit 0

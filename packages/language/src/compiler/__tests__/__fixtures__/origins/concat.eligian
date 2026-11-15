@@ -1,0 +1,11 @@
+// Origin `concat`: a runtime string concatenation ("#" + id) in an action
+styles "./styles.css"
+
+action show(id) [
+  selectElement("#" + id)
+  addClass("on")
+]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s show("box")
+}

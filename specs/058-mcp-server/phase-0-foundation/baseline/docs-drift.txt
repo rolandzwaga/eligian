@@ -1,0 +1,24 @@
+# T031 AGENTS.md drift verification (2026-11-04T19:31:08Z)
+$ grep -n "11\.9" AGENTS.md   (expect 0 lines)
+exit=1 count=0
+$ grep -n "currently 12\.14" AGENTS.md
+29:- **Package manager: pnpm only** (version pinned via `packageManager` in package.json; currently 12.14). Never npm/yarn — breaks workspace resolution.
+$ grep -n packageManager package.json
+50:  "packageManager": "pnpm@12.14.0+sha
+$ grep -n 'dist/cli.mjs` (the no-op bundle)' packages/cli/AGENTS.md   (expect 0 lines)
+exit=1 count=0
+$ grep -n '`index.ts` — package exports' packages/cli/AGENTS.md   (expect 0 lines)
+exit=1 count=0
+$ test -e packages/cli/src/index.ts   (expect false)
+false (does not exist)
+$ grep -n "Note:" packages/cli/AGENTS.md
+24:> Note: `package.json` `"bin"` maps both `eligian` and `eligian-cli` to `./bin/cli.js`, which is in the `files` allowlist (with `dist/cli.mjs`), so `pnpm exec eligian` / an installed `eligian` runs the launcher.
+$ grep -n -A3 "\"bin\"" packages/cli/package.json; grep -n -A3 "\"files\"" packages/cli/package.json
+37:  "bin": {
+38-    "eligian": "./bin/cli.js",
+39-    "eligian-cli": "./bin/cli.js"
+40-  },
+30:  "files": [
+31-    "bin/cli.js",
+32-    "dist/cli.mjs"
+33-  ],

@@ -1,0 +1,6 @@
+// event-validation.ts (Typir): an event that starts before 0
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at 0s-1s..1s show()
+}

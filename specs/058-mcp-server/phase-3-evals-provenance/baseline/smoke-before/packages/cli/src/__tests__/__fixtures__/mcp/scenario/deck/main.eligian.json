@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"packages/cli/src/__tests__/__fixtures__/mcp/scenario/deck/main.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"slide1\",\n        \"boundaries\": 2\n      },\n      {\n        \"name\": \"slide2\",\n        \"boundaries\": 2\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

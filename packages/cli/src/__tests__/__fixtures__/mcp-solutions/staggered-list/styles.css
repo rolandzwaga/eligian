@@ -1,0 +1,43 @@
+#stage {
+  min-height: 100vh;
+  margin: 0;
+  padding: 2rem;
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f6f7fb;
+}
+
+.title {
+  margin: 0 0 1.5rem;
+  font-size: 2.5rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* Hidden until its stagger range adds .is-visible */
+.card {
+  padding: 2rem;
+  font-size: 1.25rem;
+  background: #fff;
+  border-radius: 0.5rem;
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+
+/* A card is visible within its own range, and every card once the list is complete */
+.card.is-visible,
+.is-complete .card {
+  opacity: 1;
+  transform: none;
+}
+
+.card.highlight {
+  box-shadow: 0 0 0 4px #f5a623;
+}

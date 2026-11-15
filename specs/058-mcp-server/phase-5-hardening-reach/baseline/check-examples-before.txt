@@ -1,0 +1,11 @@
+$ node packages/cli/bin/cli.js check "examples/**/*.eligian" "!examples/libraries/errors/**" "!examples/libraries/nested/cycle-*.eligian" "!examples/demo.eligian" --max-warnings 0 && node packages/cli/bin/cli.js check examples/demo.eligian --selector-not-in-layout off
+8 files, 0 errors, 0 warnings
+examples/demo.eligian
+  162:28  warning  The container "#container" of timeline "Eligian Demo" is not in the layout (missing #container); it must exist when the layout is rendered  timeline-container-not-in-layout
+  224:5   warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  224:5   warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5   warning  addClass("visible") on "#error-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+  226:5   warning  addClass("visible") on "#success-message" is never removed in timeline "Eligian Demo": remove it in the end block, a later range or on leave  class-never-removed
+
+1 file, 0 errors, 5 warnings
+exit 0

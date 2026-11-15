@@ -1,0 +1,16 @@
+{
+  "id": "staggered-list",
+  "prompt": "Reveal a list of 6 feature cards one after another, 0.4s apart, then highlight the third one for 2s. The entry file is `main.eligian` in the current directory, with one timeline named `features` that runs 6 seconds. Use the element ids `#card-1` to `#card-6` for the cards. The first card appears at 0s, so the sixth appears at 2s; every card stays visible once it has appeared, and is hidden before. The highlight is the class `highlight` on `#card-3`, from 2s (when the sixth card has appeared) to 4s. An element counts as hidden when it or an ancestor has the `hidden` attribute or computes `display: none`, `visibility: hidden` or `opacity: 0` from your CSS; otherwise it is visible.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "staggered-list.scenario.json",
+  "assertions": [
+    { "kind": "source.blocks", "keyword": "stagger", "equals": 1 },
+    { "kind": "stagger.spaced", "count": 6, "gap": 0.4 },
+    { "kind": "layout.hasId", "ids": ["card-1", "card-2", "card-3", "card-4", "card-5", "card-6"] },
+    { "kind": "check.codesAbsent", "codes": ["class-never-removed"] },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

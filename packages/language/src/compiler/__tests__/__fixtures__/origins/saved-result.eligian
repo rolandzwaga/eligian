@@ -1,0 +1,12 @@
+// Origin `saved-result`: a concatenation where the action reads $operationdata.result itself
+styles "./styles.css"
+
+action show(id) [
+  concatenateStrings(["kept"])
+  selectElement("#" + id)
+  setElementContent($operationdata.result)
+]
+
+timeline "t" in "#stage" using raf {
+  at 0s..1s show("box")
+}

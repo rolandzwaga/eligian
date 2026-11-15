@@ -22,6 +22,7 @@ import {
   type Program,
   parseSource,
 } from '@eligian/language';
+import { timelineNames } from '@eligian/language/mcp';
 import { Cause, Effect, Exit, Option } from 'effect';
 
 /**
@@ -65,6 +66,8 @@ export interface CompileResult {
   warnings: CompileWarning[];
   /** Idea #24: the program's extensions module (absolute path) and its declared names */
   host?: HostModule;
+  /** The parsed program the configuration was compiled from */
+  readonly program: Program;
 }
 
 /**
@@ -338,9 +341,10 @@ export async function compileFile(
   return {
     config,
     json,
-    map: { ...map, source: absoluteInputPath },
+    map: { ...map, source: absoluteInputPath, timelineNames: timelineNames(program) },
     assetCount,
     warnings,
     ...(host ? { host } : {}),
+    program,
   };
 }

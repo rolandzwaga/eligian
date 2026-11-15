@@ -1,0 +1,7 @@
+// addClass in the end block with nothing selected: missing-dependency on 'selectedElement'
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ ] [ addClass("lit") ]
+}

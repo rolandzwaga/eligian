@@ -1,0 +1,14 @@
+{
+  "id": "port-from-json",
+  "prompt": "Here is an Eligius JSON config. Rewrite it as an Eligian project. The config is `source-config.json` in the current directory; the entry file of the project is `main.eligian` in the current directory. Keep the config's timelines (each timeline's name is its `uri`: `Hub`, `Chapter 1`, `Chapter 2` and `Timeline & Time`; the presentation starts on `Hub`), their durations, its action names, the operations of every action in their order, its controllers, the element ids of its `layoutTemplate` (that is the layout) and its locale strings; among those ids are `#stage`, `#hub`, `#hub-title`, `#card-1` to `#card-3` (the hub buttons), `#chapter-1` to `#chapter-3` (the views), `#back-1` to `#back-3` (the Back buttons), `#c3-title`, `#c3-intro`, `#c3-box`, `#c3-beat-2` and `#c3-beat-3`. The stylesheet that its `cssFiles` names is not supplied: write it, so that a `.view` is shown only while it carries the class `is-active` and a `.beat` only while it carries the class `is-visible`.",
+  "entry": "main.eligian",
+  "model": "claude-sonnet-5-5",
+  "scenario": "port-from-json.scenario.json",
+  "fixtures": [{ "from": "../fixtures/port-from-json/config.json", "to": "source-config.json" }],
+  "assertions": [
+    { "kind": "config.equivalent", "fixture": "../fixtures/port-from-json/config.json" },
+    { "kind": "storyboard.exists" },
+    { "kind": "storyboard.beatsCovered" },
+    { "kind": "beats.min", "n": "storyboard" }
+  ]
+}

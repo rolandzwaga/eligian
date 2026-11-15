@@ -1,0 +1,17 @@
+#stage {
+  position: relative;
+}
+
+#title,
+#subtitle {
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.visible {
+  opacity: 1;
+}
+
+.highlight {
+  color: crimson;
+}

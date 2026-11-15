@@ -1,0 +1,34 @@
+# T044: pnpm -C packages/cli exec vitest run src/__tests__/mcp-concurrency.spec.ts, three runs in a row (2026-11-05T00:00:51Z, tree at 448cd8b + working changes)
+
+## run 1
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > concurrent checks equal sequential ones (20 iterations) 785ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > calls wait on the lock 1ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > the three locked tools share one lock 293ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > cancellation > a cancelled running check sends no response and the next waits until it settled 2033ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > cancellation > a cancelled queued check never runs 2024ms
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Duration  6.39s (tests 82%, import 14%, transform 3%)
+exit 0
+
+## run 2
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > concurrent checks equal sequential ones (20 iterations) 726ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > calls wait on the lock 1ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > the three locked tools share one lock 271ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > cancellation > a cancelled running check sends no response and the next waits until it settled 2030ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > cancellation > a cancelled queued check never runs 2014ms
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Duration  6.24s (tests 82%, import 14%, transform 3%)
+exit 0
+
+## run 3
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > concurrent checks equal sequential ones (20 iterations) 725ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > calls wait on the lock 1ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > the compiler lock > the three locked tools share one lock 298ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > cancellation > a cancelled running check sends no response and the next waits until it settled 2025ms
+ ✓ src/__tests__/mcp-concurrency.spec.ts > cancellation > a cancelled queued check never runs 2018ms
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Duration  6.25s (tests 83%, import 15%, transform 3%)
+exit 0

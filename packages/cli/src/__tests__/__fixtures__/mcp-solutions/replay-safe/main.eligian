@@ -1,0 +1,38 @@
+// Reference solution, eval case replay-safe (spec 058 phase 3): every range has its inverse end
+// block, #skip seeks to the label reveal, #restart resets the view and then seeks to 0
+layout "./layout.html"
+styles "./styles.css"
+
+/** Undo whatever the intro shows */
+action resetView() [
+  selectElement("#title")
+  removeClass("is-visible")
+  selectElement("#tagline")
+  removeClass("is-visible")
+  selectElement("#reveal")
+  removeClass("is-visible")
+]
+
+/** Replay: reset, then seek to 0 */
+action replay() [
+  resetView()
+  broadcastEvent([0], "timeline-seek-request")
+]
+
+timeline "intro" in "#stage" using raf {
+  on enter [
+    on click "#restart" run replay()
+    on click "#skip" seek reveal.start
+  ]
+  on leave [
+    resetView()
+    selectElement("#restart")
+    removeControllerFromElement("DOMEventListenerController")
+    selectElement("#skip")
+    removeControllerFromElement("DOMEventListenerController")
+  ]
+
+  at 1s..11s target "#title" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 5s..11s target "#tagline" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+  at 12s..20s as reveal target "#reveal" [ addClass("is-visible") ] [ removeClass("is-visible") ]
+}

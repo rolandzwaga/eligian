@@ -1,0 +1,11 @@
+// Two video timelines, each with its own file
+timeline "Intro" in "#player" using video
+  from "./media/intro.mp4" {
+  on enter [
+    on click "#start" toggle
+  ]
+}
+
+timeline "Outro" in "#player" using video
+  from "./media/outro.mp4" {
+}

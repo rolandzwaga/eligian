@@ -1,7 +1,8 @@
 {
   "name": "eligian",
+  "mcpName": "io.github.rolandzwaga/eligian",
   "description": "Compiler and command line for Eligian, a concise DSL for Eligius presentations: check, compile, bundle, play and format .eligian files.",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "license": "MIT",
   "author": "Roland Zwaga",
@@ -29,7 +30,8 @@
   },
   "files": [
     "bin/cli.js",
-    "dist/cli.mjs"
+    "dist/cli.mjs",
+    "dist/docs/**"
   ],
   "exports": {
     "./package.json": "./package.json"
@@ -39,13 +41,19 @@
     "eligian-cli": "./bin/cli.js"
   },
   "scripts": {
-    "clean": "shx rm -fr *.tsbuildinfo out dist LICENSE *.tgz",
+    "clean": "shx rm -fr *.tsbuildinfo out dist coverage LICENSE *.tgz",
     "build": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
     "build:prod": "shx cp -f ../../LICENSE ./LICENSE && node esbuild.mjs --production",
     "prepack": "pnpm run build:prod",
+    "generate:knowledge": "tsx scripts/generate-knowledge.ts --out dist/docs",
+    "rank:diagnostic-codes": "tsx scripts/rank-diagnostic-codes.ts",
+    "rank:operations": "tsx scripts/rank-operations.ts",
+    "measure:recycle": "node --expose-gc --import tsx scripts/measure-recycle.ts",
     "build:clean": "pnpm run clean && pnpm run build",
-    "test": "vitest run",
-    "test:coverage:ci": "vitest run",
+    "test": "vitest run --project cli --project cli-timed && pnpm run test:bin",
+    "test:coverage:ci": "vitest run --coverage --project cli --project cli-timed && pnpm run test:bin",
+    "test:bin": "vitest run --project cli-bin",
+    "test:soak": "vitest run --project cli-soak",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -60,6 +68,8 @@
   },
   "devDependencies": {
     "@eligian/language": "workspace:*",
-    "@types/jsdom": "30.0.0"
+    "@modelcontextprotocol/inspector": "2.13.0",
+    "@types/jsdom": "30.0.0",
+    "tsx": "4.23.15"
   }
 }

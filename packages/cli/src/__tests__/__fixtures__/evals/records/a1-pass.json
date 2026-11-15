@@ -1,0 +1,42 @@
+{
+  "runId": "2026-11-05T10-00-00",
+  "case": "title-card",
+  "arm": "A1",
+  "n": 1,
+  "model": "claude-sonnet-5-5",
+  "cliVersion": "1.1.0",
+  "aborted": false,
+  "pass": true,
+  "steps": [
+    { "step": 1, "failures": [] },
+    { "step": 2, "failures": [] },
+    { "step": 3, "failures": [] },
+    { "step": 4, "failures": [] },
+    { "step": 5, "failures": [] },
+    { "step": 6, "failures": [] }
+  ],
+  "toolSequence": [
+    "mcp__eligian__eligian_operations",
+    "Write",
+    "mcp__eligian__eligian_check",
+    "mcp__eligian__eligian_compile"
+  ],
+  "metrics": {
+    "rounds": 0,
+    "checkToolCalls": 1,
+    "checkBashCalls": 0,
+    "toolCalls": 4,
+    "transcriptToolChars": 5200,
+    "toolChars": 4800,
+    "channelChars": 4800,
+    "operationsBeforeFirstUnknown": true,
+    "hitUnknown": false,
+    "explainCalled": true,
+    "fmtCalled": false,
+    "wallMs": 184000
+  },
+  "usage": { "input_tokens": 41200, "output_tokens": 3900, "cache_read_input_tokens": 120000 },
+  "wallMs": 184000,
+  "assertions": [{ "kind": "timelines.count", "pass": true, "detail": "1 timeline" }],
+  "rubric": { "score": 4, "model": "claude-opus-5-5" }
+}

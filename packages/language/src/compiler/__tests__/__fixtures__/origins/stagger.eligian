@@ -1,0 +1,11 @@
+// Origin `stagger`: an action call item of a stagger
+styles "./styles.css"
+
+action show(sel) [
+  selectElement(sel)
+  addClass("on")
+]
+
+timeline "t" in "#stage" using raf {
+  stagger 200ms ["#a", "#b"] with show() for 1s
+}

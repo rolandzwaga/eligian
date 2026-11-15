@@ -1,0 +1,9 @@
+// label-parameter-validator.ts: a LabelController label id without a locales import
+styles "./styles.css"
+action show [
+  selectElement("#app")
+  addController("LabelController", "greeting")
+]
+timeline "t" in "#app" using raf {
+  at 0s..1s show()
+}

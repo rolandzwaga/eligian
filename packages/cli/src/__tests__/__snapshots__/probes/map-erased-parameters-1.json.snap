@@ -1,0 +1,185 @@
+{
+  "actions": {
+    "flash": {
+      "startOperations": [
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "__eligian_param_className": "$operationdata.className"
+            }
+          }
+        },
+        {
+          "systemName": "addClass"
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "className": "$operationdata.__eligian_param_className"
+            }
+          }
+        },
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "#title"
+          }
+        },
+        {
+          "systemName": "addClass"
+        }
+      ],
+      "endOperations": []
+    },
+    "twice": {
+      "startOperations": [
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "__eligian_param_selector": "$operationdata.selector"
+            }
+          }
+        },
+        {
+          "systemName": "selectElement"
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "selector": "$operationdata.__eligian_param_selector"
+            }
+          }
+        },
+        {
+          "systemName": "addClass",
+          "operationData": {
+            "className": "visible"
+          }
+        },
+        {
+          "systemName": "requestAction",
+          "operationData": {
+            "systemName": "flash"
+          }
+        },
+        {
+          "systemName": "startAction",
+          "operationData": {
+            "actionOperationData": {
+              "className": "highlight"
+            }
+          }
+        }
+      ],
+      "endOperations": []
+    },
+    "markAll": {
+      "startOperations": [
+        {
+          "systemName": "forEach",
+          "operationData": {
+            "collection": "$operationdata.items",
+            "itemName": "item"
+          }
+        },
+        {
+          "systemName": "selectElement",
+          "operationData": {
+            "selector": "$scope.currentItem"
+          }
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "__eligian_param_className": "$operationdata.className"
+            }
+          }
+        },
+        {
+          "systemName": "addClass"
+        },
+        {
+          "systemName": "setOperationData",
+          "operationData": {
+            "properties": {
+              "className": "$operationdata.__eligian_param_className"
+            }
+          }
+        },
+        {
+          "systemName": "endForEach",
+          "operationData": {}
+        }
+      ],
+      "endOperations": []
+    }
+  },
+  "timelines": {
+    "Erased": {
+      "type": "animation",
+      "duration": 4,
+      "timelineActions": [
+        {
+          "name": "timeline-action-0-2",
+          "duration": {
+            "start": 0,
+            "end": 2
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "twice"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "selector": "#box"
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        },
+        {
+          "name": "timeline-action-2-4",
+          "duration": {
+            "start": 2,
+            "end": 4
+          },
+          "startOperations": [
+            {
+              "systemName": "requestAction",
+              "operationData": {
+                "systemName": "markAll"
+              }
+            },
+            {
+              "systemName": "startAction",
+              "operationData": {
+                "actionOperationData": {
+                  "items": [
+                    "#title",
+                    "#box"
+                  ],
+                  "className": "visible"
+                }
+              }
+            }
+          ],
+          "endOperations": []
+        }
+      ]
+    }
+  }
+}

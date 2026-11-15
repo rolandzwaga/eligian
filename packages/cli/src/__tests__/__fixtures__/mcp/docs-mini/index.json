@@ -1,0 +1,56 @@
+[
+  {
+    "id": "controllers",
+    "title": "Controllers",
+    "kind": "reference",
+    "use_cases": ["mount a controller", "routing"],
+    "words": 24,
+    "see": ["operations-index"],
+    "card": "The Eligius controllers and their status."
+  },
+  {
+    "id": "map-dataflow",
+    "title": "Map: dataflow",
+    "kind": "mapping",
+    "use_cases": ["operation data", "erased parameters"],
+    "words": 31,
+    "see": ["operations-index"],
+    "card": "How operation data flows from one operation to the next."
+  },
+  {
+    "id": "operation/addClass",
+    "title": "addClass",
+    "kind": "operation",
+    "use_cases": [],
+    "words": 9,
+    "see": ["operations-index"],
+    "card": "NEEDS: selectedElement\nPROVIDES: none\nERASES: className"
+  },
+  {
+    "id": "operation/selectElement",
+    "title": "selectElement",
+    "kind": "operation",
+    "use_cases": [],
+    "words": 9,
+    "see": ["operations-index"],
+    "card": "NEEDS: none\nPROVIDES: selectedElement\nERASES: selector"
+  },
+  {
+    "id": "operations-index",
+    "title": "Operations index",
+    "kind": "reference",
+    "use_cases": ["find an operation"],
+    "words": 12,
+    "see": ["map-dataflow"],
+    "card": "Every operation by category."
+  },
+  {
+    "id": "what-is-eligian",
+    "title": "What is Eligian",
+    "kind": "orientation",
+    "use_cases": ["start here"],
+    "words": 14,
+    "see": ["map-dataflow"],
+    "card": "The DSL that compiles to an Eligius JSON configuration."
+  }
+]

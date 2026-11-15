@@ -23,6 +23,7 @@ import { EligianHoverProvider } from './eligian-hover-provider.js';
 import { EligianParserErrorMessageProvider } from './eligian-parser-error-provider.js';
 import { EligianScopeComputation } from './eligian-scope-computation.js';
 import { EligianScopeProvider } from './eligian-scope-provider.js';
+import { EligianValidationRegistry } from './eligian-validation-registry.js';
 import { EligianValidator, registerValidationChecks } from './eligian-validator.js';
 import { EligianAstReflection } from './generated/ast.js';
 import { EligianGeneratedModule, EligianGeneratedSharedModule } from './generated/module.js';
@@ -97,6 +98,8 @@ export const EligianModule: Module<EligianServices, PartialLangiumServices & Eli
     validation: {
       EligianValidator: services => new EligianValidator(services),
       DocumentValidator: services => new EligianDocumentValidator(services),
+      // Spec 058 FR-007: the diagnostic for a throwing check carries `validation-exception`
+      ValidationRegistry: services => new EligianValidationRegistry(services),
       Settings: services => new ValidationSettings(services),
     },
     lsp: {

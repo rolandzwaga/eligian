@@ -1,0 +1,8 @@
+// Spec 058 phase 3 (T022, US3-1): both selectElement operations of a target event have the
+// origin `target`.
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "Intro" in "#stage" using raf {
+  at 0s..2s target "#box" [ addClass("in") ] [ removeClass("in") ]
+}

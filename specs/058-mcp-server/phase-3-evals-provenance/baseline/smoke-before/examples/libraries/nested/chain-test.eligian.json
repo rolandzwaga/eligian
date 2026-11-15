@@ -1,0 +1,4 @@
+{
+  "exit": 0,
+  "stdout": "[\n  {\n    \"file\": \"examples/libraries/nested/chain-test.eligian\",\n    \"timelines\": [\n      {\n        \"name\": \"Nested Import Test\",\n        \"boundaries\": 2\n      }\n    ],\n    \"problems\": []\n  }\n]\n"
+}

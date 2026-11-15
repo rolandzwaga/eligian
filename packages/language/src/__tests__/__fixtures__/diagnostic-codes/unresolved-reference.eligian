@@ -1,0 +1,7 @@
+// Linker: an event label that is not declared
+styles "./styles.css"
+action show [ selectElement("#app") ]
+timeline "t" in "#app" using raf {
+  at nope.end..2s [ ] [ ]
+  at 0s..1s show()
+}

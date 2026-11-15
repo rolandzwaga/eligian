@@ -1,0 +1,11 @@
+.lit {
+  color: red;
+}
+
+.done {
+  color: green;
+}
+
+.visible {
+  opacity: 1;
+}

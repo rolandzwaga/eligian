@@ -1,0 +1,8 @@
+// eligian_project (SC-005): a named asset import whose file does not exist.
+import hint from "./hint.html"
+
+layout "./layout.html"
+
+timeline "main" in "#stage" using raf {
+  at 0s..1s [ selectElement("#stage") ] []
+}

@@ -6,6 +6,7 @@
  * both the operation-call selector check and the `navigate` selector check.
  */
 import type { AstNode, ValidationAcceptor } from 'langium';
+import { diagnosticCode } from '../validators/codes.js';
 import { findSimilarClasses } from './levenshtein.js';
 import { parseSelector } from './selector-parser.js';
 
@@ -28,7 +29,7 @@ export function reportSelectorIssues(
     accept('error', `Invalid CSS selector syntax: ${error}`, {
       node,
       ...(property ? { property } : {}),
-      data: { code: 'invalid_css_selector' },
+      data: { code: diagnosticCode('invalid_css_selector') },
     });
     return;
   }
@@ -43,7 +44,7 @@ export function reportSelectorIssues(
       accept('error', message, {
         node,
         ...(property ? { property } : {}),
-        data: { code: 'unknown_css_class_in_selector' },
+        data: { code: diagnosticCode('unknown_css_class_in_selector'), suggestions },
       });
     }
   }
@@ -56,7 +57,7 @@ export function reportSelectorIssues(
       accept('error', `Unknown CSS ID in selector: '${idName}'.${hint}`, {
         node,
         ...(property ? { property } : {}),
-        data: { code: 'unknown_css_id_in_selector' },
+        data: { code: diagnosticCode('unknown_css_id_in_selector'), suggestions },
       });
     }
   }

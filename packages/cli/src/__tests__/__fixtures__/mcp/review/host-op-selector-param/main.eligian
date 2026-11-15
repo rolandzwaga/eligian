@@ -1,0 +1,12 @@
+// A host operation with a parameter named selector selects for itself (Interpretation I-3)
+layout "./layout.html"
+
+extensions "./host.ts" {
+  operation stamp(selector: string)
+}
+
+timeline "main" in "#stage" using raf {
+  at 0s..2s [
+    stamp("#box")
+  ]
+}
