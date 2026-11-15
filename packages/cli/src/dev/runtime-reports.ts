@@ -211,9 +211,12 @@ export function addError(
 }
 
 /**
- * Windows refuses a rename onto a file another process has open (an editor, an agent or a
- * scanner reading dev-errors.json). 5 × 20 ms was not enough under load: a burst with a reader
- * every 5 ms lost a report with EPERM (2026-11-15). Backoff 10, 20, … 200 ms, at most ~2.5 s.
+ * Windows refuses to replace a file that any process has open. dev-server.spec.ts's burst test
+ * reads dev-errors.json every few milliseconds while writing; under load a rename then kept
+ * failing with EPERM and 5 × 20 ms of retries lost a report (2026-11-15, measured: the target
+ * was held, fresh temp files did not help). Backoff 10, 20, … 200 ms, 20 attempts (~2.5 s);
+ * the dev server also keeps the report in memory, so a write that still fails is carried by
+ * the next one.
  */
 const RENAME_RETRIES = 20;
 const renameDelayMs = (attempt: number): number => Math.min(200, 10 * (attempt + 1));
@@ -224,9 +227,9 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 
 /**
  * Atomic write of `<dir>/dev-errors.json`: a temp file in the same dir, then
- * a rename onto the target, retried on EPERM / EBUSY / EACCES (a scanner can
- * hold the file on Windows). Uses the `node:fs/promises` namespace so the
- * dev-server spec can observe it with `vi.mock`.
+ * a rename onto the target, retried on EPERM / EBUSY / EACCES (see above).
+ * Uses the `node:fs/promises` namespace so the dev-server spec can observe it
+ * with `vi.mock`.
  */
 export async function writeDevErrors(dir: string, file: DevErrorsFile): Promise<void> {
   const target = path.join(dir, 'dev-errors.json');

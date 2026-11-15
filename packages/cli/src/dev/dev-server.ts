@@ -172,8 +172,10 @@ export async function startDevServer(entry: string, options: DevServerOptions): 
         }
         const dir = await ensureEligianDir(root);
         const next = update(devErrors);
-        await writeDevErrors(dir, next);
+        // In memory first: a write that fails (a Windows rename onto a file another process holds,
+        // see writeDevErrors) loses nothing, the next write carries it
         devErrors = next;
+        await writeDevErrors(dir, next);
       })
       .catch(error =>
         log(

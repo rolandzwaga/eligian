@@ -961,6 +961,8 @@ describe('eligian dev runtime reports', () => {
     const target = path.join(eligianDir(), 'dev-errors.json');
     const parseErrors: unknown[] = [];
     let reads = 0;
+    // Every 20 ms, not 5: Windows cannot replace a file that is open, and a reader holding it most
+    // of the time under load starved the renames (EPERM for > 2.5 s, 2026-11-15)
     const reader = setInterval(() => {
       try {
         JSON.parse(fs.readFileSync(target, 'utf8'));
@@ -968,7 +970,7 @@ describe('eligian dev runtime reports', () => {
       } catch (error) {
         if (error instanceof SyntaxError) parseErrors.push(error);
       }
-    }, 5);
+    }, 20);
     try {
       const same = { kind: 'console-error', buildId, message: 'burst' };
       const identical = await Promise.all(Array.from({ length: 20 }, () => post(same, { origin })));
