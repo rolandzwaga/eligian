@@ -444,7 +444,7 @@ Shared test harness (written in T029, reused by T030–T033): `mcp-provider.spec
 
 ## Group 15 — User-driven manual checks (not run by the build stage; resumed with `retry_tasks`)
 
-- [ ] **T046** SC-001 / SC-002 / SC-003 (1)(2) / SC-004 (3) / SC-007: manual checks on Windows, recorded in `compliance.md` by the user's notes.
+- [x] **T046** SC-001 / SC-002 / SC-003 (1)(2) / SC-004 (3) / SC-007: manual checks on Windows, recorded in `compliance.md` by the user's notes.
   - SC-001: `eligian init <dir> --template blank --no-agents`; remove `node_modules/eligian` if present; open `<dir>` in a fresh VS Code ≥ 1.140 window with the built `.vsix` installed, folder trusted, **no editor open**; *Developer: Show Running Extensions* lists Eligian as active before the first chat; in the integrated terminal `npm install <path>/eligian-1.1.0.tgz` (from `pnpm -C packages/cli pack`); *MCP: List Servers* shows `Eligian` running without a reload; the agent-mode tool picker lists exactly the 8 tools. Record the VS Code version and the tool names.
   - SC-002: `eligian.mcp.enabled: false` removes `Eligian` from *MCP: List Servers*.
   - SC-003 (1)(2): `eligian agents setup --client vscode` in the folder → each `eligian_*` tool listed once (from the file); with the setting off the tools are still listed.

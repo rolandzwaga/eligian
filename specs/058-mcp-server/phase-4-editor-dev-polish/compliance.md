@@ -6,13 +6,13 @@
 
 | Item | Verdict | Gap |
 |---|---|---|
-| SC-001 | FAIL | The manual Windows VS Code exit step is unrecorded (steps, VS Code version, tool names). Automated half green (extension 792 passed). |
-| SC-002 | PARTIAL | Manual step (setting off removes Eligian from MCP: List Servers) not recorded. |
-| SC-003 | PARTIAL | Manual agent listings for (1) and (2) not recorded. |
-| SC-004 | PARTIAL | (1) and (2) pass. (3) the real-browser timing (`updated` minus `performance.timeOrigin` <= 2 s) is not recorded. |
-| SC-007 | PARTIAL | No manual Cursor check recorded, and no statement that Cursor was unavailable. |
+| SC-001 | pass | Manual Windows VS Code step user-confirmed 2026-11-15 (manual-testing.md 2a: extension active before any editor, `Eligian` running after `npm install` without reload, exactly 8 `eligian_*` tools in the agent picker); the user ran the guide's step and reported it passing; the measured values (VS Code version, tool names, timestamps) were not captured. |
+| SC-002 | pass | Manual step user-confirmed 2026-11-15 (manual-testing.md 2b: `eligian.mcp.enabled` off removes `Eligian` from *MCP: List Servers*). |
+| SC-003 | pass | Manual listings user-confirmed 2026-11-15 (manual-testing.md 2c: with `.vscode/mcp.json` each tool listed once; with the setting off still listed from the file). |
+| SC-004 | pass | (1) and (2) pass. (3) user-confirmed 2026-11-15 (manual-testing.md 2d: terminal line into `main.eligian`, `updated` minus `performance.timeOrigin` within 2 s, plus the refresh-after-CSS-only-build check); the user ran the guide's step and reported it passing; the measured values (VS Code version, tool names, timestamps) were not captured. |
+| SC-007 | PARTIAL | Cursor was not available (user, 2026-11-15); the FR-011 manual half stays PARTIAL as the spec allows. Cursor-branch tests green. |
 | SC-014 | PARTIAL | All Windows gates green; the Linux half (ubuntu-latest CI on the PR) is not available. |
-| T046 | BLOCKED | Group 15 manual checks need the user at real VS Code / Cursor / browser; not run by the build stage. Resume with `retry_tasks: ["T046"]` after the user supplies notes. |
+| T046 | done | Manual checks user-confirmed 2026-11-15: SC-001, SC-002, SC-003 (1)(2), SC-004 (3) pass; SC-007 Cursor not available. |
 
 Also: the SC-014.coverage-thresholds evidence ends "The aggregate gate is still red because of the flaky test in SC-014.test-coverage-ci", but SC-014.test-coverage-ci and FR-031 record `pnpm test:coverage:ci` COV_EXIT=0 after the race fix (`await server.idle()`, dev-server.spec.ts:1079). The statements come from different moments; the later run is green.
 
@@ -60,13 +60,13 @@ Also: the SC-014.coverage-thresholds evidence ends "The aggregate gate is still 
 | FR-030 | pass | verification-ladder.md §6 extended; card unchanged; 1201 words (`wc -w`), under 1,500. mcp-knowledge.spec.ts passes in the green CLI run. |
 | FR-031 | pass | typecheck EXIT=0; ci "No fixes applied." EXIT=0; test EXIT=0; test:coverage:ci EXIT=0 (cli 1389 passed); effect:check "0 errors, 0 warnings and 0 messages." x2; check/smoke/fmt:examples EXIT=0; .vsix package EXIT=0. |
 | FR-032 | pass | build-output.spec.ts asserts no `node_modules/eligian/`, `cli.mjs`, `bin/cli.js` in the vsce list; direct grep of `unzip -l eligian-1.0.0.vsix` → no match, 21 files. |
-| SC-001 | **FAIL** | Automated half green (extension "Tests 792 passed (792)"). Manual Windows VS Code exit step unrecorded; spec.md:312 requires steps, VS Code version and tool names here. |
-| SC-002 | **PARTIAL** | Automated toggle test green. Manual step (spec.md:313) not recorded. |
-| SC-003 | **PARTIAL** | Provider halves (1)/(3) green. Manual agent listings for (1) and (2) (spec.md:314) not recorded. |
-| SC-004 | **PARTIAL** | (1)/(2) pass: e2e race fixed at dev-server.spec.ts:1078-1079 (`await server.idle();`); isolated runs 5 of 5 "Tests 1 passed \| 27 skipped (28)"; full runs cli "Tests 1389 passed \| 32 skipped (1421)". (3) real-browser timing (spec.md:315) not recorded. |
+| SC-001 | pass | Automated half green (extension "Tests 792 passed (792)"). Manual Windows VS Code step user-confirmed 2026-11-15 (manual-testing.md 2a); the user ran the guide's step and reported it passing; the measured values (VS Code version, tool names, timestamps) were not captured. |
+| SC-002 | pass | Automated toggle test green. Manual step user-confirmed 2026-11-15 (manual-testing.md 2b). |
+| SC-003 | pass | Provider halves (1)/(3) green. Manual agent listings for (1) and (2) user-confirmed 2026-11-15 (manual-testing.md 2c). |
+| SC-004 | pass | (1)/(2) pass: e2e race fixed at dev-server.spec.ts:1078-1079 (`await server.idle();`); isolated runs 5 of 5 "Tests 1 passed \| 27 skipped (28)"; full runs cli "Tests 1389 passed \| 32 skipped (1421)". (3) real-browser timing user-confirmed 2026-11-15 (manual-testing.md 2d, within 2 s); the user ran the guide's step and reported it passing; the measured values (VS Code version, tool names, timestamps) were not captured. |
 | SC-005 | pass | version gate table (1.1.0 / 1.1.0-beta.1 / 1.2.3 / 2.0.0 give 1; 1.0.9 / 0.9.0 / no version / "abc" / no package.json / no bin/cli.js give 0), untrusted gives 0, trust grant fires once, two folders labelled 'Eligian (talk)','Eligian (deck)'. |
 | SC-006 | pass | install prompt cases (1)-(8) all pass: pnpm/yarn/bun/npm commands run in the folder, Don't Ask Again persisted, suppression cases, one notification for two failing folders. |
-| SC-007 | **PARTIAL** | Cursor-branch tests green (792 passed). Manual Cursor check (spec.md:318) not recorded and no statement that Cursor was unavailable. |
+| SC-007 | **PARTIAL** | Cursor-branch tests green (792 passed). Cursor was not available for the manual check (user, 2026-11-15); the FR-011 manual half stays PARTIAL. |
 | SC-008 | pass | dev-server.spec.ts burst/cap/atomic, reset, stale buildId, no-rebuild on .eligian, status codes tests pass. |
 | SC-009 | pass | dev-client.spec.ts runtime reports cases pass (12 files, "Tests 196 passed (196)"); pre-existing cases pass. |
 | SC-010 | pass | `--diff` EXIT=0 "3 files, 0 differ"; bundle-dev-hook.spec.ts pass; smoke:examples 0 errors. Baselines live in specs/.../baseline/bundle-before/ (plan.md:65 P5 deviation). |
@@ -95,7 +95,7 @@ Also: the SC-014.coverage-thresholds evidence ends "The aggregate gate is still 
 | SC-013.stdout-purity | pass | console/stdout matches only in stdio.ts:36-56,:82 (capture/reroute); new modules clean. |
 | FR-CLI-DEPENDENCIES | pass | packages/cli/package.json diff empty; the only new runtime dependency is `semver: 7.8.5` in the extension, bundled (0 `require("semver")` in main.cjs). |
 | FR-CLI-FILES-LIST | pass | `files` unchanged ["bin/cli.js","dist/cli.mjs","dist/docs/**"]. |
-| T046 (Group 15) | **BLOCKED** | Manual checks not run (see gap list). |
+| T046 (Group 15) | done | Manual checks user-confirmed 2026-11-15; Cursor not available. |
 
 ## Implementation notes (deviations reported by task agents)
 
@@ -126,7 +126,7 @@ Also: the SC-014.coverage-thresholds evidence ends "The aggregate gate is still 
 
 ## Remaining steps for the human loop
 
-1. Run the Group 15 manual checks (T046) and send notes: SC-001 (VS Code version, the 8 tool names, install-after-open without reload, Running Extensions), SC-002, SC-003 (1)(2), SC-004 (3) (`dev-errors.json` `updated` and `performance.timeOrigin` values), SC-007 (Cursor cwd, or "Cursor not available"); then resume with `retry_tasks: ["T046"]`.
+1. ~~Run the Group 15 manual checks (T046)~~ Done 2026-11-15 (user-confirmed; Cursor not available, SC-007 stays PARTIAL).
 2. Confirm the ubuntu-latest CI run on the PR (SC-014 Linux half).
-3. Rule on the T018 manual-refresh-after-CSS-only-build gap, if wanted.
+3. ~~Rule on the T018 manual-refresh-after-CSS-only-build gap~~ Ruled and fixed 2026-11-06 (commit 2068f13); the refresh case passed the 2026-11-15 manual check.
 4. Review the diff and commit (the workflow never commits).
