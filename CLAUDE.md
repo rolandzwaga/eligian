@@ -12,6 +12,11 @@ Claude Code-specific guidance. **Shared, tool-agnostic rules live in [AGENTS.md]
 - **Edits:** built-in `Edit` (string match). For cross-file renames, use `ts_references` to find every site, then `Edit` each one. For paren/brace-balancing transforms use an AST codemod, not regex.
 - Use `Grep`/`Glob` for existence checks, counts, and non-TypeScript files (grammar, docs, config, fixtures).
 
+## Hooks (`.claude/hooks/`, wired in `.claude/settings.json`)
+
+- `guard-ci-gates.cjs` (PreToolUse, Bash | PowerShell): before `git commit`, runs the steps of `.github/workflows/ci.yml` (read from the file, not copied) on the working tree and blocks on the first failure. Skips commits that touch only `specs/`, root-level Markdown or `.claude/`. The soak test and the packed-tarball step are skipped, and the coverage step is replaced by `vitest related` on the changed files, so a code commit takes about 1.5 min. A new `ci.yml` step blocks every commit until it gets a policy in `STEP_POLICY`. Test it: `echo '{"tool_input":{"command":"git commit -m x"}}' | node .claude/hooks/guard-ci-gates.cjs`.
+- `block-powershell-syntax.cjs`: Bash only, no PowerShell here-strings.
+
 ## MCP
 
 - **context7** — fetch up-to-date library/API docs (use proactively for any library question, incl. Effect-ts).

@@ -53,7 +53,7 @@ Research/reference (read-only, do NOT import):
 - `pnpm effect:check` (Effect LSP diagnostics; also `:language` / `:cli`) — see Effect LSP above
 
 ### Task completion checklist
-1. `pnpm build` (or `pnpm typecheck`) clean
+1. `pnpm build` and `pnpm typecheck:tests` clean (CI type-checks the test files too; the repo `lib` is ES2020, so no `Array#at`)
 2. `pnpm check` → 0 errors / 0 warnings
 3. `pnpm test` passes (run `test:coverage:ci` if new code, don't regress thresholds)
 4. `pnpm langium:generate` first if grammar changed
