@@ -69,7 +69,6 @@ export const makeTool = (ai: EffectAi) =>
     parameters: Parameters,
     success: Success,
     failure: ToolFailure,
-    dependencies: [CompilerLock],
   })
     .annotate(ai.Tool.Destructive, false)
     .annotate(ai.Tool.Idempotent, true);

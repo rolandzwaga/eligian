@@ -14,7 +14,7 @@
 import { getCompilerVersion } from '@eligian/language';
 import { Array as Arr, Cause, Effect, Exit, Layer, Result, type Stdio } from 'effect';
 import type { McpProtocol } from 'effect/ai';
-import { type CompilerLock, CompilerLockLive } from './compiler-lock.js';
+import { CompilerLock, CompilerLockLive } from './compiler-lock.js';
 import { catchDefects, type ToolError, toToolFailure } from './errors.js';
 import { INSTRUCTIONS, MCP_PHASE } from './instructions.js';
 import { loadIndex } from './knowledge/load.js';
@@ -116,47 +116,67 @@ export async function makeServerLayer(
     project.makeTool(ai),
     smoke.makeTool(ai)
   );
-  const handlers = toolkit.toLayer({
-    eligian_docs: params =>
-      boundary(docs.NAME, docs.summarizeArgs(params), requestId =>
-        docs.handle(params, { ...context, requestId })
-      ),
-    eligian_operations: params =>
-      boundary(operations.NAME, operations.summarizeArgs(params), requestId =>
-        operations.handle(params, { ...context, requestId })
-      ),
-    eligian_check: params =>
-      boundary(
-        check.NAME,
-        check.summarizeArgs(params),
-        requestId => check.handle(params, { ...context, requestId }),
-        check.summarizeResult
-      ),
-    eligian_fmt: params =>
-      boundary(fmt.NAME, fmt.summarizeArgs(params), requestId =>
-        fmt.handle(params, { ...context, requestId })
-      ),
-    eligian_init: params =>
-      boundary(init.NAME, init.summarizeArgs(params), requestId =>
-        init.handle(params, { ...context, requestId })
-      ),
-    eligian_compile: params =>
-      boundary(compile.NAME, compile.summarizeArgs(params), requestId =>
-        compile.handle(params, { ...context, requestId })
-      ),
-    eligian_project: params =>
-      boundary(project.NAME, project.summarizeArgs(params), requestId =>
-        project.handle(params, { ...context, requestId })
-      ),
-    eligian_smoke: params =>
-      boundary(smoke.NAME, smoke.summarizeArgs(params), requestId =>
-        smoke.handle(params, {
-          ...context,
-          requestId,
-          ...(options.smoke === undefined ? {} : { smoke: options.smoke }),
-        })
-      ),
-  });
+  // effect 4.1: the services a handler reads are request-level (`McpRequest<"Requires", …>`, met only
+  // by MCP middleware) unless the handlers close over them. The server's one lock is taken when the
+  // handlers are built and provided to every call.
+  const handlers = toolkit.toLayer(
+    Effect.gen(function* () {
+      const lock = yield* CompilerLock;
+      const call = <A, R>(
+        tool: string,
+        args: Readonly<Record<string, unknown>>,
+        run: (requestId: string) => Effect.Effect<A, ToolError, R>,
+        summarizeResult?: (value: A) => Readonly<Record<string, unknown>>
+      ) =>
+        boundary(
+          tool,
+          args,
+          requestId => Effect.provideService(run(requestId), CompilerLock, lock),
+          summarizeResult
+        );
+      return {
+        eligian_docs: params =>
+          call(docs.NAME, docs.summarizeArgs(params), requestId =>
+            docs.handle(params, { ...context, requestId })
+          ),
+        eligian_operations: params =>
+          call(operations.NAME, operations.summarizeArgs(params), requestId =>
+            operations.handle(params, { ...context, requestId })
+          ),
+        eligian_check: params =>
+          call(
+            check.NAME,
+            check.summarizeArgs(params),
+            requestId => check.handle(params, { ...context, requestId }),
+            check.summarizeResult
+          ),
+        eligian_fmt: params =>
+          call(fmt.NAME, fmt.summarizeArgs(params), requestId =>
+            fmt.handle(params, { ...context, requestId })
+          ),
+        eligian_init: params =>
+          call(init.NAME, init.summarizeArgs(params), requestId =>
+            init.handle(params, { ...context, requestId })
+          ),
+        eligian_compile: params =>
+          call(compile.NAME, compile.summarizeArgs(params), requestId =>
+            compile.handle(params, { ...context, requestId })
+          ),
+        eligian_project: params =>
+          call(project.NAME, project.summarizeArgs(params), requestId =>
+            project.handle(params, { ...context, requestId })
+          ),
+        eligian_smoke: params =>
+          call(smoke.NAME, smoke.summarizeArgs(params), requestId =>
+            smoke.handle(params, {
+              ...context,
+              requestId,
+              ...(options.smoke === undefined ? {} : { smoke: options.smoke }),
+            })
+          ),
+      };
+    })
+  );
 
   const tools = ai.McpServer.toolkit(toolkit).pipe(
     Layer.provide(handlers),
