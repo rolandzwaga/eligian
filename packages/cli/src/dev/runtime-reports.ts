@@ -210,8 +210,13 @@ export function addError(
   return { ...file, updated: now, errors };
 }
 
-const RENAME_RETRIES = 5;
-const RENAME_DELAY_MS = 20;
+/**
+ * Windows refuses a rename onto a file another process has open (an editor, an agent or a
+ * scanner reading dev-errors.json). 5 × 20 ms was not enough under load: a burst with a reader
+ * every 5 ms lost a report with EPERM (2026-11-15). Backoff 10, 20, … 200 ms, at most ~2.5 s.
+ */
+const RENAME_RETRIES = 20;
+const renameDelayMs = (attempt: number): number => Math.min(200, 10 * (attempt + 1));
 const RETRYABLE: ReadonlySet<string> = new Set(['EPERM', 'EBUSY', 'EACCES']);
 let tempCounter = 0;
 
@@ -237,7 +242,7 @@ export async function writeDevErrors(dir: string, file: DevErrorsFile): Promise<
         await fs.rm(temp, { force: true }).catch(() => {});
         throw error;
       }
-      await delay(RENAME_DELAY_MS);
+      await delay(renameDelayMs(attempt));
     }
   }
 }
