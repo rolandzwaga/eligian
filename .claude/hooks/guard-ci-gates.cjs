@@ -56,6 +56,13 @@ const VITEST_ARGS = {
 
 const TAIL_LINES = 60;
 
+/** Test data that must be in git: a gitignored file here passes locally and is missing in CI. */
+const FIXTURE_PATHSPECS = [
+  ':(glob)**/__fixtures__/**',
+  ':(glob)evals/mcp/cases/**',
+  ':(glob)evals/mcp/fixtures/**',
+];
+
 /** A path that can change what CI checks. */
 function isCodePath(p) {
   if (p.startsWith('specs/')) return false;
@@ -211,6 +218,30 @@ function readStdin() {
         unknown.map(n => `  - ${n}`).join('\n') +
         "\n\nAdd each to STEP_POLICY in .claude/hooks/guard-ci-gates.cjs ('run', 'tests' or " +
         '{ skip: reason }), so a gate added to CI also runs before the commit.\n'
+    );
+    process.exit(2);
+  }
+
+  // Test data that exists here but is gitignored: every local gate passes on it and CI's clean
+  // checkout lacks it (2026-11-15: `*.log` ignored two evals fixtures; three tests failed on CI only)
+  let ignoredFixtures = [];
+  try {
+    ignoredFixtures = execFileSync(
+      'git',
+      ['ls-files', '-o', '-i', '--exclude-standard', '--', ...FIXTURE_PATHSPECS],
+      { cwd: root, maxBuffer: 64 << 20 }
+    )
+      .toString()
+      .split(/\r?\n/)
+      .filter(Boolean);
+  } catch {
+    /* fail open */
+  }
+  if (ignoredFixtures.length > 0) {
+    process.stderr.write(
+      'BLOCKED: test fixtures exist locally but are gitignored, so CI runs without them:\n\n' +
+        ignoredFixtures.map(f => `  ${f}`).join('\n') +
+        '\n\nAdd a negation to .gitignore (e.g. `!**/__fixtures__/**/*.log`) and commit them.\n'
     );
     process.exit(2);
   }

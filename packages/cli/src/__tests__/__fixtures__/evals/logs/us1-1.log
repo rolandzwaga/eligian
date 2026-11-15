@@ -1,0 +1,5 @@
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_operations","ms":40,"chars":812,"ok":true,"args":{}}
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_check","ms":40,"chars":1450,"ok":true,"args":{"paths":1},"result":{"codes":{"unknown_operation":1}}}
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_check","ms":40,"chars":210,"ok":true,"args":{"paths":1},"result":{"codes":{}}}
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_compile","ms":40,"chars":2300,"ok":true,"args":{"select":true,"explain":true}}
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_fmt","ms":40,"chars":120,"ok":true,"args":{"paths":1,"write":true}}

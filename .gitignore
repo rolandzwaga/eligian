@@ -35,6 +35,7 @@ test-*.mjs
 check-*.js
 check-*.mjs
 *.log
+!**/__fixtures__/**/*.log
 .DS_Store
 /packages/cli/coverage
 /packages/language/coverage

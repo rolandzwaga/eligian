@@ -1,0 +1,5 @@
+eligian mcp: listening on stdio
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_docs","ms":40,"chars":300,"ok":true,"args":{"ids":1}}
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_check","ms":40,"chars":1450,"ok":true,"args":{"paths":1},"result":{"codes":{"unknown_operation":1}}}
+
+{"t":"2026-11-05T10:00:00.000Z","tool":"eligian_check","ms":40,"chars":210,"ok":true,"args":{"paths":1},"result":{"codes":{}}}
