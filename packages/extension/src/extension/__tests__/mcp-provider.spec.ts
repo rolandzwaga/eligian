@@ -316,7 +316,7 @@ const fakeContext = () => {
 /** Registers through the fake `lm` and returns the provider it captured. */
 const register = () => {
   const disposable = registerEligianMcpServer(fakeContext());
-  const registration = h.registrations.at(-1);
+  const registration = h.registrations[h.registrations.length - 1];
   if (!registration) throw new Error('no provider was registered');
   return { disposable, registration, provider: registration.provider };
 };
@@ -698,7 +698,7 @@ describe('change events', () => {
   const start = () => {
     const disposable = registerEligianMcpServer(fakeContext());
     live.push(disposable);
-    const registration = h.registrations.at(-1);
+    const registration = h.registrations[h.registrations.length - 1];
     if (!registration) throw new Error('no provider was registered');
     const { provider } = registration;
     let events = 0;
@@ -968,7 +968,7 @@ describe('install prompt', () => {
   const activate = async (context = fakeContext()) => {
     live.push(registerEligianMcpServer(context));
     await installPromptSettled();
-    const registration = h.registrations.at(-1);
+    const registration = h.registrations[h.registrations.length - 1];
     if (!registration) throw new Error('no provider was registered');
     return { context, provider: registration.provider };
   };

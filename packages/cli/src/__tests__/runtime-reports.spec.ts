@@ -155,7 +155,7 @@ describe('mergeKey / addError', () => {
     expect(file.errors.length).toBe(MAX_ENTRIES);
     expect(file.errors[0].message).toBe('e20');
     expect(file.errors.some(e => e.message === 'e19')).toBe(false);
-    expect(file.errors.at(-1)!.message).toBe('e119');
+    expect(file.errors[file.errors.length - 1].message).toBe('e119');
   });
 
   it('does not mutate its input', () => {

@@ -660,7 +660,7 @@ interface StoredError {
 }
 
 /** `<dir>/.eligian/dev-errors.json`, parsed. */
-const readDevErrors = (dir: string): { buildId: string; errors: StoredError[] } =>
+const readDevErrors = (dir: string): { buildId: string; updated: string; errors: StoredError[] } =>
   JSON.parse(fs.readFileSync(path.join(dir, '.eligian', 'dev-errors.json'), 'utf8'));
 
 interface ConfigAction {
@@ -811,6 +811,7 @@ describe('eligian dev runtime reports', () => {
 
     expect(await post(valid, { origin })).toBe(204);
     expect(await post({ ...valid, message: 'no origin' })).toBe(204);
+    await server.idle();
     expect(file().errors.map(e => e.message)).toEqual(['origin ok', 'no origin']);
   });
 
@@ -836,6 +837,7 @@ describe('eligian dev runtime reports', () => {
     expect(added[0]).toContain('boom');
     expect(added[0]).toContain(`main.eligian:${boomAt.line}:${boomAt.column}`);
     expect(added[0].endsWith('(timeline Intro at 0s)')).toBe(true);
+    await server.idle();
     const stored = file().errors.filter(e => e.kind === 'engine-error');
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({
@@ -879,6 +881,7 @@ describe('eligian dev runtime reports', () => {
     }
     expect(lines.slice(from)).toEqual(reports.map(r => r.line));
     for (const { kind, message } of reports) {
+      await server.idle();
       const stored = file().errors.filter(e => e.kind === kind && e.message === message);
       expect(stored).toHaveLength(1);
       expect(stored[0]).not.toHaveProperty('file');
@@ -902,6 +905,7 @@ describe('eligian dev runtime reports', () => {
     expect(lines.slice(from)).toHaveLength(1);
     expect(lines[from]).toContain('selectElement("#a") matched no element');
     expect(lines[from]).toContain(`main.eligian:${at?.line}:${at?.column}`);
+    await server.idle();
     expect(file().errors.filter(e => e.kind === 'selector-miss')).toEqual([
       expect.objectContaining({ file: at?.file, line: at?.line, column: at?.column }),
     ]);
@@ -917,6 +921,7 @@ describe('eligian dev runtime reports', () => {
     const repeat = engineError({ message: 'repeat' });
     for (let i = 0; i < 20; i++) expect(await post(repeat, { origin })).toBe(204);
     expect(lines.slice(from)).toHaveLength(1);
+    await server.idle();
     const [stored] = file().errors.filter(
       e => e.kind === 'engine-error' && e.message.endsWith('repeat') && e.exact === true
     );
@@ -944,6 +949,7 @@ describe('eligian dev runtime reports', () => {
       expect(await post({ kind: 'console-error', buildId, message: 'many' }, { origin })).toBe(204);
     }
     expect(lines.slice(from)).toEqual(['console error: many']);
+    await server.idle();
     const many = file().errors.filter(e => e.message === 'many');
     expect(many).toHaveLength(1);
     expect(many[0].count).toBe(120);
@@ -967,6 +973,7 @@ describe('eligian dev runtime reports', () => {
       const same = { kind: 'console-error', buildId, message: 'burst' };
       const identical = await Promise.all(Array.from({ length: 20 }, () => post(same, { origin })));
       expect(identical).toEqual(Array(20).fill(204));
+      await server.idle();
       const burst = file().errors.filter(e => e.message === 'burst');
       expect(burst).toHaveLength(1);
       expect(burst[0].count).toBe(20);
@@ -978,6 +985,7 @@ describe('eligian dev runtime reports', () => {
         )
       );
       expect(distinct).toEqual(Array(20).fill(204));
+      await server.idle();
       expect(file().errors.length).toBe(Math.min(100, before + 20));
       expect(file().errors.filter(e => e.message.startsWith('distinct '))).toHaveLength(20);
 
@@ -987,6 +995,7 @@ describe('eligian dev runtime reports', () => {
         )
       );
       expect(capped).toEqual(Array(120).fill(204));
+      await server.idle();
       const errors = file().errors;
       expect(errors).toHaveLength(100);
       // Every older entry and the first 20 of the 120 were dropped

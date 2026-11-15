@@ -184,7 +184,7 @@ describe('evals/mcp/gate.ts --call-budget (FR-008: the gate defaults to enforce)
       { cwd: REPO, encoding: 'utf-8', shell: true }
     );
     expect(run.status, run.stderr).toBe(1);
-    return JSON.parse(run.stdout.trim().split('\n').at(-1) ?? '');
+    return JSON.parse(run.stdout.trim().split('\n').pop() ?? '');
   };
 
   it('without --call-budget the tool-call check applies, as under enforce', () => {

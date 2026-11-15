@@ -124,7 +124,7 @@ describe('installMediaClock', () => {
     await ended;
     expect(element.currentTime).toBe(0.2);
     expect(element.paused).toBe(true);
-    expect(events.at(-1)).toBe('ended');
+    expect(events[events.length - 1]).toBe('ended');
   });
 
   it('the restore puts back the original descriptors', () => {
