@@ -35,6 +35,7 @@ Eligian has not been released yet: every package is still at version `0.0.1` and
 
 ### Changed
 
+- **The VS Code extension requires VS Code 1.145 or later** (was 1.140): `engines.vscode` follows `@types/vscode` 1.145.
 - **Compiler-service recycling tuned from measurements** (spec 058, phase 5): the MCP server recycles the compiler's documents and services every 200 compiler calls (was 100), the largest N in {25, 50, 100, 200} whose heap growth over 500 mixed tool calls stays at or under 25 MB and whose calls that trigger a recycle, and the calls right after one, take at most three times the tool's usual latency (median) (`specs/058-mcp-server/phase-5-hardening-reach/baseline/recycle-measurements.txt`). The soak (`pnpm -C packages/cli run test:soak`) also runs mixed tool calls on the tour.
 - **`eligian smoke --format json`**: every problem carries its `code` (`smoke-engine-error`, `smoke-selector-miss`, …); the output is otherwise unchanged.
 - **`eligian init` writes agent files**: the MCP server entry and the instructions of each `--client` (default `claude`), merged into existing files as by `eligian agents setup`; `--no-agents` writes none. The `video` starter carries one `media-file-missing` warning until `media/intro.mp4` exists.
