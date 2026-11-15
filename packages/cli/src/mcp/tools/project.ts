@@ -185,7 +185,6 @@ export const makeTool = (ai: EffectAi) =>
     parameters: Parameters,
     success: Success,
     failure: ToolFailure,
-    dependencies: [CompilerLock],
   })
     .annotate(ai.Tool.Readonly, true)
     .annotate(ai.Tool.Meta, { 'anthropic/maxResultSizeChars': 200000 });

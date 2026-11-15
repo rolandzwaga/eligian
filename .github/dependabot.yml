@@ -49,6 +49,14 @@ updates:
         update-types:
           - "version-update:semver-minor"
           - "version-update:semver-major"
+      # effect is pinned exactly (spec 058 roadmap decision 1): `eligian mcp` builds on
+      # effect/ai's McpServer, which is @stability unstable. 4.0.7 -> 4.1.3 (#203, grouped as
+      # a "low-risk" minor) changed its layer types and broke the build. Patches still come in;
+      # minor/major bumps are done by hand, with the MCP soak and inspector steps run.
+      - dependency-name: "effect"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
     groups:
       # Keep the langium toolchain in a single PR so the runtime, code generator,
       # and Typir integration are always reviewed and bumped together. Listed

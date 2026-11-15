@@ -13,6 +13,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Array as Arr, Effect, Layer } from 'effect';
+import type { McpServer } from 'effect/ai';
 import { ToolInternal } from './errors.js';
 import { loadKnowledge } from './knowledge/load.js';
 import type { IndexEntry } from './knowledge/types.js';
@@ -21,12 +22,15 @@ import type { EffectAi } from './paths.js';
 /** The resource URI of a docs chunk. */
 export const resourceUri = (id: string): string => `eligian://docs/${id}`;
 
-/** One static resource per index entry; `Layer.empty` when `entries` is empty. No I/O at build. */
+/**
+ * One static resource per index entry; `Layer.empty` when `entries` is empty. No I/O at build.
+ * Requires `McpServer` (effect 4.1: registrations declare it), provided by `layerStdio`.
+ */
 export const docsResources = (
   ai: EffectAi,
   docsRoot: URL | string,
   entries: readonly IndexEntry[]
-): Layer.Layer<never> => {
+): Layer.Layer<never, never, McpServer.McpServer> => {
   const directory = path.resolve(typeof docsRoot === 'string' ? docsRoot : fileURLToPath(docsRoot));
   const layers = entries.map(entry =>
     ai.McpServer.resource({

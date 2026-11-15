@@ -122,7 +122,6 @@ export const makeTool = (ai: EffectAi) =>
     parameters: Parameters,
     success: Success,
     failure: ToolFailure,
-    dependencies: [CompilerLock],
   })
     .annotate(ai.Tool.Meta, { 'anthropic/alwaysLoad': true })
     .annotate(ai.Tool.Readonly, true)
