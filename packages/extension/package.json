@@ -316,7 +316,7 @@
     "@eligian/shared-utils": "workspace:*",
     "jquery": "4.0.0",
     "lottie-web": "5.13.0",
-    "semver": "7.8.5",
+    "semver": "7.8.6",
     "vscode-languageclient": "9.0.1",
     "vscode-languageserver": "9.0.1"
   },
