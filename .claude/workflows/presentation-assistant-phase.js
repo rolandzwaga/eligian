@@ -157,17 +157,17 @@ const run = (prompt, opts) => agent(prompt, { model: AUTHOR, ...opts })
 // args.git_guard: forbid the gate and fixer agents to change git state. Added 2026-11-19 after the
 // Group 2 fixer of the first Phase 1 build ran `git stash -u` to compare a red against a baseline:
 // that stash took every uncommitted file of the run (spec, plan, tasks, the workflow itself, the
-// code of Groups 1–2) out of the tree while the build went on. Default off only so that a run
-// resumed without it replays its cache; pass git_guard: true on every new or resumed build.
-const GIT_GUARD = A.git_guard
+// code of Groups 1–2) out of the tree while the build went on. Default on since phase 2 (phase 1
+// ran with it passed explicitly); pass git_guard: false to switch it off.
+const GIT_GUARD = A.git_guard !== false
   ? `\n\nGIT STATE IS OFF LIMITS: the working tree holds this run's uncommitted work (spec, plan, tasks, the code of every earlier group) and nothing else has it. NEVER run git stash, git checkout <path>/., git restore, git reset, git clean, git switch, git commit, git worktree or any other command that changes the index, the working tree or the branch. Read-only git (status, diff, log, show) is fine. To tell a red that predates this group from a new one, read the gate log, run the failing test file on its own, or compare with the CI run of main; never by removing the group's changes.`
   : ''
 
 // args.flake_rule: on Windows, tests that spawn the CLI bundle time out at 30000 ms (and vitest fork
 // workers exit with 0xC0000409) when the whole cli package runs under load, and pass when their file
 // runs alone (measured 2026-11-19: fmt, mcp-scenario and smoke-determinism, 74/74 alone in 56 s).
-// Same default-off convention as git_guard.
-const FLAKE_RULE = A.flake_rule
+// Default on since phase 2, like git_guard; flake_rule: false switches it off.
+const FLAKE_RULE = A.flake_rule !== false
   ? `\n\nKNOWN LOAD FLAKE (Windows): when a test that spawns the CLI fails with "Test timed out in 30000ms", or a vitest fork worker exits unexpectedly (exit code 3221226505), during a whole-package run, re-run ONLY those test files on their own (pnpm -C packages/<pkg> exec vitest run <files>, foreground, its own log). If they all pass alone, the red is a load flake: count tests_ok as true and name each file in summary as "load flake: timed out in the package run, passed alone". If one fails alone too, it is a real red.`
   : ''
 
