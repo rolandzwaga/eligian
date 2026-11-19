@@ -289,7 +289,7 @@ The scan covers the server's working directory at process start, which is the pr
 | The brief's answers changed after confirmation | refused: `brief-changed`; re-confirming shows only the changed answers |
 | Approved | runs, unless it contains an addition (§4.3) |
 
-`eligian_init` follows the same table for its target directory, except with the `library` starter, which is not gated. Today's order stays: brief, storyboard, then `eligian_init`.
+`eligian_init` follows the same table for its target directory, with every starter (the `library` starter writes a `main.eligian` with a timeline, so it is gated too). Today's order stays: brief, storyboard, then `eligian_init`.
 
 `eligian_docs`, `eligian_operations` and `eligian_project` are never gated: the agent needs them to find facts and form recommendations. `eligian_project` gains a `brief` section (state, counts, next step).
 
@@ -327,7 +327,7 @@ After adoption the project is a briefed project: additions are measured against 
 
 ### 4.5 The CLI warning
 
-`eligian check`, `compile`, `smoke`, `fmt` and `dev` print one line on stderr when the program they run on is governed by a `BRIEF.md` that is not approved: the state, and the tool call that shows the open questions. The exit code and stdout do not change, so scripts and CI are unaffected (stdout stays machine-readable for `--format github`, `json` and `ndjson`). A program that is not in the record of known programs (§4.2) gets the same line. The CLI never writes that record: where none exists yet, it prints nothing.
+`eligian check`, `compile`, `smoke`, `fmt` and `dev` print one line on stderr when the program they run on is governed by a `BRIEF.md` that is not approved: the state, and the tool call that shows the open questions. The exit code and stdout do not change, so scripts and CI are unaffected (stdout stays machine-readable for `--format github`, `json` and `ndjson`). A program that is not in the record of known programs (§4.2) gets the same line. The CLI never writes that record, with one exception: `eligian init` writes `.eligian/programs.json` the way the first-run scan would, minus the `main.eligian` it just wrote, so the starter stays unknown and the first gated call is `brief-required`. Where no record exists yet, the CLI prints no not-known line.
 
 ### 4.6 `BRIEF.md`
 
@@ -399,6 +399,8 @@ The hook reads only what is on disk (`BRIEF.md` and its signature), so it works 
 A plugin ships hooks in `hooks\hooks.json` at its root, in the shape of the `hooks` object of `settings.json`, and its hook processes get `CLAUDE_PLUGIN_ROOT`. Measured with a test plugin loaded by `--plugin-dir`: its `PreToolUse` hook blocked creating a `.eligian` file, and the agent received the hook's message (`spikes.md` §3.1).
 
 The hook has a third rule: it refuses a write to `.claude\settings.json` that adds an `Elicitation` hook. Such a hook answers an elicitation instead of the user (`spikes.md` §4.2), so it would approve every brief unseen.
+
+The hook has a fourth rule: it refuses an agent write to `.eligian/programs.json`. The record is not signed in Phase 2 (spec 059 phase 2, R-13), so without this rule an agent could add its own program to the record with its editor.
 
 **[UNVERIFIED]** That the hook also runs when the plugin is installed from the marketplace, not loaded with `--plugin-dir`. Test: the Phase 3 exit, `/plugin install eligian@eligian` from this repo.
 
@@ -481,7 +483,7 @@ Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp
 
 - The hook installed from the marketplace (§6.3).
 - Instructions, both prompts, the docs chunks, the `AGENTS.md` block.
-- The Claude Code hook and `eligian brief gate`.
+- The Claude Code hook and `eligian brief gate`, with its fourth rule: block agent writes to `.eligian/programs.json` (§6.3).
 - Brief fixtures for the 14 cases; the multi-turn harness; three personas.
 - Exit: the success criterion of §1 on the three personas (3 runs each, majority); the 14 cases at their previous pass rate.
 
