@@ -2,7 +2,7 @@
  * Spec 058 Phase 1 (FR-002, FR-003, FR-018; plan C10): the Eligian MCP server.
  *
  * `effect/ai` is loaded here only, with a dynamic `import('effect/ai')` at server start (FR-003);
- * the tool modules get its values through their `makeTool(ai)`. The eight tools (Phase 2 FR-001)
+ * the tool modules get its values through their `makeTool(ai)`. The nine tools (spec 059 Phase 1 adds `eligian_brief`)
  * are registered with `McpServer.toolkit` over `McpServer.layerStdio`. Every handler runs inside the per-server
  * telemetry wrapper, with defects caught at the tool boundary and tagged errors mapped to the
  * declared `{ header, error }` failure (C3). The compiler lock is provided once per server, and
@@ -23,6 +23,7 @@ import { newPresentationPrompt } from './prompts.js';
 import { docsResources } from './resources.js';
 import { layerNodeStdio, redirectConsoleToStderr, stderrLoggerLayer } from './stdio.js';
 import { makeTelemetry } from './telemetry.js';
+import * as brief from './tools/brief.js';
 import * as check from './tools/check.js';
 import * as compile from './tools/compile.js';
 import * as docs from './tools/docs.js';
@@ -40,6 +41,8 @@ export interface ServerOptions {
   readonly lock?: Layer.Layer<CompilerLock>;
   /** The `eligian_smoke` test seams (`cliPath`, `onSpawn`); default none (Phase 2 FR-041) */
   readonly smoke?: smoke.SmokeToolOptions;
+  /** The `eligian_brief` test seam (`beforeRename`); default none (spec 059 FR-034) */
+  readonly brief?: brief.BriefToolOptions;
 }
 
 /** The protocol versions the server negotiates, in preference order (SC-029). */
@@ -77,6 +80,8 @@ export async function makeServerLayer(
     docsRoot: options.docsRoot ?? new URL('./docs/', import.meta.url),
     versions,
   };
+  // Spec 059 FR-033: the per-brief locks, once per server.
+  const briefLocks = brief.makeBriefLocks();
 
   // Phase 4 C4, P18: the index is read before any layer is built, so the registrations below do
   // no I/O and an early `initialize` already sees the resources. No docs: no resources (FR-023).
@@ -107,6 +112,7 @@ export async function makeServerLayer(
     );
 
   const toolkit = ai.Toolkit.make(
+    brief.makeTool(ai),
     docs.makeTool(ai),
     operations.makeTool(ai),
     check.makeTool(ai),
@@ -135,6 +141,20 @@ export async function makeServerLayer(
           summarizeResult
         );
       return {
+        // Spec 059 P5: no compiler and no lock (FR-032), so `boundary` directly, not `call`.
+        eligian_brief: params =>
+          boundary(
+            brief.NAME,
+            brief.summarizeArgs(params),
+            requestId =>
+              brief.handle(params, {
+                ...context,
+                requestId,
+                briefLocks,
+                ...(options.brief === undefined ? {} : { options: options.brief }),
+              }),
+            brief.summarizeResult
+          ),
         eligian_docs: params =>
           call(docs.NAME, docs.summarizeArgs(params), requestId =>
             docs.handle(params, { ...context, requestId })

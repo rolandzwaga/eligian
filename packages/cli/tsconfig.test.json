@@ -9,7 +9,7 @@
     "declarationMap": false,
     "rootDir": "."
   },
-  "references": [{ "path": "../language/tsconfig.src.json" }],
+  "references": [{ "path": "../language/tsconfig.src.json" }, { "path": "../shared-utils" }],
   "include": ["src/**/*.ts"],
   "exclude": ["**/lib/**/*", "**/out/**/*", "**/dist/**/*", "**/node_modules/**/*"]
 }

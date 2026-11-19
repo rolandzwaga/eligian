@@ -1,5 +1,364 @@
 [
   {
+    "name": "eligian_brief",
+    "description": "Start here for a new Eligian presentation, before writing any file: the brief interview. action status with the user's idea verbatim (idea) returns the next round, at most 7 questions (max 1–20). Ask them in one message, each with your recommended answer worded so that yes accepts it, then record the replies with action answer: answers [{ id, value, delegated? }], value in the canonical JSON form of the item's shape; delegated: true when the user said \"you decide\" (value = your choice). Look facts up yourself (eligian_project, the files); ask only decisions. When state is complete, show the user the delegated answers and BRIEF.md, then call action confirm with their reply verbatim as confirmation. Only this tool writes <directory>/BRIEF.md: never edit it yourself. directory defaults to the project root.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "status",
+            "answer",
+            "confirm"
+          ]
+        },
+        "idea": {
+          "type": "string"
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "value": {},
+              "delegated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "value"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "confirmation": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": true
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "open",
+            "complete",
+            "confirmed"
+          ]
+        },
+        "round": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "ask": {
+                "type": "string"
+              },
+              "shape": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "choice",
+                      "set",
+                      "yes-no",
+                      "duration",
+                      "view",
+                      "path",
+                      "record",
+                      "table"
+                    ]
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "text",
+                            "choice",
+                            "yes-no",
+                            "duration",
+                            "view",
+                            "path",
+                            "language"
+                          ]
+                        },
+                        "options": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "dash": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "none": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "kind"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "none": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "alternatives": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "rows": {
+                    "type": "string",
+                    "enum": [
+                      "one-per-view"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              "docs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "facts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "previous": {},
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "ask",
+              "shape",
+              "docs",
+              "facts"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "answered": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "delegated": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "open": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "waiting": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "notApplicable": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "answered",
+            "delegated",
+            "open",
+            "waiting",
+            "notApplicable"
+          ],
+          "additionalProperties": true
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "unknown-question",
+                  "duplicate",
+                  "waiting",
+                  "not-applicable",
+                  "invalid-value",
+                  "invalid-reference"
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "reason",
+              "message"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "ignored": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "line",
+              "reason"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "delegated": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "id",
+              "title",
+              "value"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "refused": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": [
+                "frontier-not-empty",
+                "confirmation-missing"
+              ]
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "additionalProperties": true
+        },
+        "next": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "header",
+        "file",
+        "state",
+        "round",
+        "counts",
+        "rejected",
+        "ignored",
+        "next"
+      ],
+      "additionalProperties": true
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "_meta": {
+      "anthropic/alwaysLoad": true
+    }
+  },
+  {
     "name": "eligian_docs",
     "description": "Eligian docs: the curated knowledge for writing Eligian (.eligian) and Eligius presentations. No arguments: the index (one card per chunk; examples by id and title; operations are not listed, `eligian_operations` has them). ids (at most 6): their cards; with detail: true their full bodies, up to 6,000 words per response, the rest listed in notReturned. query: the 8 best matching chunks with their cards. Unknown ids come back with the closest known ids. Read `syntax-cheatsheet` and `operations-index` before writing Eligian; never write it from memory.",
     "inputSchema": {

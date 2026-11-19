@@ -27,6 +27,10 @@ export default defineConfig({
     // CLI tests spawn child processes which are slow
     // Increase timeout to prevent failures when running in parallel with other packages
     testTimeout: 30000, // 30 seconds per test
+    // Many specs spawn the CLI (a Node start-up each). One worker per core (32 on a workstation)
+    // starts so many children at once that tests taking 3–6 s alone ran past 30 s (spec 059
+    // phase 1, T029). Capped; the 4-vCPU CI runners stay under it
+    maxWorkers: 8,
     projects: [
       {
         extends: true,

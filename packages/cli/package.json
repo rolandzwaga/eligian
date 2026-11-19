@@ -68,6 +68,7 @@
   },
   "devDependencies": {
     "@eligian/language": "workspace:*",
+    "@eligian/shared-utils": "workspace:*",
     "@modelcontextprotocol/inspector": "2.14.0",
     "@types/jsdom": "30.0.0",
     "tsx": "4.23.15"

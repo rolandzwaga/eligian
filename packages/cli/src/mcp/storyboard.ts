@@ -39,7 +39,7 @@ const INTERACTION_HEADER = ['trigger', 'target', 'verb', 'timeline'];
 type TableKind = 'beats' | 'interactions' | 'other';
 
 /** The trimmed cells of a `|` row; an escaped `\|` stays inside its cell. */
-function cellsOf(row: string): string[] {
+export function cellsOf(row: string): string[] {
   let body = row.trim().slice(1);
   if (body.endsWith('|') && !body.endsWith('\\|')) body = body.slice(0, -1);
   return body.split(/(?<!\\)\|/).map(cell => cell.trim());
@@ -58,7 +58,7 @@ function kindOf(header: readonly string[]): TableKind {
   return 'other';
 }
 
-function isSeparator(cells: readonly string[]): boolean {
+export function isSeparator(cells: readonly string[]): boolean {
   return cells.every(cell => /^:?-+:?$/.test(cell));
 }
 

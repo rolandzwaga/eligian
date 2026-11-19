@@ -51,6 +51,7 @@ import {
 import { Effect } from 'effect';
 import { metadata as eligiusMetadata } from 'eligius/metadata';
 import { REVIEW_CODES } from '../src/check/review.js';
+import { BRANCHES, type Question, TREE } from '../src/mcp/brief/tree.js';
 import { configFragment } from '../src/mcp/config-fragment.js';
 import { sourceOf } from '../src/mcp/diagnostics.js';
 import { agentsMdBlock, chunkFile } from '../src/mcp/instructions.js';
@@ -800,6 +801,37 @@ function domEventsChunk(): Chunk {
   };
 }
 
+// The question tree of the brief interview (spec 059 FR-036)
+
+/** One template question: id, title, needs, applies-when and docs ids. W1 needs every other. */
+const briefQuestionLine = (q: Question): string => {
+  const needs = q.id === 'W1' ? 'all other questions' : q.needs.join(', ') || 'none';
+  return `- ${q.id}: ${q.title} · needs ${needs} · applies ${q.when} · docs ${q.docs.join(', ') || 'none'}`;
+};
+
+function briefQuestionsChunk(): Chunk {
+  return {
+    id: 'brief-questions',
+    title: 'Brief questions',
+    kind: 'reference',
+    use_cases: ['brief interview', 'eligian_brief', 'BRIEF.md', 'question tree'],
+    see: ['decisions', 'storyboard'],
+    card: `The ${TREE.length} questions of the brief interview (eligian_brief), by branch: id, title, prerequisites, when each applies and the docs that inform the recommendation.`,
+    body: [
+      'One line per template question of the brief interview, grouped by branch: id: title ·',
+      'needs (the questions answered first) · applies (when it is asked) · docs (the chunks that',
+      'inform the recommendation). The V questions are templates, asked once per view of S2.',
+      'eligian_brief asks them and records the answers in BRIEF.md.',
+      ...BRANCHES.flatMap(branch => [
+        '',
+        `## ${branch.id}: ${branch.name}`,
+        ...TREE.filter(q => q.branch === branch.id).map(briefQuestionLine),
+      ]),
+    ].join('\n'),
+    file: 'generated/brief-questions.md',
+  };
+}
+
 function keyNamesChunk(): Chunk {
   return {
     id: 'key-names',
@@ -1180,6 +1212,7 @@ export async function generateKnowledge(
     controllersChunk(controllers),
     eventsChunk(),
     domEventsChunk(),
+    briefQuestionsChunk(),
     keyNamesChunk(),
     htmlElementsChunk(),
     syntaxCheatsheetChunk(),

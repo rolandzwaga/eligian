@@ -7,6 +7,8 @@ export * from './errors.js';
 export * from './file-loader.js';
 // Locale type guards (inlined from eligius to keep its runtime out of Node bundles)
 export * from './locale-guards.js';
+// Package manager detection (spec 059 FR-041)
+export * from './package-manager.js';
 // Path resolution utilities (Phase 3 - US1)
 export * from './path-resolver.js';
 // Shared `_tag` discriminator guard

@@ -102,7 +102,7 @@ const readResource = (server: InMemoryServer, uri: string): Promise<JsonRpcRespo
 const expectToolsAnswer = async (server: InMemoryServer): Promise<void> => {
   const tools = await server.request('tools/list', {});
   expect(tools.error).toBeUndefined();
-  expect((tools.result as { tools: unknown[] }).tools).toHaveLength(8);
+  expect((tools.result as { tools: unknown[] }).tools).toHaveLength(9);
 };
 
 /** A docs root holding `index.json` with ENTRY only, plus `overlays.json` `{}` when asked. */

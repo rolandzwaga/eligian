@@ -1,0 +1,141 @@
+{
+  "idea": "A product tour in three views: an introduction, a narrated demo video and a sign-up call to action.\nIt runs on the product site and has an English and a Dutch version.",
+  "answers": {
+    "P1": { "value": "Viewers understand what the product does and sign up for a trial." },
+    "P2": { "value": "Start a free trial." },
+    "P3": {
+      "value": "Small-business owners.\nThey have heard of the product but have not used it."
+    },
+    "P4": { "value": "friendly and confident" },
+    "P5": { "value": 180 },
+    "C1": { "value": "self-paced" },
+    "C2": {
+      "value": [{ "device": "desktop", "primary": "yes" }, { "device": "tablet", "primary": "no" }]
+    },
+    "C3": { "value": ["mouse", "keyboard"] },
+    "C4": { "value": "on" },
+    "C5": { "value": "online" },
+    "S1": { "value": "slide-deck" },
+    "S2": {
+      "value": [
+        { "name": "intro", "purpose": "Says what the product is" },
+        { "name": "demo", "purpose": "Shows the product in a narrated video" },
+        { "name": "signup", "purpose": "Asks the viewer to start a trial" }
+      ]
+    },
+    "S3": { "value": "intro" },
+    "S4": {
+      "value": [
+        { "view": "intro", "target": "demo", "trigger": "the Next button or the right arrow key" },
+        { "view": "demo", "target": "signup", "trigger": "the Next button or the right arrow key" },
+        { "view": "signup", "target": "intro", "trigger": "the Start over button" }
+      ]
+    },
+    "S5": {
+      "value": [
+        { "view": "intro", "end": "advance" },
+        { "view": "demo", "end": "stay" },
+        { "view": "signup", "end": "stay" }
+      ]
+    },
+    "S6": {
+      "value": [
+        { "view": "intro", "provider": "raf", "source": "-" },
+        { "view": "demo", "provider": "video", "source": "media/demo.mp4" },
+        { "view": "signup", "provider": "raf", "source": "-" }
+      ]
+    },
+    "S7": { "value": true },
+    "S8": { "value": "stay" },
+    "V1:intro": { "value": "The product keeps your bookkeeping in one place." },
+    "V2:intro": { "value": "Meet Ledgerly\nYour books, in one place." },
+    "V3:intro": { "value": [{ "element": "hero", "kind": "image", "file": "-" }] },
+    "V4:intro": { "value": "The hero image fades in, then the title, then the subtitle." },
+    "V5:intro": { "value": { "duration": "12", "pacing": "fixed", "cues-from": "-" } },
+    "V6:intro": { "value": "The Next button goes to the demo." },
+    "V1:demo": { "value": "Bookkeeping takes minutes, not hours." },
+    "V2:demo": { "value": "See it in action" },
+    "V3:demo": {
+      "value": [{ "element": "demo video", "kind": "video", "file": "media/demo.mp4" }]
+    },
+    "V4:demo": { "value": "The title shows, then the video plays; captions follow the narration." },
+    "V5:demo": { "value": { "duration": "90", "pacing": "cues", "cues-from": "the product team" } },
+    "V6:demo": { "value": "The video toggles play and pause on click." },
+    "V1:signup": { "value": "Starting a trial is free." },
+    "V2:signup": { "value": "Start your free trial\nNo credit card needed." },
+    "V3:signup": { "value": [{ "element": "signup button", "kind": "button", "file": "-" }] },
+    "V4:signup": { "value": "The heading and the button appear together and stay." },
+    "V5:signup": { "value": { "duration": "none", "pacing": "none", "cues-from": "-" } },
+    "V6:signup": { "value": "The button opens the trial form in a new tab." },
+    "I1": { "value": "Play and pause at the bottom of the demo view." },
+    "I2": {
+      "value": [
+        { "key": "ArrowRight", "action": "next view" },
+        { "key": "ArrowLeft", "action": "previous view" },
+        { "key": "Space", "action": "play or pause the demo video" }
+      ]
+    },
+    "I3": { "value": ["counter"] },
+    "I4": { "value": "restart" },
+    "D1": { "value": "The Ledgerly brand guide, version 3 (colours, type, logo use)." },
+    "D2": { "value": "White background, navy text, green accent; light only." },
+    "D3": { "value": [{ "font": "Arial", "source": "system", "file": "-", "licence": "-" }] },
+    "D4": { "value": { "choice": "fixed-ratio", "detail": "16:9" } },
+    "D5": {
+      "value": [
+        { "view": "intro", "layout": "title over a full-bleed image" },
+        { "view": "demo", "layout": "full-bleed media" },
+        { "view": "signup", "layout": "centred call to action" }
+      ]
+    },
+    "D6": { "value": "Gentle fades and slides, 400 ms, ease-out." },
+    "D7": { "value": "shorten" },
+    "D8": { "value": "Product photos from the brand library." },
+    "L1": {
+      "value": [{ "code": "en-US", "default": "yes" }, { "code": "nl-NL", "default": "no" }]
+    },
+    "L2": {
+      "value": [
+        { "language": "en-US", "supplier": "the marketing team", "when": "now" },
+        { "language": "nl-NL", "supplier": "a translation agency", "when": "before launch" }
+      ]
+    },
+    "L3": { "value": "A language toggle in the top right corner." },
+    "L4": { "value": "none" },
+    "A1": {
+      "value": [
+        { "asset": "intro: hero", "who": "the design team", "when": "next week" },
+        { "asset": "media/demo.mp4", "who": "the video team", "when": "before launch" }
+      ]
+    },
+    "A2": { "value": { "choice": "yes", "kind": "grey boxes with the asset name" } },
+    "A3": { "value": "none" },
+    "A4": {
+      "value": [
+        {
+          "file": "media/demo.mp4",
+          "poster": "media/demo-poster.jpg",
+          "captions": "media/demo.vtt",
+          "loop": "no",
+          "muted": "no"
+        }
+      ]
+    },
+    "A5": { "value": [{ "image": "intro: hero", "alt": "A small-business owner at a laptop" }] },
+    "A6": { "value": "project" },
+    "H1": { "value": "none" },
+    "X1": { "value": "wcag-2.2-aa" },
+    "X2": { "value": true },
+    "X3": { "value": { "focus": "yes", "announce": "yes" } },
+    "X4": { "value": "captions" },
+    "X5": { "value": true },
+    "R1": { "value": { "choice": "embedded", "detail": "the product site's tour page" } },
+    "R2": { "value": "The last two versions of Chrome, Edge, Firefox and Safari." },
+    "R3": { "value": "main.eligian" },
+    "R4": { "value": false },
+    "W1": { "value": "Spacing, easing and the exact timing within each view." },
+    "W2": { "value": "first-view" },
+    "W3": { "value": "The marketing lead approves both language versions." }
+  },
+  "script": []
+}

@@ -10,6 +10,8 @@
  * a compiler lock whose `run` dies makes `eligian_check` hit the tool boundary (plan C10).
  * Spec 058 Phase 2 (SC-008(5)): an `eligian_smoke` call through the spawned server, with the
  * default `cliPath`, leaves stdout pure NDJSON.
+ * Spec 059 Phase 1 (SC-009, FR-035): `eligian_brief` `status` and `answer` through the spawned
+ * server leave stdout pure as well.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -19,6 +21,7 @@ import { Effect, Layer, Stdio, Stream } from 'effect';
 import { afterAll, describe, expect, it, test, vi } from 'vitest';
 import { CompilerLock } from '../mcp/compiler-lock.js';
 import { layerNodeStdio, redirectConsoleToStderr, stderrLoggerLayer } from '../mcp/stdio.js';
+import { loadPersona } from './brief-persona-driver.js';
 import { spawnServer, startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +43,8 @@ const INITIALIZE = {
 };
 /** SC-019: red until the CLI version is 1.1.0 (T055) */
 const HEADER = /^eligian 1\.1\.0 · eligius \d+\.\d+\.\d+ · eligian_check · /;
+/** Spec 059: the terse persona supplies the idea and one answer for the brief run. */
+const TERSE = loadPersona('terse');
 
 const tempDirs: string[] = [];
 /** A path in a new temp dir; the test creates the file (the preloads' trigger). */
@@ -299,6 +304,61 @@ describe('stdout carries only protocol frames (server runs)', () => {
         const payload = JSON.parse(text) as { files: { timelines: unknown[] }[] };
         const timelines = payload.files.flatMap(file => file.timelines);
         expect(timelines.length, text).toBeGreaterThanOrEqual(1);
+
+        await server.close();
+        await recorded.closed;
+
+        expectOnlyFrames(recorded.stdout());
+      } finally {
+        server.child.kill();
+      }
+    },
+    60_000
+  );
+
+  // Spec 059 SC-009 (FR-035): the brief interview writes BRIEF.md, never stdout
+  test.skipIf(!built)(
+    'eligian_brief over the spawned server leaves stdout pure',
+    async () => {
+      const project = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-brief-')));
+      tempDirs.push(project);
+      const server = spawnServer({ cwd: project });
+      const recorded = recordStdout(server.child);
+      try {
+        const initialize = await server.request('initialize', INITIALIZE);
+        expect(initialize.result).toBeDefined();
+        server.notify('notifications/initialized');
+
+        const call = async (args: Record<string, unknown>) => {
+          const response = await server.request('tools/call', {
+            name: 'eligian_brief',
+            arguments: args,
+          });
+          expect(response.error, server.stderr()).toBeUndefined();
+          const result = response.result as { content: { text: string }[]; isError?: boolean };
+          const text = result.content[0].text;
+          expect(result.isError, text).not.toBe(true);
+          return JSON.parse(text) as {
+            round: { id: string }[];
+            rejected: unknown[];
+            file: string;
+          };
+        };
+
+        const status = await call({ action: 'status', idea: TERSE.idea });
+        expect(status.round.length).toBeGreaterThan(0);
+        const id = status.round[0].id;
+        const entry = TERSE.answers[id];
+        if (entry === undefined) throw new Error(`the terse persona has no answer for ${id}`);
+        const one = 'values' in entry ? entry.values[0] : entry;
+        const answered = await call({
+          action: 'answer',
+          answers: [
+            { id, value: one.value, ...(one.delegated === true ? { delegated: true } : {}) },
+          ],
+        });
+        expect(answered.rejected).toEqual([]);
+        expect(fs.existsSync(answered.file)).toBe(true);
 
         await server.close();
         await recorded.closed;

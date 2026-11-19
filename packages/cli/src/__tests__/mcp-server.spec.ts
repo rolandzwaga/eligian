@@ -1,7 +1,7 @@
 /**
  * Spec 058 Phase 1 (FR-002, FR-003, FR-005, FR-016–FR-018; SC-003, SC-004, SC-029; plan C10)
  * and Phase 2 (FR-001, FR-002, FR-004; SC-001, SC-002; plan D7): the composed MCP server,
- * in-process through `mcp-test-client.ts`: the eight tools, their annotations, the description
+ * in-process through `mcp-test-client.ts`: the nine tools, their annotations, the description
  * and instruction budgets, the protocol list, the FR-005 payload shape of one valid call per
  * tool and the declared failure of the three Phase 2 tools.
  *
@@ -22,6 +22,7 @@ import { generateKnowledge } from '../../scripts/generate-knowledge.js';
 import { INSTRUCTIONS, MCP_PHASE } from '../mcp/instructions.js';
 import type { IndexEntry } from '../mcp/knowledge/types.js';
 import { serverProtocols } from '../mcp/server.js';
+import * as brief from '../mcp/tools/brief.js';
 import * as check from '../mcp/tools/check.js';
 import * as compile from '../mcp/tools/compile.js';
 import * as docs from '../mcp/tools/docs.js';
@@ -38,6 +39,7 @@ const PROGRAM = path.join(HERE, '__fixtures__', 'mcp', 'fmt', 'formatted.eligian
 const STUB = path.join(HERE, '__fixtures__', 'mcp', 'smoke-tool', 'stub-cli.mjs');
 
 const TOOL_NAMES: readonly string[] = [
+  brief.NAME,
   docs.NAME,
   operations.NAME,
   check.NAME,
@@ -47,7 +49,7 @@ const TOOL_NAMES: readonly string[] = [
   project.NAME,
   smoke.NAME,
 ];
-const UPFRONT: readonly string[] = [docs.NAME, operations.NAME, check.NAME];
+const UPFRONT: readonly string[] = [brief.NAME, docs.NAME, operations.NAME, check.NAME];
 /** Phase 2: deferred, read-only, with `anthropic/maxResultSizeChars` (FR-002) */
 const READONLY: readonly string[] = [compile.NAME, project.NAME, smoke.NAME];
 const DEFERRED = {
@@ -115,10 +117,11 @@ describe('the MCP server', () => {
   });
 
   describe('tool surface', () => {
-    it('lists exactly eight tools', async () => {
+    it('lists exactly nine tools', async () => {
       const tools = await listTools();
 
       expect(tools.map(tool => tool.name).sort()).toEqual([
+        'eligian_brief',
         'eligian_check',
         'eligian_compile',
         'eligian_docs',
@@ -150,7 +153,7 @@ describe('the MCP server', () => {
   });
 
   describe('annotations', () => {
-    it('three upfront, three readonly with maxResultSizeChars', async () => {
+    it('four upfront, three readonly with maxResultSizeChars', async () => {
       const tools = await listTools();
 
       const alwaysLoad = tools
@@ -160,7 +163,11 @@ describe('the MCP server', () => {
       expect(alwaysLoad).toEqual([...UPFRONT].sort());
       expect(tools.filter(tool => READONLY.includes(tool.name))).toHaveLength(3);
       for (const tool of tools) {
-        if (UPFRONT.includes(tool.name)) {
+        if (tool.name === brief.NAME) {
+          expect(tool.annotations?.readOnlyHint, tool.name).not.toBe(true);
+          expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
+          expect(tool.annotations?.idempotentHint, tool.name).toBe(true);
+        } else if (UPFRONT.includes(tool.name)) {
           expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
         } else if (READONLY.includes(tool.name)) {
           expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
@@ -188,10 +195,18 @@ describe('the MCP server', () => {
       const tools = await listTools();
       const upfront = tools.filter(tool => UPFRONT.includes(tool.name));
 
-      expect(upfront).toHaveLength(3);
+      expect(upfront).toHaveLength(4);
       for (const tool of upfront) {
         expect(tool.description?.length, tool.name).toBeLessThanOrEqual(1000);
       }
+    });
+
+    it('the eligian_brief description says only the tool writes BRIEF.md', async () => {
+      const tools = await listTools();
+      const description = tools.find(tool => tool.name === brief.NAME)?.description ?? '';
+
+      expect(description).toContain('BRIEF.md');
+      expect(description).toContain('never edit');
     });
 
     it('deferred descriptions ≤ 16384 and KEYWORDS in the first 200', async () => {

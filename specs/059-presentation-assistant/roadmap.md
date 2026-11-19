@@ -453,6 +453,8 @@ Day = one engineer-day, including the AGENTS.md checklist. Total **≈ 22 engine
 
 ### Phase 1: brief engine (6 days)
 
+**Status: ✅ COMPLETE (2026-11-19)** — see specs/059-presentation-assistant/phase-1-brief-engine/compliance.md
+
 Touches: `.claude\workflows\presentation-assistant-phase.js` (new), `packages\cli\src\mcp\brief\{tree,engine,brief-file}.ts` (new), `packages\cli\src\mcp\tools\brief.ts` (new), `packages\cli\src\mcp\server.ts`, `packages\cli\scripts\generate-knowledge.ts` (`brief-questions`), the specs and the CI step that pin the tool list (`.github\workflows\ci.yml`, `mcp-server.spec.ts`, `mcp-instructions.spec.ts`, `mcp-resources.spec.ts`, `mcp-search.spec.ts`), `packages\cli\AGENTS.md`.
 
 - Day 1: clone the workflow.

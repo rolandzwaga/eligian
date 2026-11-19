@@ -46,7 +46,9 @@ import {
   rankOperations,
 } from '../../scripts/rank-operations.js';
 import { REVIEW_CODES } from '../check/review.js';
+import { TREE } from '../mcp/brief/tree.js';
 import { sourceOf } from '../mcp/diagnostics.js';
+import { chunkFile } from '../mcp/instructions.js';
 import { ELIGIUS_LINT_RULES } from '../mcp/knowledge/lint-rules.js';
 import { eventName } from '../mcp/knowledge/render.js';
 import type { IndexEntry, Overlays } from '../mcp/knowledge/types.js';
@@ -413,6 +415,28 @@ timeline "main" in "#stage" using custom {
       expect(entry?.words, id).toBeLessThanOrEqual(1500);
     }
   });
+
+  // Spec 059 Phase 1 FR-036 / SC-008: the brief interview's question tree
+  it('brief-questions lists every template question', () => {
+    const entry = index.find(candidate => candidate.id === 'brief-questions');
+    expect(entry).toMatchObject({ kind: 'reference', see: ['decisions', 'storyboard'] });
+    expect(chunkFile({ id: 'brief-questions', kind: 'reference' })).toBe(
+      'generated/brief-questions.md'
+    );
+    expect(chunkOf(read('generated/brief-questions.md')).id).toBe('brief-questions');
+    const body = bodyOf('brief-questions');
+    const lines = body.split('\n').filter(line => /^- [A-Z]\d?: /.test(line));
+    expect(lines).toHaveLength(63);
+    expect(lines).toHaveLength(TREE.length);
+    for (const q of TREE) {
+      expect(
+        lines.filter(line => line.startsWith(`- ${q.id}: `)),
+        q.id
+      ).toHaveLength(1);
+    }
+    expect(wordCount(entry?.card ?? '')).toBeLessThanOrEqual(120);
+    expect(wordCount(body)).toBeLessThanOrEqual(3000);
+  });
 });
 
 describe('literate probes', () => {
@@ -522,6 +546,7 @@ const FR_070_CHUNKS = [
 
 /** The generated `reference` chunks (`generated/<id>.md`). */
 const REFERENCE_CHUNKS = [
+  'brief-questions',
   'config-shape',
   'controllers',
   'dataflow-tables',

@@ -138,7 +138,7 @@ The user gives an idea. The agent calls `eligian_brief` (`action: status`, `idea
   - a record: an object whose values are strings
   - a table: an array of such objects, one per row (or the string `"none"` where the shape accepts it)
   - a **cell** (inside a record or table) is always a string: a yes/no cell is `"yes"` or `"no"`, a duration cell is a positive number of seconds as a string, `-` is an empty cell.
-  - so that `BRIEF.md` round-trips exactly (FR-021), these are also rejected `invalid-value`, with a message naming the rule: any string that contains a carriage return (`\r`); a cell (inside a record or table) that contains a line break; a path written with a backslash (paths use `/`); an empty or whitespace-only text answer. (Clarification P7, 2026-11-19.)
+  - so that `BRIEF.md` round-trips exactly (FR-021), these are also rejected `invalid-value`, with a message naming the rule: any string that contains a carriage return (`\r`); a cell (inside a record or table) that contains a line break; a path written with a backslash (paths use `/`); an empty or whitespace-only text answer; a cell with leading or trailing spaces (a `BRIEF.md` table trims its cells). (Clarification P7, 2026-11-19; the cell-spaces rule, build ruling 2026-11-19.)
 
   Anything else is rejected `invalid-value`, and the `message` shows the expected form of that shape (for example `expected a JSON boolean (true or false)`, `expected a JSON number of seconds greater than 0, or "viewer-paced"`, `expected an array of strings from: mouse, touch, keyboard, clicker`). Examples that are rejected: `"yes"` for S7, `"90"`, `"90s"` or `"1m30s"` for P5, a comma-separated string for a set, one record where a table is wanted, `"Self-Paced"` for C1, a number or boolean as a cell. The forms in `BRIEF.md` (`yes`, `90s`, comma-separated sets, FR-019) are written by the server and read back into the same canonical values; they are not wire forms.
 
@@ -261,7 +261,7 @@ The user gives an idea. The agent calls `eligian_brief` (`action: status`, `idea
 
   "An asset is missing" means some entry is `missing`; "any asset" means the list is not empty. A relative path that resolves outside the project root (`Facts.inside`, implemented with `isInside`, `packages/cli/src/mcp/paths.ts:81`) makes the answer that names it `invalid-reference`. The engine reads existence and containment only through the `Facts` it is given (`exists`, `inside`, `briefDir`; see "New components"), so every check of this FR is pure and is tested with a fake `Facts`. The tool builds the real `Facts` on every call and never caches them. The list is written to the `## Facts` section of `BRIEF.md` for people (FR-019) and never read back (§3.1 "Whether a named asset file exists").
 - **FR-013** **R3.** The value is a relative path from the project root, with forward slashes, that ends in `.eligian` and lies under the root (`Facts.inside`). Its directory must be the brief's directory (`Facts.briefDir`, relative to the root; `.` at the root). Otherwise it is `invalid-reference`, and the message names the `directory` to call `eligian_brief` with. (§3.12, §4.1 "`directory`: … The brief is `<directory>\BRIEF.md`".)
-- **FR-014** **`same as`** (a live reference). The answer id `V:<name>` with value `same as <other>` makes branch V of `<name>` use the answers of `<other>`. `<other>` must be another S2 view and not itself answered `same as` (no chains); otherwise it is `invalid-reference`. The answer is accepted once S2 is answered, even while `<other>` has answered nothing. It is evaluated at every evaluation and never copied into the file:
+- **FR-014** **`same as`** (a live reference). The answer id `V:<name>` with value `same as <other>` makes branch V of `<name>` use the answers of `<other>`. `<other>` must be another S2 view and not itself answered `same as` (no chains); otherwise it is `invalid-reference`. The answer is accepted once S2 and S6 are answered (every V answer is given against the view's S2 and S6 rows, its `basis`, FR-016), even while `<other>` has answered nothing. (Ruling, build 2026-11-19.) It is evaluated at every evaluation and never copied into the file:
   - Each `Vn:<name>` without an explicit answer takes `<other>`'s **current** `Vn` answer. That value is what every rule, cross-reference and the asset list (FR-008, FR-011, FR-012) read for `<name>`, so a copied V3 contributes its entries under `<name>`.
   - A copy is **settled only where `<other>`'s `Vn` is settled** (answered and not stale, or not applicable). Otherwise `Vn:<name>` is **waiting**: it is never on the frontier, and `<other>`'s `Vn` is.
   - Each settled copy counts as one answered question in the counts. The reply's `delegated` list names `<other>`'s own answers, not the copies.
@@ -357,7 +357,7 @@ The user gives an idea. The agent calls `eligian_brief` (`action: status`, `idea
   - `max`: optional integer from 1 to 20
   - `confirmation`: optional string
 
-  A `max` outside 1–20 fails the call with a message naming the range, and nothing is written. The check is the parameters schema's, as for every bad parameter of the existing tools: the call fails as a JSON-RPC `-32602` (invalid params) error whose message names 1 and 20, not as a declared tool failure with a header. (Clarification P2, 2026-11-19.)
+  A `max` outside 1–20 fails the call with a message naming the range, and nothing is written. The check is the parameters schema's, as for every bad parameter of the existing tools: the call fails as a JSON-RPC `-32602` (invalid params) error whose message names 1 and 20, not as a declared tool failure with a header. (Clarification P2, 2026-11-19.) That is the outcome on protocol 2025-06-18. On protocol 2025-11-25, which reports input validation errors as tool execution errors, the same check gives a tool result with `isError: true` and the same message; nothing is written either way, and both protocols are tested. (Build ruling, 2026-11-19.)
 - **FR-026** **Paths.** `directory` resolves with `projectRoot` and `resolveInputPath` (`paths.ts:63`, `:93`). It accepts backslashes, forward slashes and either drive-letter case. A directory outside the root fails with `ToolNotFound` (kind `not-found`) and reads and writes nothing. The brief is `<directory>/BRIEF.md`. A missing directory is created when the brief is first written. An absent `BRIEF.md` (ENOENT) is an empty brief. Any other read or write failure, a `BRIEF.md` that is a directory included, is `ToolIoError` (kind `io`) through `toToolError` (`errors.ts:76`).
 - **FR-027** **`status`.** Reads `BRIEF.md` and returns the reply.
   - File absent, `idea` given: it creates the file with the idea and an empty answer set.
@@ -457,7 +457,7 @@ The user gives an idea. The agent calls `eligian_brief` (`action: status`, `idea
   - **The personas** are fixtures under `__fixtures__/mcp/brief/personas/`:
     - `terse` (§7.2 "accepts every recommendation"): one view, one language (`en-US`), fixed values in `terse.json`. Most answers are plain, recorded `by: user`, which stands for the user saying "yes" to the agent's recommendation. A few (D2, V2 and W1) are `delegated: true`, which stands for "you decide".
     - `detailed`: three views (`intro`, `demo`, `signup`, none `same as`) and two languages (`en-US` default, `nl-NL`). C3 is `mouse, keyboard`, C4 is `on`, and S5 has an `advance` row. S6 gives `demo` the provider `video` with the source `media/demo.mp4`, which does not exist. Intro's V3 has an `image` row with file `-`. D1 names a brand guide. H1 and L4 are `none`. With this sheet 71 question instances apply: P 5, C 5, S 8, V 18, I 4, D 8, L 4, A 6, H 1, X 5, R 4, W 3.
-    - `vague`: two views. Its first S3 names a view that is not in S2, and the next round corrects it. Scripted after a later round: a changed S2 `purpose` for one view, and C4 changed from `on` to `off`. When S6 is reopened, the persona re-sends it unchanged (the FR-015 stale path).
+    - `vague`: two views. Its first S3 names a view that is not in S2, and a later round corrects it: the first round in which the ranking asks S3 again, not necessarily the very next one (build ruling, 2026-11-19). Scripted after a later round: a changed S2 `purpose` for one view, and C4 changed from `on` to `off`. When S6 is reopened, the persona re-sends it unchanged (the FR-015 stale path).
 
   Measured per persona, all must hold:
   1. the final state is `complete` with an empty round, then `confirmed` after `confirm`
@@ -548,7 +548,7 @@ The user gives an idea. The agent calls `eligian_brief` (`action: status`, `idea
 - **SC-014** **The checklist** (AGENTS.md "Task completion checklist"). These are clean:
   - `pnpm build`, `pnpm typecheck:tests`
   - `pnpm check` (0 errors, 0 warnings)
-  - `pnpm test` (the shared-utils and extension specs included, FR-041), `pnpm test:coverage:ci` (no threshold regresses; the language thresholds are untouched because no language code changes)
+  - `pnpm test` (the shared-utils and extension specs included, FR-041), `pnpm test:coverage:ci` (no threshold regresses; the language thresholds are untouched because no language code changes). Both green on a 32-core workstation, with no 30 s timeouts in the spawn-heavy CLI specs: the `cli` package's vitest `maxWorkers` is capped at 8 (`packages/cli/vitest.config.ts`), and `smoke-determinism.spec.ts` "every format reports it" is one test per format (ruling T029)
   - `pnpm effect:check:cli`, exit 0. `--strict` fails on errors and warnings (`package.json:31`; AGENTS.md "Effect LSP"); messages are not gated.
   - `pnpm run check:examples`
 - **SC-015** **Tool rules, one test per FR** (in `brief-tool.spec.ts` unless noted):
@@ -854,3 +854,11 @@ None. Roadmap §4.6 defers the exact `BRIEF.md` layout to this spec, and FR-019 
 - P14: Does the root AGENTS.md tools list change? Decision: yes, line 97 joins line 49 in FR-037. [FR-037]
 - AnswerView: rules that read a per-view (V) question get the copies' values through `copies(id): readonly AnswerValue[]` beside `get(id)`. Recorded in compliance.md as a task-level reading. [FR-003, FR-008]
 - README and CHANGELOG: no entry in Phase 1; Phase 3 documents the feature (the spec's non-goals). [Scope and non-goals]
+
+### Session 2026-11-19 (build: T029, T030)
+
+- T029: CLI specs that spawn the CLI timed out at 30 s under the full parallel run (one worker per core, 32 here; main already failed 2 of them). Decision: cap `maxWorkers` at 8 in `packages/cli/vitest.config.ts`, and split `smoke-determinism.spec.ts` "every format reports it" (four spawns, 17.5 s alone) into one test per format. No timeout is raised. Measured: `--project cli --project cli-timed` 2120 passed, 0 failed, 201 s. [SC-014]
+- FR-014: does `same as <other>` wait for S6? Decision: yes; the spec is reworded to "once S2 and S6 are answered", the code (`SAME_AS.needs: ['S2', 'S6']`) is unchanged. [FR-014]
+- T009: a cell with leading or trailing spaces? Decision: rejected `invalid-value`, listed in FR-005 beside the P7 rejections. [FR-005, FR-021]
+- T022: when is a rejected answer re-asked? Decision: in any later round the ranking chooses, not necessarily the next. [SC-002 `vague` persona]
+- T018: a bad `max` on protocol 2025-11-25? Decision: a tool result with `isError`, recorded in FR-025 beside the 2025-06-18 `-32602`. [FR-025]
