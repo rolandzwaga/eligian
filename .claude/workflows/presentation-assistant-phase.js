@@ -163,6 +163,14 @@ const GIT_GUARD = A.git_guard
   ? `\n\nGIT STATE IS OFF LIMITS: the working tree holds this run's uncommitted work (spec, plan, tasks, the code of every earlier group) and nothing else has it. NEVER run git stash, git checkout <path>/., git restore, git reset, git clean, git switch, git commit, git worktree or any other command that changes the index, the working tree or the branch. Read-only git (status, diff, log, show) is fine. To tell a red that predates this group from a new one, read the gate log, run the failing test file on its own, or compare with the CI run of main; never by removing the group's changes.`
   : ''
 
+// args.flake_rule: on Windows, tests that spawn the CLI bundle time out at 30000 ms (and vitest fork
+// workers exit with 0xC0000409) when the whole cli package runs under load, and pass when their file
+// runs alone (measured 2026-11-19: fmt, mcp-scenario and smoke-determinism, 74/74 alone in 56 s).
+// Same default-off convention as git_guard.
+const FLAKE_RULE = A.flake_rule
+  ? `\n\nKNOWN LOAD FLAKE (Windows): when a test that spawns the CLI fails with "Test timed out in 30000ms", or a vitest fork worker exits unexpectedly (exit code 3221226505), during a whole-package run, re-run ONLY those test files on their own (pnpm -C packages/<pkg> exec vitest run <files>, foreground, its own log). If they all pass alone, the red is a load flake: count tests_ok as true and name each file in summary as "load flake: timed out in the package run, passed alone". If one fails alone too, it is a real red.`
+  : ''
+
 // ---------------------------------------------------------------------------
 // Schemas
 // ---------------------------------------------------------------------------
@@ -572,7 +580,7 @@ for (const group of dispatch.groups) {
     attempt++
     const out = gateLog(group.name, attempt)
     gateResult = await run(
-      `${CONTEXT_LITE}\n\nGate the current tree after group "${group.name}" (gate epoch ${gateEpoch(group.name)}). Log directory: ${out}\nRun these commands in this order, all of them even if an earlier one fails:\n${cmds.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\n${EXEC_RULES}${GIT_GUARD}\n\nGATE SEMANTICS — later groups are NOT implemented yet:\n- A test file or script that a LATER group's task creates is not a failure; name it in summary as "not yet created (later group)".\n- typecheck_ok=false only for a real tsc error; lint_ok=false for any Biome error or warning; tests_ok=false for any failing vitest case, any effect:check finding, or a red examples gate.\n- Quote the summary line of every command verbatim.`,
+      `${CONTEXT_LITE}\n\nGate the current tree after group "${group.name}" (gate epoch ${gateEpoch(group.name)}). Log directory: ${out}\nRun these commands in this order, all of them even if an earlier one fails:\n${cmds.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\n${EXEC_RULES}${GIT_GUARD}${FLAKE_RULE}\n\nGATE SEMANTICS — later groups are NOT implemented yet:\n- A test file or script that a LATER group's task creates is not a failure; name it in summary as "not yet created (later group)".\n- typecheck_ok=false only for a real tsc error; lint_ok=false for any Biome error or warning; tests_ok=false for any failing vitest case, any effect:check finding, or a red examples gate.\n- Quote the summary line of every command verbatim.`,
       { label: `gate:${group.name}:a${attempt}`, phase: 'Gate', schema: GATE_RESULT, model: MECH },
     )
     if (!gateResult) throw new Error('Gate agent died — aborting to avoid blind fixes')
