@@ -15,6 +15,8 @@ import { layerNodeStdio, redirectConsoleToStderr } from '../../../packages/cli/s
 
 const STARTED = Date.now();
 const LOG = process.env.SPIKE_LOG ?? 'spike-brief.log';
+/** How long spike_confirm waits for the user's answer, in seconds ($SPIKE_TIMEOUT). */
+const TIMEOUT_SECONDS = Number(process.env.SPIKE_TIMEOUT ?? 60);
 const log = (entry: Record<string, unknown>): void => {
   fs.appendFileSync(LOG, `${JSON.stringify({ t: new Date().toISOString(), ...entry })}\n`);
 };
@@ -77,12 +79,12 @@ async function main(): Promise<void> {
           schema: Schema.Struct({ confirmed: Schema.Boolean }),
         }).pipe(
           Effect.provideService(ai.McpSchema.McpServerClient, client.value),
-          Effect.timeoutOption('60 seconds'),
+          Effect.timeoutOption(`${TIMEOUT_SECONDS} seconds`),
           Effect.exit
         );
         const outcome = Exit.isSuccess(exit)
           ? Option.match(exit.value, {
-              onNone: () => 'timed out after 60 s',
+              onNone: () => `timed out after ${TIMEOUT_SECONDS} s`,
               onSome: value => `accepted: ${JSON.stringify(value)}`,
             })
           : `failed: ${Cause.pretty(exit.cause).slice(0, 600)}`;

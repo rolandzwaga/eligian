@@ -74,7 +74,7 @@ Every target client supports form elicitation (`spikes.md` §1): Claude Code (me
 - Codex does not render number fields or multi-select enums; a form that has one falls back to a bare accept or decline. The sign-off forms therefore use only boolean and string fields.
 - An elicitation has four outcomes, not two: accepted, declined, cancelled (no one can be asked: a headless run, VS Code Autopilot, some Codex approval policies) and no answer (a reported Cursor fault on Windows where the dialog never shows). The server puts a time limit on every elicitation and tells the four apart (§5.1).
 
-**[UNVERIFIED]** What Claude Code's dialog shows for a boolean field, and what Decline returns to the server. Test: one interactive run of `spikes\brief-spike-server.ts` (`spikes.md` §1.2).
+Measured in Claude Code (`spikes.md` §1.2, §4.2): the dialog shows a checkbox for a boolean field; an accepted form arrives as the decoded value, a decline as the `ElicitationDeclined` failure, and a cancel as an interruption of the effect. The sign-off code handles all three, plus the time limit.
 
 ---
 
@@ -396,11 +396,11 @@ The key is per user and per machine. A brief confirmed on another machine, with 
 
 The hook reads only what is on disk (`BRIEF.md` and its signature), so it works without the running server. The plugin's server entry moves from `eligian@^1.1` to `eligian@^1.2`.
 
-A plugin ships hooks in `hooks\hooks.json` at its root, in the shape of the `hooks` object of `settings.json`, and its hook processes get `CLAUDE_PLUGIN_ROOT` (documented; `spikes.md` §3).
+A plugin ships hooks in `hooks\hooks.json` at its root, in the shape of the `hooks` object of `settings.json`, and its hook processes get `CLAUDE_PLUGIN_ROOT`. Measured with a test plugin loaded by `--plugin-dir`: its `PreToolUse` hook blocked creating a `.eligian` file, and the agent received the hook's message (`spikes.md` §3.1).
 
 The hook has a third rule: it refuses a write to `.claude\settings.json` that adds an `Elicitation` hook. Such a hook answers an elicitation instead of the user (`spikes.md` §4.2), so it would approve every brief unseen.
 
-**[UNVERIFIED]** That the hook works from an installed plugin. Test: Phase 3 day 1, a local install.
+**[UNVERIFIED]** That the hook also runs when the plugin is installed from the marketplace, not loaded with `--plugin-dir`. Test: the Phase 3 exit, `/plugin install eligian@eligian` from this repo.
 
 ---
 
@@ -455,7 +455,7 @@ Day = one engineer-day, including the AGENTS.md checklist. Total **≈ 22 engine
 
 Touches: `.claude\workflows\presentation-assistant-phase.js` (new), `packages\cli\src\mcp\brief\{tree,engine,brief-file}.ts` (new), `packages\cli\src\mcp\tools\brief.ts` (new), `packages\cli\src\mcp\server.ts`, `packages\cli\scripts\generate-knowledge.ts` (`brief-questions`), the specs and the CI step that pin the tool list (`.github\workflows\ci.yml`, `mcp-server.spec.ts`, `mcp-instructions.spec.ts`, `mcp-resources.spec.ts`, `mcp-search.spec.ts`), `packages\cli\AGENTS.md`.
 
-- Day 1: clone the workflow; the one interactive elicitation check in Claude Code (§2).
+- Day 1: clone the workflow.
 - The tree as data with its spec; the engine (frontier, applies-when, per-view copies, `same as`, round selection, validation).
 - `BRIEF.md` parse and write.
 - `eligian_brief` with `status` and `answer`; `confirm` records agent-reported confirmation only.
@@ -477,7 +477,7 @@ Touches: `packages\cli\src\mcp\brief\{gate,known-programs,signature,adopt}.ts` (
 
 Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp\knowledge\curriculum\{interview,storyboard}.md`, `packages\cli\src\agents.ts`, `packages\cli\src\main.ts` (`brief gate`), `plugins\claude\eligian\`, `evals\mcp\{run.ts,cases\*,personas\*}`, `packages\cli\README.md`, `CHANGELOG.md`.
 
-- Day 1: install the plugin locally with its hook (§6.3).
+- The hook installed from the marketplace (§6.3).
 - Instructions, both prompts, the docs chunks, the `AGENTS.md` block.
 - The Claude Code hook and `eligian brief gate`.
 - Brief fixtures for the 14 cases; the multi-turn harness; three personas.
@@ -520,4 +520,4 @@ Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp
 
 ### Open questions
 
-None. Two checks remain, each marked **[UNVERIFIED]** with its test: what Claude Code's elicitation dialog shows (§2), and the hook from an installed plugin (§6.3).
+None. One check remains, marked **[UNVERIFIED]** with its test: the hook in a plugin installed from the marketplace (§6.3).

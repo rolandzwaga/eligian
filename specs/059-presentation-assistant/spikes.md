@@ -6,6 +6,7 @@ Sources are in `spikes\`:
 
 - `brief-spike-server.ts`: a stdio MCP server on `effect/ai` with two tools. `spike_info` reports the server's working directory, the client's capabilities and the roots it announces. `spike_confirm` sends one elicitation (a single checkbox) and reports the outcome.
 - `elicitation-hook.cjs`: a Claude Code `Elicitation` hook that accepts that elicitation.
+- `hook-plugin\`: a Claude Code plugin with one `PreToolUse` hook (`hooks\hooks.json`, `gate.cjs`), a stand-in for the real gate.
 
 "Measured" below means the spike server ran under the client and logged the result. "Documented" means the client's documentation says so and no test was run.
 
@@ -13,9 +14,9 @@ Sources are in `spikes\`:
 
 | # | Claim | Result |
 | --- | --- | --- |
-| 1 | Clients support elicitation, so the server can ask the user for the sign-off directly | Yes, all four. Claude Code: capability measured, dialog documented. Cursor, VS Code and Codex: documented, with limits (§1.3) |
+| 1 | Clients support elicitation, so the server can ask the user for the sign-off directly | Yes, all four. Claude Code: capability, dialog, accept and decline measured. Cursor, VS Code and Codex: documented, with limits (§1.3) |
 | 2 | The baseline can be taken before the agent's first action | Yes for the working directory, which is the project in every supported launch form. No early hook exists for a root outside it; the fallback stays |
-| 3 | A Claude Code plugin can ship hooks | Yes (documented): `hooks/hooks.json` at the plugin root |
+| 3 | A Claude Code plugin can ship hooks | Yes (measured): a plugin's `PreToolUse` hook blocked a file write |
 | 4 | `claude -p` can run an interview turn by turn, and elicitation is declined there | Turn by turn: yes (measured). Elicitation is cancelled, not declined, unless an `Elicitation` hook answers it (measured) |
 
 Two results change the roadmap's design; they are in §5.
@@ -32,11 +33,15 @@ In `claude -p`, the client's `initialize` capabilities were:
 
 So `McpServer.clientCapabilities` reports form elicitation, and the server's capability check (`clientCapabilities.elicitation !== undefined`) is true for Claude Code.
 
-### 1.2 The dialog (documented, not measured)
+### 1.2 The dialog
 
 `code.claude.com/docs/en/mcp` ("Respond to MCP elicitation requests"): in an interactive session Claude Code shows a dialog with the form fields the server defined, and passes the response back. Which field types the dialog renders is not documented.
 
-**Still to do by hand:** one interactive run. Add the spike server to a project (`claude mcp add spike -- node <repo>\packages\cli\node_modules\tsx\dist\cli.mjs <repo>\specs\059-presentation-assistant\spikes\brief-spike-server.ts`), ask Claude Code to call `spike_confirm`, and note what the dialog shows for a boolean field and what Decline returns.
+Measured on 2026-11-19 in an interactive terminal session (the spike server added with `--mcp-config`): `spike_confirm` showed the dialog, the user ticked the checkbox and submitted, and the server received `accepted: {"confirmed":true}` after 14.1 s. The user reported that the dialog behaved as expected.
+
+In a second session the user declined the dialog: after 8.0 s the `elicit` effect failed with `ElicitationDeclined` (`@effect/ai/McpSchema/ElicitationDeclined`).
+
+So in Claude Code the three outcomes arrive as three different things in `effect`: an accepted form is the decoded value, a decline is the `ElicitationDeclined` failure, and a cancel (a headless run with no hook, §4.2) is an interruption of the effect.
 
 ### 1.3 Other clients
 
@@ -71,7 +76,7 @@ From the code:
 
 **Conclusion.** Scan the working directory at process start. When the first tool call shows an announced root outside the working directory, scan that root then. The gap that remains is a client that starts the server elsewhere (the `npx` form with another working directory) combined with an agent that writes a program before its first `eligian_*` call. Claude Code is not such a client.
 
-## 3. Plugin hooks (documented)
+## 3. Plugin hooks
 
 `code.claude.com/docs/en/plugins/components` (Hooks):
 
@@ -94,7 +99,16 @@ The documented example is a `PostToolUse` hook; a `PreToolUse` hook follows from
 }
 ```
 
-Not tested by installing a plugin; the first task of Phase 3 does that.
+### 3.1 Measured
+
+The test plugin `spikes\hook-plugin\` has the `hooks\hooks.json` above, with `"command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/gate.cjs"]`. Its `gate.cjs` exits 2 for a write to `BRIEF.md` and for creating a `.eligian` file next to which no `BRIEF.md` says `status: approved`. It was loaded for one session with `claude -p … --plugin-dir <repo>\specs\059-presentation-assistant\spikes\hook-plugin --allowedTools Write`.
+
+- Asked to create `main.eligian`: the write was blocked and the file was not created. The agent received the hook's message: "PreToolUse:Write hook error: […gate.cjs]: BLOCKED (spike): the brief for this presentation is not approved. Call eligian_brief first. This hook comes from the eligian-brief-spike@inline plugin."
+- Asked to create `notes.txt` (the control): written.
+- `${CLAUDE_PLUGIN_ROOT}` was expanded in `args`, and the hook process had `CLAUDE_PLUGIN_ROOT` in its environment.
+- The hook input carries `tool_name` and `tool_input.file_path` as an absolute path.
+
+Not measured: the same plugin installed from a marketplace (`/plugin install`) instead of loaded with `--plugin-dir`. Both load the same plugin components; the Phase 3 exit covers the installed form.
 
 ## 4. Headless runs
 
