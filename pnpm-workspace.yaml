@@ -52,3 +52,9 @@ minimumReleaseAgeExclude:
 # switches the base to the hierarchical 'thismessage:/' (only .hash is consumed).
 patchedDependencies:
   jsonschema@1.5.0: patches/jsonschema@1.5.0.patch
+
+permissions:
+  '@modelcontextprotocol/inspector':
+    skills: true
+  typegraph-mcp:
+    skills: true
