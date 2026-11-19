@@ -2,7 +2,7 @@
 
 Audience: engineers and agents implementing it in `f:\projects\eligius\eligian` through a phase workflow (stages `specify` → `plan` → `build` per phase; see AGENTS.md "Feature phases"). The workflow script is a clone of `.claude\workflows\mcp-server-phase.js` with its two paths changed (`ROADMAP`, `DIR`); cloning it is the first task of Phase 1.
 
-Facts below were checked against the repo on 2026-11-19 (CLI `eligian` 1.1.0, `effect` 4.1.4, eight MCP tools, server instructions 2,415 of 4,096 characters, 14 eval cases). Claims that could not be verified are marked **[UNVERIFIED]** and carry the test that settles them.
+Facts below were checked against the repo on 2026-11-19 (CLI `eligian` 1.1.0, `effect` 4.1.4, eight MCP tools, server instructions 2,415 of 4,096 characters, 14 eval cases). Four claims that could not be verified from the repo were settled by spikes on the same day; their results are in `spikes.md`. What is still unverified is marked **[UNVERIFIED]** and carries the test that settles it.
 
 This roadmap builds on spec 058 (`specs\058-mcp-server\roadmap.md`), which made the MCP server (`eligian mcp`) an Eligian language expert. Spec 058's workflow starts from an idea and goes straight to a storyboard. Whatever the idea leaves out, the agent fills in silently: the styling, the languages, the navigation, what happens when a view ends.
 
@@ -69,7 +69,12 @@ The design uses all four:
 3. **The instructions, the prompt and a docs chunk** teach the round format, so the agent interviews well and does not only get blocked.
 4. **The Claude Code plugin** (`plugins\claude\eligian\`) gets a hook that blocks creating program files before approval (§6.3).
 
-**[UNVERIFIED]** Which clients implement elicitation (Claude Code, Cursor, VS Code Copilot agent mode, Codex). Test: Phase 1 day 1 spike, one `elicit` call per client, results recorded in `specs\059-presentation-assistant\phase-1-…\spike.md`.
+Every target client supports form elicitation (`spikes.md` §1): Claude Code (measured: it announces `elicitation: { form, url }`), Cursor since 1.5, VS Code Copilot agent mode since 1.102, Codex CLI since 0.119.0. Two limits shape the design:
+
+- Codex does not render number fields or multi-select enums; a form that has one falls back to a bare accept or decline. The sign-off forms therefore use only boolean and string fields.
+- An elicitation has four outcomes, not two: accepted, declined, cancelled (no one can be asked: a headless run, VS Code Autopilot, some Codex approval policies) and no answer (a reported Cursor fault on Windows where the dialog never shows). The server puts a time limit on every elicitation and tells the four apart (§5.1).
+
+**[UNVERIFIED]** What Claude Code's dialog shows for a boolean field, and what Decline returns to the server. Test: one interactive run of `spikes\brief-spike-server.ts` (`spikes.md` §1.2).
 
 ---
 
@@ -238,7 +243,7 @@ Loaded up front (`anthropic/alwaysLoad`), because it is the entry point for a ne
 Parameters:
 
 - `directory`: the presentation's directory, default the project root. The brief is `<directory>\BRIEF.md`.
-- `action`: `status`, `answer`, `confirm` or `approve-storyboard`.
+- `action`: `status`, `answer`, `confirm`, `approve-storyboard` or `accept-existing` (§4.2).
 - `idea`: the user's idea, verbatim. Stored in the brief header on the first call.
 - `scope`: `presentation` (default), an addition: `{ addition: 'view' | 'language' | 'host-module', name }` (§4.3), or `adopt` (§4.4).
 - `answers` (for `answer`): a list of `{ id, value, delegated? }`. A delegated answer still carries a `value`: the agent's choice.
@@ -265,12 +270,20 @@ Rules:
 
 The gate is evaluated per program file (a file with a timeline; `library` files are not presentations and are not gated).
 
-At start-up the server records which `.eligian` files exist under its working directory, and the timeline names, languages and `extensions` block of each (a text scan, no compiler). This is the **baseline**: the work that existed before the session.
+The gate needs to know which programs are **known**: existing work, or work that went through a brief. The server keeps that record in the project, in `.eligian\programs.json` (the `.eligian\` directory ignores itself in git; `eligian dev` already writes there). The record lists each known program with its timeline names, its languages and whether it has an `extensions` block (a text scan, no compiler).
+
+- The first time the server runs in a project there is no record. It scans the project for `.eligian` files and records them all as known: that is the existing work.
+- From then on a program enters the record only when its brief is approved, when an addition to it is approved, or when the user accepts it as existing work (below).
+- The record survives a restart of the server. A baseline in memory would not: a client that restarts the server (a new session, or every turn of a headless run; `spikes.md` §4.1) would turn a program written without an interview into existing work.
+
+The scan covers the server's working directory at process start, which is the project in every launch form that `eligian init` writes and in Claude Code (`spikes.md` §2). When the first tool call shows an announced root outside it, that root is scanned then; `effect` 4.1.4 has no earlier hook.
+
+**Accepting existing work.** A program can arrive without the agent: the user wrote it by hand, or `git pull` brought it. `eligian_brief` with `action: accept-existing` and the paths asks the user to confirm (as in §5.1) and adds them to the record. A renamed timeline shows as a new one; the same action covers it.
 
 | Situation | Result |
 | --- | --- |
-| The file is in the baseline and no `BRIEF.md` governs it | runs as today, unless it contains an addition (§4.3) |
-| The file is not in the baseline and no `BRIEF.md` governs it | refused: `brief-required` |
+| The file is known and no `BRIEF.md` governs it | runs as today, unless it contains an addition (§4.3) |
+| The file is not known and no `BRIEF.md` governs it | refused: `brief-required`; the reply names `accept-existing` for work that did not come from the agent |
 | A `BRIEF.md` governs it and its frontier is not empty | refused: `brief-incomplete` |
 | The brief is complete or confirmed, the storyboard not approved | refused: `brief-not-confirmed` or `storyboard-not-approved` |
 | The brief's answers changed after confirmation | refused: `brief-changed`; re-confirming shows only the changed answers |
@@ -282,14 +295,12 @@ At start-up the server records which `.eligian` files exist under its working di
 
 A refusal is a tool failure of a new kind, `gate` (today's kinds are `not-found`, `io`, `timeout`, `cancelled`, `internal`). It carries the code, the brief's state and the next round, so one refused call gives the agent everything it needs to continue the interview.
 
-**[UNVERIFIED]** That the baseline can be taken before the agent's first action when the client announces a root other than the server's working directory (`roots/list`, `packages\cli\src\mcp\paths.ts`). Test: Phase 2 spike. Fallback: the baseline of an announced root is taken at the first tool call, which leaves a gap for files the agent wrote before its first call (§9, risk 3).
-
 ### 4.3 Additions to an existing presentation
 
 Edits to an existing presentation are not gated: copy, beats, styling and interactions inside existing views. Three changes are additions and need a short interview first:
 
-1. a timeline whose name is not in the baseline (or, in a briefed project, not in the approved storyboard);
-2. a language code that is not in the baseline;
+1. a timeline whose name is not in the record of known programs (or, in a briefed project, not in the approved storyboard);
+2. a language code that is not in that record;
 3. an `extensions` block where there was none.
 
 For an addition the generation tools refuse with `addition-not-briefed` and the scoped round:
@@ -312,11 +323,11 @@ A presentation that was built without a brief can get one afterwards. Nothing re
 - The brief is confirmed as in §5.1. When a `STORYBOARD.md` exists, it is not approved again; when none exists, the agent drafts one from the code and the user approves it (§5.2).
 - Adopting never closes the gate on a program that was open: until the adopted brief is approved, the program stays existing work under §4.2.
 
-After adoption the project is a briefed project: additions are measured against the approved storyboard instead of the session's baseline (§4.3).
+After adoption the project is a briefed project: additions are measured against the approved storyboard instead of the record of known programs (§4.3).
 
 ### 4.5 The CLI warning
 
-`eligian check`, `compile`, `smoke`, `fmt` and `dev` print one line on stderr when the program they run on is governed by a `BRIEF.md` that is not approved: the state, and the tool call that shows the open questions. The exit code and stdout do not change, so scripts and CI are unaffected (stdout stays machine-readable for `--format github`, `json` and `ndjson`). A program with no `BRIEF.md` gets no warning: the CLI has no session baseline, so it cannot tell a new program from existing work.
+`eligian check`, `compile`, `smoke`, `fmt` and `dev` print one line on stderr when the program they run on is governed by a `BRIEF.md` that is not approved: the state, and the tool call that shows the open questions. The exit code and stdout do not change, so scripts and CI are unaffected (stdout stays machine-readable for `--format github`, `json` and `ndjson`). A program that is not in the record of known programs (§4.2) gets the same line. The CLI never writes that record: where none exists yet, it prints nothing.
 
 ### 4.6 `BRIEF.md`
 
@@ -337,7 +348,7 @@ The agent does not write `BRIEF.md` with its own editor. Only the tool writes it
 
 ### 5.1 Confirming the brief
 
-When the frontier is empty, `confirm` asks the user. With elicitation the server shows a dialog: the counts, the list of delegated answers with the agent's choices, a pointer to `BRIEF.md`, and one checkbox "this brief is complete and correct". Declining leaves the brief `complete`; the agent asks what to change.
+When the frontier is empty, `confirm` asks the user. With elicitation the server shows a dialog: the counts, the list of delegated answers with the agent's choices, a pointer to `BRIEF.md`, and one checkbox "this brief is complete and correct". Declining leaves the brief `complete`; the agent asks what to change. A cancelled elicitation, or one with no answer within the time limit, means no one could be asked: the server says so in its reply, and the agent uses the fallback below.
 
 Without elicitation, the agent shows the same summary in the conversation and passes the user's confirming message verbatim in `confirmation`. The brief records which way it was confirmed (`elicitation` or `agent-reported`), so the weaker form is visible.
 
@@ -385,7 +396,11 @@ The key is per user and per machine. A brief confirmed on another machine, with 
 
 The hook reads only what is on disk (`BRIEF.md` and its signature), so it works without the running server. The plugin's server entry moves from `eligian@^1.1` to `eligian@^1.2`.
 
-**[UNVERIFIED]** That a Claude Code plugin can ship hooks, and their file layout. Test: Phase 3 day 1, against the Claude Code plugin documentation and a local install.
+A plugin ships hooks in `hooks\hooks.json` at its root, in the shape of the `hooks` object of `settings.json`, and its hook processes get `CLAUDE_PLUGIN_ROOT` (documented; `spikes.md` §3).
+
+The hook has a third rule: it refuses a write to `.claude\settings.json` that adds an `Elicitation` hook. Such a hook answers an elicitation instead of the user (`spikes.md` §4.2), so it would approve every brief unseen.
+
+**[UNVERIFIED]** That the hook works from an installed plugin. Test: Phase 3 day 1, a local install.
 
 ---
 
@@ -393,7 +408,9 @@ The hook reads only what is on disk (`BRIEF.md` and its signature), so it works 
 
 ### 7.1 The existing 14 cases
 
-The cases run `claude -p` with no user (`evals\mcp\run.ts`). With the gate they would all stop at `brief-required`. Each case therefore gets a `brief.md` fixture: the answers its prompt implies. The harness writes it into the fresh project as a confirmed brief, with the state directory pointed into the run's temp directory (`ELIGIAN_STATE_DIR`), and sets `ELIGIAN_BRIEF_APPROVER=harness`, which makes `approve-storyboard` succeed without a user and records `approved by harness` in the brief. The server logs that setting on stderr at start. It is a test seam: an agent cannot set the environment of a server that is already running.
+The cases run `claude -p` with no user (`evals\mcp\run.ts`). With the gate they would all stop at `brief-required`. Each case therefore gets a `brief.md` fixture: the answers its prompt implies. The harness writes it into the fresh project as a confirmed brief, with the state directory pointed into the run's temp directory (`ELIGIAN_STATE_DIR`).
+
+For the storyboard approval the harness plays the user: it puts an `Elicitation` hook in the eval project's `.claude\settings.json` that accepts the server's sign-off. That is Claude Code's documented way to answer an elicitation without a person, and it works in `claude -p` (measured; `spikes.md` §4.2). The server therefore has no test-only switch.
 
 The cases then measure what they measure today: generation from a settled spec. The storyboard assertions (`storyboard.exists`, `storyboard.beatsCovered`) stay.
 
@@ -414,7 +431,7 @@ Measured per run:
 5. Rounds and questions per round.
 6. The changed answer is reflected, and the questions that depended on it were asked again.
 
-**[UNVERIFIED]** That `claude -p` can continue a session turn by turn (`--resume`), and that elicitation requests are declined in that mode, so the eval uses the fallback confirmation. Test: Phase 3 day 1.
+Measured (`spikes.md` §4): `claude -p --resume <session_id>` continues a session turn by turn. The MCP server starts anew on every turn, so everything the interview needs is on disk (`BRIEF.md`, the record of known programs). Without a hook an elicitation is cancelled in this mode; the harness's `Elicitation` hook gives both sign-offs the answer the simulated user decided.
 
 These evals run locally under the user's subscription, never in CI (spec 058, decision 9).
 
@@ -432,23 +449,23 @@ These evals run locally under the user's subscription, never in CI (spec 058, de
 
 ## 8. Phased delivery
 
-Day = one engineer-day, including the AGENTS.md checklist. Total **≈ 21 engineer-days**. The release is CLI 1.2.0 (a new tool is a minor version).
+Day = one engineer-day, including the AGENTS.md checklist. Total **≈ 22 engineer-days**. The release is CLI 1.2.0 (a new tool is a minor version).
 
 ### Phase 1: brief engine (6 days)
 
 Touches: `.claude\workflows\presentation-assistant-phase.js` (new), `packages\cli\src\mcp\brief\{tree,engine,brief-file}.ts` (new), `packages\cli\src\mcp\tools\brief.ts` (new), `packages\cli\src\mcp\server.ts`, `packages\cli\scripts\generate-knowledge.ts` (`brief-questions`), the specs and the CI step that pin the tool list (`.github\workflows\ci.yml`, `mcp-server.spec.ts`, `mcp-instructions.spec.ts`, `mcp-resources.spec.ts`, `mcp-search.spec.ts`), `packages\cli\AGENTS.md`.
 
-- Day 1: clone the workflow; spike elicitation in each client (§2).
+- Day 1: clone the workflow; the one interactive elicitation check in Claude Code (§2).
 - The tree as data with its spec; the engine (frontier, applies-when, per-view copies, `same as`, round selection, validation).
 - `BRIEF.md` parse and write.
 - `eligian_brief` with `status` and `answer`; `confirm` records agent-reported confirmation only.
 - Exit: the inspector lists nine tools; an in-process test walks a full interview from an idea to an empty frontier for three fixture personas; nothing is gated yet.
 
-### Phase 2: gates, sign-off, additions, adoption (8 days)
+### Phase 2: gates, sign-off, additions, adoption (9 days)
 
-Touches: `packages\cli\src\mcp\brief\{gate,baseline,signature,adopt}.ts` (new), the CLI commands `check`, `compile`, `smoke`, `fmt` and `dev` (the warning line), `packages\cli\src\mcp\tools\{init,check,fmt,compile,smoke,project,brief}.ts`, `packages\cli\src\mcp\errors.ts` (kind `gate`), `packages\cli\src\mcp\telemetry.ts` (brief state on each call line).
+Touches: `packages\cli\src\mcp\brief\{gate,known-programs,signature,adopt}.ts` (new), the CLI commands `check`, `compile`, `smoke`, `fmt` and `dev` (the warning line), `packages\cli\src\mcp\tools\{init,check,fmt,compile,smoke,project,brief}.ts`, `packages\cli\src\mcp\errors.ts` (kind `gate`), `packages\cli\src\mcp\telemetry.ts` (brief state on each call line).
 
-- The baseline at start-up; the gate matrix; the `gate` failure with the next round.
+- The record of known programs (the first-run scan, `accept-existing`); the gate matrix; the `gate` failure with the next round.
 - Sign-off by elicitation with the fallback; the signature; `approve-storyboard` with its checks.
 - Additions: the three triggers and the scoped rounds.
 - Adoption: facts from the code, the remaining frontier, conflicts (2 days).
@@ -460,7 +477,7 @@ Touches: `packages\cli\src\mcp\brief\{gate,baseline,signature,adopt}.ts` (new), 
 
 Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp\knowledge\curriculum\{interview,storyboard}.md`, `packages\cli\src\agents.ts`, `packages\cli\src\main.ts` (`brief gate`), `plugins\claude\eligian\`, `evals\mcp\{run.ts,cases\*,personas\*}`, `packages\cli\README.md`, `CHANGELOG.md`.
 
-- Day 1: spikes for plugin hooks and multi-turn `claude -p`.
+- Day 1: install the plugin locally with its hook (§6.3).
 - Instructions, both prompts, the docs chunks, the `AGENTS.md` block.
 - The Claude Code hook and `eligian brief gate`.
 - Brief fixtures for the 14 cases; the multi-turn harness; three personas.
@@ -476,14 +493,15 @@ Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp
 | --- | --- | --- | --- |
 | 1 | 63 questions tire the user | the interview is abandoned | a recommendation on every question so "yes" is enough; "you decide" is a valid answer; applies-when skips whole branches; `same as` for similar views; rounds of 7 |
 | 2 | The agent runs the CLI in a terminal instead of the gated tools | generation without a brief | the instructions; the CLI's warning line (§4.5); the Claude Code hook blocks creating the program file. The CLI never refuses (decision 8) |
-| 3 | The agent writes a program before its first tool call, or in an earlier session | the file looks like existing work and is not gated | the baseline is taken at start-up; the hook; recorded as a known limit across sessions |
+| 3 | The agent writes a program before its first tool call, or in an earlier session | the file looks like existing work and is not gated | the record of known programs is kept in the project and survives restarts; only the first run in a project accepts what is there; the hook |
 | 4 | The agent invents answers during the rounds | a brief the user never gave | both sign-offs show the user the result; elicitation where available; the mode of confirmation is recorded |
-| 5 | Elicitation is missing or behaves differently per client | no direct sign-off | capability check; the agent-reported fallback |
+| 5 | Elicitation behaves differently per client (cancelled in autonomous modes, a dialog that never shows) | no direct sign-off | boolean and string fields only; a time limit; four outcomes told apart; the agent-reported fallback |
 | 6 | `McpServer.elicit` is `@stability unstable` | breaks on an `effect` bump | `effect` is pinned exactly and Dependabot ignores its minor and major updates |
 | 7 | The gate blocks legitimate work (a quick experiment, a tutorial) | users turn the server off | existing work is never gated; delegating every question still gives an approved brief in a few rounds |
 | 8 | The tree goes stale as the language grows | new features are never asked about | the tree is data with a spec; the tree version is in the brief; a checklist item when a DSL feature lands |
 | 9 | The instructions outgrow 4,096 characters | truncated priming | the existing length spec; today 2,415 |
 | 10 | Eval cost doubles (a second model per interview run) | fewer runs | three personas, three runs; the 14 cases stay single-turn |
+| 11 | An `Elicitation` hook in the project's settings answers the sign-off for the user | an approval nobody saw | the plugin hook refuses a write that adds one (§6.3); the server cannot tell a hook's answer from a person's, so this stays the user's configuration to guard |
 
 ### Decisions (recorded 2026-11-19)
 
@@ -492,13 +510,14 @@ Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp
 3. **"You decide":** a valid answer, recorded as delegated with the agent's choice, and listed at sign-off.
 4. **Depth:** the brief settles decisions; the agent drafts the storyboard; the user approves it; only then does generation start.
 5. **Where the state lives:** `BRIEF.md` in the presentation's directory, written only by the tool.
-6. **One tool:** `eligian_brief` with four actions, not four tools.
+6. **One tool:** `eligian_brief` with five actions, not five tools.
 7. **Additions:** a new timeline, a new language, or a first host module. A new interaction or asset inside an existing view is a free edit.
 8. **CLI:** warns on an unapproved brief with one stderr line; never refuses.
 9. **Round size:** 7 questions by default.
 10. **After approval:** the brief is a record of the starting decisions. The storyboard is the living document; drift from the brief is neither refused nor reported.
 11. **Adoption:** an existing presentation can get a brief reconstructed from its code, as an opt-in (`scope: adopt`).
+12. **Known programs:** recorded in the project (`.eligian\programs.json`), not in the server's memory, so the gate holds across restarts; `accept-existing` takes in programs that arrive another way.
 
 ### Open questions
 
-None. The four **[UNVERIFIED]** claims (§2, §4.2, §6.3, §7.2) are settled by the spikes named beside them.
+None. Two checks remain, each marked **[UNVERIFIED]** with its test: what Claude Code's elicitation dialog shows (§2), and the hook from an installed plugin (§6.3).
