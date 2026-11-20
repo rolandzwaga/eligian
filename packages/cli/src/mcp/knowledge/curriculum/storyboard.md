@@ -1,18 +1,30 @@
 ---
 id: storyboard
-title: "Storyboard first"
+title: "Storyboard from the brief"
 kind: workflow
 use_cases:
   - "new presentation"
 see:
   - "decisions"
   - "project-layout"
-card: "Write STORYBOARD.md (beats, interactions) before any Eligian."
+  - "interview"
+  - "brief-questions"
+card: "Draft STORYBOARD.md from the confirmed brief, then approve it with eligian_brief (action: approve-storyboard) before writing code."
 ---
 
-# Storyboard: write STORYBOARD.md before any Eligian
+# Storyboard: draft STORYBOARD.md from the confirmed brief
 
-The storyboard is the spec of the presentation. Write it first, in the project root as `STORYBOARD.md`, then write `layout.html` and `styles.css` from it, then one timeline per view. It is machine-readable on purpose: every beat row maps to one timed range and every interaction row to one listener, so before declaring done you can walk the rows and find each one in the code.
+The storyboard is the spec of the presentation. Draft it after the brief is confirmed (`interview`), as `STORYBOARD.md` beside `BRIEF.md`, have it approved, then write `layout.html` and `styles.css` from it, then one timeline per view. It is machine-readable on purpose: every beat row maps to one timed range and every interaction row to one listener, so before declaring done you can walk the rows and find each one in the code.
+
+## From the brief
+
+`approve-storyboard` checks the draft against the brief (question ids: `brief-questions`); a `storyboard-mismatch` refusal names each problem by code:
+
+- `storyboard-ignored-rows`: a table row with another cell count than its header.
+- `storyboard-views`: not exactly one `## view <name>` per S2 view.
+- `storyboard-header`: `provider:` is not the distinct S6 providers; `languages:` not the L1 codes with `(default)` after the default; `assets:` not branch A's files and URLs; `host module:` is `none` but H1 is not, or the reverse.
+- `storyboard-end-block`: a beat without an end block.
+- `storyboard-interactions`: no row for an S4 navigation, I2 key, I1 control or V6 reaction.
 
 ## The template
 
@@ -196,6 +208,10 @@ timeline "Tour" in "#player" using video from "./media/tour.mp4" {
 ```
 
 The `video` starter of `eligian_init` has this shape. The media file is the author's: name it in `assets` and tell the user when it is missing.
+
+## Approval
+
+Call `eligian_brief` with `action: approve-storyboard`; fix any mismatch and call again. The user approves in a dialog or, without one, by their reply verbatim as `confirmation` (and the `ticket`), as in `interview`. Then the brief is `approved` and the generation tools run. Later edits stay free, unless they add a view: that is an addition with its own short interview.
 
 ## Before declaring done
 

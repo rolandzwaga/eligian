@@ -166,6 +166,15 @@ describe('docs resources', () => {
     });
   });
 
+  // Spec 059 Phase 3 SC-006: the interview chunk is a resource like every other chunk
+  it('eligian://docs/interview is listed', async () => {
+    await withServer(docsRoot, async server => {
+      await initialize(server);
+      const resources = await listResources(server);
+      expect(resources.map(r => r.uri)).toContain('eligian://docs/interview');
+    });
+  });
+
   it('reads a chunk as # title + body', async () => {
     const knowledge = await Effect.runPromise(loadKnowledge(docsRoot));
     await withServer(docsRoot, async server => {

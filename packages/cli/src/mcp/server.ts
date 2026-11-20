@@ -22,7 +22,7 @@ import { catchDefects, type ToolError, toToolFailure } from './errors.js';
 import { INSTRUCTIONS, MCP_PHASE } from './instructions.js';
 import { loadIndex } from './knowledge/load.js';
 import type { EffectAi } from './paths.js';
-import { newPresentationPrompt } from './prompts.js';
+import { addToPresentationPrompt, newPresentationPrompt } from './prompts.js';
 import { docsResources } from './resources.js';
 import { layerNodeStdio, redirectConsoleToStderr, stderrLoggerLayer } from './stdio.js';
 import { makeTelemetry } from './telemetry.js';
@@ -231,6 +231,7 @@ export async function makeServerLayer(
     tools,
     docsResources(ai, context.docsRoot, entries),
     newPresentationPrompt(ai),
+    addToPresentationPrompt(ai),
     // FR-003: the start-time scan of the cwd, forked into the server's scope: `initialize` does
     // not wait for it, it never fails the layer, and closing the server aborts it.
     Layer.effectDiscard(record.start(options.cwd))

@@ -91,6 +91,14 @@ async function printBriefWarnings(
   for (const line of lines) process.stderr.write(`${line}\n`);
 }
 
+/** The whole of `stream` as UTF-8 text (`brief gate` reads its hook input from stdin). */
+async function readAll(stream: NodeJS.ReadableStream): Promise<string> {
+  stream.setEncoding('utf8');
+  let text = '';
+  for await (const chunk of stream) text += chunk;
+  return text;
+}
+
 /**
  * CLI-specific options (extends library options)
  */
@@ -543,6 +551,22 @@ export default function main(): void {
       if (outcome.exitCode === 2) console.error(chalk.red(outcome.output));
       else console.log(outcome.output);
       process.exit(outcome.exitCode);
+    });
+
+  // Brief command (spec 059 FR-013): the plugin hook's check; nothing on stdout, exit 2 blocks
+  program
+    .command('brief')
+    .description('the brief interview (spec 059)')
+    .command('gate')
+    .description(
+      "the Claude Code plugin hook's check: reads the PreToolUse input on stdin; exit 2 blocks the write"
+    )
+    .action(async () => {
+      const { runBriefGate } = await import('./mcp/brief/hook-gate.js');
+      const stdin = await readAll(process.stdin);
+      const { exitCode, stderr } = await runBriefGate(stdin);
+      if (stderr === '') process.exit(exitCode);
+      else process.stderr.write(stderr, () => process.exit(exitCode));
     });
 
   // Format command (idea #15): the editor's Format Document rules

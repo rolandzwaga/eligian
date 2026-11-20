@@ -149,8 +149,7 @@ describe('phase 3 instructions', () => {
   const text = INSTRUCTIONS[3];
 
   it('INSTRUCTIONS[3] ≤ 4096, the compile line verbatim, backticked tokens exist', () => {
-    expect(MCP_PHASE).toBe(3);
-    expect(INSTRUCTIONS[MCP_PHASE]).toBe(text);
+    expect(INSTRUCTIONS[3]).toBe(text);
     expect(text.length).toBeLessThanOrEqual(4096);
     expect(text).toContain(`- \`eligian_compile\`: ${COMPILE_LINE}.`);
     expect(unknownTokens(text)).toEqual([]);
@@ -167,6 +166,55 @@ describe('phase 3 instructions', () => {
     expect(expected).toContain(COMPILE_LINE);
     expect(text).toBe(expected);
     for (const tool of PHASE_2_TOOLS) expect(text).toContain(`\`${tool}\``);
+  });
+});
+
+/** Spec 059 Phase 3 (FR-001 to FR-005, SC-004): the brief-first instructions. */
+describe('phase 4 instructions', () => {
+  const text = INSTRUCTIONS[4];
+  const PHASE_4_TOOLS = ['eligian_brief', ...PHASE_2_TOOLS] as const;
+
+  it('MCP_PHASE is 4 and INSTRUCTIONS[4] ≤ 4096', () => {
+    expect(MCP_PHASE).toBe(4);
+    expect(INSTRUCTIONS[MCP_PHASE]).toBe(text);
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.length).toBeLessThanOrEqual(4096);
+  });
+
+  it('the brief line comes first and says approved and addition', () => {
+    const intro =
+      'Use these tools whenever a task touches .eligian files, layout HTML, CSS, locales.json or a host\nmodule of an Eligius presentation:\n';
+    const at = text.indexOf(intro);
+    expect(at).toBeGreaterThan(-1);
+    const rest = text.slice(at + intro.length);
+    expect(rest.startsWith('- `eligian_brief`')).toBe(true);
+    // The brief entry: up to the next workflow line.
+    const briefEntry = rest.slice(0, rest.indexOf('\n- `', 1));
+    expect(briefEntry).toContain('approved');
+    expect(briefEntry).toContain('addition');
+    expect(rest.indexOf('- `eligian_brief`')).toBeLessThan(rest.indexOf('- `eligian_docs`'));
+  });
+
+  it('has the decisions rule', () => {
+    expect(text).toContain("Decisions are the user's, facts are yours");
+    // After the five engine rules.
+    expect(text.indexOf("Decisions are the user's, facts are yours")).toBeGreaterThan(
+      text.indexOf('5. Every controller added in on enter')
+    );
+  });
+
+  it('no storyboard-first docs line', () => {
+    expect(text).not.toContain('FIRST for a new presentation: ids');
+  });
+
+  it('backticked tokens are tools or ids', () => {
+    const unknown = unknownTokens(text).filter(token => token !== 'eligian_brief');
+    expect(unknown).toEqual([]);
+  });
+
+  it('names all nine tools', () => {
+    expect(PHASE_4_TOOLS).toHaveLength(9);
+    for (const tool of PHASE_4_TOOLS) expect(text).toContain(`\`${tool}\``);
   });
 });
 
@@ -201,10 +249,10 @@ describe('agentsMdBlock', () => {
     expect(occurrences(block, '<!-- eligian:begin -->')).toBe(1);
     expect(occurrences(block, '<!-- eligian:end -->')).toBe(1);
 
-    // The workflow and the five rules of the Phase 3 instructions (FR-051).
+    // The workflow and the five rules of the current instructions (058 FR-051; 059 FR-006).
     for (const tool of PHASE_2_TOOLS) expect(block).toContain(`\`${tool}\``);
     expect(block).toContain(`- \`eligian_compile\`: ${COMPILE_LINE}.`);
-    const rules = rulesOf(INSTRUCTIONS[3]);
+    const rules = rulesOf(INSTRUCTIONS[4]);
     expect(rules.map(rule => rule.slice(0, 2))).toEqual(['1.', '2.', '3.', '4.', '5.']);
     for (const rule of rules) expect(block).toContain(rule);
     expect(block).toContain(
@@ -232,6 +280,19 @@ describe('agentsMdBlock', () => {
     expect(lines).toContain(
       'Examples (generated/examples/<id>.md): click-to-navigate, staggered-list'
     );
+  });
+
+  it('carries the brief line and the decisions rule', () => {
+    const block = agentsMdBlock(index);
+    const text = INSTRUCTIONS[4];
+    const briefLine = text.slice(
+      text.indexOf('- `eligian_brief`'),
+      text.indexOf('- `eligian_docs`')
+    );
+    expect(briefLine.startsWith('- `eligian_brief`')).toBe(true);
+    expect(block).toContain(briefLine);
+    const rule = text.slice(text.indexOf("Decisions are the user's, facts are yours"));
+    expect(block).toContain(rule.slice(0, rule.indexOf('\nReview STORYBOARD.md')));
   });
 
   it('chunkFile gives the generator paths', () => {

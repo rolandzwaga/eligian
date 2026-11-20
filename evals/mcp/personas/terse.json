@@ -1,0 +1,59 @@
+{
+  "idea": "A one-screen overview of our support hours.",
+  "opening": "I need a one-screen overview of our support hours.",
+  "answers": {
+    "P1": { "value": "Viewers know when support is open.", "mode": "accepts" },
+    "P2": { "value": "none", "mode": "accepts" },
+    "P3": { "value": "Customers. They know the product.", "mode": "accepts" },
+    "P4": { "value": "plain", "mode": "accepts" },
+    "P5": { "value": "viewer-paced", "mode": "accepts" },
+    "C1": { "value": "self-paced", "mode": "accepts" },
+    "C2": { "value": [{ "device": "desktop", "primary": "yes" }], "mode": "accepts" },
+    "C3": { "value": ["mouse"], "mode": "accepts" },
+    "C4": { "value": "off", "mode": "accepts" },
+    "C5": { "value": "online", "mode": "accepts" },
+    "S1": { "value": "timed-piece", "mode": "accepts" },
+    "S2": {
+      "value": [{ "name": "hours", "purpose": "Shows the support hours" }],
+      "mode": "accepts"
+    },
+    "S5": { "value": [{ "view": "hours", "end": "stay" }], "mode": "accepts" },
+    "S6": { "value": [{ "view": "hours", "provider": "raf", "source": "-" }], "mode": "accepts" },
+    "S8": { "value": "stay", "mode": "accepts" },
+    "V1:hours": { "value": "Support is open on weekdays.", "mode": "accepts" },
+    "V2:hours": { "value": "Support hours\nMonday to Friday, 9:00 to 17:00", "mode": "accepts" },
+    "V3:hours": { "value": "none", "mode": "accepts" },
+    "V4:hours": { "value": "The title, then the hours.", "mode": "accepts" },
+    "V5:hours": {
+      "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
+      "mode": "accepts"
+    },
+    "V6:hours": { "value": "none", "mode": "accepts" },
+    "I3": { "value": "none", "mode": "accepts" },
+    "D1": { "value": "none", "mode": "accepts" },
+    "D2": { "value": "White background, dark text, blue accent; light only.", "mode": "accepts" },
+    "D3": {
+      "value": [{ "font": "Arial", "source": "system", "file": "-", "licence": "-" }],
+      "mode": "accepts"
+    },
+    "D4": { "value": { "choice": "fluid", "detail": "one column below 600px" }, "mode": "accepts" },
+    "D5": { "value": [{ "view": "hours", "layout": "title" }], "mode": "accepts" },
+    "D6": { "value": "A short fade.", "mode": "accepts" },
+    "D7": { "value": "remove", "mode": "accepts" },
+    "L1": { "value": [{ "code": "en-US", "default": "yes" }], "mode": "accepts" },
+    "H1": { "value": "none", "mode": "accepts" },
+    "X1": { "value": "best-effort", "mode": "accepts" },
+    "X2": { "value": true, "mode": "accepts" },
+    "R1": {
+      "value": { "choice": "standalone", "detail": "a page on the support site" },
+      "mode": "accepts"
+    },
+    "R2": { "value": "Current Chrome, Edge, Firefox and Safari.", "mode": "accepts" },
+    "R3": { "value": "main.eligian", "mode": "accepts" },
+    "R4": { "value": false, "mode": "accepts" },
+    "W1": { "value": "Colours, spacing and timing.", "mode": "accepts" },
+    "W2": { "value": "end", "mode": "accepts" },
+    "W3": { "value": "The hours are correct.", "mode": "accepts" }
+  },
+  "script": []
+}

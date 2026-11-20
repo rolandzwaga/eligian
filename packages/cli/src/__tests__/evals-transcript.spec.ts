@@ -60,6 +60,29 @@ describe('toolEntries', () => {
     expect(docs.resultText).toBe('{"header":"docs"} (2 of 2)');
     expect(docs.resultChars).toBe('{"header":"docs"}'.length + ' (2 of 2)'.length);
   });
+
+  // Spec 059 phase 3 (FR-032, P7)
+  it('toolEntries marks is_error results', () => {
+    const use = (id: string) => ({ type: 'tool_use', id, name: 'Read', input: {} });
+    const events = [
+      { type: 'assistant', message: { content: [use('t1'), use('t2'), use('t3')] } },
+      {
+        type: 'user',
+        message: {
+          content: [
+            { type: 'tool_result', tool_use_id: 't1', content: 'boom', is_error: true },
+            { type: 'tool_result', tool_use_id: 't2', content: 'fine' },
+            { type: 'tool_result', tool_use_id: 't3', content: 'fine', is_error: false },
+          ],
+        },
+      },
+    ];
+    const [failed, ok, notError] = toolEntries(events);
+    expect(failed!.isError).toBe(true);
+    expect(failed!.resultText).toBe('boom');
+    expect('isError' in ok!).toBe(false);
+    expect('isError' in notError!).toBe(false);
+  });
 });
 
 describe('toolCalls', () => {

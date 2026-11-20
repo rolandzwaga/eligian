@@ -715,6 +715,66 @@ async function cliRecordOf(
   return 'invalid' in record ? undefined : { record, root: path.dirname(path.dirname(file)) };
 }
 
+/**
+ * P20: the root the CLI reads governance against: the nearest readable, parsable record's root,
+ * else `cwd` when `dir` is inside it, else `dir`. Shared by `cliBriefWarnings` and the hook.
+ */
+export async function cliGovernanceRoot(
+  dir: string,
+  cwd: string
+): Promise<{
+  readonly root: string;
+  readonly found: { readonly record: ProgramRecord; readonly root: string } | undefined;
+}> {
+  const found = await cliRecordOf(dir);
+  return { found, root: found?.root ?? (isInside(cwd, dir) ? path.resolve(cwd) : dir) };
+}
+
+/** FR-017 rule 2: the verdict of a program that does not exist yet (Phase 3, plan §3). */
+export interface NewProgramVerdict {
+  readonly verdict: Verdict;
+  readonly state: 'none' | BriefStateName;
+  /** `nextOf(code, dir, triggers[0])` for a refusal, else `''`. */
+  readonly next: string;
+  readonly root: string;
+  /** `<dir>/BRIEF.md`. */
+  readonly briefFile: string;
+}
+
+/**
+ * FR-017, FR-021, Q5: the gate's verdict for `source` about to be written at `file` (not known:
+ * no record entry), against the CLI's governance root; `undefined` for a library. Reads only
+ * (`readKey`, never `ensureKey`); strict, so an unreadable `BRIEF.md` or key rejects.
+ */
+export async function newProgramVerdict(
+  file: string,
+  source: string,
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<NewProgramVerdict | undefined> {
+  const scan = scanProgram(source);
+  if (scan.library) return undefined;
+  const dir = path.dirname(path.resolve(file));
+  const { root } = await cliGovernanceRoot(dir, cwd);
+  const key = await readKey(stateDirectory(env));
+  const governance = await governanceOf(root, dir, key, undefined, 'strict');
+  const verdict = gateVerdict({
+    scan,
+    entry: undefined,
+    brief: governance.governing,
+    additions: governance.additions,
+  });
+  const code = codeOf(verdict);
+  const triggers = verdict.verdict === 'refused' ? (verdict.triggers ?? []) : [];
+  return {
+    verdict,
+    state: governance.parsed === undefined ? 'none' : governance.evaluation.state,
+    next: code === undefined ? '' : nextOf(code, dir, triggers[0]),
+    root,
+    briefFile: governance.briefFile,
+  };
+}
+
 /** One program's FR-054 line, or `undefined`. Throws on a read failure (the caller drops it). */
 async function cliWarningOf(
   file: string,
@@ -724,8 +784,7 @@ async function cliWarningOf(
   const scan = scanProgram(await fsp.readFile(file, 'utf8'));
   if (scan.library) return undefined;
   const dir = path.dirname(path.resolve(file));
-  const found = await cliRecordOf(dir);
-  const root = found?.root ?? (isInside(cwd, dir) ? path.resolve(cwd) : dir);
+  const { found, root } = await cliGovernanceRoot(dir, cwd);
   const governance = await governanceOf(root, dir, key, undefined, 'lenient');
   // FR-053: with no record, an ungoverned program counts as known (no line) and a governed one
   // as not known.

@@ -30,7 +30,7 @@ export interface AgentFileResult {
   readonly message?: string;
 }
 
-const NPX_ARGS = ['-y', 'eligian@^1.1', 'mcp'] as const;
+const NPX_ARGS = ['-y', 'eligian@^1.2', 'mcp'] as const;
 const BEGIN = '<!-- eligian:begin -->';
 const END = '<!-- eligian:end -->';
 const TOML_TABLE = 'mcp_servers.eligian';

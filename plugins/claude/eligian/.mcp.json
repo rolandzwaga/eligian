@@ -2,7 +2,7 @@
   "mcpServers": {
     "eligian": {
       "command": "npx",
-      "args": ["-y", "eligian@^1.1", "mcp"]
+      "args": ["-y", "eligian@^1.2", "mcp"]
     }
   }
 }

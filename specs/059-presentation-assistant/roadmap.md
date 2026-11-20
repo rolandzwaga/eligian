@@ -410,7 +410,7 @@ The hook has a fourth rule: it refuses an agent write to `.eligian/programs.json
 
 ### 7.1 The existing 14 cases
 
-The cases run `claude -p` with no user (`evals\mcp\run.ts`). With the gate they would all stop at `brief-required`. Each case therefore gets a `brief.md` fixture: the answers its prompt implies. The harness writes it into the fresh project as a confirmed brief, with the state directory pointed into the run's temp directory (`ELIGIAN_STATE_DIR`).
+The cases run `claude -p` with no user (`evals\mcp\run.ts`). With the gate they would all stop at `brief-required`. The 12 cases without a `start/` directory (`audio-lyrics`, `host-module`, `keyboard-deck`, `library-reuse`, `port-from-json`, `replay-safe`, `scrollytelling`, `staggered-list`, `three-chapters`, `title-card`, `typewriter-counter`, `video-subtitles`) therefore each get a `brief.md` fixture: the answers its prompt implies. `fix-dataflow` and `fix-selectors` get none: their start program, copied into the project before the agent runs, is existing work recorded by the first-run scan, so the gate never stops them at `brief-required`. The harness writes each fixture into the fresh project as a confirmed brief, with the state directory pointed into the run's temp directory (`ELIGIAN_STATE_DIR`).
 
 For the storyboard approval the harness plays the user: it puts an `Elicitation` hook in the eval project's `.claude\settings.json` that accepts the server's sign-off. That is Claude Code's documented way to answer an elicitation without a person, and it works in `claude -p` (measured; `spikes.md` §4.2). The server therefore has no test-only switch.
 
@@ -480,6 +480,8 @@ Touches: `packages\cli\src\mcp\brief\{gate,known-programs,signature,adopt}.ts` (
 - Exit: the gate-matrix spec is green; in Claude Code, a new presentation cannot pass `eligian_check` before both sign-offs, and an existing example project works unchanged; adding a timeline to it is refused until its scoped interview is approved; `scope: adopt` on the eligian-tour example yields a brief whose views, providers and languages are facts and whose frontier holds only undecided questions; `eligian check` on a program with an unapproved brief prints the warning and exits as before.
 
 ### Phase 3: teaching, hook, evals (7 days)
+
+**Status: ✅ COMPLETE (build, 2026-11-20)**: see specs/059-presentation-assistant/phase-3-teaching-hook-evals/compliance.md. Exit pending: SC-001 (interview eval), SC-002 (14 cases), SC-003 (marketplace hook), the user's runs.
 
 Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp\knowledge\curriculum\{interview,storyboard}.md`, `packages\cli\src\agents.ts`, `packages\cli\src\main.ts` (`brief gate`), `plugins\claude\eligian\`, `evals\mcp\{run.ts,cases\*,personas\*}`, `packages\cli\README.md`, `CHANGELOG.md`.
 

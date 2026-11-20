@@ -1,0 +1,129 @@
+# Compliance: Phase 3 — Teaching, hook, evals (phase-3-teaching-hook-evals)
+
+**Overall status: COMPLETE (build); exit pending: SC-001, SC-002, SC-003** (2026-11-20; SC-021: the three are `pending-user` by definition, spec.md:221, not fails)
+
+## Gap list (first)
+
+Three items are `pending-user` (spec.md:221, SC-021): runs only the user can do under their own Claude subscription or a published package; none has been run yet. Every other row passes.
+
+| Item | Gap |
+| --- | --- |
+| SC-001 | The persona interview eval (`pnpm evals:mcp --persona terse --persona detailed --persona vague --runs 3`) has not been run. `grep -rl persona evals/mcp/results` returns nothing. |
+| SC-002 | No baseline run on 5e47ea9 and no phase run with `--arm A1 --runs 3 --call-budget off`. The newest result directory is `2026-11-05T14-32-26-077Z`, from before this phase. |
+| SC-003 | The marketplace install and the hook under a real client on Windows were not run. CLI 1.2.0 is not published: `pnpm view eligian versions --json` ends with `"0.0.0-stage", "1.0.0", "1.0.1"`, while `packages/cli/package.json:5` is `"version": "1.2.0"`. |
+
+Every build, typecheck, lint, test, coverage, Effect, and examples gate is green (see the SC-018 rows).
+
+## Compliance table
+
+| ID | Verdict | Evidence |
+| --- | --- | --- |
+| FR-001 | pass | `instructions.ts:15` `MCP_PHASE = 4`; `:131-136` `INSTRUCTIONS: Record<1,2,3,4,string>` with key 4 = INSTRUCTIONS_PHASE_4; `server.ts:243` serves `INSTRUCTIONS[MCP_PHASE]`. Strings 1-3 only refactored into equal constants; their snapshots pass (16 files, 833 tests). |
+| FR-002 | pass | `instructions.ts:68-71` BRIEF_LINE: "`eligian_brief`: FIRST for a new presentation and for an addition (a new view, a new language or a first host module)... Nothing is written before the brief is approved; the generation tools refuse until then." `WORKFLOW_PHASE_4` (:84-90) puts it before `DOCS_LINE_4`. |
+| FR-003 | pass | `USER_RULE` (:110-112) starts "Decisions are the user's, facts are yours: look up what `eligian_project` or the files answer ... ask the user only decisions, each with your recommendation"; placed after ENGINE_RULES in `RULES_PHASE_4`. |
+| FR-004 | pass | `DOCS_LINE_4` (:77-82): "`interview` before the first round. Once the brief is confirmed: `storyboard`, `decisions`, `project-layout`, then draft STORYBOARD.md and call `action: approve-storyboard`". Old DOCS_LINE only used by phases 1-3. |
+| FR-005 | pass | tsx run: `phase 4 len 3025` (limit 4096); `unknown []` against `dist/docs/index.json`; `missing tools []`; `interview in index true`. |
+| FR-006 | pass | `BLOCK_PARTS` key 4; `agentsMdBlock` reads `BLOCK_PARTS[MCP_PHASE]`; `dist/docs/agents-block.md:12` has the `eligian_brief` line, `:40` "Decisions are the user's". |
+| FR-007 | pass | `prompts.ts:41-44` new steps 1-4; steps 5-14 (:45-54) are the old 3-12 word for word (checked against `git show HEAD`). Text without the idea is 2137 chars; `idea` stays `Schema.NonEmptyString`. |
+| FR-008 | pass | `prompts.ts:84-104` ADD_TO_PRESENTATION steps 1-4; `:121-132` registered with `addition: Schema.NonEmptyString`; `server.ts:234`. Length without the argument 1012. |
+| FR-009 | pass | `curriculum/interview.md` with `kind: workflow`, see list incl. brief-questions; covers rounds, recommendations, facts never asked, delegated answers, sign-offs with fallback (`confirmation` + `ticket`). `interview` in `dist/docs/index.json`. |
+| FR-010 | pass | `storyboard.md` retitled "Storyboard from the brief"; new "## From the brief" (five codes, all in `brief/storyboard-check.ts:19-23`) and "## Approval" sections; no other section removed. |
+| FR-011 | pass | `git diff HEAD --stat -- packages/cli/scripts/generate-knowledge.ts` is empty; interview.md:9 and storyboard.md link `brief-questions`. |
+| FR-012 | pass | `what-is-eligian.md` step 1: "Interview the user with `eligian_brief` until the brief is approved; the storyboard is drafted from it and approved there". No other chunk says to write STORYBOARD.md first. |
+| FR-013 | pass | `main.ts` `brief gate` imports `./mcp/brief/hook-gate.js` on demand. `hook-gate.ts:293-295` exit 2 with `${reason} ${HOOK_SUFFIX}`, else 0 with empty stderr. Real run of `bin/cli.js brief gate`: block cases `exit=2 stdout=0`; allow cases `exit=0 stdout=0 stderr=`; scratch dir held no new file. |
+| FR-014 | pass | `GUARDED_TOOLS` Write/Edit/MultiEdit (:39); other tool or non-string `file_path` is ALLOW; Bash input and 'not json' gave exit=0. |
+| FR-015 | pass | `:93` lower-cases only on win32; `:95` splits on `/[\\/]/`. Real run: MultiEdit `C:\proj\Brief.MD` → exit 2; Edit `C:/proj/.CLAUDE/settings.json` → exit 2. hook-cases covers linux `/proj/talk/brief.md`. |
+| FR-016 | pass | kind 'brief-file' on basename BRIEF.md, no existence check; reason "BRIEF.md is written only by `eligian_brief`: change an answer with `eligian_brief` and `action: answer`." Edit of absent BRIEF.md → exit=2. |
+| FR-017 | pass | `:103-108` only a Write to `*.eligian`; existing file ALLOW; non-ENOENT errno blocks; `newProgramVerdict` (`gate.ts:749-776`). Real run in empty dir: "brief-required: …main.eligian — …BRIEF.md is none. Ask the user for their idea and call `eligian_brief` …" exit 2; library Write exit 0. hook-cases cover open/complete/confirmed/approved/other-key/addition/library/edit/replace/EISDIR. |
+| FR-018 | pass | `ELICITATION_HOOK_EVENTS = ['Elicitation','ElicitationResult']` (:21); settings.json / settings.local.json anywhere; Write, Edit (replace_all) and MultiEdit handled; unparsable JSON containing the event name blocks. Real runs: adding either event → exit 2; permissions-only Write → exit 0. |
+| FR-019 | pass | kind 'programs-record' for `.eligian/programs.json`; reason names `eligian_brief` with `action: accept-existing`. Real run exit=2. |
+| FR-020 | pass | `hook-gate.ts:11-15` imports only `node:fs/promises`, `node:path`, `./brief-file.js`, `./gate.js`, `./known-programs.js`; `brief-tree.spec.ts:595` IO_MODULES has 'hook-gate.ts'; main.ts uses dynamic import; purity test (`brief-hook-gate.spec.ts:338`) passes. |
+| FR-021 | pass | `newProgramVerdict` built on module-local `governanceOf`, `gateVerdict`, `nextOf`; no matrix copy; shared `cliGovernanceRoot` used by `cliWarningOf`; "cliBriefWarnings is unchanged" passes. |
+| FR-022 | pass | `hooks/hooks.json`: one PreToolUse entry, matcher "Write\|Edit\|MultiEdit", `{type: command, command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/hooks/prefilter.cjs"]}`; `prefilter.cjs:14` `NPX_GATE_ARGS ['-y','eligian@^1.2','brief','gate']`. Windows npx spawn stays [UNVERIFIED] until SC-003. |
+| FR-023 | pass | `find plugins/claude/eligian -type f` lists only `.claude-plugin/plugin.json`, `.mcp.json`, `hooks/hooks.json`, `hooks/prefilter.cjs`; `plugins.spec.ts:58` asserts it. |
+| FR-024 | pass | `NPX_ARGS = ['-y', 'eligian@^1.2', 'mcp']`; `.mcp.json` args match; marketplace description names `eligian@^1.2 mcp`, `eligian_brief`, the hook. No leftover `eligian@^1.1` in cli src (non-test), README, plugins, marketplace. |
+| FR-025 | pass | `starters.ts:120` still `eligian: '^1.1.0'`; `install-state.ts:17-18` MIN_MAJOR = 1, MIN_MINOR = 1; `git status --porcelain packages/extension packages/language/src/starters` empty. |
+| FR-026 | pass | cli `package.json` 1.2.0; `server.json` both version fields 1.1.0→1.2.0; `plugin.json` 1.2.0; plugins.spec and mcp-registry.spec pass. |
+| FR-027 | pass | `evals/mcp/cases/<id>/brief.md` for 12 cases; R3 is `main.eligian` in all; `mcp-solutions-brief.spec.ts` confirms, approves and runs `eligian_check` on each reference solution without a 'gate' refusal. |
+| FR-028 | pass | brief=y start=n for 12 cases; brief=n start=y for fix-dataflow and fix-selectors; `roadmap.md:413` reworded. |
+| FR-029 | pass | `prepareArmProject` A1: state dir `<scratch>/state`, env `{ELIGIAN_MCP_LOG, ELIGIAN_STATE_DIR}`, fixture confirmed via `confirmBriefFixture(..., FIXTURE_CONFIRMATION(caseId))`; A0 / A-none: `briefFixture:false`, env `{}`. |
+| FR-030 | pass | `elicitationHookCommand` gives `node <script> accept <log>`; A1 writes one Elicitation hook; `elicitation-hook.cjs:47-48` answers only server 'eligian' in mode 'form'; other input → DECLINE; log appends `{input, raw, answer}`. |
+| FR-031 | pass | `prepareArmProject` is async and does every file write; returns `{mcpConfig, allowedTools, stateDir, briefFixture, env}`. |
+| FR-032 | pass | `toolCalls` excludes `eligian_brief`; `RunRecord.brief: {fixture, approved}` set via `briefStateOf(dir, stateDir) === 'approved'`. |
+| FR-033 | pass | `brief-fixture.ts`: `confirmBriefFixture`, `briefStateOf`; `assert.ts:1466` `export * from './brief-fixture.js'`; `dist/evals/assert.mjs` rebuilt; run.ts imports nothing from `packages/**/src`. |
+| FR-034 | pass | `parseHarnessArgs` --persona rules (error with --case, --write-budgets, non-A1 arm; --user-model needs --persona); results under `results/<run-id>/interview`; `evals:interview` script added; evals-harness.spec passes. |
+| FR-035 | pass | `runInterview` (`interview.ts:1058-1150`): opening plain message, `--resume` later turns, conversation.json before each turn, stop on approved / 30 turns / 30 min. |
+| FR-036 | pass | Per-turn state read from disk (BRIEF.md, `briefStateOf`); each turn a fresh `claude -p`. |
+| FR-037 | pass | Persona sheets compared to Phase 1 fixtures: terse 40/40 keys equal, all `accepts`; detailed 71/71, all `states`; vague 50/50, 45 states + S3 values + decides D2,D3,D4,D6; scripts equal. |
+| FR-038 | pass | `nothingAssumed` (`interview.ts:482-550`) and `comparable` (:362-396) implement measure 2 incl. exchange tie and off-sheet user answers. |
+| FR-039 | pass | `userReply = askWithoutTools` with `noToolsArgv`; user model defaults to sonnet; script fires by harness round count, `CHANGED_MIND` added, `script` stripped from the sheet. |
+| FR-040 | pass | persona hook command with `--sheet --conversation --user-model`, timeout 180; accepts only when the last non-empty line is exactly `{"confirm":true}`; failure → decline. Caveat: when `ELIGIAN_EVAL_ISOLATION` is not inherited the default isolation lacks `enabledPlugins:false`; the user-pending probe covers it. |
+| FR-041 | pass | `interviewMeasures` (:640-675): six measures; `interviewPass` (:681-696). |
+| FR-042 | pass | One isolated judge call per agent turn with a message; `parseJudgeReply` requires `{questions:[{text, ids[], fact, recommendation}]}`; unparsable kept and counted against measures 3 and 4. |
+| FR-043 | pass | `interviewVerdict`: passed = pass && !aborted; majority over `records.length`; run.ts compares `passed > args.runs/2`. |
+| FR-048 | pass | `agentIsolation` args `--setting-sources project,local` (+ `--settings {enabledPlugins:{id:false}}`), env `CLAUDE_CODE_DISABLE_AUTO_MEMORY:'1'`; used by every spawn in run.ts; records carry `isolation`; plan.md:94 Isolation section cites it. |
+| FR-044 | pass | README: tool-table row (:452), "Add `eligian` 1.2 or later" (:464), plugin paragraph (:581-619), brief section (:641-712), `add-to-presentation` (:730). |
+| FR-045 | pass | CHANGELOG adds Added entries under "## Unreleased (2026-11-05)" for brief, gate, sign-offs, additions, adoption, CLI warning, plugin hook and `eligian brief gate`, teaching, interview eval. |
+| FR-046 | pass | Root AGENTS.md: `eligian brief gate` line, `--persona` line, plugin hooks, checklist item 6 (`brief/tree.ts`, `TREE_VERSION`); `packages/cli/AGENTS.md:35` names hook-gate.ts. |
+| FR-047 | pass | `prefilter.cjs` requires only `node:fs`, `node:path`, `node:child_process`; real runs: notes.txt → `exit=0 out=0 err=0`; guarded input with `PATH=/nonexistent` → "eligian hook: cannot start npx (not found on PATH)" exit=1. |
+| SC-001 | **pending-user** | Not run yet (the user's run, spec.md:221). `ls -t evals/mcp/results \| head -5` gives only 2026-11-05 directories (`2026-11-05T14-32-26-077Z`, `2026-11-05T14-35-51-863Z`, `2026-11-05T12-17-35-622Z`, `2026-11-05T12-12-03-398Z`, `2026-11-05T12-14-12-496Z`); `grep -rl persona evals/mcp/results` returns nothing. No run id, per-run measures or round counts. Needs the user's `pnpm evals:mcp --persona terse --persona detailed --persona vague --runs 3`. |
+| SC-002 | **pending-user** | Not run yet (the user's run, spec.md:221). Baseline commit exists (`5e47ea9 feat(mcp): eligian_brief, the brief interview (spec 059 phase 1)`) but no baseline run and no phase run with `--arm A1 --runs 3 --call-budget off`. Clauses (a), (b), (c) cannot be evaluated. |
+| SC-003 | **pending-user** | Not run yet (the user's run, spec.md:221). No transcript excerpts of the four blocks or the notes.txt write. CLI 1.2.0 unpublished (`pnpm view eligian versions --json` ends `"1.0.0", "1.0.1"`). No `--plugin-dir` stand-in run recorded. |
+| SC-004 | pass | `mcp-instructions.spec.ts` 17 passed, 0 failed (phase 4 within 4096, brief line first, decisions rule, nine tools, agentsMdBlock). `mcp-server.spec.ts` 23 passed incl. `INSTRUCTIONS[3] matches the Phase 3 snapshot`; phase 3 snapshots `git diff --quiet` exit 0; `instructions-phase4.txt.snap` new. |
+| SC-005 | pass | `mcp-prompts.spec.ts` 14 passed, 0 failed (two prompts, fourteen steps, one-source ids, within 4096, invalid params on empty addition). |
+| SC-006 | pass | `generate-knowledge: 421 files`; `mcp-knowledge.spec.ts` 52 passed; `mcp-resources.spec.ts` 13 passed incl. `eligian://docs/interview is listed`; generator unchanged; `dist/docs/index.json:413 "id": "interview"`. |
+| SC-007 | pass | `brief-hook-gate.spec.ts` 89 passed, 0 failed, 0 skipped; all rule 1-4, fail-open, relative-path and spawned cases; no files created in project, home or state dir; stderr ends 'This hook comes from the eligian Claude Code plugin.'; stdout empty. |
+| SC-008 | pass | Solo `package-bin.spec.ts` 34 passed. Medians: gate rule-2 Write `540` ms, gate Read `529` ms (limit 3 s); prefilter Read `45` ms, Write notes.txt `53` ms (limit 1 s). Under concurrent load medians were 2715, 2864, 193, 204 ms, still under threshold; three pre-existing startup tests failed under that load and passed solo. |
+| SC-009 | pass | `hook-gate.ts` imports only node:fs/promises, node:path and three relative modules; `grep -cE "console\.\|process\.stdout"` gives 0; purity test passes; spawned runs assert empty stdout. |
+| SC-010 | pass | `plugins.spec.ts` 11 passed; version 1.2.0 in plugin.json, package.json, server.json; `mcp-registry.spec.ts` 13 passed solo; `agents.spec.ts` 42 passed; `init.spec.ts` unchanged; `claude plugin validate --strict plugins/claude/eligian` gives `✔ Validation passed` (only advisory ICON_MISSING). |
+| SC-011 | pass | `eval-cases.spec.ts` 140 passed, 0 failed (14 pre-existing skips); 12 of 14 cases have `brief.md`; `start/` only for fix-dataflow and fix-selectors. |
+| SC-012 | pass | `mcp-solutions-brief.spec.ts` Tests 13 passed (13), exit 0; asserts `expect(refusal).not.toBe('gate')`. |
+| SC-013 | pass | `evals-interview.spec.ts` 96 passed, 0 failed; six tests each for terse, detailed, vague. |
+| SC-014 | pass | Measure tests 1-6, bundled questions, `parseJudgeReply`, `interviewVerdict` cases all pass in `evals-interview.spec.ts`. |
+| SC-015 | pass | `evals-harness.spec.ts` 97 passed, 0 failed (prepareArmProject fixture/hook, state dir outside project, A0/A-none write none, persona hook timeout 180, `eligian_brief calls do not count`). |
+| SC-016 | pass | `lists exactly nine tools` and `tools/list matches the Phase 3 snapshot` pass; `tools-list-phase3.json.snap` diff empty; `mcp-stdout.spec.ts` 9 passed; its diff only reads the version header from package.json (plan P18). No stdout writes outside the `stdio.ts:36-56` redirector in MCP modules. |
+| SC-017 | pass | README has `eligian_brief` (452), `ELIGIAN_STATE_DIR` (702), `eligian brief gate` (609), `add-to-presentation` (730), `eligian@^1.2` (491); CHANGELOG first section has `eligian_brief` 6 times; AGENTS.md has `brief gate`, `--persona`, `hooks/hooks.json`, `hooks/prefilter.cjs`, `brief/tree.ts`, `TREE_VERSION`. |
+| SC-018 | pass | `pnpm build` exit 0; `pnpm typecheck` ("$ tsc -b tsconfig.build.json", EXIT 0); `pnpm typecheck:tests` exit 0; `pnpm run ci` "Checked 956 files in 608ms. No fixes applied." exit 0 (0 errors / 0 warnings); `pnpm test` exit 0 (shared-utils 119, language 3428 passed / 23 skipped, extension 792, cli 3095 passed / 35 skipped + bin 20); `pnpm test:coverage:ci` EXIT 0 (language All files 91.31 / 82.86 / 93.87 / 92.58 vs thresholds 79.8 lines / 80 funcs / 69.9 branches; cli 92.54 / 84.84 / 94.59 / 93.36); `pnpm effect:check` "0 errors, 0 warnings and 0 messages." for language (260 files) and cli (341 files); `check:examples`, `smoke:examples` ("9 files, 11 timelines played, 0 errors, 0 warnings"), `fmt:examples` ("All 12 files formatted") exit 0. |
+| SC-018 constraint: no imports from `../eligius/src` or `f:/projects/typir` | pass | Pattern grep over the diff and all 32 untracked files matched nothing; new modules import only node:*, `effect`, relative paths. |
+| SC-018 constraint: no edits under `**/generated/` or `*.generated.ts` | pass | `git diff --name-only` and the untracked listing grep for generated paths: no match. |
+| SC-018 constraint: no new `packages/cli` dependencies | pass | `packages/cli/package.json` diff is only `1.1.0` to `1.2.0`; root adds script `evals:interview`; `effect` already a dependency. |
+| SC-018 constraint: generated artifacts in package `files` | pass | `dist/docs/curriculum/interview.md` generated, covered by `dist/docs/**`; `files` list unchanged. |
+| SC-019 | pass | `git status --porcelain` identical before and after `pnpm test` and `pnpm test:coverage:ci` (diff exit 0); no new `evals/mcp/results` entry. |
+| SC-020 | pass | `parseHarnessArgs > persona mode`, `interviewStop` (five cases), `runInterview` fake-runner tests, `renderInterviewSummary`, and `elicitation-hook.cjs` persona tests all pass. |
+| SC-021 | pass | Pending runs are recorded as pending; `roadmap.md:484` carries "Exit pending: SC-001 (interview eval), SC-002 (14 cases), SC-003 (marketplace hook), the user's runs."; UNVERIFIED markers at `roadmap.md:405` and `:531`. Note: `roadmap.md:484` also says "COMPLETE (build, 2026-11-20)", and this report reads COMPLETE (build) with the exit pending, as SC-021 requires (main loop, 2026-11-20). |
+| SC-022 | pass | `hook-prefilter.spec.ts` 87 passed: 64 forwarding cases, non-guarded exit 0, exit-code and stderr pass-through, no-npx exit 1 with one stderr line, node-only requires. |
+| SC-023 | pass | `plan.md:94` `## Isolation (FR-048, SC-023)` cites `claude --help` (Claude Code 2.1.328); isolation tests in evals-harness and evals-interview specs pass; run.ts uses the builders at :548, :760, :390. |
+| SC-024 | pass | `hook-gate.ts:21` `ELICITATION_HOOK_EVENTS`; `plan.md:83` Guarded events section with one bullet per event citing code.claude.com/docs/en/hooks; rule 3 cases iterate the constant. |
+| SC-025 | pass | `roadmap.md:411` "### 7.1 The existing 14 cases"; :413 "`fix-dataflow` and `fix-selectors` get none"; grep for "each case gets\|every case gets" finds nothing. |
+
+## Implementation notes (deviations reported by task agents)
+
+- T002: brief cases are built in `<tmp>/talk` by a server whose cwd is `<tmp>/talk` (R3 `main.eligian` requires the entry beside its brief). Extra exports `prepareHookCase`, `BRIEF_DIR`, `BRIEFED_PROGRAM`, `UNBRIEFED_PROGRAM`, `HookBrief`, `applyEdit`; `approved-other-key` pins only exit 2 and rule new-program.
+- T003: spawned runs set `cwd` to the case's temp project; blocked cases also check the gate code in stderr.
+- T004: hooks.json uses the args form (tasks.md's "single-string form" sentence is stale; FR-022 and plan ruling P4 govern). Case (d) PATH holds only an empty temp dir, since a real npx sits in the node dir. `guarded` also checks the path resolved against `cwd`. The Linux npx ENOENT path was not verified locally. `biome-ignore` for `noTemplateCurlyInString`.
+- T005: `briefStateOf` never rejects; `directionsOf` is a copy of a private helper to avoid importing Effect.
+- T006: sheets generated from the Phase 1 fixtures by a throwaway script; extra `PersonaValue` export.
+- T007: storyboard.md shortened to stay under the 300-1500 word limit; its opening paragraph also changed; `what-is-eligian.md` old step 1 kept as step 2.
+- T008: plan section 1 text exceeded the 8,192-byte AGENTS.md block cap (8,212); two sentences shortened. The block is now 8,182 bytes, only 10 under the cap.
+- T009: `NEW_PRESENTATION.description` updated; ADD_TOOL / ADD_DOC subsets chosen (docs: interview, storyboard); the -32602 test passed before implementation too.
+- T010: the README `^1.1` test matches by regex so the required grep stays empty; `biome-ignore` for `${CLAUDE_PLUGIN_ROOT}`.
+- T011: the rule-2 case also checks exit 2 with an empty state dir; in-memory server telemetry appears in vitest output.
+- T014: persona mode returns `cases: []`; `userModel` only present when given.
+- T015: the existing A1 `.mcp.json` expectation now includes `ELIGIAN_STATE_DIR`; `prepareArmProject` is async (plan P5).
+- T016: Windows `.cmd` shim handling added to `elicitation-hook.cjs`; extra tests.
+- T017: fixtures generated by an uncommitted scratch script; assets only `media/intro.mp4` and `media/song.mp3`.
+- T018: copying a solution overwrites the built STORYBOARD.md; the gate still reports approved.
+- T020: the sentence before `roadmap.md:413` still says "With the gate they would all stop at `brief-required`".
+- T021: measure 2 compares a script-changed `states` entry with the script's value; `interviewVerdict` takes `{pass, aborted}[]`.
+- T022: the simulated-user prompt omits the sheet's `script`; the isolation line is duplicated in interview.ts to avoid a runtime import cycle. Coverage rows: `hook-gate.ts` 92.59/85.24/100/93.69; `brief-fixture.ts` 86.36/58.62/81.81/90, its branch rate below the CLI branch threshold if read per file (thresholds are global).
+- T023: files were already in the working tree; verified, not rewritten. `simulated-user.md` could add one sentence saying the "You changed your mind" section overrides "never volunteer".
+- T025: no "Changed" entry added; the Unreleased heading date left as 2026-11-05.
+- T026: `packages/cli/AGENTS.md` had no evals line, so a new `src/mcp/evals/` bullet was added.
+- T027: the earlier block was the `brief-tree.spec.ts` purity test; ruling token `'hook-gate.ts'` in IO_MODULES. The soak test (`test:soak`) was not run. Plan corrections P1-P20 are covered by the green gates; per-item application was not separately checked.
+- T028: the workflow's mark-roadmap step inserts its own status line; it must not add a second one.
+
+## Remaining steps for the human loop
+
+1. Run the user-only checks: SC-001 (`pnpm evals:mcp --persona terse --persona detailed --persona vague --runs 3`), SC-002 (baseline on 5e47ea9, then the phase, both `--arm A1 --runs 3 --call-budget off`), SC-003 (publish CLI 1.2.0, then the marketplace install on Windows; a `--plugin-dir` stand-in with the packed tarball first). Record run ids and results here.
+2. Review the diff.
+3. Commit (the workflow never commits); check `git branch --show-current` first.

@@ -46,8 +46,16 @@ const INITIALIZE = {
   capabilities: {},
   clientInfo: { name: 'mcp-stdout-spec', version: '0' },
 };
-/** SC-019: red until the CLI version is 1.1.0 (T055) */
-const HEADER = /^eligian 1\.1\.0 · eligius \d+\.\d+\.\d+ · eligian_check · /;
+/** SC-019 (spec 059 FR-026, P18): the header names the CLI version of `package.json` */
+const CLI_VERSION = (
+  JSON.parse(fs.readFileSync(path.resolve(HERE, '..', '..', 'package.json'), 'utf-8')) as {
+    readonly version: string;
+  }
+).version;
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const HEADER = new RegExp(
+  `^eligian ${escapeRegExp(CLI_VERSION)} · eligius \\d+\\.\\d+\\.\\d+ · eligian_check · `
+);
 /** Spec 059: the terse persona supplies the idea and one answer for the brief run. */
 const TERSE = loadPersona('terse');
 
@@ -276,9 +284,9 @@ describe('stdout carries only protocol frames (server runs)', () => {
           .map(line => JSON.parse(line) as { tool: string });
         expect(telemetry.some(line => line.tool === 'eligian_check')).toBe(true);
 
-        // SC-019: a planned red until T055 bumps the CLI version to 1.1.0
+        // SC-019: the header carries the CLI version of package.json
         expect(payload.header).toMatch(HEADER);
-        expect(text.startsWith('{"header":"eligian 1.1.0 · ')).toBe(true);
+        expect(text.startsWith(`{"header":"eligian ${CLI_VERSION} · `)).toBe(true);
       } finally {
         server.child.kill();
       }

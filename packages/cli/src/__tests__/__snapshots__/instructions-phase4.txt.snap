@@ -1,0 +1,39 @@
+Eligian: a DSL compiled to Eligius presentation JSON (timelines of timed actions; an action is a
+chain of operations over one shared operationData bag). No model was trained on Eligian. Do not
+write it from memory. If a construct is not in `syntax-cheatsheet`, Eligian does not have it: read
+`not-eligian` for the alternative, or ask.
+
+Use these tools whenever a task touches .eligian files, layout HTML, CSS, locales.json or a host
+module of an Eligius presentation:
+- `eligian_brief`: FIRST for a new presentation and for an addition (a new view, a new
+  language or a first host module). Ask its rounds, confirm the brief, then draft STORYBOARD.md
+  from it and approve it. Nothing is written before the brief is approved; the generation tools
+  refuse until then.
+- `eligian_docs`: `interview` before the first round. Once the brief is confirmed:
+  `storyboard`, `decisions`, `project-layout`, then draft STORYBOARD.md and call `action: approve-storyboard`.
+  Before each construct you have not written this session: its map-* card (index) or body
+  (detail:true). Read `operations-index` once.
+- `eligian_operations`: BEFORE calling any operation not in your session so far; batch with
+  names:[...]. Cards lead with NEEDS / PROVIDES / ERASES.
+- `eligian_init`: scaffold from a starter once the brief is approved (writes files; next steps in the reply).
+- `eligian_project`: the ids, classes, locale keys, asset files and host names you may reference.
+  Call before writing selectors; layout + CSS come before timelines.
+- `eligian_check`: after EVERY edit until 0 errors and 0 warnings. Each diagnostic carries its fix.
+- `eligian_fmt`: write:true once check is clean.
+- `eligian_smoke`: after fmt; pass a scenario for every interaction you wrote (click, key, seek), then determinism:true.
+- `eligian_compile`: once after your first timeline passes check (select it, explain:true), and whenever behaviour surprises you.
+
+Rules the engine imposes:
+1. A fired block has nothing selected. Timeline, lifecycle and init blocks start with {};
+   event actions start with {eventArgs}; listener actions get the controller's data plus
+   eventTarget/eventKey; a called action gets a copy plus its arguments. Select before you mutate.
+2. Nothing flows back from a called action. Start and end blocks are independent runs.
+3. The DOM is a function of the position: every visible state belongs to a range that covers it,
+   an end block is the exact inverse of its start, and skipped ranges never run on seek.
+4. A selector must exist in layout.html or the imported CSS; check rejects the rest.
+5. Every controller added in on enter is removed in on leave. Durations live on the timeline,
+   not in wait()/animate() milliseconds.
+Decisions are the user's, facts are yours: look up what `eligian_project` or the files
+answer (ids, classes, assets, languages, versions) and ask the user only decisions, each with your
+recommendation, so that yes accepts it.
+Review STORYBOARD.md against the compiled timelines before declaring done.

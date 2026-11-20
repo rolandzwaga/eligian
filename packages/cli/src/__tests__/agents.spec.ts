@@ -39,7 +39,7 @@ const DOCS_ROOT = path.join(FIXTURES, 'docs');
 const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const fixture = (name: string): string => lf(fs.readFileSync(path.join(FIXTURES, name), 'utf-8'));
 const BLOCK = lf(fs.readFileSync(path.join(DOCS_ROOT, 'agents-block.md'), 'utf-8'));
-const NPX = ['-y', 'eligian@^1.1', 'mcp'];
+const NPX = ['-y', 'eligian@^1.2', 'mcp'];
 
 /**
  * A ~20-line TOML table reader: `[table]` headers and `key = <JSON-compatible value>` lines;

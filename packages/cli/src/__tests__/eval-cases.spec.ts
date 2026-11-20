@@ -8,7 +8,10 @@
  *   port-from-json fixture's drift;
  * - the start states: under the strict check (`--selector-not-in-layout ids`, lint, review)
  *   each yields exactly its planted codes, and case 14 hides a controller imbalance behind
- *   its two errors.
+ *   its two errors;
+ * - the brief fixtures (spec 059 phase 3 FR-027, FR-028, SC-011): the 12 cases without a start
+ *   state each have a `brief.md` that parses clean, confirms on its materialised fixtures and
+ *   names the case's entry as R3.
  */
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -20,9 +23,13 @@ import type { IEngineConfiguration } from 'eligius';
 import { afterAll, describe, expect, it } from 'vitest';
 import { checkPaths } from '../check/check-command.js';
 import { compileFile } from '../compile-file.js';
+import { parseBrief } from '../mcp/brief/brief-file.js';
 import { configFragment } from '../mcp/config-fragment.js';
 import { parseAssertions } from '../mcp/evals/assert.js';
+import { briefStateOf, confirmBriefFixture } from '../mcp/evals/brief-fixture.js';
+import { materialiseFixtures } from '../mcp/evals/gate-steps.js';
 import { parseScenario } from '../smoke/scenario.js';
+import { tempProject } from './brief-helpers.js';
 
 const REPO = path.resolve(__dirname, '../../../..');
 const EVALS = path.join(REPO, 'evals/mcp');
@@ -559,6 +566,97 @@ describe('the 14 eval cases', () => {
         expect(coverageGaps(id, without).length, `${id} without #${index}`).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// The brief fixtures (spec 059 phase 3 FR-027, FR-028, SC-011): arm A1 starts from a confirmed
+// brief, signed by the harness from `cases/<id>/brief.md`. The two fix cases get none: their
+// start program is existing work the first-run scan records.
+
+const BRIEF_CASES: readonly CaseId[] = CASE_IDS.filter(id => !START_STATE_CASES.includes(id));
+const briefFixtureOf = (id: string) => path.join(CASES, id, 'brief.md');
+const FIXTURE_NOW = new Date('2026-11-20T00:00:00Z');
+
+describe('brief fixtures', () => {
+  const temps: string[] = [];
+
+  afterAll(() => {
+    for (const dir of temps.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A temp project holding the case's materialised fixtures, and a state dir outside it. */
+  const projectOf = (id: CaseId): { readonly project: string; readonly stateDir: string } => {
+    const definition = readCase(id);
+    const project = tempProject();
+    const scratch = tempProject();
+    temps.push(project, scratch);
+    const failures = materialiseFixtures(
+      {
+        id: definition.id,
+        entry: definition.entry,
+        assertions: [],
+        ...(definition.fixtures === undefined ? {} : { fixtures: definition.fixtures }),
+      },
+      CASES,
+      project
+    );
+    expect(failures).toEqual([]);
+    return { project, stateDir: path.join(scratch, 'state') };
+  };
+
+  it('exactly the 12 cases without start/ have brief.md', () => {
+    const withFixture = CASE_IDS.filter(id => fs.existsSync(briefFixtureOf(id)));
+
+    expect(withFixture).toEqual(BRIEF_CASES);
+    expect(withFixture).toHaveLength(12);
+  });
+
+  describe.each(BRIEF_CASES)('%s', id => {
+    const text = () => fs.readFileSync(briefFixtureOf(id), 'utf8');
+
+    it('parses with no ignored content', () => {
+      const parsed = parseBrief(text());
+
+      expect(parsed.ignored).toEqual([]);
+      expect(parsed.kept).toEqual([]);
+      expect(parsed.brief.idea).toBe(readCase(id).prompt);
+      expect(parsed.brief.confirmation).toBeUndefined();
+      expect(parsed.brief.approval).toBeUndefined();
+    });
+
+    it('confirms on its materialised fixtures', async () => {
+      const { project, stateDir } = projectOf(id);
+
+      const result = await confirmBriefFixture(text(), project, stateDir, FIXTURE_NOW);
+
+      if (!('text' in result)) throw new Error(`${id}: ${result.error}`);
+      fs.writeFileSync(path.join(project, 'BRIEF.md'), result.text);
+      expect(await briefStateOf(project, stateDir)).toBe('confirmed');
+    });
+
+    it("R3 is the case's entry", () => {
+      const r3 = parseBrief(text()).brief.answers.find(answer => answer.id === 'R3')?.value;
+
+      expect(typeof r3).toBe('string');
+      expect(path.posix.normalize(r3 as string)).toBe(readCase(id).entry);
+    });
+  });
+
+  it('a fixture with one answer removed is refused naming it', async () => {
+    const full = fs.readFileSync(briefFixtureOf('title-card'), 'utf8');
+    const start = full.indexOf('### P1:');
+    expect(start).toBeGreaterThan(-1);
+    const end = full.indexOf('\n### ', start + 1);
+    expect(end).toBeGreaterThan(start);
+    const withoutP1 = full.slice(0, start) + full.slice(end + 1);
+    const { project, stateDir } = projectOf('title-card');
+
+    const result = await confirmBriefFixture(withoutP1, project, stateDir, FIXTURE_NOW);
+
+    expect('error' in result).toBe(true);
+    const open = 'error' in result ? /^the brief is open: (.*)$/.exec(result.error) : null;
+    expect(open?.[1].split(', ')).toContain('P1');
   });
 });
 

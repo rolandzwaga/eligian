@@ -592,7 +592,7 @@ describe('purity (SC-012, FR-035)', () => {
   const BRIEF_DIR = path.join(import.meta.dirname, '..', 'mcp', 'brief');
   // The modules of spec 059 phase 2 that read the disk (SC-018, Phase 1 edit list entry 6); every
   // other file in brief/, a new one included, stays pure
-  const IO_MODULES = ['facts.ts', 'known-programs.ts', 'signature.ts', 'gate.ts'];
+  const IO_MODULES = ['facts.ts', 'known-programs.ts', 'signature.ts', 'gate.ts', 'hook-gate.ts'];
   const sources = fs
     .readdirSync(BRIEF_DIR)
     .filter(name => name.endsWith('.ts'))

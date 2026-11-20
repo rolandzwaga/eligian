@@ -146,9 +146,16 @@ describe('the MCP server', () => {
       ).toMatchFileSnapshot('__snapshots__/tools-list-phase3.json.snap');
     });
 
-    it('INSTRUCTIONS[MCP_PHASE] matches the Phase 3 snapshot', async () => {
-      await expect(INSTRUCTIONS[MCP_PHASE]).toMatchFileSnapshot(
+    it('INSTRUCTIONS[3] matches the Phase 3 snapshot', async () => {
+      await expect(INSTRUCTIONS[3]).toMatchFileSnapshot(
         '__snapshots__/instructions-phase3.txt.snap'
+      );
+    });
+
+    it('INSTRUCTIONS[MCP_PHASE] matches the Phase 4 snapshot', async () => {
+      expect(MCP_PHASE).toBe(4);
+      await expect(INSTRUCTIONS[MCP_PHASE]).toMatchFileSnapshot(
+        '__snapshots__/instructions-phase4.txt.snap'
       );
     });
   });
