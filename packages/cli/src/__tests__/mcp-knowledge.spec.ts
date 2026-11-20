@@ -1361,6 +1361,17 @@ describe('spec 059 phase 3 chunks', () => {
     expect(body).toContain('Each one ends with a fallback the user can accept with "yes"');
   });
 
+  // FR-068, SC-031: follow-ups recommended, answers matched by number, every dependent asked.
+  it('interview recommends follow-ups, matches answers by number, asks every dependent', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('Every question in any message names a recommended answer');
+    expect(body).toContain('never an open "Which?"');
+    expect(body).toContain('match each numbered answer to the question with that number');
+    expect(body).toContain(
+      'List every item the round brings back with `previous` and ask each one'
+    );
+  });
+
   it('storyboard names the five problem codes and approve-storyboard', () => {
     const body = bodyOf('storyboard');
     for (const word of [

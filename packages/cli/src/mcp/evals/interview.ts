@@ -872,17 +872,27 @@ export function interviewMeasures(input: InterviewMeasuresInput): InterviewMeasu
     brief === undefined ? [] : [{ turn, brief: parseBrief(brief).brief }]
   );
 
+  // FR-065: measures 3 and 4 end at the turn whose `eligian_brief` result is first `approved`.
+  const approvedAt = entries.find(({ entry }) => briefResultOf(entry)?.state === 'approved')?.turn;
+  const interviewing = (turn: number): boolean => approvedAt === undefined || turn < approvedAt;
+
   let factsAsked = 0;
   let withoutRecommendation = 0;
   const questionsPerMessage: number[] = [];
   for (const message of input.judged) {
     if (!('questions' in message)) {
-      factsAsked += 1;
-      withoutRecommendation += 1;
+      if (interviewing(message.turn)) {
+        factsAsked += 1;
+        withoutRecommendation += 1;
+      }
       continue;
     }
-    factsAsked += message.questions.filter(question => question.fact).length;
-    withoutRecommendation += message.questions.filter(question => !question.recommendation).length;
+    if (interviewing(message.turn)) {
+      factsAsked += message.questions.filter(question => question.fact).length;
+      withoutRecommendation += message.questions.filter(
+        question => !question.recommendation
+      ).length;
+    }
     if (message.questions.length > 0) questionsPerMessage.push(message.questions.length);
   }
   const roundSizes = entries.flatMap(({ entry }) => {
@@ -1177,6 +1187,14 @@ export function changedMindLines(change: ScriptChange): string {
   ].join('\n');
 }
 
+/** FR-066: every question of the tree for the judge; a per-view one as `V<n>:<view>`. */
+export const TREE_ITEMS: readonly { readonly id: string; readonly title: string }[] = TREE.map(
+  question => ({
+    id: /^V\d+$/.test(question.id) ? `${question.id}:<view>` : question.id,
+    title: question.title,
+  })
+);
+
 /** FR-042: no `eligian_project` result before the message. */
 export const NO_INVENTORY = 'eligian_project not called';
 
@@ -1193,6 +1211,8 @@ export function judgePrompt(input: {
   readonly round: readonly RoundItemLike[];
   /** FR-058: the items of earlier rounds, not in `round`. */
   readonly earlier?: readonly RoundItemLike[];
+  /** FR-066: every question of the tree (`TREE_ITEMS`). */
+  readonly tree?: readonly { readonly id: string; readonly title: string }[];
   readonly message: string;
 }): string {
   const files = input.files.length === 0 ? '(none)' : input.files.join('\n');
@@ -1202,6 +1222,7 @@ export function judgePrompt(input: {
       : list.map(({ id, title, ask }) => `- ${id}: ${title} | ${ask}`).join('\n');
   const round = items(input.round, '(no round items)');
   const earlier = items(input.earlier ?? [], '(no earlier items)');
+  const tree = (input.tree ?? []).map(({ id, title }) => `- ${id}: ${title}`).join('\n');
   return `${[
     input.template.trimEnd(),
     '## Facts (the agent looks these up; asking the user one is a fact question)',
@@ -1214,6 +1235,8 @@ export function judgePrompt(input: {
     round,
     '## The earlier items (asked in an earlier round)',
     earlier,
+    '## The other questions of the brief',
+    tree === '' ? '(none)' : tree,
     "## The agent's message",
     input.message,
   ].join('\n\n')}\n`;
@@ -1509,6 +1532,7 @@ export async function runInterview(
       files: k === 0 ? startFiles : turns[k - 1].files,
       round,
       earlier,
+      tree: TREE_ITEMS,
       message: data.message,
     });
     const reply = await deps.judge(prompt).catch(() => undefined);

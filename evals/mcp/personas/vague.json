@@ -63,7 +63,7 @@
       "value": [{ "element": "Back button", "kind": "button", "file": "-" }],
       "mode": "states"
     },
-    "V4:details": { "value": "Not sure; something simple.", "mode": "states" },
+    "V4:details": { "value": "Not sure; something simple.", "mode": "accepts" },
     "V5:details": {
       "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
       "mode": "states"

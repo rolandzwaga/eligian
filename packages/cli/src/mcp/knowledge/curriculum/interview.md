@@ -41,6 +41,10 @@ When the user names a language without its variant ("English"), ask which one, w
 
 Every item of the round is put to the user, the per-view items (`V1`, `V3` and the rest, for each view) included. You never fill in a round item yourself. An answer sent without `delegated` is recorded `by: user`, so send one only from the user's reply to that item (or from what they volunteered earlier); your own choice goes with `delegated: true`, and only after the user said "you decide" for that item.
 
+Every question in any message names a recommended answer the user can accept with "yes", a follow-up or a clarification too: "Does Dutch get its own narration? I recommend one shared English video with Dutch captions. Yes?", never an open "Which?" or "Which of these do you have?".
+
+Before you record a reply, match each numbered answer to the question with that number and check the id of each answer you send. A "you decide" for question 5 belongs to question 5's item, not to its neighbour.
+
 Then call `eligian_brief` with `action: answer` and `answers: [{ id, value, delegated? }]`, each `value` in the item's `shape`. What the user volunteered earlier (in the idea or a previous reply) can be recorded at once, in the same call, without asking again. A rejected answer comes back in `rejected` with its reason; the accepted ones stand. Ask again only for the rejected ones.
 
 ## Recommendations
@@ -83,7 +87,7 @@ After confirmation, draft `STORYBOARD.md` from the brief (`storyboard`) and call
 
 When an answer changes after confirmation, the gated tools refuse with `brief-changed`. A question whose prerequisite changed comes back in the round with `previous`: the answer it had. Ask it again, showing the previous answer as your recommendation when it still fits. Re-confirming shows only the changed answers.
 
-The same holds whenever the user changes an answer, before confirmation too: put every question that depends on it to the user again (a view whose purpose changed brings back its per-view items), with the previous answer as your recommendation. Never update a dependent answer yourself to match the change.
+The same holds whenever the user changes an answer, before confirmation too: put every question that depends on it to the user again (a view whose purpose changed brings back its per-view items), with the previous answer as your recommendation. Never update a dependent answer yourself to match the change. List every item the round brings back with `previous` and ask each one, the per-view `V` items of every view included; check the list against your message before you send it.
 
 ## The whole tree
 

@@ -61,6 +61,7 @@ import {
   sheetIdOf,
   sheetToPersona,
   simulatedUserPrompt,
+  TREE_ITEMS,
   type TurnData,
   toJudgedMessage,
   viewMap,
@@ -182,6 +183,8 @@ describe('sheets', () => {
         else if (name === 'detailed') expect(list, id).toEqual(['states']);
         else if (['D2', 'D3', 'D4', 'D6'].includes(id)) expect(list, id).toEqual(['decides']);
         else if (id === 'S3') expect(list, id).toEqual(['states', 'states']);
+        // FR-067: the vague persona accepts a simple order for `details`.
+        else if (id === 'V4:details') expect(list, id).toEqual(['accepts']);
         else expect(list, id).toEqual(['states']);
       }
       if (name === 'vague') {
@@ -1257,7 +1260,7 @@ describe('SC-030: the judge, the sign-off, the sheets (FR-058, FR-061, FR-062)',
       })
     ).toContain('(no earlier items)');
     expect(flat('interview-judge.md')).toContain(
-      'Use only ids that appear in the round items or the earlier items'
+      'Use only ids of the round items, the earlier items or the other questions of the brief'
     );
   });
 
@@ -1279,6 +1282,68 @@ describe('SC-030: the judge, the sign-off, the sheets (FR-058, FR-061, FR-062)',
       mode: 'states',
     });
     expect(readSheet('detailed').answers.P5).toEqual({ value: 102, mode: 'states' });
+  });
+});
+
+describe('SC-031: the run-4 fixes (FR-064 to FR-067)', () => {
+  const judgeText = fs
+    .readFileSync(path.join(REPO, 'evals', 'mcp', 'interview-judge.md'), 'utf8')
+    .replace(/\s+/g, ' ');
+
+  it('interview-judge.md reads fallbacks, bundled materials and sign-offs', () => {
+    expect(judgeText).toContain(
+      'that ends in a fallback the user can accept with "yes" has a recommendation'
+    );
+    expect(judgeText).toContain('Several materials asked under one fallback');
+    expect(judgeText).toContain('a request to sign off on the brief or the storyboard');
+    expect(judgeText).toContain('whether or not the message shows the summary in full');
+  });
+
+  it('measures 3 and 4 count only the turns before the approval', () => {
+    const m = measure({
+      turns: [
+        turnOf(1, { events: briefCall('open', ['P1']) }),
+        turnOf(2, { events: briefCall('approved') }),
+        turnOf(3),
+      ],
+      judged: [
+        judgedAt(1, q(['P1'], false, false)),
+        judgedAt(2, q([], false, false)),
+        judgedAt(3, q([], true, false), q([], false, false)),
+      ],
+    });
+    expect(m.questionsWithoutRecommendation).toBe(1);
+    expect(m.factsAsked).toBe(0);
+    // Without an approval every message counts.
+    const open = measure({
+      turns: [turnOf(1, { events: briefCall('open', ['P1']) }), turnOf(2)],
+      judged: [judgedAt(1, q(['P1'], false, false)), judgedAt(2, q([], true, false))],
+    });
+    expect(open.questionsWithoutRecommendation).toBe(2);
+    expect(open.factsAsked).toBe(1);
+  });
+
+  it('the judge prompt lists every tree question, a per-view one as V3:<view>', () => {
+    expect(TREE_ITEMS.map(item => item.id)).toContain('V3:<view>');
+    expect(TREE_ITEMS.map(item => item.id)).toContain('D1');
+    const prompt = judgePrompt({
+      template: 'T',
+      facts: [],
+      inventory: undefined,
+      files: [],
+      round: [],
+      tree: TREE_ITEMS,
+      message: 'm',
+    });
+    expect(prompt).toContain('## The other questions of the brief\n\n- P1: ');
+    expect(prompt).toContain('\n- V3:<view>: ');
+  });
+
+  it('the vague sheet accepts a simple order for details', () => {
+    expect(readSheet('vague').answers['V4:details']).toEqual({
+      value: 'Not sure; something simple.',
+      mode: 'accepts',
+    });
   });
 });
 
