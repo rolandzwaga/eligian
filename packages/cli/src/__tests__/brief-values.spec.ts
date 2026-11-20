@@ -336,9 +336,8 @@ describe('extra validation (FR-006)', () => {
       two({ name: 'intro', purpose: 'a' }, { name: 'intro', purpose: 'b' }),
       'each view name once',
     ],
-    ['S2 with a name with :', 'S2', [{ name: 'a:b', purpose: 'x' }], 'must match'],
-    ['S2 with a name with |', 'S2', [{ name: 'a|b', purpose: 'x' }], 'must match'],
-    ['S2 with a name starting with -', 'S2', [{ name: '-intro', purpose: 'x' }], 'must match'],
+    ['S2 with a name with :', 'S2', [{ name: 'a:b', purpose: 'x' }], 'no ":", "|"'],
+    ['S2 with a name with |', 'S2', [{ name: 'a|b', purpose: 'x' }], 'no ":", "|"'],
     [
       'S6 video with source -',
       'S6',
@@ -417,6 +416,30 @@ describe('extra validation (FR-006)', () => {
   it('every rejected question has an accepted twin in the canonical table', () => {
     const accepted = new Set(CANONICAL.map(([id]) => id));
     for (const [, id] of CASES) expect(accepted.has(id)).toBe(true);
+  });
+});
+
+describe('S2 names', () => {
+  const S2_RULE =
+    'must be 1 to 64 characters, no ":", "|", line break, or leading or trailing space';
+  const views = (...names: readonly string[]) => names.map(name => ({ name, purpose: 'x' }));
+
+  it('accepts "Timeline & Time", "Files & Imports"', () => {
+    // `-intro` moved here from the rejected table: the widened rule allows a leading `-`.
+    const value = views('Timeline & Time', 'Files & Imports', '-intro');
+    expect(validateValue(question('S2'), value)).toEqual({ ok: true, value });
+  });
+
+  it('rejects ":", "|", a leading space, a trailing space, a line break, 65 characters', () => {
+    for (const name of ['a:b', 'a|b', 'x'.repeat(65)]) {
+      expect(rejects('S2', views(name))).toContain(S2_RULE);
+    }
+    // Spaces at either end and line breaks are refused by the shape's cell check before the S2
+    // rule runs; the S2 rule refuses them too.
+    expect(rejects('S2', views(' intro'))).toContain('a cell has no leading or trailing spaces');
+    expect(rejects('S2', views('intro '))).toContain('a cell has no leading or trailing spaces');
+    expect(rejects('S2', views('a\nb'))).toContain('a cell is one line');
+    expect(validateValue(question('S2'), views('x'.repeat(64))).ok).toBe(true);
   });
 });
 

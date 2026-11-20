@@ -31,6 +31,7 @@ import * as init from '../mcp/tools/init.js';
 import * as operations from '../mcp/tools/operations.js';
 import * as project from '../mcp/tools/project.js';
 import * as smoke from '../mcp/tools/smoke.js';
+import { approvedBrief } from './brief-helpers.js';
 import { type InMemoryServer, startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -273,8 +274,13 @@ describe('the MCP server', () => {
   });
 
   describe('payload shape', () => {
-    const expectShape = async (tool: string, args: unknown, resolved: () => string) => {
-      const server = await start();
+    const expectShape = async (
+      tool: string,
+      args: unknown,
+      resolved: () => string,
+      on?: InMemoryServer
+    ) => {
+      const server = on ?? (await start());
       const { payload, isError, raw } = await server.callTool(tool, args);
       const text = (raw as { content: { type: string; text: string }[] }).content[0].text;
 
@@ -305,9 +311,28 @@ describe('the MCP server', () => {
     });
 
     it('eligian_init', async () => {
-      await expectShape(init.NAME, { directory: 'project', template: 'blank' }, () =>
-        path.join(cwd, 'project')
+      // Spec 059 FR-058 move (2): the target's brief approved through the tool, a test key. The
+      // server is rooted at the target: the persona's entry file (R3 `main.eligian`) is relative
+      // to the project root and must sit next to the brief.
+      const stateDir = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-server-state-'))
       );
+      try {
+        const target = path.join(cwd, 'project');
+        fs.mkdirSync(target);
+        const server = await startInMemoryServer({
+          cwd: target,
+          docsRoot,
+          smoke: { cliPath: STUB },
+          brief: { stateDir },
+        });
+        servers.push(server);
+        await approvedBrief(server, target, { stateDir });
+
+        await expectShape(init.NAME, { directory: '.', template: 'blank' }, () => target, server);
+      } finally {
+        fs.rmSync(stateDir, { recursive: true, force: true });
+      }
     });
   });
 

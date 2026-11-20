@@ -10,11 +10,15 @@
  * Spec 058 Phase 2 (FR-064, Q7; plan E2): after the starter, the agent files of
  * each client are merged in through `setupAgents`, always in the `node` form
  * (`<dir>/node_modules/eligian/bin/cli.js`: the starter depends on `eligian`).
+ *
+ * Spec 059 Phase 2 (FR-060, P9): with `firstRecord` (the CLI action only, never `eligian_init`),
+ * the project's first record of known programs, minus the `main.eligian` it wrote.
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { findStarter, STARTER_ENTRY, STARTERS, starterFiles } from '@eligian/language';
 import { type AgentClient, type AgentFileResult, setupAgents } from './agents.js';
+import { writeFirstRecord } from './mcp/brief/known-programs.js';
 
 export interface InitOptions {
   readonly template: string;
@@ -26,6 +30,8 @@ export interface InitOptions {
   readonly agents?: readonly AgentClient[];
   /** The generated docs (`agents-block.md`); default: `docs/` next to the bundle */
   readonly docsRoot?: URL | string;
+  /** FR-060: write `<dir>/.eligian/programs.json` minus the starter's entry; the CLI only (P9) */
+  readonly firstRecord?: boolean;
 }
 
 export interface InitOutcome {
@@ -85,6 +91,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     },
     docsRoot: options.docsRoot ?? new URL('./docs/', import.meta.url),
   });
+  if (options.firstRecord) await writeFirstRecord(target, [path.join(target, STARTER_ENTRY)]);
 
   const inPlace = path.resolve(options.cwd) === target;
   const lines = [

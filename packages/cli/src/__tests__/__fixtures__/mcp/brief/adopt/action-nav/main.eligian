@@ -1,0 +1,43 @@
+// mcp-brief-adopt.spec.ts (spec 059 phase 2, T032; reading R-9): the navigation lives in an
+// action, so it belongs to every timeline that calls it (A and C), not to the action.
+styles "./styles.css"
+
+action wireNext() [
+  on click "#next" navigate "B"
+]
+
+timeline "A" in "body" using raf {
+  on enter [
+    wireNext()
+  ]
+  at 0s..2s [
+    selectElement("h1")
+    setStyle({ opacity: 1 })
+  ] [
+    selectElement("h1")
+    setStyle({ opacity: 0 })
+  ]
+}
+
+timeline "B" in "body" using raf {
+  at 0s..3s [
+    selectElement("h1")
+    setStyle({ opacity: 1 })
+  ] [
+    selectElement("h1")
+    setStyle({ opacity: 0 })
+  ]
+}
+
+timeline "C" in "body" using raf {
+  on enter [
+    wireNext()
+  ]
+  at 0s..4s [
+    selectElement("h1")
+    setStyle({ opacity: 1 })
+  ] [
+    selectElement("h1")
+    setStyle({ opacity: 0 })
+  ]
+}

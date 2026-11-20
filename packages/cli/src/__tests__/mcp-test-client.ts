@@ -51,7 +51,35 @@ export interface InMemoryServer {
   readonly callTool: (name: string, args: unknown) => Promise<ToolCallResult>;
   /** `effect/ai`'s McpClient over an in-memory Transport (connected, 2025-11-25). */
   readonly client: () => Promise<McpClient.McpClient>;
+  /** The `params` of every `elicitation/create` request the server sent, in order. */
+  readonly elicitations: () => readonly unknown[];
   readonly close: () => Promise<void>;
+}
+
+/**
+ * A scripted answer to an `elicitation/create` request (spec 059 FR-059); `error` answers with a
+ * JSON-RPC error instead of a result (plan P6).
+ */
+export type ElicitAnswer =
+  | { readonly action: 'accept'; readonly content: Readonly<Record<string, unknown>> }
+  | { readonly action: 'decline' }
+  | { readonly action: 'cancel' }
+  | { readonly error: JsonRpcError };
+
+export interface ElicitRequest {
+  readonly message: string;
+  readonly requestedSchema: unknown;
+}
+
+/** What the in-process client announces and how it answers the server's requests (FR-059). */
+export interface InMemoryClientOptions {
+  /** `initialize` announces `{ elicitation: { form: {} } }`. */
+  readonly elicitation?: true;
+  /**
+   * Answers each `elicitation/create` request; `undefined` never answers it. A promise keeps the
+   * dialog open until it resolves.
+   */
+  readonly onElicit?: (request: ElicitRequest) => ElicitAnswer | Promise<ElicitAnswer> | undefined;
 }
 
 const CLIENT_INFO = { name: 'mcp-test-client', version: '0' };
@@ -77,6 +105,14 @@ const parseFrame = (line: string): unknown => {
     return line;
   }
 };
+
+const isElicitation = (
+  frame: unknown
+): frame is { readonly id: string | number; readonly params: ElicitRequest } =>
+  typeof frame === 'object' &&
+  frame !== null &&
+  'id' in frame &&
+  (frame as { method?: unknown }).method === 'elicitation/create';
 
 const isResponse = (frame: unknown): frame is JsonRpcResponse =>
   typeof frame === 'object' &&
@@ -120,16 +156,40 @@ function toolCallResult(name: string, response: JsonRpcResponse): ToolCallResult
   return { payload, isError, raw };
 }
 
-export async function startInMemoryServer(options: ServerOptions): Promise<InMemoryServer> {
+export async function startInMemoryServer(
+  options: ServerOptions,
+  clientOptions: InMemoryClientOptions = {}
+): Promise<InMemoryServer> {
   const ai = await import('effect/ai');
   const encoder = new TextEncoder();
   const stdin = await Effect.runPromise(Queue.unbounded<Uint8Array, Cause.Done>());
   const frames: unknown[] = [];
+  const elicitations: unknown[] = [];
   const responses = correlator();
+  const send = (message: unknown): void => {
+    Queue.offerUnsafe(stdin, encoder.encode(`${JSON.stringify(message)}\n`));
+  };
+  /** Records the request and sends `onElicit`'s answer once it resolves (none for `undefined`). */
+  const answerElicitation = (frame: {
+    readonly id: string | number;
+    readonly params: ElicitRequest;
+  }): void => {
+    elicitations.push(frame.params);
+    const answer = clientOptions.onElicit?.(frame.params);
+    if (answer === undefined) return;
+    void Promise.resolve(answer).then(result => {
+      send(
+        'error' in result
+          ? { jsonrpc: '2.0', id: frame.id, error: result.error }
+          : { jsonrpc: '2.0', id: frame.id, result }
+      );
+    });
+  };
   const onStdout = lineBuffer(line => {
     const frame = parseFrame(line);
     frames.push(frame);
     responses.deliver(frame);
+    if (isElicitation(frame)) answerElicitation(frame);
   });
 
   const stdio = Stdio.make({
@@ -149,10 +209,6 @@ export async function startInMemoryServer(options: ServerOptions): Promise<InMem
   const fiber = Effect.runFork(
     Layer.launch(layer.pipe(Layer.provide(Layer.succeed(Stdio.Stdio, stdio))))
   );
-
-  const send = (message: unknown): void => {
-    Queue.offerUnsafe(stdin, encoder.encode(`${JSON.stringify(message)}\n`));
-  };
 
   let nextId = 1;
   let initialized = false;
@@ -186,7 +242,7 @@ export async function startInMemoryServer(options: ServerOptions): Promise<InMem
     if (initialized) return;
     const response = await request('initialize', {
       protocolVersion: '2025-11-25',
-      capabilities: {},
+      capabilities: clientOptions.elicitation === true ? { elicitation: { form: {} } } : {},
       clientInfo: CLIENT_INFO,
     });
     if (response.error !== undefined) {
@@ -234,7 +290,15 @@ export async function startInMemoryServer(options: ServerOptions): Promise<InMem
     await Effect.runPromise(Fiber.interrupt(fiber));
   };
 
-  return { request, notify, frames: () => frames, callTool, client, close };
+  return {
+    request,
+    notify,
+    frames: () => frames,
+    callTool,
+    client,
+    elicitations: () => elicitations,
+    close,
+  };
 }
 
 export interface SpawnedServer {

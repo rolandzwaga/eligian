@@ -6,7 +6,12 @@
  *   blockquote, the header list, the 12 branch sections (answers in tree order, then the kept
  *   answer blocks of that section, P17), one section per S2 view, `## Facts` from the given
  *   snapshot (P1: the state comes in as data), then the kept unknown sections. Blocks are joined
- *   by one blank line and the file ends with a single LF.
+ *   by one blank line and the file ends with a single LF. The header's confirmation and approval
+ *   lines are the signed lines of Phase 2 FR-024; a Phase 1 `sha256:` line round-trips as is.
+ *   Phase 2 FR-035: the `## Addition: …` sections come after the branch and view sections and
+ *   before `## Facts`, in creation order, each with its own `- state:` and signed lines, then its
+ *   answer blocks in the order of its scoped tree. A brief that holds only additions (the file an
+ *   addition creates in a project with no brief) has no idea and no branch or view section.
  * - `parseBrief`: the inverse. It accepts LF and CRLF and never throws by construction: every
  *   handler is total over its lines, and what it cannot read is reported in `ignored` and kept
  *   verbatim in `kept`, so a write gives it back (FR-020). There is no catch-all (P19): a throw
@@ -16,7 +21,10 @@
  */
 import type { PackageManager } from '@eligian/shared-utils';
 import {
+  type AdditionKind,
+  type AdditionState,
   type Answer,
+  type Approval,
   type BriefState,
   type BriefStateName,
   type By,
@@ -24,6 +32,8 @@ import {
   EMPTY_BRIEF,
   SAME_AS,
 } from './engine.js';
+import { LANGUAGE_CODE } from './references.js';
+import { additionHeading, type ScopeContext, scopedTree } from './scoped.js';
 import {
   type AnswerValue,
   type AssetEntry,
@@ -65,6 +75,11 @@ export interface ParsedBrief {
 export interface FactsSnapshot {
   /** P1: the state of the brief being written, from its evaluation. */
   readonly state: BriefStateName;
+  /**
+   * Phase 2 FR-035: the state of each addition section, by its heading (`Addition: view Outro`),
+   * from its own evaluation; `open` for a heading it does not hold.
+   */
+  readonly additionStates?: ReadonlyMap<string, BriefStateName>;
   readonly serverEligian: string;
   /** `-` when undefined (FR-042). */
   readonly eligianInstalled: string | undefined;
@@ -97,16 +112,65 @@ const DUPLICATE = 'duplicate answer';
 const BAD_HEADER = 'malformed header line';
 const UNKNOWN_VIEW = 'unknown-view';
 const UNKNOWN_SECTION = 'unknown section';
+const DUPLICATE_ADDITION = 'duplicate addition';
 const STRAY_TEXT = 'text outside an answer';
 
-const CONFIRMATION =
-  /^agent-reported (\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z) sha256:([0-9a-f]{64})$/;
-const HEADER_LINE = /^- (tree|state|confirmation|confirmation-message|approval): (.*)$/;
+const ISO = String.raw`\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z`;
+/** Phase 2 FR-024: `<mode> <ISO> round <n> hmac-sha256:<64 hex>`. */
+const CONFIRMATION = new RegExp(
+  `^(elicitation|agent-reported) (${ISO}) round ([1-9]\\d{0,14}) (hmac-sha256:[0-9a-f]{64})$`
+);
+/** A Phase 1 line: parsed, written back as it was, never valid (Phase 2 FR-025). */
+const PHASE_1_CONFIRMATION = new RegExp(`^agent-reported (${ISO}) (sha256:[0-9a-f]{64})$`);
+const APPROVAL = new RegExp(
+  `^(elicitation|agent-reported|existing-storyboard) (${ISO}) (hmac-sha256:[0-9a-f]{64})$`
+);
+const HEADER_LINE =
+  /^- (tree|scope|state|confirmation|confirmation-message|approval|approval-message): (.*)$/;
 const META_LINE = /^- (by|round|reviewed|basis): (.*)$/;
 const ANSWER_HEADING = /^### ([^:\s]+):(?: .*)?$/;
 const VIEW_HEADING = /^## View: (.+)$/;
 const BRANCH_HEADING = /^## ([A-Z]): /;
+/** Phase 2 FR-035: `## Addition: view <name>`, `## Addition: language <code>`, `## Addition: host-module`. */
+const ADDITION_HEADING = /^## Addition: (?:view (\S(?:.*\S)?)|language (\S+)|host-module)$/;
 const BASIS = /^[0-9a-f]{16}$/;
+
+/**
+ * The scope context an addition section is read and written with. A file holds the questions'
+ * answers, not the presentation they are measured against, so every question a scope can ask is
+ * known: I4 is in a view scope only when the presentation then has more than one view, and the
+ * placeholder timeline `''` (never a view name) makes it so. The values are not checked here, so
+ * the applies-when rules that read the context never run.
+ */
+const EVERY_QUESTION: ScopeContext = { get: () => undefined, timelines: [''] };
+
+/** An addition section's identity (FR-035); `heading` is `additionHeading`'s, without `## `. */
+interface AdditionHeading {
+  readonly kind: AdditionKind;
+  readonly name: string;
+  readonly heading: string;
+}
+
+/** The addition a `##` heading names, or `undefined` (a language must be a language code). */
+function additionOf(heading: string): AdditionHeading | undefined {
+  const match = ADDITION_HEADING.exec(heading);
+  if (match === null) return undefined;
+  const of = (kind: AdditionKind, name: string): AdditionHeading => ({
+    kind,
+    name,
+    heading: additionHeading({ addition: kind, name }),
+  });
+  if (match[1] !== undefined) return of('view', match[1]);
+  if (match[2] !== undefined)
+    return LANGUAGE_CODE.test(match[2]) ? of('language', match[2]) : undefined;
+  return of('host-module', '');
+}
+
+/** The questions of an addition section, by id (`scopedTree`'s, FR-036). */
+const additionQuestions = (addition: AdditionHeading): ReadonlyMap<string, Question> =>
+  new Map(
+    scopedTree({ addition: addition.kind, name: addition.name }, EVERY_QUESTION).map(q => [q.id, q])
+  );
 
 // ---------------------------------------------------------------------------------------------
 // Small total helpers (P19: they return `undefined`, never throw).
@@ -151,9 +215,14 @@ function trimBlank(lines: readonly string[]): readonly string[] {
   return lines.slice(start, end);
 }
 
-/** A section's identity: `branch:<letter>`, `view:<name>`, `facts`, or `undefined` (unknown). */
+/**
+ * A section's identity: `branch:<letter>`, `view:<name>`, `addition:<heading>`, `facts`, or
+ * `undefined` (unknown).
+ */
 function sectionKey(heading: string): string | undefined {
   if (heading === FACTS_HEADING) return 'facts';
+  const addition = additionOf(heading);
+  if (addition !== undefined) return `addition:${addition.heading}`;
   const view = VIEW_HEADING.exec(heading);
   if (view !== null) return `view:${view[1]}`;
   const branch = BRANCH_HEADING.exec(heading);
@@ -173,9 +242,132 @@ interface Line {
 interface Header {
   readonly idea?: string;
   readonly treeVersion: number;
+  readonly scope?: 'adopt';
   readonly confirmation?: Confirmation;
+  readonly approval?: Approval;
   readonly ignored: readonly Ignored[];
   readonly kept: readonly RawBlock[];
+}
+
+/** A signed line read from the header, with the line it came from. */
+interface SignedLine<T extends Confirmation | Approval> {
+  readonly value: Omit<T, 'message'>;
+  readonly line: number;
+}
+
+interface MessageLine {
+  readonly text: string;
+  readonly line: number;
+}
+
+/** The `- confirmation:` value (Phase 2 FR-024; a Phase 1 line too), or `undefined`. */
+function confirmationOf(value: string): Omit<Confirmation, 'message'> | undefined {
+  const signed = CONFIRMATION.exec(value);
+  if (signed !== null) {
+    const mode = signed[1] === 'elicitation' ? 'elicitation' : 'agent-reported';
+    return { mode, at: signed[2], round: Number(signed[3]), hmac: signed[4] };
+  }
+  const legacy = PHASE_1_CONFIRMATION.exec(value);
+  return legacy === null ? undefined : { mode: 'agent-reported', at: legacy[1], hmac: legacy[2] };
+}
+
+/** The `- approval:` value (Phase 2 FR-024), or `undefined`. */
+function approvalOf(value: string): Omit<Approval, 'message'> | undefined {
+  const match = APPROVAL.exec(value);
+  if (match === null) return undefined;
+  const mode =
+    match[1] === 'elicitation'
+      ? 'elicitation'
+      : match[1] === 'agent-reported'
+        ? 'agent-reported'
+        : 'existing-storyboard';
+  return { mode, at: match[2], hmac: match[3] };
+}
+
+/**
+ * A signed line with its message line: an `agent-reported` line needs one (without it the line
+ * is ignored, as in Phase 1); any other mode has none (a message line beside it is ignored).
+ */
+function withMessage<T extends Confirmation | Approval>(
+  signed: SignedLine<T> | undefined,
+  message: MessageLine | undefined,
+  ignored: Ignored[]
+): T | undefined {
+  if (signed === undefined) {
+    if (message !== undefined) ignored.push({ line: message.line, reason: BAD_HEADER });
+    return undefined;
+  }
+  if (signed.value.mode !== 'agent-reported') {
+    if (message !== undefined) ignored.push({ line: message.line, reason: BAD_HEADER });
+    return signed.value as T;
+  }
+  if (message === undefined) {
+    ignored.push({ line: signed.line, reason: BAD_HEADER });
+    return undefined;
+  }
+  return { ...signed.value, message: message.text } as T;
+}
+
+const SIGNED_NAMES = [
+  'confirmation',
+  'approval',
+  'confirmation-message',
+  'approval-message',
+] as const;
+type SignedName = (typeof SIGNED_NAMES)[number];
+
+const isSignedName = (name: string): name is SignedName =>
+  (SIGNED_NAMES as readonly string[]).includes(name);
+
+/** The signed lines of one header list being read (the brief's or an addition's, FR-024). */
+interface SignedReader {
+  confirmed?: SignedLine<Confirmation>;
+  message?: MessageLine;
+  approved?: SignedLine<Approval>;
+  approvalMessage?: MessageLine;
+}
+
+/**
+ * Reads one `- confirmation:` / `- approval:` / message line into `reader`; `false` when its
+ * value is malformed. `none` clears the line read before it.
+ */
+function readSigned(reader: SignedReader, name: SignedName, value: string, line: number): boolean {
+  switch (name) {
+    case 'confirmation': {
+      const parsed = confirmationOf(value);
+      if (parsed !== undefined) reader.confirmed = { value: parsed, line };
+      else if (value === 'none') reader.confirmed = undefined;
+      else return false;
+      return true;
+    }
+    case 'approval': {
+      const parsed = approvalOf(value);
+      if (parsed !== undefined) reader.approved = { value: parsed, line };
+      else if (value === 'none') reader.approved = undefined;
+      else return false;
+      return true;
+    }
+    default: {
+      const parsed = jsonString(value);
+      if (parsed === undefined) return false;
+      if (name === 'confirmation-message') reader.message = { text: parsed, line };
+      else reader.approvalMessage = { text: parsed, line };
+      return true;
+    }
+  }
+}
+
+/** The confirmation and approval a reader holds, each with its message (see `withMessage`). */
+function signedOf(
+  reader: SignedReader,
+  ignored: Ignored[]
+): { readonly confirmation?: Confirmation; readonly approval?: Approval } {
+  const confirmation = withMessage(reader.confirmed, reader.message, ignored);
+  const approval = withMessage(reader.approved, reader.approvalMessage, ignored);
+  return {
+    ...(confirmation === undefined ? {} : { confirmation }),
+    ...(approval === undefined ? {} : { approval }),
+  };
 }
 
 /** The lines before the first `##` heading (FR-019 items 1 to 4). */
@@ -186,10 +378,8 @@ function parseHeader(lines: readonly Line[]): Header {
   let ideaState: 'before' | 'in' | 'done' = 'before';
   let titleSeen = false;
   let treeVersion = TREE_VERSION;
-  let confirmed:
-    | { readonly at: string; readonly digest: string; readonly line: number }
-    | undefined;
-  let message: { readonly text: string; readonly line: number } | undefined;
+  let scope: 'adopt' | undefined;
+  const reader: SignedReader = {};
   const malformed = (line: Line, keep: boolean) => {
     ignored.push({ line: line.number, reason: BAD_HEADER });
     if (keep) kept.push({ section: '', text: line.text, kind: 'text' });
@@ -212,49 +402,35 @@ function parseHeader(lines: readonly Line[]): Header {
       malformed(line, true);
       continue;
     }
+    const name = header[1];
     const value = header[2];
-    switch (header[1]) {
+    if (isSignedName(name)) {
+      if (!readSigned(reader, name, value, line.number)) malformed(line, false);
+      continue;
+    }
+    switch (name) {
       case 'tree': {
         const version = positiveInt(value);
         if (version === undefined) malformed(line, false);
         else treeVersion = version;
         break;
       }
-      case 'confirmation': {
-        const match = CONFIRMATION.exec(value);
-        if (match !== null) confirmed = { at: match[1], digest: match[2], line: line.number };
-        else if (value === 'none') confirmed = undefined;
+      case 'scope': {
+        // Phase 2 FR-041: `adopt` is the only scope a brief records.
+        if (value === 'adopt') scope = 'adopt';
         else malformed(line, false);
         break;
       }
-      case 'confirmation-message': {
-        const parsed = jsonString(value);
-        if (parsed === undefined) malformed(line, false);
-        else message = { text: parsed, line: line.number };
-        break;
-      }
       default:
-        // `state:` and `approval:` are for people; the server never reads them (FR-023).
+        // `state:` is for people; the server never reads it (FR-023).
         break;
     }
-  }
-  let confirmation: Confirmation | undefined;
-  if (confirmed !== undefined && message !== undefined) {
-    confirmation = {
-      mode: 'agent-reported',
-      at: confirmed.at,
-      digest: confirmed.digest,
-      message: message.text,
-    };
-  } else if (confirmed !== undefined) {
-    ignored.push({ line: confirmed.line, reason: BAD_HEADER });
-  } else if (message !== undefined) {
-    ignored.push({ line: message.line, reason: BAD_HEADER });
   }
   return {
     ...(ideaState === 'before' ? {} : { idea: idea.join('\n') }),
     treeVersion,
-    ...(confirmation === undefined ? {} : { confirmation }),
+    ...(scope === undefined ? {} : { scope }),
+    ...signedOf(reader, ignored),
     ignored,
     kept,
   };
@@ -262,29 +438,56 @@ function parseHeader(lines: readonly Line[]): Header {
 
 type AnswerResult = { readonly answer: Answer } | { readonly reason: string };
 
-/** One `### <id>: …` block (heading, meta lines, value lines) in a branch or view section. */
-function parseAnswer(
-  lines: readonly string[],
-  questions: ReadonlyMap<string, Question>,
-  view: string | undefined
-): AnswerResult {
+/** The answer id and question of a `### <template id>:` heading in one section, or `undefined`. */
+type Resolve = (
+  templateId: string
+) => { readonly id: string; readonly question: Question } | undefined;
+
+/** A branch section: any question but a V template. */
+const inBranch =
+  (questions: ReadonlyMap<string, Question>): Resolve =>
+  templateId => {
+    const question = questions.get(templateId);
+    return question === undefined || question.branch === 'V'
+      ? undefined
+      : { id: templateId, question };
+  };
+
+/** A view section: the V templates and `V` (same as), as copies of `view`. */
+const inView =
+  (questions: ReadonlyMap<string, Question>, view: string): Resolve =>
+  templateId => {
+    if (templateId === SAME_AS.id) return { id: `V:${view}`, question: SAME_AS };
+    const question = questions.get(templateId);
+    return question === undefined || question.branch !== 'V'
+      ? undefined
+      : { id: `${templateId}:${view}`, question };
+  };
+
+/**
+ * An addition section (FR-035): its scoped tree's questions, the V templates (and, for a view,
+ * `V`) as copies of the added view (P11), the others under their own ids.
+ */
+const inAddition =
+  (questions: ReadonlyMap<string, Question>, addition: AdditionHeading): Resolve =>
+  templateId => {
+    if (templateId === SAME_AS.id) {
+      return addition.kind === 'view' ? { id: `V:${addition.name}`, question: SAME_AS } : undefined;
+    }
+    const question = questions.get(templateId);
+    if (question === undefined) return undefined;
+    return question.branch === 'V'
+      ? { id: `${templateId}:${addition.name}`, question }
+      : { id: templateId, question };
+  };
+
+/** One `### <id>: …` block (heading, meta lines, value lines) of a section. */
+function parseAnswer(lines: readonly string[], resolve: Resolve): AnswerResult {
   const heading = ANSWER_HEADING.exec(lines[0]);
   if (heading === null) return { reason: UNKNOWN_QUESTION };
-  const templateId = heading[1];
-  let id: string;
-  let question: Question | undefined;
-  if (view === undefined) {
-    question = questions.get(templateId);
-    if (question === undefined || question.branch === 'V') return { reason: UNKNOWN_QUESTION };
-    id = templateId;
-  } else if (templateId === 'V') {
-    question = SAME_AS;
-    id = `V:${view}`;
-  } else {
-    question = questions.get(templateId);
-    if (question === undefined || question.branch !== 'V') return { reason: UNKNOWN_QUESTION };
-    id = `${templateId}:${view}`;
-  }
+  const resolved = resolve(heading[1]);
+  if (resolved === undefined) return { reason: UNKNOWN_QUESTION };
+  const { id, question } = resolved;
   if (lines.length < 2 || lines[1] !== '') return { reason: BAD_META };
   const meta = new Map<string, string>();
   let index = 2;
@@ -301,7 +504,7 @@ function parseAnswer(
   const reviewed = reviewedText === undefined ? undefined : positiveInt(reviewedText);
   const basis = meta.get('basis');
   if (
-    (byText !== 'user' && byText !== 'delegated') ||
+    (byText !== 'user' && byText !== 'delegated' && byText !== 'code') ||
     round === undefined ||
     (reviewedText !== undefined && reviewed === undefined) ||
     (basis !== undefined && !BASIS.test(basis))
@@ -337,9 +540,17 @@ interface Section {
 /** One `### ` block of a section: the answer read, or the reason it was not. */
 type Block = { readonly line: number; readonly text: string } & AnswerResult;
 
+/** An addition section read (FR-035), with what it could not read. */
+interface AdditionRead {
+  readonly state: AdditionState;
+  readonly ignored: readonly Ignored[];
+  readonly kept: readonly RawBlock[];
+}
+
 /** What a section holds, before the views of S2 are known. */
 type SectionContent =
-  | { readonly kind: 'unknown'; readonly section: Section }
+  | { readonly kind: 'unknown'; readonly section: Section; readonly reason: string }
+  | { readonly kind: 'addition'; readonly section: Section; readonly read: AdditionRead }
   | {
       readonly kind: 'answers';
       readonly section: Section;
@@ -353,14 +564,32 @@ type SectionContent =
 const sectionText = (section: Section): string =>
   withoutSeparator([section.heading.text, ...section.body.map(l => l.text)]).join('\n');
 
+/** The index of a section body's first `### ` line, or its length. */
+function firstAnswerOf(body: readonly Line[]): number {
+  const index = body.findIndex(l => l.text.startsWith('### '));
+  return index === -1 ? body.length : index;
+}
+
+/** The `### ` blocks of a section body from `start`, each read with `resolve`. */
+function blocksOf(body: readonly Line[], start: number, resolve: Resolve): readonly Block[] {
+  const blocks: Block[] = [];
+  for (let at = start; at < body.length; ) {
+    let end = at + 1;
+    while (end < body.length && !body[end].text.startsWith('### ')) end++;
+    const lines = withoutSeparator(body.slice(at, end).map(l => l.text));
+    blocks.push({ line: body[at].number, text: lines.join('\n'), ...parseAnswer(lines, resolve) });
+    at = end;
+  }
+  return blocks;
+}
+
 function parseSection(
   section: Section,
   view: string | undefined,
   questions: ReadonlyMap<string, Question>
 ): SectionContent {
   const body = section.body;
-  const firstAnswer = body.findIndex(l => l.text.startsWith('### '));
-  const preambleEnd = firstAnswer === -1 ? body.length : firstAnswer;
+  const preambleEnd = firstAnswerOf(body);
   const stray = body
     .slice(0, preambleEnd)
     .filter(l => l.text !== NO_ANSWERS && l.text !== PER_VIEW);
@@ -370,20 +599,61 @@ function parseSection(
     preambleLines.length === 0 || firstStray === undefined
       ? undefined
       : { line: firstStray.number, text: preambleLines.join('\n') };
-  const blocks: Block[] = [];
-  let start = preambleEnd;
-  while (start < body.length) {
-    let end = start + 1;
-    while (end < body.length && !body[end].text.startsWith('### ')) end++;
-    const lines = withoutSeparator(body.slice(start, end).map(l => l.text));
-    blocks.push({
-      line: body[start].number,
-      text: lines.join('\n'),
-      ...parseAnswer(lines, questions, view),
-    });
-    start = end;
-  }
+  const resolve = view === undefined ? inBranch(questions) : inView(questions, view);
+  const blocks = blocksOf(body, preambleEnd, resolve);
   return { kind: 'answers', section, view, preamble, blocks };
+}
+
+/**
+ * An addition section (FR-035): its header lines (`- state:` is for people and never read, the
+ * signed lines and their messages as in the brief's header), then its answer blocks, read against
+ * its scoped tree. What it cannot read is ignored and kept in the section, as in a branch section.
+ */
+function parseAddition(section: Section, addition: AdditionHeading): AdditionRead {
+  const heading = section.heading.text;
+  const ignored: Ignored[] = [];
+  const kept: RawBlock[] = [];
+  const body = section.body;
+  const headerEnd = firstAnswerOf(body);
+  const reader: SignedReader = {};
+  for (const line of body.slice(0, headerEnd)) {
+    if (line.text === '') continue;
+    const header = HEADER_LINE.exec(line.text);
+    // `- tree:` and `- scope:` belong to the brief's header: kept here as text.
+    if (header === null || header[1] === 'tree' || header[1] === 'scope') {
+      ignored.push({ line: line.number, reason: BAD_HEADER });
+      kept.push({ section: heading, text: line.text, kind: 'text' });
+      continue;
+    }
+    const name = header[1];
+    if (isSignedName(name) && !readSigned(reader, name, header[2], line.number)) {
+      ignored.push({ line: line.number, reason: BAD_HEADER });
+    }
+  }
+  const signed = signedOf(reader, ignored);
+  const answers: Answer[] = [];
+  const seen = new Set<string>();
+  const resolve = inAddition(additionQuestions(addition), addition);
+  for (const block of blocksOf(body, headerEnd, resolve)) {
+    if ('answer' in block && !seen.has(block.answer.id)) {
+      seen.add(block.answer.id);
+      answers.push(block.answer);
+      continue;
+    }
+    ignored.push({ line: block.line, reason: 'reason' in block ? block.reason : DUPLICATE });
+    kept.push({ section: heading, text: block.text, kind: 'answer' });
+  }
+  return {
+    state: {
+      kind: addition.kind,
+      name: addition.name,
+      heading: addition.heading,
+      ...signed,
+      answers,
+    },
+    ignored,
+    kept,
+  };
 }
 
 /**
@@ -401,6 +671,7 @@ export function parseBrief(text: string, tree: readonly Question[] = TREE): Pars
   const header = parseHeader(lines.slice(0, headerEnd));
 
   const contents: SectionContent[] = [];
+  const additionsSeen = new Set<string>();
   for (let i = headerEnd; i < lines.length; ) {
     let end = i + 1;
     while (end < lines.length && !lines[end].text.startsWith('## ')) end++;
@@ -409,7 +680,18 @@ export function parseBrief(text: string, tree: readonly Question[] = TREE): Pars
     i = end;
     if (key === 'facts') continue; // recomputed on every write (FR-020)
     if (key === undefined) {
-      contents.push({ kind: 'unknown', section });
+      contents.push({ kind: 'unknown', section, reason: UNKNOWN_SECTION });
+      continue;
+    }
+    const addition = additionOf(section.heading.text);
+    if (addition !== undefined) {
+      // A second section of the same addition is kept as it was, after `## Facts`.
+      if (additionsSeen.has(key)) {
+        contents.push({ kind: 'unknown', section, reason: DUPLICATE_ADDITION });
+      } else {
+        additionsSeen.add(key);
+        contents.push({ kind: 'addition', section, read: parseAddition(section, addition) });
+      }
       continue;
     }
     const view = key.startsWith('view:') ? key.slice('view:'.length) : undefined;
@@ -425,14 +707,21 @@ export function parseBrief(text: string, tree: readonly Question[] = TREE): Pars
   const ignored: Ignored[] = [...header.ignored];
   const kept: RawBlock[] = [...header.kept];
   const answers: Answer[] = [];
+  const additions: AdditionState[] = [];
   const seen = new Set<string>();
   for (const content of contents) {
     const heading = content.section.heading;
+    if (content.kind === 'addition') {
+      additions.push(content.read.state);
+      ignored.push(...content.read.ignored);
+      kept.push(...content.read.kept);
+      continue;
+    }
     if (
       content.kind === 'unknown' ||
       (content.view !== undefined && !views.includes(content.view))
     ) {
-      const reason = content.kind === 'unknown' ? UNKNOWN_SECTION : UNKNOWN_VIEW;
+      const reason = content.kind === 'unknown' ? content.reason : UNKNOWN_VIEW;
       ignored.push({ line: heading.number, reason });
       kept.push({ section: heading.text, text: sectionText(content.section), kind: 'section' });
       continue;
@@ -456,8 +745,12 @@ export function parseBrief(text: string, tree: readonly Question[] = TREE): Pars
     brief: {
       ...(header.idea === undefined ? {} : { idea: header.idea }),
       treeVersion: header.treeVersion,
+      ...(header.scope === undefined ? {} : { scope: header.scope }),
       ...(header.confirmation === undefined ? {} : { confirmation: header.confirmation }),
+      ...(header.approval === undefined ? {} : { approval: header.approval }),
       answers,
+      // Absent when there is none, so a Phase 1 file parses as before (SC-018).
+      ...(additions.length === 0 ? {} : { additions }),
     },
     ignored: [...ignored].sort((l, r) => l.line - r.line),
     kept,
@@ -467,9 +760,14 @@ export function parseBrief(text: string, tree: readonly Question[] = TREE): Pars
 // ---------------------------------------------------------------------------------------------
 // Writing.
 
-function answerBlock(templateId: string, question: Question, answer: Answer): string {
+function answerBlock(
+  templateId: string,
+  title: string,
+  question: Question,
+  answer: Answer
+): string {
   return [
-    `### ${templateId}: ${question.title}`,
+    `### ${templateId}: ${title}`,
     '',
     `- by: ${answer.by}`,
     `- round: ${answer.round}`,
@@ -512,6 +810,93 @@ function factsBlocks(facts: FactsSnapshot): readonly string[] {
   return [FACTS_HEADING, FACTS_COMMENT, list, ...table];
 }
 
+/** A message line, present only for an `agent-reported` line (Phase 2 FR-024). */
+const messageLine = (
+  name: 'confirmation-message' | 'approval-message',
+  signed: Confirmation | Approval
+): readonly string[] =>
+  signed.mode === 'agent-reported' && signed.message !== undefined
+    ? [`- ${name}: ${JSON.stringify(signed.message)}`]
+    : [];
+
+/**
+ * The confirmation and approval lines with their message lines (Phase 2 FR-024). A Phase 1 line
+ * (no watermark) is written back in its own form: `agent-reported <ISO> sha256:<hex>`.
+ */
+function signedLines(signed: Pick<BriefState, 'confirmation' | 'approval'>): readonly string[] {
+  const { confirmation, approval } = signed;
+  const confirmationLines =
+    confirmation === undefined
+      ? ['- confirmation: none']
+      : [
+          confirmation.round === undefined
+            ? `- confirmation: ${confirmation.mode} ${confirmation.at} ${confirmation.hmac}`
+            : `- confirmation: ${confirmation.mode} ${confirmation.at} round ${confirmation.round} ${confirmation.hmac}`,
+          ...messageLine('confirmation-message', confirmation),
+        ];
+  const approvalLines =
+    approval === undefined
+      ? ['- approval: none']
+      : [
+          `- approval: ${approval.mode} ${approval.at} ${approval.hmac}`,
+          ...messageLine('approval-message', approval),
+        ];
+  return [...confirmationLines, ...approvalLines];
+}
+
+/** The kept blocks of one kind in the section of `key`. */
+const keptIn = (
+  kept: readonly RawBlock[],
+  key: string,
+  kind: RawBlock['kind']
+): readonly string[] =>
+  kept.filter(b => b.kind === kind && sectionKey(b.section) === key).map(b => b.text);
+
+/**
+ * An addition section (FR-035): the heading, its header list (`- state:` from the snapshot, the
+ * signed lines, the kept header text), then its answers in scoped-tree order (`V` first, a V copy
+ * titled `<view>: …` as the engine's instance), then its kept answer blocks. An answer a parse
+ * would not read back under its own id is not written.
+ */
+function additionSection(
+  addition: AdditionState,
+  kept: readonly RawBlock[],
+  facts: FactsSnapshot
+): readonly string[] {
+  const heading: AdditionHeading = {
+    kind: addition.kind,
+    name: addition.name,
+    heading: addition.heading,
+  };
+  const questions = additionQuestions(heading);
+  const order = new Map([...questions.keys()].map((id, i) => [id, i]));
+  const resolve = inAddition(questions, heading);
+  const answers = addition.answers
+    .flatMap((answer): Placed[] => {
+      const colon = answer.id.indexOf(':');
+      const templateId = colon === -1 ? answer.id : answer.id.slice(0, colon);
+      const resolved = resolve(templateId);
+      if (resolved === undefined || resolved.id !== answer.id) return [];
+      const { question } = resolved;
+      const title = colon === -1 ? question.title : `${addition.name}: ${question.title}`;
+      return [
+        {
+          order: question === SAME_AS ? -1 : (order.get(templateId) ?? order.size),
+          block: answerBlock(templateId, title, question, answer),
+        },
+      ];
+    })
+    .sort((l, r) => l.order - r.order)
+    .map(p => p.block);
+  const key = `addition:${addition.heading}`;
+  const headerList = [
+    `- state: ${facts.additionStates?.get(addition.heading) ?? 'open'}`,
+    ...signedLines(addition),
+    ...keptIn(kept, key, 'text'),
+  ].join('\n');
+  return [`## ${addition.heading}`, headerList, ...answers, ...keptIn(kept, key, 'answer')];
+}
+
 /**
  * The `BRIEF.md` text of a parsed brief (FR-019): its answers, its kept content (FR-020, P17)
  * and the given facts. The views are the recorded S2's, whatever its status.
@@ -541,7 +926,7 @@ export function writeBrief(
     const question = view !== undefined && templateId === 'V' ? SAME_AS : questions.get(templateId);
     if (question === undefined) continue;
     const order = question === SAME_AS ? -1 : (treeOrder.get(templateId) ?? tree.length);
-    const block = answerBlock(templateId, question, answer);
+    const block = answerBlock(templateId, question.title, question, answer);
     if (view === undefined) {
       place(`branch:${question.branch}`, order, block);
     } else {
@@ -557,9 +942,6 @@ export function writeBrief(
     }
   }
 
-  const keptIn = (key: string, kind: RawBlock['kind']): readonly string[] =>
-    kept.filter(b => b.kind === kind && sectionKey(b.section) === key).map(b => b.text);
-
   const section = (heading: string, key: string, marker?: string): readonly string[] => {
     const answers = [...(placed.get(key) ?? [])]
       .sort((l, r) => l.order - r.order)
@@ -568,23 +950,31 @@ export function writeBrief(
     return [
       heading,
       ...(head === undefined ? [] : [head]),
-      ...keptIn(key, 'text'),
+      ...keptIn(kept, key, 'text'),
       ...answers,
-      ...keptIn(key, 'answer'),
+      ...keptIn(kept, key, 'answer'),
     ];
   };
 
-  const confirmation = brief.confirmation;
+  // FR-035: a brief that holds only additions has no idea and no branch or view section.
+  const additions = brief.additions ?? [];
+  const onlyAdditions =
+    additions.length > 0 &&
+    brief.idea === undefined &&
+    brief.answers.length === 0 &&
+    kept.every(
+      b =>
+        b.kind === 'section' ||
+        b.section === '' ||
+        sectionKey(b.section)?.startsWith('addition:') === true
+    );
+
   const headerList = [
     `- tree: ${brief.treeVersion}`,
+    // Phase 2 FR-041: only when set, so a file without it is Phase 1's (SC-018).
+    ...(brief.scope === undefined ? [] : [`- scope: ${brief.scope}`]),
     `- state: ${facts.state}`,
-    confirmation === undefined
-      ? '- confirmation: none'
-      : `- confirmation: agent-reported ${confirmation.at} sha256:${confirmation.digest}`,
-    ...(confirmation === undefined
-      ? []
-      : [`- confirmation-message: ${JSON.stringify(confirmation.message)}`]),
-    '- approval: none',
+    ...signedLines(brief),
     ...kept.filter(b => b.kind === 'text' && b.section === '').map(b => b.text),
   ].join('\n');
 
@@ -598,7 +988,7 @@ export function writeBrief(
     );
   }
   blocks.push(headerList);
-  for (const branch of BRANCHES) {
+  for (const branch of onlyAdditions ? [] : BRANCHES) {
     const heading = `## ${branch.id}: ${branch.name}`;
     const key = `branch:${branch.id}`;
     if (branch.id !== 'V') {
@@ -608,6 +998,7 @@ export function writeBrief(
     blocks.push(...section(heading, key, views.length === 0 ? NO_ANSWERS : PER_VIEW));
     for (const view of views) blocks.push(...section(`## View: ${view}`, `view:${view}`));
   }
+  for (const addition of additions) blocks.push(...additionSection(addition, kept, facts));
   blocks.push(...factsBlocks(facts));
   // Answers of views no longer in S2 go where a parse will keep them: after the facts (FR-010).
   for (const view of orphanViews) blocks.push(...section(`## View: ${view}`, `view:${view}`));

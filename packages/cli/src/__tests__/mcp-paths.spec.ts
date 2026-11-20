@@ -285,10 +285,16 @@ describe('the server', () => {
     return server;
   };
 
-  /** A fresh copy of `outside/` under the temp base. */
+  /**
+   * A fresh copy of `outside/` under the temp base, without the `.eligian/` record a server
+   * started on the checked-in fixture writes there (spec 059 FR-058).
+   */
   const copyOutside = (name: string): string => {
     const target = path.join(base, name);
-    fs.cpSync(OUTSIDE, target, { recursive: true });
+    fs.cpSync(OUTSIDE, target, {
+      recursive: true,
+      filter: source => path.basename(source) !== '.eligian',
+    });
     return target;
   };
 
@@ -537,7 +543,19 @@ describe('the server', () => {
         'inner/main.eligian',
         'shared.css',
       ]);
-      expect(snapshotDir(copy)).toEqual(before);
+      // Spec 059 FR-058 move (1): the program existed before the server started, so its start
+      // scan records it in `inner/.eligian/`; the tools add nothing to that record.
+      const after = snapshotDir(copy);
+      expect(after.filter(([file]) => !file.startsWith('inner/.eligian/'))).toEqual(before);
+      expect(
+        after.map(([file]) => file).filter(file => file.startsWith('inner/.eligian/'))
+      ).toEqual(['inner/.eligian/.gitignore', 'inner/.eligian/programs.json']);
+      const record = JSON.parse(
+        fs.readFileSync(path.join(copy, 'inner', '.eligian', 'programs.json'), 'utf8')
+      ) as { programs: { path: string; via: string }[] };
+      expect(record.programs.map(({ path: file, via }) => ({ file, via }))).toEqual([
+        { file: 'main.eligian', via: 'first-run' },
+      ]);
     });
   });
 });

@@ -1,0 +1,14 @@
+// mcp-brief-gate.spec.ts (spec 059 phase 2, T026): the program of every matrix row. Its one
+// timeline is the terse persona's S2 view, so an approved terse brief has no addition here.
+layout "./layout.html"
+styles "./styles.css"
+
+timeline "hours" in "#stage" using raf {
+  at 0s..2s [
+    selectElement("#title")
+    addClass("lit")
+  ] [
+    selectElement("#title")
+    removeClass("lit")
+  ]
+}

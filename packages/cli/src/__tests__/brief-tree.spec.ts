@@ -590,6 +590,9 @@ describe('the first frontier', () => {
 
 describe('purity (SC-012, FR-035)', () => {
   const BRIEF_DIR = path.join(import.meta.dirname, '..', 'mcp', 'brief');
+  // The modules of spec 059 phase 2 that read the disk (SC-018, Phase 1 edit list entry 6); every
+  // other file in brief/, a new one included, stays pure
+  const IO_MODULES = ['facts.ts', 'known-programs.ts', 'signature.ts', 'gate.ts'];
   const sources = fs
     .readdirSync(BRIEF_DIR)
     .filter(name => name.endsWith('.ts'))
@@ -597,7 +600,7 @@ describe('purity (SC-012, FR-035)', () => {
 
   it('brief/* import neither effect/ai nor node:fs', () => {
     expect(sources.map(s => s.name)).toContain('engine.ts');
-    for (const { name, text } of sources) {
+    for (const { name, text } of sources.filter(s => !IO_MODULES.includes(s.name))) {
       expect(text, name).not.toMatch(/from ['"](effect\/ai|node:fs|fs)(\/promises)?['"]/);
     }
   });

@@ -11,6 +11,10 @@
  * lock, `compileFile` gives the timeline durations and the storyboard's ranged action counts
  * (`null` when the program does not compile). The tool writes nothing.
  *
+ * Spec 059 Phase 2 (FR-056, P17): each section's `brief` comes from `briefStatusOf`, the gate's
+ * own functions, over `record.peek`: the tool never starts a scan, never writes and is never
+ * gated.
+ *
  * `Tool` is `@stability unstable`; the server is built on it (roadmap §2, decision 1: `effect` is
  * pinned exactly).
  */
@@ -43,6 +47,9 @@ import {
 import { Effect, Schema } from 'effect';
 import { isLibrary } from '../../check/check-command.js';
 import { type CompileResult, compileFile } from '../../compile-file.js';
+import { briefStatusOf } from '../brief/gate.js';
+import { readKey } from '../brief/signature.js';
+import { GATE_CODES } from '../brief/wire.js';
 import { CompilerLock } from '../compiler-lock.js';
 import { type ToolError, ToolFailure, ToolInternal, toToolError } from '../errors.js';
 import { type EffectAi, projectRoot, resolveInputPath, resolveInputPatterns } from '../paths.js';
@@ -162,6 +169,24 @@ const ProjectProgram = Schema.Struct({
   outline: Schema.Array(Schema.Unknown),
   assets: Schema.Struct({ problems: Schema.Array(Problem) }),
   storyboard: Schema.NullOr(StoryboardSummary),
+  /** Spec 059 Phase 2 FR-056: `briefStatusOf`'s `ProjectBrief` (`brief/gate.ts`). */
+  brief: Schema.Struct({
+    file: Schema.NullOr(Schema.String),
+    state: Schema.Literals(['none', 'open', 'complete', 'confirmed', 'approved']),
+    counts: Schema.optionalKey(
+      Schema.Struct({
+        answered: Schema.Int,
+        delegated: Schema.Int,
+        open: Schema.Int,
+        waiting: Schema.Int,
+        notApplicable: Schema.Int,
+        fromCode: Schema.optionalKey(Schema.Int),
+      })
+    ),
+    next: Schema.String,
+    known: Schema.Boolean,
+    gate: Schema.Literals(['runs', ...GATE_CODES]),
+  }),
 });
 type ProjectProgram = typeof ProjectProgram.Type;
 
@@ -262,7 +287,7 @@ const driveAs = (fsPath: string, like: string): string =>
 
 /** What the loaded program yields; the compile completes it. */
 interface Inspected {
-  readonly section: Omit<ProjectProgram, 'storyboard' | 'outline'>;
+  readonly section: Omit<ProjectProgram, 'storyboard' | 'outline' | 'brief'>;
   readonly outline: OutlineNode[];
   readonly timelines: readonly string[];
   readonly storyboardText: string | undefined;
@@ -510,7 +535,7 @@ const compileRejected: CompileRejected = { _tag: 'CompileRejected' };
 const inspectProgram = (
   file: string,
   detailed: boolean
-): Effect.Effect<ProjectProgram, ToolError> =>
+): Effect.Effect<Omit<ProjectProgram, 'brief'>, ToolError> =>
   Effect.gen(function* () {
     const unreadable: string[] = [];
     const inspected = yield* Effect.tryPromise({
@@ -562,10 +587,34 @@ export const handle = (
         catch: toToolError('read', file),
       }).pipe(Effect.map(source => ({ file, library: isLibrary(source) })))
     );
+    // FR-056, P17: the record without a scan or a write (a running scan is awaited; with no
+    // record, the first-run record in memory), the key read once; never gated.
+    const record = yield* context.gate.record.peek(root.root);
+    const key = yield* Effect.tryPromise(() => readKey(context.gate.stateDir)).pipe(
+      Effect.orElseSucceed(() => undefined)
+    );
+    const programFiles = sources.filter(source => !source.library).map(source => source.file);
+    const briefs = yield* Effect.forEach(programFiles, file =>
+      Effect.tryPromise({
+        try: () => briefStatusOf(root.root, file, record, key),
+        catch: toToolError('read', file),
+      })
+    );
+    // FR-057: the first program whose gate is a refusal, else the first
+    const noted = briefs.find(brief => brief.gate !== 'runs') ?? briefs[0];
+    if (noted !== undefined) {
+      yield* Effect.sync(() =>
+        context.gate.noteBrief({
+          state: noted.state,
+          ...(noted.gate === 'runs' ? {} : { gate: noted.gate }),
+        })
+      );
+    }
     const lock = yield* CompilerLock;
-    const programs = yield* Effect.forEach(
-      sources.filter(source => !source.library),
-      source => lock.run(context.requestId, inspectProgram(source.file, detailed))
+    const programs = yield* Effect.forEach(programFiles, (file, index) =>
+      lock
+        .run(context.requestId, inspectProgram(file, detailed))
+        .pipe(Effect.map(section => ({ ...section, brief: briefs[index] })))
     );
     // A directory's library files (FR-020); a program's own libraries are in its section
     const libraries: ProjectFile[] = sources

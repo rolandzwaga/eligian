@@ -298,7 +298,7 @@ export interface BriefState {
   readonly confirmation?: Confirmation;
   readonly approval?: Approval;
   readonly answers: readonly Answer[];
-  readonly additions: readonly AdditionState[];
+  readonly additions?: readonly AdditionState[];   // optional (build ruling T013); EMPTY_BRIEF has []
 }
 export interface Facts {              // :64–71, plus:
   readonly signer?: Signer;           // P4
@@ -306,7 +306,7 @@ export interface Facts {              // :64–71, plus:
   readonly section?: string;          // 'brief' or an addition heading (HMAC payload)
 }
 export type BriefStateName = 'open' | 'complete' | 'confirmed' | 'approved';    // :73
-export interface Counts { …; readonly fromCode: number }                          // FR-045
+export interface Counts { …; readonly fromCode?: number }                         // FR-045 (optional: present when > 0; the tool reports ?? 0)
 export interface Evaluation {         // :112–127, plus:
   readonly confirmationStatus: 'none' | 'valid' | 'invalid';
   readonly approvalStatus: 'none' | 'valid' | 'invalid';
@@ -634,7 +634,13 @@ Every new spec is written first and run red. Paths are under `packages/cli/src/_
 4. **FR-058 move (1) in `brief-tool.spec.ts` › `status completes while a latched lock holds a check` (`:759–787`).** Today the test writes `main.eligian` after `restart(...)` (`:770`) and awaits `reached.promise`, which resolves only when the check takes the compiler lock; under the gate (FR-014) that program is not known, the check is refused `brief-required` before the lock and the test would hang. New setup: `await ok({ action: 'status' })` (awaits the first server's start scan; with no file and no idea it writes nothing, `:301`), write `main.eligian`, `fs.rmSync(path.join(root, '.eligian'), { recursive: true, force: true })`, then `restart(...)`, whose start scan records `main.eligian` (row 4, runs, takes the lock). The assertions are unchanged.
 5. **FR-056 in `mcp-brief-interview.spec.ts` › `not gated (SC-003)` (`:263–313`).** The program is copied before the server starts (`:270–271`), so it is known (move 1) and row 4 runs every call; but the `eligian_project` result (`:283`) gains `brief`, which differs with and without `BRIEF.md`. `expect(withBrief).toEqual(without)` (`:311`) compares the five results with `programs[].brief` removed from the `eligian_project` payload; two added assertions check that field: without the file `{ file: null, state: 'none', known: true, gate: 'runs' }`, with it `state: 'open'`, `gate: 'runs'`. The `describe` title stays (the tools are still not gated by an open brief on a known program).
 
-`brief-tool-defect`, `brief-tool-tree-version`, `brief-tree` and `mcp-brief-restart` have no entry: they are expected unchanged (`mcp-brief-restart` and `brief-tool` keep importing `makeFacts` through the re-export, P3).
+6. **Purity exceptions (build ruling, Group 2).** `brief-tree.spec.ts` › `purity (SC-012, FR-035)` › `brief/* import neither effect/ai nor node:fs`: the files `facts.ts`, `known-programs.ts`, `signature.ts` and `gate.ts` are skipped by name; every other `*.ts` in `mcp/brief/` is still checked.
+7. **Signed confirmations elsewhere in `brief-engine.spec.ts` (FR-024, P4; build ruling, T041).** The `Confirmation` type has `round` and `hmac` in place of `digest`, so every case that builds one changes like entry 2: `dormant (SC-019 engine half)` (`signedConfirmation(...)`, `fakeFacts({ signer: SIGNER })`) and `describe('tree versions (FR-018)')` (`confirmedWith` over signed answers, a `SIGNED` const, "digest" → "HMAC" in its titles and comments). Verdicts unchanged.
+8. **`counts.fromCode` in the reply (FR-045 as ruled).** `brief-tool.spec.ts` (`after.counts`) and `mcp-brief-restart.spec.ts` compare the reply's counts with the engine's plus `fromCode: counts.fromCode ?? 0`.
+9. **`summarizeArgs` gains `scope` and `paths` (FR-057).** `brief-tool.spec.ts`'s telemetry-args case expects `scope: 'presentation', paths: 0`.
+10. **Small follow-ons.** Entry 5's no-brief `briefOf(without)` also has `next: expect.any(String)`; entry 1 renames the `brief-tool.spec.ts` case title "digest" → "HMAC".
+
+`brief-tool-defect` and `brief-tool-tree-version` have no entry: they are expected unchanged (`mcp-brief-restart` changes only by entry 8; it and `brief-tool` keep importing `makeFacts` through the re-export, P3).
 
 ## Build integration
 

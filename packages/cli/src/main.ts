@@ -7,6 +7,7 @@
  */
 
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { getCompilerVersion, parseSelectorNotInLayout, STARTERS } from '@eligian/language';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -71,6 +72,23 @@ async function readScenarioFile(file: string) {
   }
   const parsed = parseScenario(json);
   return parsed.ok ? parsed.scenario : refuse(parsed.message);
+}
+
+/**
+ * Spec 059 FR-053 to FR-055: one stderr line per program an unapproved `BRIEF.md` governs or the
+ * record of known programs does not list. `process.stderr` directly (never `console.*`), so stdout,
+ * `--format json|github|ndjson` and the exit code stay as they are; it reads and never writes.
+ */
+async function printBriefWarnings(
+  programs: { readonly patterns: readonly string[] } | { readonly input: string }
+): Promise<void> {
+  const { cliBriefWarnings, cliBriefWarningsFor } = await import('./mcp/brief/gate.js');
+  const cwd = process.cwd();
+  const lines =
+    'input' in programs
+      ? await cliBriefWarnings([path.resolve(programs.input)], cwd)
+      : await cliBriefWarningsFor(programs.patterns, cwd);
+  for (const line of lines) process.stderr.write(`${line}\n`);
 }
 
 /**
@@ -360,6 +378,7 @@ export default function main(): void {
         );
         process.exit(2);
       }
+      await printBriefWarnings({ patterns });
       const outcome = await runCheck(patterns, {
         selectorNotInLayout,
         format,
@@ -390,6 +409,7 @@ export default function main(): void {
         console.error(`Error: --port must be a port number (got "${cmdOptions.port}")`);
         process.exit(2);
       }
+      await printBriefWarnings({ input });
       const time = () => new Date().toTimeString().slice(0, 8);
       const server = await startDevServer(input, {
         port,
@@ -451,6 +471,7 @@ export default function main(): void {
           process.exit(2);
         }
       }
+      await printBriefWarnings({ patterns });
       // ndjson (spec 058 P14): stdout carries only the lines; any other output goes to stderr
       const out =
         format === 'ndjson'
@@ -499,6 +520,8 @@ export default function main(): void {
         force: cmdOptions.force === true,
         cwd: process.cwd(),
         agents: cmdOptions.agents === false ? [] : parsed.clients,
+        // FR-060: the one record write of the CLI
+        firstRecord: true,
       });
       if (outcome.exitCode === 0) console.log(outcome.output);
       else console.error(chalk.red(outcome.output));
@@ -547,6 +570,7 @@ export default function main(): void {
         );
         process.exit(2);
       }
+      await printBriefWarnings({ patterns });
       const outcome = await runFmt(patterns, {
         write: cmdOptions.write === true,
         cwd: process.cwd(),
@@ -636,6 +660,7 @@ export default function main(): void {
         process.exit(1);
       }
 
+      await printBriefWarnings({ input });
       if (options.bundle) {
         await bundleCLI(input, options);
       } else {

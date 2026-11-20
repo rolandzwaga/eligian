@@ -284,6 +284,22 @@ describe('not gated (SC-003)', () => {
     ['eligian_smoke', { paths: ['main.eligian'] }],
   ];
 
+  type ProjectPayload = { programs: { brief?: unknown }[] };
+
+  /** The results with `programs[].brief` removed from the `eligian_project` payload. */
+  const withoutProjectBrief = (results: { tool: string; isError: boolean; payload: unknown }[]) =>
+    results.map(result => {
+      if (result.tool !== 'eligian_project') return result;
+      const payload = result.payload as ProjectPayload;
+      return {
+        ...result,
+        payload: {
+          ...payload,
+          programs: payload.programs.map(({ brief: _brief, ...program }) => program),
+        },
+      };
+    });
+
   const callAll = async () => {
     const results: { tool: string; isError: boolean; payload: unknown }[] = [];
     for (const [tool, args] of CALLS) {
@@ -308,7 +324,19 @@ describe('not gated (SC-003)', () => {
       expect(fs.existsSync(path.join(root, 'BRIEF.md'))).toBe(true);
 
       const withBrief = await callAll();
-      expect(withBrief).toEqual(without);
+      // Phase 2 FR-056: eligian_project's brief section differs with the brief; the rest is equal
+      const briefOf = (results: Awaited<ReturnType<typeof callAll>>) =>
+        (results.find(r => r.tool === 'eligian_project')!.payload as ProjectPayload).programs[0]
+          ?.brief;
+      expect(briefOf(without)).toEqual({
+        file: null,
+        state: 'none',
+        next: expect.any(String),
+        known: true,
+        gate: 'runs',
+      });
+      expect(briefOf(withBrief)).toMatchObject({ state: 'open', gate: 'runs' });
+      expect(withoutProjectBrief(withBrief)).toEqual(withoutProjectBrief(without));
     },
     TIMEOUT
   );

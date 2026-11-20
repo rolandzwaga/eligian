@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "programs": [
+    {
+      "path": "main.eligian",
+      "timelines": ["hours"],
+      "languages": [],
+      "extensions": false,
+      "via": "brief"
+    }
+  ]
+}

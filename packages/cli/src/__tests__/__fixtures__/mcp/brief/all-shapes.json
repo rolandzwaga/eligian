@@ -5,7 +5,7 @@
     "confirmation": {
       "mode": "agent-reported",
       "at": "2026-11-19T10:00:00.000Z",
-      "digest": "7092964b333a58bcbff2c4e26fc6db63c7eed1df4fdcaa6a916a6d2e27d9f45b",
+      "hmac": "sha256:7092964b333a58bcbff2c4e26fc6db63c7eed1df4fdcaa6a916a6d2e27d9f45b",
       "message": "Confirmed: \"all of it\"\nwith a second line"
     },
     "answers": [

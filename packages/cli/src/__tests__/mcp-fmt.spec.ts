@@ -8,7 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { getCompilerVersion } from '@eligian/language';
 import { Effect } from 'effect';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { makeRecordStore } from '../mcp/brief/known-programs.js';
 import { CompilerLockLive } from '../mcp/compiler-lock.js';
 import type { EffectAi } from '../mcp/paths.js';
 import { DESCRIPTION, handle, KEYWORDS, NAME, type ToolContext } from '../mcp/tools/fmt.js';
@@ -38,6 +39,7 @@ const hash = (file: string): string =>
 describe('eligian_fmt', () => {
   let ai: EffectAi;
   let dir: string;
+  let stateDir: string;
   let context: ToolContext;
 
   const run = (params: Parameters<typeof handle>[0]) =>
@@ -47,6 +49,11 @@ describe('eligian_fmt', () => {
 
   beforeAll(async () => {
     ai = await import('effect/ai');
+    stateDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-fmt-state-')));
+  });
+
+  afterAll(() => {
+    fs.rmSync(stateDir, { recursive: true, force: true });
   });
 
   beforeEach(() => {
@@ -54,7 +61,15 @@ describe('eligian_fmt', () => {
     for (const name of fs.readdirSync(FIXTURES)) {
       fs.copyFileSync(path.join(FIXTURES, name), path.join(dir, name));
     }
-    context = { ai, cwd: dir, docsRoot: dir, versions, requestId: '1' };
+    // Spec 059 FR-058 move (1): the copied programs exist before the first call scans the dir.
+    context = {
+      ai,
+      cwd: dir,
+      docsRoot: dir,
+      versions,
+      requestId: '1',
+      gate: { record: makeRecordStore(), stateDir, noteBrief: () => {} },
+    };
   });
 
   afterEach(() => {

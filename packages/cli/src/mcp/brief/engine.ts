@@ -14,14 +14,18 @@
  * - `applyAnswers`: one `answer` call (FR-007, FR-015): duplicates, dependency order, status,
  *   shape (`validateValue`), cross-references (`crossCheck`, `references.ts`), no-op, `by` only,
  *   and the review of a stale answer kept as it is (`reviewed`, the round kept).
- * - `confirm`: the `agent-reported` confirmation of an evaluation (FR-029).
- * - `nextRound`, `viewBasis`, `digest`, `textDirection`: the small rules the tool and the file use.
+ * - `confirm`, `approve`: the signed confirmation and approval lines of an evaluation (Phase 2
+ *   FR-024, FR-027). The HMAC comes in as `Facts.signer` and as the `signer` argument (Phase 2
+ *   P4), so the engine stays pure; with no signer nothing verifies.
+ * - `nextRound`, `viewBasis`, `canonicalAnswers`, `digest`, `textDirection`: the small rules the
+ *   tool and the file use.
  *
  * Pure: no `node:fs`, no `effect`. Existence and containment come only from `Facts` (P16).
  */
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { posix } from 'node:path';
 import { type CrossContext, crossCheck, SAME_AS_VALUE } from './references.js';
+import type { CanonicalAnswers, SignaturePayload, Signer } from './signature.js';
 import {
   ALWAYS,
   type AnswerValue,
@@ -34,7 +38,8 @@ import {
 } from './tree.js';
 import { expectedForm, validateValue } from './values.js';
 
-export type By = 'user' | 'delegated';
+/** `code`: a fact read from the program by adoption (Phase 2 FR-042, P12), never via `answer`. */
+export type By = 'user' | 'delegated' | 'code';
 
 export interface Answer {
   readonly id: string;
@@ -45,20 +50,55 @@ export interface Answer {
   readonly basis?: string;
 }
 
+/** The signed confirmation line (Phase 2 FR-024). */
 export interface Confirmation {
-  readonly mode: 'agent-reported';
+  readonly mode: 'elicitation' | 'agent-reported';
   /** ISO-8601 UTC. */
   readonly at: string;
-  /** 64 hex (FR-022). */
-  readonly digest: string;
-  readonly message: string;
+  /** The watermark n (FR-026); absent on a Phase 1 `sha256:` line, which never verifies. */
+  readonly round?: number;
+  /** `hmac-sha256:<64 hex>`, or a Phase 1 line's `sha256:<64 hex>` (round-tripped verbatim). */
+  readonly hmac: string;
+  /** `agent-reported` only: the user's reply verbatim. */
+  readonly message?: string;
+}
+
+/** The signed approval line (Phase 2 FR-024); its payload holds the confirmation's HMAC. */
+export interface Approval {
+  readonly mode: 'elicitation' | 'agent-reported' | 'existing-storyboard';
+  /** ISO-8601 UTC. */
+  readonly at: string;
+  /** `hmac-sha256:<64 hex>`. */
+  readonly hmac: string;
+  /** `agent-reported` only. */
+  readonly message?: string;
+}
+
+/** What an addition adds (Phase 2 FR-036). */
+export type AdditionKind = 'view' | 'language' | 'host-module';
+
+/** One `## Addition: …` section of `BRIEF.md` (Phase 2 FR-035). */
+export interface AdditionState {
+  readonly kind: AdditionKind;
+  /** The view name or language code; `''` for a host module. */
+  readonly name: string;
+  /** `Addition: view Outro`: the section of its signed lines (FR-038). */
+  readonly heading: string;
+  readonly confirmation?: Confirmation;
+  readonly approval?: Approval;
+  readonly answers: readonly Answer[];
 }
 
 export interface BriefState {
   readonly idea?: string;
   readonly treeVersion: number;
+  /** `adopt`: the brief of an adopted presentation (Phase 2 FR-041). */
+  readonly scope?: 'adopt';
   readonly confirmation?: Confirmation;
+  readonly approval?: Approval;
   readonly answers: readonly Answer[];
+  /** The addition sections in creation order (Phase 2 FR-035); absent means none. */
+  readonly additions?: readonly AdditionState[];
 }
 
 export interface Facts {
@@ -68,9 +108,18 @@ export interface Facts {
   readonly exists: (fromBrief: string) => boolean;
   /** The path resolves under the project root. */
   readonly inside: (fromBrief: string) => boolean;
+  /** The HMAC over the key (Phase 2 P4); absent when there is no key, so nothing verifies. */
+  readonly signer?: Signer;
+  /** The HMAC section: `brief` (the default) or an addition's heading (Phase 2 FR-024). */
+  readonly section?: string;
+  /** Phase 2 P11: when set, branch V expands over exactly these names instead of S2's. */
+  readonly views?: readonly string[];
 }
 
-export type BriefStateName = 'open' | 'complete' | 'confirmed';
+export type BriefStateName = 'open' | 'complete' | 'confirmed' | 'approved';
+
+/** Whether a signed line verifies (Phase 2 FR-025): absent, verifies, or does not. */
+export type SignatureStatus = 'none' | 'valid' | 'invalid';
 
 export type InstanceStatus = 'answered' | 'open' | 'stale' | 'waiting' | 'not-applicable';
 
@@ -107,6 +156,11 @@ export interface Counts {
   readonly open: number;
   readonly waiting: number;
   readonly notApplicable: number;
+  /**
+   * Phase 2 FR-045: the answered instances settled by a fact (`by: code`), also in `answered`.
+   * Present only when there is one, so a brief without facts has Phase 1's counts.
+   */
+  readonly fromCode?: number;
 }
 
 export interface Evaluation {
@@ -125,6 +179,19 @@ export interface Evaluation {
   readonly views: readonly string[];
   /** FR-022 over the recorded answers of the applicable, non-dormant instances. */
   readonly digest: string;
+  /** The list `digest` hashes and the signed lines sign (Phase 2 FR-024). */
+  readonly canonical: CanonicalAnswers;
+  readonly confirmationStatus: SignatureStatus;
+  readonly approvalStatus: SignatureStatus;
+  /**
+   * Phase 2 FR-026: with a present, invalid confirmation that has a watermark, the recorded
+   * applicable answers whose `round` or `reviewed` is above it; `[]` otherwise.
+   */
+  readonly changed: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly value: AnswerValue;
+  }[];
 }
 
 export type RejectionReason =
@@ -133,7 +200,9 @@ export type RejectionReason =
   | 'waiting'
   | 'not-applicable'
   | 'invalid-value'
-  | 'invalid-reference';
+  | 'invalid-reference'
+  /** Phase 2 FR-045: the id is settled by a fact read from the code. */
+  | 'fact';
 
 export interface Rejection {
   readonly id: string;
@@ -158,7 +227,7 @@ export interface RoundItem {
   readonly reason?: string;
 }
 
-export const EMPTY_BRIEF: BriefState = { treeVersion: TREE_VERSION, answers: [] };
+export const EMPTY_BRIEF: BriefState = { treeVersion: TREE_VERSION, answers: [], additions: [] };
 
 /**
  * The synthetic question of a `V:<name>` answer (`same as <other>`, FR-014): branch V of `<name>`
@@ -188,10 +257,97 @@ type Row = Readonly<Record<string, string>>;
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
 
+/** The HMAC strings compared in constant time, the length checked first (plan §3). */
+function sameHmac(expected: string, actual: string): boolean {
+  if (expected.length !== actual.length) return false;
+  return timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(actual, 'utf8'));
+}
+
+const BRIEF_SECTION = 'brief';
+
+/** The payload a confirmation line signs (FR-024), or `undefined` without a watermark. */
+function confirmationPayload(
+  section: string,
+  confirmation: Confirmation,
+  canonical: CanonicalAnswers
+): SignaturePayload | undefined {
+  if (confirmation.round === undefined) return undefined;
+  const { mode, at, round } = confirmation;
+  return ['eligian-brief/1', 'confirmation', section, mode, at, round, canonical];
+}
+
+/** The payload an approval line signs: the confirmation's watermark and HMAC included (FR-024). */
+function approvalPayload(
+  section: string,
+  approval: Pick<Approval, 'mode' | 'at'>,
+  confirmation: Confirmation,
+  canonical: CanonicalAnswers
+): SignaturePayload | undefined {
+  if (confirmation.round === undefined) return undefined;
+  const { mode, at } = approval;
+  return [
+    'eligian-brief/1',
+    'approval',
+    section,
+    mode,
+    at,
+    confirmation.round,
+    canonical,
+    confirmation.hmac,
+  ];
+}
+
+/** Phase 2 FR-025: a line verifies when the signer's HMAC over its payload equals its own. */
+function statusOf(
+  hmac: string | undefined,
+  payload: SignaturePayload | undefined,
+  signer: Signer | undefined
+): SignatureStatus {
+  if (hmac === undefined) return 'none';
+  if (payload === undefined || signer === undefined) return 'invalid';
+  return sameHmac(signer.sign(payload), hmac) ? 'valid' : 'invalid';
+}
+
+/**
+ * The statuses of the brief's signed lines over `canonical`. An approval never outlives its
+ * confirmation: it is valid only while the confirmation is.
+ */
+function signatureStatuses(
+  brief: BriefState,
+  canonical: CanonicalAnswers,
+  facts: Facts
+): { readonly confirmation: SignatureStatus; readonly approval: SignatureStatus } {
+  const section = facts.section ?? BRIEF_SECTION;
+  const { confirmation, approval } = brief;
+  const confirmationStatus = statusOf(
+    confirmation?.hmac,
+    confirmation === undefined ? undefined : confirmationPayload(section, confirmation, canonical),
+    facts.signer
+  );
+  const approvalStatus: SignatureStatus =
+    approval === undefined
+      ? 'none'
+      : confirmation === undefined || confirmationStatus !== 'valid'
+        ? 'invalid'
+        : statusOf(
+            approval.hmac,
+            approvalPayload(section, approval, confirmation, canonical),
+            facts.signer
+          );
+  return { confirmation: confirmationStatus, approval: approvalStatus };
+}
+
 const isRow = (v: unknown): v is Row => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const rowsOf = (v: AnswerValue | undefined): readonly Row[] =>
   Array.isArray(v) ? (v as readonly unknown[]).filter(isRow) : [];
+
+/**
+ * S6's rows: its table's, or, for an addition's scoped S6 (Phase 2 P11), its record as the row of
+ * `view` (the addition's one view).
+ */
+const s6RowsOf = (v: AnswerValue | undefined, view: string | undefined): readonly Row[] =>
+  isRow(v) ? (view === undefined ? [] : [{ view, ...v }]) : rowsOf(v);
 
 const byCodeUnits = (l: string, r: string): number => (l < r ? -1 : l > r ? 1 : 0);
 
@@ -215,6 +371,28 @@ const crossContext = (
   sameAs,
   facts,
 });
+
+/** The questions an addition asks as one record of the view instead of a table (FR-036). */
+const SCOPED_RECORDS: readonly string[] = ['S5', 'S6', 'D5'];
+
+/**
+ * The cross-references of a value (FR-011 to FR-014). For a scoped clone (Phase 2 P11): its S5, S6
+ * and D5 records are read as the addition's one row of the template's table; its S4 rows name
+ * views outside the addition, so the clone's own check (`scoped.ts`) replaces S4's S2 check.
+ */
+function scopedCrossCheck(
+  question: Question,
+  id: string,
+  value: AnswerValue,
+  context: CrossContext
+): string | undefined {
+  if (question.scoped !== true) return crossCheck(id, value, context);
+  if (question.id === 'S4') return undefined;
+  const view = context.views.length === 1 ? context.views[0] : undefined;
+  return SCOPED_RECORDS.includes(question.id) && isRow(value) && view !== undefined
+    ? crossCheck(id, [{ view, ...value }], context)
+    : crossCheck(id, value, context);
+}
 
 type Checked =
   | { readonly ok: true; readonly value: AnswerValue }
@@ -243,7 +421,7 @@ function checkAnswer(
       : `${validated.message}; ${form}`;
     return { ok: false, reason: 'invalid-value', message };
   }
-  const problem = crossCheck(id, validated.value, context);
+  const problem = scopedCrossCheck(question, id, validated.value, context);
   return problem === undefined
     ? { ok: true, value: validated.value }
     : { ok: false, reason: 'invalid-reference', message: problem };
@@ -399,14 +577,15 @@ const BASIS_IDS: readonly string[] = ['S2', 'S6'];
 /**
  * FR-018 in two passes (P11). Pass 1, while a confirmation is present: the questions newer than
  * the brief's tree version do not apply, so a later tree does not reopen a confirmed brief. When
- * pass 1's digest does not match the confirmation, the confirmation is not valid and the brief is
- * evaluated against the full tree (pass 2), as is every unconfirmed brief.
+ * the confirmation's HMAC does not verify over pass 1's canonical answers (Phase 2 P4), the
+ * confirmation is not valid there and the brief is evaluated against the full tree (pass 2), as is
+ * every unconfirmed brief.
  */
 export function evaluate(tree: readonly Question[], brief: BriefState, facts: Facts): Evaluation {
   const confirmation = brief.confirmation;
   if (confirmation !== undefined && tree.some(q => q.since > brief.treeVersion)) {
     const pass1 = evaluatePass(tree, brief, facts, brief.treeVersion);
-    if (pass1.digest === confirmation.digest) return pass1;
+    if (pass1.confirmationStatus === 'valid') return pass1;
   }
   return evaluatePass(tree, brief, facts, undefined);
 }
@@ -426,7 +605,7 @@ export function recordedTreeVersion(
   const keep =
     confirmation !== undefined &&
     tree.some(q => q.since > brief.treeVersion) &&
-    evaluatePass(tree, brief, facts, brief.treeVersion).digest === confirmation.digest;
+    evaluatePass(tree, brief, facts, brief.treeVersion).confirmationStatus === 'valid';
   return keep ? brief.treeVersion : current;
 }
 
@@ -442,7 +621,8 @@ function evaluatePass(
   const isVTemplate = (id: string) => templates.get(id)?.branch === 'V';
 
   const answers = answersById(brief);
-  const views = viewsOf(tree, answers);
+  // P11: an addition's interview fixes the views; S2 names them otherwise (FR-010).
+  const views = facts.views ?? viewsOf(tree, answers);
   const sameAs = sameAsOf(answers, views);
 
   const instances: Instance[] = [];
@@ -460,7 +640,8 @@ function evaluatePass(
         const copy = value(`V3:${view}`);
         return copy === undefined ? [] : [{ view, value: copy }];
       });
-      assets = assetList(v3, value('S6'), value('D3'), facts);
+      // P11: an addition's S6 is a record, the row of its one view.
+      assets = assetList(v3, s6RowsOf(value('S6'), views?.[0]), value('D3'), facts);
     }
     return assets;
   };
@@ -526,6 +707,8 @@ function evaluatePass(
     const context = crossContext(views ?? [], byId, currentAssets(), sameAs, facts);
     const checked = checkAnswer(spec.question, spec.id, answer.value, context);
     if (!checked.ok) return { reason: checked.message };
+    // P12: a fact is never stale by a round or a basis; only a re-read of the code changes it.
+    if (answer.by === 'code') return undefined;
     const since = Math.max(answer.round, answer.reviewed ?? 0);
     if (spec.roundDeps.some(d => d.round > since)) return {};
     if (spec.view !== undefined && answer.basis !== viewBasis(brief, spec.view)) return {};
@@ -543,13 +726,16 @@ function evaluatePass(
       counted: spec.counted,
     };
     const dependsOn = spec.deps.map(d => d.id);
-    if (!spec.deps.every(isSettled)) {
+    // P12: a fact (`by: code`) needs no decision before it, so it never waits; whether it applies
+    // is decided once its prerequisites are settled (until then it counts as applicable).
+    const settled = spec.deps.every(isSettled);
+    if (!settled && answer?.by !== 'code') {
       push({ ...base, status: 'waiting', dormant: false, round: 0, dependsOn });
       return;
     }
     if (
       (versionGate !== undefined && spec.question.since > versionGate) ||
-      !spec.question.appliesWhen(answerView(spec.question), currentAssets())
+      (settled && !spec.question.appliesWhen(answerView(spec.question), currentAssets()))
     ) {
       push({
         ...base,
@@ -679,12 +865,16 @@ function evaluatePass(
   const ownDelegated = counted.filter(
     i => i.status === 'answered' && i.answer !== undefined && i.answer.by === 'delegated'
   );
+  const fromCode = counted.filter(
+    i => i.status === 'answered' && i.answer !== undefined && i.answer.by === 'code'
+  ).length;
   const counts: Counts = {
     answered: counted.filter(i => i.status === 'answered').length,
     delegated: ownDelegated.length,
     open: counted.filter(i => i.status === 'open' || i.status === 'stale').length,
     waiting: counted.filter(i => i.status === 'waiting').length,
     notApplicable: counted.filter(i => i.status === 'not-applicable').length,
+    ...(fromCode === 0 ? {} : { fromCode }),
   };
   const delegated = ownDelegated.flatMap(i =>
     i.answer === undefined ? [] : [{ id: i.id, title: i.title, value: i.answer.value }]
@@ -692,13 +882,29 @@ function evaluatePass(
   const applicable = instances.flatMap(i =>
     i.status !== 'not-applicable' && i.answer !== undefined ? [i.answer] : []
   );
-  const briefDigest = digest(applicable);
+  const canonical = canonicalAnswers(applicable);
+  const statuses = signatureStatuses(brief, canonical, facts);
+  // Phase 2 FR-026.
   const state: BriefStateName =
     frontier.length > 0
       ? 'open'
-      : brief.confirmation?.digest === briefDigest
-        ? 'confirmed'
-        : 'complete';
+      : statuses.confirmation !== 'valid'
+        ? 'complete'
+        : statuses.approval === 'valid'
+          ? 'approved'
+          : 'confirmed';
+  // The answers recorded after the watermark of an invalid confirmation (FR-026).
+  const watermark = brief.confirmation?.round;
+  const changed =
+    statuses.confirmation !== 'invalid' || watermark === undefined
+      ? []
+      : instances.flatMap(i =>
+          i.status !== 'not-applicable' &&
+          i.answer !== undefined &&
+          Math.max(i.answer.round, i.answer.reviewed ?? 0) > watermark
+            ? [{ id: i.id, title: i.title, value: i.answer.value }]
+            : []
+        );
 
   return {
     state,
@@ -708,7 +914,11 @@ function evaluatePass(
     delegated,
     assets: currentAssets(),
     views: views ?? [],
-    digest: briefDigest,
+    digest: sha256(JSON.stringify(canonical)),
+    canonical,
+    confirmationStatus: statuses.confirmation,
+    approvalStatus: statuses.approval,
+    changed,
   };
 }
 
@@ -866,6 +1076,8 @@ export function applyAnswers(
   };
 }
 
+const FACT_SETTLED = 'settled by the code; change the code and call with scope adopt again';
+
 function applyOne(
   item: AnswerInput,
   round: number,
@@ -877,6 +1089,16 @@ function applyOne(
   facts: Facts
 ): { readonly brief: BriefState } | { readonly rejection: Rejection } {
   const { id } = item;
+  // FR-045: a fact is changed only by the code and a re-read (`scope: adopt`), never by `answer`.
+  if (brief.answers.find(x => x.id === id)?.by === 'code') {
+    return {
+      rejection: {
+        id,
+        reason: 'fact',
+        message: `${id} is ${FACT_SETTLED}`,
+      },
+    };
+  }
   const target = locate(tree, evaluation, byId, id);
   if ('rejection' in target) return target;
   const { question, view, instance } = target;
@@ -920,28 +1142,60 @@ function applyOne(
 }
 
 // ---------------------------------------------------------------------------------------------
-// confirm (FR-029 engine half).
+// confirm and approve (FR-029 engine half; Phase 2 FR-024, FR-027).
 
 /**
- * The brief with an `agent-reported` confirmation of `evaluation` (the evaluation of `brief`): the
- * time as ISO-8601 UTC, the FR-022 digest, the message verbatim. The tool refuses the cases of
- * FR-029 before calling it.
+ * The brief with a signed confirmation of `evaluation` (the evaluation of `brief`): the time as
+ * ISO-8601 UTC, the watermark n (the highest `round` or `reviewed`, `nextRound - 1`), the HMAC over
+ * `["eligian-brief/1", "confirmation", section, mode, at, n, canonical]`, and for
+ * `agent-reported` the message verbatim. The tool refuses the cases of FR-029 before calling it.
  */
 export function confirm(
   brief: BriefState,
-  message: string,
+  mode: Confirmation['mode'],
+  message: string | undefined,
   now: Date,
-  evaluation: Evaluation
+  evaluation: Evaluation,
+  signer: Signer,
+  section: string
 ): BriefState {
-  return {
-    ...brief,
-    confirmation: {
-      mode: 'agent-reported',
-      at: now.toISOString(),
-      digest: evaluation.digest,
-      message,
-    },
-  };
+  const at = now.toISOString();
+  const round = nextRound(brief) - 1;
+  const hmac = signer.sign([
+    'eligian-brief/1',
+    'confirmation',
+    section,
+    mode,
+    at,
+    round,
+    evaluation.canonical,
+  ]);
+  const withMessage = mode === 'agent-reported' && message !== undefined ? { message } : {};
+  return { ...brief, confirmation: { mode, at, round, hmac, ...withMessage } };
+}
+
+/**
+ * The brief with a signed approval of `evaluation` (the evaluation of `brief`): its payload holds
+ * the confirmation's watermark and HMAC, so it never outlives that confirmation (FR-024). A brief
+ * whose confirmation has no watermark (none, or a Phase 1 line) is returned unchanged: the tool
+ * refuses an approval before a valid confirmation.
+ */
+export function approve(
+  brief: BriefState,
+  mode: Approval['mode'],
+  message: string | undefined,
+  now: Date,
+  evaluation: Evaluation,
+  signer: Signer,
+  section: string
+): BriefState {
+  const confirmation = brief.confirmation;
+  if (confirmation === undefined) return brief;
+  const at = now.toISOString();
+  const payload = approvalPayload(section, { mode, at }, confirmation, evaluation.canonical);
+  if (payload === undefined) return brief;
+  const withMessage = mode === 'agent-reported' && message !== undefined ? { message } : {};
+  return { ...brief, approval: { mode, at, hmac: signer.sign(payload), ...withMessage } };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1034,14 +1288,18 @@ export function nextRound(brief: BriefState): number {
 }
 
 /**
- * FR-022: the hex SHA-256 of the JSON of `[id, value, by]` sorted by id (round, `reviewed` and
- * basis excluded).
+ * FR-022: `[id, value, by]` of each answer sorted by id (round, `reviewed` and basis excluded):
+ * the list `digest` hashes and the signed lines sign (Phase 2 FR-024).
  */
-export function digest(answers: readonly Answer[]): string {
-  const entries = answers
+export function canonicalAnswers(answers: readonly Answer[]): CanonicalAnswers {
+  return answers
     .map(answer => [answer.id, answer.value, answer.by] as const)
     .sort(([l], [r]) => byCodeUnits(l, r));
-  return sha256(JSON.stringify(entries));
+}
+
+/** FR-022: the hex SHA-256 of the JSON of `canonicalAnswers(answers)`. */
+export function digest(answers: readonly Answer[]): string {
+  return sha256(JSON.stringify(canonicalAnswers(answers)));
 }
 
 /**
@@ -1052,7 +1310,10 @@ export function viewBasis(brief: BriefState, view: string): string {
   const rowFor = (id: string, key: string): Row | undefined =>
     rowsOf(brief.answers.find(answer => answer.id === id)?.value).find(r => r[key] === view);
   const s2 = rowFor('S2', 'name');
-  const s6 = rowFor('S6', 'view');
+  // P11: an addition's S6 is a record, the row of its one view.
+  const s6 = s6RowsOf(brief.answers.find(answer => answer.id === 'S6')?.value, view).find(
+    r => r.view === view
+  );
   const s2Row = s2 === undefined ? null : { name: s2.name, purpose: s2.purpose };
   const s6Row =
     s6 === undefined ? null : { view: s6.view, provider: s6.provider, source: s6.source };

@@ -32,6 +32,7 @@ import {
   type Snapshot,
 } from '../../smoke/scenario.js';
 import type { SmokeTimeline } from '../../smoke/smoke-runner.js';
+import { checkPrograms, type GateContext } from '../brief/gate.js';
 import {
   type FileSmokeProblem,
   McpDiagnosticSchema,
@@ -63,6 +64,8 @@ export interface ToolContext {
   readonly versions: { readonly compiler: string; readonly eligius: string };
   readonly requestId: string;
   readonly smoke?: SmokeToolOptions;
+  /** Spec 059 Phase 2 (FR-010, FR-014): the brief gate's record, key and telemetry note. */
+  readonly gate: GateContext;
 }
 
 export const NAME = 'eligian_smoke' as const;
@@ -381,6 +384,8 @@ export const handle = (
   Effect.gen(function* () {
     const root = yield* projectRoot(context.ai, context.cwd);
     const files = yield* resolveInputPatterns(root, params.paths);
+    // FR-014: the gate first, before the reads and the spawn.
+    yield* checkPrograms(root, files, context.gate);
     const knowledge = yield* loadKnowledge(context.docsRoot);
     if (params.assertions !== undefined && params.scenario === undefined) {
       return yield* usage('assertions need a scenario: they are evaluated against its steps');

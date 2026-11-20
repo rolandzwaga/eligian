@@ -606,12 +606,17 @@ for (const group of dispatch.groups) {
     // green. Added 2026-11-04 after Phase 0 Group 11 ran four identical "not mine to fix" rounds.
     // TODO before the next FRESH run: add `expected_red: boolean` per group to TASKGROUPS_SCHEMA so
     // the dispatcher reads it from tasks.md (changes the dispatch opts hash, so not mid-run).
-    if (/later (?:group|task)|red until T\d+|not (?:a |mine to )?(?:code )?(?:defect|fix)|no defect|nothing (?:left )?to fix/i.test(fixText) && gateResult.typecheck_ok && gateResult.lint_ok) {
+    // The ruling check runs FIRST: a fixer note that asks for a ruling and also calls a side issue
+    // "not a code defect" matched the triage below and the red was accepted (spec 059 phase 2,
+    // Group 2, 2026-11-20). Post-processing only, so a run stays resumable.
+    // ("not a code defect" alone is no ruling request: a fixer says it about a stale bundle it rebuilt)
+    const needsRuling = /STOP AND SURFACE|user ruling|not fixable in code/i.test(fixText) && !unblocked.includes(fixId)
+    if (!needsRuling && /later (?:group|task)|red until T\d+|not (?:a |mine to )?(?:code )?(?:defect|fix)|no defect|nothing (?:left )?to fix/i.test(fixText) && gateResult.typecheck_ok && gateResult.lint_ok) {
       log(`Group "${group.name}": fixer triaged the red to a later group — accepting (typecheck + lint clean)`)
       gateResult = { ...gateResult, tests_ok: true, summary: `[red triaged to a later group by the fixer] ${gateResult.summary}` }
       break
     }
-    if (/STOP AND SURFACE|user ruling|not fixable in code|NOT A CODE DEFECT/i.test(fixText) && !unblocked.includes(fixId)) {
+    if (needsRuling) {
       log(`Group "${group.name}": fixer reports the red needs a user ruling — stopping the stage`)
       return {
         stage: 'build', phase: phaseNum, slug: SLUG, status: 'BLOCKED',

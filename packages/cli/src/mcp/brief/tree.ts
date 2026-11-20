@@ -113,6 +113,8 @@ export interface Question {
   /** What the agent looks up before recommending (§3.1). */
   readonly facts: readonly string[];
   readonly since: number;
+  /** A clone made by `scopedTree` for an addition (P11); V clones keep `branch: 'V'`. */
+  readonly scoped?: true;
 }
 
 /** The rule of every question that applies always. */
@@ -169,7 +171,8 @@ const h1Lists = (a: AnswerView, need: string) => rowsOf(a.get('H1')).some(r => r
 // ---------------------------------------------------------------------------------------------
 // The intra-value checks (FR-006).
 
-const S2_NAME = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,63}$/;
+/** A view name (FR-047): 1 to 64 characters, no `:`, `|`, line break, leading or trailing space. */
+const S2_NAME = /^(?! )[^:|\r\n]{1,64}(?<! )$/;
 
 const checkC2 = (v: AnswerValue): string | undefined => {
   const rows = rowsOf(v);
@@ -188,7 +191,7 @@ const checkS2 = (v: AnswerValue): string | undefined => {
   if (rows.length === 0) return 'expected at least one view';
   const bad = rows.find(r => !S2_NAME.test(r.name));
   if (bad !== undefined) {
-    return `the view name "${bad.name}" must match ${S2_NAME.source} (letters, digits, space, _ and -; at most 64)`;
+    return `the view name "${bad.name}" must be 1 to 64 characters, no ":", "|", line break, or leading or trailing space`;
   }
   const repeated = duplicates(rows.map(r => r.name));
   return repeated.length > 0 ? `each view name once: ${repeated[0]} is listed twice` : undefined;

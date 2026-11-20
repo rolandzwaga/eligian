@@ -16,6 +16,7 @@ import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { checkPaths } from '../check/check-command.js';
 import { compileFile } from '../compile-file.js';
+import { makeRecordStore } from '../mcp/brief/known-programs.js';
 import { CompilerLockLive } from '../mcp/compiler-lock.js';
 import { withoutIds } from '../mcp/config-fragment.js';
 import { toMcpDiagnostics } from '../mcp/diagnostics.js';
@@ -117,6 +118,7 @@ afterAll(() => {
 describe('eligian_compile', () => {
   let ai: EffectAi;
   let docsRoot: string;
+  let stateDir: string;
   const versions = getCompilerVersion();
 
   beforeAll(async () => {
@@ -125,9 +127,19 @@ describe('eligian_compile', () => {
     tempDirs.push(docsRoot);
     fs.writeFileSync(path.join(docsRoot, 'index.json'), '[]');
     fs.writeFileSync(path.join(docsRoot, 'overlays.json'), JSON.stringify(OVERLAYS));
+    stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-compile-state-'));
+    tempDirs.push(stateDir);
   });
 
-  const context = (cwd: string): ToolContext => ({ ai, cwd, docsRoot, versions, requestId: '1' });
+  // Spec 059 FR-058 move (1): the fixture programs exist before the first call scans their dir.
+  const context = (cwd: string): ToolContext => ({
+    ai,
+    cwd,
+    docsRoot,
+    versions,
+    requestId: '1',
+    gate: { record: makeRecordStore(), stateDir, noteBrief: () => {} },
+  });
 
   const compile = (cwd: string, params: Params) =>
     Effect.runPromise(handle(params, context(cwd)).pipe(Effect.provide(CompilerLockLive)));

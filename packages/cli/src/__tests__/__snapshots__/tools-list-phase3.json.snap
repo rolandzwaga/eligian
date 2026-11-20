@@ -1,7 +1,7 @@
 [
   {
     "name": "eligian_brief",
-    "description": "Start here for a new Eligian presentation, before writing any file: the brief interview. action status with the user's idea verbatim (idea) returns the next round, at most 7 questions (max 1–20). Ask them in one message, each with your recommended answer worded so that yes accepts it, then record the replies with action answer: answers [{ id, value, delegated? }], value in the canonical JSON form of the item's shape; delegated: true when the user said \"you decide\" (value = your choice). Look facts up yourself (eligian_project, the files); ask only decisions. When state is complete, show the user the delegated answers and BRIEF.md, then call action confirm with their reply verbatim as confirmation. Only this tool writes <directory>/BRIEF.md: never edit it yourself. directory defaults to the project root.",
+    "description": "Start here for a new Eligian presentation, before writing any file: the brief interview. Actions: status (the user's idea verbatim as idea) returns the next round, at most 7 questions (max 1–20). Ask them in one message, each with your recommended answer worded so that yes accepts it; record the replies with answer: answers [{ id, value, delegated? }], value as canonical JSON of the item's shape, delegated: true when the user said \"you decide\". Look facts up yourself; ask only decisions. When state is complete, confirm: the user signs off in a dialog, else pass their reply verbatim as confirmation (and any ticket). Then draft STORYBOARD.md and call approve-storyboard. accept-existing (paths) takes in programs the user wrote. scope: presentation (default), { addition, name } for a new view, language or host-module, or adopt (existing code). eligian_check, fmt, compile, smoke and init refuse until the brief is approved. Only this tool writes <directory>/BRIEF.md: never edit it yourself.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -13,7 +13,9 @@
           "enum": [
             "status",
             "answer",
-            "confirm"
+            "confirm",
+            "approve-storyboard",
+            "accept-existing"
           ]
         },
         "idea": {
@@ -46,6 +48,47 @@
         },
         "confirmation": {
           "type": "string"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "presentation",
+                "adopt"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "addition": {
+                  "type": "string",
+                  "enum": [
+                    "view",
+                    "language",
+                    "host-module"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "addition",
+                "name"
+              ],
+              "additionalProperties": true
+            }
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ticket": {
+          "type": "string"
         }
       },
       "required": [
@@ -67,7 +110,8 @@
           "enum": [
             "open",
             "complete",
-            "confirmed"
+            "confirmed",
+            "approved"
           ]
         },
         "round": {
@@ -232,6 +276,11 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
+            },
+            "fromCode": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -239,7 +288,8 @@
             "delegated",
             "open",
             "waiting",
-            "notApplicable"
+            "notApplicable",
+            "fromCode"
           ],
           "additionalProperties": true
         },
@@ -259,7 +309,8 @@
                   "waiting",
                   "not-applicable",
                   "invalid-value",
-                  "invalid-reference"
+                  "invalid-reference",
+                  "fact"
                 ]
               },
               "message": {
@@ -323,14 +374,341 @@
               "type": "string",
               "enum": [
                 "frontier-not-empty",
-                "confirmation-missing"
+                "confirmation-missing",
+                "declined",
+                "elicitation-unavailable",
+                "brief-not-confirmed",
+                "brief-not-approved",
+                "storyboard-missing",
+                "storyboard-mismatch",
+                "governed-by-brief",
+                "addition-not-briefed",
+                "not-an-addition",
+                "adopt-program",
+                "adopt-briefed"
               ]
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "cancelled",
+                "no-answer"
+              ]
+            },
+            "problems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "storyboard-ignored-rows",
+                      "storyboard-views",
+                      "storyboard-header",
+                      "storyboard-end-block",
+                      "storyboard-interactions"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "scope": {
+              "type": "object",
+              "properties": {
+                "addition": {
+                  "type": "string",
+                  "enum": [
+                    "view",
+                    "language",
+                    "host-module"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "addition",
+                "name"
+              ],
+              "additionalProperties": true
+            },
+            "round": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "ask": {
+                    "type": "string"
+                  },
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "text",
+                          "choice",
+                          "set",
+                          "yes-no",
+                          "duration",
+                          "view",
+                          "path",
+                          "record",
+                          "table"
+                        ]
+                      },
+                      "options": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "text",
+                                "choice",
+                                "yes-no",
+                                "duration",
+                                "view",
+                                "path",
+                                "language"
+                              ]
+                            },
+                            "options": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "dash": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "none": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "kind"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "none": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "alternatives": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "rows": {
+                        "type": "string",
+                        "enum": [
+                          "one-per-view"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "docs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "facts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "previous": {},
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "ask",
+                  "shape",
+                  "docs",
+                  "facts"
+                ],
+                "additionalProperties": true
+              }
             }
           },
           "required": [
             "code"
           ],
           "additionalProperties": true
+        },
+        "signoff": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "elicitation",
+                "agent-reported",
+                "existing-storyboard"
+              ]
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": true
+        },
+        "summary": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "changed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "id",
+              "title",
+              "value"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ids",
+              "message"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "accepted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "skipped": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "library",
+                  "unchanged"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "reason"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "presentation",
+                "adopt"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "addition": {
+                  "type": "string",
+                  "enum": [
+                    "view",
+                    "language",
+                    "host-module"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "addition",
+                "name"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "next": {
           "type": "string"
@@ -2008,6 +2386,100 @@
                     "type": "null"
                   }
                 ]
+              },
+              "brief": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "open",
+                      "complete",
+                      "confirmed",
+                      "approved"
+                    ]
+                  },
+                  "counts": {
+                    "type": "object",
+                    "properties": {
+                      "answered": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "delegated": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "open": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "waiting": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "notApplicable": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "fromCode": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "answered",
+                      "delegated",
+                      "open",
+                      "waiting",
+                      "notApplicable"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "next": {
+                    "type": "string"
+                  },
+                  "known": {
+                    "type": "boolean"
+                  },
+                  "gate": {
+                    "type": "string",
+                    "enum": [
+                      "runs",
+                      "brief-required",
+                      "brief-incomplete",
+                      "brief-not-confirmed",
+                      "storyboard-not-approved",
+                      "brief-changed",
+                      "addition-not-briefed"
+                    ]
+                  }
+                },
+                "required": [
+                  "file",
+                  "state",
+                  "next",
+                  "known",
+                  "gate"
+                ],
+                "additionalProperties": true
               }
             },
             "required": [
@@ -2020,7 +2492,8 @@
               "host",
               "outline",
               "assets",
-              "storyboard"
+              "storyboard",
+              "brief"
             ],
             "additionalProperties": true
           }

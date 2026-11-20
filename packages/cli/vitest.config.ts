@@ -1,4 +1,12 @@
+import os from 'node:os';
+import path from 'node:path';
 import { configDefaults, defineConfig } from 'vitest/config';
+
+/**
+ * The brief's state directory for every test run (spec 059 phase 2, P15): a spec that forgets to
+ * pass `brief: { stateDir }` writes under the temp dir, never the user's real state dir.
+ */
+const ELIGIAN_STATE_DIR = path.join(os.tmpdir(), 'eligian-vitest-state');
 
 /**
  * Specs whose assertions hold a wall-clock budget for a spawned `eligian smoke` child (spec 058
@@ -31,6 +39,7 @@ export default defineConfig({
     // starts so many children at once that tests taking 3–6 s alone ran past 30 s (spec 059
     // phase 1, T029). Capped; the 4-vCPU CI runners stay under it
     maxWorkers: 8,
+    env: { ELIGIAN_STATE_DIR },
     projects: [
       {
         extends: true,
@@ -50,7 +59,7 @@ export default defineConfig({
           name: 'cli-soak',
           include: SOAK,
           execArgv: ['--expose-gc'],
-          env: { ELIGIAN_SOAK: '1' },
+          env: { ELIGIAN_SOAK: '1', ELIGIAN_STATE_DIR },
         },
       },
     ],

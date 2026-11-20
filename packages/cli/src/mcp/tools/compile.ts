@@ -30,6 +30,7 @@ import { timelineNames } from '@eligian/language/mcp';
 import { Effect, Schema } from 'effect';
 import { checkPaths, isLibrary } from '../../check/check-command.js';
 import { type CompileResult, compileFile } from '../../compile-file.js';
+import { checkPrograms, type GateContext } from '../brief/gate.js';
 import { CompilerLock } from '../compiler-lock.js';
 import { type FragmentSelection, fragmentOf } from '../config-fragment.js';
 import { McpDiagnosticSchema, toMcpDiagnostics } from '../diagnostics.js';
@@ -45,6 +46,8 @@ export interface ToolContext {
   readonly docsRoot: URL | string;
   readonly versions: { readonly compiler: string; readonly eligius: string };
   readonly requestId: string;
+  /** Spec 059 Phase 2 (FR-010, FR-014): the brief gate's record, key and telemetry note. */
+  readonly gate: GateContext;
 }
 
 export const NAME = 'eligian_compile' as const;
@@ -479,6 +482,8 @@ export const handle = (
   Effect.gen(function* () {
     const root = yield* projectRoot(context.ai, context.cwd);
     const file = yield* resolveInputPath(root, params.path);
+    // FR-014: the gate first, before the read and the lock; a library passes it.
+    yield* checkPrograms(root, [file], context.gate);
     const source = yield* Effect.tryPromise({
       try: () => fs.promises.readFile(file, 'utf8'),
       catch: toToolError('read', file),

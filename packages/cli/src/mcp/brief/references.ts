@@ -7,9 +7,14 @@
  * Pure: existence and containment come only from `Facts` (P16).
  */
 import { posix } from 'node:path';
-import { isValidLanguageCode } from '@eligian/language';
 import type { Facts } from './engine.js';
 import type { AnswerValue, AssetEntry } from './tree.js';
+
+/**
+ * A language code (`en-US`, language-REGION): the language's `LANGUAGE_CODE_REGEX`
+ * (`packages/language/src/compiler/constants.ts`), copied so the brief does not load the language.
+ */
+export const LANGUAGE_CODE = /^[a-z]{2,3}-[A-Z]{2,3}$/;
 
 /** `same as <other>`, the value of a `V:<name>` answer (FR-014). */
 export const SAME_AS_VALUE = /^same as (.+)$/;
@@ -95,7 +100,7 @@ function checkL1(v: AnswerValue): string | undefined {
   const rows = rowsOf(v);
   for (let i = 0; i < rows.length; i++) {
     const code = rows[i].code;
-    if (!isValidLanguageCode(code)) {
+    if (!LANGUAGE_CODE.test(code)) {
       return `row ${i + 1}, code: "${code}" is not a language code such as en-US (language-REGION)`;
     }
     if (rows.slice(0, i).some(r => r.code === code)) {

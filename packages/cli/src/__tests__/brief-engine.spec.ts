@@ -10,6 +10,8 @@ import {
   type AnswerInput,
   applyAnswers,
   type BriefState,
+  type Confirmation,
+  canonicalAnswers,
   confirm,
   digest,
   EMPTY_BRIEF,
@@ -25,6 +27,7 @@ import {
   textDirection,
   viewBasis,
 } from '../mcp/brief/engine.js';
+import { makeSigner, type Signer } from '../mcp/brief/signature.js';
 import { type AnswerValue, type Question, TREE, TREE_VERSION } from '../mcp/brief/tree.js';
 import { expectedForm } from '../mcp/brief/values.js';
 import { TREE_V2 } from './__fixtures__/mcp/brief/tree-v2.js';
@@ -41,6 +44,7 @@ function fakeFacts(
     readonly exists?: readonly string[];
     readonly outside?: readonly string[];
     readonly briefDir?: string;
+    readonly signer?: Signer;
   } = {}
 ): Facts {
   const exists = new Set(options.exists ?? []);
@@ -49,7 +53,31 @@ function fakeFacts(
     briefDir: options.briefDir ?? '.',
     exists: p => exists.has(p),
     inside: p => !outside.has(p) && !p.startsWith('../'),
+    ...(options.signer === undefined ? {} : { signer: options.signer }),
   };
+}
+
+/** The test key's signer: a confirmation verifies only with it (Phase 2 FR-024, P4). */
+const SIGNER = makeSigner(Buffer.alloc(32, 5));
+
+/** An agent-reported confirmation with watermark `round`, signed with SIGNER over `signed`. */
+function signedConfirmation(
+  signed: readonly Answer[],
+  round: number,
+  message = 'Yes, build it.'
+): Confirmation {
+  const at = '2026-11-19T10:00:00.000Z';
+  const payload = canonicalAnswers(signed);
+  const hmac = SIGNER.sign([
+    'eligian-brief/1',
+    'confirmation',
+    'brief',
+    'agent-reported',
+    at,
+    round,
+    payload,
+  ]);
+  return { mode: 'agent-reported', at, round, hmac, message };
 }
 
 function brief(...answers: Answer[]): BriefState {
@@ -586,30 +614,26 @@ describe('states (FR-023)', () => {
     ]);
   });
 
-  it('confirmed when the confirmation digest equals digest(…) and the frontier is empty', () => {
+  it('confirmed when the confirmation HMAC verifies over the canonical answers and the frontier is empty', () => {
     const confirmed: BriefState = {
       ...COMPLETE,
-      confirmation: {
-        mode: 'agent-reported',
-        at: '2026-11-19T10:00:00.000Z',
-        digest: digest(COMPLETE.answers),
-        message: 'Yes, build it.',
-      },
+      confirmation: signedConfirmation(COMPLETE.answers, nextRound(COMPLETE) - 1),
     };
-    expect(evaluate(TREE, confirmed, fakeFacts()).state).toBe('confirmed');
+    expect(evaluate(TREE, confirmed, fakeFacts({ signer: SIGNER })).state).toBe('confirmed');
   });
 
-  it('a confirmation with another digest is complete', () => {
+  it('a confirmation with another HMAC is complete', () => {
     const confirmed: BriefState = {
       ...COMPLETE,
       confirmation: {
         mode: 'agent-reported',
         at: '2026-11-19T10:00:00.000Z',
-        digest: '0'.repeat(64),
+        round: nextRound(COMPLETE) - 1,
+        hmac: `hmac-sha256:${'0'.repeat(64)}`,
         message: 'Yes.',
       },
     };
-    expect(evaluate(TREE, confirmed, fakeFacts()).state).toBe('complete');
+    expect(evaluate(TREE, confirmed, fakeFacts({ signer: SIGNER })).state).toBe('complete');
   });
 });
 
@@ -1693,14 +1717,9 @@ describe('dormant (SC-019 engine half)', () => {
     // A confirmation made while S3 applied no longer matches: the state is complete.
     const confirmed: BriefState = {
       ...WITH_S3,
-      confirmation: {
-        mode: 'agent-reported',
-        at: '2026-11-19T10:00:00.000Z',
-        digest: digest(WITH_S3.answers),
-        message: 'Yes.',
-      },
+      confirmation: signedConfirmation(WITH_S3.answers, nextRound(WITH_S3) - 1, 'Yes.'),
     };
-    expect(evaluate(TREE, confirmed, fakeFacts()).state).toBe('complete');
+    expect(evaluate(TREE, confirmed, fakeFacts({ signer: SIGNER })).state).toBe('complete');
   });
 
   it('an answer for S3 is rejected not-applicable', () => {
@@ -1820,21 +1839,19 @@ describe('same as is live (SC-017)', () => {
 // ---------------------------------------------------------------------------------------------
 // Tree versions and confirm (FR-018, FR-022, FR-029 engine half; plan P11).
 
-const confirmedWith = (b: BriefState, briefDigest: string): BriefState => ({
+/** `b` with a confirmation signed over the canonical answers of `signed` (Phase 2 P4). */
+const confirmedWith = (b: BriefState, signed: readonly Answer[]): BriefState => ({
   ...b,
-  confirmation: {
-    mode: 'agent-reported',
-    at: '2026-11-19T10:00:00.000Z',
-    digest: briefDigest,
-    message: 'Yes, build it.',
-  },
+  confirmation: signedConfirmation(signed, nextRound(b) - 1),
 });
+
+const SIGNED = fakeFacts({ signer: SIGNER });
 
 describe('tree versions (FR-018)', () => {
   it('a brief confirmed under version 1 stays confirmed under TREE_V2 and P6 is not applicable', () => {
     expect(COMPLETE.treeVersion).toBe(1);
-    const confirmed = confirmedWith(COMPLETE, digest(COMPLETE.answers));
-    const ev = evaluate(TREE_V2, confirmed, fakeFacts());
+    const confirmed = confirmedWith(COMPLETE, COMPLETE.answers);
+    const ev = evaluate(TREE_V2, confirmed, SIGNED);
     expect(ev.state).toBe('confirmed');
     expect(instance(ev, 'P6').status).toBe('not-applicable');
     expect(instance(ev, 'P6').dormant).toBe(false);
@@ -1850,18 +1867,18 @@ describe('tree versions (FR-018)', () => {
     expect(frontierIds(evaluate(TREE_V2, EMPTY_BRIEF, fakeFacts()))).toContain('P6');
   });
 
-  it('a confirmed brief whose digest no longer matches is evaluated against the full tree (pass 2)', () => {
-    const stale = evaluate(TREE_V2, confirmedWith(COMPLETE, '0'.repeat(64)), fakeFacts());
+  it('a confirmed brief whose HMAC no longer verifies is evaluated against the full tree (pass 2)', () => {
+    const stale = evaluate(TREE_V2, confirmedWith(COMPLETE, []), SIGNED);
     expect(instance(stale, 'P6').status).toBe('open');
     expect(frontierIds(stale)).toEqual(['P6']);
     expect(stale.state).toBe('open');
 
     // Confirmed under TREE_V2 with P6 answered, the version line still 1: pass 1 leaves P6 out of
-    // the digest, so it does not match; pass 2 counts P6 and matches.
+    // the canonical answers, so the HMAC does not verify; pass 2 counts P6 and verifies.
     const withP6 = brief(...COMPLETE.answers, a('P6', 'Sign up.'));
-    const confirmed = confirmedWith(withP6, digest(withP6.answers));
+    const confirmed = confirmedWith(withP6, withP6.answers);
     expect(confirmed.treeVersion).toBe(1);
-    const ev = evaluate(TREE_V2, confirmed, fakeFacts());
+    const ev = evaluate(TREE_V2, confirmed, SIGNED);
     expect(instance(ev, 'P6').status).toBe('answered');
     expect(ev.state).toBe('confirmed');
     expect(ev.digest).toBe(digest(withP6.answers));
@@ -1874,15 +1891,13 @@ describe('tree versions (FR-018)', () => {
   });
 
   it('a brief confirmed under version 1 keeps version 1; a confirmation that no longer matches does not', () => {
-    const confirmed = confirmedWith(COMPLETE, digest(COMPLETE.answers));
-    expect(recordedTreeVersion(TREE_V2, confirmed, fakeFacts(), 2)).toBe(1);
-    const mismatched = confirmedWith(COMPLETE, '0'.repeat(64));
-    expect(recordedTreeVersion(TREE_V2, mismatched, fakeFacts(), 2)).toBe(2);
+    const confirmed = confirmedWith(COMPLETE, COMPLETE.answers);
+    expect(recordedTreeVersion(TREE_V2, confirmed, SIGNED, 2)).toBe(1);
+    const mismatched = confirmedWith(COMPLETE, []);
+    expect(recordedTreeVersion(TREE_V2, mismatched, SIGNED, 2)).toBe(2);
     // Confirmed against the full version-2 tree (pass 2): it records version 2.
     const withP6 = brief(...COMPLETE.answers, a('P6', 'Sign up.'));
-    expect(
-      recordedTreeVersion(TREE_V2, confirmedWith(withP6, digest(withP6.answers)), fakeFacts(), 2)
-    ).toBe(2);
+    expect(recordedTreeVersion(TREE_V2, confirmedWith(withP6, withP6.answers), SIGNED, 2)).toBe(2);
   });
 });
 
@@ -1890,13 +1905,23 @@ describe('confirm', () => {
   const NOW = new Date('2026-11-19T10:30:00.000Z');
   const MESSAGE = 'Yes, "build" it.\nAll of it.';
 
-  it('confirm(brief, message, now, evaluation) sets mode agent-reported, at = now.toISOString(), digest = evaluation.digest, message verbatim', () => {
-    const ev = evaluate(TREE, COMPLETE, fakeFacts());
-    const confirmed = confirm(COMPLETE, MESSAGE, NOW, ev);
+  it('confirm(brief, mode, message, now, evaluation, signer, section) sets mode agent-reported, at = now.toISOString(), round and hmac over evaluation.canonical, message verbatim', () => {
+    const ev = evaluate(TREE, COMPLETE, SIGNED);
+    const confirmed = confirm(COMPLETE, 'agent-reported', MESSAGE, NOW, ev, SIGNER, 'brief');
+    const round = nextRound(COMPLETE) - 1;
     expect(confirmed.confirmation).toEqual({
       mode: 'agent-reported',
       at: NOW.toISOString(),
-      digest: ev.digest,
+      round,
+      hmac: SIGNER.sign([
+        'eligian-brief/1',
+        'confirmation',
+        'brief',
+        'agent-reported',
+        NOW.toISOString(),
+        round,
+        ev.canonical,
+      ]),
       message: MESSAGE,
     });
     expect(confirmed.answers).toBe(COMPLETE.answers);
@@ -1905,21 +1930,22 @@ describe('confirm', () => {
   });
 
   it('the state becomes confirmed', () => {
-    const ev = evaluate(TREE, COMPLETE, fakeFacts());
+    const ev = evaluate(TREE, COMPLETE, SIGNED);
     expect(ev.state).toBe('complete');
-    const confirmed = confirm(COMPLETE, MESSAGE, NOW, ev);
-    expect(evaluate(TREE, confirmed, fakeFacts()).state).toBe('confirmed');
+    const confirmed = confirm(COMPLETE, 'agent-reported', MESSAGE, NOW, ev, SIGNER, 'brief');
+    expect(evaluate(TREE, confirmed, SIGNED).state).toBe('confirmed');
   });
 
   it('a later answer change drops the state to complete or open', () => {
-    const confirmed = confirm(COMPLETE, MESSAGE, NOW, evaluate(TREE, COMPLETE, fakeFacts()));
-    // W1 has no dependents: the frontier stays empty, the digest no longer matches.
+    const ev = evaluate(TREE, COMPLETE, SIGNED);
+    const confirmed = confirm(COMPLETE, 'agent-reported', MESSAGE, NOW, ev, SIGNER, 'brief');
+    // W1 has no dependents: the frontier stays empty, the HMAC no longer verifies.
     const w1 = apply(confirmed, [{ id: 'W1', value: 'only the end' }]);
     expect(w1.changed).toBe(true);
-    expect(evaluate(TREE, w1.brief, fakeFacts()).state).toBe('complete');
+    expect(evaluate(TREE, w1.brief, SIGNED).state).toBe('complete');
     // P1 reopens W1 (W1 needs every other question): the frontier is not empty.
     const p1 = apply(confirmed, [{ id: 'P1', value: 'Try the product.' }]);
     expect(p1.changed).toBe(true);
-    expect(evaluate(TREE, p1.brief, fakeFacts()).state).toBe('open');
+    expect(evaluate(TREE, p1.brief, SIGNED).state).toBe('open');
   });
 });

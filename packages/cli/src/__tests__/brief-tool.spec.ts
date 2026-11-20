@@ -9,7 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parseBrief } from '../mcp/brief/brief-file.js';
-import { type AnswerInput, digest, evaluate } from '../mcp/brief/engine.js';
+import { type AnswerInput, evaluate, nextRound } from '../mcp/brief/engine.js';
+import { makeSigner, readKey, stateDirectory } from '../mcp/brief/signature.js';
 import { TREE } from '../mcp/brief/tree.js';
 import { compilerLockLayer } from '../mcp/compiler-lock.js';
 import type { ServerOptions } from '../mcp/server.js';
@@ -428,7 +429,10 @@ describe('eligian_brief', () => {
       const evaluation = evaluate(TREE, parsed().brief, makeFacts(root, root));
       const s3 = evaluation.instances.find(i => i.id === 'S3');
       expect(s3).toMatchObject({ status: 'not-applicable', dormant: true });
-      expect(after.counts).toEqual(evaluation.counts);
+      expect(after.counts).toEqual({
+        ...evaluation.counts,
+        fromCode: evaluation.counts.fromCode ?? 0,
+      });
       const counted = evaluation.instances.filter(i => i.counted);
       const notApplicable = counted.filter(i => i.status === 'not-applicable').map(i => i.id);
       const answered = counted.filter(i => i.status === 'answered').map(i => i.id);
@@ -540,7 +544,7 @@ describe('eligian_brief', () => {
       expect(fs.readFileSync(file).equals(bytes)).toBe(true);
     });
 
-    it('a successful confirm writes the agent-reported line with the digest and the message as JSON', async () => {
+    it('a successful confirm writes the agent-reported line with the HMAC and the message as JSON', async () => {
       await complete(TERSE_ANSWERS);
       const message = 'Yes, "go ahead".\nThanks';
       const reply = await ok({ action: 'confirm', confirmation: message });
@@ -548,10 +552,26 @@ describe('eligian_brief', () => {
       expect(reply.refused).toBeUndefined();
 
       const text = read();
-      const line = /^- confirmation: agent-reported (\S+) sha256:([0-9a-f]{64})$/m.exec(text);
+      const line =
+        /^- confirmation: agent-reported (\S+) round (\d+) (hmac-sha256:[0-9a-f]{64})$/m.exec(text);
       expect(line).not.toBeNull();
-      expect(new Date(line?.[1] ?? '').toISOString()).toBe(line?.[1]);
-      expect(line?.[2]).toBe(digest(parsed().brief.answers));
+      const [at, round, hmac] = [line?.[1] ?? '', Number(line?.[2]), line?.[3]];
+      expect(new Date(at).toISOString()).toBe(at);
+      expect(round).toBe(nextRound(parsed().brief) - 1);
+      const key = await readKey(stateDirectory());
+      expect(key).toBeDefined();
+      const canonical = evaluate(TREE, parsed().brief, makeFacts(root, root)).canonical;
+      expect(hmac).toBe(
+        makeSigner(key as Buffer).sign([
+          'eligian-brief/1',
+          'confirmation',
+          'brief',
+          'agent-reported',
+          at,
+          round,
+          canonical,
+        ])
+      );
       const messageLine = /^- confirmation-message: (.*)$/m.exec(text);
       expect(JSON.parse(messageLine?.[1] ?? 'null')).toBe(message);
       expect(parsed().brief.confirmation?.message).toBe(message);
@@ -636,7 +656,14 @@ describe('eligian_brief', () => {
       };
       const args = summarizeArgs(params);
       expect(JSON.stringify(args)).not.toContain(SENTINEL);
-      expect(args).toEqual({ action: 'answer', answers: 1, max: 5, idea: true });
+      expect(args).toEqual({
+        action: 'answer',
+        answers: 1,
+        max: 5,
+        idea: true,
+        scope: 'presentation',
+        paths: 0,
+      });
 
       const reply = await ok(params);
       const result = summarizeResult(reply);
@@ -759,6 +786,9 @@ describe('eligian_brief', () => {
     it('status completes while a latched lock holds a check', async () => {
       const hold = gate();
       const reached = gate();
+      await ok({ action: 'status' });
+      fs.writeFileSync(path.join(root, 'main.eligian'), 'timeline "main" in "#app" using raf {}\n');
+      fs.rmSync(path.join(root, '.eligian'), { recursive: true, force: true });
       await restart({
         lock: compilerLockLayer({
           latch: () => {
@@ -767,7 +797,6 @@ describe('eligian_brief', () => {
           },
         }),
       });
-      fs.writeFileSync(path.join(root, 'main.eligian'), 'timeline "main" in "#app" using raf {}\n');
 
       let checkSettled = false;
       const checking = server.callTool('eligian_check', { paths: ['main.eligian'] }).finally(() => {

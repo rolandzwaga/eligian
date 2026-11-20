@@ -8,12 +8,14 @@
  */
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { getCompilerVersion } from '@eligian/language';
 import { Effect, Fiber } from 'effect';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { makeRecordStore } from '../mcp/brief/known-programs.js';
 import type { EffectAi } from '../mcp/paths.js';
 import {
   DESCRIPTION,
@@ -70,11 +72,17 @@ const withoutHeader = ({ header: _header, ...rest }: Result) => rest;
 
 describe('eligian_smoke', () => {
   let ai: EffectAi;
+  let stateDir: string;
   const versions = getCompilerVersion();
 
   beforeAll(async () => {
     requireFreshBundle();
     ai = await import('effect/ai');
+    stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eligian-mcp-smoke-state-'));
+  });
+
+  afterAll(() => {
+    fs.rmSync(stateDir, { recursive: true, force: true });
   });
 
   afterEach(() => {
@@ -88,6 +96,8 @@ describe('eligian_smoke', () => {
     versions,
     requestId: '1',
     smoke: { cliPath: BIN, ...smoke },
+    // Spec 059 FR-058 move (1): the fixture programs exist before the first call scans the dir.
+    gate: { record: makeRecordStore(), stateDir, noteBrief: () => {} },
   });
 
   const run = (params: Params, smoke?: SmokeToolOptions) =>

@@ -10,8 +10,17 @@
  */
 
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -60,6 +69,14 @@ function packedFiles(): string[] {
 interface InitializeAnswer {
   id?: unknown;
   result?: { protocolVersion: string; serverInfo: { name: string; version: string } };
+}
+
+/** A JSON-RPC frame of the spawned `eligian mcp` (a response has an `id` and no `method`) */
+interface JsonRpcFrame {
+  id?: unknown;
+  method?: string;
+  result?: unknown;
+  error?: { code: number; message: string };
 }
 
 describe('the eligian npm package', () => {
@@ -192,6 +209,98 @@ describe('the eligian npm package', () => {
         expect(elapsed).toBeLessThan(3000);
       } finally {
         child.kill();
+      }
+    }
+  );
+
+  // Spec 059 SC-015 (FR-003, P18): the first-run scan of 200 programs runs in the background, so
+  // `initialize` does not wait for it; the first gated call waits for it and is not refused
+  test.skipIf(!built || !hasMcp)(
+    'mcp answers initialize in under 3 s with 200 programs; the first check on an existing program runs',
+    { timeout: 60_000 },
+    async () => {
+      const root = mkdtempSync(resolve(tmpdir(), 'eligian-cold-start-'));
+      for (let index = 0; index < 200; index++) {
+        const name = `p${String(index).padStart(3, '0')}`;
+        writeFileSync(
+          resolve(root, `${name}.eligian`),
+          `timeline "${name}" in "#s" using raf {}\n`,
+          'utf-8'
+        );
+      }
+      const start = performance.now();
+      const child = spawn(process.execPath, [process.env.ELIGIAN_BIN ?? bin, 'mcp'], {
+        cwd: root,
+      });
+      let stderr = '';
+      child.stderr.setEncoding('utf-8');
+      child.stderr.on('data', (chunk: string) => {
+        stderr += chunk;
+      });
+      const pending = new Map<number, (frame: JsonRpcFrame) => void>();
+      const exited = new Promise<never>((_, reject) => {
+        child.on('error', reject);
+        child.on('exit', code =>
+          reject(new Error(`mcp exited (${code}) before answering; stderr:\n${stderr}`))
+        );
+      });
+      exited.catch(() => undefined); // the kill at the end rejects it; nothing waits then
+      let buffered = '';
+      child.stdout.setEncoding('utf-8');
+      child.stdout.on('data', (chunk: string) => {
+        buffered += chunk;
+        const lines = buffered.split('\n');
+        buffered = lines.pop() ?? '';
+        for (const line of lines) {
+          try {
+            const frame = JSON.parse(line) as JsonRpcFrame;
+            if (typeof frame.id === 'number' && frame.method === undefined) {
+              pending.get(frame.id)?.(frame);
+            }
+          } catch {
+            // not a protocol frame
+          }
+        }
+      });
+      const send = (message: Record<string, unknown>): void => {
+        child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
+      };
+      const request = (id: number, method: string, params: unknown): Promise<JsonRpcFrame> => {
+        const answer = new Promise<JsonRpcFrame>(resolveAnswer => pending.set(id, resolveAnswer));
+        send({ id, method, params });
+        return Promise.race([answer, exited]);
+      };
+      try {
+        const init = await request(1, 'initialize', {
+          protocolVersion: '2025-06-18',
+          capabilities: {},
+          clientInfo: { name: 'package-bin.spec', version: '0' },
+        });
+        const elapsed = performance.now() - start;
+        console.info(`mcp initialize with 200 programs answered in ${Math.round(elapsed)} ms`);
+        expect(init.error, stderr).toBeUndefined();
+        expect(init.result).toBeDefined();
+        expect(elapsed).toBeLessThan(3000);
+
+        send({ method: 'notifications/initialized' });
+        const check = await request(2, 'tools/call', {
+          name: 'eligian_check',
+          arguments: { paths: ['p000.eligian'] },
+        });
+        expect(check.error, stderr).toBeUndefined();
+        const result = check.result as { content: { text: string }[]; isError?: boolean };
+        const payload = JSON.parse(result.content[0].text) as {
+          error?: { kind?: string; gate?: { code?: string } };
+        };
+        expect(payload.error?.gate?.code, result.content[0].text).toBeUndefined();
+        expect(result.isError === true, result.content[0].text).toBe(false);
+      } finally {
+        child.kill();
+        await new Promise<void>(resolveExit => {
+          if (child.exitCode !== null || child.signalCode !== null) resolveExit();
+          else child.once('exit', () => resolveExit());
+        });
+        rmSync(root, { recursive: true, force: true });
       }
     }
   );

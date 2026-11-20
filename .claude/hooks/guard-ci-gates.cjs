@@ -65,6 +65,9 @@ const FIXTURE_PATHSPECS = [
   ':(glob)**/__fixtures__/**',
   ':(glob)evals/mcp/cases/**',
   ':(glob)evals/mcp/fixtures/**',
+  // Not test data: the self-ignoring `.eligian/` a server started on a fixture dir writes there
+  // (spec 059 phase 2, FR-001, FR-058); tests recreate it, CI never needs it
+  ':(exclude,glob)**/.eligian/**',
 ];
 
 /** A path that can change what CI checks. */

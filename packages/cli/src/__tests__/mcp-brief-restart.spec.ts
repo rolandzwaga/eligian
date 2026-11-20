@@ -130,7 +130,8 @@ test.skipIf(!built)(
     }).toEqual({
       state: evaluation.state,
       round: idsOf(pickRound(TREE, evaluation)),
-      counts: evaluation.counts,
+      // The reply always carries fromCode (Phase 2 FR-045); the engine only when above 0.
+      counts: { ...evaluation.counts, fromCode: evaluation.counts.fromCode ?? 0 },
     });
   },
   120_000

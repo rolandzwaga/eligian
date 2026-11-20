@@ -12,9 +12,11 @@ import {
   writeBrief,
 } from '../mcp/brief/brief-file.js';
 import {
+  type AdditionState,
   type Answer,
   applyAnswers,
   type BriefState,
+  canonicalAnswers,
   digest,
   EMPTY_BRIEF,
   type Evaluation,
@@ -24,6 +26,7 @@ import {
   pickRound,
   textDirection,
 } from '../mcp/brief/engine.js';
+import { makeSigner } from '../mcp/brief/signature.js';
 import { TREE } from '../mcp/brief/tree.js';
 import { loadPersona, type PersonaName, runPersona, type Step } from './brief-persona-driver.js';
 
@@ -347,26 +350,31 @@ describe('kept content', () => {
 describe('explicit FR-019 lines', () => {
   const P1: Answer = { id: 'P1', value: 'Know it.', by: 'user', round: 1 };
 
-  it('a confirmed brief has /^- confirmation: agent-reported \\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(\\.\\d+)?Z sha256:[0-9a-f]{64}$/m and a - confirmation-message: line whose value JSON.parses to the message', () => {
+  it('a confirmed brief has /^- confirmation: agent-reported <ISO> round \\d+ hmac-sha256:[0-9a-f]{64}$/m and a - confirmation-message: line whose value JSON.parses to the message', () => {
     const message = 'The user said "yes, build it"\nand nothing else.';
+    const at = new Date(Date.UTC(2026, 10, 19, 12, 30, 5, 120)).toISOString();
+    const hmac = makeSigner(Buffer.alloc(32, 6)).sign([
+      'eligian-brief/1',
+      'confirmation',
+      'brief',
+      'agent-reported',
+      at,
+      1,
+      canonicalAnswers([P1]),
+    ]);
     const written = writeBrief(
       TREE,
       parsedOf({
         treeVersion: 1,
         answers: [P1],
-        confirmation: {
-          mode: 'agent-reported',
-          at: new Date(Date.UTC(2026, 10, 19, 12, 30, 5, 120)).toISOString(),
-          digest: digest([P1]),
-          message,
-        },
+        confirmation: { mode: 'agent-reported', at, round: 1, hmac, message },
       }),
       { ...PLAIN_FACTS, state: 'confirmed' }
     );
     expect(written).toMatch(
-      /^- confirmation: agent-reported \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z sha256:[0-9a-f]{64}$/m
+      /^- confirmation: agent-reported \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z round \d+ hmac-sha256:[0-9a-f]{64}$/m
     );
-    expect(written).toContain(`sha256:${digest([P1])}\n`);
+    expect(written).toContain(`\n- confirmation: agent-reported ${at} round 1 ${hmac}\n`);
     const line = written.split('\n').find(l => l.startsWith('- confirmation-message: '));
     expect(line).toBeDefined();
     expect(JSON.parse((line as string).slice('- confirmation-message: '.length))).toBe(message);
@@ -440,6 +448,215 @@ describe('explicit FR-019 lines', () => {
       eligianInstalled: undefined,
     });
     expect(written).toMatch(/^- eligian-installed: -$/m);
+  });
+});
+
+describe('scope line', () => {
+  const P1: Answer = { id: 'P1', value: 'Know it.', by: 'user', round: 1 };
+
+  it("- scope: adopt is written directly after - tree: and only when set; a file without it is byte-identical to Phase 1's writer", () => {
+    const plain = writeBrief(TREE, parsedOf({ treeVersion: 1, answers: [P1] }), PLAIN_FACTS);
+    expect(plain).not.toContain('- scope:');
+    const adopted = writeBrief(
+      TREE,
+      parsedOf({ treeVersion: 1, scope: 'adopt', answers: [P1] }),
+      PLAIN_FACTS
+    );
+    const lines = adopted.split('\n');
+    expect(lines.indexOf('- scope: adopt')).toBe(lines.indexOf('- tree: 1') + 1);
+    expect(adopted.replace('- scope: adopt\n', '')).toBe(plain);
+    const parsed = parseBrief(adopted);
+    expect(parsed.ignored).toEqual([]);
+    expect(parsed.brief.scope).toBe('adopt');
+    expect(writeBrief(TREE, parsed, PLAIN_FACTS)).toBe(adopted);
+    expect(parseBrief(plain).brief.scope).toBeUndefined();
+    expect(writeBrief(TREE, parseBrief(example), GOLDEN_FACTS)).toBe(example);
+  });
+
+  it('- by: code round-trips', () => {
+    const s2: Answer = {
+      id: 'S2',
+      value: [{ name: 'Hub', purpose: 'The start' }],
+      by: 'code',
+      round: 1,
+    };
+    const written = writeBrief(
+      TREE,
+      parsedOf({ treeVersion: 1, scope: 'adopt', answers: [P1, s2] }),
+      PLAIN_FACTS
+    );
+    expect(written).toContain('\n- by: code\n');
+    const parsed = parseBrief(written);
+    expect(parsed.ignored).toEqual([]);
+    expect(answer(parsed, 'S2')).toEqual(s2);
+    expect(writeBrief(TREE, parsed, PLAIN_FACTS)).toBe(written);
+  });
+});
+
+describe('addition sections', () => {
+  const noBrief = readFixture('addition-no-brief.md');
+  const HMAC = (c: string): string => `hmac-sha256:${c.repeat(64)}`;
+  const S6: Answer = { id: 'S6', value: { provider: 'raf', source: '-' }, by: 'user', round: 1 };
+  const V1: Answer = {
+    id: 'V1:Outro',
+    value: 'Where to go next.',
+    by: 'user',
+    round: 2,
+    basis: '1e64e7b9d3246844',
+  };
+  const OUTRO: AdditionState = {
+    kind: 'view',
+    name: 'Outro',
+    heading: 'Addition: view Outro',
+    answers: [S6, V1],
+  };
+  const SIGNED_OUTRO: AdditionState = {
+    ...OUTRO,
+    confirmation: {
+      mode: 'agent-reported',
+      at: '2026-11-20T09:14:02.120Z',
+      round: 2,
+      hmac: HMAC('a'),
+      message: 'Yes, that is the outro.',
+    },
+    approval: { mode: 'elicitation', at: '2026-11-20T09:31:45.003Z', hmac: HMAC('b') },
+  };
+  const GERMAN: AdditionState = {
+    kind: 'language',
+    name: 'de-DE',
+    heading: 'Addition: language de-DE',
+    answers: [],
+  };
+  const HOST: AdditionState = {
+    kind: 'host-module',
+    name: '',
+    heading: 'Addition: host-module',
+    answers: [],
+  };
+  const OPEN_FACTS: FactsSnapshot = {
+    ...PLAIN_FACTS,
+    additionStates: new Map([['Addition: view Outro', 'open']]),
+  };
+
+  it('addition-no-brief.md parses and writes byte-identically', () => {
+    const parsed = parseBrief(noBrief);
+    expect(parsed.ignored).toEqual([]);
+    expect(parsed.kept).toEqual([]);
+    expect(parsed.brief.answers).toEqual([]);
+    expect(parsed.brief.idea).toBeUndefined();
+    expect(parsed.brief.additions).toEqual([OUTRO]);
+    expect(writeBrief(TREE, parsed, OPEN_FACTS)).toBe(noBrief);
+    const built = writeBrief(TREE, parsedOf({ treeVersion: 1, answers: [], additions: [OUTRO] }), {
+      ...OPEN_FACTS,
+    });
+    expect(built).toBe(noBrief);
+  });
+
+  it('a main brief plus an addition: ## Addition: view Outro comes after the last view section and before ## Facts; its header lines are - state:, - confirmation:, - approval: in that order, then its ### answer blocks', () => {
+    const main = parseBrief(example);
+    const parsed: ParsedBrief = {
+      ...main,
+      brief: { ...main.brief, additions: [SIGNED_OUTRO] },
+    };
+    const facts: FactsSnapshot = {
+      ...GOLDEN_FACTS,
+      additionStates: new Map([['Addition: view Outro', 'approved']]),
+    };
+    const written = writeBrief(TREE, parsed, facts);
+    const lines = written.split('\n');
+    const at = (line: string): number => lines.indexOf(line);
+    const heading = at('## Addition: view Outro');
+    expect(heading).toBeGreaterThan(at('## View: signup'));
+    expect(heading).toBeGreaterThan(at('## W: Working agreement'));
+    expect(heading).toBeLessThan(at('## Facts'));
+    expect(lines.slice(heading, heading + 9)).toEqual([
+      '## Addition: view Outro',
+      '',
+      '- state: approved',
+      `- confirmation: agent-reported 2026-11-20T09:14:02.120Z round 2 ${HMAC('a')}`,
+      '- confirmation-message: "Yes, that is the outro."',
+      `- approval: elicitation 2026-11-20T09:31:45.003Z ${HMAC('b')}`,
+      '',
+      "### S6: What drives each view's time: `raf`, `video`, `audio`, `scroll`?",
+      '',
+    ]);
+    expect(at('### V1: Outro: What is the one thing this view says?')).toBeGreaterThan(heading);
+    expect(at('### V1: Outro: What is the one thing this view says?')).toBeLessThan(at('## Facts'));
+    // The main brief's header is untouched: its state is the snapshot's own.
+    expect(lines.indexOf('- state: open')).toBeLessThan(at('## P: Purpose'));
+    const reparsed = parseBrief(written);
+    expect(reparsed.ignored).toEqual([]);
+    expect(reparsed.kept).toEqual([]);
+    expect(reparsed.brief.answers).toEqual(main.brief.answers);
+    expect(reparsed.brief.additions).toEqual([SIGNED_OUTRO]);
+    expect(writeBrief(TREE, reparsed, facts)).toBe(written);
+  });
+
+  it('two additions keep their creation order', () => {
+    const facts: FactsSnapshot = {
+      ...PLAIN_FACTS,
+      additionStates: new Map([
+        ['Addition: language de-DE', 'complete'],
+        ['Addition: view Outro', 'open'],
+        ['Addition: host-module', 'open'],
+      ]),
+    };
+    for (const additions of [
+      [GERMAN, OUTRO, HOST],
+      [HOST, OUTRO, GERMAN],
+    ]) {
+      const written = writeBrief(TREE, parsedOf({ treeVersion: 1, answers: [], additions }), facts);
+      const headings = written.split('\n').filter(l => l.startsWith('## '));
+      expect(headings).toEqual([...additions.map(a => `## ${a.heading}`), '## Facts']);
+      const parsed = parseBrief(written);
+      expect(parsed.ignored).toEqual([]);
+      expect(parsed.brief.additions).toEqual(additions);
+      expect(writeBrief(TREE, parsed, facts)).toBe(written);
+    }
+  });
+
+  it('an unknown ## section stays after ## Facts', () => {
+    const withNotes = noBrief.replace('## Facts', '## Notes\n\nKeep the outro short.\n\n## Facts');
+    const parsed = parseBrief(withNotes);
+    expect(parsed.ignored).toEqual([
+      { line: lineOf(withNotes, '## Notes'), reason: 'unknown section' },
+    ]);
+    expect(parsed.brief.additions).toEqual([OUTRO]);
+    const written = writeBrief(TREE, parsed, OPEN_FACTS);
+    const lines = written.split('\n');
+    expect(lines.indexOf('## Addition: view Outro')).toBeLessThan(lines.indexOf('## Facts'));
+    expect(lines.indexOf('## Notes')).toBeGreaterThan(lines.indexOf('## Facts'));
+    expect(written).toBe(`${noBrief}\n## Notes\n\nKeep the outro short.\n`);
+  });
+
+  it('the no-brief file has the Phase 1 header lines, no idea paragraph, no branch or view section', () => {
+    const lines = writeBrief(
+      TREE,
+      parsedOf({ treeVersion: 1, answers: [], additions: [OUTRO] }),
+      OPEN_FACTS
+    ).split('\n');
+    const heading = lines.indexOf('## Addition: view Outro');
+    expect(lines.slice(0, heading + 1)).toEqual([
+      '# Brief',
+      '',
+      '<!-- Written by eligian_brief. Agents: change answers only through eligian_brief. People may edit by hand; the tool re-reads this file on every call. -->',
+      '',
+      '- tree: 1',
+      '- state: open',
+      '- confirmation: none',
+      '- approval: none',
+      '',
+      '## Addition: view Outro',
+    ]);
+    expect(lines.some(l => l.startsWith('>'))).toBe(false);
+    expect(lines.some(l => /^## ([A-Z]): /.test(l) || l.startsWith('## View: '))).toBe(false);
+  });
+
+  it('the Phase 1 golden example.md is byte-identical (SC-018)', () => {
+    const parsed = parseBrief(example);
+    expect(parsed.brief.additions).toBeUndefined();
+    expect(writeBrief(TREE, parsed, GOLDEN_FACTS)).toBe(example);
+    expect(writeBrief(TREE, parsed, { ...GOLDEN_FACTS, additionStates: new Map() })).toBe(example);
   });
 });
 

@@ -10,6 +10,13 @@
  */
 import { appendFileSync } from 'node:fs';
 import { Cause, Effect, Exit, Option } from 'effect';
+import type { GateCode } from './brief/gate.js';
+
+/** Spec 059 FR-057, P13: the brief state of a call with a program context. */
+export interface TelemetryBrief {
+  readonly state: 'none' | 'open' | 'complete' | 'confirmed' | 'approved';
+  readonly gate?: GateCode;
+}
 
 export interface TelemetryLine {
   readonly t: string;
@@ -22,6 +29,8 @@ export interface TelemetryLine {
   readonly result?: Readonly<Record<string, unknown>>;
   /** Set when `result.codes` was cut to fit the line (telemetryText) */
   readonly truncated?: true;
+  /** The brief state the call noted (spec 059 FR-057); absent for a call without a program */
+  readonly brief?: TelemetryBrief;
 }
 
 export interface Telemetry {
@@ -31,6 +40,8 @@ export interface Telemetry {
     run: (requestId: string) => Effect.Effect<A, E, R>,
     summarizeResult?: (value: A) => Readonly<Record<string, unknown>>
   ) => Effect.Effect<A, E, R>;
+  /** Spec 059 FR-057: the brief state for the line of call `requestId` (the last note wins). */
+  readonly noteBrief: (requestId: string, brief: TelemetryBrief) => void;
 }
 
 /** A telemetry write that failed; always swallowed, never reaches a tool result. */
@@ -122,6 +133,8 @@ const writeStderr = (text: string) =>
 export function makeTelemetry(logFile: string | undefined): Telemetry {
   let calls = 0;
   let fileLogging = logFile !== undefined;
+  // FR-057: one note per running call, read and deleted when its line is built
+  const notes = new Map<string, TelemetryBrief>();
 
   const appendToLog = (text: string) =>
     logFile === undefined || !fileLogging
@@ -148,6 +161,8 @@ export function makeTelemetry(logFile: string | undefined): Telemetry {
           Effect.onExit(exit =>
             Effect.try({
               try: () => {
+                const brief = notes.get(requestId);
+                notes.delete(requestId);
                 const result = resultOf(exit, summarizeResult);
                 const line: TelemetryLine = {
                   t: new Date(start).toISOString(),
@@ -157,6 +172,7 @@ export function makeTelemetry(logFile: string | undefined): Telemetry {
                   ok: Exit.isSuccess(exit),
                   args,
                   ...(result === undefined ? {} : { result }),
+                  ...(brief === undefined ? {} : { brief }),
                 };
                 return `${telemetryText(line)}\n`;
               },
@@ -168,5 +184,8 @@ export function makeTelemetry(logFile: string | undefined): Telemetry {
           )
         );
       }),
+    noteBrief: (requestId, brief) => {
+      notes.set(requestId, brief);
+    },
   };
 }

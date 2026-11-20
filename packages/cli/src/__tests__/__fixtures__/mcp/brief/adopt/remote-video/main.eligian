@@ -1,0 +1,11 @@
+// mcp-brief-adopt.spec.ts (spec 059 phase 2, T032; FR-046): one timeline driven by a remote
+// video, so C5 answered offline conflicts with its S6 source.
+timeline "Clip" in "body" using video from "https://example.com/v.mp4" {
+  at 0s..2s [
+    selectElement("h1")
+    setStyle({ opacity: 1 })
+  ] [
+    selectElement("h1")
+    setStyle({ opacity: 0 })
+  ]
+}

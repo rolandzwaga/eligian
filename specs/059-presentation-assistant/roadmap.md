@@ -467,6 +467,8 @@ Touches: `.claude\workflows\presentation-assistant-phase.js` (new), `packages\cl
 
 ### Phase 2: gates, sign-off, additions, adoption (9 days)
 
+**Status: ✅ COMPLETE (2026-11-20)**: see specs/059-presentation-assistant/phase-2-gates-signoff-additions/compliance.md. SC-013 (a real-client run) is the user's check, pending.
+
 Touches: `packages\cli\src\mcp\brief\{gate,known-programs,signature,adopt}.ts` (new), the CLI commands `check`, `compile`, `smoke`, `fmt` and `dev` (the warning line), `packages\cli\src\mcp\tools\{init,check,fmt,compile,smoke,project,brief}.ts`, `packages\cli\src\mcp\errors.ts` (kind `gate`), `packages\cli\src\mcp\telemetry.ts` (brief state on each call line).
 
 - The record of known programs (the first-run scan, `accept-existing`); the gate matrix; the `gate` failure with the next round.

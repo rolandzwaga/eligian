@@ -16,13 +16,16 @@ import { fileURLToPath } from 'node:url';
 import { Effect, Exit } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import { makeTelemetry, type TelemetryLine, telemetryText } from '../mcp/telemetry.js';
+import * as brief from '../mcp/tools/brief.js';
 import * as check from '../mcp/tools/check.js';
 import * as compile from '../mcp/tools/compile.js';
 import * as project from '../mcp/tools/project.js';
 import * as smoke from '../mcp/tools/smoke.js';
-import { startInMemoryServer } from './mcp-test-client.js';
+import { approvedBrief } from './brief-helpers.js';
+import { type InMemoryServer, startInMemoryServer } from './mcp-test-client.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const GATE_PROGRAM = path.join(HERE, '__fixtures__', 'mcp', 'brief', 'gate', 'program');
 const SMOKE_ROOT = path.join(HERE, '__fixtures__', 'mcp', 'smoke-tool');
 const STUB = path.join(SMOKE_ROOT, 'stub-cli.mjs');
 const DOCS = path.join(HERE, '__fixtures__', 'mcp', 'docs-mini');
@@ -322,5 +325,222 @@ describe('telemetry', () => {
     const [success, failure] = telemetryLines();
     expect(success.result).toEqual({ n: 3 });
     expect(failure).not.toHaveProperty('result');
+  });
+
+  /**
+   * Spec 059 Phase 2 (FR-057, SC-012 brief half): `eligian_brief`'s line carries `scope` and
+   * `paths` as summaries (never a name or a path) and the reply state as `brief.state`.
+   */
+  describe('brief state', () => {
+    const SENTINEL = 'TELEMETRY-SENTINEL-VIEW';
+
+    /** One in-process server on `dir` (state dir inside it), `calls` in order; its brief lines. */
+    const briefLines = async (calls: readonly unknown[]): Promise<string[]> => {
+      const server = await startInMemoryServer({
+        cwd: dir,
+        docsRoot: DOCS,
+        brief: { stateDir: path.join(dir, 'state') },
+      });
+      try {
+        for (const args of calls) await server.callTool(brief.NAME, args);
+      } finally {
+        await server.close();
+      }
+      return stderr
+        .flatMap(chunk => chunk.split('\n'))
+        .filter(line => line.startsWith('{') && line.includes(`"tool":"${brief.NAME}"`));
+    };
+
+    it("eligian_brief with scope { addition: 'view', name: SENTINEL } and paths [a, b]: args.scope === 'addition:view', args.paths === 2, SENTINEL absent from the line", async () => {
+      const lines = await briefLines([
+        {
+          action: 'status',
+          scope: { addition: 'view', name: SENTINEL },
+          paths: [`a-${SENTINEL}.eligian`, `b-${SENTINEL}.eligian`],
+        },
+      ]);
+
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).not.toContain(SENTINEL);
+      const line = JSON.parse(lines[0]) as TelemetryLine;
+      expect(line.args.scope).toBe('addition:view');
+      expect(line.args.paths).toBe(2);
+    }, 60_000);
+
+    it("scope 'adopt' → args.scope === 'adopt'; no scope → 'presentation'", async () => {
+      const lines = await briefLines([{ action: 'status', scope: 'adopt' }, { action: 'status' }]);
+
+      expect(lines.map(text => (JSON.parse(text) as TelemetryLine).args.scope)).toEqual([
+        'adopt',
+        'presentation',
+      ]);
+    }, 60_000);
+
+    it('an eligian_brief line has brief.state', async () => {
+      const lines = await briefLines([{ action: 'status', idea: 'A tour of the opening hours.' }]);
+
+      expect(lines).toHaveLength(1);
+      const line = JSON.parse(lines[0]) as TelemetryLine;
+      expect(line.ok).toBe(true);
+      expect(line.brief).toEqual({ state: 'open' });
+    }, 60_000);
+
+    /*
+     * FR-057, SC-012 (T029): the lines of the gated tools and `eligian_project` carry the noted
+     * brief state, read from the `ELIGIAN_MCP_LOG` file; `eligian_docs` and `eligian_operations`
+     * carry none; no line holds a name, a code, a path, an answer, the idea or a message.
+     */
+    describe('in the ELIGIAN_MCP_LOG file', () => {
+      const BRIEF_TIMEOUT = 120_000;
+      let root: string;
+      let stateDir: string;
+      let logFile: string;
+      let server: InMemoryServer | undefined;
+
+      beforeEach(() => {
+        const real = fs.realpathSync(dir);
+        root = path.join(real, 'project');
+        stateDir = path.join(real, 'state');
+        logFile = path.join(real, 'telemetry.log');
+        fs.mkdirSync(root);
+        vi.stubEnv('ELIGIAN_MCP_LOG', logFile);
+      });
+
+      afterEach(async () => {
+        await server?.close();
+        server = undefined;
+        vi.unstubAllEnvs();
+      });
+
+      const serve = async (): Promise<InMemoryServer> => {
+        server = await startInMemoryServer({ cwd: root, docsRoot: DOCS, brief: { stateDir } });
+        return server;
+      };
+
+      /** The raw lines of the log file. */
+      const logText = (): string[] =>
+        fs.existsSync(logFile) ? fs.readFileSync(logFile, 'utf-8').split('\n').filter(Boolean) : [];
+
+      /** The parsed log lines of `tool`. */
+      const logLines = (tool: string): TelemetryLine[] =>
+        logText()
+          .map(text => JSON.parse(text) as TelemetryLine)
+          .filter(line => line.tool === tool);
+
+      /** A server on a project whose open `BRIEF.md` governs a program written after the scan. */
+      const openProject = async (): Promise<InMemoryServer> => {
+        const running = await serve();
+        const status = await running.callTool(brief.NAME, {
+          action: 'status',
+          idea: 'A one-screen overview of our support hours.',
+        });
+        expect(status.isError, JSON.stringify(status.payload)).toBe(false);
+        expect(status.payload.state).toBe('open');
+        fs.cpSync(GATE_PROGRAM, root, { recursive: true });
+        return running;
+      };
+
+      it("a refused eligian_check: brief { state: 'open', gate: 'brief-incomplete' }, ok false", async () => {
+        const running = await openProject();
+        const result = await running.callTool(check.NAME, { paths: ['main.eligian'] });
+        expect(result.isError).toBe(true);
+
+        const lines = logLines(check.NAME);
+        expect(lines).toHaveLength(1);
+        expect(lines[0].ok).toBe(false);
+        expect(lines[0].brief).toEqual({ state: 'open', gate: 'brief-incomplete' });
+      }, 60_000);
+
+      it("a successful check on a known unbriefed program: brief equals { state: 'none' } (no gate key), ok true", async () => {
+        fs.cpSync(GATE_PROGRAM, root, { recursive: true });
+        const running = await serve();
+        const result = await running.callTool(check.NAME, { paths: ['main.eligian'] });
+        expect(result.isError, JSON.stringify(result.payload)).toBe(false);
+
+        const lines = logLines(check.NAME);
+        expect(lines).toHaveLength(1);
+        expect(lines[0].ok).toBe(true);
+        expect(lines[0].brief).toEqual({ state: 'none' });
+      }, 60_000);
+
+      it(
+        "a successful compile under an approved brief: brief equals { state: 'approved' }",
+        async () => {
+          const running = await serve();
+          await approvedBrief(running, root, { stateDir });
+          fs.cpSync(GATE_PROGRAM, root, { recursive: true });
+          const result = await running.callTool(compile.NAME, { path: 'main.eligian' });
+          expect(result.isError, JSON.stringify(result.payload)).toBe(false);
+
+          const lines = logLines(compile.NAME);
+          expect(lines).toHaveLength(1);
+          expect(lines[0].ok).toBe(true);
+          expect(lines[0].brief).toEqual({ state: 'approved' });
+        },
+        BRIEF_TIMEOUT
+      );
+
+      it("an eligian_project line on the open project: { state: 'open', gate: 'brief-incomplete' }", async () => {
+        const running = await openProject();
+        const result = await running.callTool(project.NAME, { path: 'main.eligian' });
+        expect(result.isError, JSON.stringify(result.payload)).toBe(false);
+
+        const lines = logLines(project.NAME);
+        expect(lines).toHaveLength(1);
+        expect(lines[0].ok).toBe(true);
+        expect(lines[0].brief).toEqual({ state: 'open', gate: 'brief-incomplete' });
+      }, 60_000);
+
+      it('eligian_docs and eligian_operations lines have no brief field', async () => {
+        const running = await openProject();
+        const docs = await running.callTool('eligian_docs', {});
+        expect(docs.isError, JSON.stringify(docs.payload)).toBe(false);
+        const operations = await running.callTool('eligian_operations', { names: ['addClass'] });
+        expect(operations.isError, JSON.stringify(operations.payload)).toBe(false);
+
+        const lines = [...logLines('eligian_docs'), ...logLines('eligian_operations')];
+        expect(lines).toHaveLength(2);
+        for (const line of lines) expect(line).not.toHaveProperty('brief');
+      }, 60_000);
+
+      it('a sentinel used as a view name, a language code, a path, an answer value, the idea and a confirmation message is absent from every line', async () => {
+        const SECRET = 'TELEMETRY-SENTINEL-T029';
+        const directory = `dir-${SECRET}`;
+        fs.mkdirSync(path.join(root, directory));
+        const running = await serve();
+        const calls: [string, unknown][] = [
+          [brief.NAME, { action: 'status', directory, idea: `The idea ${SECRET}.` }],
+          [
+            brief.NAME,
+            {
+              action: 'answer',
+              directory,
+              answers: [
+                { id: 'P1', value: `An answer ${SECRET}.` },
+                { id: 'S2', value: [{ name: SECRET, purpose: 'The view.' }] },
+                { id: 'L1', value: [{ code: SECRET, default: 'yes' }] },
+              ],
+            },
+          ],
+          [brief.NAME, { action: 'confirm', directory, confirmation: `Yes ${SECRET}.` }],
+          [brief.NAME, { action: 'status', directory, scope: { addition: 'view', name: SECRET } }],
+        ];
+        for (const [tool, args] of calls) await running.callTool(tool, args);
+        fs.cpSync(GATE_PROGRAM, path.join(root, directory), { recursive: true });
+        await running.callTool(check.NAME, { paths: [`${directory}/main.eligian`] });
+        await running.callTool(project.NAME, { path: `${directory}/main.eligian` });
+
+        const lines = logText();
+        expect(lines.map(text => (JSON.parse(text) as TelemetryLine).tool)).toEqual([
+          brief.NAME,
+          brief.NAME,
+          brief.NAME,
+          brief.NAME,
+          check.NAME,
+          project.NAME,
+        ]);
+        for (const text of lines) expect(text).not.toContain(SECRET);
+      }, 60_000);
+    });
   });
 });
