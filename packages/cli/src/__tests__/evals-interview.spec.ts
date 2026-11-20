@@ -54,6 +54,7 @@ import {
   simulatedUserPrompt,
   type TurnData,
   toJudgedMessage,
+  viewMap,
 } from '../mcp/evals/interview.js';
 import { parseTranscript } from '../mcp/evals/transcript.js';
 import { approvedBrief } from './brief-helpers.js';
@@ -432,7 +433,7 @@ describe('measure 2: nothing assumed', () => {
     expect(exchange(sheet, ['D4'], [ans('D4', other)]).pass).toBe(false);
   });
 
-  it('a table (S2) compares its first column: a reworded purpose passes, another name fails', () => {
+  it('a table (S2) compares its first column: a reworded purpose passes, a missing view fails', () => {
     const sheet = sheetOf({
       S2: {
         value: [
@@ -447,11 +448,14 @@ describe('measure 2: nothing assumed', () => {
       { name: 'details', purpose: 'Where the desks are' },
     ];
     expect(exchange(sheet, ['S2'], [ans('S2', reworded)]).pass).toBe(true);
+    // FR-049: a view the agent named itself is the sheet's view at the same S2 position.
     const renamed = [
       { name: 'overview', purpose: 'The office' },
       { name: 'rooms', purpose: 'Some details' },
     ];
-    const failed = exchange(sheet, ['S2'], [ans('S2', renamed)]);
+    expect(exchange(sheet, ['S2'], [ans('S2', renamed)]).pass).toBe(true);
+    const missing = [{ name: 'overview', purpose: 'The office' }];
+    const failed = exchange(sheet, ['S2'], [ans('S2', missing)]);
     expect(failed.pass).toBe(false);
     expect(failed.failures.join()).toContain('S2');
   });
@@ -798,6 +802,47 @@ describe('measure 6: the changed answer', () => {
     expect(m.changedAnswer?.reason).toContain('C4');
   });
 
+  /** vague's sheet with its views named as the agent of run 1 named them (keys and values). */
+  const capitalised = (sheet: PersonaSheet): PersonaSheet => {
+    const rename = new Map([
+      ['overview', 'Overview'],
+      ['details', 'Details'],
+    ]);
+    const walk = (value: unknown): unknown => {
+      if (typeof value === 'string') return rename.get(value) ?? value;
+      if (Array.isArray(value)) return value.map(walk);
+      if (typeof value !== 'object' || value === null) return value;
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          key.replace(/:(overview|details)$/, (_, view: string) => `:${rename.get(view)}`),
+          walk(item),
+        ])
+      );
+    };
+    return walk(sheet) as PersonaSheet;
+  };
+
+  it('SC-026: the script S2 [overview, details] holds against a recorded [Overview, Details]', () => {
+    const sheet = readSheet('vague');
+    const named = capitalised(sheet);
+    const beforeText = textOf(playVague(named, 8));
+    const loop = fixpoint(parseBrief(beforeText).brief, named.script[0].answers);
+    const finalS2 = loop.finalBrief.answers.find(a => a.id === 'S2')?.value;
+    expect(finalS2).toEqual([
+      { name: 'Overview', purpose: 'The office' },
+      { name: 'Details', purpose: 'Where the rooms and desks are' },
+    ]);
+    const dependents = MEASURED.map(id => id.replace(/:details$/, ':Details'));
+    expect(loop.collected).toEqual(dependents);
+    const m = measure({
+      sheet,
+      turns: turnsFor(beforeText, loop.changedBrief, loop.finalBrief),
+      judged: [judgedAt(6, q(dependents))],
+      script: { turn: 5, roundCount: 8 },
+    });
+    expect(m.changedAnswer).toEqual({ pass: true, dependents, notReasked: [] });
+  });
+
   it('fails script-not-applied when the record has script: null', () => {
     const { sheet, beforeText } = setup();
     const m = measure({ sheet, turns: [turnOf(5, { brief: beforeText })], script: null });
@@ -811,6 +856,144 @@ describe('measure 6: the changed answer', () => {
 
   it('is absent for a persona without a script', () => {
     expect(measure({ turns: [] }).changedAnswer).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// SC-026 (FR-049, FR-050): the run-1 measure fixes. View names are matched, not spelled; a stated
+// table holds when the sheet's rows are among the recorded ones.
+
+describe('SC-026: view names matched, stated tables as a subset', () => {
+  const views = (...names: string[]) => names.map(name => ({ name, purpose: `The ${name} view` }));
+  const briefWith = (...names: string[]): BriefState => ({
+    ...EMPTY_BRIEF,
+    answers: [ans('S2', views(...names), 'delegated')],
+  });
+
+  it('viewMap: the same name, else ignoring case, else the same S2 position', () => {
+    const sheet = sheetOf({
+      S2: { value: views('hours'), mode: 'states' },
+      'V1:hours': { value: 'When we are open.', mode: 'states' },
+    });
+    expect(viewMap(sheet, briefWith('hours'))).toEqual(new Map([['hours', 'hours']]));
+    expect(viewMap(sheet, briefWith('Hours'))).toEqual(new Map([['hours', 'Hours']]));
+    expect(viewMap(sheet, briefWith('SupportHours'))).toEqual(new Map([['hours', 'SupportHours']]));
+    expect(viewMap(sheet, EMPTY_BRIEF)).toEqual(new Map());
+
+    // Name and case matches come first; a brief view is taken once; no row left, no match.
+    const two = sheetOf({ S2: { value: views('intro', 'hours'), mode: 'states' } });
+    expect(viewMap(two, briefWith(' Hours', 'Intro'))).toEqual(
+      new Map([
+        ['intro', 'Intro'],
+        ['hours', ' Hours'],
+      ])
+    );
+    expect(viewMap(two, briefWith('hours', 'Start'))).toEqual(new Map([['hours', 'hours']]));
+    expect(viewMap(two, briefWith('Start'))).toEqual(new Map([['intro', 'Start']]));
+
+    // Without S2 on the sheet, the views are the names in its `V<n>:<view>` ids.
+    const idsOnly = sheetOf({
+      'V1:hours': { value: 'When we are open.', mode: 'states' },
+      'V2:hours': { value: 'Hours', mode: 'states' },
+    });
+    expect(viewMap(idsOnly, briefWith('SupportHours'))).toEqual(
+      new Map([['hours', 'SupportHours']])
+    );
+  });
+
+  it('a sheet keyed V1:hours measures V1:Hours (case) and V1:SupportHours (position)', () => {
+    const sheet = sheetOf({
+      S2: { value: views('hours'), mode: 'states' },
+      'V1:hours': { value: 'When we are open.', mode: 'states' },
+    });
+    for (const name of ['Hours', 'SupportHours']) {
+      const id = `V1:${name}`;
+      const m = exchange(sheet, ['S2', id], [ans('S2', views(name)), ans(id, 'Our hours.')]);
+      expect(m, name).toEqual({ pass: true, failures: [] });
+    }
+    // An unmatched sheet view keeps its own name and fails as before.
+    const m = exchange(sheet, ['V1:Hours'], [ans('V1:Hours', 'Our hours.')]);
+    expect(m.pass).toBe(false);
+    expect(m.failures.join()).toContain('V1:hours');
+  });
+
+  it('an S5 row { view: "hours" } equals a recorded { view: "Hours" }', () => {
+    const sheet = sheetOf({
+      S2: { value: views('hours'), mode: 'states' },
+      S5: { value: [{ view: 'hours', end: 'stay' }], mode: 'states' },
+    });
+    const recorded = (end: string) => [
+      ans('S2', views('Hours')),
+      ans('S5', [{ view: 'Hours', end }]),
+    ];
+    expect(exchange(sheet, ['S2', 'S5'], recorded('stay'))).toEqual({ pass: true, failures: [] });
+    const other = exchange(sheet, ['S2', 'S5'], recorded('loop'));
+    expect(other.pass).toBe(false);
+    expect(other.failures.join()).toContain('S5');
+  });
+
+  it('a stated S4 holds against its rows plus a back link, and fails with one missing', () => {
+    const rows = [
+      { view: 'intro', target: 'hours', trigger: 'a Next button' },
+      { view: 'hours', target: 'contact', trigger: 'a Next button' },
+      { view: 'contact', target: 'intro', trigger: 'a Restart button' },
+    ];
+    const sheet = sheetOf({ S4: { value: rows, mode: 'states' } });
+    const s2 = ans('S2', views('intro', 'hours', 'contact'), 'delegated');
+    const back = { view: 'hours', target: 'intro', trigger: 'a Back button' };
+    const plusBack = exchange(sheet, ['S4'], [s2, ans('S4', [...rows, back])]);
+    expect(plusBack).toEqual({ pass: true, failures: [] });
+    // Key text ignores case (the trigger is a text column: not compared).
+    const recased = rows.map(row => ({ ...row, target: row.target.toUpperCase(), trigger: 'x' }));
+    expect(exchange(sheet, ['S4'], [s2, ans('S4', [...recased, back])]).pass).toBe(true);
+    const missing = exchange(sheet, ['S4'], [s2, ans('S4', [rows[0], rows[1], back])]);
+    expect(missing.pass).toBe(false);
+    expect(missing.failures.join()).toContain('S4');
+  });
+
+  it('a stated record and the other kinds stay exact', () => {
+    const value = { choice: 'fixed-ratio', detail: '16:9' };
+    const sheet = sheetOf({ D4: { value, mode: 'states' } });
+    const recased = { choice: 'Fixed-Ratio', detail: '16:9' };
+    expect(exchange(sheet, ['D4'], [ans('D4', recased)]).pass).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// SC-027, the simulated-user half (FR-051): the prompt keeps the simulated user on its sheet.
+
+describe('simulated-user.md (FR-051)', () => {
+  const text = fs.readFileSync(path.join(REPO, 'evals', 'mcp', 'simulated-user.md'), 'utf8');
+  /** The prompt's sentences: paragraphs and list items split at a sentence end. */
+  const sentences = text
+    .split(/\n\s*\n|\n- /)
+    .flatMap(block => block.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/))
+    .map(sentence => sentence.trim())
+    .filter(sentence => sentence !== '');
+
+  it('says "anything else" only in one sentence, which forbids it', () => {
+    const containing = sentences.filter(sentence => /anything else/i.test(sentence));
+    expect(containing).toHaveLength(1);
+    expect(containing[0]).toMatch(/\b(never|forbidden)\b/i);
+  });
+
+  it('names the four answer forms, in order of the numbered questions', () => {
+    const line = (mode: string): string =>
+      sentences.find(sentence => sentence.includes(`\`${mode}\``)) ?? '';
+    expect(line('states')).toMatch(/whole value/);
+    expect(line('decides')).toContain('exactly "you decide"');
+    expect(line('accepts')).toContain('"yes"');
+    expect(line('accepts')).toMatch(/even when|also when/);
+    expect(text).toMatch(/not on the sheet[^.]*"you decide"/);
+    expect(text).toMatch(/each numbered question[^.]*in order/i);
+  });
+
+  it('allows no remark after the answers but the changed-mind block and the confirm line', () => {
+    expect(text).toMatch(/no remark/i);
+    expect(text).toContain('changed your mind');
+    expect(text).toContain('{"confirm": true}');
+    expect(text).toContain('{"confirm": false}');
+    expect(text).toMatch(/never volunteer/i);
   });
 });
 

@@ -203,6 +203,22 @@ describe('phase 4 instructions', () => {
     );
   });
 
+  // FR-052, FR-053, SC-027: material with a fallback; every round item put to the user.
+  it('the decisions rule names the placeholder fallback and every round item', () => {
+    const rule = text
+      .slice(
+        text.indexOf("Decisions are the user's, facts are yours"),
+        text.indexOf('\nReview STORYBOARD.md')
+      )
+      .replace(/\s+/g, ' ');
+    expect(rule).toContain('Placeholder?');
+    expect(rule).toContain('fallback');
+    expect(rule).toContain('Put every round item to the user');
+    expect(rule).toContain('never fill one in yourself');
+    expect(rule).toContain('delegated: true');
+    expect(rule).toContain('you decide');
+  });
+
   it('no storyboard-first docs line', () => {
     expect(text).not.toContain('FIRST for a new presentation: ids');
   });
@@ -293,6 +309,15 @@ describe('agentsMdBlock', () => {
     expect(block).toContain(briefLine);
     const rule = text.slice(text.indexOf("Decisions are the user's, facts are yours"));
     expect(block).toContain(rule.slice(0, rule.indexOf('\nReview STORYBOARD.md')));
+  });
+
+  // The block over the real docs index stays within agents.spec's 8192 bytes (FR-052, FR-053
+  // grew the rule); checked here too because agents.spec needs a fresh bundle.
+  it('the block over the generated index is ≤ 8192 bytes', () => {
+    const generated = JSON.parse(
+      fs.readFileSync(path.join(docsRoot, 'index.json'), 'utf8')
+    ) as IndexEntry[];
+    expect(Buffer.byteLength(agentsMdBlock(generated), 'utf8')).toBeLessThanOrEqual(8192);
   });
 
   it('chunkFile gives the generator paths', () => {

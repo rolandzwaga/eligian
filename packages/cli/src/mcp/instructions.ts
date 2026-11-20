@@ -65,21 +65,22 @@ ${COMPILE_LINE_3}`;
  * Spec 059 Phase 3 (FR-002): the brief comes first, for a new presentation and for an
  * addition; nothing is written before it is approved.
  */
-const BRIEF_LINE = `- \`eligian_brief\`: FIRST for a new presentation and for an addition (a new view, a new
-  language or a first host module). Ask its rounds, confirm the brief, then draft STORYBOARD.md
-  from it and approve it. Nothing is written before the brief is approved; the generation tools
-  refuse until then.`;
+const BRIEF_LINE = `- \`eligian_brief\`: FIRST for a new presentation or an addition (a new view, language or
+  first host module). Write nothing until the brief is approved: the generation tools refuse.`;
 
 /**
  * FR-004: the storyboard ids are read once the brief is confirmed. An action sits inside a
- * span holding a space, never backticked alone (plan P8).
+ * span holding a space, never backticked alone (plan P8). Spec 059 FR-052/FR-053 grew the
+ * decisions rule; this line and the brief line were tightened to keep the AGENTS.md block
+ * within 8,192 bytes.
  */
-const DOCS_LINE_4 = `- \`eligian_docs\`: \`interview\` before the first round. Once the brief is confirmed:
-  \`storyboard\`, \`decisions\`, \`project-layout\`, then draft STORYBOARD.md and call \`action: approve-storyboard\`.
-  Before each construct you have not written this session: its map-* card (index) or body
-  (detail:true). Read \`operations-index\` once.
-${OPERATIONS_LINE}
-- \`eligian_init\`: scaffold from a starter once the brief is approved (writes files; next steps in the reply).`;
+const DOCS_LINE_4 = `- \`eligian_docs\`: \`interview\` before the first round; once the brief is confirmed,
+  \`storyboard\`, \`decisions\`, \`project-layout\`, draft STORYBOARD.md, call \`action: approve-storyboard\`.
+  Before each construct new this session: its map-* card (index) or body (detail:true). Read
+  \`operations-index\` once.
+- \`eligian_operations\`: BEFORE any operation new this session; batch with names:[...]. Cards
+  lead with NEEDS / PROVIDES / ERASES.
+- \`eligian_init\`: scaffold a starter once the brief is approved.`;
 
 const WORKFLOW_PHASE_4 = `${WORKFLOW_INTRO}
 ${BRIEF_LINE}
@@ -106,10 +107,16 @@ Review STORYBOARD.md against the timelines you wrote before declaring done.`;
 const RULES_PHASE_2 = `${ENGINE_RULES}
 Review STORYBOARD.md against the compiled timelines before declaring done.`;
 
-/** Spec 059 FR-003: the one new rule, after the five engine rules and not numbered among them. */
+/**
+ * Spec 059 FR-003: the one new rule, after the five engine rules and not numbered among them.
+ * FR-052: material only the user has is asked with a fallback; FR-053: every round item is
+ * put to the user.
+ */
 const USER_RULE = `Decisions are the user's, facts are yours: look up what \`eligian_project\` or the files
-answer (ids, classes, assets, languages, versions) and ask the user only decisions, each with your
-recommendation, so that yes accepts it.`;
+answer (ids, classes, assets, languages, versions); ask the user only decisions, each with a
+recommendation yes accepts. Material only the user has (a URL, logo, video, copy) gets a fallback:
+"or I'll use a placeholder. Placeholder?". Put every round item to the user, never fill one in
+yourself; delegated: true only after their "you decide".`;
 
 const RULES_PHASE_4 = `${ENGINE_RULES}
 ${USER_RULE}

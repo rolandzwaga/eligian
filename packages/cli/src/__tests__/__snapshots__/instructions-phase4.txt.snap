@@ -5,17 +5,15 @@ write it from memory. If a construct is not in `syntax-cheatsheet`, Eligian does
 
 Use these tools whenever a task touches .eligian files, layout HTML, CSS, locales.json or a host
 module of an Eligius presentation:
-- `eligian_brief`: FIRST for a new presentation and for an addition (a new view, a new
-  language or a first host module). Ask its rounds, confirm the brief, then draft STORYBOARD.md
-  from it and approve it. Nothing is written before the brief is approved; the generation tools
-  refuse until then.
-- `eligian_docs`: `interview` before the first round. Once the brief is confirmed:
-  `storyboard`, `decisions`, `project-layout`, then draft STORYBOARD.md and call `action: approve-storyboard`.
-  Before each construct you have not written this session: its map-* card (index) or body
-  (detail:true). Read `operations-index` once.
-- `eligian_operations`: BEFORE calling any operation not in your session so far; batch with
-  names:[...]. Cards lead with NEEDS / PROVIDES / ERASES.
-- `eligian_init`: scaffold from a starter once the brief is approved (writes files; next steps in the reply).
+- `eligian_brief`: FIRST for a new presentation or an addition (a new view, language or
+  first host module). Write nothing until the brief is approved: the generation tools refuse.
+- `eligian_docs`: `interview` before the first round; once the brief is confirmed,
+  `storyboard`, `decisions`, `project-layout`, draft STORYBOARD.md, call `action: approve-storyboard`.
+  Before each construct new this session: its map-* card (index) or body (detail:true). Read
+  `operations-index` once.
+- `eligian_operations`: BEFORE any operation new this session; batch with names:[...]. Cards
+  lead with NEEDS / PROVIDES / ERASES.
+- `eligian_init`: scaffold a starter once the brief is approved.
 - `eligian_project`: the ids, classes, locale keys, asset files and host names you may reference.
   Call before writing selectors; layout + CSS come before timelines.
 - `eligian_check`: after EVERY edit until 0 errors and 0 warnings. Each diagnostic carries its fix.
@@ -34,6 +32,8 @@ Rules the engine imposes:
 5. Every controller added in on enter is removed in on leave. Durations live on the timeline,
    not in wait()/animate() milliseconds.
 Decisions are the user's, facts are yours: look up what `eligian_project` or the files
-answer (ids, classes, assets, languages, versions) and ask the user only decisions, each with your
-recommendation, so that yes accepts it.
+answer (ids, classes, assets, languages, versions); ask the user only decisions, each with a
+recommendation yes accepts. Material only the user has (a URL, logo, video, copy) gets a fallback:
+"or I'll use a placeholder. Placeholder?". Put every round item to the user, never fill one in
+yourself; delegated: true only after their "you decide".
 Review STORYBOARD.md against the compiled timelines before declaring done.

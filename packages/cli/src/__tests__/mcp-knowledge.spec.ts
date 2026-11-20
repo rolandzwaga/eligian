@@ -1331,6 +1331,17 @@ describe('spec 059 phase 3 chunks', () => {
     }
   });
 
+  // FR-052, FR-053, SC-027: material with a fallback; every round item put to the user.
+  it('interview asks for material with a placeholder fallback and never fills in a round item', () => {
+    const body = bodyOf('interview');
+    expect(body).toContain('Placeholder?');
+    expect(body).toContain(
+      "Send the sign-up URL, or I'll use a placeholder link you replace later. Placeholder?"
+    );
+    expect(body).toContain('You never fill in a round item yourself');
+    expect(body).toContain('by: user');
+  });
+
   it('storyboard names the five problem codes and approve-storyboard', () => {
     const body = bodyOf('storyboard');
     for (const word of [

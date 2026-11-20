@@ -529,3 +529,4 @@ Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp
 ### Open questions
 
 None. One check remains, marked **[UNVERIFIED]** with its test: the hook in a plugin installed from the marketplace (§6.3).
+- **Follow-up: a `quote` on every `by: user` answer** (from Phase 3's first SC-001 run, 2026-11-20). The agent recorded answers `by: user` that it never asked (the per-view V items of a round, filled in silently; §9 risk 4). The server cannot see the conversation, so it cannot refuse them; Phase 3 teaches against it (phase 3 FR-053). A `quote` field (the user's own words) on each `by: user` answer, kept in `BRIEF.md`, would make every such answer auditable and let the eval check the quote against the user's reply. A tool schema and brief file change; not scheduled.

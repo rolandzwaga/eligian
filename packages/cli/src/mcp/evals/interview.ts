@@ -370,8 +370,28 @@ const keyColumns = (columns: readonly Column[]): readonly Column[] => {
   return keys.length > 0 ? keys : columns.slice(0, 1);
 };
 
-const project = (row: unknown, columns: readonly Column[]): unknown =>
-  isRecord(row) ? columns.map(column => row[column.name]) : row;
+/** A view name or a table's key text as compared: case and surrounding whitespace ignored. */
+const folded = (cell: unknown): unknown =>
+  typeof cell === 'string' ? cell.trim().toLowerCase() : cell;
+
+/**
+ * A row on its key columns. View cells are folded (FR-049); so is every key cell of a table
+ * (FR-050), S2's view names included (its first column).
+ */
+const project = (row: unknown, columns: readonly Column[], table: boolean): unknown =>
+  isRecord(row)
+    ? columns.map(column =>
+        table || column.kind === 'view' ? folded(row[column.name]) : row[column.name]
+      )
+    : row;
+
+/** A table value's rows, projected and serialised; `undefined` when the value is not a list. */
+function tableRows(question: Question, value: unknown): ReadonlySet<string> | undefined {
+  const v = normalised(question, value);
+  if (!Array.isArray(v)) return undefined;
+  const columns = keyColumns(question.shape.columns ?? []);
+  return new Set(v.map(row => JSON.stringify(project(row, columns, true))));
+}
 
 /** The form two values of `question` are compared in (FR-038); `text` has no value check. */
 function comparable(question: Question, value: unknown): string {
@@ -382,13 +402,13 @@ function comparable(question: Question, value: unknown): string {
       return '';
     case 'set':
       return JSON.stringify(Array.isArray(v) ? v.map(String).sort(byCodeUnits) : v);
+    case 'view':
+      return JSON.stringify(folded(v));
     case 'record':
-      return JSON.stringify(project(v, keyColumns(shape.columns ?? [])));
+      return JSON.stringify(project(v, keyColumns(shape.columns ?? []), false));
     case 'table': {
-      if (!Array.isArray(v)) return JSON.stringify(v);
-      const columns = keyColumns(shape.columns ?? []);
-      const rows = new Set(v.map(row => JSON.stringify(project(row, columns))));
-      return JSON.stringify([...rows].sort(byCodeUnits));
+      const rows = tableRows(question, value);
+      return JSON.stringify(rows === undefined ? v : [...rows].sort(byCodeUnits));
     }
     default:
       return JSON.stringify(v);
@@ -397,6 +417,105 @@ function comparable(question: Question, value: unknown): string {
 
 const same = (question: Question, a: unknown, b: unknown): boolean =>
   comparable(question, a) === comparable(question, b);
+
+/**
+ * A recorded value holds a stated one (FR-038, FR-050): for a `table`, every stated row has an
+ * equal row in the recorded value (extra recorded rows allowed); for any other kind, `same`.
+ */
+function holds(question: Question, recorded: unknown, stated: unknown): boolean {
+  if (question.shape.kind === 'table') {
+    const have = tableRows(question, recorded);
+    const want = tableRows(question, stated);
+    if (have !== undefined && want !== undefined) return [...want].every(row => have.has(row));
+  }
+  return same(question, recorded, stated);
+}
+
+// FR-049: the views of the sheet, matched to the views of the brief.
+
+/** `V<n>:<view>` (and `V:<view>`, `SAME_AS`): the template and the view. */
+const VIEW_ID = /^(V\d*):(.+)$/;
+
+/** The `name` column of an S2 value, in order. */
+const viewNamesOf = (value: unknown): readonly string[] =>
+  Array.isArray(value)
+    ? value.flatMap(row => (isRecord(row) && typeof row.name === 'string' ? [row.name] : []))
+    : [];
+
+/**
+ * FR-049: each sheet view name (the sheet's S2 `name` column, then the views of its
+ * `V<n>:<view>` ids) to a view of `brief`'s S2: the same name; else the same name ignoring case
+ * and surrounding whitespace; else the S2 row at the same position. A brief view is matched once,
+ * so two sheet views never measure the same view. A sheet view with no match is not in the map.
+ */
+export function viewMap(sheet: PersonaSheet, brief: BriefState): ReadonlyMap<string, string> {
+  const s2 = sheet.answers.S2;
+  const named = s2 === undefined ? [] : viewNamesOf(lastOf(s2).value);
+  const fromIds = Object.keys(sheet.answers).flatMap(id => {
+    const match = VIEW_ID.exec(id);
+    return match === null ? [] : [match[2]];
+  });
+  const sheetViews = [...new Set([...named, ...fromIds])];
+  const briefViews = viewNamesOf(brief.answers.find(answer => answer.id === 'S2')?.value);
+
+  const map = new Map<string, string>();
+  const taken = new Set<number>();
+  const matchBy = (find: (view: string, position: number) => number): void => {
+    for (const [position, view] of sheetViews.entries()) {
+      if (map.has(view)) continue;
+      const at = find(view, position);
+      if (at === -1 || taken.has(at)) continue;
+      map.set(view, briefViews[at]);
+      taken.add(at);
+    }
+  };
+  matchBy(view => briefViews.indexOf(view));
+  matchBy(view =>
+    briefViews.findIndex((name, at) => !taken.has(at) && folded(name) === folded(view))
+  );
+  matchBy((_view, position) => (position < briefViews.length ? position : -1));
+  return map;
+}
+
+/** The tree question of an id (`SAME_AS` for `V:<view>`), before any instance exists. */
+const templateOf = (id: string): Question | undefined => {
+  const template = VIEW_ID.exec(id)?.[1] ?? id;
+  return template === SAME_AS.id ? SAME_AS : TREE.find(question => question.id === template);
+};
+
+/** FR-049: a sheet id with its view translated (`V1:hours` → `V1:Hours`); others unchanged. */
+const translateId = (map: ReadonlyMap<string, string>, id: string): string => {
+  const match = VIEW_ID.exec(id);
+  return match === null ? id : `${match[1]}:${map.get(match[2]) ?? match[2]}`;
+};
+
+/**
+ * FR-049: a sheet value with every view translated: a `view` value, the `view` columns of a
+ * record or table, and S2's `name` column. Unmatched names stay as they are.
+ */
+function translateValue(
+  map: ReadonlyMap<string, string>,
+  question: Question | undefined,
+  value: unknown
+): unknown {
+  if (question === undefined) return value;
+  const view = (cell: unknown): unknown =>
+    typeof cell === 'string' ? (map.get(cell) ?? cell) : cell;
+  const { shape } = question;
+  if (shape.kind === 'view') return view(value);
+  const columns = (shape.columns ?? []).filter(
+    column => column.kind === 'view' || (question.id === 'S2' && column.name === 'name')
+  );
+  if (columns.length === 0) return value;
+  const row = (cells: unknown): unknown => {
+    if (!isRecord(cells)) return cells;
+    const out: Record<string, unknown> = { ...cells };
+    for (const { name } of columns) if (has(cells, name)) out[name] = view(cells[name]);
+    return out;
+  };
+  if (shape.kind === 'record') return row(value);
+  return shape.kind === 'table' && Array.isArray(value) ? value.map(row) : value;
+}
 
 /** The question of an id: its instance's, else `SAME_AS` for `V:<view>` (never a prefix lookup). */
 const questionOf = (evaluation: Evaluation, id: string): Question | undefined =>
@@ -489,6 +608,8 @@ function nothingAssumed(
   const evaluation = evaluate(TREE, final.brief, input.facts);
   const scripted = firedAnswers(input.sheet, input.script);
   const asked = askedTurns(entries, input.judged);
+  const views = viewMap(input.sheet, final.brief);
+  const sheetIds = new Set<string>();
   const failures: string[] = [];
 
   /** The first snapshot whose answer for `id` is the final one. */
@@ -501,8 +622,11 @@ function nothingAssumed(
         : same(question, answer.value, value);
     })?.turn;
 
-  for (const id of Object.keys(input.sheet.answers)) {
-    const { value, mode } = lastOf(input.sheet.answers[id]);
+  for (const sheetId of Object.keys(input.sheet.answers)) {
+    // FR-049: the sheet's ids and values name the brief's views.
+    const id = translateId(views, sheetId);
+    sheetIds.add(id);
+    const { value, mode } = lastOf(input.sheet.answers[sheetId]);
     const answer = final.brief.answers.find(a => a.id === id);
     if (answer === undefined) {
       if (mode === 'states') failures.push(`${id}: stated by the persona, not in BRIEF.md`);
@@ -522,9 +646,10 @@ function nothingAssumed(
     }
     const question = questionOf(evaluation, id);
     if (mode === 'states') {
-      const expected = scripted.has(id) ? scripted.get(id) : value;
+      const stated = scripted.has(sheetId) ? scripted.get(sheetId) : value;
+      const expected = translateValue(views, templateOf(sheetId), stated);
       if (question === undefined) failures.push(`${id}: not comparable, no question`);
-      else if (!same(question, answer.value, expected)) {
+      else if (!holds(question, answer.value, expected)) {
         failures.push(
           `${id}: ${JSON.stringify(answer.value)} is not the sheet's ${JSON.stringify(expected)}`
         );
@@ -541,7 +666,7 @@ function nothingAssumed(
   }
 
   for (const answer of final.brief.answers) {
-    if (Object.keys(input.sheet.answers).includes(answer.id)) continue;
+    if (sheetIds.has(answer.id)) continue;
     if (answer.by === 'user') {
       failures.push(`${answer.id}: by user, but not on the sheet (the persona says "you decide")`);
     }
@@ -600,8 +725,16 @@ function changedAnswer(
   if (script === null) {
     return { pass: false, dependents: [], notReasked: [], reason: 'script-not-applied' };
   }
+  const final = snapshots[snapshots.length - 1];
+  // FR-049: the script's ids and values name the final brief's views.
+  const views = final === undefined ? new Map<string, string>() : viewMap(input.sheet, final.brief);
   const fired = firedAnswers(input.sheet, script);
-  const change: ScriptChange = { answers: [...fired].map(([id, value]) => ({ id, value })) };
+  const change: ScriptChange = {
+    answers: [...fired].map(([id, value]) => ({
+      id: translateId(views, id),
+      value: translateValue(views, templateOf(id), value),
+    })),
+  };
   const text = input.turns.find(turn => turn.turn === script.turn)?.brief;
   const dependents = changedAnswerDependents(
     text === undefined ? EMPTY_PARSED : parseBrief(text),
@@ -616,13 +749,14 @@ function changedAnswer(
   }
   const notReasked = dependents.filter(id => !askedAfter.has(id));
 
-  const final = snapshots[snapshots.length - 1];
   const evaluation = final === undefined ? undefined : evaluate(TREE, final.brief, input.facts);
   const notApplied = change.answers
     .filter(({ id, value }) => {
       const answer = final?.brief.answers.find(a => a.id === id);
       const question = evaluation === undefined ? undefined : questionOf(evaluation, id);
-      return answer === undefined || question === undefined || !same(question, answer.value, value);
+      return (
+        answer === undefined || question === undefined || !holds(question, answer.value, value)
+      );
     })
     .map(({ id }) => id);
 
