@@ -56,7 +56,7 @@
       "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
       "mode": "states"
     },
-    "V6:overview": { "value": "none", "mode": "states" },
+    "V6:overview": { "value": "The Next button goes to details on click.", "mode": "states" },
     "V1:details": { "value": "Where things are.", "mode": "states" },
     "V2:details": { "value": "Details\nMore to follow.", "mode": "states" },
     "V3:details": {
@@ -68,7 +68,7 @@
       "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
       "mode": "states"
     },
-    "V6:details": { "value": "none", "mode": "states" },
+    "V6:details": { "value": "The Back button goes to overview on click.", "mode": "states" },
     "I3": { "value": "none", "mode": "states" },
     "I4": { "value": "restart", "mode": "states" },
     "D1": { "value": "none", "mode": "states" },

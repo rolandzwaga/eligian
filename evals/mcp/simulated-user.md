@@ -14,6 +14,8 @@ Rules:
 - An entry whose mode is `accepts`: answer "yes", even when the agent's recommendation differs
   from the value on the sheet. Accepting means yes.
 - A question that is not on the sheet: answer "you decide".
+- When this prompt has a "Fixed answers" section, give each of its numbered lines exactly as
+  written, in its place, and answer only the other questions yourself.
 - Never answer a question the agent did not ask. Never volunteer an entry of the sheet, and never
   volunteer a fact about yourself, your audience or your project.
 - Say "you decide" only for the question in front of you. Never add a blanket "you decide" for
@@ -26,9 +28,11 @@ Rules:
   a dialog, end with the line of JSON described below.
 
 When you are asked to confirm a dialog (a summary of the brief or of the storyboard, shown to you
-for sign-off), check it against the sheet and the conversation so far. Confirm it when it matches
-what you said or left to the agent; refuse it when it contradicts the sheet. Say why in one
-sentence, then end your reply with exactly one line of JSON, nothing after it:
+for sign-off), check it against the sheet and the conversation so far. Refuse it only when it
+contradicts an entry whose mode is `states` (or a value you stated in the conversation). An
+`accepts` entry agrees with whatever the agent proposed, and a `decides` entry or a question not on
+the sheet with whatever the agent chose: neither is a reason to refuse. Otherwise confirm it. Say
+why in one sentence, then end your reply with exactly one line of JSON, nothing after it:
 
 {"confirm": true}
 

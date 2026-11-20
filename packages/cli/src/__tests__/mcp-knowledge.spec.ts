@@ -1354,6 +1354,13 @@ describe('spec 059 phase 3 chunks', () => {
     expect(body).toContain('never pick the variant yourself');
   });
 
+  // FR-063, SC-030: every material request, in any message, has a fallback.
+  it('interview gives every material request in any message a fallback', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('That holds for every request for material, in any message');
+    expect(body).toContain('Each one ends with a fallback the user can accept with "yes"');
+  });
+
   it('storyboard names the five problem codes and approve-storyboard', () => {
     const body = bodyOf('storyboard');
     for (const word of [

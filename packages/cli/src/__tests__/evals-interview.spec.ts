@@ -32,6 +32,8 @@ import {
   changedMindLines,
   elementMap,
   FACT_KINDS,
+  FIXED_ANSWERS,
+  fixedAnswers,
   type InterviewDeps,
   type InterviewMeasures,
   type InterviewRecord,
@@ -41,11 +43,11 @@ import {
   interviewPass,
   interviewStop,
   interviewVerdict,
+  isTagged,
   type JudgedMessage,
   type JudgedQuestion,
   judgePrompt,
   type Mode,
-  mergeWording,
   numberedReply,
   PERSONA_NAMES,
   type PersonaName,
@@ -62,7 +64,7 @@ import {
   type TurnData,
   toJudgedMessage,
   viewMap,
-  wordingPrompt,
+  withFixedAnswers,
 } from '../mcp/evals/interview.js';
 import { parseTranscript } from '../mcp/evals/transcript.js';
 import { approvedBrief } from './brief-helpers.js';
@@ -1064,22 +1066,56 @@ describe('SC-028: built replies', () => {
     );
   });
 
-  it('the wording prompt marks stated answers "say" and the others "copy"', () => {
-    const lines = build(sheet, [judgedQ('Tone?', 'P4'), judgedQ('Sound?', 'C4')]);
-    const prompt = wordingPrompt(lines);
-    expect(prompt).toContain('1. Question: Tone?\n   copy: yes');
-    expect(prompt).toContain('2. Question: Sound?\n   say: off');
+  // SC-030 (FR-059, FR-060): fixed answers for the tagged questions; stated values rendered.
+  it('fixedAnswers lists the tagged lines; none when no question is tagged', () => {
+    const lines = build(sheet, [
+      judgedQ('Tone?', 'P4'),
+      judgedQ('Approve?'),
+      judgedQ('Sound?', 'C4'),
+    ]);
+    expect(lines.map(isTagged)).toEqual([true, false, true]);
+    expect(fixedAnswers(lines)).toBe('1. yes\n3. off');
+    expect(fixedAnswers(build(sheet, [judgedQ('Approve?')]))).toBeUndefined();
   });
 
-  it('a wording reply with the wrong line count, or a changed copied line, gives the built lines', () => {
-    const lines = build(sheet, [judgedQ('Tone?', 'P4'), judgedQ('Sound?', 'C4')]);
-    const built = '1. yes\n2. off';
-    expect(mergeWording(lines, '1. Yes.\n2. Sound stays off.')).toBe('1. yes\n2. Sound stays off.');
-    expect(mergeWording(lines, '1. yes')).toBe(built);
-    expect(mergeWording(lines, '1. yes\n2. off\n3. and more')).toBe(built);
-    expect(mergeWording(lines, '1. you decide\n2. Sound stays off.')).toBe(built);
-    expect(mergeWording(lines, '2. yes\n1. Sound stays off.')).toBe(built);
-    expect(mergeWording(lines, undefined)).toBe(built);
+  it('withFixedAnswers puts the built lines in place; keeps other lines; leaves a misnumbered reply', () => {
+    const lines = build(sheet, [
+      judgedQ('Tone?', 'P4'),
+      judgedQ('Approve?'),
+      judgedQ('Sound?', 'C4'),
+    ]);
+    const reply = '1. you decide\n2. Approved, go ahead.\n3. Sound on.\n\nI changed my mind: x';
+    expect(withFixedAnswers(lines, reply)).toBe(
+      '1. yes\n2. Approved, go ahead.\n3. off\n\nI changed my mind: x'
+    );
+    expect(withFixedAnswers(lines, '1. yes\n2. Approved.')).toBe('1. yes\n2. Approved.');
+    expect(withFixedAnswers(lines, '2. a\n1. b\n3. c')).toBe('2. a\n1. b\n3. c');
+  });
+
+  it('a stated V3 row is rendered, not worded', () => {
+    const rows = sheetOf({
+      'V3:overview': {
+        value: [{ element: 'Next button', kind: 'button', file: '-' }],
+        mode: 'states',
+      },
+    });
+    expect(build(rows, [judgedQ('On screen?', 'V3:overview')])[0].text).toBe(
+      'element: Next button, kind: button, file: -'
+    );
+  });
+
+  it('the simulated user prompt carries the fixed answers under their heading', () => {
+    const prompt = simulatedUserPrompt({
+      template: 'T',
+      sheet,
+      conversation: [],
+      last: 'Tone? Approve?',
+      fixed: '1. yes',
+    });
+    expect(prompt).toContain(`## ${FIXED_ANSWERS}\n\n1. yes`);
+    expect(
+      simulatedUserPrompt({ template: 'T', sheet, conversation: [], last: 'x' })
+    ).not.toContain(FIXED_ANSWERS);
   });
 
   it('changedMindLines names each fired answer with its value', () => {
@@ -1195,6 +1231,56 @@ describe('SC-028: normalised compare', () => {
 
 // ---------------------------------------------------------------------------------------------
 // SC-027, the simulated-user half (FR-051): the prompt keeps the simulated user on its sheet.
+
+describe('SC-030: the judge, the sign-off, the sheets (FR-058, FR-061, FR-062)', () => {
+  const flat = (file: string): string =>
+    fs.readFileSync(path.join(REPO, 'evals', 'mcp', file), 'utf8').replace(/\s+/g, ' ');
+
+  it('the judge prompt lists earlier items, and interview-judge.md allows their ids', () => {
+    const prompt = judgePrompt({
+      template: 'T',
+      facts: [],
+      inventory: undefined,
+      files: [],
+      round: [{ id: 'R2', title: 'Which browsers?', ask: 'a' }],
+      earlier: [{ id: 'L4', title: 'What differs per language?', ask: 'b' }],
+      message: 'Should the Dutch version have its own narration?',
+    });
+    expect(prompt).toContain(
+      '## The earlier items (asked in an earlier round)\n\n- L4: What differs per language? | b'
+    );
+    expect(
+      judgePrompt({
+        ...{ template: 'T', facts: [], files: [], round: [] },
+        inventory: undefined,
+        message: 'm',
+      })
+    ).toContain('(no earlier items)');
+    expect(flat('interview-judge.md')).toContain(
+      'Use only ids that appear in the round items or the earlier items'
+    );
+  });
+
+  it('simulated-user.md refuses a summary only on a states contradiction', () => {
+    const text = flat('simulated-user.md');
+    expect(text).toContain('Refuse it only when it contradicts an entry whose mode is `states`');
+    expect(text).toContain('neither is a reason to refuse');
+    expect(text).toContain('"Fixed answers" section');
+  });
+
+  it('the vague V6 and detailed P5 entries are the FR-062 values', () => {
+    const vague = readSheet('vague').answers;
+    expect(vague['V6:overview']).toEqual({
+      value: 'The Next button goes to details on click.',
+      mode: 'states',
+    });
+    expect(vague['V6:details']).toEqual({
+      value: 'The Back button goes to overview on click.',
+      mode: 'states',
+    });
+    expect(readSheet('detailed').answers.P5).toEqual({ value: 102, mode: 'states' });
+  });
+});
 
 describe('simulated-user.md (FR-051)', () => {
   const text = fs.readFileSync(path.join(REPO, 'evals', 'mcp', 'simulated-user.md'), 'utf8');
@@ -1836,28 +1922,33 @@ describe('runInterview with a fake runner', () => {
     expect(userPrompts).toEqual([]);
   });
 
-  it('a stated answer is worded by the user model, checked line by line', async () => {
+  it('a stated answer is rendered from the sheet, with no user model call', async () => {
     const sheet = sheetOf({
       C4: { value: 'off', mode: 'states' },
       P4: { value: 'plain', mode: 'accepts' },
     });
-    const judge = judgeOf({ text: 'Tone?', ids: ['P4'] }, { text: 'Sound?', ids: ['C4'] });
-    const worded = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
+    const { run, deps, seen, userPrompts } = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
       sheet,
-      judge,
-      reply: () => '1. yes\n2. Sound stays off.',
+      judge: judgeOf({ text: 'Tone?', ids: ['P4'] }, { text: 'Sound?', ids: ['C4'] }),
     });
-    await runInterview(worded.run, worded.deps);
-    expect(worded.userPrompts[0]).toContain('say: off');
-    expect(worded.seen[1].message).toBe('1. yes\n2. Sound stays off.');
+    await runInterview(run, deps);
+    expect(seen[1].message).toBe('1. yes\n2. off');
+    expect(userPrompts).toEqual([]);
+  });
 
-    const drifted = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
+  // SC-030 (FR-059): an untagged question sends the message to the simulated user, built lines fixed.
+  it('an untagged question goes to the simulated user; the tagged line is the built one', async () => {
+    const sheet = sheetOf({ P4: { value: 'plain', mode: 'accepts' } });
+    const { run, deps, seen, userPrompts } = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
       sheet,
-      judge,
-      reply: () => '1. you decide\n2. Off, and for anything else you decide.',
+      judge: judgeOf({ text: 'Tone?', ids: ['P4'] }, { text: 'Approve the brief?', ids: [] }),
+      reply: () => '1. you decide\n2. Approved.',
     });
-    await runInterview(drifted.run, drifted.deps);
-    expect(drifted.seen[1].message).toBe('1. yes\n2. off');
+    await runInterview(run, deps);
+    expect(userPrompts).toHaveLength(1);
+    expect(userPrompts[0]).toContain('SIMULATED USER TEMPLATE');
+    expect(userPrompts[0]).toContain(`## ${FIXED_ANSWERS}\n\n1. yes`);
+    expect(seen[1].message).toBe('1. yes\n2. Approved.');
   });
 });
 

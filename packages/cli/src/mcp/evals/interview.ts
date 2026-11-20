@@ -976,6 +976,10 @@ export const CHANGED_MIND = 'In this reply, also tell the agent you changed your
 
 const json = (value: unknown): string => JSON.stringify(value, null, 2);
 
+/** FR-059: the heading of the answers the simulated user gives as they are. */
+export const FIXED_ANSWERS =
+  'Fixed answers (give each of these numbered lines exactly as written, in its place; answer the other questions yourself)';
+
 /**
  * FR-039: the simulated user's prompt: the template (`simulated-user.md`), the persona sheet
  * (without its `script`: the harness fires it, not the model's counting), the conversation so far
@@ -987,6 +991,8 @@ export function simulatedUserPrompt(input: {
   readonly conversation: readonly ConversationEntry[];
   readonly last: string;
   readonly change?: ScriptChange;
+  /** FR-059: the `<k>. <answer>` lines of the tagged questions, given as they are. */
+  readonly fixed?: string;
 }): string {
   const { idea, opening, answers } = input.sheet;
   const parts = [
@@ -998,6 +1004,9 @@ export function simulatedUserPrompt(input: {
     "## The agent's last message",
     input.last,
   ];
+  if (input.fixed !== undefined) {
+    parts.push(`## ${FIXED_ANSWERS}`, input.fixed);
+  }
   const changed = input.change?.answers ?? [];
   if (changed.length > 0) {
     parts.push(
@@ -1123,43 +1132,38 @@ export function buildReply(input: BuildReplyInput): BuiltLine[] {
 export const numberedReply = (lines: readonly BuiltLine[]): string =>
   lines.map((line, k) => `${k + 1}. ${line.text}`).join('\n');
 
-const hasStates = (line: BuiltLine): boolean => line.parts.some(part => part.kind === 'states');
-
-/** FR-054: the user model's prompt for wording the `states` answers of a built reply. */
-export function wordingPrompt(lines: readonly BuiltLine[]): string {
-  return `${[
-    "You are a person answering an interviewer's numbered questions. Your answers are fixed; only the wording of some of them is yours.",
-    'Each numbered item below is one question and your answer. An answer marked "say:" is yours to put in your own plain words: keep every fact of it, add none, leave nothing out. An answer marked "copy:" is copied exactly as given.',
-    'Reply with exactly one line per question, numbered as given ("1. …"), and nothing else.',
-    lines
-      .map(
-        (line, k) =>
-          `${k + 1}. Question: ${line.question}\n   ${hasStates(line) ? 'say' : 'copy'}: ${line.text}`
-      )
-      .join('\n'),
-  ].join('\n\n')}\n`;
-}
+/** FR-059: a line built for a question the judge tagged with at least one id. */
+export const isTagged = (line: BuiltLine): boolean =>
+  line.parts.some(part => part.id !== undefined);
 
 /**
- * FR-054: the wording reply when it has exactly one numbered line per question, in order, and
- * every line without a `states` answer is the built one (case and a trailing period aside);
- * otherwise the built lines.
+ * FR-059: the fixed answers the simulated user gives as they are, one `<k>. <answer>` line per
+ * tagged question; `undefined` when no question is tagged.
  */
-export function mergeWording(lines: readonly BuiltLine[], reply: string | undefined): string {
-  const built = numberedReply(lines);
-  if (reply === undefined) return built;
-  const numbered = reply
-    .split(/\r?\n/)
-    .filter(line => line.trim() !== '')
-    .map(line => /^\s*(\d+)\.\s*(.*)$/.exec(line));
-  if (numbered.length !== lines.length) return built;
-  const worded: string[] = [];
-  for (const [k, match] of numbered.entries()) {
-    if (match === null || Number(match[1]) !== k + 1 || match[2].trim() === '') return built;
-    if (!hasStates(lines[k]) && folded(match[2]) !== folded(lines[k].text)) return built;
-    worded.push(`${k + 1}. ${hasStates(lines[k]) ? match[2].trim() : lines[k].text}`);
+export function fixedAnswers(lines: readonly BuiltLine[]): string | undefined {
+  const fixed = lines.flatMap((line, k) => (isTagged(line) ? [`${k + 1}. ${line.text}`] : []));
+  return fixed.length === 0 ? undefined : fixed.join('\n');
+}
+
+const NUMBERED_LINE = /^\s*(\d+)\.\s/;
+
+/**
+ * FR-059: the simulated user's reply with each tagged question's line replaced by its built line,
+ * when the reply numbers exactly one line per question, 1 to n in order (other lines, such as a
+ * changed-mind block, stay); otherwise the reply as it stands.
+ */
+export function withFixedAnswers(lines: readonly BuiltLine[], reply: string): string {
+  const replyLines = reply.split(/\r?\n/);
+  const numbered = replyLines.flatMap((line, at) => {
+    const match = NUMBERED_LINE.exec(line);
+    return match === null ? [] : [{ at, n: Number(match[1]) }];
+  });
+  if (numbered.length !== lines.length || numbered.some(({ n }, k) => n !== k + 1)) return reply;
+  const out = [...replyLines];
+  for (const [k, { at }] of numbered.entries()) {
+    if (isTagged(lines[k])) out[at] = `${k + 1}. ${lines[k].text}`;
   }
-  return worded.join('\n');
+  return out.join('\n');
 }
 
 /** FR-054, FR-039: the changed-mind lines a fired script appends to a built reply. */
@@ -1187,13 +1191,17 @@ export function judgePrompt(input: {
   readonly inventory: string | undefined;
   readonly files: readonly string[];
   readonly round: readonly RoundItemLike[];
+  /** FR-058: the items of earlier rounds, not in `round`. */
+  readonly earlier?: readonly RoundItemLike[];
   readonly message: string;
 }): string {
   const files = input.files.length === 0 ? '(none)' : input.files.join('\n');
-  const round =
-    input.round.length === 0
-      ? '(no round items)'
-      : input.round.map(({ id, title, ask }) => `- ${id}: ${title} | ${ask}`).join('\n');
+  const items = (list: readonly RoundItemLike[], none: string): string =>
+    list.length === 0
+      ? none
+      : list.map(({ id, title, ask }) => `- ${id}: ${title} | ${ask}`).join('\n');
+  const round = items(input.round, '(no round items)');
+  const earlier = items(input.earlier ?? [], '(no earlier items)');
   return `${[
     input.template.trimEnd(),
     '## Facts (the agent looks these up; asking the user one is a fact question)',
@@ -1204,6 +1212,8 @@ export function judgePrompt(input: {
     files,
     '## The round items of the last eligian_brief result',
     round,
+    '## The earlier items (asked in an earlier round)',
+    earlier,
     "## The agent's message",
     input.message,
   ].join('\n\n')}\n`;
@@ -1421,20 +1431,26 @@ const roundCountOf = (turns: readonly TurnData[]): number =>
     .filter(entry => (briefResultOf(entry)?.round.length ?? 0) > 0).length;
 
 /** FR-042: the last `eligian_project` result text and the last `eligian_brief` round so far. */
-function judgeContext(entries: readonly ToolEntry[]): {
+export function judgeContext(entries: readonly ToolEntry[]): {
   inventory: string | undefined;
   round: readonly RoundItemLike[];
+  earlier: readonly RoundItemLike[];
 } {
   let inventory: string | undefined;
   let round: readonly RoundItemLike[] = [];
+  const seen = new Map<string, RoundItemLike>();
   for (const entry of entries) {
     if (entry.name === `${MCP}eligian_project` && entry.resultText !== undefined) {
       inventory = entry.resultText;
     }
     const brief = briefResultOf(entry);
-    if (brief !== undefined) round = brief.items;
+    if (brief === undefined) continue;
+    round = brief.items;
+    // FR-058: the latest form of every item a round gave, kept in first-seen order.
+    for (const item of brief.items) seen.set(item.id, item);
   }
-  return { inventory, round };
+  const inRound = new Set(round.map(item => item.id));
+  return { inventory, round, earlier: [...seen.values()].filter(item => !inRound.has(item.id)) };
 }
 
 /**
@@ -1483,7 +1499,7 @@ export async function runInterview(
     if (data.message === undefined || data.message.trim() === '' || index === undefined) {
       return undefined;
     }
-    const { inventory, round } = judgeContext(
+    const { inventory, round, earlier } = judgeContext(
       turns.slice(0, k + 1).flatMap(({ events }) => toolEntries(events))
     );
     const prompt = judgePrompt({
@@ -1492,6 +1508,7 @@ export async function runInterview(
       inventory,
       files: k === 0 ? startFiles : turns[k - 1].files,
       round,
+      earlier,
       message: data.message,
     });
     const reply = await deps.judge(prompt).catch(() => undefined);
@@ -1553,34 +1570,35 @@ export async function runInterview(
     if (change !== undefined && script === null) script = { turn, roundCount };
     for (const answer of change?.answers ?? []) fired.set(answer.id, answer.value);
 
-    // FR-054: the questions the judge found are answered from the sheet; a message with none
-    // (a summary for sign-off, "shall I go on") goes to the simulated user of FR-051.
+    // FR-054, FR-059, FR-060: when every question the judge found lists ids, the reply is built
+    // from the sheet; otherwise (an untagged question, no question, no judgement) the simulated
+    // user of FR-051 answers, the tagged questions' built lines fixed.
     const questions =
       judgedNow !== undefined && 'questions' in judgedNow ? judgedNow.questions : [];
+    const views = viewMap(
+      run.sheet,
+      (brief === undefined ? EMPTY_PARSED : parseBrief(brief)).brief
+    );
+    const lines = buildReply({ sheet: run.sheet, views, questions, asks, fired });
     let reply: string | undefined;
-    if (questions.length > 0) {
-      const views = viewMap(
-        run.sheet,
-        (brief === undefined ? EMPTY_PARSED : parseBrief(brief)).brief
-      );
-      const lines = buildReply({ sheet: run.sheet, views, questions, asks, fired });
-      const worded = lines.some(hasStates)
-        ? await deps.userReply(wordingPrompt(lines)).catch(() => undefined)
-        : undefined;
-      const answers = mergeWording(lines, worded);
+    if (lines.length > 0 && lines.every(isTagged)) {
+      const answers = numberedReply(lines);
       reply = change === undefined ? answers : `${answers}\n\n${changedMindLines(change)}`;
     } else {
+      const fixed = fixedAnswers(lines);
       const prompt = simulatedUserPrompt({
         template: run.prompts.simulatedUser,
         sheet: run.sheet,
         conversation,
         last: text ?? '',
         ...(change === undefined ? {} : { change }),
+        ...(fixed === undefined ? {} : { fixed }),
       });
       reply = await deps.userReply(prompt).catch((error: unknown) => {
         failures.push(`simulated user: ${errorText(error)}`);
         return undefined;
       });
+      if (reply !== undefined && fixed !== undefined) reply = withFixedAnswers(lines, reply);
     }
     if (reply === undefined) {
       failures.push(`simulated user: no reply to agent turn ${turn}`);

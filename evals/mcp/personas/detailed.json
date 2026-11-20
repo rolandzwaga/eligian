@@ -12,7 +12,7 @@
       "mode": "states"
     },
     "P4": { "value": "friendly and confident", "mode": "states" },
-    "P5": { "value": 180, "mode": "states" },
+    "P5": { "value": 102, "mode": "states" },
     "C1": { "value": "self-paced", "mode": "states" },
     "C2": {
       "value": [{ "device": "desktop", "primary": "yes" }, { "device": "tablet", "primary": "no" }],

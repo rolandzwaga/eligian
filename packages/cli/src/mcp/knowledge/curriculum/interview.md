@@ -31,6 +31,8 @@ Each reply holds a `round`: at most 7 questions whose prerequisites are settled.
 
 When the answer is material only the user has (a URL, a brand guide, a video or audio file, a logo, the exact copy), you cannot recommend the material itself: ask for it with a fallback the user can accept with "yes". For example: "Send the sign-up URL, or I'll use a placeholder link you replace later. Placeholder?"
 
+That holds for every request for material, in any message: a round item, a follow-up, the summary at a sign-off, your last message. Each one ends with a fallback the user can accept with "yes". "Send what you have" alone is not a question the user can answer.
+
 A question about who supplies something and when (`A1`, `L2`) has a fallback too: "Who delivers the hero image, and when? Or I'll record it as not decided yet. OK?"
 
 Record a file path only when the user gave it. With no file yet, the `file` cell is `-` and the asset goes to `A1`; never make up a path such as `media/hero.jpg`.

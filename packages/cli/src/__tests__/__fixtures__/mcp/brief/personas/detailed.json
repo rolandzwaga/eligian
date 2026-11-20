@@ -7,7 +7,7 @@
       "value": "Small-business owners.\nThey have heard of the product but have not used it."
     },
     "P4": { "value": "friendly and confident" },
-    "P5": { "value": 180 },
+    "P5": { "value": 102 },
     "C1": { "value": "self-paced" },
     "C2": {
       "value": [{ "device": "desktop", "primary": "yes" }, { "device": "tablet", "primary": "no" }]

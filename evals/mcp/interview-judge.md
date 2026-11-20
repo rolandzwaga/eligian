@@ -17,7 +17,9 @@ Below this prompt you get, in order:
    project's files.
 3. **Round items**: the items of the most recent round the server gave the agent before the message
    (ids, titles, asks). There may be none.
-4. **Message**: the agent's message to the user.
+4. **Earlier items**: the items of the earlier rounds (ids, titles, asks), for a question that comes
+   back to an item already asked. There may be none.
+5. **Message**: the agent's message to the user.
 
 ## Your task
 
@@ -31,10 +33,13 @@ offer to go on ("Shall I continue?"), and a rhetorical question.
 For each question give:
 
 - `text`: the question, quoted from the message (shortened with "…" when it is long).
-- `ids`: every round item id the question asks about. A bundled question lists all of them: "For
-  intro, details and outro, what is on screen?" over the items `V3:intro`, `V3:details` and
-  `V3:outro` gives `["V3:intro", "V3:details", "V3:outro"]`. A question that asks about none of the
-  round items gives `[]`. Use only ids that appear in the round items, spelled exactly as given.
+- `ids`: every round item or earlier item id the question asks about. A bundled question lists all
+  of them: "For intro, details and outro, what is on screen?" over the items `V3:intro`,
+  `V3:details` and `V3:outro` gives `["V3:intro", "V3:details", "V3:outro"]`. A follow-up on an item already
+  asked ("Should the Dutch version have its own narration?" after the earlier item `L4`, what
+  differs per language) lists that item. A question that asks about none of the round or earlier
+  items gives `[]`. Use only ids that appear in the round items or the earlier items, spelled
+  exactly as given.
 - `fact`: `true` when the question asks for something of the facts list, or something the inventory
   or the project's files already answer (a layout id, a CSS class, a locale key, whether an asset
   file exists, the text direction of a language, the installed `eligian` version or the package
