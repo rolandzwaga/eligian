@@ -31,6 +31,12 @@ Each reply holds a `round`: at most 7 questions whose prerequisites are settled.
 
 When the answer is material only the user has (a URL, a brand guide, a video or audio file, a logo, the exact copy), you cannot recommend the material itself: ask for it with a fallback the user can accept with "yes". For example: "Send the sign-up URL, or I'll use a placeholder link you replace later. Placeholder?"
 
+A question about who supplies something and when (`A1`, `L2`) has a fallback too: "Who delivers the hero image, and when? Or I'll record it as not decided yet. OK?"
+
+Record a file path only when the user gave it. With no file yet, the `file` cell is `-` and the asset goes to `A1`; never make up a path such as `media/hero.jpg`.
+
+When the user names a language without its variant ("English"), ask which one, with a recommendation ("en-US or en-GB? I recommend en-US."); never pick the variant yourself.
+
 Every item of the round is put to the user, the per-view items (`V1`, `V3` and the rest, for each view) included. You never fill in a round item yourself. An answer sent without `delegated` is recorded `by: user`, so send one only from the user's reply to that item (or from what they volunteered earlier); your own choice goes with `delegated: true`, and only after the user said "you decide" for that item.
 
 Then call `eligian_brief` with `action: answer` and `answers: [{ id, value, delegated? }]`, each `value` in the item's `shape`. What the user volunteered earlier (in the idea or a previous reply) can be recorded at once, in the same call, without asking again. A rejected answer comes back in `rejected` with its reason; the accepted ones stand. Ask again only for the rejected ones.
@@ -74,6 +80,8 @@ After confirmation, draft `STORYBOARD.md` from the brief (`storyboard`) and call
 ## Changed answers
 
 When an answer changes after confirmation, the gated tools refuse with `brief-changed`. A question whose prerequisite changed comes back in the round with `previous`: the answer it had. Ask it again, showing the previous answer as your recommendation when it still fits. Re-confirming shows only the changed answers.
+
+The same holds whenever the user changes an answer, before confirmation too: put every question that depends on it to the user again (a view whose purpose changed brings back its per-view items), with the previous answer as your recommendation. Never update a dependent answer yourself to match the change.
 
 ## The whole tree
 

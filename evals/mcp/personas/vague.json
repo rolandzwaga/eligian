@@ -47,7 +47,10 @@
     "S8": { "value": "stay", "mode": "states" },
     "V1:overview": { "value": "There is a new office.", "mode": "states" },
     "V2:overview": { "value": "Our new office", "mode": "states" },
-    "V3:overview": { "value": "none", "mode": "states" },
+    "V3:overview": {
+      "value": [{ "element": "Next button", "kind": "button", "file": "-" }],
+      "mode": "states"
+    },
     "V4:overview": { "value": "The title appears.", "mode": "states" },
     "V5:overview": {
       "value": { "duration": "none", "pacing": "none", "cues-from": "-" },
@@ -56,7 +59,10 @@
     "V6:overview": { "value": "none", "mode": "states" },
     "V1:details": { "value": "Where things are.", "mode": "states" },
     "V2:details": { "value": "Details\nMore to follow.", "mode": "states" },
-    "V3:details": { "value": "none", "mode": "states" },
+    "V3:details": {
+      "value": [{ "element": "Back button", "kind": "button", "file": "-" }],
+      "mode": "states"
+    },
     "V4:details": { "value": "Not sure; something simple.", "mode": "states" },
     "V5:details": {
       "value": { "duration": "none", "pacing": "none", "cues-from": "-" },

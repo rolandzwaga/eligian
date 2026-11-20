@@ -1342,6 +1342,18 @@ describe('spec 059 phase 3 chunks', () => {
     expect(body).toContain('by: user');
   });
 
+  // FR-056, SC-029: the four teaching rules after SC-001 run 2.
+  it('interview re-asks dependents, invents no paths, gives who/when a fallback, asks the variant', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('put every question that depends on it to the user again');
+    expect(body).toContain('Never update a dependent answer yourself');
+    expect(body).toContain('Record a file path only when the user gave it');
+    expect(body).toContain('never make up a path');
+    expect(body).toContain("Or I'll record it as not decided yet. OK?");
+    expect(body).toContain('ask which one, with a recommendation');
+    expect(body).toContain('never pick the variant yourself');
+  });
+
   it('storyboard names the five problem codes and approve-storyboard', () => {
     const body = bodyOf('storyboard');
     for (const word of [

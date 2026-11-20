@@ -5,15 +5,15 @@ write it from memory. If a construct is not in `syntax-cheatsheet`, Eligian does
 
 Use these tools whenever a task touches .eligian files, layout HTML, CSS, locales.json or a host
 module of an Eligius presentation:
-- `eligian_brief`: FIRST for a new presentation or an addition (a new view, language or
-  first host module). Write nothing until the brief is approved: the generation tools refuse.
+- `eligian_brief`: FIRST for a new presentation or an addition (new view, language, first host
+  module). Write nothing until the brief is approved.
 - `eligian_docs`: `interview` before the first round; once the brief is confirmed,
   `storyboard`, `decisions`, `project-layout`, draft STORYBOARD.md, call `action: approve-storyboard`.
-  Before each construct new this session: its map-* card (index) or body (detail:true). Read
+  Before each construct new this session: its map-* card or body (detail:true). Read
   `operations-index` once.
 - `eligian_operations`: BEFORE any operation new this session; batch with names:[...]. Cards
   lead with NEEDS / PROVIDES / ERASES.
-- `eligian_init`: scaffold a starter once the brief is approved.
+- `eligian_init`: a starter, once the brief is approved.
 - `eligian_project`: the ids, classes, locale keys, asset files and host names you may reference.
   Call before writing selectors; layout + CSS come before timelines.
 - `eligian_check`: after EVERY edit until 0 errors and 0 warnings. Each diagnostic carries its fix.
@@ -33,7 +33,8 @@ Rules the engine imposes:
    not in wait()/animate() milliseconds.
 Decisions are the user's, facts are yours: look up what `eligian_project` or the files
 answer (ids, classes, assets, languages, versions); ask the user only decisions, each with a
-recommendation yes accepts. Material only the user has (a URL, logo, video, copy) gets a fallback:
-"or I'll use a placeholder. Placeholder?". Put every round item to the user, never fill one in
-yourself; delegated: true only after their "you decide".
+recommendation yes accepts. User-only material (URL, logo, copy) gets a fallback: "or I'll
+use a placeholder. Placeholder?". Put every round item to the user, never fill one in
+yourself; delegated: true only after "you decide". Changed answer: ask its dependents again.
+Record only file paths the user gave.
 Review STORYBOARD.md against the compiled timelines before declaring done.

@@ -370,19 +370,51 @@ const keyColumns = (columns: readonly Column[]): readonly Column[] => {
   return keys.length > 0 ? keys : columns.slice(0, 1);
 };
 
-/** A view name or a table's key text as compared: case and surrounding whitespace ignored. */
+/**
+ * A view name or a table's key text as compared (FR-049, FR-055): surrounding whitespace, case,
+ * a leading "the", "a" or "an" and a trailing period ignored.
+ */
 const folded = (cell: unknown): unknown =>
-  typeof cell === 'string' ? cell.trim().toLowerCase() : cell;
+  typeof cell === 'string'
+    ? cell
+        .trim()
+        .toLowerCase()
+        .replace(/^(?:the|an?)\s+/, '')
+        .replace(/\.$/, '')
+        .trim()
+    : cell;
+
+/** FR-055: key-name spellings read as one key (after spaces, hyphens and "arrow" are removed). */
+const KEY_ALIASES: Readonly<Record<string, string>> = {
+  esc: 'escape',
+  return: 'enter',
+  spacebar: 'space',
+};
+
+/** FR-055: an I2 `key` cell as compared: `ArrowRight`, `right arrow` and `right` are one key. */
+const keyName = (cell: unknown): unknown => {
+  const text = folded(cell);
+  if (typeof text !== 'string') return text;
+  const bare = text.replace(/[\s_-]+/g, '').replace(/arrow/g, '');
+  return KEY_ALIASES[bare] ?? bare;
+};
 
 /**
  * A row on its key columns. View cells are folded (FR-049); so is every key cell of a table
- * (FR-050), S2's view names included (its first column).
+ * (FR-050, FR-055), S2's view names included (its first column), and I2's keys are key names.
  */
-const project = (row: unknown, columns: readonly Column[], table: boolean): unknown =>
+const project = (
+  row: unknown,
+  columns: readonly Column[],
+  table: boolean,
+  questionId: string
+): unknown =>
   isRecord(row)
-    ? columns.map(column =>
-        table || column.kind === 'view' ? folded(row[column.name]) : row[column.name]
-      )
+    ? columns.map(column => {
+        const cell = row[column.name];
+        if (questionId === 'I2' && column.name === 'key') return keyName(cell);
+        return table || column.kind === 'view' ? folded(cell) : cell;
+      })
     : row;
 
 /** A table value's rows, projected and serialised; `undefined` when the value is not a list. */
@@ -390,7 +422,7 @@ function tableRows(question: Question, value: unknown): ReadonlySet<string> | un
   const v = normalised(question, value);
   if (!Array.isArray(v)) return undefined;
   const columns = keyColumns(question.shape.columns ?? []);
-  return new Set(v.map(row => JSON.stringify(project(row, columns, true))));
+  return new Set(v.map(row => JSON.stringify(project(row, columns, true, question.id))));
 }
 
 /** The form two values of `question` are compared in (FR-038); `text` has no value check. */
@@ -405,7 +437,7 @@ function comparable(question: Question, value: unknown): string {
     case 'view':
       return JSON.stringify(folded(v));
     case 'record':
-      return JSON.stringify(project(v, keyColumns(shape.columns ?? []), false));
+      return JSON.stringify(project(v, keyColumns(shape.columns ?? []), false, question.id));
     case 'table': {
       const rows = tableRows(question, value);
       return JSON.stringify(rows === undefined ? v : [...rows].sort(byCodeUnits));
@@ -457,25 +489,68 @@ export function viewMap(sheet: PersonaSheet, brief: BriefState): ReadonlyMap<str
   });
   const sheetViews = [...new Set([...named, ...fromIds])];
   const briefViews = viewNamesOf(brief.answers.find(answer => answer.id === 'S2')?.value);
+  return matchNames(sheetViews, briefViews);
+}
 
+/**
+ * FR-049, FR-055: each sheet name to a brief name: the same name; else the same name folded;
+ * else the brief name at the same position. One to one: a brief name is matched once.
+ */
+function matchNames(
+  sheetNames: readonly string[],
+  briefNames: readonly string[]
+): ReadonlyMap<string, string> {
   const map = new Map<string, string>();
   const taken = new Set<number>();
-  const matchBy = (find: (view: string, position: number) => number): void => {
-    for (const [position, view] of sheetViews.entries()) {
-      if (map.has(view)) continue;
-      const at = find(view, position);
+  const matchBy = (find: (name: string, position: number) => number): void => {
+    for (const [position, name] of sheetNames.entries()) {
+      if (map.has(name)) continue;
+      const at = find(name, position);
       if (at === -1 || taken.has(at)) continue;
-      map.set(view, briefViews[at]);
+      map.set(name, briefNames[at]);
       taken.add(at);
     }
   };
-  matchBy(view => briefViews.indexOf(view));
-  matchBy(view =>
-    briefViews.findIndex((name, at) => !taken.has(at) && folded(name) === folded(view))
+  matchBy(name => briefNames.indexOf(name));
+  matchBy(name =>
+    briefNames.findIndex((other, at) => !taken.has(at) && folded(other) === folded(name))
   );
-  matchBy((_view, position) => (position < briefViews.length ? position : -1));
+  matchBy((_name, position) => (position < briefNames.length ? position : -1));
   return map;
 }
+
+/** The `element` column of a V3 value, in order. */
+const elementNamesOf = (value: unknown): readonly string[] =>
+  Array.isArray(value)
+    ? value.flatMap(row => (isRecord(row) && typeof row.element === 'string' ? [row.element] : []))
+    : [];
+
+/**
+ * FR-055: per sheet view, its V3 elements to the elements of the brief's V3 for the mapped view,
+ * matched like views (`matchNames`).
+ */
+export function elementMap(
+  sheet: PersonaSheet,
+  brief: BriefState,
+  views: ReadonlyMap<string, string>
+): ReadonlyMap<string, ReadonlyMap<string, string>> {
+  const map = new Map<string, ReadonlyMap<string, string>>();
+  for (const id of Object.keys(sheet.answers)) {
+    const match = VIEW_ID.exec(id);
+    if (match === null || match[1] !== 'V3') continue;
+    const view = match[2];
+    const briefId = `V3:${views.get(view) ?? view}`;
+    const recorded = brief.answers.find(answer => answer.id === briefId)?.value;
+    map.set(
+      view,
+      matchNames(elementNamesOf(lastOf(sheet.answers[id]).value), elementNamesOf(recorded))
+    );
+  }
+  return map;
+}
+
+/** FR-055: the columns that name an asset as `<view>: <element>`. */
+const ELEMENT_COLUMNS: Readonly<Record<string, string>> = { A1: 'asset', A5: 'image' };
 
 /** The tree question of an id (`SAME_AS` for `V:<view>`), before any instance exists. */
 const templateOf = (id: string): Question | undefined => {
@@ -496,13 +571,30 @@ const translateId = (map: ReadonlyMap<string, string>, id: string): string => {
 function translateValue(
   map: ReadonlyMap<string, string>,
   question: Question | undefined,
-  value: unknown
+  value: unknown,
+  elements: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map()
 ): unknown {
   if (question === undefined) return value;
   const view = (cell: unknown): unknown =>
     typeof cell === 'string' ? (map.get(cell) ?? cell) : cell;
   const { shape } = question;
   if (shape.kind === 'view') return view(value);
+  // FR-055: `<view>: <element>` through the view map and that view's element map.
+  const assetColumn = ELEMENT_COLUMNS[question.id];
+  if (assetColumn !== undefined && Array.isArray(value)) {
+    const asset = (cell: unknown): unknown => {
+      if (typeof cell !== 'string') return cell;
+      const at = cell.indexOf(': ');
+      if (at === -1) return cell;
+      const [name, element] = [cell.slice(0, at), cell.slice(at + 2)];
+      return `${map.get(name) ?? name}: ${elements.get(name)?.get(element) ?? element}`;
+    };
+    return value.map(row =>
+      isRecord(row) && has(row, assetColumn)
+        ? { ...row, [assetColumn]: asset(row[assetColumn]) }
+        : row
+    );
+  }
   const columns = (shape.columns ?? []).filter(
     column => column.kind === 'view' || (question.id === 'S2' && column.name === 'name')
   );
@@ -609,6 +701,7 @@ function nothingAssumed(
   const scripted = firedAnswers(input.sheet, input.script);
   const asked = askedTurns(entries, input.judged);
   const views = viewMap(input.sheet, final.brief);
+  const elements = elementMap(input.sheet, final.brief, views);
   const sheetIds = new Set<string>();
   const failures: string[] = [];
 
@@ -647,7 +740,7 @@ function nothingAssumed(
     const question = questionOf(evaluation, id);
     if (mode === 'states') {
       const stated = scripted.has(sheetId) ? scripted.get(sheetId) : value;
-      const expected = translateValue(views, templateOf(sheetId), stated);
+      const expected = translateValue(views, templateOf(sheetId), stated, elements);
       if (question === undefined) failures.push(`${id}: not comparable, no question`);
       else if (!holds(question, answer.value, expected)) {
         failures.push(
@@ -917,6 +1010,169 @@ export function simulatedUserPrompt(input: {
   return `${parts.join('\n\n')}\n`;
 }
 
+// ---------------------------------------------------------------------------------------------
+// The built reply (FR-054)
+
+export const YES = 'yes';
+export const YOU_DECIDE = 'you decide';
+
+/** One answer of a built reply line: for one judged id, or for a question with none. */
+export interface ReplyPart {
+  readonly id: string | undefined;
+  readonly kind: 'yes' | 'decide' | 'states';
+  /** The value to state (`states` only). */
+  readonly value?: unknown;
+}
+
+/** One numbered line of a built reply: the judge's question and its answer. */
+export interface BuiltLine {
+  readonly question: string;
+  readonly parts: readonly ReplyPart[];
+  /** The answer as built, without its number. */
+  readonly text: string;
+}
+
+/** FR-054: a sheet value in plain text, on one line. */
+export function renderValue(value: unknown): string {
+  if (typeof value === 'string') {
+    const lines = value.split(/\r?\n/).filter(line => line.trim() !== '');
+    return lines.length > 1 ? lines.map(line => `"${line}"`).join(', then ') : value;
+  }
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) {
+    return value.length === 0 ? 'none' : value.map(renderValue).join('; ');
+  }
+  if (isRecord(value)) {
+    return Object.entries(value)
+      .map(([key, cell]) => `${key}: ${renderValue(cell)}`)
+      .join(', ');
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * FR-054, FR-049: the sheet id a judged id asks about: the id itself, else the `V<n>:<view>`
+ * whose sheet view maps to the judged view, else the one whose view is the same folded.
+ */
+export function sheetIdOf(
+  sheet: PersonaSheet,
+  views: ReadonlyMap<string, string>,
+  id: string
+): string | undefined {
+  if (has(sheet.answers, id)) return id;
+  const match = VIEW_ID.exec(id);
+  if (match === null) return undefined;
+  const [, template, view] = match;
+  for (const [sheetView, briefView] of views) {
+    const candidate = `${template}:${sheetView}`;
+    if (briefView === view && has(sheet.answers, candidate)) return candidate;
+  }
+  return Object.keys(sheet.answers).find(key => {
+    const other = VIEW_ID.exec(key);
+    return other !== null && other[1] === template && folded(other[2]) === folded(view);
+  });
+}
+
+export interface BuildReplyInput {
+  readonly sheet: PersonaSheet;
+  /** The view map of FR-049 over the brief after the agent's turn. */
+  readonly views: ReadonlyMap<string, string>;
+  readonly questions: readonly JudgedQuestion[];
+  /** Per sheet id, the asks answered so far; updated here (a `values` entry's position). */
+  readonly asks: Map<string, number>;
+  /** The fired script answers by sheet id: stated, in place of the sheet's entry. */
+  readonly fired: ReadonlyMap<string, unknown>;
+}
+
+const partText = (part: ReplyPart): string =>
+  part.kind === 'yes' ? YES : part.kind === 'decide' ? YOU_DECIDE : renderValue(part.value);
+
+/**
+ * FR-054: one line per judged question: per id, `accepts` gives "yes", `decides` and an id off the
+ * sheet "you decide", `states` the value; a question with no ids "you decide". Several ids give
+ * `<id>: <answer>` parts, unless all are "yes" or all "you decide".
+ */
+export function buildReply(input: BuildReplyInput): BuiltLine[] {
+  const partFor = (id: string): ReplyPart => {
+    const sheetId = sheetIdOf(input.sheet, input.views, id) ?? id;
+    if (input.fired.has(sheetId)) {
+      return { id, kind: 'states', value: input.fired.get(sheetId) };
+    }
+    if (!has(input.sheet.answers, sheetId)) return { id, kind: 'decide' };
+    const entry = input.sheet.answers[sheetId];
+    const n = input.asks.get(sheetId) ?? 0;
+    input.asks.set(sheetId, n + 1);
+    const given = 'values' in entry ? entry.values[Math.min(n, entry.values.length - 1)] : entry;
+    if (given.mode === 'states') return { id, kind: 'states', value: given.value };
+    return { id, kind: given.mode === 'accepts' ? 'yes' : 'decide' };
+  };
+  return input.questions.map(question => {
+    const parts: ReplyPart[] =
+      question.ids.length === 0 ? [{ id: undefined, kind: 'decide' }] : question.ids.map(partFor);
+    const kinds = new Set(parts.map(part => part.kind));
+    const text =
+      parts.length === 1 || (kinds.size === 1 && !kinds.has('states'))
+        ? partText(parts[0])
+        : parts.map(part => `${part.id}: ${partText(part)}`).join('; ');
+    return { question: question.text, parts, text };
+  });
+}
+
+/** FR-054: the built lines, numbered. */
+export const numberedReply = (lines: readonly BuiltLine[]): string =>
+  lines.map((line, k) => `${k + 1}. ${line.text}`).join('\n');
+
+const hasStates = (line: BuiltLine): boolean => line.parts.some(part => part.kind === 'states');
+
+/** FR-054: the user model's prompt for wording the `states` answers of a built reply. */
+export function wordingPrompt(lines: readonly BuiltLine[]): string {
+  return `${[
+    "You are a person answering an interviewer's numbered questions. Your answers are fixed; only the wording of some of them is yours.",
+    'Each numbered item below is one question and your answer. An answer marked "say:" is yours to put in your own plain words: keep every fact of it, add none, leave nothing out. An answer marked "copy:" is copied exactly as given.',
+    'Reply with exactly one line per question, numbered as given ("1. …"), and nothing else.',
+    lines
+      .map(
+        (line, k) =>
+          `${k + 1}. Question: ${line.question}\n   ${hasStates(line) ? 'say' : 'copy'}: ${line.text}`
+      )
+      .join('\n'),
+  ].join('\n\n')}\n`;
+}
+
+/**
+ * FR-054: the wording reply when it has exactly one numbered line per question, in order, and
+ * every line without a `states` answer is the built one (case and a trailing period aside);
+ * otherwise the built lines.
+ */
+export function mergeWording(lines: readonly BuiltLine[], reply: string | undefined): string {
+  const built = numberedReply(lines);
+  if (reply === undefined) return built;
+  const numbered = reply
+    .split(/\r?\n/)
+    .filter(line => line.trim() !== '')
+    .map(line => /^\s*(\d+)\.\s*(.*)$/.exec(line));
+  if (numbered.length !== lines.length) return built;
+  const worded: string[] = [];
+  for (const [k, match] of numbered.entries()) {
+    if (match === null || Number(match[1]) !== k + 1 || match[2].trim() === '') return built;
+    if (!hasStates(lines[k]) && folded(match[2]) !== folded(lines[k].text)) return built;
+    worded.push(`${k + 1}. ${hasStates(lines[k]) ? match[2].trim() : lines[k].text}`);
+  }
+  return worded.join('\n');
+}
+
+/** FR-054, FR-039: the changed-mind lines a fired script appends to a built reply. */
+export function changedMindLines(change: ScriptChange): string {
+  return [
+    'I changed my mind:',
+    ...change.answers.map(({ id, value }) => {
+      const title = templateOf(id)?.title;
+      return `- ${title === undefined ? id : `${id} (${title})`}: ${renderValue(value)}`;
+    }),
+  ].join('\n');
+}
+
 /** FR-042: no `eligian_project` result before the message. */
 export const NO_INVENTORY = 'eligian_project not called';
 
@@ -1074,7 +1330,10 @@ export interface InterviewDeps {
     readonly sessionId: string | undefined;
     readonly turn: number;
   }) => Promise<{ readonly stdout: string; readonly started: boolean; readonly wallMs: number }>;
-  /** The simulated user's reply (its `result` text), or `undefined` when there is none. */
+  /**
+   * The user model's reply (its `result` text), or `undefined` when there is none: the simulated
+   * user of FR-051, or the wording of a built reply (FR-054).
+   */
   readonly userReply: (prompt: string) => Promise<string | undefined>;
   /** The round-message judge's reply text, or `undefined` when the call failed. */
   readonly judge: (prompt: string) => Promise<string | undefined>;
@@ -1185,8 +1444,9 @@ function judgeContext(entries: readonly ToolEntry[]): {
  * it); after it, `<persona>-<n>.turn-<k>.json` (the turn's stdout) and `.brief-<k>.md` (the
  * `BRIEF.md` snapshot), the file list and the brief state on disk; `interviewStop` decides. The
  * script fires in the first reply after the `eligian_brief` round count reaches `afterRound`.
- * Then one judge call per agent turn with a message (P13), the measures, the verdict and
- * `<persona>-<n>.json`. A turn with no `result`, a process that did not start (FR-035) or a
+ * Each agent message is judged as it arrives (P13, FR-054); the reply to one with questions is
+ * built from the sheet (`buildReply`, worded by the user model), to one without by the simulated
+ * user of FR-051. Then the measures, the verdict and `<persona>-<n>.json`. A turn with no `result`, a process that did not start (FR-035) or a
  * missing reply (P15) aborts the run; a rejected injected call counts as that failure.
  */
 export async function runInterview(
@@ -1212,6 +1472,34 @@ export async function runInterview(
   let usage: Usage | null = null;
   let state: 'none' | BriefStateName = 'none';
   let endReason: EndReason | undefined;
+  const judged: JudgedMessage[] = [];
+  const asks = new Map<string, number>();
+  const fired = new Map<string, unknown>();
+
+  // FR-042, FR-054 (P13): one judge call per agent turn with a message, made as it arrives.
+  const judgeTurn = async (k: number): Promise<JudgedMessage | undefined> => {
+    const data = turns[k];
+    const index = messageIndex.get(data.turn);
+    if (data.message === undefined || data.message.trim() === '' || index === undefined) {
+      return undefined;
+    }
+    const { inventory, round } = judgeContext(
+      turns.slice(0, k + 1).flatMap(({ events }) => toolEntries(events))
+    );
+    const prompt = judgePrompt({
+      template: run.prompts.judge,
+      facts: FACT_KINDS,
+      inventory,
+      files: k === 0 ? startFiles : turns[k - 1].files,
+      round,
+      message: data.message,
+    });
+    const reply = await deps.judge(prompt).catch(() => undefined);
+    if (reply === undefined) failures.push(`judge: no reply for agent turn ${data.turn}`);
+    const message = toJudgedMessage(data.turn, index, reply ?? '');
+    judged.push(message);
+    return message;
+  };
 
   for (let turn = 1; endReason === undefined; turn++) {
     conversation.push({ role: 'user', turn, text: message });
@@ -1237,6 +1525,7 @@ export async function runInterview(
     const brief = await readText(path.join(run.projectDir, BRIEF_FILE));
     if (brief !== undefined) await fs.writeFile(`${base}.brief-${turn}.md`, brief);
     turns.push({ turn, events, message: text, brief, files: await listFiles(run.projectDir) });
+    const judgedNow = await judgeTurn(turns.length - 1);
     state = await briefStateOf(run.projectDir, run.stateDir);
 
     if (!out.started || final === undefined) {
@@ -1262,18 +1551,37 @@ export async function runInterview(
     const change: ScriptChange | undefined =
       due.length === 0 ? undefined : { answers: due.flatMap(k => run.sheet.script[k].answers) };
     if (change !== undefined && script === null) script = { turn, roundCount };
+    for (const answer of change?.answers ?? []) fired.set(answer.id, answer.value);
 
-    const prompt = simulatedUserPrompt({
-      template: run.prompts.simulatedUser,
-      sheet: run.sheet,
-      conversation,
-      last: text ?? '',
-      ...(change === undefined ? {} : { change }),
-    });
-    const reply = await deps.userReply(prompt).catch((error: unknown) => {
-      failures.push(`simulated user: ${errorText(error)}`);
-      return undefined;
-    });
+    // FR-054: the questions the judge found are answered from the sheet; a message with none
+    // (a summary for sign-off, "shall I go on") goes to the simulated user of FR-051.
+    const questions =
+      judgedNow !== undefined && 'questions' in judgedNow ? judgedNow.questions : [];
+    let reply: string | undefined;
+    if (questions.length > 0) {
+      const views = viewMap(
+        run.sheet,
+        (brief === undefined ? EMPTY_PARSED : parseBrief(brief)).brief
+      );
+      const lines = buildReply({ sheet: run.sheet, views, questions, asks, fired });
+      const worded = lines.some(hasStates)
+        ? await deps.userReply(wordingPrompt(lines)).catch(() => undefined)
+        : undefined;
+      const answers = mergeWording(lines, worded);
+      reply = change === undefined ? answers : `${answers}\n\n${changedMindLines(change)}`;
+    } else {
+      const prompt = simulatedUserPrompt({
+        template: run.prompts.simulatedUser,
+        sheet: run.sheet,
+        conversation,
+        last: text ?? '',
+        ...(change === undefined ? {} : { change }),
+      });
+      reply = await deps.userReply(prompt).catch((error: unknown) => {
+        failures.push(`simulated user: ${errorText(error)}`);
+        return undefined;
+      });
+    }
     if (reply === undefined) {
       failures.push(`simulated user: no reply to agent turn ${turn}`);
       endReason = 'aborted';
@@ -1281,27 +1589,6 @@ export async function runInterview(
     }
     replies.push(reply);
     message = reply;
-  }
-
-  // FR-042, P13: one judge call per agent turn with a message.
-  const judged: JudgedMessage[] = [];
-  for (const [k, data] of turns.entries()) {
-    const index = messageIndex.get(data.turn);
-    if (data.message === undefined || data.message.trim() === '' || index === undefined) continue;
-    const { inventory, round } = judgeContext(
-      turns.slice(0, k + 1).flatMap(({ events }) => toolEntries(events))
-    );
-    const prompt = judgePrompt({
-      template: run.prompts.judge,
-      facts: FACT_KINDS,
-      inventory,
-      files: k === 0 ? startFiles : turns[k - 1].files,
-      round,
-      message: data.message,
-    });
-    const reply = await deps.judge(prompt).catch(() => undefined);
-    if (reply === undefined) failures.push(`judge: no reply for agent turn ${data.turn}`);
-    judged.push(toJudgedMessage(data.turn, index, reply ?? ''));
   }
 
   const aborted = endReason === 'aborted';

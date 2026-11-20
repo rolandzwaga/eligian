@@ -217,6 +217,9 @@ describe('phase 4 instructions', () => {
     expect(rule).toContain('never fill one in yourself');
     expect(rule).toContain('delegated: true');
     expect(rule).toContain('you decide');
+    // FR-056 (a), (b), SC-029: dependents asked again; no invented file paths.
+    expect(rule).toContain('Changed answer: ask its dependents again');
+    expect(rule).toContain('Record only file paths the user gave');
   });
 
   it('no storyboard-first docs line', () => {

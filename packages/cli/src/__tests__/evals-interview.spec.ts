@@ -26,8 +26,11 @@ import { TREE } from '../mcp/brief/tree.js';
 import { briefStateOf, confirmBriefFixture } from '../mcp/evals/brief-fixture.js';
 import { agentIsolation } from '../mcp/evals/harness.js';
 import {
+  buildReply,
   type ConversationEntry,
   changedAnswerDependents,
+  changedMindLines,
+  elementMap,
   FACT_KINDS,
   type InterviewDeps,
   type InterviewMeasures,
@@ -42,19 +45,24 @@ import {
   type JudgedQuestion,
   judgePrompt,
   type Mode,
+  mergeWording,
+  numberedReply,
   PERSONA_NAMES,
   type PersonaName,
   type PersonaSheet,
   parseJudgeReply,
   parsePersonaSheet,
   renderInterviewSummary,
+  renderValue,
   runInterview,
   type SheetValue,
+  sheetIdOf,
   sheetToPersona,
   simulatedUserPrompt,
   type TurnData,
   toJudgedMessage,
   viewMap,
+  wordingPrompt,
 } from '../mcp/evals/interview.js';
 import { parseTranscript } from '../mcp/evals/transcript.js';
 import { approvedBrief } from './brief-helpers.js';
@@ -960,6 +968,232 @@ describe('SC-026: view names matched, stated tables as a subset', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// SC-028 (FR-054, FR-055, FR-057): the built replies and the normalised compare.
+
+describe('SC-028: built replies', () => {
+  const judgedQ = (text: string, ...ids: string[]): JudgedQuestion => ({
+    text,
+    ids,
+    fact: false,
+    recommendation: true,
+  });
+  const build = (
+    sheet: PersonaSheet,
+    questions: readonly JudgedQuestion[],
+    options: {
+      views?: ReadonlyMap<string, string>;
+      asks?: Map<string, number>;
+      fired?: ReadonlyMap<string, unknown>;
+    } = {}
+  ) =>
+    buildReply({
+      sheet,
+      views: options.views ?? new Map(),
+      questions,
+      asks: options.asks ?? new Map(),
+      fired: options.fired ?? new Map(),
+    });
+
+  const sheet = sheetOf({
+    P4: { value: 'plain', mode: 'accepts' },
+    P1: { value: 'Viewers know the hours.', mode: 'decides' },
+    C4: { value: 'off', mode: 'states' },
+    'V1:hours': { value: 'Support is open on weekdays.', mode: 'states' },
+    S3: {
+      values: [
+        { value: 'nowhere', mode: 'states' },
+        { value: 'overview', mode: 'states' },
+      ],
+    },
+  });
+
+  it('accepts, decides, an id off the sheet and states give yes, you decide, you decide, the value', () => {
+    const lines = build(sheet, [
+      judgedQ('Tone: plain. Yes?', 'P4'),
+      judgedQ('Goal?', 'P1'),
+      judgedQ('Swipe?', 'I5'),
+      judgedQ('Sound?', 'C4'),
+    ]);
+    expect(numberedReply(lines)).toBe('1. yes\n2. you decide\n3. you decide\n4. off');
+    expect(lines[3].parts).toEqual([{ id: 'C4', kind: 'states', value: 'off' }]);
+  });
+
+  it('a question with no ids is "you decide"; several ids give parts unless all agree', () => {
+    const lines = build(sheet, [
+      judgedQ('Send the URL, or a placeholder?'),
+      judgedQ('Tone and sound?', 'P4', 'C4'),
+      judgedQ('Goal and swipe?', 'P1', 'I5'),
+    ]);
+    expect(lines.map(line => line.text)).toEqual(['you decide', 'P4: yes; C4: off', 'you decide']);
+  });
+
+  it('a judged V1:Hours finds the sheet entry V1:hours, through the view map or folded', () => {
+    const question = [judgedQ('Key message?', 'V1:Hours')];
+    const mapped = build(sheet, question, { views: new Map([['hours', 'Hours']]) });
+    expect(mapped[0].text).toBe('Support is open on weekdays.');
+    expect(build(sheet, question)[0].text).toBe('Support is open on weekdays.');
+    expect(sheetIdOf(sheet, new Map([['hours', 'Opening']]), 'V1:Opening')).toBe('V1:hours');
+    expect(sheetIdOf(sheet, new Map(), 'V1:Other')).toBeUndefined();
+  });
+
+  it('a values entry gives its second value on the second ask, then stays on the last', () => {
+    const asks = new Map<string, number>();
+    const ask = () => build(sheet, [judgedQ('Start view?', 'S3')], { asks })[0].text;
+    expect([ask(), ask(), ask()]).toEqual(['nowhere', 'overview', 'overview']);
+  });
+
+  it('a fired script answer is stated in place of the sheet entry', () => {
+    const lines = build(sheet, [judgedQ('Sound?', 'C4'), judgedQ('Tone?', 'P4')], {
+      fired: new Map([
+        ['C4', 'on'],
+        ['P4', 'casual'],
+      ]),
+    });
+    expect(lines.map(line => line.text)).toEqual(['on', 'casual']);
+  });
+
+  it('renderValue puts a value on one line', () => {
+    expect(renderValue('Support hours\nMonday to Friday')).toBe(
+      '"Support hours", then "Monday to Friday"'
+    );
+    expect(renderValue(true)).toBe('yes');
+    expect(renderValue([])).toBe('none');
+    expect(renderValue(['mouse', 'keyboard'])).toBe('mouse; keyboard');
+    expect(renderValue([{ element: 'Next button', kind: 'button' }])).toBe(
+      'element: Next button, kind: button'
+    );
+  });
+
+  it('the wording prompt marks stated answers "say" and the others "copy"', () => {
+    const lines = build(sheet, [judgedQ('Tone?', 'P4'), judgedQ('Sound?', 'C4')]);
+    const prompt = wordingPrompt(lines);
+    expect(prompt).toContain('1. Question: Tone?\n   copy: yes');
+    expect(prompt).toContain('2. Question: Sound?\n   say: off');
+  });
+
+  it('a wording reply with the wrong line count, or a changed copied line, gives the built lines', () => {
+    const lines = build(sheet, [judgedQ('Tone?', 'P4'), judgedQ('Sound?', 'C4')]);
+    const built = '1. yes\n2. off';
+    expect(mergeWording(lines, '1. Yes.\n2. Sound stays off.')).toBe('1. yes\n2. Sound stays off.');
+    expect(mergeWording(lines, '1. yes')).toBe(built);
+    expect(mergeWording(lines, '1. yes\n2. off\n3. and more')).toBe(built);
+    expect(mergeWording(lines, '1. you decide\n2. Sound stays off.')).toBe(built);
+    expect(mergeWording(lines, '2. yes\n1. Sound stays off.')).toBe(built);
+    expect(mergeWording(lines, undefined)).toBe(built);
+  });
+
+  it('changedMindLines names each fired answer with its value', () => {
+    const text = changedMindLines({ answers: [{ id: 'C4', value: 'off' }] });
+    expect(text.split('\n')[0]).toBe('I changed my mind:');
+    expect(text).toContain('C4 (');
+    expect(text).toContain('): off');
+  });
+});
+
+describe('SC-028: normalised compare', () => {
+  const s2 = (...names: string[]) =>
+    ans(
+      'S2',
+      names.map(name => ({ name, purpose: `The ${name} view` })),
+      'delegated'
+    );
+
+  it('an A1 row "intro: hero" holds against "intro: Hero image"; "the design brief" equals "Design brief."', () => {
+    const sheet = sheetOf({
+      'V3:intro': { value: [{ element: 'hero', kind: 'image', file: '-' }], mode: 'states' },
+      A1: {
+        value: [
+          { asset: 'intro: hero', who: 'the design team', when: 'next week' },
+          { asset: 'the design brief', who: 'us', when: 'now' },
+        ],
+        mode: 'states',
+      },
+    });
+    const v3 = ans('V3:intro', [{ element: 'Hero image', kind: 'image', file: '-' }]);
+    const a1 = (asset: string) =>
+      ans('A1', [
+        { asset, who: 'Design team', when: 'Next week' },
+        { asset: 'Design brief.', who: 'Us', when: 'Now' },
+      ]);
+    const ids = ['V3:intro', 'A1'];
+    expect(exchange(sheet, ids, [s2('intro'), v3, a1('intro: Hero image')])).toEqual({
+      pass: true,
+      failures: [],
+    });
+    const other = exchange(sheet, ids, [s2('intro'), v3, a1('intro: Logo')]);
+    expect(other.pass).toBe(false);
+    expect(other.failures.join()).toContain('A1');
+  });
+
+  it('elementMap matches by name, folded, then position', () => {
+    const sheet = sheetOf({
+      'V3:intro': {
+        value: [
+          { element: 'title', kind: 'text', file: '-' },
+          { element: 'hero', kind: 'image', file: '-' },
+        ],
+        mode: 'states',
+      },
+    });
+    const brief: BriefState = {
+      ...EMPTY_BRIEF,
+      answers: [
+        s2('Intro'),
+        ans('V3:Intro', [
+          { element: 'The title', kind: 'text', file: '-' },
+          { element: 'Hero image', kind: 'image', file: '-' },
+        ]),
+      ],
+    };
+    const views = viewMap(sheet, brief);
+    expect(elementMap(sheet, brief, views)).toEqual(
+      new Map([
+        [
+          'intro',
+          new Map([
+            ['title', 'The title'],
+            ['hero', 'Hero image'],
+          ]),
+        ],
+      ])
+    );
+  });
+
+  it('I2 keys: "Right arrow" equals ArrowRight, "space bar" equals Space', () => {
+    const sheet = sheetOf({
+      I2: {
+        value: [
+          { key: 'ArrowRight', action: 'next view' },
+          { key: 'Space', action: 'play or pause' },
+        ],
+        mode: 'states',
+      },
+    });
+    const c3 = ans('C3', ['mouse', 'keyboard'], 'delegated');
+    const i2 = (first: string) =>
+      ans('I2', [
+        { key: first, action: 'Go to the next view' },
+        { key: 'space bar', action: 'Play or pause the video' },
+      ]);
+    expect(exchange(sheet, ['I2'], [c3, i2('Right arrow')])).toEqual({ pass: true, failures: [] });
+    expect(exchange(sheet, ['I2'], [c3, i2('Left arrow')]).pass).toBe(false);
+  });
+
+  it('the vague sheet lists its buttons in V3 (FR-057)', () => {
+    const vague = readSheet('vague');
+    for (const [view, element] of [
+      ['overview', 'Next button'],
+      ['details', 'Back button'],
+    ]) {
+      const entry = vague.answers[`V3:${view}`];
+      expect('value' in entry && entry.value, view).toEqual([
+        { element, kind: 'button', file: '-' },
+      ]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
 // SC-027, the simulated-user half (FR-051): the prompt keeps the simulated user on its sheet.
 
 describe('simulated-user.md (FR-051)', () => {
@@ -1556,6 +1790,74 @@ describe('runInterview with a fake runner', () => {
     expect(record.judged.map(judged => judged.turn)).toEqual([2]);
     expect(judgePrompts[0]).toContain('media/intro.mp4');
     expect(judgePrompts[0]).not.toContain('node_modules');
+  });
+
+  // SC-028 (FR-054): the judge reads each message before the reply, which is built from it.
+  const judgeOf =
+    (...questions: { text: string; ids: string[] }[]) =>
+    () =>
+      JSON.stringify({
+        questions: questions.map(q => ({ ...q, fact: false, recommendation: true })),
+      });
+
+  it('the judge runs before each reply and once per agent message', async () => {
+    const { run, deps } = setupRun([
+      { brief: COMPLETE },
+      { brief: CONFIRMED },
+      { brief: APPROVED },
+    ]);
+    const order: string[] = [];
+    const record = await runInterview(run, {
+      ...deps,
+      judge: async prompt => {
+        order.push('judge');
+        return deps.judge(prompt);
+      },
+      userReply: async prompt => {
+        order.push('user');
+        return deps.userReply(prompt);
+      },
+    });
+    expect(order).toEqual(['judge', 'user', 'judge', 'user', 'judge']);
+    expect(record.judged.map(judged => judged.turn)).toEqual([1, 2, 3]);
+  });
+
+  it('a message with questions gets the built reply; no user model call without a stated answer', async () => {
+    const sheet = sheetOf({
+      C4: { value: 'off', mode: 'accepts' },
+      P1: { value: 'x', mode: 'decides' },
+    });
+    const { run, deps, seen, userPrompts } = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
+      sheet,
+      judge: judgeOf({ text: 'Sound?', ids: ['C4'] }, { text: 'Goal?', ids: ['P1'] }),
+    });
+    await runInterview(run, deps);
+    expect(seen[1].message).toBe('1. yes\n2. you decide');
+    expect(userPrompts).toEqual([]);
+  });
+
+  it('a stated answer is worded by the user model, checked line by line', async () => {
+    const sheet = sheetOf({
+      C4: { value: 'off', mode: 'states' },
+      P4: { value: 'plain', mode: 'accepts' },
+    });
+    const judge = judgeOf({ text: 'Tone?', ids: ['P4'] }, { text: 'Sound?', ids: ['C4'] });
+    const worded = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
+      sheet,
+      judge,
+      reply: () => '1. yes\n2. Sound stays off.',
+    });
+    await runInterview(worded.run, worded.deps);
+    expect(worded.userPrompts[0]).toContain('say: off');
+    expect(worded.seen[1].message).toBe('1. yes\n2. Sound stays off.');
+
+    const drifted = setupRun([{ brief: COMPLETE }, { brief: APPROVED }], {
+      sheet,
+      judge,
+      reply: () => '1. you decide\n2. Off, and for anything else you decide.',
+    });
+    await runInterview(drifted.run, drifted.deps);
+    expect(drifted.seen[1].message).toBe('1. yes\n2. off');
   });
 });
 

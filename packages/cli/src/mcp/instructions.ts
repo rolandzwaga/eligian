@@ -65,22 +65,22 @@ ${COMPILE_LINE_3}`;
  * Spec 059 Phase 3 (FR-002): the brief comes first, for a new presentation and for an
  * addition; nothing is written before it is approved.
  */
-const BRIEF_LINE = `- \`eligian_brief\`: FIRST for a new presentation or an addition (a new view, language or
-  first host module). Write nothing until the brief is approved: the generation tools refuse.`;
+const BRIEF_LINE = `- \`eligian_brief\`: FIRST for a new presentation or an addition (new view, language, first host
+  module). Write nothing until the brief is approved.`;
 
 /**
  * FR-004: the storyboard ids are read once the brief is confirmed. An action sits inside a
- * span holding a space, never backticked alone (plan P8). Spec 059 FR-052/FR-053 grew the
- * decisions rule; this line and the brief line were tightened to keep the AGENTS.md block
- * within 8,192 bytes.
+ * span holding a space, never backticked alone (plan P8). Spec 059 FR-052/FR-053 and FR-056
+ * grew the decisions rule; this line and the brief line were tightened to keep the AGENTS.md
+ * block within 8,192 bytes.
  */
 const DOCS_LINE_4 = `- \`eligian_docs\`: \`interview\` before the first round; once the brief is confirmed,
   \`storyboard\`, \`decisions\`, \`project-layout\`, draft STORYBOARD.md, call \`action: approve-storyboard\`.
-  Before each construct new this session: its map-* card (index) or body (detail:true). Read
+  Before each construct new this session: its map-* card or body (detail:true). Read
   \`operations-index\` once.
 - \`eligian_operations\`: BEFORE any operation new this session; batch with names:[...]. Cards
   lead with NEEDS / PROVIDES / ERASES.
-- \`eligian_init\`: scaffold a starter once the brief is approved.`;
+- \`eligian_init\`: a starter, once the brief is approved.`;
 
 const WORKFLOW_PHASE_4 = `${WORKFLOW_INTRO}
 ${BRIEF_LINE}
@@ -110,13 +110,15 @@ Review STORYBOARD.md against the compiled timelines before declaring done.`;
 /**
  * Spec 059 FR-003: the one new rule, after the five engine rules and not numbered among them.
  * FR-052: material only the user has is asked with a fallback; FR-053: every round item is
- * put to the user.
+ * put to the user; FR-056 (a), (b): dependents of a changed answer are asked again, and no file
+ * path is recorded that the user did not give.
  */
 const USER_RULE = `Decisions are the user's, facts are yours: look up what \`eligian_project\` or the files
 answer (ids, classes, assets, languages, versions); ask the user only decisions, each with a
-recommendation yes accepts. Material only the user has (a URL, logo, video, copy) gets a fallback:
-"or I'll use a placeholder. Placeholder?". Put every round item to the user, never fill one in
-yourself; delegated: true only after their "you decide".`;
+recommendation yes accepts. User-only material (URL, logo, copy) gets a fallback: "or I'll
+use a placeholder. Placeholder?". Put every round item to the user, never fill one in
+yourself; delegated: true only after "you decide". Changed answer: ask its dependents again.
+Record only file paths the user gave.`;
 
 const RULES_PHASE_4 = `${ENGINE_RULES}
 ${USER_RULE}
