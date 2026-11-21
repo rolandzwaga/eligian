@@ -203,8 +203,15 @@ const isInside = (dir: string, file: string): boolean => {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 };
 
-/** A hook command argument: quoted when it holds a space (FR-030). */
-const quoted = (value: string): string => (/\s/.test(value) ? `"${value}"` : value);
+/**
+ * A hook command path: forward slashes (FR-076; Claude Code runs a hook command through bash on
+ * Windows, which strips backslashes, and Node accepts `/` there), quoted when it holds a space
+ * (FR-030).
+ */
+const quoted = (value: string): string => {
+  const slashed = value.replace(/\\/g, '/');
+  return /\s/.test(slashed) ? `"${slashed}"` : slashed;
+};
 
 /**
  * Spec 059 FR-030 / FR-040: the hook's command line, `node <script> <mode> <log>`, plus for

@@ -683,7 +683,7 @@ describe('prepareArmProject', () => {
       expect(confirmation?.message).toBe('eval harness: the brief fixture of case title-card');
 
       const command = elicitationHookCommand(accept, log());
-      expect(command).toBe(`node ${SCRIPT} accept ${log()}`);
+      expect(command).toBe(`node ${slashed(SCRIPT)} accept ${slashed(log())}`);
       expect(hookEntries()).toEqual([{ hooks: [{ type: 'command', command }] }]);
 
       const server = (readJson(setup.mcpConfig) as { mcpServers: { eligian: { env: unknown } } })
@@ -745,7 +745,7 @@ describe('prepareArmProject', () => {
       expect(fs.existsSync(path.join(dir, 'BRIEF.md'))).toBe(false);
       const command = elicitationHookCommand(hook, log());
       expect(command).toBe(
-        `node ${SCRIPT} persona ${log()} --sheet ${sheet} --conversation ${conversation} --user-model ${MODELS.opus}`
+        `node ${slashed(SCRIPT)} persona ${slashed(log())} --sheet ${slashed(sheet)} --conversation ${slashed(conversation)} --user-model ${MODELS.opus}`
       );
       expect(hookEntries()).toEqual([{ hooks: [{ type: 'command', command, timeout: 180 }] }]);
     });
@@ -763,6 +763,9 @@ describe('prepareArmProject', () => {
     });
   });
 });
+
+/** FR-076: a path as the hook command writes it. */
+const slashed = (file: string): string => file.replace(/\\/g, '/');
 
 describe('elicitationHookCommand', () => {
   const persona = {
@@ -794,7 +797,18 @@ describe('elicitationHookCommand', () => {
       { mode: 'accept', script: 'C:\\Program Files\\hook.cjs' },
       'C:\\tmp\\elicitations.log'
     );
-    expect(command).toBe('node "C:\\Program Files\\hook.cjs" accept C:\\tmp\\elicitations.log');
+    expect(command).toBe('node "C:/Program Files/hook.cjs" accept C:/tmp/elicitations.log');
+  });
+
+  it('SC-035 (FR-076): Windows paths are written with forward slashes, which bash keeps', () => {
+    const command = elicitationHookCommand(
+      { ...persona, script: 'F:\\r\\evals\\mcp\\elicitation-hook.cjs' },
+      'C:\\Users\\me\\Temp\\scratch\\elicitations.log'
+    );
+    expect(command).toBe(
+      'node F:/r/evals/mcp/elicitation-hook.cjs persona C:/Users/me/Temp/scratch/elicitations.log --sheet /r/evals/mcp/personas/terse.json --conversation /s/interview/conversation.json --user-model claude-sonnet-5-5'
+    );
+    expect(command).not.toContain('\\');
   });
 });
 
