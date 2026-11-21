@@ -13,6 +13,20 @@ Two items are `pending-user` (spec.md:221, SC-021): runs only the user can do un
 
 Every build, typecheck, lint, test, coverage, Effect, and examples gate is green (see the SC-018 rows).
 
+## User-level hooks and plugins for the SC-002 baseline (plan R9)
+
+Recorded 2026-11-21, before the baseline. `5e47ea9`'s harness starts `claude -p` without isolation, so these load in every baseline case; the phase run is isolated (FR-048) and loads none of them. Each case runs in a fresh temp project, so the repo's own `.claude/` settings do not apply. Sources: `claude plugin list --json` and `~/.claude/settings.json` (there is no `~/.claude/settings.local.json`).
+
+| Kind | What | Effect on a baseline case |
+| --- | --- | --- |
+| Plugin | `i-have-adhd@i-have-adhd` 0.2.0, user scope, **enabled** (plus the flag file `~/.claude/.i-have-adhd-always`) | Its `SessionStart` hook (`startup\|resume\|clear\|compact`) runs `hooks/always-on.mjs`, which injects the ADHD output rules into the session: terse replies, numbered steps, one next action. It can change how the agent writes its messages. The phase run disables it (the `enabledPlugins` override in the run summary's Isolation line). |
+| Plugin | `vscode-langservers@claude-code-lsps`, user scope, disabled | None. |
+| Hook | `SessionStart` and `PreCompact`, matcher `""`: `bd prime` (beads 0.50.3) | None measured: in a directory with no beads database it prints nothing and exits 0 (checked 2026-11-21). |
+| Hook | `PreToolUse`, matcher `""`: `C:/Users/scab/.claude/hooks/noenv-hook.exe` | Runs before every tool call. By its name it guards `.env` files ([UNVERIFIED]: a compiled binary, not inspected); no eval case touches such files. |
+| Hook | `UserPromptSubmit`, matcher `""`: `C:/Users/scab/.claude/hooks/nopaste-hook.exe` | Runs on each prompt, the harness's `claude -p` prompt included. |
+| Setting | `model: opus`, `effortLevel: high` (also per model for `claude-opus-5-5` and `claude-fable-5-2`) | `5e47ea9`'s `run.ts` passes `--model` (lines 228, 334), which overrides `model`; the effort level applies to the baseline. The phase run (`--setting-sources project,local`) does not read it. |
+| Setting | `env`: OpenTelemetry exporter variables (telemetry on; endpoint and token not recorded here) | Telemetry only, no effect on the agent. |
+
 ## Compliance table
 
 | ID | Verdict | Evidence |
