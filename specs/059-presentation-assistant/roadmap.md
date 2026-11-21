@@ -481,7 +481,7 @@ Touches: `packages\cli\src\mcp\brief\{gate,known-programs,signature,adopt}.ts` (
 
 ### Phase 3: teaching, hook, evals (7 days)
 
-**Status: ✅ COMPLETE (build, 2026-11-20)**: see specs/059-presentation-assistant/phase-3-teaching-hook-evals/compliance.md. Exit pending: SC-001 (interview eval), SC-002 (14 cases), SC-003 (marketplace hook), the user's runs.
+**Status: ✅ COMPLETE (build, 2026-11-20)**: see specs/059-presentation-assistant/phase-3-teaching-hook-evals/compliance.md. SC-001 (interview eval) passed in its seventh run (2026-11-21, `2026-11-21T09-38-58-984Z`: terse 3/3, detailed 2/3, vague 2/3). Exit pending: SC-002 (14 cases), SC-003 (marketplace hook), the user's runs.
 
 Touches: `packages\cli\src\mcp\{instructions,prompts}.ts`, `packages\cli\src\mcp\knowledge\curriculum\{interview,storyboard}.md`, `packages\cli\src\agents.ts`, `packages\cli\src\main.ts` (`brief gate`), `plugins\claude\eligian\`, `evals\mcp\{run.ts,cases\*,personas\*}`, `packages\cli\README.md`, `CHANGELOG.md`.
 
