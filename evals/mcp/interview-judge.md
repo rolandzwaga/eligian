@@ -46,7 +46,8 @@ For each question give:
   item already asked ("Should the Dutch version have its own narration?" after the earlier item
   `L4`, what differs per language) lists that item. A question about none of the round or earlier
   items but about another question of the brief lists that question's id (a per-view one with the
-  view's name as the agent writes it: `V3:intro`). A question about none of them gives `[]`. Use
+  view's name as the agent writes it: `V3:intro`; before any view is named, the template id itself:
+  "Send the exact copy for the screen" gives `V2:<view>`). A question about none of them gives `[]`. Use
   only ids of the round items, the earlier items or the other questions of the brief, spelled
   exactly as given.
 - `fact`: `true` when the question asks for something of the facts list, or something the inventory

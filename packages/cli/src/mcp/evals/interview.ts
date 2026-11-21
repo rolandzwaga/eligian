@@ -474,6 +474,9 @@ function holds(question: Question, recorded: unknown, stated: unknown): boolean 
 /** `V<n>:<view>` (and `V:<view>`, `SAME_AS`): the template and the view. */
 const VIEW_ID = /^(V\d*):(.+)$/;
 
+/** FR-066, FR-073: the view placeholder of a template id, `V<n>:<view>`. */
+export const TEMPLATE_VIEW = '<view>';
+
 /** The `name` column of an S2 value, in order. */
 const viewNamesOf = (value: unknown): readonly string[] =>
   Array.isArray(value)
@@ -684,8 +687,19 @@ function askedTurns(judged: readonly JudgedMessage[]): (id: string) => readonly 
     for (const question of message.questions) for (const id of question.ids) ids.add(id);
     listed.set(message.turn, ids);
   }
+  // FR-073: a judged `V<n>:<view>` (before any view was named) asks every `V<n>:<view name>`.
+  const template = (id: string): string | undefined => {
+    const match = VIEW_ID.exec(id);
+    return match === null ? undefined : `${match[1]}:${TEMPLATE_VIEW}`;
+  };
   return id =>
-    [...listed.keys()].filter(turn => listed.get(turn)?.has(id) === true).sort((l, r) => l - r);
+    [...listed.keys()]
+      .filter(turn => {
+        const ids = listed.get(turn);
+        const general = template(id);
+        return ids?.has(id) === true || (general !== undefined && ids?.has(general) === true);
+      })
+      .sort((l, r) => l - r);
 }
 
 /** Measure 2 (FR-038). */
@@ -1114,6 +1128,24 @@ const partText = (part: ReplyPart): string =>
  */
 export function buildReply(input: BuildReplyInput): BuiltLine[] {
   const partFor = (id: string): ReplyPart => {
+    // FR-073: `V<n>:<view>` before any view exists: the sheet's `V<n>:*` entries together.
+    const match = VIEW_ID.exec(id);
+    if (match !== null && match[2] === TEMPLATE_VIEW) {
+      const entries = Object.keys(input.sheet.answers).flatMap(key => {
+        const other = VIEW_ID.exec(key);
+        return other !== null && other[1] === match[1]
+          ? [{ view: other[2], given: lastOf(input.sheet.answers[key]) }]
+          : [];
+      });
+      const stated = entries.filter(({ given }) => given.mode === 'states');
+      if (stated.length > 0) {
+        const value = Object.fromEntries(stated.map(({ view, given }) => [view, given.value]));
+        return { id, kind: 'states', value };
+      }
+      const allAccept =
+        entries.length > 0 && entries.every(({ given }) => given.mode === 'accepts');
+      return { id, kind: allAccept ? 'yes' : 'decide' };
+    }
     const sheetId = sheetIdOf(input.sheet, input.views, id) ?? id;
     if (input.fired.has(sheetId)) {
       return { id, kind: 'states', value: input.fired.get(sheetId) };
@@ -1244,7 +1276,7 @@ export function changedMindLines(change: ScriptChange): string {
 /** FR-066: every question of the tree for the judge; a per-view one as `V<n>:<view>`. */
 export const TREE_ITEMS: readonly { readonly id: string; readonly title: string }[] = TREE.map(
   question => ({
-    id: /^V\d+$/.test(question.id) ? `${question.id}:<view>` : question.id,
+    id: /^V\d+$/.test(question.id) ? `${question.id}:${TEMPLATE_VIEW}` : question.id,
     title: question.title,
   })
 );

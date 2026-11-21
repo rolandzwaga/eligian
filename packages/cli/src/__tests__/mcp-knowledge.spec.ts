@@ -1372,6 +1372,16 @@ describe('spec 059 phase 3 chunks', () => {
     );
   });
 
+  // FR-072, SC-033: a pick for an either/or and for a contradiction.
+  it('interview names a pick for an either/or follow-up and a contradiction', () => {
+    const body = bodyOf('interview').replace(/\s+/g, ' ');
+    expect(body).toContain('A follow-up offering two options names the one you recommend');
+    expect(body).toContain(
+      "When two of the user's answers contradict each other, name the change you recommend"
+    );
+    expect(body).toContain('never an open "Fix or keep?"');
+  });
+
   it('storyboard names the five problem codes and approve-storyboard', () => {
     const body = bodyOf('storyboard');
     for (const word of [

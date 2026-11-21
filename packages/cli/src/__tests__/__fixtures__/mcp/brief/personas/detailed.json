@@ -28,7 +28,9 @@
       "value": [
         { "view": "intro", "target": "demo", "trigger": "the Next button or the right arrow key" },
         { "view": "demo", "target": "signup", "trigger": "the Next button or the right arrow key" },
-        { "view": "signup", "target": "intro", "trigger": "the Start over button" }
+        { "view": "signup", "target": "intro", "trigger": "the Start over button" },
+        { "view": "demo", "target": "intro", "trigger": "the left arrow key" },
+        { "view": "signup", "target": "demo", "trigger": "the left arrow key" }
       ]
     },
     "S5": {

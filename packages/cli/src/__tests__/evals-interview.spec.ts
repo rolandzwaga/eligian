@@ -63,6 +63,7 @@ import {
   sheetIdOf,
   sheetToPersona,
   simulatedUserPrompt,
+  TEMPLATE_VIEW,
   TREE_ITEMS,
   type TurnData,
   toJudgedMessage,
@@ -1398,6 +1399,60 @@ describe('SC-031: the run-4 fixes (FR-064 to FR-067)', () => {
       judged: [judgedAt(1, q(['A1']))],
     }).nothingAssumed;
     expect(m.failures.join()).not.toContain('never asked');
+  });
+
+  // SC-033 (FR-073): the template id before any view exists.
+  it('a judged V2:<view> makes a recorded V2:Hours asked', () => {
+    const sheet = sheetOf({ 'V2:hours': { value: 'Support hours', mode: 'accepts' } });
+    const m = measure({
+      sheet,
+      turns: [
+        turnOf(1, { events: briefCall('open', ['P1']) }),
+        turnOf(2, {
+          events: briefCall('complete'),
+          brief: briefOf([
+            ans('S2', [{ name: 'Hours', purpose: 'Shows the hours' }], 'delegated'),
+            ans('V2:Hours', 'Support hours'),
+          ]),
+        }),
+      ],
+      judged: [judgedAt(1, q([`V2:${TEMPLATE_VIEW}`]))],
+    }).nothingAssumed;
+    expect(m.failures.join()).not.toContain('never asked');
+  });
+
+  it('a V2:<view> question is answered from every V2 entry of the sheet', () => {
+    const ask = (answers: PersonaSheet['answers']) =>
+      buildReply({
+        sheet: sheetOf(answers),
+        views: new Map(),
+        questions: [
+          { text: 'Send the copy?', ids: ['V2:<view>'], fact: false, recommendation: true },
+        ],
+        asks: new Map(),
+        fired: new Map(),
+      })[0].text;
+    expect(ask({ 'V2:hours': { value: 'x', mode: 'accepts' } })).toBe('yes');
+    expect(ask({ 'V2:hours': { value: 'x', mode: 'decides' } })).toBe('you decide');
+    expect(ask({})).toBe('you decide');
+    expect(
+      ask({
+        'V2:overview': { value: 'Our new office', mode: 'states' },
+        'V2:details': { value: 'Details', mode: 'states' },
+      })
+    ).toBe('overview: Our new office, details: Details');
+  });
+
+  // SC-033 (FR-071): the detailed sheet's left arrow has routes; the judge names the template id.
+  it('the detailed S4 has the two left-arrow rows; interview-judge.md names V2:<view>', () => {
+    const s4 = readSheet('detailed').answers.S4;
+    expect('value' in s4 ? s4.value : []).toEqual(
+      expect.arrayContaining([
+        { view: 'demo', target: 'intro', trigger: 'the left arrow key' },
+        { view: 'signup', target: 'demo', trigger: 'the left arrow key' },
+      ])
+    );
+    expect(judgeText).toContain('before any view is named, the template id itself');
   });
 
   it('the vague sheet accepts a simple order for details', () => {
