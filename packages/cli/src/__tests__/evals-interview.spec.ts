@@ -45,6 +45,7 @@ import {
   interviewVerdict,
   isTagged,
   isTaggedLine,
+  JUDGE_ATTEMPTS,
   type JudgedMessage,
   type JudgedQuestion,
   judgePrompt,
@@ -1463,6 +1464,17 @@ describe('SC-031: the run-4 fixes (FR-064 to FR-067)', () => {
   });
 });
 
+describe('SC-034: the run-7 measurement fixes (FR-074)', () => {
+  it('an empty H1 table holds against the sheet\'s "none"; a row does not', () => {
+    const sheet = sheetOf({ H1: { value: 'none', mode: 'states' } });
+    expect(exchange(sheet, ['H1'], [ans('H1', [])])).toEqual({ pass: true, failures: [] });
+    expect(exchange(sheet, ['H1'], [ans('H1', 'none')])).toEqual({ pass: true, failures: [] });
+    const row = exchange(sheet, ['H1'], [ans('H1', [{ need: 'analytics', detail: 'clicks' }])]);
+    expect(row.pass).toBe(false);
+    expect(row.failures.join()).toContain('H1');
+  });
+});
+
 describe('simulated-user.md (FR-051)', () => {
   const text = fs.readFileSync(path.join(REPO, 'evals', 'mcp', 'simulated-user.md'), 'utf8');
   /** The prompt's sentences: paragraphs and list items split at a sentence end. */
@@ -1972,7 +1984,8 @@ describe('runInterview with a fake runner', () => {
       }
     );
     const record = await runInterview(run, deps);
-    expect(judgePrompts).toHaveLength(2);
+    // FR-075: turn 2's reply never parses, so it is asked JUDGE_ATTEMPTS times.
+    expect(judgePrompts).toHaveLength(1 + JUDGE_ATTEMPTS);
     expect(judgePrompts[0].startsWith('JUDGE TEMPLATE')).toBe(true);
     expect(judgePrompts[0]).toContain('eligian_project not called');
     expect(judgePrompts[0]).toContain('C1');
@@ -2038,6 +2051,35 @@ describe('runInterview with a fake runner', () => {
     });
     expect(record.judged).toEqual([{ turn: 1, messageIndex: 1, unparsable: '' }]);
     expect(record.failures.join('\n')).toContain('judge: no reply for agent turn 1');
+  });
+
+  it('SC-034 (FR-075): an unparsable or rejected judge reply is asked again', async () => {
+    let calls = 0;
+    const { run, deps, judgePrompts } = setupRun([{ brief: APPROVED }], {
+      judge: () => {
+        calls++;
+        return calls === 1
+          ? 'I think it asks one thing.'
+          : `ok\n${JSON.stringify({ questions: [q(['C1'])] })}`;
+      },
+    });
+    const record = await runInterview(run, deps);
+    expect(judgePrompts).toHaveLength(2);
+    expect(judgePrompts[1]).toBe(judgePrompts[0]);
+    expect(record.judged).toEqual([{ turn: 1, messageIndex: 1, questions: [q(['C1'])] }]);
+
+    let rejected = 0;
+    const second = setupRun([{ brief: APPROVED }]);
+    const after = await runInterview(second.run, {
+      ...second.deps,
+      judge: async () => {
+        rejected++;
+        if (rejected === 1) throw new Error('judge busy');
+        return JSON.stringify({ questions: [] });
+      },
+    });
+    expect(after.judged).toEqual([{ turn: 1, messageIndex: 1, questions: [] }]);
+    expect(after.failures.join('\n')).not.toContain('judge');
   });
 
   it('a result without text is an empty agent message, not judged; node_modules is not listed', async () => {

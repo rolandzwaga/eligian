@@ -237,6 +237,9 @@ export function parseJudgeReply(text: string): readonly JudgedQuestion[] | undef
   }));
 }
 
+/** FR-075: judge calls per agent message; a missing or unparsable reply is asked again. */
+export const JUDGE_ATTEMPTS = 3;
+
 /** One agent message judged: its questions, or the reply kept when it does not parse. */
 export function toJudgedMessage(turn: number, messageIndex: number, reply: string): JudgedMessage {
   const questions = parseJudgeReply(reply);
@@ -366,6 +369,8 @@ function briefResultOf(entry: ToolEntry):
 const byCodeUnits = (l: string, r: string): number => (l < r ? -1 : l > r ? 1 : 0);
 
 const normalised = (question: Question, value: unknown): unknown => {
+  // FR-074: on a question that accepts "none", an empty list is "none".
+  if (question.shape.none === true && Array.isArray(value) && value.length === 0) return 'none';
   const validated = validateValue(question, value);
   return validated.ok ? validated.value : value;
 };
@@ -1622,7 +1627,12 @@ export async function runInterview(
       tree: TREE_ITEMS,
       message: data.message,
     });
-    const reply = await deps.judge(prompt).catch(() => undefined);
+    // FR-075: a missing or unparsable reply is asked again, up to JUDGE_ATTEMPTS calls.
+    let reply: string | undefined;
+    for (let attempt = 0; attempt < JUDGE_ATTEMPTS; attempt++) {
+      reply = await deps.judge(prompt).catch(() => undefined);
+      if (reply !== undefined && parseJudgeReply(reply) !== undefined) break;
+    }
     if (reply === undefined) failures.push(`judge: no reply for agent turn ${data.turn}`);
     const message = toJudgedMessage(data.turn, index, reply ?? '');
     judged.push(message);
