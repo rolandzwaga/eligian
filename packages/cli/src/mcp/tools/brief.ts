@@ -1730,7 +1730,9 @@ const replyOf = (
   counts: { ...evaluation.counts, fromCode: evaluation.counts.fromCode ?? 0 },
   rejected: outcome.rejected,
   ignored,
-  ...(evaluation.state === 'open' ? {} : { delegated: evaluation.delegated }),
+  // Phase 3 FR-077: listed for the brief's sign-off only (`complete`); a confirmed or approved
+  // brief has been signed off, so its replies keep the counts and leave the list out.
+  ...(evaluation.state === 'complete' ? { delegated: evaluation.delegated } : {}),
   // FR-026, FR-051: the answers changed since an invalid confirmation.
   ...(evaluation.changed.length === 0 ? {} : { changed: evaluation.changed }),
   ...(outcome.refused === undefined

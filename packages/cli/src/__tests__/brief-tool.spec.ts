@@ -609,7 +609,7 @@ describe('eligian_brief', () => {
       expect(confirmed.next).toBe(NEXT_CONFIRMED);
     });
 
-    it('delegated is absent while open and present when complete or confirmed', async () => {
+    it('delegated is absent while open, present when complete, absent once confirmed (Phase 3 FR-077)', async () => {
       const open = await ok({ action: 'status', idea: 'An idea' });
       expect(open).not.toHaveProperty('delegated');
 
@@ -623,7 +623,11 @@ describe('eligian_brief', () => {
         expect(d.value).toEqual(TERSE_ANSWERS.find(a => a.id === d.id)?.value);
       }
       const confirmed = await ok({ action: 'confirm', confirmation: 'Yes' });
-      expect(confirmed.delegated).toEqual(completed.delegated);
+      expect(confirmed.state).toBe('confirmed');
+      expect(confirmed).not.toHaveProperty('delegated');
+      expect(confirmed.counts.delegated).toBe(expected.length);
+      const status = await ok({ action: 'status' });
+      expect(status).not.toHaveProperty('delegated');
     });
 
     it('a hand-edited ### Z9: block is in ignored with its line and reason and survives the next write', async () => {
