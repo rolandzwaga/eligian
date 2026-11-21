@@ -187,6 +187,8 @@ export interface JudgedQuestion {
   readonly ids: readonly string[];
   readonly fact: boolean;
   readonly recommendation: boolean;
+  /** FR-069: the agent's numbered item the question sits in; `null` (or absent) for none. */
+  readonly item?: number | null;
 }
 
 /** The judge's reading of one agent message, or its reply verbatim when that did not parse. */
@@ -204,7 +206,10 @@ const isJudgedQuestion = (value: unknown): value is JudgedQuestion =>
   Array.isArray(value.ids) &&
   value.ids.every(id => typeof id === 'string') &&
   typeof value.fact === 'boolean' &&
-  typeof value.recommendation === 'boolean';
+  typeof value.recommendation === 'boolean' &&
+  (value.item === undefined ||
+    value.item === null ||
+    (typeof value.item === 'number' && Number.isInteger(value.item) && value.item > 0));
 
 /**
  * The judge's last non-empty line as `{ questions: [{ text, ids, fact, recommendation }] }`;
@@ -223,11 +228,12 @@ export function parseJudgeReply(text: string): readonly JudgedQuestion[] | undef
   if (!isRecord(parsed) || !Array.isArray(parsed.questions)) return undefined;
   const questions: unknown[] = parsed.questions;
   if (!questions.every(isJudgedQuestion)) return undefined;
-  return questions.map(({ text, ids, fact, recommendation }) => ({
+  return questions.map(({ text, ids, fact, recommendation, item }) => ({
     text,
     ids: [...ids],
     fact,
     recommendation,
+    ...(item === undefined ? {} : { item }),
   }));
 }
 
@@ -665,17 +671,12 @@ interface Snapshot {
   readonly brief: BriefState;
 }
 
-/** The ids each turn asked: in a round of that turn and listed by a judged question of it. */
-function askedTurns(
-  entries: readonly TurnEntry[],
-  judged: readonly JudgedMessage[]
-): (id: string) => readonly number[] {
-  const offered = new Map<number, Set<string>>();
-  for (const { turn, entry } of entries) {
-    const ids = offered.get(turn) ?? new Set<string>();
-    for (const id of briefResultOf(entry)?.round ?? []) ids.add(id);
-    offered.set(turn, ids);
-  }
+/**
+ * The turns that asked each id: a judged question of the turn lists it (FR-042; since FR-058 and
+ * FR-066 the judge may list an earlier item or any question of the tree, so the id need not be in
+ * that turn's round).
+ */
+function askedTurns(judged: readonly JudgedMessage[]): (id: string) => readonly number[] {
   const listed = new Map<number, Set<string>>();
   for (const message of judged) {
     if (!('questions' in message)) continue;
@@ -684,22 +685,19 @@ function askedTurns(
     listed.set(message.turn, ids);
   }
   return id =>
-    [...offered.keys()]
-      .filter(turn => offered.get(turn)?.has(id) === true && listed.get(turn)?.has(id) === true)
-      .sort((l, r) => l - r);
+    [...listed.keys()].filter(turn => listed.get(turn)?.has(id) === true).sort((l, r) => l - r);
 }
 
 /** Measure 2 (FR-038). */
 function nothingAssumed(
   input: InterviewMeasuresInput,
-  entries: readonly TurnEntry[],
   snapshots: readonly Snapshot[]
 ): MeasureResult {
   const final = snapshots[snapshots.length - 1];
   if (final === undefined) return { pass: false, failures: ['BRIEF.md: none after any turn'] };
   const evaluation = evaluate(TREE, final.brief, input.facts);
   const scripted = firedAnswers(input.sheet, input.script);
-  const asked = askedTurns(entries, input.judged);
+  const asked = askedTurns(input.judged);
   const views = viewMap(input.sheet, final.brief);
   const elements = elementMap(input.sheet, final.brief, views);
   const sheetIds = new Set<string>();
@@ -903,7 +901,7 @@ export function interviewMeasures(input: InterviewMeasuresInput): InterviewMeasu
   const changed = changedAnswer(input, snapshots);
   return {
     noGenerationBeforeApproval: noGenerationBeforeApproval(input.turns, entries),
-    nothingAssumed: nothingAssumed(input, entries, snapshots),
+    nothingAssumed: nothingAssumed(input, snapshots),
     factsAsked,
     questionsWithoutRecommendation: withoutRecommendation,
     rounds: { messages: questionsPerMessage.length, questionsPerMessage, roundSizes },
@@ -1046,6 +1044,8 @@ export interface ReplyPart {
 /** One numbered line of a built reply: the judge's question and its answer. */
 export interface BuiltLine {
   readonly question: string;
+  /** FR-069: the judge's `item` for the question. */
+  readonly item: number | null;
   readonly parts: readonly ReplyPart[];
   /** The answer as built, without its number. */
   readonly text: string;
@@ -1134,46 +1134,100 @@ export function buildReply(input: BuildReplyInput): BuiltLine[] {
       parts.length === 1 || (kinds.size === 1 && !kinds.has('states'))
         ? partText(parts[0])
         : parts.map(part => `${part.id}: ${partText(part)}`).join('; ');
-    return { question: question.text, parts, text };
+    return { question: question.text, item: question.item ?? null, parts, text };
   });
 }
-
-/** FR-054: the built lines, numbered. */
-export const numberedReply = (lines: readonly BuiltLine[]): string =>
-  lines.map((line, k) => `${k + 1}. ${line.text}`).join('\n');
 
 /** FR-059: a line built for a question the judge tagged with at least one id. */
 export const isTagged = (line: BuiltLine): boolean =>
   line.parts.some(part => part.id !== undefined);
 
+/** FR-069: one line of the reply: an agent item, or a question in none, and its answer. */
+export interface ReplyLine {
+  /** `<item>.`, or `"<first words>…":` for a question in no item. */
+  readonly label: string;
+  /** The questions the line answers. */
+  readonly lines: readonly BuiltLine[];
+  readonly text: string;
+}
+
+/** FR-069: a question's first words, as the label of a line for a question in no item. */
+const firstWords = (question: string): string =>
+  `"${question
+    .replace(/[*`_#>]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 6)
+    .join(' ')}…":`;
+
+/** FR-069: the answers of an item's questions: one "yes" / "you decide" when all agree. */
+const joined = (lines: readonly BuiltLine[]): string => {
+  const texts = lines.map(line => line.text);
+  const same = texts.every(text => text === texts[0]) && [YES, YOU_DECIDE].includes(texts[0]);
+  return texts.length === 1 || same ? texts[0] : texts.join('; ');
+};
+
 /**
- * FR-059: the fixed answers the simulated user gives as they are, one `<k>. <answer>` line per
- * tagged question; `undefined` when no question is tagged.
+ * FR-069: the reply's lines. With an item number on some question: one line per item, in
+ * ascending order, then one per question in no item; with none, one per question, numbered.
  */
-export function fixedAnswers(lines: readonly BuiltLine[]): string | undefined {
-  const fixed = lines.flatMap((line, k) => (isTagged(line) ? [`${k + 1}. ${line.text}`] : []));
+export function replyLines(lines: readonly BuiltLine[]): ReplyLine[] {
+  if (!lines.some(line => typeof line.item === 'number')) {
+    return lines.map((line, k) => ({ label: `${k + 1}.`, lines: [line], text: line.text }));
+  }
+  const items = [
+    ...new Set(lines.flatMap(line => (typeof line.item === 'number' ? [line.item] : []))),
+  ].sort((l, r) => l - r);
+  return [
+    ...items.map(item => {
+      const inItem = lines.filter(line => line.item === item);
+      return { label: `${item}.`, lines: inItem, text: joined(inItem) };
+    }),
+    ...lines
+      .filter(line => typeof line.item !== 'number')
+      .map(line => ({ label: firstWords(line.question), lines: [line], text: line.text })),
+  ];
+}
+
+/** FR-059, FR-069: a reply line every question of which is tagged. */
+export const isTaggedLine = (line: ReplyLine): boolean => line.lines.every(isTagged);
+
+/** FR-054, FR-069: the reply lines as text. */
+export const numberedReply = (reply: readonly ReplyLine[]): string =>
+  reply.map(line => `${line.label} ${line.text}`).join('\n');
+
+/**
+ * FR-059, FR-069: the fixed answers the simulated user gives as they are: each tagged line, and
+ * for a line with tagged and untagged questions, the tagged questions' answers by their first
+ * words; `undefined` when no question is tagged.
+ */
+export function fixedAnswers(reply: readonly ReplyLine[]): string | undefined {
+  const fixed = reply.flatMap(line =>
+    isTaggedLine(line)
+      ? [`${line.label} ${line.text}`]
+      : line.lines
+          .filter(isTagged)
+          .map(part => `${line.label} (the part ${firstWords(part.question)}) ${part.text}`)
+  );
   return fixed.length === 0 ? undefined : fixed.join('\n');
 }
 
-const NUMBERED_LINE = /^\s*(\d+)\.\s/;
-
 /**
- * FR-059: the simulated user's reply with each tagged question's line replaced by its built line,
- * when the reply numbers exactly one line per question, 1 to n in order (other lines, such as a
- * changed-mind block, stay); otherwise the reply as it stands.
+ * FR-059, FR-069: the simulated user's reply with the line of each tagged reply line, found by its
+ * label, replaced by the built one (appended when the reply has no line with that label); other
+ * lines, such as a changed-mind block, stay.
  */
-export function withFixedAnswers(lines: readonly BuiltLine[], reply: string): string {
-  const replyLines = reply.split(/\r?\n/);
-  const numbered = replyLines.flatMap((line, at) => {
-    const match = NUMBERED_LINE.exec(line);
-    return match === null ? [] : [{ at, n: Number(match[1]) }];
-  });
-  if (numbered.length !== lines.length || numbered.some(({ n }, k) => n !== k + 1)) return reply;
-  const out = [...replyLines];
-  for (const [k, { at }] of numbered.entries()) {
-    if (isTagged(lines[k])) out[at] = `${k + 1}. ${lines[k].text}`;
+export function withFixedAnswers(reply: readonly ReplyLine[], text: string): string {
+  const out = text.split(/\r?\n/);
+  const missing: string[] = [];
+  for (const line of reply) {
+    if (!isTaggedLine(line)) continue;
+    const built = `${line.label} ${line.text}`;
+    const at = out.findIndex(candidate => candidate.trimStart().startsWith(line.label));
+    if (at === -1) missing.push(built);
+    else out[at] = built;
   }
-  return out.join('\n');
+  return [...out, ...missing].join('\n');
 }
 
 /** FR-054, FR-039: the changed-mind lines a fired script appends to a built reply. */
@@ -1291,6 +1345,7 @@ const JudgedQuestionSchema = Schema.Struct({
   ids: Schema.Array(Schema.String),
   fact: Schema.Boolean,
   recommendation: Schema.Boolean,
+  item: Schema.optionalKey(Schema.NullOr(Schema.Finite)),
 });
 
 /** Decodes an interview run record (as `RunRecordSchema`, `harness.ts`). */
@@ -1603,9 +1658,10 @@ export async function runInterview(
       run.sheet,
       (brief === undefined ? EMPTY_PARSED : parseBrief(brief)).brief
     );
-    const lines = buildReply({ sheet: run.sheet, views, questions, asks, fired });
+    // FR-069: the reply follows the agent's numbered items.
+    const lines = replyLines(buildReply({ sheet: run.sheet, views, questions, asks, fired }));
     let reply: string | undefined;
-    if (lines.length > 0 && lines.every(isTagged)) {
+    if (lines.length > 0 && lines.every(isTaggedLine)) {
       const answers = numberedReply(lines);
       reply = change === undefined ? answers : `${answers}\n\n${changedMindLines(change)}`;
     } else {

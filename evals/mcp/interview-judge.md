@@ -38,6 +38,8 @@ question.
 For each question give:
 
 - `text`: the question, quoted from the message (shortened with "…" when it is long).
+- `item`: the number of the agent's numbered item the question sits in (`1` for a question inside
+  "1. …", also when that item holds two questions), or `null` when it is in no numbered item.
 - `ids`: every round item or earlier item id the question asks about. A bundled question lists all
   of them: "For intro, details and outro, what is on screen?" over the items `V3:intro`,
   `V3:details` and `V3:outro` gives `["V3:intro", "V3:details", "V3:outro"]`. A follow-up on an
@@ -67,8 +69,8 @@ have asked at all.
 Think in prose if you need to. Then end your reply with exactly one line of JSON, and nothing after
 it, of this shape:
 
-{"questions": [{"text": "…", "ids": ["…"], "fact": false, "recommendation": true}]}
+{"questions": [{"text": "…", "item": 1, "ids": ["…"], "fact": false, "recommendation": true}]}
 
 A message that asks nothing gives `{"questions": []}`. The line must be one JSON object on one line,
-with the key `questions` and, per question, exactly the keys `text` (a string), `ids` (an array of
-strings), `fact` (a boolean) and `recommendation` (a boolean).
+with the key `questions` and, per question, exactly the keys `text` (a string), `item` (a number or
+`null`), `ids` (an array of strings), `fact` (a boolean) and `recommendation` (a boolean).

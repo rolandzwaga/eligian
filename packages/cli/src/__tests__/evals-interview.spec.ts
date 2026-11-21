@@ -44,6 +44,7 @@ import {
   interviewStop,
   interviewVerdict,
   isTagged,
+  isTaggedLine,
   type JudgedMessage,
   type JudgedQuestion,
   judgePrompt,
@@ -56,6 +57,7 @@ import {
   parsePersonaSheet,
   renderInterviewSummary,
   renderValue,
+  replyLines,
   runInterview,
   type SheetValue,
   sheetIdOf,
@@ -1019,7 +1021,7 @@ describe('SC-028: built replies', () => {
       judgedQ('Swipe?', 'I5'),
       judgedQ('Sound?', 'C4'),
     ]);
-    expect(numberedReply(lines)).toBe('1. yes\n2. you decide\n3. you decide\n4. off');
+    expect(numberedReply(replyLines(lines))).toBe('1. yes\n2. you decide\n3. you decide\n4. off');
     expect(lines[3].parts).toEqual([{ id: 'C4', kind: 'states', value: 'off' }]);
   });
 
@@ -1077,22 +1079,61 @@ describe('SC-028: built replies', () => {
       judgedQ('Sound?', 'C4'),
     ]);
     expect(lines.map(isTagged)).toEqual([true, false, true]);
-    expect(fixedAnswers(lines)).toBe('1. yes\n3. off');
-    expect(fixedAnswers(build(sheet, [judgedQ('Approve?')]))).toBeUndefined();
+    expect(fixedAnswers(replyLines(lines))).toBe('1. yes\n3. off');
+    expect(fixedAnswers(replyLines(build(sheet, [judgedQ('Approve?')])))).toBeUndefined();
   });
 
-  it('withFixedAnswers puts the built lines in place; keeps other lines; leaves a misnumbered reply', () => {
+  it('withFixedAnswers puts the built lines in place by label; keeps other lines; appends a missing one', () => {
     const lines = build(sheet, [
       judgedQ('Tone?', 'P4'),
       judgedQ('Approve?'),
       judgedQ('Sound?', 'C4'),
     ]);
     const reply = '1. you decide\n2. Approved, go ahead.\n3. Sound on.\n\nI changed my mind: x';
-    expect(withFixedAnswers(lines, reply)).toBe(
+    const reply3 = replyLines(lines);
+    expect(withFixedAnswers(reply3, reply)).toBe(
       '1. yes\n2. Approved, go ahead.\n3. off\n\nI changed my mind: x'
     );
-    expect(withFixedAnswers(lines, '1. yes\n2. Approved.')).toBe('1. yes\n2. Approved.');
-    expect(withFixedAnswers(lines, '2. a\n1. b\n3. c')).toBe('2. a\n1. b\n3. c');
+    expect(withFixedAnswers(reply3, '1. yes\n2. Approved.')).toBe('1. yes\n2. Approved.\n3. off');
+    expect(withFixedAnswers(reply3, '2. a\n1. b\n3. c')).toBe('2. a\n1. yes\n3. off');
+  });
+
+  // SC-032 (FR-069): the reply follows the agent's numbered items.
+  it('replyLines joins the questions of one item, then lines for questions in no item', () => {
+    const itemQ = (text: string, item: number | null, ...ids: string[]): JudgedQuestion => ({
+      ...judgedQ(text, ...ids),
+      item,
+    });
+    const reply = replyLines(
+      build(sheet, [
+        itemQ('Tone: plain. Yes?', 1, 'P4'),
+        itemQ('Send the logo, or a placeholder?', 1),
+        itemQ('Sound?', 2, 'C4'),
+        itemQ('If you have a floor plan or photos, send them.', null),
+      ])
+    );
+    expect(reply.map(line => line.label)).toEqual(['1.', '2.', '"If you have a floor plan…":']);
+    expect(numberedReply(reply)).toBe(
+      '1. yes; you decide\n2. off\n"If you have a floor plan…": you decide'
+    );
+    expect(reply.map(isTaggedLine)).toEqual([false, true, false]);
+    // Item 1 mixes a tagged and an untagged question: its tagged part is fixed by its first words.
+    expect(fixedAnswers(reply)).toBe('1. (the part "Tone: plain. Yes?…":) yes\n2. off');
+    // Two "yes" answers in one item give one "yes".
+    const both = replyLines(build(sheet, [itemQ('Tone?', 1, 'P4'), itemQ('Tone again?', 1, 'P4')]));
+    expect(numberedReply(both)).toBe('1. yes');
+  });
+
+  it('parseJudgeReply reads item as a number, null or absent', () => {
+    const line = (item: unknown) =>
+      JSON.stringify({
+        questions: [{ text: 'x', ids: [], fact: false, recommendation: true, item }],
+      });
+    expect(parseJudgeReply(line(2))?.[0].item).toBe(2);
+    expect(parseJudgeReply(line(null))?.[0].item).toBeNull();
+    expect(parseJudgeReply(line(undefined))?.[0]).not.toHaveProperty('item');
+    expect(parseJudgeReply(line('2'))).toBeUndefined();
+    expect(parseJudgeReply(line(0))).toBeUndefined();
   });
 
   it('a stated V3 row is rendered, not worded', () => {
@@ -1297,6 +1338,9 @@ describe('SC-031: the run-4 fixes (FR-064 to FR-067)', () => {
     expect(judgeText).toContain('Several materials asked under one fallback');
     expect(judgeText).toContain('a request to sign off on the brief or the storyboard');
     expect(judgeText).toContain('whether or not the message shows the summary in full');
+    // FR-069, SC-032: the judge gives each question its item number.
+    expect(judgeText).toContain("`item`: the number of the agent's numbered item");
+    expect(judgeText).toContain('`item` (a number or `null`)');
   });
 
   it('measures 3 and 4 count only the turns before the approval', () => {
@@ -1337,6 +1381,23 @@ describe('SC-031: the run-4 fixes (FR-064 to FR-067)', () => {
     });
     expect(prompt).toContain('## The other questions of the brief\n\n- P1: ');
     expect(prompt).toContain('\n- V3:<view>: ');
+  });
+
+  // SC-032 (FR-070): a judged id is asked although no round of that turn offered it.
+  it('a judged id that was in no round counts as asked', () => {
+    const sheet = sheetOf({ A1: { value: [{ asset: 'x', who: 'y', when: 'z' }], mode: 'states' } });
+    const m = measure({
+      sheet,
+      turns: [
+        turnOf(1, { events: briefCall('open', ['P1']) }),
+        turnOf(2, {
+          events: briefCall('complete'),
+          brief: briefOf([ans('A1', [{ asset: 'x', who: 'y', when: 'z' }])]),
+        }),
+      ],
+      judged: [judgedAt(1, q(['A1']))],
+    }).nothingAssumed;
+    expect(m.failures.join()).not.toContain('never asked');
   });
 
   it('the vague sheet accepts a simple order for details', () => {
