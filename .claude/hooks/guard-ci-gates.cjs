@@ -15,6 +15,8 @@
  *
  * Runs on the working tree (staged + unstaged + untracked), not an export of the index. Only when
  * a code path changed: a commit touching only specs/, root-level Markdown or .claude/ runs nothing.
+ * On Windows, the tests of changed files that branch on the platform then also run on Linux
+ * (WSL, linux-tests.sh), as CI runs them; see runLinuxTests.
  * Fail fast: the first failing step blocks with its output tail. Fails open (exit 0) on any
  * parse / IO / spawn problem so the hook can never wedge the session.
  *
@@ -22,7 +24,7 @@
  */
 'use strict';
 
-const { spawnSync, execFileSync } = require('node:child_process');
+const { spawn, spawnSync, execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -57,6 +59,19 @@ const STEP_POLICY = {
 const VITEST_ARGS = {
   cli: ['--project', 'cli', '--project', 'cli-timed'],
 };
+
+/**
+ * The Linux run (WSL) of the tests of changed files that branch on the platform: on Windows their
+ * POSIX branch never runs, and CI runs on Linux (2026-11-23: the tests' `sh` stubs called
+ * `dirname` under a PATH without it; every local run passed, CI shards 2 and 3 failed). cli adds
+ * the bin project, which CI also runs on Linux.
+ */
+const PLATFORM_BRANCH = /process\.platform|os\.platform\(\)|['"]win32['"]/;
+const LINUX_VITEST_ARGS = {
+  cli: ['--project', 'cli', '--project', 'cli-timed', '--project', 'cli-bin'],
+};
+/** linux-tests.sh's exit code when WSL lacks node, pnpm or rsync. */
+const LINUX_UNAVAILABLE = 90;
 
 const TAIL_LINES = 60;
 
@@ -165,7 +180,7 @@ function runScript(root, script) {
 }
 
 /** `vitest related` per package over the changed files that still exist. */
-function relatedTestScripts(root, changed) {
+function relatedTestScripts(root, changed, vitestArgs = VITEST_ARGS) {
   const byPackage = new Map();
   for (const p of changed) {
     const m = /^packages\/([^/]+)\/(.+)$/.exec(p);
@@ -179,10 +194,106 @@ function relatedTestScripts(root, changed) {
     name: `vitest related (packages/${pkg}, ${files.length} changed file${files.length === 1 ? '' : 's'})`,
     script: [
       `pnpm -C packages/${pkg} exec vitest related --run --passWithNoTests`,
-      ...(VITEST_ARGS[pkg] || []),
+      ...(vitestArgs[pkg] || []),
       ...files.map(q),
     ].join(' '),
   }));
+}
+
+/** `F:\a\b` → `/mnt/f/a/b`. */
+function wslPath(p) {
+  const m = /^([A-Za-z]):[\\/](.*)$/.exec(path.resolve(p));
+  return m ? `/mnt/${m[1].toLowerCase()}/${m[2].replace(/\\/g, '/')}` : p;
+}
+
+/**
+ * The related tests of the changed files that branch on the platform, run on Linux through WSL
+ * (`linux-tests.sh`). null when there is nothing to run or the host is not Windows (there the
+ * related tests already ran on POSIX); { skipped } when WSL cannot run them; else as runScript.
+ */
+function runLinuxTests(root, code) {
+  if (process.platform !== 'win32') return null;
+  const branching = code.filter(p => {
+    if (!/^packages\/[^/]+\/.+\.(ts|tsx|mts|cts|js|mjs|cjs)$/.test(p)) return false;
+    try {
+      return PLATFORM_BRANCH.test(fs.readFileSync(path.join(root, p), 'utf8'));
+    } catch {
+      return false;
+    }
+  });
+  if (branching.length === 0) return null;
+  const scripts = relatedTestScripts(root, branching, LINUX_VITEST_ARGS);
+  if (scripts.length === 0) return null;
+  const commands = scripts.map(s => s.script).join('\n');
+
+  // The tree goes over as one tar stream (Windows' bsdtar reads NTFS natively; see linux-tests.sh)
+  const files = execFileSync('git', ['ls-files', '-co', '--exclude-standard', '-z'], {
+    cwd: root,
+    maxBuffer: 64 << 20,
+  })
+    .toString()
+    .split('\0')
+    .filter(p => p && fs.existsSync(path.join(root, p)));
+  const walk = dir => {
+    for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(rel);
+      else if (e.isFile()) files.push(rel);
+    }
+  };
+  for (const pkg of fs.readdirSync(path.join(root, 'packages'))) {
+    if (fs.existsSync(path.join(root, 'packages', pkg, 'dist'))) walk(`packages/${pkg}/dist`);
+  }
+  const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'eligian-linux-gate-'));
+  const listFile = path.join(tmp, 'files');
+  const commandsFile = path.join(tmp, 'commands.sh');
+  fs.writeFileSync(listFile, `${files.join('\0')}\0`);
+  fs.writeFileSync(commandsFile, `${commands}\n`);
+  const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+
+  return new Promise(resolve => {
+    let settled = false;
+    const done = result => {
+      if (settled) return;
+      settled = true;
+      fs.rmSync(tmp, { recursive: true, force: true });
+      resolve(result);
+    };
+    let out = '';
+    const tar = spawn(tarExe, ['-c', '-f', '-', '--null', '-T', listFile], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const wsl = spawn(
+      'wsl.exe',
+      ['-e', 'bash', '-l', wslPath(path.join(__dirname, 'linux-tests.sh')), wslPath(commandsFile)],
+      { cwd: root, stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    tar.on('error', error => {
+      wsl.kill();
+      done({ skipped: `${tarExe}: ${error.message}` });
+    });
+    wsl.on('error', error => done({ skipped: `wsl.exe: ${error.message}` }));
+    wsl.stdin.on('error', () => {}); // the script may exit before the stream ends
+    tar.stdout.pipe(wsl.stdin);
+    wsl.stdout.on('data', c => {
+      out += c;
+    });
+    wsl.stderr.on('data', c => {
+      out += c;
+    });
+    wsl.on('close', status => {
+      const lines = out.trim().split(/\r?\n/);
+      if (status === LINUX_UNAVAILABLE) done({ skipped: lines.pop() });
+      else if (status === 0) done(null);
+      else {
+        done({
+          script: commands,
+          out: lines.slice(-TAIL_LINES).join('\n') || `exit ${status}`,
+        });
+      }
+    });
+  });
 }
 
 function readStdin() {
@@ -283,6 +394,23 @@ function readStdin() {
       );
       process.exit(2);
     }
+  }
+
+  let linux;
+  try {
+    linux = await runLinuxTests(root, code);
+  } catch (error) {
+    linux = { skipped: error.message };
+  }
+  if (linux && linux.skipped) {
+    process.stderr.write(`guard-ci-gates: Linux (WSL) tests skipped (${linux.skipped})\n`);
+  } else if (linux) {
+    process.stderr.write(
+      'BLOCKED: the tests of the changed platform-branching files fail on Linux (WSL), as CI ' +
+        `runs them.\n\n$ ${linux.script}\n\n${linux.out}\n\nFix it, then commit again. ` +
+        '(Gate: .claude/hooks/guard-ci-gates.cjs → linux-tests.sh.)\n'
+    );
+    process.exit(2);
   }
   process.exit(0);
 })();
