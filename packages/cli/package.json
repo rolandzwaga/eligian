@@ -62,9 +62,9 @@
     "effect": "4.1.4",
     "eligius": "4.2.0",
     "esbuild": "0.28.2",
-    "jquery": "4.0.0",
+    "jquery": "4.1.0",
     "tinyglobby": "0.2.17",
-    "jsdom": "31.0.0"
+    "jsdom": "31.0.1"
   },
   "devDependencies": {
     "@eligian/language": "workspace:*",
