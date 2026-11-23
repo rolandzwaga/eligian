@@ -1070,8 +1070,11 @@ process.stdin.on('end', () => {
       if (process.platform === 'win32') {
         fs.writeFileSync(path.join(bin, 'claude.cmd'), '@node "%~dp0stub.cjs" %*\r\n');
       } else {
+        // Absolute paths, no `dirname`: claudeEnv's PATH holds only the stub and node directories.
         const claude = path.join(bin, 'claude');
-        fs.writeFileSync(claude, '#!/bin/sh\nexec node "$(dirname "$0")/stub.cjs" "$@"\n');
+        const stub = `'${path.join(bin, 'stub.cjs').replace(/'/g, `'\\''`)}'`;
+        const node = `'${process.execPath.replace(/'/g, `'\\''`)}'`;
+        fs.writeFileSync(claude, `#!/bin/sh\nexec ${node} ${stub} "$@"\n`);
         fs.chmodSync(claude, 0o755);
       }
     });

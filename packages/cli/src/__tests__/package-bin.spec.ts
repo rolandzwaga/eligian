@@ -533,8 +533,13 @@ describe.skipIf(!built)('the brief hook (spec 059 SC-008)', () => {
     if (process.platform === 'win32') {
       writeFileSync(join(stubBin, 'npx.cmd'), '@node "%~dp0stub.cjs" %*\r\n');
     } else {
+      // Absolute paths, no `dirname`: the test's PATH holds only the stub and node directories.
       const npx = join(stubBin, 'npx');
-      writeFileSync(npx, '#!/bin/sh\nexec node "$(dirname "$0")/stub.cjs" "$@"\n');
+      const quoted = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+      writeFileSync(
+        npx,
+        `#!/bin/sh\nexec ${quoted(process.execPath)} ${quoted(join(stubBin, 'stub.cjs'))} "$@"\n`
+      );
       chmodSync(npx, 0o755);
     }
     return { bin: stubBin, marker };

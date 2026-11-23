@@ -53,6 +53,9 @@ interface Stub {
   readonly marker: string;
 }
 
+/** `value` single-quoted for `/bin/sh`. */
+const shQuoted = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
+
 /** A temp `bin/` holding a stub `npx` (`npx.cmd` on Windows) and the marker file it appends to. */
 function stubNpx(): Stub {
   const root = tempDir('eligian-prefilter-');
@@ -62,8 +65,10 @@ function stubNpx(): Stub {
   if (process.platform === 'win32') {
     fs.writeFileSync(path.join(bin, 'npx.cmd'), '@node "%~dp0stub.cjs" %*\r\n');
   } else {
+    // Absolute paths, no `dirname`: the tests' PATH holds only the stub and node directories.
     const npx = path.join(bin, 'npx');
-    fs.writeFileSync(npx, '#!/bin/sh\nexec node "$(dirname "$0")/stub.cjs" "$@"\n');
+    const stub = path.join(bin, 'stub.cjs');
+    fs.writeFileSync(npx, `#!/bin/sh\nexec ${shQuoted(process.execPath)} ${shQuoted(stub)} "$@"\n`);
     fs.chmodSync(npx, 0o755);
   }
   return { bin, marker: path.join(root, 'marker.ndjson') };
